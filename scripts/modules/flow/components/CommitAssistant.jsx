@@ -21,10 +21,18 @@ export function CommitAssistant({
 	const theme = useComponentTheme('modal');
 
 	const messageTypes = [
-		{ value: 'feat', label: 'Feature', description: 'New feature implementation' },
+		{
+			value: 'feat',
+			label: 'Feature',
+			description: 'New feature implementation'
+		},
 		{ value: 'fix', label: 'Bug Fix', description: 'Bug fix or correction' },
 		{ value: 'test', label: 'Tests', description: 'Adding or updating tests' },
-		{ value: 'docs', label: 'Documentation', description: 'Documentation changes' },
+		{
+			value: 'docs',
+			label: 'Documentation',
+			description: 'Documentation changes'
+		},
 		{ value: 'refactor', label: 'Refactor', description: 'Code refactoring' },
 		{ value: 'chore', label: 'Chore', description: 'Maintenance or tooling' }
 	];
@@ -37,7 +45,9 @@ export function CommitAssistant({
 		if (!subtaskInfo) return;
 
 		const taskId = subtaskInfo.parentId || subtaskInfo.id;
-		const subtaskId = subtaskInfo.parentId ? `${subtaskInfo.parentId}.${subtaskInfo.id}` : subtaskInfo.id;
+		const subtaskId = subtaskInfo.parentId
+			? `${subtaskInfo.parentId}.${subtaskInfo.id}`
+			: subtaskInfo.id;
 		const title = subtaskInfo.title || 'Implementation';
 
 		// Generate commit message following dev_workflow.mdc patterns
@@ -57,9 +67,11 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 		if (!gitStatus) return 'Implementation details';
 
 		const details = [];
-		if (gitStatus.modified > 0) details.push(`Modified ${gitStatus.modified} files`);
+		if (gitStatus.modified > 0)
+			details.push(`Modified ${gitStatus.modified} files`);
 		if (gitStatus.added > 0) details.push(`Added ${gitStatus.added} new files`);
-		if (gitStatus.deleted > 0) details.push(`Removed ${gitStatus.deleted} files`);
+		if (gitStatus.deleted > 0)
+			details.push(`Removed ${gitStatus.deleted} files`);
 
 		return details.length > 0 ? details.join(', ') : 'Implementation details';
 	};
@@ -67,20 +79,25 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 	const getSubtaskDescription = () => {
 		if (subtaskInfo?.details) {
 			// Extract first meaningful line from details
-			const lines = subtaskInfo.details.split('\n').filter(line => line.trim());
-			const firstLine = lines.find(line => 
-				!line.includes('<info added on') && 
-				!line.includes('Progress:') &&
-				line.trim().length > 10
+			const lines = subtaskInfo.details
+				.split('\n')
+				.filter((line) => line.trim());
+			const firstLine = lines.find(
+				(line) =>
+					!line.includes('<info added on') &&
+					!line.includes('Progress:') &&
+					line.trim().length > 10
 			);
-			return firstLine ? firstLine.trim().substring(0, 80) + '...' : 'Implementation completed';
+			return firstLine
+				? firstLine.trim().substring(0, 80) + '...'
+				: 'Implementation completed';
 		}
 		return 'Implementation completed';
 	};
 
 	const validateCommitMessage = (message) => {
 		const errors = [];
-		
+
 		// Check basic format
 		if (!message.trim()) {
 			errors.push('Commit message cannot be empty');
@@ -91,7 +108,11 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 		const firstLine = lines[0];
 
 		// Check first line format
-		if (!firstLine.match(/^(feat|fix|docs|style|refactor|test|chore)\([^)]+\):\s*.+/)) {
+		if (
+			!firstLine.match(
+				/^(feat|fix|docs|style|refactor|test|chore)\([^)]+\):\s*.+/
+			)
+		) {
 			errors.push('First line must follow format: type(scope): description');
 		}
 
@@ -144,7 +165,7 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 				gitStatus,
 				messageType
 			});
-			
+
 			if (result.success) {
 				setCommitMessage(result.message);
 			} else {
@@ -166,7 +187,9 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 		},
 		tab: () => {
 			// Cycle through message types
-			const currentIndex = messageTypes.findIndex(type => type.value === messageType);
+			const currentIndex = messageTypes.findIndex(
+				(type) => type.value === messageType
+			);
 			const nextIndex = (currentIndex + 1) % messageTypes.length;
 			setMessageType(messageTypes[nextIndex].value);
 		},
@@ -197,20 +220,32 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 		<BaseModal {...modalProps}>
 			<Box flexDirection="column">
 				{/* Header with task info */}
-				<Box marginBottom={2} borderStyle="round" borderColor={theme.accent} padding={1}>
+				<Box
+					marginBottom={2}
+					borderStyle="round"
+					borderColor={theme.accent}
+					padding={1}
+				>
 					<Box flexDirection="column">
-						<Text bold color={theme.accent}>Commit Information</Text>
+						<Text bold color={theme.accent}>
+							Commit Information
+						</Text>
 						{subtaskInfo && (
 							<Box marginTop={1}>
 								<Text color={theme.text}>
-									📋 Task: {subtaskInfo.parentId ? `${subtaskInfo.parentId}.${subtaskInfo.id}` : subtaskInfo.id} - {subtaskInfo.title}
+									📋 Task:{' '}
+									{subtaskInfo.parentId
+										? `${subtaskInfo.parentId}.${subtaskInfo.id}`
+										: subtaskInfo.id}{' '}
+									- {subtaskInfo.title}
 								</Text>
 							</Box>
 						)}
 						{gitStatus && (
 							<Box marginTop={1}>
 								<Text color={theme.text}>
-									📊 Changes: {gitStatus.modified || 0}M {gitStatus.added || 0}A {gitStatus.deleted || 0}D
+									📊 Changes: {gitStatus.modified || 0}M {gitStatus.added || 0}A{' '}
+									{gitStatus.deleted || 0}D
 								</Text>
 							</Box>
 						)}
@@ -219,32 +254,47 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 
 				{/* Message type selector */}
 				<Box marginBottom={2}>
-					<Text bold color={theme.accent}>Message Type:</Text>
+					<Text bold color={theme.accent}>
+						Message Type:
+					</Text>
 					<Box flexDirection="row" flexWrap="wrap" marginTop={1}>
 						{messageTypes.map((type, index) => (
 							<Box
 								key={type.value}
 								marginRight={2}
 								marginBottom={1}
-								backgroundColor={type.value === messageType ? theme.backgroundHighlight : undefined}
-								borderStyle={type.value === messageType ? "round" : undefined}
-								borderColor={type.value === messageType ? theme.accent : undefined}
+								backgroundColor={
+									type.value === messageType
+										? theme.backgroundHighlight
+										: undefined
+								}
+								borderStyle={type.value === messageType ? 'round' : undefined}
+								borderColor={
+									type.value === messageType ? theme.accent : undefined
+								}
 								paddingX={1}
 							>
-								<Text color={type.value === messageType ? theme.accent : theme.text}>
+								<Text
+									color={type.value === messageType ? theme.accent : theme.text}
+								>
 									{type.label}
 								</Text>
 							</Box>
 						))}
 					</Box>
 					<Text color={theme.muted} marginTop={1}>
-						{messageTypes.find(t => t.value === messageType)?.description}
+						{messageTypes.find((t) => t.value === messageType)?.description}
 					</Text>
 				</Box>
 
 				{/* Error display */}
 				{error && (
-					<Box marginBottom={2} borderStyle="round" borderColor={theme.error} padding={1}>
+					<Box
+						marginBottom={2}
+						borderStyle="round"
+						borderColor={theme.error}
+						padding={1}
+					>
 						<Text color={theme.error}>❌ {error}</Text>
 					</Box>
 				)}
@@ -252,39 +302,47 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 				{/* Loading indicator */}
 				{isGenerating && (
 					<Box marginBottom={2}>
-						<Text color={theme.info}>🤖 Generating smart commit message...</Text>
+						<Text color={theme.info}>
+							🤖 Generating smart commit message...
+						</Text>
 					</Box>
 				)}
 
 				{/* Commit message preview */}
 				<Box marginBottom={2}>
-					<Text bold color={theme.accent}>Generated Commit Message:</Text>
-					<Box 
-						marginTop={1} 
-						borderStyle="round" 
-						borderColor={theme.muted} 
+					<Text bold color={theme.accent}>
+						Generated Commit Message:
+					</Text>
+					<Box
+						marginTop={1}
+						borderStyle="round"
+						borderColor={theme.muted}
 						padding={1}
 						height={12}
 					>
-						<Text color={theme.text}>
-							{commitMessage}
-						</Text>
+						<Text color={theme.text}>{commitMessage}</Text>
 					</Box>
 				</Box>
 
 				{/* Validation status */}
 				<Box marginBottom={2}>
-					<Text bold color={theme.accent}>Validation:</Text>
+					<Text bold color={theme.accent}>
+						Validation:
+					</Text>
 					<Box marginTop={1}>
 						{(() => {
 							const errors = validateCommitMessage(commitMessage);
 							if (errors.length === 0) {
-								return <Text color={theme.success}>✅ Message format is valid</Text>;
+								return (
+									<Text color={theme.success}>✅ Message format is valid</Text>
+								);
 							} else {
 								return (
 									<Box flexDirection="column">
 										{errors.map((error) => (
-											<Text key={error} color={theme.error}>❌ {error}</Text>
+											<Text key={error} color={theme.error}>
+												❌ {error}
+											</Text>
 										))}
 									</Box>
 								);
@@ -295,7 +353,9 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 
 				{/* Action guidance */}
 				<Box borderStyle="round" borderColor={theme.muted} padding={1}>
-					<Text bold color={theme.accent}>💡 Commit Guidelines</Text>
+					<Text bold color={theme.accent}>
+						💡 Commit Guidelines
+					</Text>
 					<Box marginTop={1}>
 						<Text color={theme.muted}>
 							• Use TAB to cycle through message types (feat, fix, test, etc.)
@@ -314,4 +374,4 @@ Relates to Task ${taskId}: ${subtaskInfo.parentTitle || title}`;
 			</Box>
 		</BaseModal>
 	);
-} 
+}

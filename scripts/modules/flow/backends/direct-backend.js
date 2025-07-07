@@ -82,7 +82,7 @@ export class DirectBackend extends FlowBackend {
 		this.tasksJsonPath = path.join(this.projectRoot, TASKMASTER_TASKS_FILE);
 		// Simulated session for API key access
 		this.session = options.session || {};
-		this.branchManager = null;  // NEW: Will be set by Flow app
+		this.branchManager = null; // NEW: Will be set by Flow app
 	}
 
 	async initialize() {
@@ -260,7 +260,9 @@ export class DirectBackend extends FlowBackend {
 			status: status
 		};
 
-		const result = await setTaskStatusDirect(args, this.log, { session: this.session });
+		const result = await setTaskStatusDirect(args, this.log, {
+			session: this.session
+		});
 		if (!result.success) {
 			throw new Error(result.error.message || result.error);
 		}
@@ -388,8 +390,10 @@ export class DirectBackend extends FlowBackend {
 	 */
 	async updateSubtask(subtaskId, options = {}) {
 		try {
-			const { updateSubtask } = await import('../../../mcp-server/src/core/task-master-core.js');
-			
+			const { updateSubtask } = await import(
+				'../../../mcp-server/src/core/task-master-core.js'
+			);
+
 			const result = await updateSubtask(
 				{
 					id: subtaskId,
@@ -429,8 +433,10 @@ export class DirectBackend extends FlowBackend {
 	 */
 	async setSubtaskStatus(subtaskId, status) {
 		try {
-			const { setTaskStatus } = await import('../../../mcp-server/src/core/task-master-core.js');
-			
+			const { setTaskStatus } = await import(
+				'../../../mcp-server/src/core/task-master-core.js'
+			);
+
 			const result = await setTaskStatus(
 				{
 					id: subtaskId,
@@ -468,8 +474,10 @@ export class DirectBackend extends FlowBackend {
 	 */
 	async getSubtaskProgress(subtaskId) {
 		try {
-			const { getTask } = await import('../../../mcp-server/src/core/task-master-core.js');
-			
+			const { getTask } = await import(
+				'../../../mcp-server/src/core/task-master-core.js'
+			);
+
 			const result = await getTask(
 				{
 					id: subtaskId,
@@ -480,11 +488,13 @@ export class DirectBackend extends FlowBackend {
 			);
 
 			if (result.success && result.data) {
-				const subtask = Array.isArray(result.data) ? result.data[0] : result.data;
-				
+				const subtask = Array.isArray(result.data)
+					? result.data[0]
+					: result.data;
+
 				// Parse implementation journey from details
 				const progress = this.parseImplementationJourney(subtask.details || '');
-				
+
 				return {
 					success: true,
 					data: {
@@ -522,19 +532,25 @@ export class DirectBackend extends FlowBackend {
 		};
 
 		// Look for exploration phase
-		const explorationMatch = details.match(/## Exploration Phase([\s\S]*?)(?=##|$)/);
+		const explorationMatch = details.match(
+			/## Exploration Phase([\s\S]*?)(?=##|$)/
+		);
 		if (explorationMatch) {
 			progress.explorationPhase = explorationMatch[1].trim();
 		}
 
 		// Look for implementation progress entries
-		const progressMatches = [...details.matchAll(/## Implementation Progress([\s\S]*?)(?=##|$)/g)];
+		const progressMatches = [
+			...details.matchAll(/## Implementation Progress([\s\S]*?)(?=##|$)/g)
+		];
 		for (const match of progressMatches) {
 			progress.implementationProgress.push(match[1].trim());
 		}
 
 		// Look for completion summary
-		const completionMatch = details.match(/## Implementation Complete([\s\S]*?)(?=##|$)/);
+		const completionMatch = details.match(
+			/## Implementation Complete([\s\S]*?)(?=##|$)/
+		);
 		if (completionMatch) {
 			progress.completionSummary = completionMatch[1].trim();
 		}
@@ -555,25 +571,25 @@ export class DirectBackend extends FlowBackend {
 	 */
 	detectImplementationPhase(subtask) {
 		const { status, details = '' } = subtask;
-		
+
 		if (status === 'pending') {
 			if (details.includes('## Exploration Phase')) {
 				return 'ready-to-implement';
 			}
 			return 'needs-exploration';
 		}
-		
+
 		if (status === 'in-progress') {
 			if (details.includes('## Implementation Progress')) {
 				return 'implementing';
 			}
 			return 'starting-implementation';
 		}
-		
+
 		if (status === 'done') {
 			return 'completed';
 		}
-		
+
 		return 'unknown';
 	}
 
@@ -1107,23 +1123,29 @@ export class DirectBackend extends FlowBackend {
 					'git status --porcelain',
 					{ cwd: worktreePath }
 				);
-				
+
 				const statusLines = statusOutput.trim().split('\n').filter(Boolean);
-				
+
 				if (statusLines.length > 0) {
 					status.hasUncommittedChanges = true;
 					status.isClean = false;
-					
+
 					// Count different types of changes
-					statusLines.forEach(line => {
+					statusLines.forEach((line) => {
 						const staged = line[0];
 						const working = line[1];
-						
+
 						// Check staged changes
-						if (staged === 'A' || staged === 'M' || staged === 'D' || staged === 'R' || staged === 'C') {
+						if (
+							staged === 'A' ||
+							staged === 'M' ||
+							staged === 'D' ||
+							staged === 'R' ||
+							staged === 'C'
+						) {
 							status.staged++;
 						}
-						
+
 						// Check working directory changes
 						if (working === 'M') {
 							status.modified++;
@@ -1583,15 +1605,22 @@ export class DirectBackend extends FlowBackend {
 
 	async getWorktreeTasks(worktreeName) {
 		try {
-			console.log(`🔍 [getWorktreeTasks] Called for worktree: "${worktreeName}"`);
+			console.log(
+				`🔍 [getWorktreeTasks] Called for worktree: "${worktreeName}"`
+			);
 			const config = await this.getWorktreesConfig();
 
 			if (!config.worktrees[worktreeName]) {
-				console.log(`🔍 [getWorktreeTasks] No config found for worktree: "${worktreeName}"`);
+				console.log(
+					`🔍 [getWorktreeTasks] No config found for worktree: "${worktreeName}"`
+				);
 				return [];
 			}
 
-			console.log(`🔍 [getWorktreeTasks] Worktree config:`, config.worktrees[worktreeName]);
+			console.log(
+				`🔍 [getWorktreeTasks] Worktree config:`,
+				config.worktrees[worktreeName]
+			);
 
 			// Load tasks directly from JSON file to get ALL fields including 'details'
 			const tasksPath = path.join(
@@ -1609,7 +1638,9 @@ export class DirectBackend extends FlowBackend {
 			console.log(`🔍 [getWorktreeTasks] Using tag: "${tag}"`);
 
 			if (!tasksData[tag]) {
-				console.log(`🔍 [getWorktreeTasks] No tasks data found for tag: "${tag}"`);
+				console.log(
+					`🔍 [getWorktreeTasks] No tasks data found for tag: "${tag}"`
+				);
 				return [];
 			}
 
@@ -1617,7 +1648,10 @@ export class DirectBackend extends FlowBackend {
 			const linkedTaskIds = config.worktrees[worktreeName].linkedTasks.map(
 				(t) => t.id
 			);
-			console.log(`🔍 [getWorktreeTasks] Looking for linked task IDs:`, linkedTaskIds);
+			console.log(
+				`🔍 [getWorktreeTasks] Looking for linked task IDs:`,
+				linkedTaskIds
+			);
 			const linkedTasks = [];
 
 			// Find linked tasks and subtasks
@@ -1690,8 +1724,8 @@ export class DirectBackend extends FlowBackend {
 
 				if (hasTask) {
 					// Validate that this worktree actually exists before including it
-					const actualWorktree = actualWorktrees.find(wt => 
-						wt.path === data.path || wt.name === name
+					const actualWorktree = actualWorktrees.find(
+						(wt) => wt.path === data.path || wt.name === name
 					);
 
 					if (actualWorktree) {
@@ -1703,7 +1737,9 @@ export class DirectBackend extends FlowBackend {
 							linkedSubtask: data.linkedSubtask
 						});
 					} else {
-						console.warn(`Worktree ${name} (${data.path}) exists in config but not on disk - skipping`);
+						console.warn(
+							`Worktree ${name} (${data.path}) exists in config but not on disk - skipping`
+						);
 					}
 				}
 			}
@@ -1806,23 +1842,26 @@ export class DirectBackend extends FlowBackend {
 		try {
 			const config = await this.getWorktreesConfig();
 			let actualWorktrees = [];
-			
+
 			try {
 				const worktreeResult = await this.listWorktrees();
 				actualWorktrees = worktreeResult.all || [];
 			} catch (error) {
-				console.warn('Could not list actual git worktrees for cleanup:', error.message);
+				console.warn(
+					'Could not list actual git worktrees for cleanup:',
+					error.message
+				);
 				return { success: false, error: error.message };
 			}
 
 			const staleEntries = [];
-			
+
 			// Check each config entry against actual worktrees
 			for (const [name, data] of Object.entries(config.worktrees)) {
-				const actualWorktree = actualWorktrees.find(wt => 
-					wt.path === data.path || wt.name === name
+				const actualWorktree = actualWorktrees.find(
+					(wt) => wt.path === data.path || wt.name === name
 				);
-				
+
 				if (!actualWorktree) {
 					staleEntries.push(name);
 				}
@@ -1835,11 +1874,14 @@ export class DirectBackend extends FlowBackend {
 
 			if (staleEntries.length > 0) {
 				await this.saveWorktreesConfig(config);
-				console.log(`Cleaned up ${staleEntries.length} stale worktree entries:`, staleEntries);
+				console.log(
+					`Cleaned up ${staleEntries.length} stale worktree entries:`,
+					staleEntries
+				);
 			}
 
-			return { 
-				success: true, 
+			return {
+				success: true,
 				cleanedUp: staleEntries.length,
 				entries: staleEntries
 			};
@@ -2241,43 +2283,43 @@ export class DirectBackend extends FlowBackend {
 			// Enhance subtasks with parent task information
 			const enhancedTasks = await Promise.all(
 				tasks.map(async (task) => {
-				const isSubtask = task.isSubtask || String(task.id).includes('.');
-				
-				if (isSubtask && !task.parentTask) {
-					// Look up parent task information
-					try {
-						const [parentId] = String(task.id).split('.');
-						const parentTask = await this.getTask(parentId);
-						
-						if (parentTask) {
-							return {
-								...task,
-								parentTask: {
-									id: parentTask.id,
-									title: parentTask.title,
-									description: parentTask.description,
-									details: parentTask.details,
+					const isSubtask = task.isSubtask || String(task.id).includes('.');
+
+					if (isSubtask && !task.parentTask) {
+						// Look up parent task information
+						try {
+							const [parentId] = String(task.id).split('.');
+							const parentTask = await this.getTask(parentId);
+
+							if (parentTask) {
+								return {
+									...task,
+									parentTask: {
+										id: parentTask.id,
+										title: parentTask.title,
+										description: parentTask.description,
+										details: parentTask.details,
 										testStrategy:
 											parentTask.testStrategy || parentTask.test_strategy
-								}
-							};
-						}
-					} catch (error) {
+									}
+								};
+							}
+						} catch (error) {
 							console.warn(
 								`Could not load parent task for subtask ${task.id}:`,
 								error.message
 							);
+						}
 					}
-				}
-				
-				return task;
+
+					return task;
 				})
 			);
 
 			// Import Enhanced AST context builder for Phase 2.3 (dynamic import to avoid circular dependencies)
 			let enhancedAstContextBuilder = null;
 			let enhancedAstContext = null;
-			
+
 			try {
 				const { createEnhancedASTContextBuilder } = await import(
 					'../ast/context/enhanced-ast-context-builder.js'
@@ -2288,21 +2330,21 @@ export class DirectBackend extends FlowBackend {
 						enablePhase21: true, // Advanced context enhancement
 						enablePhase22: true, // Language-specific analysis
 						enableTaskAwareness: true, // Task-aware context building
-					enableIntelligentSelection: true // Intelligent file selection
+						enableIntelligentSelection: true // Intelligent file selection
 					}
 				);
-				
+
 				// Build enhanced AST context for the worktree with Phase 2.1 + 2.2 capabilities
 				enhancedAstContext =
 					await enhancedAstContextBuilder.buildWorktreeContext(worktree.path, {
-					tasks: enhancedTasks,
-					includeComplexity: true,
-					includeImports: true,
-					includeDependencyAnalysis: true,
-					includeFrameworkDetection: true,
-					includePatternAnalysis: true
-				});
-				
+						tasks: enhancedTasks,
+						includeComplexity: true,
+						includeImports: true,
+						includeDependencyAnalysis: true,
+						includeFrameworkDetection: true,
+						includePatternAnalysis: true
+					});
+
 				console.debug('[Enhanced AST] Context building result:', {
 					enabled: enhancedAstContext.enabled,
 					success: enhancedAstContext.success,
@@ -2332,7 +2374,7 @@ export class DirectBackend extends FlowBackend {
 				const { formatEnhancedClaudeContext } = await import(
 					'../ast/context/enhanced-claude-formatter.js'
 				);
-				
+
 				if (
 					enhancedAstContext &&
 					enhancedAstContext.enabled &&
@@ -2343,18 +2385,18 @@ export class DirectBackend extends FlowBackend {
 						enhancedAstContext,
 						enhancedTasks,
 						{
-						worktreePath: worktree.path,
-						includeTaskAnalysis: true,
-						includeArchitectureOverview: true,
-						includePrioritizedContext: true,
-						includeDependencyAnalysis: true,
-						includeComplexityInsights: true,
-						includeImplementationGuidance: true,
-						detailLevel: 'comprehensive',
-						backend: this // Pass backend instance for re-fetching
+							worktreePath: worktree.path,
+							includeTaskAnalysis: true,
+							includeArchitectureOverview: true,
+							includePrioritizedContext: true,
+							includeDependencyAnalysis: true,
+							includeComplexityInsights: true,
+							includeImplementationGuidance: true,
+							detailLevel: 'comprehensive',
+							backend: this // Pass backend instance for re-fetching
 						}
 					);
-					
+
 					console.debug(
 						'[Enhanced CLAUDE.md] Generated rich context with Phase 2.3 formatter'
 					);
@@ -2364,12 +2406,12 @@ export class DirectBackend extends FlowBackend {
 						enhancedAstContext,
 						enhancedTasks,
 						{
-						worktreePath: worktree.path,
-						detailLevel: 'basic',
-						backend: this // Pass backend instance for re-fetching
+							worktreePath: worktree.path,
+							detailLevel: 'basic',
+							backend: this // Pass backend instance for re-fetching
 						}
 					);
-					
+
 					console.debug(
 						'[Enhanced CLAUDE.md] Generated fallback context due to AST analysis failure'
 					);
@@ -2379,7 +2421,7 @@ export class DirectBackend extends FlowBackend {
 					'[Enhanced CLAUDE.md] Formatter failed, using basic context:',
 					formatterError.message
 				);
-				
+
 				// Ultimate fallback to basic context generation
 				content = `# Task Implementation Context
 
@@ -2399,19 +2441,19 @@ Branch: ${worktree.branch || 'unknown'}
 					// Check if this is a subtask by looking at the ID or isSubtask property
 					const isSubtask = task.isSubtask || String(task.id).includes('.');
 					const taskType = isSubtask ? 'Subtask' : 'Task';
-					
+
 					// If this is a subtask, first show parent task context
 					if (isSubtask && task.parentTask) {
 						content += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
-						
+
 						if (task.parentTask.description) {
 							content += `**Parent Description:**\n${task.parentTask.description}\n\n`;
 						}
-						
+
 						if (task.parentTask.details) {
 							content += `**Parent Implementation Details:**\n${task.parentTask.details}\n\n`;
 						}
-						
+
 						// Check for parent test strategy
 						const parentTestStrategy =
 							task.parentTask.testStrategy ||
@@ -2420,10 +2462,10 @@ Branch: ${worktree.branch || 'unknown'}
 						if (parentTestStrategy !== null && parentTestStrategy !== '') {
 							content += `**Parent Test Strategy:**\n${parentTestStrategy}\n\n`;
 						}
-						
+
 						content += '---\n\n';
 					}
-					
+
 					content += `### ${taskType} to Implement: ${task.id}: ${task.title}\n\n`;
 					content += `**Status:** ${task.status}\n\n`;
 
@@ -2558,140 +2600,140 @@ Branch: ${worktree.branch || 'unknown'}
 					'This context file provides a comprehensive overview of the task requirements and current project state.\n';
 			}
 
-				// Add custom headless prompt if provided
-				if (options.headlessPrompt) {
-					content += '\n## Additional User Instructions\n\n';
-					content += options.headlessPrompt + '\n';
-				}
-
-				// Write CLAUDE.md
-				await fs.writeFile(claudeMdPath, content);
-
-				return {
-					contextFile: claudeMdPath,
-					persona,
-					tasksCount: enhancedTasks.length
-				};
-			} catch (err) {
-				throw new Error(`Failed to prepare Claude context: ${err.message}`);
+			// Add custom headless prompt if provided
+			if (options.headlessPrompt) {
+				content += '\n## Additional User Instructions\n\n';
+				content += options.headlessPrompt + '\n';
 			}
+
+			// Write CLAUDE.md
+			await fs.writeFile(claudeMdPath, content);
+
+			return {
+				contextFile: claudeMdPath,
+				persona,
+				tasksCount: enhancedTasks.length
+			};
+		} catch (err) {
+			throw new Error(`Failed to prepare Claude context: ${err.message}`);
 		}
+	}
 
-		// Launch Claude CLI in interactive mode
-		async launchClaudeCLI(worktree, options = {}) {
-			try {
-				const execAsync = promisify(exec);
-				// Prepare context if tasks provided
-				let contextInfo = {};
-				if (options.tasks?.length > 0) {
-					contextInfo = await this.prepareClaudeContext(worktree, options.tasks, {
-						...options,
-						mode: 'interactive'
-					});
-				}
+	// Launch Claude CLI in interactive mode
+	async launchClaudeCLI(worktree, options = {}) {
+		try {
+			const execAsync = promisify(exec);
+			// Prepare context if tasks provided
+			let contextInfo = {};
+			if (options.tasks?.length > 0) {
+				contextInfo = await this.prepareClaudeContext(worktree, options.tasks, {
+					...options,
+					mode: 'interactive'
+				});
+			}
 
-				const platform = os.platform();
-				let command;
+			const platform = os.platform();
+			let command;
 
-				if (platform === 'darwin') {
-					// macOS - use Terminal.app or iTerm2 if available
-					try {
-						// Check if iTerm2 is available
-						await execAsync(
-							'osascript -e \'tell application "System Events" to get name of every application process\' | grep -i iterm'
-						);
-						// iTerm2 is available
-						command = `osascript -e 'tell application "iTerm"
+			if (platform === 'darwin') {
+				// macOS - use Terminal.app or iTerm2 if available
+				try {
+					// Check if iTerm2 is available
+					await execAsync(
+						'osascript -e \'tell application "System Events" to get name of every application process\' | grep -i iterm'
+					);
+					// iTerm2 is available
+					command = `osascript -e 'tell application "iTerm"
 							create window with default profile
 							tell current session of current window
 								write text "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
 							end tell
 						end tell'`;
-					} catch {
-						// Fall back to Terminal.app
-						command = `osascript -e 'tell application "Terminal"
+				} catch {
+					// Fall back to Terminal.app
+					command = `osascript -e 'tell application "Terminal"
 							do script "cd ${worktree.path.replace(/'/g, "\\'")} && claude"
 							activate
 						end tell'`;
-					}
-				} else if (platform === 'win32') {
-					// Windows
-					command = `start cmd /k "cd /d \\"${worktree.path}\\" && claude"`;
-				} else {
-					// Linux - try common terminal emulators
-					const terminals = [
-						`gnome-terminal -- bash -c "cd '${worktree.path}' && claude; exec bash"`,
-						`konsole -e bash -c "cd '${worktree.path}' && claude; exec bash"`,
-						`xterm -e bash -c "cd '${worktree.path}' && claude; exec bash"`
-					];
+				}
+			} else if (platform === 'win32') {
+				// Windows
+				command = `start cmd /k "cd /d \\"${worktree.path}\\" && claude"`;
+			} else {
+				// Linux - try common terminal emulators
+				const terminals = [
+					`gnome-terminal -- bash -c "cd '${worktree.path}' && claude; exec bash"`,
+					`konsole -e bash -c "cd '${worktree.path}' && claude; exec bash"`,
+					`xterm -e bash -c "cd '${worktree.path}' && claude; exec bash"`
+				];
 
-					for (const term of terminals) {
-						try {
-							await execAsync(term);
-							command = term;
-							break;
-						} catch {
-							// Try next terminal
-						}
-					}
-
-					if (!command) {
-						throw new Error('No supported terminal emulator found');
+				for (const term of terminals) {
+					try {
+						await execAsync(term);
+						command = term;
+						break;
+					} catch {
+						// Try next terminal
 					}
 				}
 
-				await execAsync(command);
-
-				return {
-					success: true,
-					worktree: worktree.path,
-					contextInfo
-				};
-			} catch (err) {
-				throw new Error(`Failed to launch Claude CLI: ${err.message}`);
+				if (!command) {
+					throw new Error('No supported terminal emulator found');
+				}
 			}
+
+			await execAsync(command);
+
+			return {
+				success: true,
+				worktree: worktree.path,
+				contextInfo
+			};
+		} catch (err) {
+			throw new Error(`Failed to launch Claude CLI: ${err.message}`);
 		}
+	}
 
-		// Launch Claude in headless mode with prompt
-		async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
+	// Launch Claude in headless mode with prompt
+	async launchClaudeHeadless(worktree, tasks, prompt, options = {}) {
+		try {
+			// Ensure all tasks have research before proceeding
+			await this.ensureTasksHaveResearch(tasks, worktree, {
+				...options,
+				mcpLog: options.mcpLog || options.log || this.log
+			});
+
+			// Prepare context file (CLAUDE.md) first
+			const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
+				...options,
+				mode: 'headless',
+				headlessPrompt: prompt
+			});
+
+			// Read the CLAUDE.md content to include in the prompt
+			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
+			let claudeMdContent = '';
 			try {
-				// Ensure all tasks have research before proceeding
-				await this.ensureTasksHaveResearch(tasks, worktree, {
-					...options,
-					mcpLog: options.mcpLog || options.log || this.log
-				});
+				claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
+			} catch (err) {
+				console.warn('Could not read CLAUDE.md:', err.message);
+			}
 
-				// Prepare context file (CLAUDE.md) first
-				const contextInfo = await this.prepareClaudeContext(worktree, tasks, {
-					...options,
-					mode: 'headless',
-					headlessPrompt: prompt
-				});
+			// Detect persona if not provided
+			let persona = options.persona || contextInfo.persona;
+			if (!persona && tasks.length > 0) {
+				const detectedPersonas = await detectPersona(tasks[0], worktree);
+				persona = detectedPersonas[0]?.persona || 'architect';
+			}
 
-				// Read the CLAUDE.md content to include in the prompt
-				const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
-				let claudeMdContent = '';
-				try {
-					claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
-				} catch (err) {
-					console.warn('Could not read CLAUDE.md:', err.message);
-				}
+			// Build comprehensive prompt
+			const promptBuilder = new PersonaPromptBuilder(persona);
+			let fullPrompt;
 
-				// Detect persona if not provided
-				let persona = options.persona || contextInfo.persona;
-				if (!persona && tasks.length > 0) {
-					const detectedPersonas = await detectPersona(tasks[0], worktree);
-					persona = detectedPersonas[0]?.persona || 'architect';
-				}
-
-				// Build comprehensive prompt
-				const promptBuilder = new PersonaPromptBuilder(persona);
-				let fullPrompt;
-
-				// Combine CLAUDE.md content with user instructions
-				let combinedContext = '';
-				if (claudeMdContent) {
-					combinedContext = `## Implementation Context
+			// Combine CLAUDE.md content with user instructions
+			let combinedContext = '';
+			if (claudeMdContent) {
+				combinedContext = `## Implementation Context
 
 The following comprehensive context has been prepared for this task implementation:
 
@@ -2701,77 +2743,77 @@ ${claudeMdContent}
 
 ---
 `;
-				}
-				if (prompt) {
-					combinedContext += `
+			}
+			if (prompt) {
+				combinedContext += `
 ## Additional User Instructions
 
 ${prompt}
 
 ---
 `;
-				}
+			}
 
-				if (tasks.length === 1) {
-					fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
-						additionalContext: combinedContext || null
-					});
-				} else {
-					fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
-						additionalContext: combinedContext || null
-					});
-				}
+			if (tasks.length === 1) {
+				fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
+					additionalContext: combinedContext || null
+				});
+			} else {
+				fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
+					additionalContext: combinedContext || null
+				});
+			}
 
-				// Use Claude Code SDK
-				const messages = [];
-				const startTime = Date.now();
+			// Use Claude Code SDK
+			const messages = [];
+			const startTime = Date.now();
 			const totalCost = 0;
 			const sessionId = null;
 
-				const queryOptions = {
-					prompt: fullPrompt,
-					abortController: options.abortController || new AbortController(),
-					options: {
-						maxTurns: options.maxTurns || 10,
-						permissionMode: options.permissionMode || 'acceptEdits',
-						outputFormat: options.outputFormat || 'stream-json',
-						cwd: worktree.path,
-						// Add allowed tools if provided
-						...(options.allowedTools && { allowedTools: options.allowedTools })
-					}
-				};
+			const queryOptions = {
+				prompt: fullPrompt,
+				abortController: options.abortController || new AbortController(),
+				options: {
+					maxTurns: options.maxTurns || 10,
+					permissionMode: options.permissionMode || 'acceptEdits',
+					outputFormat: options.outputFormat || 'stream-json',
+					cwd: worktree.path,
+					// Add allowed tools if provided
+					...(options.allowedTools && { allowedTools: options.allowedTools })
+				}
+			};
 
-				console.log('🎮 [DirectBackend] Query options prepared:', {
-					promptLength: fullPrompt.length,
-					maxTurns: queryOptions.options.maxTurns,
-					permissionMode: queryOptions.options.permissionMode,
-					outputFormat: queryOptions.options.outputFormat,
-					cwd: queryOptions.options.cwd,
-					captureOutput: options.captureOutput
-				});
+			console.log('🎮 [DirectBackend] Query options prepared:', {
+				promptLength: fullPrompt.length,
+				maxTurns: queryOptions.options.maxTurns,
+				permissionMode: queryOptions.options.permissionMode,
+				outputFormat: queryOptions.options.outputFormat,
+				cwd: queryOptions.options.cwd,
+				captureOutput: options.captureOutput
+			});
 
-				// Handle different output formats
-				if (options.captureOutput) {
-					let output = '';
-					let sessionId = null;
-					const messages = [];
+			// Handle different output formats
+			if (options.captureOutput) {
+				let output = '';
+				let sessionId = null;
+				const messages = [];
 				let completed = false;
 				let finalResult = null;
 
-					try {
-						for await (const message of claudeQuery(queryOptions)) {
-							// Extract session ID from the first message
-							if (!sessionId && message.sessionId) {
-								sessionId = message.sessionId;
-							}
+				try {
+					for await (const message of claudeQuery(queryOptions)) {
+						// Extract session ID from the first message
+						if (!sessionId && message.sessionId) {
+							sessionId = message.sessionId;
+						}
 
-							messages.push(message);
+						messages.push(message);
 						if (
 							options.onProgress &&
 							typeof options.onProgress === 'function'
 						) {
-								options.onProgress(message);
-							}
+							options.onProgress(message);
+						}
 
 						// Check for completion
 						if (message.type === 'result') {
@@ -2780,25 +2822,27 @@ ${prompt}
 							// Don't break here - let the iterator finish naturally
 						}
 
-							// Accumulate output
-							if (message.type === 'assistant' && message.content) {
-								if (Array.isArray(message.content)) {
-									for (const part of message.content) {
-										if (part.type === 'text' && part.text) {
-											output += part.text;
-										}
+						// Accumulate output
+						if (message.type === 'assistant' && message.content) {
+							if (Array.isArray(message.content)) {
+								for (const part of message.content) {
+									if (part.type === 'text' && part.text) {
+										output += part.text;
 									}
-								} else if (typeof message.content === 'string') {
-									output += message.content;
 								}
+							} else if (typeof message.content === 'string') {
+								output += message.content;
 							}
 						}
-					} catch (error) {
-						console.error('Error in Claude query:', error);
-					
+					}
+				} catch (error) {
+					console.error('Error in Claude query:', error);
+
 					// If we received a result message before the error, consider it successful
 					if (completed && finalResult) {
-						console.log('Claude session completed successfully despite iterator error');
+						console.log(
+							'Claude session completed successfully despite iterator error'
+						);
 						return {
 							success: true,
 							output,
@@ -2808,251 +2852,257 @@ ${prompt}
 							warning: `Iterator error after completion: ${error.message}`
 						};
 					}
-					
-						return {
-							success: false,
-							error: error.message
-						};
-					}
 
 					return {
-						success: true,
-						output,
-						sessionId,
-					messages,
-					...(finalResult && { result: finalResult })
+						success: false,
+						error: error.message
 					};
-				} else {
-					const output = '';
-					console.log('🚀 [DirectBackend] Taking fire-and-forget path...');
-					// Fire and forget mode - just start the process
-					const claudeProcess = spawn(
-						'claude',
-						[
-							'-p',
-							fullPrompt,
-							'--max-turns',
-							String(options.maxTurns || 10),
-							'--permission-mode',
-							options.permissionMode || 'acceptEdits',
-							'--add-dir',
-							worktree.path
-						],
-						{
-							cwd: worktree.path,
-							stdio: 'inherit'
-						}
-					);
-
-					return {
-						success: true,
-						persona,
-						tasksProcessed: tasks.length,
-						process: claudeProcess
-					};
-				}
-			} catch (err) {
-				console.error('💥 [DirectBackend] launchClaudeHeadless error:', err);
-				throw new Error(
-					`Failed to launch Claude in headless mode: ${err.message}`
-				);
-			}
-		}
-
-		// Launch multiple Claude sessions for batch processing
-		async launchMultipleClaudeSessions(worktree, taskGroups, options = {}) {
-			try {
-				const sessions = [];
-
-				for (const group of taskGroups) {
-					const { tasks, persona, prompt } = group;
-
-					const sessionResult = await this.launchClaudeHeadless(
-						worktree,
-						tasks,
-						prompt,
-						{
-							...options,
-							persona,
-							captureOutput: true
-						}
-					);
-
-					sessions.push({
-						tasks: tasks.map((t) => t.id),
-						persona,
-						result: sessionResult
-					});
 				}
 
 				return {
 					success: true,
-					sessions,
-					totalTasks: taskGroups.reduce((sum, g) => sum + g.tasks.length, 0)
+					output,
+					sessionId,
+					messages,
+					...(finalResult && { result: finalResult })
 				};
-			} catch (err) {
-				throw new Error(
-					`Failed to launch multiple Claude sessions: ${err.message}`
+			} else {
+				const output = '';
+				console.log('🚀 [DirectBackend] Taking fire-and-forget path...');
+				// Fire and forget mode - just start the process
+				const claudeProcess = spawn(
+					'claude',
+					[
+						'-p',
+						fullPrompt,
+						'--max-turns',
+						String(options.maxTurns || 10),
+						'--permission-mode',
+						options.permissionMode || 'acceptEdits',
+						'--add-dir',
+						worktree.path
+					],
+					{
+						cwd: worktree.path,
+						stdio: 'inherit'
+					}
 				);
+
+				return {
+					success: true,
+					persona,
+					tasksProcessed: tasks.length,
+					process: claudeProcess
+				};
 			}
+		} catch (err) {
+			console.error('💥 [DirectBackend] launchClaudeHeadless error:', err);
+			throw new Error(
+				`Failed to launch Claude in headless mode: ${err.message}`
+			);
 		}
+	}
 
-		// Get available personas
-		async getAvailablePersonas() {
-			return getAllPersonaIds();
-		}
+	// Launch multiple Claude sessions for batch processing
+	async launchMultipleClaudeSessions(worktree, taskGroups, options = {}) {
+		try {
+			const sessions = [];
 
-		// Detect personas for tasks
-		async detectPersonasForTasks(tasks, worktree) {
-			const detectionResults = [];
+			for (const group of taskGroups) {
+				const { tasks, persona, prompt } = group;
 
-			for (const task of tasks) {
-				const personas = await detectPersona(task, worktree);
-				detectionResults.push({
-					taskId: task.id,
-					taskTitle: task.title,
-					suggestedPersonas: personas
+				const sessionResult = await this.launchClaudeHeadless(
+					worktree,
+					tasks,
+					prompt,
+					{
+						...options,
+						persona,
+						captureOutput: true
+					}
+				);
+
+				sessions.push({
+					tasks: tasks.map((t) => t.id),
+					persona,
+					result: sessionResult
 				});
 			}
 
-			// Check for multi-persona workflow
-			const multiPersona = detectMultiPersonaWorkflow(tasks);
-
 			return {
-				taskPersonas: detectionResults,
-				multiPersonaWorkflow: multiPersona
+				success: true,
+				sessions,
+				totalTasks: taskGroups.reduce((sum, g) => sum + g.tasks.length, 0)
 			};
+		} catch (err) {
+			throw new Error(
+				`Failed to launch multiple Claude sessions: ${err.message}`
+			);
+		}
+	}
+
+	// Get available personas
+	async getAvailablePersonas() {
+		return getAllPersonaIds();
+	}
+
+	// Detect personas for tasks
+	async detectPersonasForTasks(tasks, worktree) {
+		const detectionResults = [];
+
+		for (const task of tasks) {
+			const personas = await detectPersona(task, worktree);
+			detectionResults.push({
+				taskId: task.id,
+				taskTitle: task.title,
+				suggestedPersonas: personas
+			});
 		}
 
-		/**
-		 * Check if a task has research in its details
-		 * @param {Object} task - Task object
-		 * @returns {boolean} - True if task has research
-		 */
-		hasResearchInTask(task) {
-			// Check main task details (case-insensitive)
-			if (
-				task.details &&
-				(task.details.toLowerCase().includes('research session') ||
-					task.details.includes('<info added on'))
-			) {
-				return true;
-			}
+		// Check for multi-persona workflow
+		const multiPersona = detectMultiPersonaWorkflow(tasks);
 
-			// Check subtasks if they exist
-			if (task.subtasks && Array.isArray(task.subtasks)) {
-				for (const subtask of task.subtasks) {
-					if (
-						subtask.details &&
-						(subtask.details.toLowerCase().includes('research session') ||
-							subtask.details.includes('<info added on'))
-					) {
-						return true;
-					}
-				}
-			}
+		return {
+			taskPersonas: detectionResults,
+			multiPersonaWorkflow: multiPersona
+		};
+	}
 
-			return false;
+	/**
+	 * Check if a task has research in its details
+	 * @param {Object} task - Task object
+	 * @returns {boolean} - True if task has research
+	 */
+	hasResearchInTask(task) {
+		// Check main task details (case-insensitive)
+		if (
+			task.details &&
+			(task.details.toLowerCase().includes('research session') ||
+				task.details.includes('<info added on'))
+		) {
+			return true;
 		}
 
-		/**
-		 * Run research for tasks that don't have research
-		 * @param {Array} tasks - Array of tasks
-		 * @param {Object} worktree - Worktree object
-		 * @param {Object} options - Options
-		 * @returns {Promise<void>}
-		 */
-		async ensureTasksHaveResearch(tasks, worktree, options = {}) {
-			const logFn = options.mcpLog || this.log;
-
-			for (const task of tasks) {
-				// Check if this is a subtask (ID contains a dot)
-				const isSubtask = task.id.toString().includes('.');
-				let taskToCheck = task;
-				let parentTaskId = null;
-
-				if (isSubtask) {
-					// For subtasks, we need to check the parent task for research
-					parentTaskId = task.id.toString().split('.')[0];
-					try {
-						const parentTask = await this.getTask(parentId);
-						if (parentTask) {
-							taskToCheck = parentTask;
-							logFn.info(`Checking parent task ${parentTaskId} for research instead of subtask ${task.id}`);
-						}
-					} catch (error) {
-						logFn.warn(`Could not fetch parent task ${parentTaskId} for subtask ${task.id}: ${error.message}`);
-						// Fall back to checking the subtask itself
-					}
-				} else {
-					// For main tasks, fetch complete task data to check for existing research
-					try {
-						const fullTaskData = await this.getTask(task.id.toString());
-						if (fullTaskData) {
-							taskToCheck = fullTaskData;
-							// Update the original task object with complete data for later use
-							Object.assign(task, fullTaskData);
-						}
-					} catch (error) {
-						logFn.warn(`Could not fetch complete task data for ${task.id}: ${error.message}`);
-						// Continue with the task we have
-					}
+		// Check subtasks if they exist
+		if (task.subtasks && Array.isArray(task.subtasks)) {
+			for (const subtask of task.subtasks) {
+				if (
+					subtask.details &&
+					(subtask.details.toLowerCase().includes('research session') ||
+						subtask.details.includes('<info added on'))
+				) {
+					return true;
 				}
+			}
+		}
 
-				// Check for research in the task we determined (parent for subtasks, self for main tasks)
-				if (!this.hasResearchInTask(taskToCheck)) {
-					const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
-					logFn.info(`Task ${targetTaskId} has no research. Running research...`);
+		return false;
+	}
 
-					try {
-						// Build research query based on the target task (parent for subtasks)
-						const researchQuery = `Task ${targetTaskId}: ${taskToCheck.title}\n\nDescription: ${taskToCheck.description || 'No description'}\n\nDetails: ${taskToCheck.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
+	/**
+	 * Run research for tasks that don't have research
+	 * @param {Array} tasks - Array of tasks
+	 * @param {Object} worktree - Worktree object
+	 * @param {Object} options - Options
+	 * @returns {Promise<void>}
+	 */
+	async ensureTasksHaveResearch(tasks, worktree, options = {}) {
+		const logFn = options.mcpLog || this.log;
 
-						// Run research and save to the target task (parent for subtasks)
-						const researchResult = await this.research({
-							query: researchQuery,
-							taskIds: [targetTaskId],
-							includeProjectTree: true,
-							detailLevel: 'high',
-							saveTo: targetTaskId
-						});
+		for (const task of tasks) {
+			// Check if this is a subtask (ID contains a dot)
+			const isSubtask = task.id.toString().includes('.');
+			let taskToCheck = task;
+			let parentTaskId = null;
 
-						if (researchResult.success) {
-							logFn.info(`Research completed and saved to task ${targetTaskId}`);
-
-							// Reload the target task to get updated details with research
-							const updatedTask = await this.getTask(targetTaskId);
-							if (updatedTask && !isSubtask) {
-								// Only update the original task object if it's not a subtask
-								Object.assign(task, updatedTask);
-							}
-						} else {
-							logFn.warn(
-								`Research failed for task ${targetTaskId}: ${researchResult.error}`
-							);
-						}
-					} catch (error) {
-						logFn.error(
-							`Error running research for task ${targetTaskId}: ${error.message}`
+			if (isSubtask) {
+				// For subtasks, we need to check the parent task for research
+				parentTaskId = task.id.toString().split('.')[0];
+				try {
+					const parentTask = await this.getTask(parentId);
+					if (parentTask) {
+						taskToCheck = parentTask;
+						logFn.info(
+							`Checking parent task ${parentTaskId} for research instead of subtask ${task.id}`
 						);
 					}
-				} else {
-					const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
-					logFn.info(
-						`Task ${targetTaskId} already has research - skipping research generation`
+				} catch (error) {
+					logFn.warn(
+						`Could not fetch parent task ${parentTaskId} for subtask ${task.id}: ${error.message}`
 					);
-					// Show a snippet of the existing research
-					if (taskToCheck.details) {
-						const researchMatch = taskToCheck.details.match(
-							/research session.*?(?=\n|$)/i
-						);
-						if (researchMatch) {
-							logFn.debug(`Existing research: "${researchMatch[0]}..."`);
+					// Fall back to checking the subtask itself
+				}
+			} else {
+				// For main tasks, fetch complete task data to check for existing research
+				try {
+					const fullTaskData = await this.getTask(task.id.toString());
+					if (fullTaskData) {
+						taskToCheck = fullTaskData;
+						// Update the original task object with complete data for later use
+						Object.assign(task, fullTaskData);
+					}
+				} catch (error) {
+					logFn.warn(
+						`Could not fetch complete task data for ${task.id}: ${error.message}`
+					);
+					// Continue with the task we have
+				}
+			}
+
+			// Check for research in the task we determined (parent for subtasks, self for main tasks)
+			if (!this.hasResearchInTask(taskToCheck)) {
+				const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
+				logFn.info(`Task ${targetTaskId} has no research. Running research...`);
+
+				try {
+					// Build research query based on the target task (parent for subtasks)
+					const researchQuery = `Task ${targetTaskId}: ${taskToCheck.title}\n\nDescription: ${taskToCheck.description || 'No description'}\n\nDetails: ${taskToCheck.details || 'No details'}\n\nWhat are the current best practices and implementation approaches for this task?`;
+
+					// Run research and save to the target task (parent for subtasks)
+					const researchResult = await this.research({
+						query: researchQuery,
+						taskIds: [targetTaskId],
+						includeProjectTree: true,
+						detailLevel: 'high',
+						saveTo: targetTaskId
+					});
+
+					if (researchResult.success) {
+						logFn.info(`Research completed and saved to task ${targetTaskId}`);
+
+						// Reload the target task to get updated details with research
+						const updatedTask = await this.getTask(targetTaskId);
+						if (updatedTask && !isSubtask) {
+							// Only update the original task object if it's not a subtask
+							Object.assign(task, updatedTask);
 						}
+					} else {
+						logFn.warn(
+							`Research failed for task ${targetTaskId}: ${researchResult.error}`
+						);
+					}
+				} catch (error) {
+					logFn.error(
+						`Error running research for task ${targetTaskId}: ${error.message}`
+					);
+				}
+			} else {
+				const targetTaskId = isSubtask ? parentTaskId : task.id.toString();
+				logFn.info(
+					`Task ${targetTaskId} already has research - skipping research generation`
+				);
+				// Show a snippet of the existing research
+				if (taskToCheck.details) {
+					const researchMatch = taskToCheck.details.match(
+						/research session.*?(?=\n|$)/i
+					);
+					if (researchMatch) {
+						logFn.debug(`Existing research: "${researchMatch[0]}..."`);
 					}
 				}
 			}
 		}
+	}
 
 	/**
 	 * Get or create a worktree for a task
@@ -3086,290 +3136,290 @@ ${prompt}
 		}
 	}
 
-		/**
-		 * Get or create a worktree for a subtask
-		 * @param {string} taskId
-		 * @param {string} subtaskId
-		 * @param {Object} options
-		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
-		 */
-		async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
-			try {
-				// Dynamically import WorktreeManager to avoid circular dependencies
-				const { WorktreeManager } = await import('../worktree-manager.js');
-				const manager = new WorktreeManager(this.projectRoot);
+	/**
+	 * Get or create a worktree for a subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, needsUserDecision?: boolean, branchExists?: boolean, branchInUseAt?: string}>}
+	 */
+	async getOrCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+		try {
+			// Dynamically import WorktreeManager to avoid circular dependencies
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
 
-				// Get subtask details if not provided
-				if (!options.subtaskTitle && taskId && subtaskId) {
-					try {
-						const task = await this.getTask(taskId);
-						if (task.subtasks) {
-							const subtask = task.subtasks.find(
-								(st) => String(st.id) === String(subtaskId)
-							);
-							if (subtask) {
-								options.subtaskTitle = subtask.title;
-							}
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
 						}
-					} catch (error) {
-						// Continue without title
-						this.log.debug('Could not get subtask title:', error.message);
 					}
+				} catch (error) {
+					// Continue without title
+					this.log.debug('Could not get subtask title:', error.message);
 				}
-
-				return await manager.getOrCreateWorktreeForSubtask(
-					taskId,
-					subtaskId,
-					options
-				);
-			} catch (error) {
-				this.log.error('Error in getOrCreateWorktreeForSubtask:', error);
-				throw error;
 			}
-		}
 
-		/**
-		 * Get worktree for a specific subtask
-		 * @param {string} taskId
-		 * @param {string} subtaskId
-		 * @returns {Promise<Object|null>}
-		 */
-		async getWorktreeForSubtask(taskId, subtaskId) {
+			return await manager.getOrCreateWorktreeForSubtask(
+				taskId,
+				subtaskId,
+				options
+			);
+		} catch (error) {
+			this.log.error('Error in getOrCreateWorktreeForSubtask:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get worktree for a specific subtask
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @returns {Promise<Object|null>}
+	 */
+	async getWorktreeForSubtask(taskId, subtaskId) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.getWorktreeForSubtask(taskId, subtaskId);
+	}
+
+	/**
+	 * Get all worktrees
+	 * @returns {Promise<Array>}
+	 */
+	async getAllWorktrees() {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.getAllWorktrees();
+	}
+
+	/**
+	 * Complete a subtask and optionally create PR
+	 * @param {string} worktreeName
+	 * @param {Object} options
+	 * @returns {Promise<Object>}
+	 */
+	async completeSubtaskWorktree(worktreeName, options = {}) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return await manager.completeSubtask(worktreeName, options);
+	}
+
+	/**
+	 * Update worktree configuration
+	 * @param {Object} updates
+	 * @returns {Promise<void>}
+	 */
+	async updateWorktreeConfig(updates) {
+		const { WorktreeManager } = await import('../worktree-manager.js');
+		const manager = new WorktreeManager(this.projectRoot);
+		return manager.updateConfig(updates);
+	}
+
+	/**
+	 * Force create a worktree, removing any existing branch/worktree
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
+	 */
+	async forceCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
+		try {
 			const { WorktreeManager } = await import('../worktree-manager.js');
 			const manager = new WorktreeManager(this.projectRoot);
-			return manager.getWorktreeForSubtask(taskId, subtaskId);
-		}
 
-		/**
-		 * Get all worktrees
-		 * @returns {Promise<Array>}
-		 */
-		async getAllWorktrees() {
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-			return manager.getAllWorktrees();
-		}
-
-		/**
-		 * Complete a subtask and optionally create PR
-		 * @param {string} worktreeName
-		 * @param {Object} options
-		 * @returns {Promise<Object>}
-		 */
-		async completeSubtaskWorktree(worktreeName, options = {}) {
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-			return await manager.completeSubtask(worktreeName, options);
-		}
-
-		/**
-		 * Update worktree configuration
-		 * @param {Object} updates
-		 * @returns {Promise<void>}
-		 */
-		async updateWorktreeConfig(updates) {
-			const { WorktreeManager } = await import('../worktree-manager.js');
-			const manager = new WorktreeManager(this.projectRoot);
-			return manager.updateConfig(updates);
-		}
-
-		/**
-		 * Force create a worktree, removing any existing branch/worktree
-		 * @param {string} taskId
-		 * @param {string} subtaskId
-		 * @param {Object} options
-		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean}>}
-		 */
-		async forceCreateWorktreeForSubtask(taskId, subtaskId, options = {}) {
-			try {
-				const { WorktreeManager } = await import('../worktree-manager.js');
-				const manager = new WorktreeManager(this.projectRoot);
-
-				// Get subtask details if not provided
-				if (!options.subtaskTitle && taskId && subtaskId) {
-					try {
-						const task = await this.getTask(taskId);
-						if (task.subtasks) {
-							const subtask = task.subtasks.find(
-								(st) => String(st.id) === String(subtaskId)
-							);
-							if (subtask) {
-								options.subtaskTitle = subtask.title;
-							}
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
 						}
-					} catch (error) {
-						this.log.debug('Could not get subtask title:', error.message);
 					}
+				} catch (error) {
+					this.log.debug('Could not get subtask title:', error.message);
 				}
-
-				return await manager.forceCreateWorktree(taskId, subtaskId, options);
-			} catch (error) {
-				this.log.error('Error in forceCreateWorktreeForSubtask:', error);
-				throw error;
 			}
+
+			return await manager.forceCreateWorktree(taskId, subtaskId, options);
+		} catch (error) {
+			this.log.error('Error in forceCreateWorktreeForSubtask:', error);
+			throw error;
 		}
+	}
 
-		/**
-		 * Use existing branch for worktree
-		 * @param {string} taskId
-		 * @param {string} subtaskId
-		 * @param {Object} options
-		 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, reusedBranch: boolean}>}
-		 */
-		async useExistingBranchForSubtask(taskId, subtaskId, options = {}) {
-			try {
-				const { WorktreeManager } = await import('../worktree-manager.js');
-				const manager = new WorktreeManager(this.projectRoot);
+	/**
+	 * Use existing branch for worktree
+	 * @param {string} taskId
+	 * @param {string} subtaskId
+	 * @param {Object} options
+	 * @returns {Promise<{exists: boolean, worktree: Object, created: boolean, reusedBranch: boolean}>}
+	 */
+	async useExistingBranchForSubtask(taskId, subtaskId, options = {}) {
+		try {
+			const { WorktreeManager } = await import('../worktree-manager.js');
+			const manager = new WorktreeManager(this.projectRoot);
 
-				// Get subtask details if not provided
-				if (!options.subtaskTitle && taskId && subtaskId) {
-					try {
-						const task = await this.getTask(taskId);
-						if (task.subtasks) {
-							const subtask = task.subtasks.find(
-								(st) => String(st.id) === String(subtaskId)
-							);
-							if (subtask) {
-								options.subtaskTitle = subtask.title;
-							}
+			// Get subtask details if not provided
+			if (!options.subtaskTitle && taskId && subtaskId) {
+				try {
+					const task = await this.getTask(taskId);
+					if (task.subtasks) {
+						const subtask = task.subtasks.find(
+							(st) => String(st.id) === String(subtaskId)
+						);
+						if (subtask) {
+							options.subtaskTitle = subtask.title;
 						}
-					} catch (error) {
-						this.log.debug('Could not get subtask title:', error.message);
 					}
+				} catch (error) {
+					this.log.debug('Could not get subtask title:', error.message);
 				}
-
-				return await manager.useExistingBranch(taskId, subtaskId, options);
-			} catch (error) {
-				this.log.error('Error in useExistingBranchForSubtask:', error);
-				throw error;
 			}
+
+			return await manager.useExistingBranch(taskId, subtaskId, options);
+		} catch (error) {
+			this.log.error('Error in useExistingBranchForSubtask:', error);
+			throw error;
 		}
+	}
 
-		/**
-		 * Save Claude session data to a JSON file in .taskmaster folder and update index
-		 * @param {Object} sessionData - The session data to save
-		 * @returns {Promise<void>}
-		 */
-		async saveClaudeSessionData(sessionData) {
-			try {
-				const claudeDir = path.join(
-					this.projectRoot,
-					'.taskmaster',
-					'claude-sessions'
-				);
-				
-				// Ensure directory exists
-				await fs.mkdir(claudeDir, { recursive: true });
+	/**
+	 * Save Claude session data to a JSON file in .taskmaster folder and update index
+	 * @param {Object} sessionData - The session data to save
+	 * @returns {Promise<void>}
+	 */
+	async saveClaudeSessionData(sessionData) {
+		try {
+			const claudeDir = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions'
+			);
 
-				// Create filename with timestamp and session ID
-				const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-				const sessionId = sessionData.sessionId || 'unknown';
-				const filename = `${timestamp}_${sessionId.substring(0, 8)}.json`;
-				const filePath = path.join(claudeDir, filename);
+			// Ensure directory exists
+			await fs.mkdir(claudeDir, { recursive: true });
 
-				// Save session data
-				await fs.writeFile(filePath, JSON.stringify(sessionData, null, 2));
+			// Create filename with timestamp and session ID
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+			const sessionId = sessionData.sessionId || 'unknown';
+			const filename = `${timestamp}_${sessionId.substring(0, 8)}.json`;
+			const filePath = path.join(claudeDir, filename);
 
-				// Update the sessions index
-				await this.updateClaudeSessionIndex({
-					sessionId: sessionData.sessionId,
-					filename,
-					timestamp: new Date().toISOString(),
+			// Save session data
+			await fs.writeFile(filePath, JSON.stringify(sessionData, null, 2));
+
+			// Update the sessions index
+			await this.updateClaudeSessionIndex({
+				sessionId: sessionData.sessionId,
+				filename,
+				timestamp: new Date().toISOString(),
 				subtaskInfo: sessionData.tasks?.[0]?.isSubtask
 					? {
-						id: sessionData.tasks[0].id,
-						title: sessionData.tasks[0].title
+							id: sessionData.tasks[0].id,
+							title: sessionData.tasks[0].title
 						}
 					: null
-				});
-
-				return { success: true, filePath };
-			} catch (error) {
-				console.error('Error saving Claude session data:', error);
-				throw error;
-			}
-		}
-
-		/**
-		 * Update the Claude sessions index file
-		 * @private
-		 */
-		async updateClaudeSessionIndex(sessionInfo) {
-			try {
-				const indexPath = path.join(
-					this.projectRoot,
-					'.taskmaster',
-					'claude-sessions.json'
-				);
-
-				let index = [];
-				try {
-					const data = await fs.readFile(indexPath, 'utf8');
-					index = JSON.parse(data);
-				} catch (error) {
-					// File doesn't exist or is invalid, start with empty array
-					index = [];
-				}
-
-				// Add new session to index
-				index.unshift(sessionInfo);
-
-				// Keep only the most recent 100 sessions
-				if (index.length > 100) {
-					index = index.slice(0, 100);
-				}
-
-				await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
-			} catch (error) {
-				console.error('Error updating Claude session index:', error);
-				throw error;
-			}
-		}
-
-		/**
-		 * Extract text content from various message content formats
-		 * @private
-		 */
-		extractMessageContent(content) {
-			if (!content) return '';
-
-			if (typeof content === 'string') {
-				return content;
-			}
-
-			if (Array.isArray(content)) {
-				return content
-					.map((part) => {
-						if (part.type === 'text') return part.text;
-						if (part.type === 'code')
-							return `\`\`\`${part.language || ''}\n${part.code}\n\`\`\``;
-						return JSON.stringify(part);
-					})
-					.join('\n');
-			}
-
-			if (content.text) {
-				return content.text;
-			}
-
-			return JSON.stringify(content);
-		}
-
-		/**
-		 * Count tools used in the conversation
-		 * @private
-		 */
-		countToolsUsed(messages) {
-			const toolCounts = {};
-			messages.forEach((msg) => {
-				if (msg.type === 'tool_use' && msg.tool) {
-					toolCounts[msg.tool] = (toolCounts[msg.tool] || 0) + 1;
-				}
 			});
-			return toolCounts;
+
+			return { success: true, filePath };
+		} catch (error) {
+			console.error('Error saving Claude session data:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Update the Claude sessions index file
+	 * @private
+	 */
+	async updateClaudeSessionIndex(sessionInfo) {
+		try {
+			const indexPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			let index = [];
+			try {
+				const data = await fs.readFile(indexPath, 'utf8');
+				index = JSON.parse(data);
+			} catch (error) {
+				// File doesn't exist or is invalid, start with empty array
+				index = [];
+			}
+
+			// Add new session to index
+			index.unshift(sessionInfo);
+
+			// Keep only the most recent 100 sessions
+			if (index.length > 100) {
+				index = index.slice(0, 100);
+			}
+
+			await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+		} catch (error) {
+			console.error('Error updating Claude session index:', error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Extract text content from various message content formats
+	 * @private
+	 */
+	extractMessageContent(content) {
+		if (!content) return '';
+
+		if (typeof content === 'string') {
+			return content;
 		}
 
-			async completeSubtaskWithPR(worktreeName, options = {}) {
+		if (Array.isArray(content)) {
+			return content
+				.map((part) => {
+					if (part.type === 'text') return part.text;
+					if (part.type === 'code')
+						return `\`\`\`${part.language || ''}\n${part.code}\n\`\`\``;
+					return JSON.stringify(part);
+				})
+				.join('\n');
+		}
+
+		if (content.text) {
+			return content.text;
+		}
+
+		return JSON.stringify(content);
+	}
+
+	/**
+	 * Count tools used in the conversation
+	 * @private
+	 */
+	countToolsUsed(messages) {
+		const toolCounts = {};
+		messages.forEach((msg) => {
+			if (msg.type === 'tool_use' && msg.tool) {
+				toolCounts[msg.tool] = (toolCounts[msg.tool] || 0) + 1;
+			}
+		});
+		return toolCounts;
+	}
+
+	async completeSubtaskWithPR(worktreeName, options = {}) {
 		const worktreeManager = new WorktreeManager(this.projectRoot);
 		return await worktreeManager.completeSubtask(worktreeName, options);
 	}
@@ -3384,12 +3434,12 @@ ${prompt}
 		try {
 			const { WorktreeManager } = await import('../worktree-manager.js');
 			const manager = new WorktreeManager(this.projectRoot);
-			
+
 			// Set branch manager if available
 			if (this.branchManager) {
 				manager.setBranchManager(this.branchManager);
 			}
-			
+
 			return await manager.completeSubtask(worktreeName, options);
 		} catch (error) {
 			this.log.error('Error in completeSubtask:', error);
@@ -3397,173 +3447,173 @@ ${prompt}
 		}
 	}
 
-		// Create PR from Claude session
-		async createPRFromClaudeSession(sessionId, options = {}) {
-			try {
-				// Get session details
-				const sessionResult = await this.getClaudeSessionDetails(sessionId);
-				if (!sessionResult.success) {
-					return sessionResult;
-				}
+	// Create PR from Claude session
+	async createPRFromClaudeSession(sessionId, options = {}) {
+		try {
+			// Get session details
+			const sessionResult = await this.getClaudeSessionDetails(sessionId);
+			if (!sessionResult.success) {
+				return sessionResult;
+			}
 
-				const { session, indexInfo } = sessionResult;
-				const subtaskInfo = session.summary.subtaskInfo;
+			const { session, indexInfo } = sessionResult;
+			const subtaskInfo = session.summary.subtaskInfo;
 
-				if (!subtaskInfo) {
-					return {
-						success: false,
-						error: 'Session is not associated with a subtask'
-					};
-				}
-
-				// Check if PR already exists
-				if (session.summary.prInfo.created) {
-					return {
-						success: false,
-						error: `PR already created: ${session.summary.prInfo.url}`
-					};
-				}
-
-				// Get worktree info
-				const worktreeName = `task-${subtaskInfo.fullId}`;
-				const worktree = await this.getWorktreeForSubtask(
-					subtaskInfo.parentTaskId,
-					subtaskInfo.subtaskId
-				);
-
-				if (!worktree) {
-					return {
-						success: false,
-						error: 'Associated worktree not found'
-					};
-				}
-
-				// Create PR using worktree manager
-				const prTitle =
-					options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
-				const prDescription =
-					options.prDescription || this.generatePRDescription(session);
-
-				const prResult = await this.completeSubtaskWithPR(worktreeName, {
-					createPR: true,
-					prTitle,
-					prDescription
-				});
-
-				if (prResult.prUrl) {
-					// Update session with PR info
-					await this.updateClaudeSessionPR(sessionId, {
-						created: true,
-						url: prResult.prUrl,
-						createdAt: new Date().toISOString()
-					});
-
-					return {
-						success: true,
-						prUrl: prResult.prUrl,
-						worktree: worktree.name
-					};
-				} else {
-					return {
-						success: false,
-						error: 'Failed to create PR'
-					};
-				}
-			} catch (error) {
-				console.error('Error creating PR from Claude session:', error);
+			if (!subtaskInfo) {
 				return {
 					success: false,
-					error: error.message
+					error: 'Session is not associated with a subtask'
 				};
 			}
-		}
 
-		// Update Claude session with PR information
-		async updateClaudeSessionPR(sessionId, prInfo) {
+			// Check if PR already exists
+			if (session.summary.prInfo.created) {
+				return {
+					success: false,
+					error: `PR already created: ${session.summary.prInfo.url}`
+				};
+			}
+
+			// Get worktree info
+			const worktreeName = `task-${subtaskInfo.fullId}`;
+			const worktree = await this.getWorktreeForSubtask(
+				subtaskInfo.parentTaskId,
+				subtaskInfo.subtaskId
+			);
+
+			if (!worktree) {
+				return {
+					success: false,
+					error: 'Associated worktree not found'
+				};
+			}
+
+			// Create PR using worktree manager
+			const prTitle =
+				options.prTitle || `Task ${subtaskInfo.fullId}: ${subtaskInfo.title}`;
+			const prDescription =
+				options.prDescription || this.generatePRDescription(session);
+
+			const prResult = await this.completeSubtaskWithPR(worktreeName, {
+				createPR: true,
+				prTitle,
+				prDescription
+			});
+
+			if (prResult.prUrl) {
+				// Update session with PR info
+				await this.updateClaudeSessionPR(sessionId, {
+					created: true,
+					url: prResult.prUrl,
+					createdAt: new Date().toISOString()
+				});
+
+				return {
+					success: true,
+					prUrl: prResult.prUrl,
+					worktree: worktree.name
+				};
+			} else {
+				return {
+					success: false,
+					error: 'Failed to create PR'
+				};
+			}
+		} catch (error) {
+			console.error('Error creating PR from Claude session:', error);
+			return {
+				success: false,
+				error: error.message
+			};
+		}
+	}
+
+	// Update Claude session with PR information
+	async updateClaudeSessionPR(sessionId, prInfo) {
+		try {
+			// Update the index
+			const indexPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'claude-sessions.json'
+			);
+
+			let index = [];
 			try {
-				// Update the index
-				const indexPath = path.join(
+				const data = await fs.readFile(indexPath, 'utf8');
+				index = JSON.parse(data);
+			} catch {
+				return;
+			}
+
+			// Find and update session in index
+			const sessionIndex = index.findIndex((s) => s.sessionId === sessionId);
+			if (sessionIndex >= 0) {
+				index[sessionIndex].prInfo = prInfo;
+				await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
+			}
+
+			// Update the session file
+			const sessionInfo = index[sessionIndex];
+			if (sessionInfo) {
+				const sessionPath = path.join(
 					this.projectRoot,
 					'.taskmaster',
-					'claude-sessions.json'
+					'claude-sessions',
+					sessionInfo.filename
 				);
 
-				let index = [];
 				try {
-					const data = await fs.readFile(indexPath, 'utf8');
-					index = JSON.parse(data);
-				} catch {
-					return;
-				}
-
-				// Find and update session in index
-				const sessionIndex = index.findIndex((s) => s.sessionId === sessionId);
-				if (sessionIndex >= 0) {
-					index[sessionIndex].prInfo = prInfo;
-					await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf8');
-				}
-
-				// Update the session file
-				const sessionInfo = index[sessionIndex];
-				if (sessionInfo) {
-					const sessionPath = path.join(
-						this.projectRoot,
-						'.taskmaster',
-						'claude-sessions',
-						sessionInfo.filename
+					const sessionData = await fs.readFile(sessionPath, 'utf8');
+					const fullSession = JSON.parse(sessionData);
+					fullSession.summary.prInfo = prInfo;
+					await fs.writeFile(
+						sessionPath,
+						JSON.stringify(fullSession, null, 2),
+						'utf8'
 					);
-
-					try {
-						const sessionData = await fs.readFile(sessionPath, 'utf8');
-						const fullSession = JSON.parse(sessionData);
-						fullSession.summary.prInfo = prInfo;
-						await fs.writeFile(
-							sessionPath,
-							JSON.stringify(fullSession, null, 2),
-							'utf8'
-						);
-					} catch (error) {
-						this.log.error(
-							'Failed to update session file with PR info:',
-							error.message
-						);
-					}
-				}
-			} catch (error) {
-				this.log.error('Failed to update Claude session PR info:', error.message);
-			}
-		}
-
-		// Generate PR description from Claude session
-		generatePRDescription(session) {
-			const stats = session.summary.statistics;
-			const subtask = session.summary.subtaskInfo;
-
-			let description = `Implemented by Claude Code\n\n`;
-			description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
-			if (subtask.description) {
-				description += `**Description:** ${subtask.description}\n`;
-			}
-			description += `\n**Session Statistics:**\n`;
-			description += `- Turns: ${stats.turns}/${stats.maxTurns}\n`;
-			description += `- File Changes: ${stats.fileChanges || 0}\n`;
-			description += `- Duration: ${stats.durationSeconds || 0}s\n`;
-			description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
-			description += `- Persona: ${session.summary.persona}\n`;
-
-			if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
-				description += `\n**Tools Used:**\n`;
-				for (const [tool, count] of Object.entries(stats.toolsUsed)) {
-					description += `- ${tool}: ${count} times\n`;
+				} catch (error) {
+					this.log.error(
+						'Failed to update session file with PR info:',
+						error.message
+					);
 				}
 			}
+		} catch (error) {
+			this.log.error('Failed to update Claude session PR info:', error.message);
+		}
+	}
 
-			return description;
+	// Generate PR description from Claude session
+	generatePRDescription(session) {
+		const stats = session.summary.statistics;
+		const subtask = session.summary.subtaskInfo;
+
+		let description = `Implemented by Claude Code\n\n`;
+		description += `**Subtask:** ${subtask.fullId} - ${subtask.title}\n`;
+		if (subtask.description) {
+			description += `**Description:** ${subtask.description}\n`;
+		}
+		description += `\n**Session Statistics:**\n`;
+		description += `- Turns: ${stats.turns}/${stats.maxTurns}\n`;
+		description += `- File Changes: ${stats.fileChanges || 0}\n`;
+		description += `- Duration: ${stats.durationSeconds || 0}s\n`;
+		description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
+		description += `- Persona: ${session.summary.persona}\n`;
+
+		if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
+			description += `\n**Tools Used:**\n`;
+			for (const [tool, count] of Object.entries(stats.toolsUsed)) {
+				description += `- ${tool}: ${count} times\n`;
+			}
 		}
 
-		async claudeCodeStatus(sessionId) {
-			// ... existing code ...
-		}
+		return description;
+	}
+
+	async claudeCodeStatus(sessionId) {
+		// ... existing code ...
+	}
 
 	/**
 	 * Get PR status from GitHub API
@@ -4096,9 +4146,16 @@ ${prompt}
 			console.log(`🚀 Starting enhanced merge execution for PR ${prNumber}...`);
 
 			// Phase 1: Pre-merge validation
-			const validationResult = await this.executePhase(mergeAttempt, 'validation', async () => {
-				return await this.validateMergeEligibility(prNumber, config.safetyChecks || {});
-			});
+			const validationResult = await this.executePhase(
+				mergeAttempt,
+				'validation',
+				async () => {
+					return await this.validateMergeEligibility(
+						prNumber,
+						config.safetyChecks || {}
+					);
+				}
+			);
 
 			if (!validationResult.canMerge) {
 				return {
@@ -4110,14 +4167,23 @@ ${prompt}
 			}
 
 			// Phase 2: Advanced conflict detection
-			const conflictResult = await this.executePhase(mergeAttempt, 'conflict-detection', async () => {
-				return await this.performAdvancedConflictDetection(prNumber, config);
-			});
+			const conflictResult = await this.executePhase(
+				mergeAttempt,
+				'conflict-detection',
+				async () => {
+					return await this.performAdvancedConflictDetection(prNumber, config);
+				}
+			);
 
 			if (!conflictResult.safe) {
 				// Check if human intervention is required
 				if (conflictResult.requiresHumanIntervention) {
-					return await this.triggerHumanInLoop(prNumber, conflictResult, mergeAttempt, config);
+					return await this.triggerHumanInLoop(
+						prNumber,
+						conflictResult,
+						mergeAttempt,
+						config
+					);
 				}
 
 				return {
@@ -4129,9 +4195,13 @@ ${prompt}
 			}
 
 			// Phase 3: Safety checks
-			const safetyResult = await this.executePhase(mergeAttempt, 'safety-checks', async () => {
-				return await this.performMergeSafetyChecks(prNumber);
-			});
+			const safetyResult = await this.executePhase(
+				mergeAttempt,
+				'safety-checks',
+				async () => {
+					return await this.performMergeSafetyChecks(prNumber);
+				}
+			);
 
 			if (!safetyResult.safe) {
 				return {
@@ -4143,9 +4213,13 @@ ${prompt}
 			}
 
 			// Phase 4: Execute merge
-			const mergeResult = await this.executePhase(mergeAttempt, 'merge-execution', async () => {
-				return await this.performActualMerge(prNumber, config);
-			});
+			const mergeResult = await this.executePhase(
+				mergeAttempt,
+				'merge-execution',
+				async () => {
+					return await this.performActualMerge(prNumber, config);
+				}
+			);
 
 			if (!mergeResult.success) {
 				return {
@@ -4157,16 +4231,28 @@ ${prompt}
 			}
 
 			// Phase 5: Post-merge validation
-			const postMergeResult = await this.executePhase(mergeAttempt, 'post-merge-validation', async () => {
-				return await this.validatePostMerge(prNumber, mergeResult);
-			});
+			const postMergeResult = await this.executePhase(
+				mergeAttempt,
+				'post-merge-validation',
+				async () => {
+					return await this.validatePostMerge(prNumber, mergeResult);
+				}
+			);
 
 			if (!postMergeResult.success) {
 				// Trigger rollback if enabled
 				if (config.rollback?.enabled) {
-					await this.executePhase(mergeAttempt, 'rollback-preparation', async () => {
-						return await this.prepareRollback(prNumber, mergeResult, config.rollback);
-					});
+					await this.executePhase(
+						mergeAttempt,
+						'rollback-preparation',
+						async () => {
+							return await this.prepareRollback(
+								prNumber,
+								mergeResult,
+								config.rollback
+							);
+						}
+					);
 				}
 
 				return {
@@ -4179,16 +4265,30 @@ ${prompt}
 
 			// Cleanup (if configured)
 			let cleanupResult = null;
-			if (config.cleanupWorktree || config.updateTaskStatus || config.updateASTCache) {
-				cleanupResult = await this.executePhase(mergeAttempt, 'cleanup', async () => {
-					return await this.performPostMergeCleanup(prNumber, mergeResult, config);
-				});
+			if (
+				config.cleanupWorktree ||
+				config.updateTaskStatus ||
+				config.updateASTCache
+			) {
+				cleanupResult = await this.executePhase(
+					mergeAttempt,
+					'cleanup',
+					async () => {
+						return await this.performPostMergeCleanup(
+							prNumber,
+							mergeResult,
+							config
+						);
+					}
+				);
 			}
 
 			mergeAttempt.endTime = Date.now();
 			mergeAttempt.duration = mergeAttempt.endTime - mergeAttempt.startTime;
 
-			console.log(`✅ Enhanced merge completed for PR ${prNumber} in ${mergeAttempt.duration}ms`);
+			console.log(
+				`✅ Enhanced merge completed for PR ${prNumber} in ${mergeAttempt.duration}ms`
+			);
 
 			return {
 				success: true,
@@ -4197,13 +4297,13 @@ ${prompt}
 				cleanupResult,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			console.error(`❌ Enhanced merge failed for PR ${prNumber}:`, error);
 
 			// Mark current phase as failed
 			if (mergeAttempt.phases.length > 0) {
-				const currentPhase = mergeAttempt.phases[mergeAttempt.phases.length - 1];
+				const currentPhase =
+					mergeAttempt.phases[mergeAttempt.phases.length - 1];
 				if (currentPhase.status === 'running') {
 					currentPhase.status = 'failed';
 					currentPhase.error = error.message;
@@ -4234,9 +4334,9 @@ ${prompt}
 
 		try {
 			console.log(`  📍 Phase ${mergeAttempt.phases.length}: ${phaseName}...`);
-			
+
 			const result = await phaseFunction();
-			
+
 			phase.status = 'completed';
 			phase.endTime = Date.now();
 			phase.duration = phase.endTime - phase.startTime;
@@ -4244,7 +4344,6 @@ ${prompt}
 
 			console.log(`    ✅ ${phaseName} completed in ${phase.duration}ms`);
 			return result;
-
 		} catch (error) {
 			phase.status = 'failed';
 			phase.endTime = Date.now();
@@ -4264,7 +4363,7 @@ ${prompt}
 
 			// Get PR information
 			const prStatus = await this.getPRStatus(prNumber);
-			
+
 			const result = {
 				safe: true,
 				conflicts: [],
@@ -4290,29 +4389,36 @@ ${prompt}
 				const changedFiles = execSync(
 					`git diff --name-only ${mergeBase}..origin/${prStatus.headRef}`,
 					{ encoding: 'utf8', cwd: this.projectRoot }
-				).trim().split('\n').filter(Boolean);
+				)
+					.trim()
+					.split('\n')
+					.filter(Boolean);
 
 				// Check for recent changes to the same files on base branch
 				const recentBaseChanges = execSync(
 					`git diff --name-only ${mergeBase}..origin/${prStatus.baseRef}`,
 					{ encoding: 'utf8', cwd: this.projectRoot }
-				).trim().split('\n').filter(Boolean);
+				)
+					.trim()
+					.split('\n')
+					.filter(Boolean);
 
-				const overlappingFiles = changedFiles.filter(file => 
+				const overlappingFiles = changedFiles.filter((file) =>
 					recentBaseChanges.includes(file)
 				);
 
 				if (overlappingFiles.length > 0) {
 					result.conflicts.push('overlapping-file-changes');
 					result.details.overlappingFiles = overlappingFiles;
-					
+
 					// Check if this requires human intervention
-					const criticalFiles = overlappingFiles.filter(file => 
-						file.includes('package.json') || 
-						file.includes('package-lock.json') ||
-						file.includes('.env') ||
-						file.endsWith('.config.js') ||
-						file.endsWith('.config.json')
+					const criticalFiles = overlappingFiles.filter(
+						(file) =>
+							file.includes('package.json') ||
+							file.includes('package-lock.json') ||
+							file.includes('.env') ||
+							file.endsWith('.config.js') ||
+							file.endsWith('.config.json')
 					);
 
 					if (criticalFiles.length > 0) {
@@ -4323,7 +4429,6 @@ ${prompt}
 
 				result.details.changedFiles = changedFiles;
 				result.details.recentBaseChanges = recentBaseChanges;
-
 			} catch (error) {
 				console.warn('Advanced conflict detection failed:', error.message);
 				// Fall back to basic check
@@ -4343,7 +4448,6 @@ ${prompt}
 			result.safe = result.conflicts.length === 0;
 
 			return result;
-
 		} catch (error) {
 			return {
 				safe: false,
@@ -4363,17 +4467,20 @@ ${prompt}
 			const fs = await import('fs');
 
 			const prStatus = await this.getPRStatus(prNumber);
-			
+
 			// Check if package.json was modified
-			const changedFiles = execSync(
-				`gh pr diff ${prNumber} --name-only`,
-				{ encoding: 'utf8', cwd: this.projectRoot }
-			).trim().split('\n');
+			const changedFiles = execSync(`gh pr diff ${prNumber} --name-only`, {
+				encoding: 'utf8',
+				cwd: this.projectRoot
+			})
+				.trim()
+				.split('\n');
 
 			const packageJsonChanged = changedFiles.includes('package.json');
-			const packageLockChanged = changedFiles.includes('package-lock.json') || 
-									 changedFiles.includes('yarn.lock') || 
-									 changedFiles.includes('pnpm-lock.yaml');
+			const packageLockChanged =
+				changedFiles.includes('package-lock.json') ||
+				changedFiles.includes('yarn.lock') ||
+				changedFiles.includes('pnpm-lock.yaml');
 
 			if (!packageJsonChanged && !packageLockChanged) {
 				return { hasConflicts: false };
@@ -4381,15 +4488,16 @@ ${prompt}
 
 			// Analyze package.json changes
 			if (packageJsonChanged) {
-				const packageDiff = execSync(
-					`gh pr diff ${prNumber} -- package.json`,
-					{ encoding: 'utf8', cwd: this.projectRoot }
-				);
+				const packageDiff = execSync(`gh pr diff ${prNumber} -- package.json`, {
+					encoding: 'utf8',
+					cwd: this.projectRoot
+				});
 
 				// Look for version conflicts
-				const versionChanges = packageDiff.match(/[+-]\s*"[^"]+"\s*:\s*"[^"]+"/g) || [];
-				const majorVersionChanges = versionChanges.filter(change => 
-					change.includes('^') && change.includes('+')
+				const versionChanges =
+					packageDiff.match(/[+-]\s*"[^"]+"\s*:\s*"[^"]+"/g) || [];
+				const majorVersionChanges = versionChanges.filter(
+					(change) => change.includes('^') && change.includes('+')
 				);
 
 				if (majorVersionChanges.length > 0) {
@@ -4405,7 +4513,6 @@ ${prompt}
 			}
 
 			return { hasConflicts: false };
-
 		} catch (error) {
 			return {
 				hasConflicts: true,
@@ -4422,14 +4529,18 @@ ${prompt}
 		console.log(`🚨 Human intervention required for PR ${prNumber}`);
 
 		// Pause automation
-		const pauseResult = await this.executePhase(mergeAttempt, 'human-intervention-pause', async () => {
-			return {
-				paused: true,
-				reason: 'conflicts-require-human-intervention',
-				conflicts: conflictResult.conflicts,
-				timestamp: new Date().toISOString()
-			};
-		});
+		const pauseResult = await this.executePhase(
+			mergeAttempt,
+			'human-intervention-pause',
+			async () => {
+				return {
+					paused: true,
+					reason: 'conflicts-require-human-intervention',
+					conflicts: conflictResult.conflicts,
+					timestamp: new Date().toISOString()
+				};
+			}
+		);
 
 		// Trigger notifications if configured
 		if (config.notifications?.enabled) {
@@ -4460,8 +4571,10 @@ ${prompt}
 	 */
 	async notifyHumanIntervention(prNumber, conflictResult, config) {
 		// This would integrate with the notification system from Phase 3
-		console.log(`📧 Notifying stakeholders about PR ${prNumber} requiring intervention`);
-		
+		console.log(
+			`📧 Notifying stakeholders about PR ${prNumber} requiring intervention`
+		);
+
 		const notificationData = {
 			type: 'human-intervention-required',
 			prNumber,
@@ -4472,10 +4585,18 @@ ${prompt}
 
 		// Integration point with NotificationProvider from Phase 3
 		if (this.notificationService) {
-			await this.notificationService.notify('human-intervention-required', notificationData, {
-				priority: 'high',
-				channels: config.notifications.escalationChannels || ['app', 'slack', 'email']
-			});
+			await this.notificationService.notify(
+				'human-intervention-required',
+				notificationData,
+				{
+					priority: 'high',
+					channels: config.notifications.escalationChannels || [
+						'app',
+						'slack',
+						'email'
+					]
+				}
+			);
 		}
 
 		return { notified: true };
@@ -4503,7 +4624,7 @@ ${prompt}
 		// Save incident report
 		const fs = await import('fs');
 		const path = await import('path');
-		
+
 		const incidentDir = path.join(this.projectRoot, '.taskmaster', 'incidents');
 		if (!fs.existsSync(incidentDir)) {
 			fs.mkdirSync(incidentDir, { recursive: true });
@@ -4538,9 +4659,12 @@ ${prompt}
 					});
 
 					if (cleanupResult.success) {
-						cleanup.worktree = cleanupResult.cleanupResult.worktree || cleanup.worktree;
-						cleanup.astCache = cleanupResult.cleanupResult.astCache || cleanup.astCache;
-						cleanup.taskStatus = cleanupResult.cleanupResult.taskStatus || cleanup.taskStatus;
+						cleanup.worktree =
+							cleanupResult.cleanupResult.worktree || cleanup.worktree;
+						cleanup.astCache =
+							cleanupResult.cleanupResult.astCache || cleanup.astCache;
+						cleanup.taskStatus =
+							cleanupResult.cleanupResult.taskStatus || cleanup.taskStatus;
 					} else {
 						cleanup.errors.push(`Cleanup failed: ${cleanupResult.error}`);
 					}
@@ -4550,7 +4674,6 @@ ${prompt}
 			}
 
 			return cleanup;
-
 		} catch (error) {
 			cleanup.errors.push(`Cleanup execution failed: ${error.message}`);
 			return cleanup;
@@ -4569,7 +4692,7 @@ ${prompt}
 			'github-api-error'
 		];
 
-		return retryableReasons.some(retryable => 
+		return retryableReasons.some((retryable) =>
 			reason?.toLowerCase().includes(retryable.toLowerCase())
 		);
 	}
@@ -5270,7 +5393,7 @@ ${prompt}
 	 */
 	setBranchManager(branchManager) {
 		this.branchManager = branchManager;
-		
+
 		// If we already have a worktree manager, connect them
 		if (this.worktreeManager) {
 			this.worktreeManager.setBranchManager(branchManager);
@@ -5309,16 +5432,16 @@ ${prompt}
 
 			// Fallback implementation
 			const execAsync = promisify(exec);
-			
+
 			try {
 				const { stdout } = await execAsync('git remote get-url origin', {
 					cwd: this.projectRoot,
 					stdio: 'pipe' // Suppress stderr output
 				});
-				
+
 				const remoteUrl = stdout.trim();
 				const isGitHub = remoteUrl.includes('github.com');
-				
+
 				let hasGitHubCLI = false;
 				try {
 					await execAsync('gh auth status', {
@@ -5366,20 +5489,25 @@ ${prompt}
 	 * @param {Object} options - Commit options
 	 * @returns {Promise<Object>} Commit result
 	 */
-	async commitSubtaskProgress(worktreePath, subtaskInfo, commitMessage, options = {}) {
+	async commitSubtaskProgress(
+		worktreePath,
+		subtaskInfo,
+		commitMessage,
+		options = {}
+	) {
 		try {
 			const execAsync = promisify(exec);
-			
+
 			// Stage all changes if auto-stage is enabled
 			if (options.autoStage !== false) {
 				await execAsync('git add .', { cwd: worktreePath });
 			}
-			
+
 			// Commit with the provided message
 			await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, {
 				cwd: worktreePath
 			});
-			
+
 			return {
 				success: true,
 				message: 'Changes committed successfully',
@@ -5422,30 +5550,38 @@ ${prompt}
 			const taskId = subtaskInfo.parentId || 'unknown';
 			const subtaskId = subtaskInfo.id || 'unknown';
 			const title = subtaskInfo.title || 'Subtask work';
-			
+
 			// Generate main commit message
 			const mainMessage = `${messageType}(task-${taskId}): Complete subtask ${taskId}.${subtaskId} - ${title}`;
-			
+
 			// Generate body with implementation details
 			const bodyLines = [];
-			
+
 			if (gitStatus.modified > 0) {
-				bodyLines.push(`- Modified ${gitStatus.modified} file${gitStatus.modified > 1 ? 's' : ''}`);
+				bodyLines.push(
+					`- Modified ${gitStatus.modified} file${gitStatus.modified > 1 ? 's' : ''}`
+				);
 			}
 			if (gitStatus.added > 0) {
-				bodyLines.push(`- Added ${gitStatus.added} file${gitStatus.added > 1 ? 's' : ''}`);
+				bodyLines.push(
+					`- Added ${gitStatus.added} file${gitStatus.added > 1 ? 's' : ''}`
+				);
 			}
 			if (gitStatus.deleted > 0) {
-				bodyLines.push(`- Deleted ${gitStatus.deleted} file${gitStatus.deleted > 1 ? 's' : ''}`);
+				bodyLines.push(
+					`- Deleted ${gitStatus.deleted} file${gitStatus.deleted > 1 ? 's' : ''}`
+				);
 			}
-			
+
 			// Add subtask context
 			bodyLines.push('');
 			bodyLines.push(`Subtask ${taskId}.${subtaskId}: ${title}`);
-			bodyLines.push(`Relates to Task ${taskId}: ${subtaskInfo.parentTitle || 'Main task'}`);
-			
+			bodyLines.push(
+				`Relates to Task ${taskId}: ${subtaskInfo.parentTitle || 'Main task'}`
+			);
+
 			const fullMessage = `${mainMessage}\n\n${bodyLines.join('\n')}`;
-			
+
 			return {
 				success: true,
 				message: fullMessage,
@@ -5480,7 +5616,9 @@ ${prompt}
 	 */
 	async validateTaskReadyForPR(taskId) {
 		try {
-			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const { WorkflowValidator } = await import(
+				'../services/WorkflowValidator.js'
+			);
 			const validator = new WorkflowValidator();
 			return await validator.validateTaskReadyForPR(taskId);
 		} catch (error) {
@@ -5501,7 +5639,9 @@ ${prompt}
 	 */
 	async validateSubtaskImplementationPattern(subtaskId) {
 		try {
-			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const { WorkflowValidator } = await import(
+				'../services/WorkflowValidator.js'
+			);
 			const validator = new WorkflowValidator();
 			return await validator.validateSubtaskImplementationPattern(subtaskId);
 		} catch (error) {
@@ -5523,7 +5663,9 @@ ${prompt}
 	 */
 	async validateCommitMessageFormat(message) {
 		try {
-			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const { WorkflowValidator } = await import(
+				'../services/WorkflowValidator.js'
+			);
 			const validator = new WorkflowValidator();
 			return validator.validateCommitMessageFormat(message);
 		} catch (error) {
@@ -5545,9 +5687,14 @@ ${prompt}
 	 */
 	async validateWorkflowPrerequisites(workflowType, context = {}) {
 		try {
-			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const { WorkflowValidator } = await import(
+				'../services/WorkflowValidator.js'
+			);
 			const validator = new WorkflowValidator();
-			return await validator.validateWorkflowPrerequisites(workflowType, context);
+			return await validator.validateWorkflowPrerequisites(
+				workflowType,
+				context
+			);
 		} catch (error) {
 			console.error('Error validating workflow prerequisites:', error);
 			return {
@@ -5567,9 +5714,14 @@ ${prompt}
 	 */
 	async generateWorkflowRecommendations(taskId, currentState = {}) {
 		try {
-			const { WorkflowValidator } = await import('../services/WorkflowValidator.js');
+			const { WorkflowValidator } = await import(
+				'../services/WorkflowValidator.js'
+			);
 			const validator = new WorkflowValidator();
-			return await validator.generateWorkflowRecommendations(taskId, currentState);
+			return await validator.generateWorkflowRecommendations(
+				taskId,
+				currentState
+			);
 		} catch (error) {
 			console.error('Error generating recommendations:', error);
 			return {
@@ -5589,9 +5741,15 @@ ${prompt}
 	 */
 	async updateStatusForWorkflowStep(taskId, step, additionalInfo = {}) {
 		try {
-			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const { TaskStatusManager } = await import(
+				'../services/TaskStatusManager.js'
+			);
 			const statusManager = new TaskStatusManager();
-			return await statusManager.updateStatusForWorkflowStep(taskId, step, additionalInfo);
+			return await statusManager.updateStatusForWorkflowStep(
+				taskId,
+				step,
+				additionalInfo
+			);
 		} catch (error) {
 			console.error('Error updating status for workflow step:', error);
 			return {
@@ -5610,9 +5768,15 @@ ${prompt}
 	 */
 	async validateStatusTransition(currentStatus, newStatus, step) {
 		try {
-			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const { TaskStatusManager } = await import(
+				'../services/TaskStatusManager.js'
+			);
 			const statusManager = new TaskStatusManager();
-			return statusManager.validateStatusTransition(currentStatus, newStatus, step);
+			return statusManager.validateStatusTransition(
+				currentStatus,
+				newStatus,
+				step
+			);
 		} catch (error) {
 			console.error('Error validating status transition:', error);
 			return {
@@ -5631,7 +5795,9 @@ ${prompt}
 	 */
 	async getWorkflowStepsForTask(taskId) {
 		try {
-			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const { TaskStatusManager } = await import(
+				'../services/TaskStatusManager.js'
+			);
 			const statusManager = new TaskStatusManager();
 			return await statusManager.getWorkflowStepsForTask(taskId);
 		} catch (error) {
@@ -5648,9 +5814,14 @@ ${prompt}
 	 */
 	async updateSubtaskWithProgress(subtaskId, progressInfo) {
 		try {
-			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const { TaskStatusManager } = await import(
+				'../services/TaskStatusManager.js'
+			);
 			const statusManager = new TaskStatusManager();
-			return await statusManager.updateSubtaskWithProgress(subtaskId, progressInfo);
+			return await statusManager.updateSubtaskWithProgress(
+				subtaskId,
+				progressInfo
+			);
 		} catch (error) {
 			console.error('Error updating subtask with progress:', error);
 			return {
@@ -5668,7 +5839,9 @@ ${prompt}
 	 */
 	async updateTaskWithMetadata(taskId, metadata) {
 		try {
-			const { TaskStatusManager } = await import('../services/TaskStatusManager.js');
+			const { TaskStatusManager } = await import(
+				'../services/TaskStatusManager.js'
+			);
 			const statusManager = new TaskStatusManager();
 			return await statusManager.updateTaskWithMetadata(taskId, metadata);
 		} catch (error) {

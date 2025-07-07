@@ -7,7 +7,9 @@ const {
 	formatForConsole,
 	generateSummary,
 	generateDetailedReport
-} = await import('../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js');
+} = await import(
+	'../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js'
+);
 
 describe('Quality Insights Formatter', () => {
 	let mockQualityMetrics;
@@ -119,7 +121,8 @@ describe('Quality Insights Formatter', () => {
 					},
 					{
 						severity: 'warning',
-						message: 'Prefer const over let for variables that are never reassigned',
+						message:
+							'Prefer const over let for variables that are never reassigned',
 						file: 'src/utils/helpers.js',
 						line: 8
 					},
@@ -264,9 +267,13 @@ describe('Quality Insights Formatter', () => {
 			// Check specific content
 			expect(report).toContain('Overall Score:** 8.5/10');
 			expect(report).toContain('Average Complexity:** 4.5');
-			expect(report).toContain('Complexity Distribution:** Low: 1, Medium: 1, High: 0, Very High: 0');
+			expect(report).toContain(
+				'Complexity Distribution:** Low: 1, Medium: 1, High: 0, Very High: 0'
+			);
 			expect(report).toContain('✅ No linting issues found');
-			expect(report).toContain('Found Keywords:** todo, component, react, filtering');
+			expect(report).toContain(
+				'Found Keywords:** todo, component, react, filtering'
+			);
 			expect(report).toContain('Missed Keywords:** toggle');
 
 			// Check file breakdown
@@ -391,7 +398,9 @@ describe('Quality Insights Formatter', () => {
 		test('should handle error cases', () => {
 			const errorOutput = formatForConsole(mockQualityMetricsError);
 
-			expect(errorOutput).toBe('❌ Quality analysis failed: Analysis failed due to git command timeout');
+			expect(errorOutput).toBe(
+				'❌ Quality analysis failed: Analysis failed due to git command timeout'
+			);
 		});
 
 		test('should handle no changes', () => {
@@ -410,23 +419,29 @@ describe('Quality Insights Formatter', () => {
 			// High alignment (≥70%)
 			const highAlignment = {
 				...mockQualityMetrics,
-				taskAlignment: { keywordCoverage: 0.80 }
+				taskAlignment: { keywordCoverage: 0.8 }
 			};
-			expect(formatForConsole(highAlignment)).toContain('✅ Task Alignment: 80%');
+			expect(formatForConsole(highAlignment)).toContain(
+				'✅ Task Alignment: 80%'
+			);
 
 			// Medium alignment (≥50%, <70%)
 			const mediumAlignment = {
 				...mockQualityMetrics,
-				taskAlignment: { keywordCoverage: 0.60 }
+				taskAlignment: { keywordCoverage: 0.6 }
 			};
-			expect(formatForConsole(mediumAlignment)).toContain('⚠️ Task Alignment: 60%');
+			expect(formatForConsole(mediumAlignment)).toContain(
+				'⚠️ Task Alignment: 60%'
+			);
 
 			// Low alignment (<50%)
 			const lowAlignment = {
 				...mockQualityMetrics,
-				taskAlignment: { keywordCoverage: 0.30 }
+				taskAlignment: { keywordCoverage: 0.3 }
 			};
-			expect(formatForConsole(lowAlignment)).toContain('❌ Task Alignment: 30%');
+			expect(formatForConsole(lowAlignment)).toContain(
+				'❌ Task Alignment: 30%'
+			);
 		});
 
 		test('should handle missing aggregate metrics', () => {
@@ -516,4 +531,4 @@ describe('Quality Insights Formatter', () => {
 			expect(report).toContain('Issue number 3');
 		});
 	});
-}); 
+});

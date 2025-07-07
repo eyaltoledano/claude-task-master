@@ -1,13 +1,19 @@
 import { jest } from '@jest/globals';
 
 // Mock the dependencies used by test-quality-analyzer
-jest.unstable_mockModule('../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js', () => ({
-	CodeQualityAnalyzer: jest.fn()
-}));
+jest.unstable_mockModule(
+	'../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js',
+	() => ({
+		CodeQualityAnalyzer: jest.fn()
+	})
+);
 
-jest.unstable_mockModule('../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js', () => ({
-	formatForConsole: jest.fn()
-}));
+jest.unstable_mockModule(
+	'../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js',
+	() => ({
+		formatForConsole: jest.fn()
+	})
+);
 
 // Mock console methods to test console output
 const originalConsole = global.console;
@@ -18,8 +24,12 @@ const mockConsole = {
 };
 
 // Import the mocked modules
-const { CodeQualityAnalyzer } = await import('../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js');
-const { formatForConsole } = await import('../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js');
+const { CodeQualityAnalyzer } = await import(
+	'../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js'
+);
+const { formatForConsole } = await import(
+	'../../../../scripts/modules/flow/hooks/quality/quality-insights-formatter.js'
+);
 
 describe('Test Quality Analyzer Integration', () => {
 	let mockAnalyzer;
@@ -27,7 +37,7 @@ describe('Test Quality Analyzer Integration', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Replace console with mocks
 		global.console = mockConsole;
 
@@ -73,8 +83,10 @@ describe('Test Quality Analyzer Integration', () => {
 			const mockTask = {
 				id: '5.2',
 				title: 'Implement Todo List Component',
-				description: 'Create a React component for displaying and filtering todos',
-				details: 'Should include filtering, toggle functionality, and delete capability',
+				description:
+					'Create a React component for displaying and filtering todos',
+				details:
+					'Should include filtering, toggle functionality, and delete capability',
 				isSubtask: true
 			};
 
@@ -136,10 +148,16 @@ export function TodoList({ todos, onToggle, onDelete }) {
 				size: 1200
 			};
 
-			const result = await mockAnalyzerInstance.analyzeFile(mockChange, mockTask);
+			const result = await mockAnalyzerInstance.analyzeFile(
+				mockChange,
+				mockTask
+			);
 
 			expect(result).toEqual(mockFileAnalysis);
-			expect(mockAnalyzerInstance.analyzeFile).toHaveBeenCalledWith(mockChange, mockTask);
+			expect(mockAnalyzerInstance.analyzeFile).toHaveBeenCalledWith(
+				mockChange,
+				mockTask
+			);
 		});
 
 		test('should test aggregate metrics calculation', () => {
@@ -176,12 +194,17 @@ export function TodoList({ todos, onToggle, onDelete }) {
 				}
 			};
 
-			mockAnalyzerInstance.calculateAggregateMetrics.mockReturnValue(mockAggregateMetrics);
+			mockAnalyzerInstance.calculateAggregateMetrics.mockReturnValue(
+				mockAggregateMetrics
+			);
 
-			const result = mockAnalyzerInstance.calculateAggregateMetrics(mockFileAnalyses);
+			const result =
+				mockAnalyzerInstance.calculateAggregateMetrics(mockFileAnalyses);
 
 			expect(result).toEqual(mockAggregateMetrics);
-			expect(mockAnalyzerInstance.calculateAggregateMetrics).toHaveBeenCalledWith(mockFileAnalyses);
+			expect(
+				mockAnalyzerInstance.calculateAggregateMetrics
+			).toHaveBeenCalledWith(mockFileAnalyses);
 		});
 
 		test('should test overall score calculation', () => {
@@ -194,7 +217,8 @@ export function TodoList({ todos, onToggle, onDelete }) {
 					issues: [
 						{
 							severity: 'warning',
-							message: 'Prefer const over let for variables that are never reassigned',
+							message:
+								'Prefer const over let for variables that are never reassigned',
 							file: 'src/components/TodoList.jsx',
 							line: 15
 						}
@@ -211,7 +235,9 @@ export function TodoList({ todos, onToggle, onDelete }) {
 			const score = mockAnalyzerInstance.calculateOverallScore(mockAnalysis);
 
 			expect(score).toBe(expectedScore);
-			expect(mockAnalyzerInstance.calculateOverallScore).toHaveBeenCalledWith(mockAnalysis);
+			expect(mockAnalyzerInstance.calculateOverallScore).toHaveBeenCalledWith(
+				mockAnalysis
+			);
 		});
 
 		test('should test console output formatting', () => {
@@ -275,11 +301,17 @@ export function TodoList({ todos, onToggle, onDelete }) {
 
 			mockAnalyzerInstance.runBiomeAnalysis = mockRunBiomeAnalysis;
 
-			const result = await mockAnalyzerInstance.runBiomeAnalysis(mockChanges, mockWorktree);
+			const result = await mockAnalyzerInstance.runBiomeAnalysis(
+				mockChanges,
+				mockWorktree
+			);
 
 			expect(result.available).toBe(true);
 			expect(result.filesChecked).toBe(2);
-			expect(mockRunBiomeAnalysis).toHaveBeenCalledWith(mockChanges, mockWorktree);
+			expect(mockRunBiomeAnalysis).toHaveBeenCalledWith(
+				mockChanges,
+				mockWorktree
+			);
 		});
 
 		test('should handle Biome configuration not found', async () => {
@@ -293,7 +325,10 @@ export function TodoList({ todos, onToggle, onDelete }) {
 
 			mockAnalyzerInstance.runBiomeAnalysis = mockRunBiomeAnalysis;
 
-			const result = await mockAnalyzerInstance.runBiomeAnalysis(mockChanges, mockWorktree);
+			const result = await mockAnalyzerInstance.runBiomeAnalysis(
+				mockChanges,
+				mockWorktree
+			);
 
 			expect(result.available).toBe(false);
 			expect(result.reason).toBe('No biome.json found');
@@ -371,12 +406,13 @@ export function TodoList({ todos, onToggle, onDelete }) {
 
 		test('should filter files for Biome support correctly', () => {
 			// Test that only supported file types are analyzed by Biome
-			const mockIsBiomeSupported = jest.fn()
-				.mockReturnValueOnce(true)  // .js file
-				.mockReturnValueOnce(true)  // .jsx file
-				.mockReturnValueOnce(true)  // .ts file
-				.mockReturnValueOnce(true)  // .tsx file
-				.mockReturnValueOnce(true)  // .json file
+			const mockIsBiomeSupported = jest
+				.fn()
+				.mockReturnValueOnce(true) // .js file
+				.mockReturnValueOnce(true) // .jsx file
+				.mockReturnValueOnce(true) // .ts file
+				.mockReturnValueOnce(true) // .tsx file
+				.mockReturnValueOnce(true) // .json file
 				.mockReturnValueOnce(false) // .css file
 				.mockReturnValueOnce(false) // .md file
 				.mockReturnValueOnce(false); // .txt file
@@ -394,7 +430,7 @@ export function TodoList({ todos, onToggle, onDelete }) {
 				'notes.txt'
 			];
 
-			const supportedFiles = testFiles.filter(file => 
+			const supportedFiles = testFiles.filter((file) =>
 				mockAnalyzerInstance.isBiomeSupported(file)
 			);
 
@@ -408,8 +444,10 @@ export function TodoList({ todos, onToggle, onDelete }) {
 			const mockTask = {
 				id: '5.2',
 				title: 'Implement Todo List Component',
-				description: 'Create a React component for displaying and filtering todos',
-				details: 'Should include filtering, toggle functionality, and delete capability',
+				description:
+					'Create a React component for displaying and filtering todos',
+				details:
+					'Should include filtering, toggle functionality, and delete capability',
 				isSubtask: true
 			};
 
@@ -515,18 +553,22 @@ export function TodoList({ todos }) {
 			expect(expectedAnalysisStructure).toHaveProperty('aggregateMetrics');
 			expect(expectedAnalysisStructure).toHaveProperty('lintResults');
 			expect(expectedAnalysisStructure).toHaveProperty('taskAlignment');
-			
+
 			// Validate nested structure
-			expect(expectedAnalysisStructure.aggregateMetrics).toHaveProperty('averageComplexity');
+			expect(expectedAnalysisStructure.aggregateMetrics).toHaveProperty(
+				'averageComplexity'
+			);
 			expect(expectedAnalysisStructure.lintResults).toHaveProperty('available');
-			expect(expectedAnalysisStructure.taskAlignment).toHaveProperty('keywordCoverage');
+			expect(expectedAnalysisStructure.taskAlignment).toHaveProperty(
+				'keywordCoverage'
+			);
 		});
 	});
 
 	describe('Error Handling and Edge Cases', () => {
 		test('should handle analyzer initialization failures', () => {
 			const errorAnalyzer = new CodeQualityAnalyzer();
-			
+
 			// Test that analyzer can be created with various option configurations
 			expect(errorAnalyzer).toBeDefined();
 			expect(CodeQualityAnalyzer).toHaveBeenCalled();
@@ -601,4 +643,4 @@ export function TodoList({ todos }) {
 			expect(timeoutAnalysis.analysisTime).toBeGreaterThanOrEqual(10000);
 		});
 	});
-}); 
+});

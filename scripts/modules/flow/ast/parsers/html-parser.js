@@ -83,11 +83,11 @@ export class HtmlParser extends BaseParser {
 	 */
 	extractElements($) {
 		const elements = [];
-		
+
 		$('*').each((index, elem) => {
 			const $elem = $(elem);
 			const tagName = elem.tagName?.toLowerCase();
-			
+
 			if (tagName) {
 				elements.push({
 					tag: tagName,
@@ -111,11 +111,11 @@ export class HtmlParser extends BaseParser {
 	 */
 	extractInlineScripts($) {
 		const scripts = [];
-		
+
 		$('script:not([src])').each((index, elem) => {
 			const $elem = $(elem);
 			const content = $elem.html();
-			
+
 			if (content && content.trim()) {
 				scripts.push({
 					content: content.trim(),
@@ -138,12 +138,12 @@ export class HtmlParser extends BaseParser {
 	 */
 	extractInlineStyles($) {
 		const styles = [];
-		
+
 		// Extract <style> tags
 		$('style').each((index, elem) => {
 			const $elem = $(elem);
 			const content = $elem.html();
-			
+
 			if (content && content.trim()) {
 				styles.push({
 					type: 'style-tag',
@@ -155,19 +155,20 @@ export class HtmlParser extends BaseParser {
 				});
 			}
 		});
-		
+
 		// Extract inline style attributes
 		$('[style]').each((index, elem) => {
 			const $elem = $(elem);
 			const styleAttr = $elem.attr('style');
-			
+
 			if (styleAttr && styleAttr.trim()) {
 				styles.push({
 					type: 'inline-attribute',
 					content: styleAttr.trim(),
 					element: elem.tagName?.toLowerCase(),
 					elementId: $elem.attr('id') || null,
-					elementClasses: $elem.attr('class')?.split(/\s+/).filter(Boolean) || [],
+					elementClasses:
+						$elem.attr('class')?.split(/\s+/).filter(Boolean) || [],
 					size: styleAttr.length
 				});
 			}
@@ -191,14 +192,16 @@ export class HtmlParser extends BaseParser {
 		};
 
 		// CSS files
-		$('link[rel="stylesheet"], link[rel="preload"][as="style"]').each((index, elem) => {
-			const $elem = $(elem);
-			resources.stylesheets.push({
-				href: $elem.attr('href'),
-				media: $elem.attr('media') || 'all',
-				preload: $elem.attr('rel') === 'preload'
-			});
-		});
+		$('link[rel="stylesheet"], link[rel="preload"][as="style"]').each(
+			(index, elem) => {
+				const $elem = $(elem);
+				resources.stylesheets.push({
+					href: $elem.attr('href'),
+					media: $elem.attr('media') || 'all',
+					preload: $elem.attr('rel') === 'preload'
+				});
+			}
+		);
 
 		// JavaScript files
 		$('script[src]').each((index, elem) => {
@@ -227,13 +230,15 @@ export class HtmlParser extends BaseParser {
 		});
 
 		// Fonts
-		$('link[rel="preload"][as="font"], link[rel="prefetch"][as="font"]').each((index, elem) => {
-			const $elem = $(elem);
-			resources.fonts.push({
-				href: $elem.attr('href'),
-				type: $elem.attr('type') || 'font/woff2'
-			});
-		});
+		$('link[rel="preload"][as="font"], link[rel="prefetch"][as="font"]').each(
+			(index, elem) => {
+				const $elem = $(elem);
+				resources.fonts.push({
+					href: $elem.attr('href'),
+					type: $elem.attr('type') || 'font/woff2'
+				});
+			}
+		);
 
 		return resources;
 	}
@@ -260,7 +265,7 @@ export class HtmlParser extends BaseParser {
 		if (!analysis.hasTitle) score -= 10;
 		score -= Math.min(analysis.imagesWithoutAlt * 5, 30);
 		score -= Math.min(analysis.linksWithoutText * 3, 20);
-		
+
 		analysis.score = Math.max(0, score);
 		return analysis;
 	}
@@ -276,7 +281,7 @@ export class HtmlParser extends BaseParser {
 		const externalScripts = $('script[src]').length;
 		const externalStyles = $('link[rel="stylesheet"]').length;
 		const images = $('img').length;
-		
+
 		return {
 			inlineScripts,
 			inlineStyles,
@@ -324,22 +329,22 @@ export class HtmlParser extends BaseParser {
 		const nestingDepth = this.getMaxNestingDepth($);
 		const inlineScripts = $('script:not([src])').length;
 		const inlineStyles = $('style').length + $('[style]').length;
-		
+
 		// Base complexity on structure
 		let complexity = 1;
-		
+
 		// Add complexity for element count
 		if (elementCount > 100) complexity += 2;
 		else if (elementCount > 50) complexity += 1;
-		
+
 		// Add complexity for nesting depth
 		if (nestingDepth > 8) complexity += 2;
 		else if (nestingDepth > 5) complexity += 1;
-		
+
 		// Add complexity for inline code
 		complexity += Math.min(inlineScripts * 0.5, 2);
 		complexity += Math.min(inlineStyles * 0.3, 1);
-		
+
 		return Math.min(Math.round(complexity), 10);
 	}
 
@@ -412,17 +417,21 @@ export class HtmlParser extends BaseParser {
 
 	generatePerformanceRecommendations(metrics) {
 		const recommendations = [];
-		
+
 		if (metrics.inlineScripts > 3) {
 			recommendations.push('Consider moving inline scripts to external files');
 		}
 		if (metrics.inlineStyles > 5) {
-			recommendations.push('Consider moving inline styles to external CSS files');
+			recommendations.push(
+				'Consider moving inline styles to external CSS files'
+			);
 		}
 		if (metrics.externalScripts > 5) {
-			recommendations.push('Consider bundling JavaScript files to reduce HTTP requests');
+			recommendations.push(
+				'Consider bundling JavaScript files to reduce HTTP requests'
+			);
 		}
-		
+
 		return recommendations;
 	}
 
@@ -431,4 +440,4 @@ export class HtmlParser extends BaseParser {
 		const lines = content.split('\n').length;
 		return Math.max(1, index * 2 + lines); // Rough estimate
 	}
-} 
+}

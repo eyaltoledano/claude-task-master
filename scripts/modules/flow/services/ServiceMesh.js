@@ -8,7 +8,7 @@ import { EventEmitter } from 'events';
 export class ServiceMesh extends EventEmitter {
 	constructor(config = {}) {
 		super();
-		
+
 		this.config = {
 			retryAttempts: config.retryAttempts || 3,
 			circuitBreakerThreshold: config.circuitBreakerThreshold || 5,
@@ -21,7 +21,7 @@ export class ServiceMesh extends EventEmitter {
 		this.services = new Map();
 		this.circuitBreakers = new Map();
 		this.metrics = new Map();
-		
+
 		// Health monitoring
 		this.healthCheckInterval = null;
 		this.isShuttingDown = false;
@@ -88,33 +88,37 @@ export class ServiceMesh extends EventEmitter {
 		let lastError;
 
 		// Retry logic
-		const maxRetries = service.options.enableRetry ? this.config.retryAttempts : 1;
-		
+		const maxRetries = service.options.enableRetry
+			? this.config.retryAttempts
+			: 1;
+
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
 				// Call the service method
 				const result = await this.executeServiceCall(service, methodName, args);
-				
+
 				// Record success
 				await this.recordSuccess(serviceName, Date.now() - startTime);
-				
+
 				return result;
 			} catch (error) {
 				lastError = error;
-				
+
 				// Record failure
 				await this.recordFailure(serviceName, error);
-				
+
 				// If not the last attempt, wait before retry
 				if (attempt < maxRetries) {
 					const delay = this.calculateRetryDelay(attempt);
-					await new Promise(resolve => setTimeout(resolve, delay));
+					await new Promise((resolve) => setTimeout(resolve, delay));
 				}
 			}
 		}
 
 		// All retries failed
-		throw new Error(`Service call failed after ${maxRetries} attempts: ${lastError.message}`);
+		throw new Error(
+			`Service call failed after ${maxRetries} attempts: ${lastError.message}`
+		);
 	}
 
 	/**
@@ -123,7 +127,9 @@ export class ServiceMesh extends EventEmitter {
 	async executeServiceCall(service, methodName, args) {
 		const method = service.instance[methodName];
 		if (typeof method !== 'function') {
-			throw new Error(`Method '${methodName}' not found on service '${service.name}'`);
+			throw new Error(
+				`Method '${methodName}' not found on service '${service.name}'`
+			);
 		}
 
 		return await method.apply(service.instance, args);
@@ -141,7 +147,7 @@ export class ServiceMesh extends EventEmitter {
 		switch (breaker.state) {
 			case 'closed':
 				return 'closed';
-				
+
 			case 'open':
 				if (now >= breaker.nextAttemptTime) {
 					breaker.state = 'half-open';
@@ -149,10 +155,10 @@ export class ServiceMesh extends EventEmitter {
 					return 'half-open';
 				}
 				return 'open';
-				
+
 			case 'half-open':
 				return 'half-open';
-				
+
 			default:
 				return 'closed';
 		}
@@ -166,8 +172,9 @@ export class ServiceMesh extends EventEmitter {
 		if (metrics) {
 			metrics.requests++;
 			metrics.successes++;
-			metrics.averageResponseTime = 
-				(metrics.averageResponseTime * (metrics.requests - 1) + responseTime) / metrics.requests;
+			metrics.averageResponseTime =
+				(metrics.averageResponseTime * (metrics.requests - 1) + responseTime) /
+				metrics.requests;
 			metrics.lastRequestTime = Date.now();
 		}
 
@@ -208,7 +215,8 @@ export class ServiceMesh extends EventEmitter {
 
 			if (breaker.failureCount >= this.config.circuitBreakerThreshold) {
 				breaker.state = 'open';
-				breaker.nextAttemptTime = Date.now() + this.config.circuitBreakerTimeout;
+				breaker.nextAttemptTime =
+					Date.now() + this.config.circuitBreakerTimeout;
 				this.emit('circuit-breaker:open', { serviceName, error });
 			}
 		}
@@ -230,8 +238,8 @@ export class ServiceMesh extends EventEmitter {
 	calculateRetryDelay(attempt) {
 		const baseDelay = 1000; // 1 second
 		const maxDelay = 30000; // 30 seconds
-		const delay = Math.min(baseDelay * (2 ** (attempt - 1)), maxDelay);
-		
+		const delay = Math.min(baseDelay * 2 ** (attempt - 1), maxDelay);
+
 		// Add jitter to prevent thundering herd
 		const jitter = Math.random() * 0.1 * delay;
 		return delay + jitter;
@@ -250,7 +258,10 @@ export class ServiceMesh extends EventEmitter {
 				try {
 					await this.performHealthCheck(serviceName, service);
 				} catch (error) {
-					console.warn(`Health check failed for service ${serviceName}:`, error.message);
+					console.warn(
+						`Health check failed for service ${serviceName}:`,
+						error.message
+					);
 				}
 			}
 		}, this.config.healthCheckInterval);
@@ -264,7 +275,7 @@ export class ServiceMesh extends EventEmitter {
 	async performHealthCheck(serviceName, service) {
 		try {
 			const healthMethod = service.options.healthCheckMethod;
-			
+
 			if (typeof service.instance[healthMethod] === 'function') {
 				await service.instance[healthMethod]();
 			} else {
@@ -275,7 +286,7 @@ export class ServiceMesh extends EventEmitter {
 			}
 
 			service.lastHealthCheck = Date.now();
-			
+
 			if (!service.healthy) {
 				service.healthy = true;
 				this.emit('service:recovered', { serviceName });
@@ -310,7 +321,7 @@ export class ServiceMesh extends EventEmitter {
 	 */
 	async shutdown() {
 		this.isShuttingDown = true;
-		
+
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
 			this.healthCheckInterval = null;
@@ -320,4 +331,4 @@ export class ServiceMesh extends EventEmitter {
 	}
 }
 
-export default ServiceMesh; 
+export default ServiceMesh;

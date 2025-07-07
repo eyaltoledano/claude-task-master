@@ -1,6 +1,6 @@
 /**
  * SubtaskWorkflowManager Service
- * 
+ *
  * Coordinates subtask status changes with git workflow and progress logging.
  * Integrates Phase 1 git workflow with Phase 2 progress logging.
  */
@@ -21,7 +21,11 @@ export class SubtaskWorkflowManager {
 	 * @param {Object} options - Additional options
 	 * @returns {Promise<Object>} Workflow result
 	 */
-	async startSubtaskImplementation(subtaskId, worktreePath = null, options = {}) {
+	async startSubtaskImplementation(
+		subtaskId,
+		worktreePath = null,
+		options = {}
+	) {
 		try {
 			// 1. Get current subtask state
 			const progressResult = await this.backend.getSubtaskProgress(subtaskId);
@@ -39,13 +43,17 @@ export class SubtaskWorkflowManager {
 				return {
 					success: false,
 					reason: 'exploration-needed',
-					message: 'Subtask needs exploration phase before implementation can begin',
+					message:
+						'Subtask needs exploration phase before implementation can begin',
 					suggestedAction: 'Start exploration and planning'
 				};
 			}
 
 			// 3. Set status to in-progress
-			const statusResult = await this.backend.setSubtaskStatus(subtaskId, 'in-progress');
+			const statusResult = await this.backend.setSubtaskStatus(
+				subtaskId,
+				'in-progress'
+			);
 			if (!statusResult.success) {
 				return {
 					success: false,
@@ -93,16 +101,23 @@ export class SubtaskWorkflowManager {
 	 * @param {Object} completionSummary - Completion summary data
 	 * @returns {Promise<Object>} Workflow result
 	 */
-	async completeSubtaskImplementation(subtaskId, worktreePath = null, completionSummary = {}) {
+	async completeSubtaskImplementation(
+		subtaskId,
+		worktreePath = null,
+		completionSummary = {}
+	) {
 		try {
 			// 1. Log completion details
 			const completionResult = await this.implementationLogger.logCompletion(
-				subtaskId, 
+				subtaskId,
 				completionSummary
 			);
 
 			if (!completionResult.success) {
-				console.warn('Failed to log completion details:', completionResult.error);
+				console.warn(
+					'Failed to log completion details:',
+					completionResult.error
+				);
 			}
 
 			// 2. Commit changes if in worktree
@@ -112,9 +127,9 @@ export class SubtaskWorkflowManager {
 						worktreePath,
 						subtaskId,
 						`Complete subtask ${subtaskId} implementation`,
-						{ 
+						{
 							includeDetails: true,
-							completionSummary 
+							completionSummary
 						}
 					);
 				} catch (gitError) {
@@ -124,7 +139,10 @@ export class SubtaskWorkflowManager {
 			}
 
 			// 3. Set status to done
-			const statusResult = await this.backend.setSubtaskStatus(subtaskId, 'done');
+			const statusResult = await this.backend.setSubtaskStatus(
+				subtaskId,
+				'done'
+			);
 			if (!statusResult.success) {
 				return {
 					success: false,
@@ -157,7 +175,7 @@ export class SubtaskWorkflowManager {
 	 */
 	async logSubtaskProgress(subtaskId, progressUpdate) {
 		return await this.implementationLogger.logImplementationProgress(
-			subtaskId, 
+			subtaskId,
 			progressUpdate
 		);
 	}
@@ -201,7 +219,8 @@ export class SubtaskWorkflowManager {
 			}
 
 			const { subtask, progress, phase } = progressResult.data;
-			const suggestedAction = this.implementationLogger.getSuggestedNextAction(subtask);
+			const suggestedAction =
+				this.implementationLogger.getSuggestedNextAction(subtask);
 
 			return {
 				success: true,
@@ -229,7 +248,11 @@ export class SubtaskWorkflowManager {
 	 * @param {Object} transitionData - Data for the transition
 	 * @returns {Promise<Object>} Transition result
 	 */
-	async transitionSubtaskWorkflow(subtaskId, worktreePath = null, transitionData = {}) {
+	async transitionSubtaskWorkflow(
+		subtaskId,
+		worktreePath = null,
+		transitionData = {}
+	) {
 		const statusResult = await this.getSubtaskWorkflowStatus(subtaskId);
 		if (!statusResult.success) {
 			return statusResult;
@@ -240,7 +263,10 @@ export class SubtaskWorkflowManager {
 		switch (suggestedAction.action) {
 			case 'explore':
 				if (transitionData.explorationFindings) {
-					return await this.logExplorationPhase(subtaskId, transitionData.explorationFindings);
+					return await this.logExplorationPhase(
+						subtaskId,
+						transitionData.explorationFindings
+					);
 				}
 				return {
 					success: false,
@@ -254,7 +280,10 @@ export class SubtaskWorkflowManager {
 			case 'log-initial-progress':
 			case 'continue-progress':
 				if (transitionData.progressUpdate) {
-					return await this.logSubtaskProgress(subtaskId, transitionData.progressUpdate);
+					return await this.logSubtaskProgress(
+						subtaskId,
+						transitionData.progressUpdate
+					);
 				}
 				return {
 					success: false,
@@ -264,8 +293,8 @@ export class SubtaskWorkflowManager {
 
 			case 'log-completion':
 				return await this.completeSubtaskImplementation(
-					subtaskId, 
-					worktreePath, 
+					subtaskId,
+					worktreePath,
 					transitionData.completionSummary || {}
 				);
 
@@ -286,7 +315,9 @@ export class SubtaskWorkflowManager {
 	 */
 	determineWorkflowState(subtask, progress) {
 		const { status } = subtask;
-		const journey = this.implementationLogger.parseImplementationJourney(subtask.details || '');
+		const journey = this.implementationLogger.parseImplementationJourney(
+			subtask.details || ''
+		);
 
 		return {
 			status,
@@ -294,8 +325,10 @@ export class SubtaskWorkflowManager {
 			hasProgress: journey.hasProgress,
 			hasCompletion: journey.hasCompletion,
 			progressEntries: journey.progressEntries.length,
-			lastUpdate: journey.timestamps.length > 0 ? 
-				Math.max(...journey.timestamps.map(t => t.getTime())) : null,
+			lastUpdate:
+				journey.timestamps.length > 0
+					? Math.max(...journey.timestamps.map((t) => t.getTime()))
+					: null,
 			isComplete: status === 'done' && journey.hasCompletion,
 			readyForImplementation: journey.hasExploration && status === 'pending',
 			needsDocumentation: status === 'done' && !journey.hasCompletion
@@ -323,8 +356,8 @@ export class SubtaskWorkflowManager {
 			'needs-exploration': ['exploration', 'ready-to-implement'],
 			'ready-to-implement': ['starting-implementation'],
 			'starting-implementation': ['implementing'],
-			'implementing': ['implementing', 'completed'],
-			'completed': ['review-complete']
+			implementing: ['implementing', 'completed'],
+			completed: ['review-complete']
 		};
 
 		const allowed = validTransitions[fromPhase] || [];
@@ -332,9 +365,9 @@ export class SubtaskWorkflowManager {
 
 		return {
 			valid: isValid,
-			message: isValid ? 
-				`Transition from ${fromPhase} to ${toPhase} is valid` :
-				`Invalid transition from ${fromPhase} to ${toPhase}. Allowed: ${allowed.join(', ')}`
+			message: isValid
+				? `Transition from ${fromPhase} to ${toPhase} is valid`
+				: `Invalid transition from ${fromPhase} to ${toPhase}. Allowed: ${allowed.join(', ')}`
 		};
 	}
-} 
+}

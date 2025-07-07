@@ -1,6 +1,6 @@
 /**
  * @fileoverview Providers Screen Component
- * 
+ *
  * Interactive provider management for the Flow TUI.
  * Integrates with existing Phase 7 provider management system.
  */
@@ -27,17 +27,17 @@ export function ProvidersScreen({ onBack, onError }) {
 	const loadProviders = async () => {
 		try {
 			setLoading(true);
-			
+
 			// Import provider registry
 			const { availableProviders } = await import('../providers/registry.js');
-			
+
 			// Check which providers have API keys configured
 			const providerList = await Promise.all(
 				Object.entries(availableProviders).map(async ([key, provider]) => {
 					try {
 						// Check if API key is configured (basic check)
 						const hasApiKey = checkApiKeyPresence(key);
-						
+
 						return {
 							key,
 							name: provider.name,
@@ -49,14 +49,15 @@ export function ProvidersScreen({ onBack, onError }) {
 						return {
 							key,
 							name: provider.name || key,
-							description: provider.description || 'Provider description not available',
+							description:
+								provider.description || 'Provider description not available',
 							status: 'error',
 							error: error.message
 						};
 					}
 				})
 			);
-			
+
 			setProviders(providerList);
 		} catch (error) {
 			onError?.(`Failed to load providers: ${error.message}`);
@@ -68,16 +69,16 @@ export function ProvidersScreen({ onBack, onError }) {
 	// Check if API key environment variable exists for provider
 	const checkApiKeyPresence = (providerKey) => {
 		const envVars = {
-			'e2b': 'E2B_API_KEY',
-			'modal': 'MODAL_API_KEY', 
-			'daytona': 'DAYTONA_API_KEY',
-			'fly': 'FLY_API_TOKEN',
-			'mock': null // Mock doesn't need API key
+			e2b: 'E2B_API_KEY',
+			modal: 'MODAL_API_KEY',
+			daytona: 'DAYTONA_API_KEY',
+			fly: 'FLY_API_TOKEN',
+			mock: null // Mock doesn't need API key
 		};
-		
+
 		const envVar = envVars[providerKey];
 		if (!envVar) return true; // Mock provider is always ready
-		
+
 		return process.env[envVar] && process.env[envVar] !== 'your_api_key_here';
 	};
 
@@ -85,25 +86,31 @@ export function ProvidersScreen({ onBack, onError }) {
 	const testProvider = async (providerKey) => {
 		try {
 			setTestResult({ loading: true, provider: providerKey });
-			
-			// Use existing execution command infrastructure  
-			const { executionCommands } = await import('../commands/execution.command.js');
-			
+
+			// Use existing execution command infrastructure
+			const { executionCommands } = await import(
+				'../commands/execution.command.js'
+			);
+
 			// Call the existing test function but capture output
 			let testOutput = '';
 			const originalLog = console.log;
 			const originalError = console.error;
-			
-			console.log = (...args) => { testOutput += args.join(' ') + '\n'; };
-			console.error = (...args) => { testOutput += args.join(' ') + '\n'; };
-			
+
+			console.log = (...args) => {
+				testOutput += args.join(' ') + '\n';
+			};
+			console.error = (...args) => {
+				testOutput += args.join(' ') + '\n';
+			};
+
 			try {
-				await executionCommands.provider({ 
-					action: 'test', 
+				await executionCommands.provider({
+					action: 'test',
 					provider: providerKey,
 					json: false
 				});
-				
+
 				setTestResult({
 					loading: false,
 					provider: providerKey,
@@ -135,21 +142,25 @@ export function ProvidersScreen({ onBack, onError }) {
 	const getCapabilities = async (providerKey) => {
 		try {
 			setCapabilities({ loading: true, provider: providerKey });
-			
-			const { executionCommands } = await import('../commands/execution.command.js');
-			
+
+			const { executionCommands } = await import(
+				'../commands/execution.command.js'
+			);
+
 			// Get capabilities using existing infrastructure
 			let capOutput = '';
 			const originalLog = console.log;
-			console.log = (...args) => { capOutput += args.join(' ') + '\n'; };
-			
+			console.log = (...args) => {
+				capOutput += args.join(' ') + '\n';
+			};
+
 			try {
-				await executionCommands.provider({ 
-					action: 'capabilities', 
+				await executionCommands.provider({
+					action: 'capabilities',
 					provider: providerKey,
 					json: false
 				});
-				
+
 				setCapabilities({
 					loading: false,
 					provider: providerKey,
@@ -176,17 +187,18 @@ export function ProvidersScreen({ onBack, onError }) {
 	// Set default provider
 	const setDefaultProvider = async (providerKey) => {
 		try {
-			const { executionCommands } = await import('../commands/execution.command.js');
-			
-			await executionCommands.provider({ 
-				action: 'set', 
-				provider: providerKey 
+			const { executionCommands } = await import(
+				'../commands/execution.command.js'
+			);
+
+			await executionCommands.provider({
+				action: 'set',
+				provider: providerKey
 			});
-			
+
 			// Reload providers to show updated status
 			await loadProviders();
 			setMode('list');
-			
 		} catch (error) {
 			onError?.(`Failed to set default provider: ${error.message}`);
 		}
@@ -261,7 +273,11 @@ export function ProvidersScreen({ onBack, onError }) {
 						<Text color={theme.colors.muted}>Testing connectivity...</Text>
 					) : (
 						<Box flexDirection="column">
-							<Text color={testResult.success ? theme.colors.success : theme.colors.error}>
+							<Text
+								color={
+									testResult.success ? theme.colors.success : theme.colors.error
+								}
+							>
 								{testResult.success ? '✅ Test Passed' : '❌ Test Failed'}
 							</Text>
 							<Box marginTop={1}>
@@ -326,7 +342,7 @@ export function ProvidersScreen({ onBack, onError }) {
 					Provider Management
 				</Text>
 			</Box>
-			
+
 			<Box marginBottom={1}>
 				<Text color={theme.colors.muted}>
 					Available Providers ({providers.length}):
@@ -335,11 +351,22 @@ export function ProvidersScreen({ onBack, onError }) {
 
 			{providers.map((provider, index) => (
 				<Box key={provider.key} marginBottom={1}>
-					<Text color={index === selectedIndex ? theme.colors.accent : theme.colors.text}>
+					<Text
+						color={
+							index === selectedIndex ? theme.colors.accent : theme.colors.text
+						}
+					>
 						{index === selectedIndex ? '▶ ' : '  '}
 					</Text>
 					<Box width={16}>
-						<Text color={index === selectedIndex ? theme.colors.accent : theme.colors.text} bold>
+						<Text
+							color={
+								index === selectedIndex
+									? theme.colors.accent
+									: theme.colors.text
+							}
+							bold
+						>
 							{provider.name}
 						</Text>
 					</Box>
@@ -347,9 +374,7 @@ export function ProvidersScreen({ onBack, onError }) {
 						{renderStatus(provider)}
 					</Box>
 					<Box marginLeft={1}>
-						<Text color={theme.colors.muted}>
-							{provider.description}
-						</Text>
+						<Text color={theme.colors.muted}>{provider.description}</Text>
 					</Box>
 				</Box>
 			))}
@@ -361,4 +386,4 @@ export function ProvidersScreen({ onBack, onError }) {
 			</Box>
 		</Box>
 	);
-} 
+}

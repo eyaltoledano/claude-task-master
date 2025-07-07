@@ -3,9 +3,9 @@ import { Box, Text, useInput } from 'ink';
 import { Alert, Badge } from '@inkjs/ui';
 
 const HELP_SECTIONS = {
-  'getting-started': {
-    title: 'Getting Started',
-    content: `
+	'getting-started': {
+		title: 'Getting Started',
+		content: `
 # Task Master Flow TUI - Getting Started
 
 ## Quick Start
@@ -25,10 +25,10 @@ const HELP_SECTIONS = {
 2. Monitor active executions in Executions screen
 3. Use Status screen for system overview
     `
-  },
-  'navigation': {
-    title: 'Navigation & Controls',
-    content: `
+	},
+	navigation: {
+		title: 'Navigation & Controls',
+		content: `
 # Navigation & Keyboard Controls
 
 ## Global Navigation
@@ -62,10 +62,10 @@ const HELP_SECTIONS = {
 - Auto-refresh can be toggled for better performance
 - Hold [Shift] while navigating for faster movement
     `
-  },
-  'performance': {
-    title: 'Performance & Optimization',
-    content: `
+	},
+	performance: {
+		title: 'Performance & Optimization',
+		content: `
 # Performance Monitoring & Optimization
 
 ## Built-in Performance Tracking
@@ -97,10 +97,10 @@ const HELP_SECTIONS = {
 - [m] - Display memory usage details
 - [c] - Show connection diagnostics
     `
-  },
-  'troubleshooting': {
-    title: 'Troubleshooting',
-    content: `
+	},
+	troubleshooting: {
+		title: 'Troubleshooting',
+		content: `
 # Troubleshooting Guide
 
 ## Common Issues
@@ -149,10 +149,10 @@ const HELP_SECTIONS = {
 - Logs: Check \`~/.taskmaster/logs/\` directory
 - Issue reporting: Include logs and system information
     `
-  },
-  'vibekit-integration': {
-    title: 'VibeKit Integration',
-    content: `
+	},
+	'vibekit-integration': {
+		title: 'VibeKit Integration',
+		content: `
 # VibeKit Ecosystem Integration
 
 ## Supported Coding Agents
@@ -192,80 +192,103 @@ const HELP_SECTIONS = {
 - **Load Balancing**: Intelligent provider selection
 - **Security Monitoring**: Sandbox isolation and access control
     `
-  }
+	}
 };
 
-export default function AdvancedHelpModal({ onClose, initialSection = 'getting-started' }) {
-  const [currentSection, setCurrentSection] = useState(initialSection);
-  const [searchTerm, setSearchTerm] = useState('');
+export default function AdvancedHelpModal({
+	onClose,
+	initialSection = 'getting-started'
+}) {
+	const [currentSection, setCurrentSection] = useState(initialSection);
+	const [searchTerm, setSearchTerm] = useState('');
 
-  useInput((input, key) => {
-    if (key.escape || input === 'q') {
-      onClose();
-    }
-    if (key.tab) {
-      const sections = Object.keys(HELP_SECTIONS);
-      const currentIndex = sections.indexOf(currentSection);
-      const nextIndex = (currentIndex + 1) % sections.length;
-      setCurrentSection(sections[nextIndex]);
-    }
-    if (input === '1') setCurrentSection('getting-started');
-    if (input === '2') setCurrentSection('navigation');
-    if (input === '3') setCurrentSection('performance');
-    if (input === '4') setCurrentSection('troubleshooting');
-    if (input === '5') setCurrentSection('vibekit-integration');
-  });
+	useInput((input, key) => {
+		if (key.escape || input === 'q') {
+			onClose();
+		}
+		if (key.tab) {
+			const sections = Object.keys(HELP_SECTIONS);
+			const currentIndex = sections.indexOf(currentSection);
+			const nextIndex = (currentIndex + 1) % sections.length;
+			setCurrentSection(sections[nextIndex]);
+		}
+		if (input === '1') setCurrentSection('getting-started');
+		if (input === '2') setCurrentSection('navigation');
+		if (input === '3') setCurrentSection('performance');
+		if (input === '4') setCurrentSection('troubleshooting');
+		if (input === '5') setCurrentSection('vibekit-integration');
+	});
 
-  const section = HELP_SECTIONS[currentSection];
+	const section = HELP_SECTIONS[currentSection];
 
-  return (
-    <Box 
-      position="absolute" 
-      top={0} 
-      left={0} 
-      width="100%" 
-      height="100%" 
-      backgroundColor="black"
-      justifyContent="center"
-      alignItems="center"
-    >
-      <Box width={90} height={30} flexDirection="column">
-        <Alert variant="info">
-          <Box flexDirection="column" padding={1}>
-            <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
-              <Text color="cyan" bold>Task Master Flow TUI - Advanced Help</Text>
-              <Badge color="blue">VibeKit Ready</Badge>
-            </Box>
-            
-            {/* Section Navigation */}
-            <Box flexDirection="row" marginBottom={2}>
-              {Object.entries(HELP_SECTIONS).map(([key, sec], index) => (
-                <Box key={key} marginRight={1}>
-                  <Text color={currentSection === key ? 'green' : 'gray'}>
-                    [{index + 1}] {sec.title}
-                  </Text>
-                </Box>
-              ))}
-            </Box>
-            
-            {/* Content Area */}
-            <Box height={20} flexDirection="column" borderStyle="single" padding={1}>
-              <Text color="yellow" bold>{section.title}</Text>
-              <Box marginTop={1} height={17}>
-                <Text wrap="wrap">{section.content}</Text>
-              </Box>
-            </Box>
-            
-            {/* Footer */}
-            <Box marginTop={1} flexDirection="row" justifyContent="space-between">
-              <Text color="gray">
-                [1-5] Sections | [Tab] Next Section | [Esc/q] Close
-              </Text>
-              <Badge color="green">Page {Object.keys(HELP_SECTIONS).indexOf(currentSection) + 1}/{Object.keys(HELP_SECTIONS).length}</Badge>
-            </Box>
-          </Box>
-        </Alert>
-      </Box>
-    </Box>
-  );
-} 
+	return (
+		<Box
+			position="absolute"
+			top={0}
+			left={0}
+			width="100%"
+			height="100%"
+			backgroundColor="black"
+			justifyContent="center"
+			alignItems="center"
+		>
+			<Box width={90} height={30} flexDirection="column">
+				<Alert variant="info">
+					<Box flexDirection="column" padding={1}>
+						<Box
+							flexDirection="row"
+							justifyContent="space-between"
+							marginBottom={1}
+						>
+							<Text color="cyan" bold>
+								Task Master Flow TUI - Advanced Help
+							</Text>
+							<Badge color="blue">VibeKit Ready</Badge>
+						</Box>
+
+						{/* Section Navigation */}
+						<Box flexDirection="row" marginBottom={2}>
+							{Object.entries(HELP_SECTIONS).map(([key, sec], index) => (
+								<Box key={key} marginRight={1}>
+									<Text color={currentSection === key ? 'green' : 'gray'}>
+										[{index + 1}] {sec.title}
+									</Text>
+								</Box>
+							))}
+						</Box>
+
+						{/* Content Area */}
+						<Box
+							height={20}
+							flexDirection="column"
+							borderStyle="single"
+							padding={1}
+						>
+							<Text color="yellow" bold>
+								{section.title}
+							</Text>
+							<Box marginTop={1} height={17}>
+								<Text wrap="wrap">{section.content}</Text>
+							</Box>
+						</Box>
+
+						{/* Footer */}
+						<Box
+							marginTop={1}
+							flexDirection="row"
+							justifyContent="space-between"
+						>
+							<Text color="gray">
+								[1-5] Sections | [Tab] Next Section | [Esc/q] Close
+							</Text>
+							<Badge color="green">
+								Page {Object.keys(HELP_SECTIONS).indexOf(currentSection) + 1}/
+								{Object.keys(HELP_SECTIONS).length}
+							</Badge>
+						</Box>
+					</Box>
+				</Alert>
+			</Box>
+		</Box>
+	);
+}

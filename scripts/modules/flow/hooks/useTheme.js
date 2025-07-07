@@ -116,7 +116,11 @@ function getColorFromPath(path, theme = currentTheme) {
 		}
 
 		// Handle direct color values (hex, rgb, etc.)
-		if (path.startsWith('#') || path.startsWith('rgb') || path.startsWith('hsl')) {
+		if (
+			path.startsWith('#') ||
+			path.startsWith('rgb') ||
+			path.startsWith('hsl')
+		) {
 			return path;
 		}
 
@@ -168,8 +172,9 @@ export function useTheme() {
  */
 export function useComponentTheme(componentName, overrides = {}) {
 	try {
-		const componentTheme = (currentTheme.components && currentTheme.components[componentName]) || {};
-		
+		const componentTheme =
+			(currentTheme.components && currentTheme.components[componentName]) || {};
+
 		// Merge component theme with overrides and return directly
 		const theme = {
 			...componentTheme,
@@ -200,11 +205,11 @@ export function useComponentTheme(componentName, overrides = {}) {
 export function useResponsiveTheme() {
 	try {
 		const { theme } = useTheme();
-		
+
 		// Simple responsive logic based on process.stdout.columns
 		const isSmall = (process.stdout.columns || 80) < 80;
 		const isMedium = (process.stdout.columns || 80) < 120;
-		
+
 		const responsiveTheme = {
 			...theme,
 			responsive: {
@@ -237,7 +242,7 @@ export function useResponsiveTheme() {
 export function useThemedStyles(componentName) {
 	try {
 		const { theme } = useComponentTheme(componentName);
-		
+
 		return {
 			theme,
 			styles: theme.component || {}

@@ -98,8 +98,8 @@ export default class ResearchIntegrationHook {
 			}
 
 			// Determine if research exists (in either subtask or parent)
-			const hasResearchInSubtask = !!(existingResearch);
-			const hasResearchInParent = !!(parentTaskResearch);
+			const hasResearchInSubtask = !!existingResearch;
+			const hasResearchInParent = !!parentTaskResearch;
 			const hasAnyResearch = hasResearchInSubtask || hasResearchInParent;
 
 			if (hasAnyResearch && config.autoDetectExisting) {
@@ -109,24 +109,28 @@ export default class ResearchIntegrationHook {
 
 				if (hasResearchInSubtask) {
 					// Research found in subtask
-					sessionInfo = existingResearch.sessionCount > 1 
-						? `${existingResearch.sessionCount} research sessions found in subtask`
-						: 'Research session found in subtask';
-				
-					lastUpdatedInfo = existingResearch.format === 'current'
-					? `Last updated: ${existingResearch.lastUpdated}`
-					: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
+					sessionInfo =
+						existingResearch.sessionCount > 1
+							? `${existingResearch.sessionCount} research sessions found in subtask`
+							: 'Research session found in subtask';
+
+					lastUpdatedInfo =
+						existingResearch.format === 'current'
+							? `Last updated: ${existingResearch.lastUpdated}`
+							: `Last updated: ${existingResearch.lastUpdated} (legacy format)`;
 
 					message = `${sessionInfo}. ${lastUpdatedInfo}`;
 				} else if (hasResearchInParent) {
 					// Research found in parent task
-					sessionInfo = parentTaskResearch.sessionCount > 1 
-						? `${parentTaskResearch.sessionCount} research sessions found in parent task`
-						: 'Research session found in parent task';
-					
-					lastUpdatedInfo = parentTaskResearch.format === 'current'
-						? `Last updated: ${parentTaskResearch.lastUpdated}`
-						: `Last updated: ${parentTaskResearch.lastUpdated} (legacy format)`;
+					sessionInfo =
+						parentTaskResearch.sessionCount > 1
+							? `${parentTaskResearch.sessionCount} research sessions found in parent task`
+							: 'Research session found in parent task';
+
+					lastUpdatedInfo =
+						parentTaskResearch.format === 'current'
+							? `Last updated: ${parentTaskResearch.lastUpdated}`
+							: `Last updated: ${parentTaskResearch.lastUpdated} (legacy format)`;
 
 					message = `${sessionInfo}. ${lastUpdatedInfo}`;
 				}
@@ -137,7 +141,8 @@ export default class ResearchIntegrationHook {
 						reason: 'existing-research-found',
 						hasExisting: true,
 						lastUpdated: (existingResearch || parentTaskResearch).lastUpdated,
-						sessionCount: (existingResearch || parentTaskResearch).sessionCount || 1,
+						sessionCount:
+							(existingResearch || parentTaskResearch).sessionCount || 1,
 						format: (existingResearch || parentTaskResearch).format || 'legacy',
 						confidence: 100,
 						message,
@@ -170,7 +175,6 @@ export default class ResearchIntegrationHook {
 					}
 				};
 			}
-
 		} catch (error) {
 			return {
 				researchStatus: {

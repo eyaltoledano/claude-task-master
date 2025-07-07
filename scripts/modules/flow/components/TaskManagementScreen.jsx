@@ -12,7 +12,10 @@ import { SimpleTable } from './SimpleTable.jsx';
 import { EnhancedClaudeWorktreeLauncherModal } from './EnhancedClaudeWorktreeLauncherModal.jsx';
 import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
 import { WorkflowDecisionModal } from './WorkflowDecisionModal.jsx';
-import { WorkflowStatusIndicator, GitStatusIndicator } from './WorkflowStatusIndicator.jsx';
+import {
+	WorkflowStatusIndicator,
+	GitStatusIndicator
+} from './WorkflowStatusIndicator.jsx';
 import { WorkflowGuide } from './WorkflowGuide.jsx';
 import { CommitAssistant } from './CommitAssistant.jsx';
 import TextInput from 'ink-text-input';
@@ -36,7 +39,12 @@ export function TaskManagementScreen() {
 	// Safety check - don't render if backend is not available
 	if (!backend) {
 		return (
-			<Box flexDirection="column" height="100%" justifyContent="center" alignItems="center">
+			<Box
+				flexDirection="column"
+				height="100%"
+				justifyContent="center"
+				alignItems="center"
+			>
 				<Text color="yellow">⚠️ Backend service is not available</Text>
 				<Text color="gray">Please wait for initialization to complete...</Text>
 			</Box>
@@ -94,9 +102,14 @@ export function TaskManagementScreen() {
 		console.log('[TaskManagementScreen] Initializing hook service...');
 		try {
 			hookService.initialize();
-			console.log('[TaskManagementScreen] Hook service initialized successfully');
+			console.log(
+				'[TaskManagementScreen] Hook service initialized successfully'
+			);
 		} catch (error) {
-			console.error('[TaskManagementScreen] Hook service initialization failed:', error);
+			console.error(
+				'[TaskManagementScreen] Hook service initialization failed:',
+				error
+			);
 			setToast({
 				message: `Hook service initialization failed: ${error.message}`,
 				type: 'error'
@@ -230,7 +243,7 @@ export function TaskManagementScreen() {
 	// Unified keypress handler
 	useInput((input, key) => {
 		// If any modal is open, let it handle the input, except for global ESC
-			if (key.escape) {
+		if (key.escape) {
 			if (showResearchModal) return setShowResearchModal(false);
 			if (showExpandOptions) return setShowExpandOptions(false);
 			// Other modal escape logic can go here...
@@ -276,26 +289,29 @@ export function TaskManagementScreen() {
 				break;
 
 			case 'subtasks':
-			if (key.downArrow) {
+				if (key.downArrow) {
 					const max = selectedTask.subtasks.length - 1;
 					const newIndex = Math.min(selectedSubtaskIndex + 1, max);
-				setSelectedSubtaskIndex(newIndex);
-				if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
-					setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
-				}
-			} else if (key.upArrow) {
-				const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
-				setSelectedSubtaskIndex(newIndex);
-				if (newIndex < subtasksScrollOffset) {
-					setSubtasksScrollOffset(newIndex);
-				}
-			} else if (key.return) {
+					setSelectedSubtaskIndex(newIndex);
+					if (newIndex >= subtasksScrollOffset + VISIBLE_ROWS) {
+						setSubtasksScrollOffset(newIndex - VISIBLE_ROWS + 1);
+					}
+				} else if (key.upArrow) {
+					const newIndex = Math.max(selectedSubtaskIndex - 1, 0);
+					setSelectedSubtaskIndex(newIndex);
+					if (newIndex < subtasksScrollOffset) {
+						setSubtasksScrollOffset(newIndex);
+					}
+				} else if (key.return) {
 					setSelectedSubtask(selectedTask.subtasks[selectedSubtaskIndex]);
-				setViewMode('subtask-detail');
+					setViewMode('subtask-detail');
 					setDetailScrollOffset(0);
-			} else if (input === 't') {
-				const subtask = selectedTask.subtasks[selectedSubtaskIndex];
-					cycleTaskStatus({ ...subtask, id: `${selectedTask.id}.${subtask.id}` });
+				} else if (input === 't') {
+					const subtask = selectedTask.subtasks[selectedSubtaskIndex];
+					cycleTaskStatus({
+						...subtask,
+						id: `${selectedTask.id}.${subtask.id}`
+					});
 				}
 				break;
 
@@ -303,38 +319,40 @@ export function TaskManagementScreen() {
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
 				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
 				else if (input === 't') {
-					console.log('[TaskManagementScreen] Calling cycleTaskStatus from subtask-detail view');
+					console.log(
+						'[TaskManagementScreen] Calling cycleTaskStatus from subtask-detail view'
+					);
 					cycleTaskStatus({
 						...selectedSubtask,
 						id: `${selectedTask.id}.${selectedSubtask.id}`
 					});
 				} else if (input === 'c') {
 					handleClaudeSession();
-			} else if (input === 'w') {
-				handleWorkOnSubtask();
-			} else if (input === 'g') {
+				} else if (input === 'w') {
+					handleWorkOnSubtask();
+				} else if (input === 'g') {
 					// Jump to worktree from subtask detail
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-					
-				if (worktrees.length > 0) {
-					// Navigate to worktree detail page for the first linked worktree
-					setCurrentScreen('worktrees', {
-						selectedWorktree: worktrees[0],
-						showDetails: true
-					});
-				} else {
-					setToast({
-						message: 'No worktrees linked to this subtask',
-						type: 'warning'
-					});
-				}
+					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
+					const worktrees = subtaskWorktrees.get(subtaskId) || [];
+
+					if (worktrees.length > 0) {
+						// Navigate to worktree detail page for the first linked worktree
+						setCurrentScreen('worktrees', {
+							selectedWorktree: worktrees[0],
+							showDetails: true
+						});
+					} else {
+						setToast({
+							message: 'No worktrees linked to this subtask',
+							type: 'warning'
+						});
+					}
 				} else if (input === 'p') {
-				handleLogProgress();
+					handleLogProgress();
 				} else if (input === 'e') {
-				handleLogExploration();
+					handleLogExploration();
 				} else if (input === 'l') {
-				handleLogCompletion();
+					handleLogCompletion();
 				} else if (input === 'r') setShowResearchModal(true);
 				break;
 		}
@@ -363,13 +381,16 @@ export function TaskManagementScreen() {
 				const subtaskWorktreePromises = fullTask.subtasks.map(
 					async (subtask) => {
 						const subtaskId = `${fullTask.id}.${subtask.id}`;
-						
+
 						try {
 							const subtaskWorktrees =
 								await backend.getTaskWorktrees(subtaskId);
 							return { subtaskId, worktrees: subtaskWorktrees || [] };
 						} catch (error) {
-							console.error(`Error fetching worktrees for ${subtaskId}:`, error);
+							console.error(
+								`Error fetching worktrees for ${subtaskId}:`,
+								error
+							);
 							return { subtaskId, worktrees: [] };
 						}
 					}
@@ -379,7 +400,7 @@ export function TaskManagementScreen() {
 				const subtaskWorktreeResults = await Promise.all(
 					subtaskWorktreePromises
 				);
-				
+
 				const subtaskWorktreeMap = new Map(
 					subtaskWorktreeResults.map((result) => [
 						result.subtaskId,
@@ -499,10 +520,13 @@ export function TaskManagementScreen() {
 				setSelectedTask(updatedTask);
 
 				// If we're in subtask views, also update the selected subtask
-				if ((viewMode === 'subtasks' || viewMode === 'subtask-detail') && selectedSubtask) {
+				if (
+					(viewMode === 'subtasks' || viewMode === 'subtask-detail') &&
+					selectedSubtask
+				) {
 					// Find the updated subtask in the refreshed task
 					const updatedSubtask = updatedTask.subtasks?.find(
-						st => st.id === selectedSubtask.id
+						(st) => st.id === selectedSubtask.id
 					);
 					if (updatedSubtask) {
 						setSelectedSubtask(updatedSubtask);
@@ -547,16 +571,20 @@ export function TaskManagementScreen() {
 			try {
 				fullParentTask = await backend.getTask(selectedTask.id);
 				if (fullParentTask && fullParentTask.subtasks) {
-					const foundSubtask = fullParentTask.subtasks.find(st => st.id === selectedSubtask.id);
+					const foundSubtask = fullParentTask.subtasks.find(
+						(st) => st.id === selectedSubtask.id
+					);
 					if (foundSubtask) {
 						subtaskWithFullDetails = foundSubtask; // Use the one with full details
 					}
 				}
 			} catch (error) {
-				console.warn('Could not fetch full parent task details for modal:', error);
+				console.warn(
+					'Could not fetch full parent task details for modal:',
+					error
+				);
 				// Continue with the task data we have
 			}
-
 
 			// Prepare task data for the Claude launcher modal
 			const taskData = {
@@ -581,7 +609,10 @@ export function TaskManagementScreen() {
 			setClaudeWorktree(worktreeToUse);
 			setShowClaudeLauncherModal(true);
 		} catch (error) {
-			console.error('[TaskManagementScreen] Error launching Claude session:', error);
+			console.error(
+				'[TaskManagementScreen] Error launching Claude session:',
+				error
+			);
 			setToast({
 				message: `Error: ${error.message}`,
 				type: 'error'
@@ -616,7 +647,8 @@ export function TaskManagementScreen() {
 						title: fullParentTask.title,
 						description: fullParentTask.description,
 						details: fullParentTask.details,
-						testStrategy: fullParentTask.testStrategy || fullParentTask.test_strategy
+						testStrategy:
+							fullParentTask.testStrategy || fullParentTask.test_strategy
 					}
 				}
 			];
@@ -777,7 +809,7 @@ export function TaskManagementScreen() {
 			const fullTask = await backend.getTask(selectedTask.id);
 			if (fullTask && fullTask.subtasks) {
 				const fullSubtask = fullTask.subtasks.find(
-					st => st.id === selectedSubtask.id
+					(st) => st.id === selectedSubtask.id
 				);
 				if (fullSubtask) {
 					subtaskWithDetails = fullSubtask;
@@ -791,7 +823,8 @@ export function TaskManagementScreen() {
 		// Check if research has already been run using the hook service
 		let hasExistingResearch = false;
 		try {
-			const researchCheck = await hookService.checkResearchNeeded(subtaskWithDetails);
+			const researchCheck =
+				await hookService.checkResearchNeeded(subtaskWithDetails);
 			if (researchCheck && researchCheck.researchStatus) {
 				hasExistingResearch = !researchCheck.researchStatus.needed;
 				console.log(`[TaskManagementScreen] Research analysis result:`, {
@@ -801,31 +834,40 @@ export function TaskManagementScreen() {
 				});
 			}
 		} catch (error) {
-			console.warn('Failed to check research status via hooks, falling back to simple check:', error);
+			console.warn(
+				'Failed to check research status via hooks, falling back to simple check:',
+				error
+			);
 			setToast({
 				message: `Hook service error (using fallback): ${error.message}`,
 				type: 'warning'
 			});
 			// Fallback to simple check - check both subtask and parent task
 			hasExistingResearch = false;
-			
+
 			// Check subtask details using the same pattern as the hook utility
 			if (subtaskWithDetails.details) {
-				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
+				const oldPattern =
+					/<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
 				const matches = [...subtaskWithDetails.details.matchAll(oldPattern)];
 				if (matches.length > 0) {
 					hasExistingResearch = true;
-					console.log('[TaskManagementScreen] Found research in subtask via fallback');
+					console.log(
+						'[TaskManagementScreen] Found research in subtask via fallback'
+					);
 				}
 			}
-			
+
 			// If not found in subtask, check parent task
 			if (!hasExistingResearch && selectedTask.details) {
-				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
+				const oldPattern =
+					/<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
 				const matches = [...selectedTask.details.matchAll(oldPattern)];
 				if (matches.length > 0) {
 					hasExistingResearch = true;
-					console.log('[TaskManagementScreen] Found research in parent task via fallback');
+					console.log(
+						'[TaskManagementScreen] Found research in parent task via fallback'
+					);
 				}
 			}
 		}
@@ -856,10 +898,10 @@ export function TaskManagementScreen() {
 
 				researchContext = researchResult.response || researchResult;
 
-						setToast({
+				setToast({
 					message: 'Research completed and saved to subtask',
-							type: 'success'
-						});
+					type: 'success'
+				});
 			} catch (error) {
 				console.error('Research failed:', error);
 				// Continue without research
@@ -899,7 +941,7 @@ export function TaskManagementScreen() {
 				id: `${selectedTask.id}.${selectedSubtask.id}`,
 				title: selectedSubtask.title,
 				description: selectedSubtask.description,
-				details: subtaskWithDetails.details,  // Use the full details we fetched
+				details: subtaskWithDetails.details, // Use the full details we fetched
 				status: selectedSubtask.status
 			},
 			parentTask: {
@@ -1145,7 +1187,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 	// Progress logging handlers
 	const handleLogProgress = () => {
 		if (!selectedSubtask) return;
-		
+
 		setProgressModalData({
 			subtask: {
 				...selectedSubtask,
@@ -1159,7 +1201,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 
 	const handleLogExploration = () => {
 		if (!selectedSubtask) return;
-		
+
 		setProgressModalData({
 			subtask: {
 				...selectedSubtask,
@@ -1173,7 +1215,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 
 	const handleLogCompletion = () => {
 		if (!selectedSubtask) return;
-		
+
 		setProgressModalData({
 			subtask: {
 				...selectedSubtask,
@@ -1201,15 +1243,15 @@ Focus on: current industry standards, common pitfalls, security considerations
 
 				// Refresh task data to show updated progress
 				await reloadTasks();
-				
+
 				// Refresh the selected task details
 				if (selectedTask) {
 					const updatedTask = await backend.getTask(selectedTask.id);
 					setSelectedTask(updatedTask);
-					
+
 					// Update the selected subtask
 					const updatedSubtask = updatedTask.subtasks?.find(
-						s => `${updatedTask.id}.${s.id}` === subtaskId
+						(s) => `${updatedTask.id}.${s.id}` === subtaskId
 					);
 					if (updatedSubtask) {
 						setSelectedSubtask(updatedSubtask);
@@ -1249,10 +1291,13 @@ Focus on: current industry standards, common pitfalls, security considerations
 	const handleWorkflowChoice = async (choice, options) => {
 		try {
 			// Delegate to existing worktree completion logic
-			const result = await backend.completeSubtask(options.workflowOption.worktree?.name || 'unknown', {
-				workflowChoice: choice,
-				...options
-			});
+			const result = await backend.completeSubtask(
+				options.workflowOption.worktree?.name || 'unknown',
+				{
+					workflowChoice: choice,
+					...options
+				}
+			);
 
 			if (result.success) {
 				// Extract subtask ID from the workflow data to mark it as done
@@ -1278,19 +1323,23 @@ Focus on: current industry standards, common pitfalls, security considerations
 						type: 'success'
 					});
 				}
-				
+
 				// Refresh task data
 				await reloadTasks();
-				
+
 				// Refresh the selected task details if we're viewing it
 				if (selectedTask) {
 					const updatedTask = await backend.getTask(selectedTask.id);
 					setSelectedTask(updatedTask);
-					
+
 					// Update the selected subtask if it matches
-					if (selectedSubtask && subtaskInfo && selectedSubtask.id === subtaskInfo.id.split('.')[1]) {
+					if (
+						selectedSubtask &&
+						subtaskInfo &&
+						selectedSubtask.id === subtaskInfo.id.split('.')[1]
+					) {
 						const updatedSubtask = updatedTask.subtasks?.find(
-							s => `${updatedTask.id}.${s.id}` === subtaskInfo.id
+							(s) => `${updatedTask.id}.${s.id}` === subtaskInfo.id
 						);
 						if (updatedSubtask) {
 							setSelectedSubtask(updatedSubtask);
@@ -1336,7 +1385,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 				// Check if this commit indicates subtask completion
 				const subtaskInfo = commitAssistantData.subtaskInfo;
 				const markAsDone = options.markAsDone || false; // Allow option to mark as done
-				
+
 				if (subtaskInfo && markAsDone) {
 					try {
 						// Mark the subtask as done using base Taskmaster calls
@@ -1345,19 +1394,22 @@ Focus on: current industry standards, common pitfalls, security considerations
 							message: `Changes committed and subtask ${subtaskInfo.id} marked as done`,
 							type: 'success'
 						});
-						
+
 						// Refresh task data to show updated status
 						await reloadTasks();
-						
+
 						// Refresh the selected task details if we're viewing it
 						if (selectedTask) {
 							const updatedTask = await backend.getTask(selectedTask.id);
 							setSelectedTask(updatedTask);
-							
+
 							// Update the selected subtask if it matches
-							if (selectedSubtask && selectedSubtask.id === subtaskInfo.id.split('.')[1]) {
+							if (
+								selectedSubtask &&
+								selectedSubtask.id === subtaskInfo.id.split('.')[1]
+							) {
 								const updatedSubtask = updatedTask.subtasks?.find(
-									s => `${updatedTask.id}.${s.id}` === subtaskInfo.id
+									(s) => `${updatedTask.id}.${s.id}` === subtaskInfo.id
 								);
 								if (updatedSubtask) {
 									setSelectedSubtask(updatedSubtask);
@@ -1377,7 +1429,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 						type: 'success'
 					});
 				}
-				
+
 				// Refresh git status
 				await loadGitStatus();
 			} else {
@@ -1401,12 +1453,12 @@ Focus on: current industry standards, common pitfalls, security considerations
 	useEffect(() => {
 		const loadGitStatus = async () => {
 			if (!selectedTask || !selectedSubtask) return;
-			
+
 			try {
 				// Find worktree for current subtask
 				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
 				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-				
+
 				if (worktrees.length > 0) {
 					const status = await backend.getWorktreeGitStatus(worktrees[0].path);
 					setGitStatus(status);
@@ -1573,7 +1625,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 				value: `${taskWorktrees.length} worktree${taskWorktrees.length > 1 ? 's' : ''}`,
 				color: theme.success
 			});
-			
+
 			// Add detailed worktree status
 			taskWorktrees.forEach((wt) => {
 				contentLines.push({
@@ -1735,7 +1787,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 										<Text bold color={theme.textDim} width={15}>
 											{line.label}
 										</Text>
-											<Text color={line.color || theme.text}>{line.value}</Text>
+										<Text color={line.color || theme.text}>{line.value}</Text>
 									</Box>
 								);
 							} else if (line.type === 'header') {
@@ -2092,7 +2144,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 				value: `${worktrees.length} worktree${worktrees.length > 1 ? 's' : ''}`,
 				color: theme.success
 			});
-			
+
 			// Add detailed worktree status for subtask
 			worktrees.forEach((wt) => {
 				contentLines.push({
@@ -2103,7 +2155,12 @@ Focus on: current industry standards, common pitfalls, security considerations
 			});
 
 			// Add workflow status information
-			if (gitStatus && repoInfo && typeof repoInfo === 'object' && !repoInfo.error) {
+			if (
+				gitStatus &&
+				repoInfo &&
+				typeof repoInfo === 'object' &&
+				!repoInfo.error
+			) {
 				contentLines.push({ type: 'spacer' });
 				contentLines.push({
 					type: 'workflow-status',
@@ -2182,7 +2239,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 									<Text bold color={theme.textDim} width={15}>
 										{line.label}
 									</Text>
-										<Text color={line.color || theme.text}>{line.value}</Text>
+									<Text color={line.color || theme.text}>{line.value}</Text>
 								</Box>
 							);
 						} else if (line.type === 'header') {
@@ -2248,9 +2305,12 @@ Focus on: current industry standards, common pitfalls, security considerations
 					<Text color={theme.text}>
 						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}w
 						work on subtask •{' '}
-						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p progress • e exploration • l completion
-						{worktrees.length > 0 && gitStatus ? ' • W workflow • C commit' : ''} • ESC
-						back
+						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p
+						progress • e exploration • l completion
+						{worktrees.length > 0 && gitStatus
+							? ' • W workflow • C commit'
+							: ''}{' '}
+						• ESC back
 					</Text>
 				</Box>
 

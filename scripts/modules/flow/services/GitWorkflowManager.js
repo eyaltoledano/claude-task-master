@@ -26,7 +26,7 @@ export class GitWorkflowManager {
 	async validateCommitReadiness(worktreePath) {
 		try {
 			const gitStatus = await this.getGitStatus(worktreePath);
-			
+
 			return {
 				ready: true,
 				gitStatus,
@@ -67,12 +67,15 @@ export class GitWorkflowManager {
 			}).trim();
 
 			// Parse status output
-			const lines = statusOutput.trim().split('\n').filter(line => line.trim());
+			const lines = statusOutput
+				.trim()
+				.split('\n')
+				.filter((line) => line.trim());
 			const stagedFiles = [];
 			const modifiedFiles = [];
 			const untrackedFiles = [];
 
-			lines.forEach(line => {
+			lines.forEach((line) => {
 				const status = line.substring(0, 2);
 				const file = line.substring(3);
 
@@ -146,7 +149,12 @@ export class GitWorkflowManager {
 			}
 
 			// Generate commit message
-			const commitMessage = this.generateCommitMessage(commitType, subtaskInfo, customMessage, includeDetails);
+			const commitMessage = this.generateCommitMessage(
+				commitType,
+				subtaskInfo,
+				customMessage,
+				includeDetails
+			);
 
 			// Create commit
 			execSync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`, {
@@ -186,11 +194,19 @@ export class GitWorkflowManager {
 		try {
 			// Check if there are test files to commit
 			const gitStatus = await this.getGitStatus(worktreePath);
-			const testFiles = [...gitStatus.stagedFiles, ...gitStatus.modifiedFiles, ...gitStatus.untrackedFiles]
-				.filter(item => {
-					const file = typeof item === 'string' ? item : item.file;
-					return file.includes('test') || file.includes('spec') || file.endsWith('.test.js') || file.endsWith('.spec.js');
-				});
+			const testFiles = [
+				...gitStatus.stagedFiles,
+				...gitStatus.modifiedFiles,
+				...gitStatus.untrackedFiles
+			].filter((item) => {
+				const file = typeof item === 'string' ? item : item.file;
+				return (
+					file.includes('test') ||
+					file.includes('spec') ||
+					file.endsWith('.test.js') ||
+					file.endsWith('.spec.js')
+				);
+			});
 
 			if (testFiles.length === 0) {
 				return {
@@ -207,7 +223,10 @@ export class GitWorkflowManager {
 			}
 
 			// Generate test commit message
-			const testCommitMessage = this.generateTestCommitMessage(taskInfo, testDetails);
+			const testCommitMessage = this.generateTestCommitMessage(
+				taskInfo,
+				testDetails
+			);
 
 			// Create test commit
 			execSync(`git commit -m "${testCommitMessage.replace(/"/g, '\\"')}"`, {
@@ -225,7 +244,7 @@ export class GitWorkflowManager {
 				success: true,
 				commitHash,
 				commitMessage: testCommitMessage,
-				testFiles: testFiles.map(f => typeof f === 'string' ? f : f.file),
+				testFiles: testFiles.map((f) => (typeof f === 'string' ? f : f.file)),
 				filesChanged: testFiles.length
 			};
 		} catch (error) {
@@ -246,10 +265,10 @@ export class GitWorkflowManager {
 	 */
 	generateCommitMessage(type, taskInfo, customMessage, includeDetails = true) {
 		const { id, title, parentId, details } = taskInfo;
-		
+
 		// Determine if this is a subtask
 		const isSubtask = parentId || id.toString().includes('.');
-		const taskId = isSubtask ? (parentId || id.split('.')[0]) : id;
+		const taskId = isSubtask ? parentId || id.split('.')[0] : id;
 		const fullId = isSubtask ? id : id;
 
 		// Build commit title
@@ -285,7 +304,9 @@ export class GitWorkflowManager {
 			bodyParts.push(`\nTask ${fullId}: ${title}`);
 		}
 
-		return bodyParts.length > 0 ? `${commitTitle}\n\n${bodyParts.join('\n')}` : commitTitle;
+		return bodyParts.length > 0
+			? `${commitTitle}\n\n${bodyParts.join('\n')}`
+			: commitTitle;
 	}
 
 	/**
@@ -305,9 +326,12 @@ export class GitWorkflowManager {
 		}
 
 		const testTypes = [];
-		if (testDetails.unitTests) testTypes.push('Unit tests for core functionality');
-		if (testDetails.integrationTests) testTypes.push('Integration tests for API endpoints');
-		if (testDetails.e2eTests) testTypes.push('End-to-end tests for user workflows');
+		if (testDetails.unitTests)
+			testTypes.push('Unit tests for core functionality');
+		if (testDetails.integrationTests)
+			testTypes.push('Integration tests for API endpoints');
+		if (testDetails.e2eTests)
+			testTypes.push('End-to-end tests for user workflows');
 
 		if (testTypes.length > 0) {
 			message += `\n\n- ${testTypes.join('\n- ')}`;
@@ -344,15 +368,21 @@ export class GitWorkflowManager {
 	 */
 	async getCommitHistory(worktreePath, limit = 10) {
 		try {
-			const output = execSync(`git log --oneline -${limit} --pretty=format:"%h|%s|%an|%ad" --date=short`, {
-				cwd: worktreePath,
-				encoding: 'utf8'
-			});
+			const output = execSync(
+				`git log --oneline -${limit} --pretty=format:"%h|%s|%an|%ad" --date=short`,
+				{
+					cwd: worktreePath,
+					encoding: 'utf8'
+				}
+			);
 
-			return output.trim().split('\n').map(line => {
-				const [hash, subject, author, date] = line.split('|');
-				return { hash, subject, author, date };
-			});
+			return output
+				.trim()
+				.split('\n')
+				.map((line) => {
+					const [hash, subject, author, date] = line.split('|');
+					return { hash, subject, author, date };
+				});
 		} catch (error) {
 			return [];
 		}
@@ -366,7 +396,10 @@ export class GitWorkflowManager {
 	async validateRepositoryState(worktreePath) {
 		try {
 			// Check if it's a git repository
-			execSync('git rev-parse --git-dir', { cwd: worktreePath, stdio: 'ignore' });
+			execSync('git rev-parse --git-dir', {
+				cwd: worktreePath,
+				stdio: 'ignore'
+			});
 
 			// Check if there are any commits
 			let hasCommits = true;
@@ -398,4 +431,4 @@ export class GitWorkflowManager {
 			};
 		}
 	}
-} 
+}

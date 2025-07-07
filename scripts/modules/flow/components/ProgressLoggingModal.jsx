@@ -30,7 +30,7 @@ export function ProgressLoggingModal({
 		testing: '',
 		documentation: ''
 	});
-	
+
 	const [currentSection, setCurrentSection] = useState(0);
 	const [loading, setLoading] = useState(false);
 
@@ -68,21 +68,21 @@ export function ProgressLoggingModal({
 	};
 
 	const addArrayItem = (field, defaultValue) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			[field]: [...prev[field], defaultValue]
 		}));
 	};
 
 	const updateArrayItem = (field, index, value) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
-			[field]: prev[field].map((item, i) => i === index ? value : item)
+			[field]: prev[field].map((item, i) => (i === index ? value : item))
 		}));
 	};
 
 	const removeArrayItem = (field, index) => {
-		setFormData(prev => ({
+		setFormData((prev) => ({
 			...prev,
 			[field]: prev[field].filter((_, i) => i !== index)
 		}));
@@ -106,7 +106,9 @@ export function ProgressLoggingModal({
 						<Text color={theme.accent}>{section.label}:</Text>
 						{formData[section.field].map((item, index) => (
 							<Box key={index} marginLeft={2}>
-								<Text>• {typeof item === 'string' ? item : JSON.stringify(item)}</Text>
+								<Text>
+									• {typeof item === 'string' ? item : JSON.stringify(item)}
+								</Text>
 							</Box>
 						))}
 					</Box>
@@ -119,7 +121,9 @@ export function ProgressLoggingModal({
 						{formData[section.field].map((item, index) => (
 							<Box key={index} marginLeft={2} flexDirection="column">
 								{Object.entries(item).map(([key, value]) => (
-									<Text key={key}>• {key}: {value || 'Not specified'}</Text>
+									<Text key={key}>
+										• {key}: {value || 'Not specified'}
+									</Text>
 								))}
 							</Box>
 						))}
@@ -142,7 +146,7 @@ export function ProgressLoggingModal({
 	}
 
 	return (
-		<BaseModal 
+		<BaseModal
 			title={`Log ${phase.charAt(0).toUpperCase() + phase.slice(1)} Progress - ${subtask.title}`}
 			onClose={onCancel}
 		>
@@ -150,13 +154,14 @@ export function ProgressLoggingModal({
 				{/* Progress indicator */}
 				<Box marginBottom={1}>
 					<Text color={theme.textDim}>
-						Section {currentSection + 1} of {sections.length} - Use Tab/Shift+Tab to navigate
+						Section {currentSection + 1} of {sections.length} - Use
+						Tab/Shift+Tab to navigate
 					</Text>
 				</Box>
 
 				{/* Current section */}
-				<Box 
-					borderStyle="round" 
+				<Box
+					borderStyle="round"
 					borderColor={theme.accent}
 					padding={1}
 					marginBottom={1}
@@ -182,7 +187,9 @@ export function ProgressLoggingModal({
 				{/* Save button indicator */}
 				{currentSection === sections.length - 1 && (
 					<Box marginTop={1}>
-						<Text color={theme.success}>Press Enter to save progress update</Text>
+						<Text color={theme.success}>
+							Press Enter to save progress update
+						</Text>
 					</Box>
 				)}
 			</Box>
@@ -201,7 +208,7 @@ function getSectionsForPhase(phase) {
 		{
 			type: 'object-array',
 			field: 'whatDidntWork',
-			label: 'What Didn\'t Work',
+			label: "What Didn't Work",
 			instructions: 'Document issues encountered and their reasons'
 		},
 		{
@@ -301,13 +308,13 @@ function formatProgressUpdate(phase, formData) {
 			return `## Exploration Phase
 
 **Files to modify:**
-${formData.filesToModify.map(f => `- ${f.path}: ${f.description}`).join('\n')}
+${formData.filesToModify.map((f) => `- ${f.path}: ${f.description}`).join('\n')}
 
 **Proposed approach:**
 ${formData.approach}
 
 **Potential challenges:**
-${formData.challenges.map(c => `- ${c}`).join('\n')}
+${formData.challenges.map((c) => `- ${c}`).join('\n')}
 
 **Implementation plan:**
 ${formData.implementationSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`;
@@ -319,10 +326,10 @@ ${formData.implementationSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')}
 ${formData.finalApproach}
 
 **Key learnings:**
-${formData.keyLearnings.map(learning => `- ${learning}`).join('\n')}
+${formData.keyLearnings.map((learning) => `- ${learning}`).join('\n')}
 
 **Code patterns established:**
-${formData.codePatterns.map(pattern => `- ${pattern}`).join('\n')}
+${formData.codePatterns.map((pattern) => `- ${pattern}`).join('\n')}
 
 **Testing completed:**
 ${formData.testing}
@@ -335,18 +342,18 @@ ${formData.documentation}`;
 			return `## Implementation Progress
 
 **What worked:**
-${formData.whatWorked.map(item => `- ${item}`).join('\n')}
+${formData.whatWorked.map((item) => `- ${item}`).join('\n')}
 
 **What didn't work:**
-${formData.whatDidntWork.map(item => `- ${item.issue}: ${item.reason}`).join('\n')}
+${formData.whatDidntWork.map((item) => `- ${item.issue}: ${item.reason}`).join('\n')}
 
 **Code changes made:**
-${formData.codeChanges.map(change => `- ${change.file}: ${change.description}`).join('\n')}
+${formData.codeChanges.map((change) => `- ${change.file}: ${change.description}`).join('\n')}
 
 **Decisions made:**
-${formData.decisions.map(d => `- ${d.decision}: ${d.reasoning}`).join('\n')}
+${formData.decisions.map((d) => `- ${d.decision}: ${d.reasoning}`).join('\n')}
 
 **Next steps:**
-${formData.nextSteps.map(step => `- ${step}`).join('\n')}`;
+${formData.nextSteps.map((step) => `- ${step}`).join('\n')}`;
 	}
-} 
+}

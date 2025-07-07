@@ -133,31 +133,36 @@ const SafetyTab = () => {
 	const { getConfigValue, updateConfig } = useConfiguration();
 
 	const safetyModeOptions = [
-		{ 
-			label: 'Vibe Mode (Fast & Minimal)', 
+		{
+			label: 'Vibe Mode (Fast & Minimal)',
 			value: 'vibe',
 			description: 'Skip most checks, fast iteration'
 		},
-		{ 
-			label: 'Standard Mode (Balanced)', 
+		{
+			label: 'Standard Mode (Balanced)',
 			value: 'standard',
 			description: 'Basic safety checks, auto-create PRs'
 		},
-		{ 
-			label: 'Strict Mode (Comprehensive)', 
+		{
+			label: 'Strict Mode (Comprehensive)',
 			value: 'strict',
 			description: 'All checks required, manual approval'
 		}
 	];
 
-	const currentSafetyMode = getConfigValue('hooks.builtIn.claudeCodeStop.safetyMode', 'standard');
+	const currentSafetyMode = getConfigValue(
+		'hooks.builtIn.claudeCodeStop.safetyMode',
+		'standard'
+	);
 	const isVibeMode = currentSafetyMode === 'vibe';
 	const isStrictMode = currentSafetyMode === 'strict';
 
 	return (
 		<Box flexDirection="column" gap={1}>
-			<Text bold color="cyan">Safety Mode Configuration</Text>
-			
+			<Text bold color="cyan">
+				Safety Mode Configuration
+			</Text>
+
 			<Box flexDirection="column" gap={1} marginLeft={2}>
 				{safetyModeOptions.map((option) => (
 					<Box key={option.value} flexDirection="row" alignItems="center">
@@ -169,7 +174,12 @@ const SafetyTab = () => {
 			</Box>
 
 			<Box marginTop={1}>
-				<Text dimColor>{safetyModeOptions.find(o => o.value === currentSafetyMode)?.description}</Text>
+				<Text dimColor>
+					{
+						safetyModeOptions.find((o) => o.value === currentSafetyMode)
+							?.description
+					}
+				</Text>
 			</Box>
 
 			<Box flexDirection="column" gap={1} marginTop={2}>
@@ -197,7 +207,8 @@ const SafetyTab = () => {
 				<Text bold>PR Creation</Text>
 				<Box marginLeft={2} flexDirection="column">
 					<Text color={isStrictMode ? 'yellow' : 'green'}>
-						Auto-create PRs: {isStrictMode ? 'Manual Approval Required' : 'Enabled'}
+						Auto-create PRs:{' '}
+						{isStrictMode ? 'Manual Approval Required' : 'Enabled'}
 					</Text>
 				</Box>
 			</Box>
@@ -209,51 +220,74 @@ const NotificationTab = () => {
 	const { getConfigValue, updateConfig } = useConfiguration();
 
 	const notificationChannels = [
-		{ 
-			key: 'app', 
-			label: 'In-App Notifications', 
+		{
+			key: 'app',
+			label: 'In-App Notifications',
 			description: 'Show notifications in the TUI interface',
 			icon: '📱'
 		},
-		{ 
-			key: 'email', 
-			label: 'Email Notifications', 
+		{
+			key: 'email',
+			label: 'Email Notifications',
 			description: 'Send notifications via email webhook',
 			icon: '📧'
 		},
-		{ 
-			key: 'slack', 
-			label: 'Slack Notifications', 
+		{
+			key: 'slack',
+			label: 'Slack Notifications',
 			description: 'Send notifications to Slack channel',
 			icon: '💬'
 		},
-		{ 
-			key: 'telegram', 
-			label: 'Telegram Notifications', 
+		{
+			key: 'telegram',
+			label: 'Telegram Notifications',
 			description: 'Send notifications via Telegram bot',
 			icon: '✈️'
 		},
-		{ 
-			key: 'sms', 
-			label: 'SMS Notifications', 
+		{
+			key: 'sms',
+			label: 'SMS Notifications',
 			description: 'Send critical alerts via SMS',
 			icon: '📱'
 		}
 	];
 
 	const notificationEvents = [
-		{ key: 'pr-created', label: 'PR Created', description: 'When a new PR is created' },
-		{ key: 'pr-merged', label: 'PR Merged', description: 'When a PR is successfully merged' },
-		{ key: 'checks-failed', label: 'Checks Failed', description: 'When PR checks fail' },
-		{ key: 'session-completed', label: 'Session Completed', description: 'When Claude Code session completes' },
+		{
+			key: 'pr-created',
+			label: 'PR Created',
+			description: 'When a new PR is created'
+		},
+		{
+			key: 'pr-merged',
+			label: 'PR Merged',
+			description: 'When a PR is successfully merged'
+		},
+		{
+			key: 'checks-failed',
+			label: 'Checks Failed',
+			description: 'When PR checks fail'
+		},
+		{
+			key: 'session-completed',
+			label: 'Session Completed',
+			description: 'When Claude Code session completes'
+		},
 		{ key: 'error', label: 'Errors', description: 'When errors occur' },
-		{ key: 'critical', label: 'Critical Alerts', description: 'Critical system alerts' }
+		{
+			key: 'critical',
+			label: 'Critical Alerts',
+			description: 'Critical system alerts'
+		}
 	];
 
 	const isNotificationsEnabled = getConfigValue('notifications.enabled', true);
 
 	const getChannelEnabled = (channel) => {
-		return getConfigValue(`notifications.channels.${channel}.enabled`, channel === 'app');
+		return getConfigValue(
+			`notifications.channels.${channel}.enabled`,
+			channel === 'app'
+		);
 	};
 
 	const getChannelEvents = (channel) => {
@@ -268,9 +302,9 @@ const NotificationTab = () => {
 	const toggleChannelEvent = (channel, event) => {
 		const currentEvents = getChannelEvents(channel);
 		const hasEvent = currentEvents.includes(event);
-		
+
 		if (hasEvent) {
-			const newEvents = currentEvents.filter(e => e !== event);
+			const newEvents = currentEvents.filter((e) => e !== event);
 			updateConfig(`notifications.channels.${channel}.events`, newEvents);
 		} else {
 			const newEvents = [...currentEvents, event];
@@ -280,8 +314,10 @@ const NotificationTab = () => {
 
 	return (
 		<Box flexDirection="column" gap={1}>
-			<Text bold color="cyan">Notification Configuration</Text>
-			
+			<Text bold color="cyan">
+				Notification Configuration
+			</Text>
+
 			<Box flexDirection="row" alignItems="center" gap={2}>
 				<Text>Global Notifications:</Text>
 				<Text color={isNotificationsEnabled ? 'green' : 'red'}>
@@ -296,9 +332,14 @@ const NotificationTab = () => {
 						{notificationChannels.map((channel) => {
 							const isEnabled = getChannelEnabled(channel.key);
 							const events = getChannelEvents(channel.key);
-							
+
 							return (
-								<Box key={channel.key} flexDirection="column" marginLeft={2} gap={1}>
+								<Box
+									key={channel.key}
+									flexDirection="column"
+									marginLeft={2}
+									gap={1}
+								>
 									<Box flexDirection="row" alignItems="center" gap={2}>
 										<Text>{channel.icon}</Text>
 										<Text color={isEnabled ? 'green' : 'gray'}>
@@ -306,11 +347,11 @@ const NotificationTab = () => {
 										</Text>
 									</Box>
 									<Box marginLeft={4}>
-										<Text dimColor wrap="wrap">{channel.description}</Text>
+										<Text dimColor wrap="wrap">
+											{channel.description}
+										</Text>
 										{isEnabled && events.length > 0 && (
-											<Text color="yellow">
-												Events: {events.join(', ')}
-											</Text>
+											<Text color="yellow">Events: {events.join(', ')}</Text>
 										)}
 										{isEnabled && events.length === 0 && (
 											<Text color="red">No events configured</Text>
@@ -336,26 +377,41 @@ const NotificationTab = () => {
 						<Box marginLeft={2} flexDirection="column">
 							{notificationChannels.map((channel) => {
 								if (channel.key === 'app') return null; // Skip app channel
-								
+
 								const isEnabled = getChannelEnabled(channel.key);
 								if (!isEnabled) return null;
-								
+
 								// Check for required environment variables
 								const envVars = {
 									email: ['EMAIL_WEBHOOK', 'EMAIL_RECIPIENT'],
 									slack: ['SLACK_WEBHOOK'],
 									telegram: ['TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID'],
-									sms: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'SMS_RECIPIENT']
+									sms: [
+										'TWILIO_ACCOUNT_SID',
+										'TWILIO_AUTH_TOKEN',
+										'TWILIO_PHONE_NUMBER',
+										'SMS_RECIPIENT'
+									]
 								};
-								
+
 								const requiredVars = envVars[channel.key] || [];
-								const missingVars = requiredVars.filter(varName => !process.env[varName]);
-								
+								const missingVars = requiredVars.filter(
+									(varName) => !process.env[varName]
+								);
+
 								return (
-									<Box key={channel.key} flexDirection="row" alignItems="center" gap={2}>
+									<Box
+										key={channel.key}
+										flexDirection="row"
+										alignItems="center"
+										gap={2}
+									>
 										<Text>{channel.icon}</Text>
 										<Text color={missingVars.length === 0 ? 'green' : 'red'}>
-											{channel.label}: {missingVars.length === 0 ? 'Configured' : `Missing: ${missingVars.join(', ')}`}
+											{channel.label}:{' '}
+											{missingVars.length === 0
+												? 'Configured'
+												: `Missing: ${missingVars.join(', ')}`}
 										</Text>
 									</Box>
 								);

@@ -21,13 +21,20 @@ const mockParserRegistry = {
 describe('JavaScript Parser - Comprehensive Tests', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Setup default mock behaviors
 		mockJavaScriptParser.getLanguageId.mockReturnValue('javascript');
-		mockJavaScriptParser.getSupportedExtensions.mockReturnValue(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs']);
+		mockJavaScriptParser.getSupportedExtensions.mockReturnValue([
+			'.js',
+			'.jsx',
+			'.ts',
+			'.tsx',
+			'.mjs',
+			'.cjs'
+		]);
 		mockJavaScriptParser.isInitialized.mockReturnValue(true);
 		mockJavaScriptParser.validateContent.mockReturnValue(true);
-		
+
 		mockParserRegistry.getParser.mockReturnValue(mockJavaScriptParser);
 	});
 
@@ -38,36 +45,40 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					return "Hello, " + name;
 				}
 			`;
-			
+
 			const expectedAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { name: 'greet' },
-					params: [{ name: 'name' }],
-					body: {
-						type: 'BlockStatement',
-						body: [{
-							type: 'ReturnStatement',
-							argument: {
-								type: 'BinaryExpression',
-								operator: '+',
-								left: { type: 'Literal', value: 'Hello, ' },
-								right: { type: 'Identifier', name: 'name' }
-							}
-						}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { name: 'greet' },
+						params: [{ name: 'name' }],
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'ReturnStatement',
+									argument: {
+										type: 'BinaryExpression',
+										operator: '+',
+										left: { type: 'Literal', value: 'Hello, ' },
+										right: { type: 'Identifier', name: 'name' }
+									}
+								}
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.type).toBe('Program');
 			expect(result.ast.body[0].type).toBe('FunctionDeclaration');
@@ -82,43 +93,47 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				
 				const simpleGreet = name => \`Hi, \${name}!\`;
 			`;
-			
+
 			const expectedAST = {
 				type: 'Program',
 				body: [
 					{
 						type: 'VariableDeclaration',
-						declarations: [{
-							type: 'VariableDeclarator',
-							id: { name: 'greet' },
-							init: {
-								type: 'ArrowFunctionExpression',
-								params: [{ name: 'name' }]
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { name: 'greet' },
+								init: {
+									type: 'ArrowFunctionExpression',
+									params: [{ name: 'name' }]
+								}
 							}
-						}]
+						]
 					},
 					{
 						type: 'VariableDeclaration',
-						declarations: [{
-							type: 'VariableDeclarator',
-							id: { name: 'simpleGreet' },
-							init: {
-								type: 'ArrowFunctionExpression',
-								params: [{ name: 'name' }]
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { name: 'simpleGreet' },
+								init: {
+									type: 'ArrowFunctionExpression',
+									params: [{ name: 'name' }]
+								}
 							}
-						}]
+						]
 					}
 				]
 			};
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(2);
 			expect(result.ast.body[0].declarations[0].id.name).toBe('greet');
@@ -142,31 +157,37 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					}
 				}
 			`;
-			
+
 			const expectedAST = {
 				type: 'Program',
-				body: [{
-					type: 'ClassDeclaration',
-					id: { name: 'User' },
-					body: {
-						type: 'ClassBody',
-						body: [
-							{ type: 'MethodDefinition', key: { name: 'constructor' } },
-							{ type: 'MethodDefinition', key: { name: 'greet' } },
-							{ type: 'MethodDefinition', key: { name: 'createGuest' }, static: true }
-						]
+				body: [
+					{
+						type: 'ClassDeclaration',
+						id: { name: 'User' },
+						body: {
+							type: 'ClassBody',
+							body: [
+								{ type: 'MethodDefinition', key: { name: 'constructor' } },
+								{ type: 'MethodDefinition', key: { name: 'greet' } },
+								{
+									type: 'MethodDefinition',
+									key: { name: 'createGuest' },
+									static: true
+								}
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].type).toBe('ClassDeclaration');
 			expect(result.ast.body[0].id.name).toBe('User');
@@ -181,7 +202,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				const [first, second, ...rest] = array;
 				const { name: userName, age = 25 } = user;
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -189,32 +210,38 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					body: [
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								type: 'VariableDeclarator',
-								id: { type: 'ObjectPattern' }
-							}]
+							declarations: [
+								{
+									type: 'VariableDeclarator',
+									id: { type: 'ObjectPattern' }
+								}
+							]
 						},
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								type: 'VariableDeclarator',
-								id: { type: 'ArrayPattern' }
-							}]
+							declarations: [
+								{
+									type: 'VariableDeclarator',
+									id: { type: 'ArrayPattern' }
+								}
+							]
 						},
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								type: 'VariableDeclarator',
-								id: { type: 'ObjectPattern' }
-							}]
+							declarations: [
+								{
+									type: 'VariableDeclarator',
+									id: { type: 'ObjectPattern' }
+								}
+							]
 						}
 					]
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(3);
 			expect(result.ast.body[0].declarations[0].id.type).toBe('ObjectPattern');
@@ -238,7 +265,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					return await api.getUser(id);
 				};
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -249,38 +276,44 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 							async: true,
 							id: { name: 'fetchData' },
 							body: {
-								body: [{
-									type: 'TryStatement',
-									block: {
-										body: [
-											{
-												type: 'VariableDeclaration',
-												declarations: [{
-													init: { type: 'AwaitExpression' }
-												}]
-											}
-										]
+								body: [
+									{
+										type: 'TryStatement',
+										block: {
+											body: [
+												{
+													type: 'VariableDeclaration',
+													declarations: [
+														{
+															init: { type: 'AwaitExpression' }
+														}
+													]
+												}
+											]
+										}
 									}
-								}]
+								]
 							}
 						},
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								id: { name: 'fetchUser' },
-								init: {
-									type: 'ArrowFunctionExpression',
-									async: true
+							declarations: [
+								{
+									id: { name: 'fetchUser' },
+									init: {
+										type: 'ArrowFunctionExpression',
+										async: true
+									}
 								}
-							}]
+							]
 						}
 					]
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].async).toBe(true);
 			expect(result.ast.body[1].declarations[0].init.async).toBe(true);
@@ -296,7 +329,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				export default class MyClass {}
 				export { myFunction as func };
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -312,9 +345,9 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(6);
 			expect(result.ast.body[0].type).toBe('ImportDeclaration');
@@ -336,43 +369,53 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					);
 				};
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Program',
-					body: [{
-						type: 'VariableDeclaration',
-						declarations: [{
-							id: { name: 'Component' },
-							init: {
-								type: 'ArrowFunctionExpression',
-								body: {
-									body: [{
-										type: 'ReturnStatement',
-										argument: {
-											type: 'JSXElement',
-											openingElement: {
-												name: { name: 'div' },
-												attributes: [{
-													name: { name: 'className' },
-													value: { value: 'container' }
-												}]
-											}
+					body: [
+						{
+							type: 'VariableDeclaration',
+							declarations: [
+								{
+									id: { name: 'Component' },
+									init: {
+										type: 'ArrowFunctionExpression',
+										body: {
+											body: [
+												{
+													type: 'ReturnStatement',
+													argument: {
+														type: 'JSXElement',
+														openingElement: {
+															name: { name: 'div' },
+															attributes: [
+																{
+																	name: { name: 'className' },
+																	value: { value: 'container' }
+																}
+															]
+														}
+													}
+												}
+											]
 										}
-									}]
+									}
 								}
-							}
-						}]
-					}]
+							]
+						}
+					]
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.jsx');
-			
+
 			expect(result.success).toBe(true);
-			expect(result.ast.body[0].declarations[0].init.body.body[0].argument.type).toBe('JSXElement');
+			expect(
+				result.ast.body[0].declarations[0].init.body.body[0].argument.type
+			).toBe('JSXElement');
 		});
 
 		test('should parse JSX with props and expressions', async () => {
@@ -388,37 +431,43 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					</div>
 				);
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Program',
-					body: [{
-						type: 'VariableDeclaration',
-						declarations: [{
-							id: { name: 'UserCard' },
-							init: {
-								type: 'ArrowFunctionExpression',
-								body: {
-									type: 'JSXElement',
-									children: [
-										{ type: 'JSXElement' }, // img
-										{ type: 'JSXElement' }, // h2
-										{ type: 'JSXElement' }, // p
-										{ type: 'JSXElement' }  // button
-									]
+					body: [
+						{
+							type: 'VariableDeclaration',
+							declarations: [
+								{
+									id: { name: 'UserCard' },
+									init: {
+										type: 'ArrowFunctionExpression',
+										body: {
+											type: 'JSXElement',
+											children: [
+												{ type: 'JSXElement' }, // img
+												{ type: 'JSXElement' }, // h2
+												{ type: 'JSXElement' }, // p
+												{ type: 'JSXElement' } // button
+											]
+										}
+									}
 								}
-							}
-						}]
-					}]
+							]
+						}
+					]
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.jsx');
-			
+
 			expect(result.success).toBe(true);
-			expect(result.ast.body[0].declarations[0].init.body.type).toBe('JSXElement');
+			expect(result.ast.body[0].declarations[0].init.body.type).toBe(
+				'JSXElement'
+			);
 		});
 	});
 
@@ -438,7 +487,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					message?: string;
 				}
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -451,7 +500,11 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 								body: [
 									{ type: 'TSPropertySignature', key: { name: 'id' } },
 									{ type: 'TSPropertySignature', key: { name: 'name' } },
-									{ type: 'TSPropertySignature', key: { name: 'email' }, optional: true },
+									{
+										type: 'TSPropertySignature',
+										key: { name: 'email' },
+										optional: true
+									},
 									{ type: 'TSPropertySignature', key: { name: 'roles' } }
 								]
 							}
@@ -467,9 +520,9 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				},
 				language: 'typescript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.ts');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].type).toBe('TSInterfaceDeclaration');
 			expect(result.ast.body[0].id.name).toBe('User');
@@ -493,7 +546,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					}
 				}
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -502,14 +555,19 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 						{
 							type: 'FunctionDeclaration',
 							id: { name: 'processUser' },
-							params: [{
-								type: 'Identifier',
-								name: 'user',
-								typeAnnotation: {
-									type: 'TSTypeAnnotation',
-									typeAnnotation: { type: 'TSTypeReference', typeName: { name: 'User' } }
+							params: [
+								{
+									type: 'Identifier',
+									name: 'user',
+									typeAnnotation: {
+										type: 'TSTypeAnnotation',
+										typeAnnotation: {
+											type: 'TSTypeReference',
+											typeName: { name: 'User' }
+										}
+									}
 								}
-							}],
+							],
 							returnType: {
 								type: 'TSTypeAnnotation',
 								typeAnnotation: { type: 'TSTypeReference' }
@@ -517,25 +575,29 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 						},
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								id: {
-									name: 'users',
-									typeAnnotation: {
-										type: 'TSTypeAnnotation',
-										typeAnnotation: { type: 'TSArrayType' }
+							declarations: [
+								{
+									id: {
+										name: 'users',
+										typeAnnotation: {
+											type: 'TSTypeAnnotation',
+											typeAnnotation: { type: 'TSArrayType' }
+										}
 									}
 								}
-							}]
+							]
 						}
 					]
 				},
 				language: 'typescript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.ts');
-			
+
 			expect(result.success).toBe(true);
-			expect(result.ast.body[0].params[0].typeAnnotation.typeAnnotation.typeName.name).toBe('User');
+			expect(
+				result.ast.body[0].params[0].typeAnnotation.typeAnnotation.typeName.name
+			).toBe('User');
 		});
 	});
 
@@ -546,7 +608,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					return "unclosed string
 				}
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -557,9 +619,9 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					file: 'test.js'
 				}
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.type).toBe('SyntaxError');
 			expect(result.error.message).toContain('Unterminated string');
@@ -568,7 +630,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 
 		test('should handle empty files', async () => {
 			const content = '';
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -577,9 +639,9 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(0);
 		});
@@ -592,7 +654,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				 * This is a JSDoc comment
 				 */
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -601,14 +663,17 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					comments: [
 						{ type: 'Line', value: ' This is a comment' },
 						{ type: 'Block', value: ' This is a block comment ' },
-						{ type: 'Block', value: '*\n\t\t\t\t * This is a JSDoc comment\n\t\t\t\t ' }
+						{
+							type: 'Block',
+							value: '*\n\t\t\t\t * This is a JSDoc comment\n\t\t\t\t '
+						}
 					]
 				},
 				language: 'javascript'
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.js');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(0);
 			expect(result.ast.comments).toHaveLength(3);
@@ -624,7 +689,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					);
 				};
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -635,9 +700,9 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					file: 'test.jsx'
 				}
 			});
-			
+
 			const result = await mockJavaScriptParser.parse(content, 'test.jsx');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.message).toContain('JSX closing tag');
 		});
@@ -646,42 +711,42 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 	describe('Performance Tests', () => {
 		test('should parse small files quickly', async () => {
 			const content = 'const x = 1;';
-			
+
 			mockJavaScriptParser.parse.mockImplementation(async () => {
 				// Simulate fast parsing
-				await new Promise(resolve => setTimeout(resolve, 1));
+				await new Promise((resolve) => setTimeout(resolve, 1));
 				return {
 					success: true,
 					ast: { type: 'Program', body: [] },
 					language: 'javascript'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockJavaScriptParser.parse(content, 'test.js');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(10); // Should be under 10ms
 		});
 
 		test('should handle large files efficiently', async () => {
 			// Create a large JavaScript file content
 			const largeContent = Array(1000).fill('const x = 1;').join('\n');
-			
+
 			mockJavaScriptParser.parse.mockImplementation(async () => {
 				// Simulate parsing time proportional to content size
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 				return {
 					success: true,
 					ast: { type: 'Program', body: [] },
 					language: 'javascript'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockJavaScriptParser.parse(largeContent, 'test.js');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(100); // Should be under 100ms even for large files
 		});
 
@@ -706,20 +771,20 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					return n * recursiveFunction(n - 1);
 				}
 			`;
-			
+
 			mockJavaScriptParser.parse.mockImplementation(async () => {
-				await new Promise(resolve => setTimeout(resolve, 5));
+				await new Promise((resolve) => setTimeout(resolve, 5));
 				return {
 					success: true,
 					ast: { type: 'Program', body: [] },
 					language: 'javascript'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockJavaScriptParser.parse(complexContent, 'test.js');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(50); // Should handle complexity efficiently
 		});
 	});
@@ -727,7 +792,7 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 	describe('File Extension Support', () => {
 		test('should support all JavaScript extensions', () => {
 			const extensions = mockJavaScriptParser.getSupportedExtensions();
-			
+
 			expect(extensions).toContain('.js');
 			expect(extensions).toContain('.jsx');
 			expect(extensions).toContain('.ts');
@@ -753,17 +818,20 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 
 		test('should parse files through registry', async () => {
 			const content = 'const test = true;';
-			
+
 			mockParserRegistry.parseFile.mockResolvedValue({
 				success: true,
 				ast: { type: 'Program', body: [] },
 				language: 'javascript'
 			});
-			
+
 			const result = await mockParserRegistry.parseFile('test.js', content);
-			
+
 			expect(result.success).toBe(true);
-			expect(mockParserRegistry.parseFile).toHaveBeenCalledWith('test.js', content);
+			expect(mockParserRegistry.parseFile).toHaveBeenCalledWith(
+				'test.js',
+				content
+			);
 		});
 	});
 
@@ -801,14 +869,17 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 					console.log(\`Server running on port \${PORT}\`);
 				});
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'Program', body: [] },
 				language: 'javascript'
 			});
-			
-			const result = await mockJavaScriptParser.parse(expressContent, 'server.js');
+
+			const result = await mockJavaScriptParser.parse(
+				expressContent,
+				'server.js'
+			);
 			expect(result.success).toBe(true);
 		});
 
@@ -906,15 +977,18 @@ describe('JavaScript Parser - Comprehensive Tests', () => {
 				
 				export default UserProfile;
 			`;
-			
+
 			mockJavaScriptParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'Program', body: [] },
 				language: 'javascript'
 			});
-			
-			const result = await mockJavaScriptParser.parse(reactContent, 'UserProfile.jsx');
+
+			const result = await mockJavaScriptParser.parse(
+				reactContent,
+				'UserProfile.jsx'
+			);
 			expect(result.success).toBe(true);
 		});
 	});
-}); 
+});

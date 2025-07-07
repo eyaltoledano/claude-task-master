@@ -53,7 +53,12 @@ export class GenericAnalyzer {
 			language: language,
 			fileType: this.detectFileType(filePath, content),
 			structure: await this.analyzeStructure(astData, content),
-			patterns: await this.analyzeGenericPatterns(astData, content, language, filePath),
+			patterns: await this.analyzeGenericPatterns(
+				astData,
+				content,
+				language,
+				filePath
+			),
 			complexity: await this.analyzeComplexity(astData, content, language),
 			codeQuality: await this.analyzeCodeQuality(astData, content, filePath),
 			documentation: this.analyzeDocumentation(content),

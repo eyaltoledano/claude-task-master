@@ -28,7 +28,7 @@ export class LocalMergeManager {
 	async offerMergeOptions(worktreeInfo, repoInfo) {
 		try {
 			const validation = await this.validateMergeReadiness(worktreeInfo);
-			
+
 			const options = {
 				canCreatePR: repoInfo.isGitHub && repoInfo.canCreatePR,
 				canMergeLocal: true,
@@ -83,7 +83,7 @@ export class LocalMergeManager {
 		try {
 			const target = targetBranch || this.options.defaultTargetBranch;
 			const sourceBranch = worktreeInfo.branch;
-			
+
 			// Step 1: Validate merge readiness
 			const validation = await this.validateMergeReadiness(worktreeInfo);
 			if (!validation.ready) {
@@ -114,7 +114,7 @@ export class LocalMergeManager {
 
 				// Step 5: Merge worktree branch
 				const mergeResult = await this.executeMerge(sourceBranch, target);
-				
+
 				if (!mergeResult.success) {
 					// Restore original branch on merge failure
 					await this.switchToTargetBranch(originalBranch);
@@ -136,7 +136,6 @@ export class LocalMergeManager {
 					filesChanged: mergeResult.filesChanged,
 					cleanup
 				};
-
 			} catch (error) {
 				// Restore original branch on any error
 				try {
@@ -146,7 +145,6 @@ export class LocalMergeManager {
 				}
 				throw error;
 			}
-
 		} catch (error) {
 			return {
 				success: false,
@@ -182,7 +180,9 @@ export class LocalMergeManager {
 				if (status && this.options.requireCleanWorkingDirectory) {
 					issues.push('Worktree has uncommitted changes');
 				} else if (status) {
-					warnings.push('Worktree has uncommitted changes that will be included');
+					warnings.push(
+						'Worktree has uncommitted changes that will be included'
+					);
 				}
 			} catch (error) {
 				issues.push(`Cannot check git status: ${error.message}`);
@@ -190,10 +190,13 @@ export class LocalMergeManager {
 
 			// Check if branch exists
 			try {
-				execSync(`git show-ref --verify --quiet refs/heads/${worktreeInfo.branch}`, {
-					cwd: this.projectRoot,
-					stdio: 'ignore'
-				});
+				execSync(
+					`git show-ref --verify --quiet refs/heads/${worktreeInfo.branch}`,
+					{
+						cwd: this.projectRoot,
+						stdio: 'ignore'
+					}
+				);
 			} catch {
 				issues.push(`Source branch '${worktreeInfo.branch}' does not exist`);
 			}
@@ -206,7 +209,9 @@ export class LocalMergeManager {
 					stdio: 'ignore'
 				});
 			} catch {
-				warnings.push(`Target branch '${targetBranch}' does not exist - will be created`);
+				warnings.push(
+					`Target branch '${targetBranch}' does not exist - will be created`
+				);
 			}
 
 			return {
@@ -217,7 +222,6 @@ export class LocalMergeManager {
 				sourceBranch: worktreeInfo.branch,
 				targetBranch
 			};
-
 		} catch (error) {
 			return {
 				ready: false,
@@ -251,7 +255,8 @@ export class LocalMergeManager {
 				return {
 					success: false,
 					reason: 'uncommitted-changes',
-					message: 'Worktree has uncommitted changes that must be committed first',
+					message:
+						'Worktree has uncommitted changes that must be committed first',
 					uncommittedFiles: status.split('\n')
 				};
 			}
@@ -262,7 +267,6 @@ export class LocalMergeManager {
 				message: 'Uncommitted changes will be included in merge',
 				warning: true
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -301,7 +305,7 @@ export class LocalMergeManager {
 					cwd: this.projectRoot,
 					stdio: 'ignore'
 				});
-				
+
 				// Branch exists, switch to it
 				execSync(`git checkout ${targetBranch}`, {
 					cwd: this.projectRoot,
@@ -315,7 +319,9 @@ export class LocalMergeManager {
 				});
 			}
 		} catch (error) {
-			throw new Error(`Failed to switch to branch '${targetBranch}': ${error.message}`);
+			throw new Error(
+				`Failed to switch to branch '${targetBranch}': ${error.message}`
+			);
 		}
 	}
 
@@ -356,10 +362,13 @@ export class LocalMergeManager {
 	async executeMerge(sourceBranch, targetBranch) {
 		try {
 			// Create merge commit
-			execSync(`git merge ${sourceBranch} --no-ff -m "Merge branch '${sourceBranch}' into ${targetBranch}"`, {
-				cwd: this.projectRoot,
-				stdio: 'pipe'
-			});
+			execSync(
+				`git merge ${sourceBranch} --no-ff -m "Merge branch '${sourceBranch}' into ${targetBranch}"`,
+				{
+					cwd: this.projectRoot,
+					stdio: 'pipe'
+				}
+			);
 
 			// Get merge commit hash
 			const commitHash = execSync('git rev-parse HEAD', {
@@ -373,7 +382,8 @@ export class LocalMergeManager {
 				encoding: 'utf8'
 			});
 
-			const filesChanged = (diffStat.match(/\d+ files? changed/)?.[0] || '0 files changed');
+			const filesChanged =
+				diffStat.match(/\d+ files? changed/)?.[0] || '0 files changed';
 
 			return {
 				success: true,
@@ -381,10 +391,12 @@ export class LocalMergeManager {
 				filesChanged,
 				mergeMessage: `Merged ${sourceBranch} into ${targetBranch}`
 			};
-
 		} catch (error) {
 			// Check if it's a merge conflict
-			if (error.message.includes('CONFLICT') || error.message.includes('conflict')) {
+			if (
+				error.message.includes('CONFLICT') ||
+				error.message.includes('conflict')
+			) {
 				return {
 					success: false,
 					reason: 'merge-conflict',
@@ -434,14 +446,15 @@ export class LocalMergeManager {
 					});
 					cleanup.actions.push('source-branch-deleted');
 				} catch (error) {
-					cleanup.warnings.push(`Failed to delete source branch: ${error.message}`);
+					cleanup.warnings.push(
+						`Failed to delete source branch: ${error.message}`
+					);
 				}
 			} else {
 				cleanup.actions.push('manual-cleanup-required');
 			}
 
 			return cleanup;
-
 		} catch (error) {
 			cleanup.warnings.push(`Cleanup error: ${error.message}`);
 			return cleanup;
@@ -471,18 +484,24 @@ export class LocalMergeManager {
 	async getMergePreview(worktreeInfo, targetBranch = null) {
 		try {
 			const target = targetBranch || this.options.defaultTargetBranch;
-			
+
 			// Get diff between branches
-			const diffOutput = execSync(`git diff ${target}..${worktreeInfo.branch} --stat`, {
-				cwd: this.projectRoot,
-				encoding: 'utf8'
-			});
+			const diffOutput = execSync(
+				`git diff ${target}..${worktreeInfo.branch} --stat`,
+				{
+					cwd: this.projectRoot,
+					encoding: 'utf8'
+				}
+			);
 
 			// Get commit count
-			const commitCount = execSync(`git rev-list --count ${target}..${worktreeInfo.branch}`, {
-				cwd: this.projectRoot,
-				encoding: 'utf8'
-			}).trim();
+			const commitCount = execSync(
+				`git rev-list --count ${target}..${worktreeInfo.branch}`,
+				{
+					cwd: this.projectRoot,
+					encoding: 'utf8'
+				}
+			).trim();
 
 			return {
 				targetBranch: target,
@@ -491,7 +510,6 @@ export class LocalMergeManager {
 				diffStat: diffOutput.trim(),
 				canMerge: await this.canPerformLocalMerge(worktreeInfo)
 			};
-
 		} catch (error) {
 			return {
 				error: error.message,
@@ -499,4 +517,4 @@ export class LocalMergeManager {
 			};
 		}
 	}
-} 
+}

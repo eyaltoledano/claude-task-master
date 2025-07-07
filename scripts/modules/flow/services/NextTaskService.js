@@ -24,13 +24,13 @@ export class NextTaskService {
 	async getNextTask() {
 		try {
 			console.log('🔍 [NextTaskService] Getting next available task...');
-			
+
 			if (!this.backend?.nextTask) {
 				throw new Error('Backend does not support nextTask operation');
 			}
 
 			const result = await this.backend.nextTask();
-			
+
 			if (!result?.task) {
 				console.log('📝 [NextTaskService] No more tasks available');
 				return {
@@ -41,8 +41,10 @@ export class NextTaskService {
 				};
 			}
 
-			console.log(`📋 [NextTaskService] Found next task: ${result.task.id} - ${result.task.title}`);
-			
+			console.log(
+				`📋 [NextTaskService] Found next task: ${result.task.id} - ${result.task.title}`
+			);
+
 			return {
 				success: true,
 				hasNextTask: true,
@@ -50,9 +52,11 @@ export class NextTaskService {
 				suggestions: result.suggestions || [],
 				telemetryData: result.telemetryData
 			};
-
 		} catch (error) {
-			console.error('❌ [NextTaskService] Failed to get next task:', error.message);
+			console.error(
+				'❌ [NextTaskService] Failed to get next task:',
+				error.message
+			);
 			return {
 				success: false,
 				error: error.message,
@@ -78,8 +82,9 @@ export class NextTaskService {
 		try {
 			// Check 1: Verify task dependencies are met
 			console.log('🔍 [NextTaskService] Checking task dependencies...');
-			validationResult.checks.dependencies = await this.validateTaskDependencies(nextTask);
-			
+			validationResult.checks.dependencies =
+				await this.validateTaskDependencies(nextTask);
+
 			if (!validationResult.checks.dependencies.success) {
 				validationResult.errors.push('Task dependencies not satisfied');
 				validationResult.success = false;
@@ -88,8 +93,9 @@ export class NextTaskService {
 			// Check 2: Clean worktree state (if required)
 			if (this.config.requireCleanWorktree && currentWorktree) {
 				console.log('🔍 [NextTaskService] Checking worktree state...');
-				validationResult.checks.worktreeState = await this.validateWorktreeState(currentWorktree);
-				
+				validationResult.checks.worktreeState =
+					await this.validateWorktreeState(currentWorktree);
+
 				if (!validationResult.checks.worktreeState.success) {
 					validationResult.warnings.push('Worktree has uncommitted changes');
 					// Don't fail validation, just warn
@@ -98,22 +104,23 @@ export class NextTaskService {
 
 			// Check 3: Verify task is ready for implementation
 			console.log('🔍 [NextTaskService] Checking task readiness...');
-			validationResult.checks.taskReadiness = await this.validateTaskReadiness(nextTask);
-			
+			validationResult.checks.taskReadiness =
+				await this.validateTaskReadiness(nextTask);
+
 			if (!validationResult.checks.taskReadiness.success) {
 				validationResult.warnings.push('Task may need additional preparation');
 			}
 
 			// Check 4: Backend connectivity
-			validationResult.checks.backend = await this.validateBackendConnectivity();
-			
+			validationResult.checks.backend =
+				await this.validateBackendConnectivity();
+
 			if (!validationResult.checks.backend.success) {
 				validationResult.errors.push('Backend connectivity issues');
 				validationResult.success = false;
 			}
 
 			return validationResult;
-
 		} catch (error) {
 			console.error('❌ [NextTaskService] Validation failed:', error.message);
 			return {
@@ -132,18 +139,26 @@ export class NextTaskService {
 	 */
 	async startNextTask(nextTask, options = {}) {
 		try {
-			console.log(`🚀 [NextTaskService] Starting task ${nextTask.id}: ${nextTask.title}`);
+			console.log(
+				`🚀 [NextTaskService] Starting task ${nextTask.id}: ${nextTask.title}`
+			);
 
 			// Step 1: Set task status to in-progress
-			const statusResult = await this.updateTaskStatus(nextTask.id, 'in-progress');
-			
+			const statusResult = await this.updateTaskStatus(
+				nextTask.id,
+				'in-progress'
+			);
+
 			if (!statusResult.success) {
 				throw new Error(`Failed to update task status: ${statusResult.error}`);
 			}
 
 			// Step 2: Create or get worktree for the task
-			const worktreeResult = await this.prepareWorktreeForTask(nextTask, options);
-			
+			const worktreeResult = await this.prepareWorktreeForTask(
+				nextTask,
+				options
+			);
+
 			if (!worktreeResult.success) {
 				// Rollback status change
 				await this.updateTaskStatus(nextTask.id, 'pending');
@@ -151,15 +166,24 @@ export class NextTaskService {
 			}
 
 			// Step 3: Setup task context (optional)
-			const contextResult = await this.setupTaskContext(nextTask, worktreeResult.worktree, options);
-			
+			const contextResult = await this.setupTaskContext(
+				nextTask,
+				worktreeResult.worktree,
+				options
+			);
+
 			if (!contextResult.success) {
-				console.warn('⚠️ [NextTaskService] Task context setup had issues:', contextResult.error);
+				console.warn(
+					'⚠️ [NextTaskService] Task context setup had issues:',
+					contextResult.error
+				);
 				// Don't fail, just warn
 			}
 
-			console.log(`✅ [NextTaskService] Successfully started task ${nextTask.id}`);
-			
+			console.log(
+				`✅ [NextTaskService] Successfully started task ${nextTask.id}`
+			);
+
 			return {
 				success: true,
 				task: nextTask,
@@ -168,9 +192,11 @@ export class NextTaskService {
 				contextSetup: contextResult.success,
 				message: `Task ${nextTask.id} is ready for implementation`
 			};
-
 		} catch (error) {
-			console.error(`❌ [NextTaskService] Failed to start task ${nextTask.id}:`, error.message);
+			console.error(
+				`❌ [NextTaskService] Failed to start task ${nextTask.id}:`,
+				error.message
+			);
 			return {
 				success: false,
 				error: error.message,
@@ -195,9 +221,11 @@ export class NextTaskService {
 		try {
 			// Phase 1: Check if auto-progression is enabled
 			progressionResult.phase = 'configuration-check';
-			
+
 			if (!this.config.autoProgressToNext && !options.forceProgression) {
-				console.log('⏭️ [NextTaskService] Auto-progression disabled, skipping next task');
+				console.log(
+					'⏭️ [NextTaskService] Auto-progression disabled, skipping next task'
+				);
 				return {
 					success: true,
 					skipped: true,
@@ -208,22 +236,28 @@ export class NextTaskService {
 
 			// Phase 2: Apply delay before progression (if configured)
 			progressionResult.phase = 'delay';
-			
+
 			if (this.config.progressDelay > 0 && !options.skipDelay) {
-				console.log(`⏱️ [NextTaskService] Waiting ${this.config.progressDelay}ms before next task...`);
+				console.log(
+					`⏱️ [NextTaskService] Waiting ${this.config.progressDelay}ms before next task...`
+				);
 				await this.delay(this.config.progressDelay);
 			}
 
 			// Phase 3: Get next task
 			progressionResult.phase = 'get-next-task';
 			progressionResult.results.nextTask = await this.getNextTask();
-			
+
 			if (!progressionResult.results.nextTask.success) {
-				throw new Error(`Failed to get next task: ${progressionResult.results.nextTask.error}`);
+				throw new Error(
+					`Failed to get next task: ${progressionResult.results.nextTask.error}`
+				);
 			}
 
 			if (!progressionResult.results.nextTask.hasNextTask) {
-				console.log('🎉 [NextTaskService] No more tasks available - project complete!');
+				console.log(
+					'🎉 [NextTaskService] No more tasks available - project complete!'
+				);
 				return {
 					success: true,
 					completed: true,
@@ -236,15 +270,15 @@ export class NextTaskService {
 
 			// Phase 4: Validate readiness for next task
 			progressionResult.phase = 'validation';
-			progressionResult.results.validation = await this.validateReadyForNextTask(
-				currentContext.worktree, 
-				nextTask
-			);
+			progressionResult.results.validation =
+				await this.validateReadyForNextTask(currentContext.worktree, nextTask);
 
 			if (!progressionResult.results.validation.success) {
-				console.warn('⚠️ [NextTaskService] Validation issues detected:', 
-					progressionResult.results.validation.errors);
-				
+				console.warn(
+					'⚠️ [NextTaskService] Validation issues detected:',
+					progressionResult.results.validation.errors
+				);
+
 				// If there are critical errors, don't proceed
 				if (progressionResult.results.validation.errors.length > 0) {
 					return {
@@ -259,17 +293,24 @@ export class NextTaskService {
 
 			// Phase 5: Start the next task
 			progressionResult.phase = 'start-task';
-			progressionResult.results.startTask = await this.startNextTask(nextTask, options);
+			progressionResult.results.startTask = await this.startNextTask(
+				nextTask,
+				options
+			);
 
 			if (!progressionResult.results.startTask.success) {
-				throw new Error(`Failed to start next task: ${progressionResult.results.startTask.error}`);
+				throw new Error(
+					`Failed to start next task: ${progressionResult.results.startTask.error}`
+				);
 			}
 
 			// Success!
 			progressionResult.phase = 'completed';
 			progressionResult.success = true;
 
-			console.log(`🎯 [NextTaskService] Successfully progressed to task ${nextTask.id}`);
+			console.log(
+				`🎯 [NextTaskService] Successfully progressed to task ${nextTask.id}`
+			);
 
 			return {
 				success: true,
@@ -279,17 +320,27 @@ export class NextTaskService {
 				message: `Now working on: ${nextTask.id} - ${nextTask.title}`,
 				telemetryData: progressionResult.results.nextTask.telemetryData
 			};
-
 		} catch (error) {
-			console.error(`❌ [NextTaskService] Progression failed at ${progressionResult.phase}:`, error.message);
-			
+			console.error(
+				`❌ [NextTaskService] Progression failed at ${progressionResult.phase}:`,
+				error.message
+			);
+
 			// Attempt retry if configured
-			if (this.retryCount < this.config.maxRetries && options.enableRetries !== false) {
+			if (
+				this.retryCount < this.config.maxRetries &&
+				options.enableRetries !== false
+			) {
 				this.retryCount++;
-				console.log(`🔄 [NextTaskService] Retrying progression (attempt ${this.retryCount}/${this.config.maxRetries})...`);
-				
+				console.log(
+					`🔄 [NextTaskService] Retrying progression (attempt ${this.retryCount}/${this.config.maxRetries})...`
+				);
+
 				await this.delay(this.config.retryDelay);
-				return await this.executeNextTaskProgression(currentContext, { ...options, enableRetries: false });
+				return await this.executeNextTaskProgression(currentContext, {
+					...options,
+					enableRetries: false
+				});
 			}
 
 			return {
@@ -316,17 +367,16 @@ export class NextTaskService {
 			// Check if all dependency tasks are completed
 			for (const depId of task.dependencies) {
 				const depTask = await this.backend.getTask(depId);
-				
+
 				if (!depTask || depTask.status !== 'done') {
-					return { 
-						success: false, 
-						error: `Dependency task ${depId} is not completed (status: ${depTask?.status || 'not found'})` 
+					return {
+						success: false,
+						error: `Dependency task ${depId} is not completed (status: ${depTask?.status || 'not found'})`
 					};
 				}
 			}
 
 			return { success: true, message: 'All dependencies satisfied' };
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -338,21 +388,23 @@ export class NextTaskService {
 	async validateWorktreeState(worktree) {
 		try {
 			if (!this.backend.getWorktreeGitStatus) {
-				return { success: true, warning: 'Cannot check worktree status - method not available' };
+				return {
+					success: true,
+					warning: 'Cannot check worktree status - method not available'
+				};
 			}
 
 			const status = await this.backend.getWorktreeGitStatus(worktree.path);
-			
+
 			if (status.hasUncommittedChanges) {
-				return { 
-					success: false, 
+				return {
+					success: false,
 					warning: 'Worktree has uncommitted changes',
 					details: status
 				};
 			}
 
 			return { success: true, message: 'Worktree is clean' };
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -365,7 +417,8 @@ export class NextTaskService {
 		try {
 			// Check if task has sufficient detail for implementation
 			const hasTitle = task.title && task.title.trim().length > 0;
-			const hasDescription = task.description && task.description.trim().length > 0;
+			const hasDescription =
+				task.description && task.description.trim().length > 0;
 			const hasDetails = task.details && task.details.trim().length > 0;
 
 			if (!hasTitle) {
@@ -373,32 +426,33 @@ export class NextTaskService {
 			}
 
 			if (!hasDescription && !hasDetails) {
-				return { 
-					success: false, 
-					warning: 'Task may need more detail for implementation' 
+				return {
+					success: false,
+					warning: 'Task may need more detail for implementation'
 				};
 			}
 
 			// Check for subtasks - if they exist, validate they're properly structured
 			if (task.subtasks && task.subtasks.length > 0) {
-				const pendingSubtasks = task.subtasks.filter(st => st.status === 'pending').length;
+				const pendingSubtasks = task.subtasks.filter(
+					(st) => st.status === 'pending'
+				).length;
 				const totalSubtasks = task.subtasks.length;
 
 				if (pendingSubtasks === 0) {
-					return { 
-						success: false, 
-						error: 'Task has subtasks but none are pending' 
+					return {
+						success: false,
+						error: 'Task has subtasks but none are pending'
 					};
 				}
 
-				return { 
-					success: true, 
-					message: `Task ready with ${pendingSubtasks}/${totalSubtasks} pending subtasks` 
+				return {
+					success: true,
+					message: `Task ready with ${pendingSubtasks}/${totalSubtasks} pending subtasks`
 				};
 			}
 
 			return { success: true, message: 'Task ready for implementation' };
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -419,9 +473,11 @@ export class NextTaskService {
 			}
 
 			return { success: true, message: 'Backend connectivity OK' };
-
 		} catch (error) {
-			return { success: false, error: `Backend connectivity issue: ${error.message}` };
+			return {
+				success: false,
+				error: `Backend connectivity issue: ${error.message}`
+			};
 		}
 	}
 
@@ -435,13 +491,12 @@ export class NextTaskService {
 			}
 
 			const result = await this.backend.setTaskStatus(taskId, status);
-			
+
 			if (result && !result.success) {
 				throw new Error(result.error || 'Failed to update task status');
 			}
 
 			return { success: true, taskId, status };
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -454,17 +509,22 @@ export class NextTaskService {
 		try {
 			// If backend has worktree management, use it
 			if (this.backend.getOrCreateWorktreeForTask) {
-				const worktree = await this.backend.getOrCreateWorktreeForTask(task.id, options);
+				const worktree = await this.backend.getOrCreateWorktreeForTask(
+					task.id,
+					options
+				);
 				return { success: true, worktree };
 			}
 
 			// Otherwise, assume current worktree is fine
-			return { 
-				success: true, 
-				worktree: options.currentWorktree || { path: process.cwd(), name: 'main' },
+			return {
+				success: true,
+				worktree: options.currentWorktree || {
+					path: process.cwd(),
+					name: 'main'
+				},
 				warning: 'Using current directory as worktree'
 			};
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -481,13 +541,12 @@ export class NextTaskService {
 			// - Running setup scripts
 			// - Configuring IDE/editor context
 
-			return { 
-				success: true, 
+			return {
+				success: true,
 				message: 'Task context ready',
-				task, 
-				worktree 
+				task,
+				worktree
 			};
-
 		} catch (error) {
 			return { success: false, error: error.message };
 		}
@@ -497,7 +556,7 @@ export class NextTaskService {
 	 * Simple delay utility
 	 */
 	async delay(ms) {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/**
@@ -545,4 +604,4 @@ export function getNextTaskService() {
  */
 export function isNextTaskServiceInitialized() {
 	return nextTaskServiceInstance !== null;
-} 
+}

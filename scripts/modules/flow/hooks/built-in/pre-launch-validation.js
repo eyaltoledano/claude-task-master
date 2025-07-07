@@ -85,36 +85,36 @@ export default class PreLaunchValidationHook {
 			// Check if build validation should be skipped based on safety mode
 			const safetyMode = this.getSafetyMode(config);
 			if (config.buildValidation.respectSafetyMode && safetyMode === 'vibe') {
-				validation.checks.build = { 
-					status: 'skipped', 
-					reason: 'vibe-mode' 
+				validation.checks.build = {
+					status: 'skipped',
+					reason: 'vibe-mode'
 				};
 				return;
 			}
 
 			// Detect package manager and build command
 			const buildInfo = await this.detectBuildCommand();
-			
+
 			if (!buildInfo.hasPackageJson) {
-				validation.checks.build = { 
-					status: 'skipped', 
-					reason: 'no-package-json' 
+				validation.checks.build = {
+					status: 'skipped',
+					reason: 'no-package-json'
 				};
 				return;
 			}
 
 			if (!buildInfo.hasBuildScript) {
 				validation.warnings.push('No build script found in package.json');
-				validation.checks.build = { 
-					status: 'skipped', 
-					reason: 'no-build-script' 
+				validation.checks.build = {
+					status: 'skipped',
+					reason: 'no-build-script'
 				};
 				return;
 			}
 
 			// Run build validation
 			const buildResult = await this.runBuildValidation(buildInfo);
-			
+
 			if (buildResult.success) {
 				validation.checks.build = {
 					status: 'passed',
@@ -123,11 +123,15 @@ export default class PreLaunchValidationHook {
 				};
 			} else {
 				if (safetyMode === 'strict') {
-					validation.errors.push(`Build validation failed: ${buildResult.error}`);
+					validation.errors.push(
+						`Build validation failed: ${buildResult.error}`
+					);
 				} else {
-					validation.warnings.push(`Build validation failed: ${buildResult.error}`);
+					validation.warnings.push(
+						`Build validation failed: ${buildResult.error}`
+					);
 				}
-				
+
 				validation.checks.build = {
 					status: 'failed',
 					command: buildResult.command,
@@ -151,21 +155,21 @@ export default class PreLaunchValidationHook {
 			// Check if lint validation should be skipped based on safety mode
 			const safetyMode = this.getSafetyMode(config);
 			if (config.lintValidation.respectSafetyMode && safetyMode === 'vibe') {
-				validation.checks.lint = { 
-					status: 'skipped', 
-					reason: 'vibe-mode' 
+				validation.checks.lint = {
+					status: 'skipped',
+					reason: 'vibe-mode'
 				};
 				return;
 			}
 
 			// Detect available linting tools
 			const lintTools = await this.detectLintingTools();
-			
+
 			if (lintTools.length === 0) {
 				validation.warnings.push('No linting tools detected (biome, eslint)');
-				validation.checks.lint = { 
-					status: 'skipped', 
-					reason: 'no-lint-tools' 
+				validation.checks.lint = {
+					status: 'skipped',
+					reason: 'no-lint-tools'
 				};
 				return;
 			}
@@ -178,16 +182,16 @@ export default class PreLaunchValidationHook {
 			}
 
 			// Evaluate results
-			const failedLints = lintResults.filter(r => !r.success);
-			const passedLints = lintResults.filter(r => r.success);
+			const failedLints = lintResults.filter((r) => !r.success);
+			const passedLints = lintResults.filter((r) => r.success);
 
 			if (failedLints.length > 0 && safetyMode === 'strict') {
 				validation.errors.push(
-					`Linting failed: ${failedLints.map(f => f.tool).join(', ')}`
+					`Linting failed: ${failedLints.map((f) => f.tool).join(', ')}`
 				);
 			} else if (failedLints.length > 0) {
 				validation.warnings.push(
-					`Linting issues detected: ${failedLints.map(f => f.tool).join(', ')}`
+					`Linting issues detected: ${failedLints.map((f) => f.tool).join(', ')}`
 				);
 			}
 
@@ -237,7 +241,7 @@ export default class PreLaunchValidationHook {
 	 */
 	async runBuildValidation(buildInfo) {
 		const startTime = Date.now();
-		
+
 		try {
 			const output = execSync(buildInfo.command, {
 				encoding: 'utf8',
@@ -298,7 +302,7 @@ export default class PreLaunchValidationHook {
 		}
 
 		// Check package.json for eslint config
-		if (tools.find(t => t.name === 'eslint') === undefined) {
+		if (tools.find((t) => t.name === 'eslint') === undefined) {
 			try {
 				const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 				if (packageJson.eslintConfig) {
@@ -354,7 +358,7 @@ export default class PreLaunchValidationHook {
 		if (config.hooks?.builtIn?.claudeCodeStop?.safetyMode) {
 			return config.hooks.builtIn.claudeCodeStop.safetyMode;
 		}
-		
+
 		// Try to get from flow config
 		if (config.safety?.mode) {
 			return config.safety.mode;

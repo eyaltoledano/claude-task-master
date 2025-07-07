@@ -4622,10 +4622,8 @@ Examples:
 			process.exit(1);
 		});
 
-			// Register Flow command (from flow module)
+	// Register Flow command (from flow module)
 	registerFlowCommand(programInstance);
-
-
 
 	return programInstance;
 }

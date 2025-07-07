@@ -162,7 +162,10 @@ export function EnhancedClaudeWorktreeLauncherModal({
 			setProcessingLog('');
 
 			// Auto-progress if research is not needed or already exists
-			if (researchCheck?.researchStatus && !researchCheck.researchStatus.needed) {
+			if (
+				researchCheck?.researchStatus &&
+				!researchCheck.researchStatus.needed
+			) {
 				// Small delay to let user see the result, then auto-advance
 				setTimeout(() => {
 					prepareReview();
@@ -443,36 +446,39 @@ export function EnhancedClaudeWorktreeLauncherModal({
 	useKeypress(keyHandlers);
 
 	// Prepare final configuration for review
-	const prepareReview = useCallback((overrideConfig = {}) => {
-		const config = {
-			persona: selectedPersona,
+	const prepareReview = useCallback(
+		(overrideConfig = {}) => {
+			const config = {
+				persona: selectedPersona,
+				toolRestrictions,
+				maxTurns,
+				customPrompt: useCustomPrompt ? customPrompt : null,
+				researchStatus,
+				researchResults,
+				shouldRunResearch,
+				createPR,
+				tasks: tasks[0],
+				worktree,
+				...overrideConfig // Allow overriding any config values
+			};
+
+			setFinalConfig(config);
+			setView('review');
+		},
+		[
+			selectedPersona,
 			toolRestrictions,
 			maxTurns,
-			customPrompt: useCustomPrompt ? customPrompt : null,
+			useCustomPrompt,
+			customPrompt,
 			researchStatus,
 			researchResults,
 			shouldRunResearch,
 			createPR,
-			tasks: tasks[0],
-			worktree,
-			...overrideConfig  // Allow overriding any config values
-		};
-
-		setFinalConfig(config);
-		setView('review');
-	}, [
-		selectedPersona,
-		toolRestrictions,
-		maxTurns,
-		useCustomPrompt,
-		customPrompt,
-		researchStatus,
-		researchResults,
-		shouldRunResearch,
-		createPR,
-		tasks,
-		worktree
-	]);
+			tasks,
+			worktree
+		]
+	);
 
 	// Main launch handler
 	const handleLaunch = async () => {
@@ -840,14 +846,11 @@ export function EnhancedClaudeWorktreeLauncherModal({
 					{!researchStatus.needed && !isRunningResearch && (
 						<Box marginTop={2}>
 							<Text color="green">
-								{researchStatus.hasExisting 
+								{researchStatus.hasExisting
 									? '✓ Existing research found - proceeding automatically...'
-									: '✓ No research needed - proceeding automatically...'
-								}
+									: '✓ No research needed - proceeding automatically...'}
 							</Text>
-							<Text dimColor>
-								Or press ENTER to continue manually
-							</Text>
+							<Text dimColor>Or press ENTER to continue manually</Text>
 						</Box>
 					)}
 				</Box>

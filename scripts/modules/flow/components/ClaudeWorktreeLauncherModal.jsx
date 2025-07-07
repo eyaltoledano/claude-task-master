@@ -654,7 +654,11 @@ export function ClaudeWorktreeLauncherModal({
 								};
 
 								// If this is a subtask and we don't already have parent task data, fetch it
-								if (taskData.isSubtask && task.id.includes('.') && !task.parentTask) {
+								if (
+									taskData.isSubtask &&
+									task.id.includes('.') &&
+									!task.parentTask
+								) {
 									const parentTaskId = task.id.split('.')[0];
 									try {
 										const parentTask = await backend.getTask(parentTaskId);
@@ -797,7 +801,11 @@ ${allowedTools ? `Allowed tools: ${allowedTools.join(', ')}` : 'All tools allowe
 						};
 
 						// If this is a subtask and we don't already have parent task data, fetch it
-						if (taskInfo.isSubtask && task.id.includes('.') && !task.parentTask) {
+						if (
+							taskInfo.isSubtask &&
+							task.id.includes('.') &&
+							!task.parentTask
+						) {
 							const parentTaskId = task.id.split('.')[0];
 							try {
 								const parentTask = await backend.getTask(parentTaskId);

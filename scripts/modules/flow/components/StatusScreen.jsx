@@ -17,7 +17,7 @@ export const StatusScreen = () => {
 	const [modelsInfo, setModelsInfo] = useState(null);
 	const [mcpInfo, setMcpInfo] = useState(null);
 	const [complexityInfo, setComplexityInfo] = useState(null);
-	
+
 	// Add new execution and provider data
 	const { executions, loading: execLoading } = useExecutions();
 	const { providers, loading: provLoading } = useProviders();
@@ -27,7 +27,7 @@ export const StatusScreen = () => {
 	const borderLength = Math.max(60, terminalWidth - 4); // Minimum 60, max terminal width minus padding
 	const borderChar = '═';
 	const dynamicBorder = borderChar.repeat(borderLength);
-	
+
 	const taskTheme = getComponentTheme('taskList');
 	const statusTheme = getComponentTheme('status');
 
@@ -89,43 +89,54 @@ export const StatusScreen = () => {
 					} catch (err) {
 						// Method might not exist on all backends
 					}
-					
+
 					const tasksResult = await backend.getTasks();
-					
+
 					// Handle different backend response formats
 					let tasks = [];
 					if (Array.isArray(tasksResult)) {
 						tasks = tasksResult;
 					} else if (tasksResult && Array.isArray(tasksResult.tasks)) {
 						tasks = tasksResult.tasks;
-					} else if (tasksResult && tasksResult.data && Array.isArray(tasksResult.data)) {
+					} else if (
+						tasksResult &&
+						tasksResult.data &&
+						Array.isArray(tasksResult.data)
+					) {
 						tasks = tasksResult.data;
 					}
-					
-					const taskCounts = tasks.reduce((acc, task) => {
-						const status = task.status || 'pending';
-						acc[status] = (acc[status] || 0) + 1;
-						acc.total++;
-						return acc;
-					}, { total: 0 });
+
+					const taskCounts = tasks.reduce(
+						(acc, task) => {
+							const status = task.status || 'pending';
+							acc[status] = (acc[status] || 0) + 1;
+							acc.total++;
+							return acc;
+						},
+						{ total: 0 }
+					);
 
 					// Count subtasks
-					const subtaskInfo = tasks.reduce((acc, task) => {
-						if (task.subtasks && Array.isArray(task.subtasks)) {
-							acc.tasksWithSubtasks++;
-							acc.totalSubtasks += task.subtasks.length;
-							
-							task.subtasks.forEach(subtask => {
-								const status = subtask.status || 'pending';
-								acc.subtaskCounts[status] = (acc.subtaskCounts[status] || 0) + 1;
-							});
+					const subtaskInfo = tasks.reduce(
+						(acc, task) => {
+							if (task.subtasks && Array.isArray(task.subtasks)) {
+								acc.tasksWithSubtasks++;
+								acc.totalSubtasks += task.subtasks.length;
+
+								task.subtasks.forEach((subtask) => {
+									const status = subtask.status || 'pending';
+									acc.subtaskCounts[status] =
+										(acc.subtaskCounts[status] || 0) + 1;
+								});
+							}
+							return acc;
+						},
+						{
+							tasksWithSubtasks: 0,
+							totalSubtasks: 0,
+							subtaskCounts: {}
 						}
-						return acc;
-					}, {
-						tasksWithSubtasks: 0,
-						totalSubtasks: 0,
-						subtaskCounts: {}
-					});
+					);
 
 					// Try to get next task
 					let nextTask = null;
@@ -166,7 +177,7 @@ export const StatusScreen = () => {
 				// Gather models information
 				try {
 					const models = await backend.getModels();
-					
+
 					// Handle keyStatus - it might be an object or string
 					let apiKeysStatus = 'Unknown';
 					const keyStatusOptions = [
@@ -174,7 +185,7 @@ export const StatusScreen = () => {
 						models.research?.keyStatus,
 						models.fallback?.keyStatus
 					];
-					
+
 					for (const status of keyStatusOptions) {
 						if (status) {
 							if (typeof status === 'string') {
@@ -187,7 +198,7 @@ export const StatusScreen = () => {
 							}
 						}
 					}
-					
+
 					setModelsInfo({
 						main: models.main?.model || null,
 						research: models.research?.model || null,
@@ -218,14 +229,15 @@ export const StatusScreen = () => {
 				// Check for complexity report
 				try {
 					const reportDir = `${backend.projectRoot}/.taskmaster/reports`;
-					const currentTagSuffix = currentTag && currentTag !== 'master' ? `_${currentTag}` : '';
+					const currentTagSuffix =
+						currentTag && currentTag !== 'master' ? `_${currentTag}` : '';
 					const reportPath = `${reportDir}/task-complexity-report${currentTagSuffix}.json`;
-					
+
 					// Try to check if file exists and get stats
 					let reportExists = false;
 					let reportDate = null;
 					let reportTaskCount = 0;
-					
+
 					try {
 						// Use fs to check if file exists and get stats
 						const fs = await import('fs');
@@ -233,14 +245,20 @@ export const StatusScreen = () => {
 						if (stats.isFile()) {
 							reportExists = true;
 							reportDate = stats.mtime;
-							
+
 							// Try to read and parse the report to get task count
 							try {
 								const reportContent = fs.readFileSync(reportPath, 'utf8');
 								const report = JSON.parse(reportContent);
-								console.log('Complexity report structure:', Object.keys(report)); // Debug log
-								console.log('Report sample:', JSON.stringify(report, null, 2).substring(0, 500)); // Debug log
-								
+								console.log(
+									'Complexity report structure:',
+									Object.keys(report)
+								); // Debug log
+								console.log(
+									'Report sample:',
+									JSON.stringify(report, null, 2).substring(0, 500)
+								); // Debug log
+
 								// Try different possible structures
 								if (report.tasks && Array.isArray(report.tasks)) {
 									reportTaskCount = report.tasks.length;
@@ -248,11 +266,16 @@ export const StatusScreen = () => {
 									reportTaskCount = report.analysis.length;
 								} else if (Array.isArray(report)) {
 									reportTaskCount = report.length;
-								} else if (report.taskAnalysis && Array.isArray(report.taskAnalysis)) {
+								} else if (
+									report.taskAnalysis &&
+									Array.isArray(report.taskAnalysis)
+								) {
 									reportTaskCount = report.taskAnalysis.length;
 								} else {
 									// Look for any array property that might contain tasks
-									const arrayProps = Object.keys(report).filter(key => Array.isArray(report[key]));
+									const arrayProps = Object.keys(report).filter((key) =>
+										Array.isArray(report[key])
+									);
 									if (arrayProps.length > 0) {
 										reportTaskCount = report[arrayProps[0]].length;
 									}
@@ -265,7 +288,7 @@ export const StatusScreen = () => {
 						// File doesn't exist or can't access
 						reportExists = false;
 					}
-					
+
 					setComplexityInfo({
 						available: reportExists,
 						lastGenerated: reportDate,
@@ -280,7 +303,6 @@ export const StatusScreen = () => {
 						path: null
 					});
 				}
-
 			} catch (err) {
 				setError(err.message);
 			} finally {
@@ -305,7 +327,8 @@ export const StatusScreen = () => {
 		};
 
 		// Ensure status is a string before calling toLowerCase
-		const statusStr = status && typeof status === 'string' ? status.toLowerCase() : '';
+		const statusStr =
+			status && typeof status === 'string' ? status.toLowerCase() : '';
 		return statusMap[statusStr] || 'text.primary';
 	};
 
@@ -318,7 +341,12 @@ export const StatusScreen = () => {
 	// Show loading state
 	if (loading) {
 		return (
-			<Box flexDirection="column" padding={1} alignItems="center" justifyContent="center">
+			<Box
+				flexDirection="column"
+				padding={1}
+				alignItems="center"
+				justifyContent="center"
+			>
 				<LoadingSpinner />
 				<Text>Gathering project status...</Text>
 			</Box>
@@ -339,9 +367,7 @@ export const StatusScreen = () => {
 		<Box flexDirection="column" padding={1}>
 			{/* Gradient Header */}
 			<Box marginBottom={1}>
-				<Text>
-					{gradient(dynamicBorder, ['primary', 'secondary'])}
-				</Text>
+				<Text>{gradient(dynamicBorder, ['primary', 'secondary'])}</Text>
 			</Box>
 			<Box justifyContent="center" marginBottom={1}>
 				<Text>
@@ -349,9 +375,7 @@ export const StatusScreen = () => {
 				</Text>
 			</Box>
 			<Box marginBottom={2}>
-				<Text>
-					{gradient(dynamicBorder, ['secondary', 'primary'])}
-				</Text>
+				<Text>{gradient(dynamicBorder, ['secondary', 'primary'])}</Text>
 			</Box>
 
 			{/* Project Information */}
@@ -394,9 +418,7 @@ export const StatusScreen = () => {
 					</Box>
 					<Box>
 						<Text>{style('✓ Done: ', 'text.secondary')}</Text>
-						<Text>
-							{formatTaskCount(tasksInfo?.done || 0, 'done')}
-						</Text>
+						<Text>{formatTaskCount(tasksInfo?.done || 0, 'done')}</Text>
 					</Box>
 					<Box>
 						<Text>{style('⏳ In Progress: ', 'text.secondary')}</Text>
@@ -406,15 +428,11 @@ export const StatusScreen = () => {
 					</Box>
 					<Box>
 						<Text>{style('⏸ Pending: ', 'text.secondary')}</Text>
-						<Text>
-							{formatTaskCount(tasksInfo?.pending || 0, 'pending')}
-						</Text>
+						<Text>{formatTaskCount(tasksInfo?.pending || 0, 'pending')}</Text>
 					</Box>
 					<Box>
 						<Text>{style('🚫 Blocked: ', 'text.secondary')}</Text>
-						<Text>
-							{formatTaskCount(tasksInfo?.blocked || 0, 'blocked')}
-						</Text>
+						<Text>{formatTaskCount(tasksInfo?.blocked || 0, 'blocked')}</Text>
 					</Box>
 					{tasksInfo?.nextTask && (
 						<Box marginTop={1}>
@@ -438,31 +456,46 @@ export const StatusScreen = () => {
 						<Box>
 							<Text>{style('Tasks with Subtasks: ', 'text.secondary')}</Text>
 							<Text>
-								{style(tasksInfo.subtasks.tasksWithSubtasks.toString(), 'text.primary')}
+								{style(
+									tasksInfo.subtasks.tasksWithSubtasks.toString(),
+									'text.primary'
+								)}
 							</Text>
 						</Box>
 						<Box>
 							<Text>{style('Total Subtasks: ', 'text.secondary')}</Text>
 							<Text>
-								{style(tasksInfo.subtasks.totalSubtasks.toString(), 'text.primary')}
+								{style(
+									tasksInfo.subtasks.totalSubtasks.toString(),
+									'text.primary'
+								)}
 							</Text>
 						</Box>
 						<Box>
 							<Text>{style('✓ Done: ', 'text.secondary')}</Text>
 							<Text>
-								{formatTaskCount(tasksInfo.subtasks.subtaskCounts.done || 0, 'done')}
+								{formatTaskCount(
+									tasksInfo.subtasks.subtaskCounts.done || 0,
+									'done'
+								)}
 							</Text>
 						</Box>
 						<Box>
 							<Text>{style('⏳ In Progress: ', 'text.secondary')}</Text>
 							<Text>
-								{formatTaskCount(tasksInfo.subtasks.subtaskCounts['in-progress'] || 0, 'in-progress')}
+								{formatTaskCount(
+									tasksInfo.subtasks.subtaskCounts['in-progress'] || 0,
+									'in-progress'
+								)}
 							</Text>
 						</Box>
 						<Box>
 							<Text>{style('⏸ Pending: ', 'text.secondary')}</Text>
 							<Text>
-								{formatTaskCount(tasksInfo.subtasks.subtaskCounts.pending || 0, 'pending')}
+								{formatTaskCount(
+									tasksInfo.subtasks.subtaskCounts.pending || 0,
+									'pending'
+								)}
 							</Text>
 						</Box>
 					</Box>
@@ -481,17 +514,16 @@ export const StatusScreen = () => {
 								<Text>{style('Active Executions: ', 'text.secondary')}</Text>
 								<Box marginLeft={1}>
 									<Badge color="green">
-										{executions.filter(e => e.status === 'running').length} running
+										{executions.filter((e) => e.status === 'running').length}{' '}
+										running
 									</Badge>
 								</Box>
 								<Box marginLeft={1}>
-									<Badge color="gray">
-										{executions.length} total
-									</Badge>
+									<Badge color="gray">{executions.length} total</Badge>
 								</Box>
 							</Box>
-							
-							{executions.slice(0, 3).map(execution => (
+
+							{executions.slice(0, 3).map((execution) => (
 								<Box key={execution.id} marginBottom={1} flexDirection="row">
 									<Box width="20%">
 										<Text color="gray">{execution.taskId}</Text>
@@ -500,14 +532,20 @@ export const StatusScreen = () => {
 										{execution.status === 'running' && execution.progress ? (
 											<Box flexDirection="column">
 												<ProgressBar value={execution.progress} />
-												<Text color="gray">{Math.round(execution.progress * 100)}%</Text>
+												<Text color="gray">
+													{Math.round(execution.progress * 100)}%
+												</Text>
 											</Box>
 										) : (
-											<StatusMessage 
+											<StatusMessage
 												variant={
-													execution.status === 'completed' ? 'success' :
-													execution.status === 'failed' ? 'error' :
-													execution.status === 'running' ? 'info' : 'warning'
+													execution.status === 'completed'
+														? 'success'
+														: execution.status === 'failed'
+															? 'error'
+															: execution.status === 'running'
+																? 'info'
+																: 'warning'
 												}
 											>
 												{execution.status}
@@ -519,11 +557,13 @@ export const StatusScreen = () => {
 									</Box>
 								</Box>
 							))}
-							
+
 							{executions.length > 3 && (
-								<Text color="gray">... and {executions.length - 3} more (use /exec to view all)</Text>
+								<Text color="gray">
+									... and {executions.length - 3} more (use /exec to view all)
+								</Text>
 							)}
-							
+
 							{executions.length === 0 && (
 								<Text color="gray">No executions currently active</Text>
 							)}
@@ -540,13 +580,13 @@ export const StatusScreen = () => {
 						<Spinner label="Checking providers..." />
 					) : (
 						<>
-							{providers.map(provider => (
+							{providers.map((provider) => (
 								<Box key={provider.key} marginBottom={1} flexDirection="row">
 									<Box width="30%">
 										<Text>{style(provider.name, 'text.primary')}</Text>
 									</Box>
 									<Box width="40%">
-										<StatusMessage 
+										<StatusMessage
 											variant={provider.health?.success ? 'success' : 'error'}
 										>
 											{provider.health?.success ? 'Healthy' : 'Error'}
@@ -562,7 +602,7 @@ export const StatusScreen = () => {
 									</Box>
 								</Box>
 							))}
-							
+
 							{providers.length === 0 && (
 								<Text color="gray">No providers configured</Text>
 							)}
@@ -629,7 +669,9 @@ export const StatusScreen = () => {
 						<Text>
 							{style(
 								complexityInfo?.available ? 'Yes' : 'No',
-								getStatusStyle(complexityInfo?.available ? 'configured' : 'not configured')
+								getStatusStyle(
+									complexityInfo?.available ? 'configured' : 'not configured'
+								)
 							)}
 						</Text>
 					</Box>
@@ -646,7 +688,9 @@ export const StatusScreen = () => {
 									<Text>{style('Last Generated: ', 'text.secondary')}</Text>
 									<Text>
 										{style(
-											new Date(complexityInfo.lastGenerated).toLocaleDateString(),
+											new Date(
+												complexityInfo.lastGenerated
+											).toLocaleDateString(),
 											'text.tertiary'
 										)}
 									</Text>
@@ -692,9 +736,7 @@ export const StatusScreen = () => {
 
 			{/* Footer with gradient */}
 			<Box marginTop={1}>
-				<Text>
-					{gradient(dynamicBorder, ['primary', 'secondary'])}
-				</Text>
+				<Text>{gradient(dynamicBorder, ['primary', 'secondary'])}</Text>
 			</Box>
 
 			{/* Help text */}

@@ -350,7 +350,9 @@ export class CleanupService extends EventEmitter {
 
 		try {
 			// Import existing task management functions
-			const { default: setTaskStatus } = await import('../../task-manager/set-task-status.js');
+			const { default: setTaskStatus } = await import(
+				'../../task-manager/set-task-status.js'
+			);
 			const { readJSON } = await import('../../utils.js');
 
 			const result = {
@@ -362,9 +364,14 @@ export class CleanupService extends EventEmitter {
 			};
 
 			// Get task file path
-			const tasksPath = path.join(this.projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-			
-			if (!await fs.pathExists(tasksPath)) {
+			const tasksPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+
+			if (!(await fs.pathExists(tasksPath))) {
 				return { ...result, skipped: 'No tasks file found' };
 			}
 
@@ -381,12 +388,16 @@ export class CleanupService extends EventEmitter {
 
 			if (isSubtask) {
 				const [parentId, subtaskId] = String(taskId).split('.');
-				targetTask = tasksData.tasks.find(t => t.id === parseInt(parentId, 10));
+				targetTask = tasksData.tasks.find(
+					(t) => t.id === parseInt(parentId, 10)
+				);
 				if (targetTask?.subtasks) {
-					targetSubtask = targetTask.subtasks.find(st => st.id === parseInt(subtaskId, 10));
+					targetSubtask = targetTask.subtasks.find(
+						(st) => st.id === parseInt(subtaskId, 10)
+					);
 				}
 			} else {
-				targetTask = tasksData.tasks.find(t => t.id === parseInt(taskId, 10));
+				targetTask = tasksData.tasks.find((t) => t.id === parseInt(taskId, 10));
 			}
 
 			if (!targetTask) {
@@ -398,7 +409,9 @@ export class CleanupService extends EventEmitter {
 			}
 
 			// Check current status to avoid unnecessary updates
-			const currentStatus = isSubtask ? targetSubtask.status : targetTask.status;
+			const currentStatus = isSubtask
+				? targetSubtask.status
+				: targetTask.status;
 			if (currentStatus === 'done' || currentStatus === 'completed') {
 				return { ...result, skipped: `Task ${taskId} already completed` };
 			}
@@ -433,7 +446,11 @@ export class CleanupService extends EventEmitter {
 
 			// Handle subtask completion cascading
 			if (isSubtask && opts.cascadeSubtasks !== false) {
-				const cascadeResult = await this.handleSubtaskCompletion(targetTask, targetSubtask, tasksPath);
+				const cascadeResult = await this.handleSubtaskCompletion(
+					targetTask,
+					targetSubtask,
+					tasksPath
+				);
 				if (cascadeResult.parentUpdated) {
 					result.actions.push('parent-task-evaluated');
 					result.parentTaskStatus = cascadeResult.parentStatus;
@@ -442,7 +459,6 @@ export class CleanupService extends EventEmitter {
 
 			this.stats.tasksUpdated++;
 			return result;
-
 		} catch (error) {
 			this.stats.errors++;
 			throw new Error(`Task completion failed: ${error.message}`);
@@ -454,11 +470,13 @@ export class CleanupService extends EventEmitter {
 	 */
 	async addPRReferenceToTask(taskId, prNumber, tasksPath) {
 		try {
-			const { readJSON, writeJSON, getCurrentTag } = await import('../../utils.js');
-			
+			const { readJSON, writeJSON, getCurrentTag } = await import(
+				'../../utils.js'
+			);
+
 			const currentTag = getCurrentTag(this.projectRoot) || 'master';
 			const data = readJSON(tasksPath, this.projectRoot, currentTag);
-			
+
 			if (!data?.tasks) return;
 
 			const isSubtask = String(taskId).includes('.');
@@ -467,12 +485,14 @@ export class CleanupService extends EventEmitter {
 
 			if (isSubtask) {
 				const [parentId, subtaskId] = String(taskId).split('.');
-				targetTask = data.tasks.find(t => t.id === parseInt(parentId, 10));
+				targetTask = data.tasks.find((t) => t.id === parseInt(parentId, 10));
 				if (targetTask?.subtasks) {
-					targetSubtask = targetTask.subtasks.find(st => st.id === parseInt(subtaskId, 10));
+					targetSubtask = targetTask.subtasks.find(
+						(st) => st.id === parseInt(subtaskId, 10)
+					);
 				}
 			} else {
-				targetTask = data.tasks.find(t => t.id === parseInt(taskId, 10));
+				targetTask = data.tasks.find((t) => t.id === parseInt(taskId, 10));
 			}
 
 			if (targetTask) {
@@ -480,7 +500,7 @@ export class CleanupService extends EventEmitter {
 				if (target) {
 					// Add PR reference to task details
 					const prReference = `\n\n**Completed via PR #${prNumber}** (${new Date().toLocaleDateString()})`;
-					
+
 					if (target.details) {
 						target.details += prReference;
 					} else {
@@ -512,30 +532,33 @@ export class CleanupService extends EventEmitter {
 		try {
 			// Check if all subtasks are now completed
 			const allSubtasksCompleted = parentTask.subtasks.every(
-				st => st.status === 'done' || st.status === 'completed'
+				(st) => st.status === 'done' || st.status === 'completed'
 			);
 
 			// If all subtasks are done and parent isn't, suggest or auto-update parent
-			if (allSubtasksCompleted && parentTask.status !== 'done' && parentTask.status !== 'completed') {
+			if (
+				allSubtasksCompleted &&
+				parentTask.status !== 'done' &&
+				parentTask.status !== 'completed'
+			) {
 				// Auto-update parent task if configured
 				if (this.config.taskStatus.cascadeSubtasks === true) {
-					const { default: setTaskStatus } = await import('../../task-manager/set-task-status.js');
-					
-					await setTaskStatus(
-						tasksPath,
-						String(parentTask.id),
-						'done',
-						{
-							projectRoot: this.projectRoot,
-							mcpLog: { info: () => {}, error: () => {} }
-						}
+					const { default: setTaskStatus } = await import(
+						'../../task-manager/set-task-status.js'
 					);
+
+					await setTaskStatus(tasksPath, String(parentTask.id), 'done', {
+						projectRoot: this.projectRoot,
+						mcpLog: { info: () => {}, error: () => {} }
+					});
 
 					result.parentUpdated = true;
 					result.parentStatus = 'done';
 				} else {
 					// Just log that parent could be updated
-					console.log(`All subtasks of task ${parentTask.id} are complete. Parent task could be marked as done.`);
+					console.log(
+						`All subtasks of task ${parentTask.id} are complete. Parent task could be marked as done.`
+					);
 				}
 			}
 
@@ -551,7 +574,12 @@ export class CleanupService extends EventEmitter {
 	 */
 	async updateTaskMetrics(taskId, prNumber) {
 		try {
-			const metricsPath = path.join(this.projectRoot, '.taskmaster', 'metrics', 'task-completion.json');
+			const metricsPath = path.join(
+				this.projectRoot,
+				'.taskmaster',
+				'metrics',
+				'task-completion.json'
+			);
 			await fs.ensureDir(path.dirname(metricsPath));
 
 			let metrics = {};

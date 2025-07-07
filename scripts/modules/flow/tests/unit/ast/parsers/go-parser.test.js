@@ -21,13 +21,13 @@ const mockParserRegistry = {
 describe('Go Parser - Comprehensive Tests', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Setup default mock behaviors
 		mockGoParser.getLanguageId.mockReturnValue('go');
 		mockGoParser.getSupportedExtensions.mockReturnValue(['.go']);
 		mockGoParser.isInitialized.mockReturnValue(true);
 		mockGoParser.validateContent.mockReturnValue(true);
-		
+
 		mockParserRegistry.getParser.mockReturnValue(mockGoParser);
 	});
 
@@ -46,32 +46,38 @@ func main() {
 	fmt.Println(greet("World"))
 }
 			`;
-			
+
 			const expectedAST = {
 				type: 'File',
 				package: {
 					type: 'PackageClause',
 					name: { name: 'main' }
 				},
-				imports: [{
-					type: 'ImportSpec',
-					path: { value: '"fmt"' }
-				}],
+				imports: [
+					{
+						type: 'ImportSpec',
+						path: { value: '"fmt"' }
+					}
+				],
 				decls: [
 					{
 						type: 'FuncDecl',
 						name: { name: 'greet' },
 						type: {
 							params: {
-								list: [{
-									names: [{ name: 'name' }],
-									type: { name: 'string' }
-								}]
+								list: [
+									{
+										names: [{ name: 'name' }],
+										type: { name: 'string' }
+									}
+								]
 							},
 							results: {
-								list: [{
-									type: { name: 'string' }
-								}]
+								list: [
+									{
+										type: { name: 'string' }
+									}
+								]
 							}
 						}
 					},
@@ -85,15 +91,15 @@ func main() {
 					}
 				]
 			};
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.type).toBe('File');
 			expect(result.ast.package.name.name).toBe('main');
@@ -143,77 +149,88 @@ func (u *User) SetEmail(email string) error {
 	return nil
 }
 			`;
-			
+
 			const expectedAST = {
 				type: 'File',
 				package: {
 					type: 'PackageClause',
 					name: { name: 'models' }
 				},
-				imports: [{
-					type: 'ImportSpec',
-					path: { value: '"time"' }
-				}],
+				imports: [
+					{
+						type: 'ImportSpec',
+						path: { value: '"time"' }
+					}
+				],
 				decls: [
 					{
 						type: 'GenDecl',
 						tok: 'type',
-						specs: [{
-							type: 'TypeSpec',
-							name: { name: 'User' },
-							type: {
-								type: 'StructType',
-								fields: {
-									list: [
-										{
-											names: [{ name: 'ID' }],
-											type: { name: 'int' },
-											tag: { value: '`json:"id" db:"id"`' }
-										},
-										{
-											names: [{ name: 'Name' }],
-											type: { name: 'string' },
-											tag: { value: '`json:"name" db:"name" validate:"required,min=1,max=100"`' }
-										}
-									]
+						specs: [
+							{
+								type: 'TypeSpec',
+								name: { name: 'User' },
+								type: {
+									type: 'StructType',
+									fields: {
+										list: [
+											{
+												names: [{ name: 'ID' }],
+												type: { name: 'int' },
+												tag: { value: '`json:"id" db:"id"`' }
+											},
+											{
+												names: [{ name: 'Name' }],
+												type: { name: 'string' },
+												tag: {
+													value:
+														'`json:"name" db:"name" validate:"required,min=1,max=100"`'
+												}
+											}
+										]
+									}
 								}
 							}
-						}]
+						]
 					},
 					{
 						type: 'FuncDecl',
 						recv: {
-							list: [{
-								names: [{ name: 'u' }],
-								type: { name: 'User' }
-							}]
+							list: [
+								{
+									names: [{ name: 'u' }],
+									type: { name: 'User' }
+								}
+							]
 						},
 						name: { name: 'String' }
 					},
 					{
 						type: 'FuncDecl',
 						recv: {
-							list: [{
-								names: [{ name: 'u' }],
-								type: {
-									type: 'StarExpr',
-									x: { name: 'User' }
+							list: [
+								{
+									names: [{ name: 'u' }],
+									type: {
+										type: 'StarExpr',
+										x: { name: 'User' }
+									}
 								}
-							}]
+							]
 						},
 						name: { name: 'SetEmail' }
 					}
 				]
 			};
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'models.go');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.package.name.name).toBe('models');
 			expect(result.ast.decls[0].specs[0].name.name).toBe('User');
@@ -275,7 +292,7 @@ func processReader(r Reader) error {
 	return nil
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -285,52 +302,60 @@ func processReader(r Reader) error {
 						{
 							type: 'GenDecl',
 							tok: 'type',
-							specs: [{
-								type: 'TypeSpec',
-								name: { name: 'Reader' },
-								type: {
-									type: 'InterfaceType',
-									methods: {
-										list: [{
-											names: [{ name: 'Read' }],
-											type: {
-												type: 'FuncType',
-												params: {
-													list: [{
-														type: {
-															type: 'ArrayType',
-															elt: { name: 'byte' }
+							specs: [
+								{
+									type: 'TypeSpec',
+									name: { name: 'Reader' },
+									type: {
+										type: 'InterfaceType',
+										methods: {
+											list: [
+												{
+													names: [{ name: 'Read' }],
+													type: {
+														type: 'FuncType',
+														params: {
+															list: [
+																{
+																	type: {
+																		type: 'ArrayType',
+																		elt: { name: 'byte' }
+																	}
+																}
+															]
+														},
+														results: {
+															list: [
+																{ type: { name: 'int' } },
+																{ type: { name: 'error' } }
+															]
 														}
-													}]
-												},
-												results: {
-													list: [
-														{ type: { name: 'int' } },
-														{ type: { name: 'error' } }
-													]
+													}
 												}
-											}
-										}]
+											]
+										}
 									}
 								}
-							}]
+							]
 						},
 						{
 							type: 'GenDecl',
 							tok: 'type',
-							specs: [{
-								type: 'TypeSpec',
-								name: { name: 'ReadWriter' },
-								type: {
-									type: 'InterfaceType',
-									methods: {
-										list: [
-											{ type: { name: 'Reader' } },
-											{ type: { name: 'Writer' } }
-										]
+							specs: [
+								{
+									type: 'TypeSpec',
+									name: { name: 'ReadWriter' },
+									type: {
+										type: 'InterfaceType',
+										methods: {
+											list: [
+												{ type: { name: 'Reader' } },
+												{ type: { name: 'Writer' } }
+											]
+										}
 									}
 								}
-							}]
+							]
 						},
 						{
 							type: 'FuncDecl',
@@ -341,10 +366,12 @@ func processReader(r Reader) error {
 										type: 'AssignStmt',
 										lhs: [{ name: 'data' }],
 										tok: ':=',
-										rhs: [{
-											type: 'CallExpr',
-											fun: { name: 'make' }
-										}]
+										rhs: [
+											{
+												type: 'CallExpr',
+												fun: { name: 'make' }
+											}
+										]
 									},
 									{
 										type: 'IfStmt',
@@ -352,11 +379,13 @@ func processReader(r Reader) error {
 											type: 'AssignStmt',
 											lhs: [{ name: 'rw' }, { name: 'ok' }],
 											tok: ':=',
-											rhs: [{
-												type: 'TypeAssertExpr',
-												x: { name: 'r' },
-												type: { name: 'ReadWriter' }
-											}]
+											rhs: [
+												{
+													type: 'TypeAssertExpr',
+													x: { name: 'r' },
+													type: { name: 'ReadWriter' }
+												}
+											]
 										}
 									},
 									{
@@ -365,11 +394,13 @@ func processReader(r Reader) error {
 											type: 'AssignStmt',
 											lhs: [{ name: 'v' }],
 											tok: ':=',
-											rhs: [{
-												type: 'TypeAssertExpr',
-												x: { name: 'r' },
-												type: null
-											}]
+											rhs: [
+												{
+													type: 'TypeAssertExpr',
+													x: { name: 'r' },
+													type: null
+												}
+											]
 										}
 									}
 								]
@@ -379,9 +410,9 @@ func processReader(r Reader) error {
 				},
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.decls[0].specs[0].type.type).toBe('InterfaceType');
 			expect(result.ast.decls[1].specs[0].name.name).toBe('ReadWriter');
@@ -453,7 +484,7 @@ func contextExample(ctx context.Context) error {
 	}
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -569,61 +600,65 @@ func contextExample(ctx context.Context) error {
 							type: 'FuncDecl',
 							name: { name: 'contextExample' },
 							body: {
-								list: [{
-									type: 'SelectStmt',
-									body: {
-										list: [
-											{
-												type: 'CommClause',
-												comm: {
-													type: 'ExprStmt',
-													x: {
-														type: 'UnaryExpr',
-														op: '<-',
+								list: [
+									{
+										type: 'SelectStmt',
+										body: {
+											list: [
+												{
+													type: 'CommClause',
+													comm: {
+														type: 'ExprStmt',
 														x: {
-															type: 'SelectorExpr',
-															x: { name: 'ctx' },
-															sel: { name: 'Done' }
-														}
-													}
-												}
-											},
-											{
-												type: 'CommClause',
-												comm: {
-													type: 'ExprStmt',
-													x: {
-														type: 'UnaryExpr',
-														op: '<-',
-														x: {
-															type: 'CallExpr',
-															fun: {
+															type: 'UnaryExpr',
+															op: '<-',
+															x: {
 																type: 'SelectorExpr',
-																x: { name: 'time' },
-																sel: { name: 'After' }
+																x: { name: 'ctx' },
+																sel: { name: 'Done' }
 															}
 														}
 													}
+												},
+												{
+													type: 'CommClause',
+													comm: {
+														type: 'ExprStmt',
+														x: {
+															type: 'UnaryExpr',
+															op: '<-',
+															x: {
+																type: 'CallExpr',
+																fun: {
+																	type: 'SelectorExpr',
+																	x: { name: 'time' },
+																	sel: { name: 'After' }
+																}
+															}
+														}
+													}
+												},
+												{
+													type: 'CommClause',
+													comm: null // default case
 												}
-											},
-											{
-												type: 'CommClause',
-												comm: null // default case
-											}
-										]
+											]
+										}
 									}
-								}]
+								]
 							}
 						}
 					]
 				},
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(true);
-			expect(result.ast.decls[0].type.params.list[1].type.type).toBe('ChanType');
+			expect(result.ast.decls[0].type.params.list[1].type.type).toBe(
+				'ChanType'
+			);
 			expect(result.ast.decls[1].body.list[0].type).toBe('GoStmt');
 			expect(result.ast.decls[2].body.list[0].type).toBe('SelectStmt');
 		});
@@ -716,7 +751,7 @@ func main() {
 	fmt.Printf("Read %d bytes\n", len(data))
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -726,61 +761,66 @@ func main() {
 						{
 							type: 'GenDecl',
 							tok: 'var',
-							specs: [{
-								type: 'ValueSpec',
-								names: [
-									{ name: 'ErrNotFound' },
-									{ name: 'ErrInvalid' }
-								],
-								values: [
-									{
-										type: 'CallExpr',
-										fun: {
-											type: 'SelectorExpr',
-											x: { name: 'errors' },
-											sel: { name: 'New' }
+							specs: [
+								{
+									type: 'ValueSpec',
+									names: [{ name: 'ErrNotFound' }, { name: 'ErrInvalid' }],
+									values: [
+										{
+											type: 'CallExpr',
+											fun: {
+												type: 'SelectorExpr',
+												x: { name: 'errors' },
+												sel: { name: 'New' }
+											}
 										}
-									}
-								]
-							}]
+									]
+								}
+							]
 						},
 						{
 							type: 'GenDecl',
 							tok: 'type',
-							specs: [{
-								type: 'TypeSpec',
-								name: { name: 'ValidationError' },
-								type: {
-									type: 'StructType',
-									fields: {
-										list: [
-											{
-												names: [{ name: 'Field' }],
-												type: { name: 'string' }
-											},
-											{
-												names: [{ name: 'Message' }],
-												type: { name: 'string' }
-											}
-										]
+							specs: [
+								{
+									type: 'TypeSpec',
+									name: { name: 'ValidationError' },
+									type: {
+										type: 'StructType',
+										fields: {
+											list: [
+												{
+													names: [{ name: 'Field' }],
+													type: { name: 'string' }
+												},
+												{
+													names: [{ name: 'Message' }],
+													type: { name: 'string' }
+												}
+											]
+										}
 									}
 								}
-							}]
+							]
 						},
 						{
 							type: 'FuncDecl',
 							recv: {
-								list: [{
-									names: [{ name: 'e' }],
-									type: { name: 'ValidationError' }
-								}]
+								list: [
+									{
+										names: [{ name: 'e' }],
+										type: { name: 'ValidationError' }
+									}
+								]
 							},
 							name: { name: 'Error' },
 							type: {
 								results: {
-									list: [{
-										type: { name: 'string' }
-									}]
+									list: [
+										{
+											type: { name: 'string' }
+										}
+									]
 								}
 							}
 						}
@@ -788,9 +828,9 @@ func main() {
 				},
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.decls[0].tok).toBe('var');
 			expect(result.ast.decls[1].specs[0].name.name).toBe('ValidationError');
@@ -807,7 +847,7 @@ func broken() {
 		return "missing closing brace"
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -818,9 +858,9 @@ func broken() {
 					file: 'test.go'
 				}
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.type).toBe('SyntaxError');
 			expect(result.error.message).toContain('expected }');
@@ -834,7 +874,7 @@ func main() {
 	fmt.Println("Hello")
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -845,16 +885,16 @@ func main() {
 					file: 'test.go'
 				}
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.message).toContain('expected package');
 		});
 
 		test('should handle empty files', async () => {
 			const content = '';
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -863,16 +903,16 @@ func main() {
 					file: 'test.go'
 				}
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.message).toContain('empty file');
 		});
 
 		test('should handle files with only package declaration', async () => {
 			const content = 'package main';
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -886,9 +926,9 @@ func main() {
 				},
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(content, 'test.go');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.package.name.name).toBe('main');
 			expect(result.ast.decls).toHaveLength(0);
@@ -898,39 +938,40 @@ func main() {
 	describe('Performance Tests', () => {
 		test('should parse small files quickly', async () => {
 			const content = 'package main\nfunc main() {}';
-			
+
 			mockGoParser.parse.mockImplementation(async () => {
-				await new Promise(resolve => setTimeout(resolve, 1));
+				await new Promise((resolve) => setTimeout(resolve, 1));
 				return {
 					success: true,
 					ast: { type: 'File', package: { name: { name: 'main' } } },
 					language: 'go'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockGoParser.parse(content, 'test.go');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(10);
 		});
 
 		test('should handle large files efficiently', async () => {
-			const largeContent = 'package main\n' + Array(1000).fill('var x = 1').join('\n');
-			
+			const largeContent =
+				'package main\n' + Array(1000).fill('var x = 1').join('\n');
+
 			mockGoParser.parse.mockImplementation(async () => {
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 				return {
 					success: true,
 					ast: { type: 'File', package: { name: { name: 'main' } } },
 					language: 'go'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockGoParser.parse(largeContent, 'test.go');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(100);
 		});
 	});
@@ -1059,13 +1100,13 @@ func main() {
 	log.Println("Server exited")
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'File', package: { name: { name: 'main' } } },
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(serverContent, 'server.go');
 			expect(result.success).toBe(true);
 		});
@@ -1136,15 +1177,15 @@ func main() {
 	}
 }
 			`;
-			
+
 			mockGoParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'File', package: { name: { name: 'main' } } },
 				language: 'go'
 			});
-			
+
 			const result = await mockGoParser.parse(grpcContent, 'grpc_server.go');
 			expect(result.success).toBe(true);
 		});
 	});
-}); 
+});

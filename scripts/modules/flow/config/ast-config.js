@@ -1,11 +1,11 @@
 /**
  * Unified AST Configuration Management for Task Master Flow
- * 
+ *
  * Combines functionality from:
  * - ast-config.js (simple loading API)
  * - ast-config-manager.js (advanced management)
  * - config-validator.js (validation rules)
- * 
+ *
  * Provides both simple and advanced APIs for AST configuration.
  */
 
@@ -977,8 +977,8 @@ class ConfigValidator {
 // Simple API exports (backward compatible)
 export { DEFAULT_AST_CONFIG };
 
-// Advanced API exports  
+// Advanced API exports
 export default ASTConfigManager;
 
 // Validator export for those who need it directly
-export { ConfigValidator }; 
+export { ConfigValidator };

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Phase 4.1 - AST Analysis Real-World Workflow Tests
- * 
+ *
  * Tests multi-language project analysis workflows:
  * - Large codebase analysis
  * - Multi-language project handling
  * - Complex dependency analysis
  * - Performance under realistic loads
- * 
+ *
  * @fileoverview End-to-end testing of AST analysis in real-world scenarios
  */
 
@@ -21,60 +21,60 @@ const __dirname = path.dirname(__filename);
 console.log('🌳 Phase 4.1 - AST Analysis Real-World Workflow Tests\n');
 
 class ASTAnalysisWorkflowTester {
-    constructor() {
-        this.results = [];
-        this.startTime = Date.now();
-        this.testProjectRoot = path.join(__dirname, '../fixtures/ast-test-project');
-        this.analysisResults = [];
-    }
+	constructor() {
+		this.results = [];
+		this.startTime = Date.now();
+		this.testProjectRoot = path.join(__dirname, '../fixtures/ast-test-project');
+		this.analysisResults = [];
+	}
 
-    async run() {
-        try {
-            console.log('🚀 Starting AST Analysis Workflow Tests...\n');
-            
-            await this.setupTestEnvironment();
-            await this.testLargeCodebaseAnalysis();
-            await this.testMultiLanguageProjectHandling();
-            await this.testComplexDependencyAnalysis();
-            await this.testPerformanceUnderLoad();
-            await this.testContextRelevanceScoring();
-            await this.testCodeComplexityAnalysis();
-            await this.testCacheOptimization();
-            await this.testIncrementalAnalysis();
-            await this.testErrorResilienceAnalysis();
-            await this.testMemoryEfficientAnalysis();
-            
-            await this.cleanup();
-            this.printResults();
-        } catch (error) {
-            console.error('❌ AST Analysis workflow tests failed:', error.message);
-            console.error(error.stack);
-            process.exit(1);
-        }
-    }
+	async run() {
+		try {
+			console.log('🚀 Starting AST Analysis Workflow Tests...\n');
 
-    async setupTestEnvironment() {
-        console.log('🏗️ Setting up AST test environment...');
-        
-        try {
-            // Create test project structure with multiple languages
-            await fs.mkdir(this.testProjectRoot, { recursive: true });
-            await this.createMultiLanguageProject();
-            
-            this.recordTest(
-                'AST Environment Setup',
-                true,
-                'Multi-language test project created successfully'
-            );
-        } catch (error) {
-            this.recordTest('AST Environment Setup', false, error.message);
-        }
-    }
+			await this.setupTestEnvironment();
+			await this.testLargeCodebaseAnalysis();
+			await this.testMultiLanguageProjectHandling();
+			await this.testComplexDependencyAnalysis();
+			await this.testPerformanceUnderLoad();
+			await this.testContextRelevanceScoring();
+			await this.testCodeComplexityAnalysis();
+			await this.testCacheOptimization();
+			await this.testIncrementalAnalysis();
+			await this.testErrorResilienceAnalysis();
+			await this.testMemoryEfficientAnalysis();
 
-    async createMultiLanguageProject() {
-        const projectStructure = {
-            // JavaScript/TypeScript files
-            'src/index.js': `// Main application entry
+			await this.cleanup();
+			this.printResults();
+		} catch (error) {
+			console.error('❌ AST Analysis workflow tests failed:', error.message);
+			console.error(error.stack);
+			process.exit(1);
+		}
+	}
+
+	async setupTestEnvironment() {
+		console.log('🏗️ Setting up AST test environment...');
+
+		try {
+			// Create test project structure with multiple languages
+			await fs.mkdir(this.testProjectRoot, { recursive: true });
+			await this.createMultiLanguageProject();
+
+			this.recordTest(
+				'AST Environment Setup',
+				true,
+				'Multi-language test project created successfully'
+			);
+		} catch (error) {
+			this.recordTest('AST Environment Setup', false, error.message);
+		}
+	}
+
+	async createMultiLanguageProject() {
+		const projectStructure = {
+			// JavaScript/TypeScript files
+			'src/index.js': `// Main application entry
 import { UserService } from './services/UserService.js';
 import { DatabaseManager } from './database/DatabaseManager.js';
 import { Logger } from './utils/Logger.js';
@@ -95,7 +95,7 @@ class Application {
 
 export default Application;`,
 
-            'src/services/UserService.js': `// User service implementation
+			'src/services/UserService.js': `// User service implementation
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -132,8 +132,8 @@ export class UserService {
     }
 }`,
 
-            // Python files
-            'python/data_processor.py': `#!/usr/bin/env python3
+			// Python files
+			'python/data_processor.py': `#!/usr/bin/env python3
 """
 Data processing module for analytics
 """
@@ -191,8 +191,8 @@ class DataProcessor:
             'count': len(self.processed_data)
         }`,
 
-            // Go files
-            'go/server.go': `package main
+			// Go files
+			'go/server.go': `package main
 
 import (
     "context"
@@ -269,8 +269,8 @@ func (s *Server) respondJSON(w http.ResponseWriter, status int, data interface{}
     json.NewEncoder(w).Encode(data)
 }`,
 
-            // TypeScript files
-            'src/types/index.ts': `// Type definitions
+			// TypeScript files
+			'src/types/index.ts': `// Type definitions
 export interface User {
     id: number;
     email: string;
@@ -347,24 +347,28 @@ export class UserValidator {
     }
 }`,
 
-            // Configuration files
-            'package.json': JSON.stringify({
-                name: 'ast-test-project',
-                version: '1.0.0',
-                type: 'module',
-                dependencies: {
-                    'bcrypt': '^5.1.0',
-                    'jsonwebtoken': '^9.0.0',
-                    'express': '^4.18.0'
-                },
-                devDependencies: {
-                    'jest': '^29.0.0',
-                    '@types/node': '^20.0.0',
-                    'typescript': '^5.0.0'
-                }
-            }, null, 2),
+			// Configuration files
+			'package.json': JSON.stringify(
+				{
+					name: 'ast-test-project',
+					version: '1.0.0',
+					type: 'module',
+					dependencies: {
+						bcrypt: '^5.1.0',
+						jsonwebtoken: '^9.0.0',
+						express: '^4.18.0'
+					},
+					devDependencies: {
+						jest: '^29.0.0',
+						'@types/node': '^20.0.0',
+						typescript: '^5.0.0'
+					}
+				},
+				null,
+				2
+			),
 
-            'go.mod': `module ast-test-project
+			'go.mod': `module ast-test-project
 
 go 1.21
 
@@ -373,481 +377,503 @@ require (
     github.com/redis/go-redis/v9 v9.0.5
 )`,
 
-            'requirements.txt': `pandas>=2.0.0
+			'requirements.txt': `pandas>=2.0.0
 numpy>=1.24.0
 python-dateutil>=2.8.2`,
 
-            'tsconfig.json': JSON.stringify({
-                compilerOptions: {
-                    target: 'ES2022',
-                    module: 'ESNext',
-                    moduleResolution: 'node',
-                    strict: true,
-                    esModuleInterop: true,
-                    skipLibCheck: true,
-                    forceConsistentCasingInFileNames: true
-                }
-            }, null, 2)
-        };
+			'tsconfig.json': JSON.stringify(
+				{
+					compilerOptions: {
+						target: 'ES2022',
+						module: 'ESNext',
+						moduleResolution: 'node',
+						strict: true,
+						esModuleInterop: true,
+						skipLibCheck: true,
+						forceConsistentCasingInFileNames: true
+					}
+				},
+				null,
+				2
+			)
+		};
 
-        for (const [filePath, content] of Object.entries(projectStructure)) {
-            const fullPath = path.join(this.testProjectRoot, filePath);
-            await fs.mkdir(path.dirname(fullPath), { recursive: true });
-            await fs.writeFile(fullPath, content);
-        }
-    }
+		for (const [filePath, content] of Object.entries(projectStructure)) {
+			const fullPath = path.join(this.testProjectRoot, filePath);
+			await fs.mkdir(path.dirname(fullPath), { recursive: true });
+			await fs.writeFile(fullPath, content);
+		}
+	}
 
-    async testLargeCodebaseAnalysis() {
-        console.log('📊 Testing large codebase analysis...');
-        
-        try {
-            const startTime = Date.now();
-            
-            // Simulate analyzing the entire project
-            const analysisResult = await this.simulateLargeCodebaseAnalysis();
-            
-            const analysisTime = Date.now() - startTime;
-            const performanceAcceptable = analysisTime < 5000; // 5 seconds max
-            const analysisComplete = analysisResult.filesAnalyzed > 0;
-            
-            const success = performanceAcceptable && analysisComplete;
-            
-            this.recordTest(
-                'Large Codebase Analysis',
-                success,
-                `Analyzed ${analysisResult.filesAnalyzed} files in ${analysisTime}ms`
-            );
-            
-            this.analysisResults.push(analysisResult);
-        } catch (error) {
-            this.recordTest('Large Codebase Analysis', false, error.message);
-        }
-    }
+	async testLargeCodebaseAnalysis() {
+		console.log('📊 Testing large codebase analysis...');
 
-    async testMultiLanguageProjectHandling() {
-        console.log('🌐 Testing multi-language project handling...');
-        
-        try {
-            const languages = ['javascript', 'typescript', 'python', 'go'];
-            const analysisResults = {};
-            
-            for (const language of languages) {
-                const result = await this.simulateLanguageSpecificAnalysis(language);
-                analysisResults[language] = result;
-            }
-            
-            const languagesSupported = Object.keys(analysisResults).length;
-            const allLanguagesSuccessful = Object.values(analysisResults)
-                .every(result => result.success);
-            
-            const success = languagesSupported === languages.length && allLanguagesSuccessful;
-            
-            this.recordTest(
-                'Multi-Language Project Handling',
-                success,
-                `Successfully analyzed ${languagesSupported} languages`
-            );
-        } catch (error) {
-            this.recordTest('Multi-Language Project Handling', false, error.message);
-        }
-    }
+		try {
+			const startTime = Date.now();
 
-    async testComplexDependencyAnalysis() {
-        console.log('🔗 Testing complex dependency analysis...');
-        
-        try {
-            // Simulate dependency analysis across languages
-            const dependencyResult = await this.simulateDependencyAnalysis();
-            
-            const internalDeps = dependencyResult.internal;
-            const externalDeps = dependencyResult.external;
-            const circularDeps = dependencyResult.circular;
-            
-            const success = 
-                internalDeps.length > 0 && 
-                externalDeps.length > 0 && 
-                circularDeps.length === 0; // No circular dependencies
-            
-            this.recordTest(
-                'Complex Dependency Analysis',
-                success,
-                `Found ${internalDeps.length} internal, ${externalDeps.length} external deps, ${circularDeps.length} circular`
-            );
-        } catch (error) {
-            this.recordTest('Complex Dependency Analysis', false, error.message);
-        }
-    }
+			// Simulate analyzing the entire project
+			const analysisResult = await this.simulateLargeCodebaseAnalysis();
 
-    async testPerformanceUnderLoad() {
-        console.log('⚡ Testing performance under load...');
-        
-        try {
-            const loadTest = {
-                concurrentAnalyses: 5,
-                filesPerAnalysis: 20,
-                maxTime: 8000 // 8 seconds
-            };
+			const analysisTime = Date.now() - startTime;
+			const performanceAcceptable = analysisTime < 5000; // 5 seconds max
+			const analysisComplete = analysisResult.filesAnalyzed > 0;
 
-            const startTime = Date.now();
-            
-            // Simulate concurrent AST analyses
-            const analyses = Array(loadTest.concurrentAnalyses)
-                .fill(null)
-                .map(() => this.simulateParallelAnalysis(loadTest.filesPerAnalysis));
-            
-            const results = await Promise.allSettled(analyses);
-            const totalTime = Date.now() - startTime;
-            
-            const successful = results.filter(r => r.status === 'fulfilled').length;
-            const withinTimeLimit = totalTime <= loadTest.maxTime;
-            
-            const success = successful === loadTest.concurrentAnalyses && withinTimeLimit;
-            
-            this.recordTest(
-                'Performance Under Load',
-                success,
-                `${successful}/${loadTest.concurrentAnalyses} analyses completed in ${totalTime}ms`
-            );
-        } catch (error) {
-            this.recordTest('Performance Under Load', false, error.message);
-        }
-    }
+			const success = performanceAcceptable && analysisComplete;
 
-    async testContextRelevanceScoring() {
-        console.log('🎯 Testing context relevance scoring...');
-        
-        try {
-            const testContext = {
-                taskDescription: 'Implement user authentication system',
-                relevantFiles: ['UserService.js', 'auth.ts', 'user.py'],
-                irrelevantFiles: ['README.md', 'package.json', 'config.ini']
-            };
+			this.recordTest(
+				'Large Codebase Analysis',
+				success,
+				`Analyzed ${analysisResult.filesAnalyzed} files in ${analysisTime}ms`
+			);
 
-            const scoringResult = await this.simulateRelevanceScoring(testContext);
-            
-            const highRelevanceCount = scoringResult.scores
-                .filter(score => score.value > 0.7).length;
-            const lowRelevanceCount = scoringResult.scores
-                .filter(score => score.value < 0.3).length;
-            
-            const success = highRelevanceCount >= 2 && lowRelevanceCount >= 1;
-            
-            this.recordTest(
-                'Context Relevance Scoring',
-                success,
-                `${highRelevanceCount} high-relevance, ${lowRelevanceCount} low-relevance files identified`
-            );
-        } catch (error) {
-            this.recordTest('Context Relevance Scoring', false, error.message);
-        }
-    }
+			this.analysisResults.push(analysisResult);
+		} catch (error) {
+			this.recordTest('Large Codebase Analysis', false, error.message);
+		}
+	}
 
-    async testCodeComplexityAnalysis() {
-        console.log('📈 Testing code complexity analysis...');
-        
-        try {
-            const complexityResult = await this.simulateComplexityAnalysis();
-            
-            const avgComplexity = complexityResult.averageComplexity;
-            const maxComplexity = complexityResult.maxComplexity;
-            const complexFiles = complexityResult.complexFiles;
-            
-            const success = 
-                avgComplexity > 0 && 
-                maxComplexity > avgComplexity && 
-                complexFiles.length > 0;
-            
-            this.recordTest(
-                'Code Complexity Analysis',
-                success,
-                `Avg complexity: ${avgComplexity.toFixed(2)}, Max: ${maxComplexity}, ${complexFiles.length} complex files`
-            );
-        } catch (error) {
-            this.recordTest('Code Complexity Analysis', false, error.message);
-        }
-    }
+	async testMultiLanguageProjectHandling() {
+		console.log('🌐 Testing multi-language project handling...');
 
-    async testCacheOptimization() {
-        console.log('💾 Testing cache optimization...');
-        
-        try {
-            // First analysis (cold cache)
-            const firstAnalysis = await this.simulateAnalysisWithCache(false);
-            
-            // Second analysis (warm cache)
-            const secondAnalysis = await this.simulateAnalysisWithCache(true);
-            
-            const speedImprovement = firstAnalysis.time / secondAnalysis.time;
-            const cacheHitRate = secondAnalysis.cacheHitRate;
-            
-            const success = speedImprovement >= 2.0 && cacheHitRate >= 0.8;
-            
-            this.recordTest(
-                'Cache Optimization',
-                success,
-                `${speedImprovement.toFixed(1)}x speedup, ${(cacheHitRate * 100).toFixed(1)}% cache hit rate`
-            );
-        } catch (error) {
-            this.recordTest('Cache Optimization', false, error.message);
-        }
-    }
+		try {
+			const languages = ['javascript', 'typescript', 'python', 'go'];
+			const analysisResults = {};
 
-    async testIncrementalAnalysis() {
-        console.log('🔄 Testing incremental analysis...');
-        
-        try {
-            // Initial full analysis
-            const initialAnalysis = await this.simulateFullAnalysis();
-            
-            // Simulate file change
-            const changedFiles = ['src/UserService.js'];
-            
-            // Incremental analysis
-            const incrementalAnalysis = await this.simulateIncrementalAnalysis(changedFiles);
-            
-            const filesReanalyzed = incrementalAnalysis.filesProcessed;
-            const timeReduction = initialAnalysis.time / incrementalAnalysis.time;
-            
-            const success = filesReanalyzed <= changedFiles.length + 2 && timeReduction >= 3.0;
-            
-            this.recordTest(
-                'Incremental Analysis',
-                success,
-                `Reanalyzed ${filesReanalyzed} files, ${timeReduction.toFixed(1)}x faster`
-            );
-        } catch (error) {
-            this.recordTest('Incremental Analysis', false, error.message);
-        }
-    }
+			for (const language of languages) {
+				const result = await this.simulateLanguageSpecificAnalysis(language);
+				analysisResults[language] = result;
+			}
 
-    async testErrorResilienceAnalysis() {
-        console.log('🛡️ Testing error resilience analysis...');
-        
-        try {
-            const errorScenarios = [
-                'malformed_javascript',
-                'invalid_python_syntax',
-                'missing_go_imports',
-                'typescript_type_errors'
-            ];
+			const languagesSupported = Object.keys(analysisResults).length;
+			const allLanguagesSuccessful = Object.values(analysisResults).every(
+				(result) => result.success
+			);
 
-            let handledErrors = 0;
-            
-            for (const scenario of errorScenarios) {
-                const result = await this.simulateErrorScenario(scenario);
-                if (result.gracefulFailure) {
-                    handledErrors++;
-                }
-            }
-            
-            const success = handledErrors >= errorScenarios.length * 0.8;
-            
-            this.recordTest(
-                'Error Resilience Analysis',
-                success,
-                `Gracefully handled ${handledErrors}/${errorScenarios.length} error scenarios`
-            );
-        } catch (error) {
-            this.recordTest('Error Resilience Analysis', false, error.message);
-        }
-    }
+			const success =
+				languagesSupported === languages.length && allLanguagesSuccessful;
 
-    async testMemoryEfficientAnalysis() {
-        console.log('🧠 Testing memory-efficient analysis...');
-        
-        try {
-            const startMemory = process.memoryUsage();
-            
-            // Simulate large project analysis
-            const memoryTest = await this.simulateMemoryEfficientAnalysis();
-            
-            const endMemory = process.memoryUsage();
-            const memoryGrowth = endMemory.heapUsed - startMemory.heapUsed;
-            const memoryLimitMB = 50; // 50MB limit
-            
-            const success = 
-                memoryGrowth < (memoryLimitMB * 1024 * 1024) && 
-                memoryTest.filesProcessed > 10;
-            
-            this.recordTest(
-                'Memory-Efficient Analysis',
-                success,
-                `Processed ${memoryTest.filesProcessed} files, memory growth: ${Math.round(memoryGrowth / 1024 / 1024)}MB`
-            );
-        } catch (error) {
-            this.recordTest('Memory-Efficient Analysis', false, error.message);
-        }
-    }
+			this.recordTest(
+				'Multi-Language Project Handling',
+				success,
+				`Successfully analyzed ${languagesSupported} languages`
+			);
+		} catch (error) {
+			this.recordTest('Multi-Language Project Handling', false, error.message);
+		}
+	}
 
-    // Simulation helper methods
-    async simulateLargeCodebaseAnalysis() {
-        await this.delay(200);
-        return {
-            filesAnalyzed: 25,
-            linesOfCode: 5000,
-            complexity: 350,
-            dependencies: 45
-        };
-    }
+	async testComplexDependencyAnalysis() {
+		console.log('🔗 Testing complex dependency analysis...');
 
-    async simulateLanguageSpecificAnalysis(language) {
-        await this.delay(50);
-        return {
-            language,
-            success: true,
-            filesFound: Math.floor(Math.random() * 5) + 2,
-            astNodes: Math.floor(Math.random() * 1000) + 500
-        };
-    }
+		try {
+			// Simulate dependency analysis across languages
+			const dependencyResult = await this.simulateDependencyAnalysis();
 
-    async simulateDependencyAnalysis() {
-        await this.delay(100);
-        return {
-            internal: ['UserService', 'DatabaseManager', 'Logger'],
-            external: ['bcrypt', 'jsonwebtoken', 'express', 'pandas', 'numpy'],
-            circular: [] // No circular dependencies
-        };
-    }
+			const internalDeps = dependencyResult.internal;
+			const externalDeps = dependencyResult.external;
+			const circularDeps = dependencyResult.circular;
 
-    async simulateParallelAnalysis(fileCount) {
-        await this.delay(Math.random() * 300 + 100);
-        return {
-            filesAnalyzed: fileCount,
-            success: true
-        };
-    }
+			const success =
+				internalDeps.length > 0 &&
+				externalDeps.length > 0 &&
+				circularDeps.length === 0; // No circular dependencies
 
-    async simulateRelevanceScoring(context) {
-        await this.delay(75);
-        return {
-            scores: [
-                { file: 'UserService.js', value: 0.95 },
-                { file: 'auth.ts', value: 0.88 },
-                { file: 'user.py', value: 0.76 },
-                { file: 'package.json', value: 0.15 },
-                { file: 'README.md', value: 0.05 }
-            ]
-        };
-    }
+			this.recordTest(
+				'Complex Dependency Analysis',
+				success,
+				`Found ${internalDeps.length} internal, ${externalDeps.length} external deps, ${circularDeps.length} circular`
+			);
+		} catch (error) {
+			this.recordTest('Complex Dependency Analysis', false, error.message);
+		}
+	}
 
-    async simulateComplexityAnalysis() {
-        await this.delay(80);
-        return {
-            averageComplexity: 4.2,
-            maxComplexity: 12,
-            complexFiles: ['UserService.js', 'DataProcessor.py']
-        };
-    }
+	async testPerformanceUnderLoad() {
+		console.log('⚡ Testing performance under load...');
 
-    async simulateAnalysisWithCache(warmCache) {
-        const baseTime = 300;
-        const time = warmCache ? baseTime * 0.3 : baseTime;
-        await this.delay(time);
-        
-        return {
-            time,
-            cacheHitRate: warmCache ? 0.85 : 0.0,
-            filesAnalyzed: 20
-        };
-    }
+		try {
+			const loadTest = {
+				concurrentAnalyses: 5,
+				filesPerAnalysis: 20,
+				maxTime: 8000 // 8 seconds
+			};
 
-    async simulateFullAnalysis() {
-        await this.delay(400);
-        return {
-            time: 400,
-            filesProcessed: 25
-        };
-    }
+			const startTime = Date.now();
 
-    async simulateIncrementalAnalysis(changedFiles) {
-        await this.delay(120);
-        return {
-            time: 120,
-            filesProcessed: changedFiles.length + 1 // Changed file + one dependent
-        };
-    }
+			// Simulate concurrent AST analyses
+			const analyses = Array(loadTest.concurrentAnalyses)
+				.fill(null)
+				.map(() => this.simulateParallelAnalysis(loadTest.filesPerAnalysis));
 
-    async simulateErrorScenario(scenario) {
-        await this.delay(30);
-        return {
-            scenario,
-            gracefulFailure: true,
-            partialResults: true
-        };
-    }
+			const results = await Promise.allSettled(analyses);
+			const totalTime = Date.now() - startTime;
 
-    async simulateMemoryEfficientAnalysis() {
-        await this.delay(250);
-        return {
-            filesProcessed: 15,
-            memoryOptimized: true
-        };
-    }
+			const successful = results.filter((r) => r.status === 'fulfilled').length;
+			const withinTimeLimit = totalTime <= loadTest.maxTime;
 
-    async delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+			const success =
+				successful === loadTest.concurrentAnalyses && withinTimeLimit;
 
-    async cleanup() {
-        try {
-            await fs.rm(this.testProjectRoot, { recursive: true, force: true });
-        } catch (error) {
-            // Ignore cleanup errors
-        }
-    }
+			this.recordTest(
+				'Performance Under Load',
+				success,
+				`${successful}/${loadTest.concurrentAnalyses} analyses completed in ${totalTime}ms`
+			);
+		} catch (error) {
+			this.recordTest('Performance Under Load', false, error.message);
+		}
+	}
 
-    recordTest(name, success, message) {
-        this.results.push({ name, success, message });
-        const status = success ? '✅' : '❌';
-        console.log(`  ${status} ${name}: ${message}`);
-    }
+	async testContextRelevanceScoring() {
+		console.log('🎯 Testing context relevance scoring...');
 
-    printResults() {
-        const duration = Date.now() - this.startTime;
-        const passed = this.results.filter(r => r.success).length;
-        const total = this.results.length;
-        const successRate = ((passed / total) * 100).toFixed(1);
+		try {
+			const testContext = {
+				taskDescription: 'Implement user authentication system',
+				relevantFiles: ['UserService.js', 'auth.ts', 'user.py'],
+				irrelevantFiles: ['README.md', 'package.json', 'config.ini']
+			};
 
-        console.log('\n' + '='.repeat(60));
-        console.log('🌳 AST ANALYSIS WORKFLOW TEST RESULTS');
-        console.log('='.repeat(60));
+			const scoringResult = await this.simulateRelevanceScoring(testContext);
 
-        console.log(`\n📊 Test Summary:`);
-        console.log(`   Tests Passed: ${passed}/${total}`);
-        console.log(`   Success Rate: ${successRate}%`);
-        console.log(`   Total Duration: ${duration}ms`);
-        console.log(`   Analysis Results: ${this.analysisResults.length}`);
+			const highRelevanceCount = scoringResult.scores.filter(
+				(score) => score.value > 0.7
+			).length;
+			const lowRelevanceCount = scoringResult.scores.filter(
+				(score) => score.value < 0.3
+			).length;
 
-        console.log(`\n🔍 Analysis Performance:`);
-        if (this.analysisResults.length > 0) {
-            const totalFiles = this.analysisResults.reduce((sum, r) => sum + r.filesAnalyzed, 0);
-            console.log(`   Total Files Analyzed: ${totalFiles}`);
-            console.log(`   Average Analysis Time: ${Math.round(duration / this.analysisResults.length)}ms`);
-        }
+			const success = highRelevanceCount >= 2 && lowRelevanceCount >= 1;
 
-        if (passed === total) {
-            console.log('\n🎉 All AST analysis workflow tests passed!');
-            console.log('   The system can handle complex multi-language analysis');
-        } else {
-            console.log(`\n❌ ${total - passed} analysis workflow test(s) failed`);
-            console.log('   Some analysis scenarios need attention');
-        }
+			this.recordTest(
+				'Context Relevance Scoring',
+				success,
+				`${highRelevanceCount} high-relevance, ${lowRelevanceCount} low-relevance files identified`
+			);
+		} catch (error) {
+			this.recordTest('Context Relevance Scoring', false, error.message);
+		}
+	}
 
-        console.log(`\n⚡ Performance Metrics:`);
-        console.log(`   Average test time: ${Math.round(duration / total)}ms`);
-        console.log(`   Tests per second: ${(total / (duration / 1000)).toFixed(2)}`);
-        
-        if (successRate >= 90) {
-            console.log('\n🏆 EXCELLENT: Multi-language AST analysis working perfectly!');
-            process.exit(0);
-        } else if (successRate >= 75) {
-            console.log('\n⚠️  GOOD: AST analysis mostly working, some optimizations needed');
-            process.exit(0);
-        } else {
-            console.log('\n💥 NEEDS WORK: Critical AST analysis issues detected');
-            process.exit(1);
-        }
-    }
+	async testCodeComplexityAnalysis() {
+		console.log('📈 Testing code complexity analysis...');
+
+		try {
+			const complexityResult = await this.simulateComplexityAnalysis();
+
+			const avgComplexity = complexityResult.averageComplexity;
+			const maxComplexity = complexityResult.maxComplexity;
+			const complexFiles = complexityResult.complexFiles;
+
+			const success =
+				avgComplexity > 0 &&
+				maxComplexity > avgComplexity &&
+				complexFiles.length > 0;
+
+			this.recordTest(
+				'Code Complexity Analysis',
+				success,
+				`Avg complexity: ${avgComplexity.toFixed(2)}, Max: ${maxComplexity}, ${complexFiles.length} complex files`
+			);
+		} catch (error) {
+			this.recordTest('Code Complexity Analysis', false, error.message);
+		}
+	}
+
+	async testCacheOptimization() {
+		console.log('💾 Testing cache optimization...');
+
+		try {
+			// First analysis (cold cache)
+			const firstAnalysis = await this.simulateAnalysisWithCache(false);
+
+			// Second analysis (warm cache)
+			const secondAnalysis = await this.simulateAnalysisWithCache(true);
+
+			const speedImprovement = firstAnalysis.time / secondAnalysis.time;
+			const cacheHitRate = secondAnalysis.cacheHitRate;
+
+			const success = speedImprovement >= 2.0 && cacheHitRate >= 0.8;
+
+			this.recordTest(
+				'Cache Optimization',
+				success,
+				`${speedImprovement.toFixed(1)}x speedup, ${(cacheHitRate * 100).toFixed(1)}% cache hit rate`
+			);
+		} catch (error) {
+			this.recordTest('Cache Optimization', false, error.message);
+		}
+	}
+
+	async testIncrementalAnalysis() {
+		console.log('🔄 Testing incremental analysis...');
+
+		try {
+			// Initial full analysis
+			const initialAnalysis = await this.simulateFullAnalysis();
+
+			// Simulate file change
+			const changedFiles = ['src/UserService.js'];
+
+			// Incremental analysis
+			const incrementalAnalysis =
+				await this.simulateIncrementalAnalysis(changedFiles);
+
+			const filesReanalyzed = incrementalAnalysis.filesProcessed;
+			const timeReduction = initialAnalysis.time / incrementalAnalysis.time;
+
+			const success =
+				filesReanalyzed <= changedFiles.length + 2 && timeReduction >= 3.0;
+
+			this.recordTest(
+				'Incremental Analysis',
+				success,
+				`Reanalyzed ${filesReanalyzed} files, ${timeReduction.toFixed(1)}x faster`
+			);
+		} catch (error) {
+			this.recordTest('Incremental Analysis', false, error.message);
+		}
+	}
+
+	async testErrorResilienceAnalysis() {
+		console.log('🛡️ Testing error resilience analysis...');
+
+		try {
+			const errorScenarios = [
+				'malformed_javascript',
+				'invalid_python_syntax',
+				'missing_go_imports',
+				'typescript_type_errors'
+			];
+
+			let handledErrors = 0;
+
+			for (const scenario of errorScenarios) {
+				const result = await this.simulateErrorScenario(scenario);
+				if (result.gracefulFailure) {
+					handledErrors++;
+				}
+			}
+
+			const success = handledErrors >= errorScenarios.length * 0.8;
+
+			this.recordTest(
+				'Error Resilience Analysis',
+				success,
+				`Gracefully handled ${handledErrors}/${errorScenarios.length} error scenarios`
+			);
+		} catch (error) {
+			this.recordTest('Error Resilience Analysis', false, error.message);
+		}
+	}
+
+	async testMemoryEfficientAnalysis() {
+		console.log('🧠 Testing memory-efficient analysis...');
+
+		try {
+			const startMemory = process.memoryUsage();
+
+			// Simulate large project analysis
+			const memoryTest = await this.simulateMemoryEfficientAnalysis();
+
+			const endMemory = process.memoryUsage();
+			const memoryGrowth = endMemory.heapUsed - startMemory.heapUsed;
+			const memoryLimitMB = 50; // 50MB limit
+
+			const success =
+				memoryGrowth < memoryLimitMB * 1024 * 1024 &&
+				memoryTest.filesProcessed > 10;
+
+			this.recordTest(
+				'Memory-Efficient Analysis',
+				success,
+				`Processed ${memoryTest.filesProcessed} files, memory growth: ${Math.round(memoryGrowth / 1024 / 1024)}MB`
+			);
+		} catch (error) {
+			this.recordTest('Memory-Efficient Analysis', false, error.message);
+		}
+	}
+
+	// Simulation helper methods
+	async simulateLargeCodebaseAnalysis() {
+		await this.delay(200);
+		return {
+			filesAnalyzed: 25,
+			linesOfCode: 5000,
+			complexity: 350,
+			dependencies: 45
+		};
+	}
+
+	async simulateLanguageSpecificAnalysis(language) {
+		await this.delay(50);
+		return {
+			language,
+			success: true,
+			filesFound: Math.floor(Math.random() * 5) + 2,
+			astNodes: Math.floor(Math.random() * 1000) + 500
+		};
+	}
+
+	async simulateDependencyAnalysis() {
+		await this.delay(100);
+		return {
+			internal: ['UserService', 'DatabaseManager', 'Logger'],
+			external: ['bcrypt', 'jsonwebtoken', 'express', 'pandas', 'numpy'],
+			circular: [] // No circular dependencies
+		};
+	}
+
+	async simulateParallelAnalysis(fileCount) {
+		await this.delay(Math.random() * 300 + 100);
+		return {
+			filesAnalyzed: fileCount,
+			success: true
+		};
+	}
+
+	async simulateRelevanceScoring(context) {
+		await this.delay(75);
+		return {
+			scores: [
+				{ file: 'UserService.js', value: 0.95 },
+				{ file: 'auth.ts', value: 0.88 },
+				{ file: 'user.py', value: 0.76 },
+				{ file: 'package.json', value: 0.15 },
+				{ file: 'README.md', value: 0.05 }
+			]
+		};
+	}
+
+	async simulateComplexityAnalysis() {
+		await this.delay(80);
+		return {
+			averageComplexity: 4.2,
+			maxComplexity: 12,
+			complexFiles: ['UserService.js', 'DataProcessor.py']
+		};
+	}
+
+	async simulateAnalysisWithCache(warmCache) {
+		const baseTime = 300;
+		const time = warmCache ? baseTime * 0.3 : baseTime;
+		await this.delay(time);
+
+		return {
+			time,
+			cacheHitRate: warmCache ? 0.85 : 0.0,
+			filesAnalyzed: 20
+		};
+	}
+
+	async simulateFullAnalysis() {
+		await this.delay(400);
+		return {
+			time: 400,
+			filesProcessed: 25
+		};
+	}
+
+	async simulateIncrementalAnalysis(changedFiles) {
+		await this.delay(120);
+		return {
+			time: 120,
+			filesProcessed: changedFiles.length + 1 // Changed file + one dependent
+		};
+	}
+
+	async simulateErrorScenario(scenario) {
+		await this.delay(30);
+		return {
+			scenario,
+			gracefulFailure: true,
+			partialResults: true
+		};
+	}
+
+	async simulateMemoryEfficientAnalysis() {
+		await this.delay(250);
+		return {
+			filesProcessed: 15,
+			memoryOptimized: true
+		};
+	}
+
+	async delay(ms) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	async cleanup() {
+		try {
+			await fs.rm(this.testProjectRoot, { recursive: true, force: true });
+		} catch (error) {
+			// Ignore cleanup errors
+		}
+	}
+
+	recordTest(name, success, message) {
+		this.results.push({ name, success, message });
+		const status = success ? '✅' : '❌';
+		console.log(`  ${status} ${name}: ${message}`);
+	}
+
+	printResults() {
+		const duration = Date.now() - this.startTime;
+		const passed = this.results.filter((r) => r.success).length;
+		const total = this.results.length;
+		const successRate = ((passed / total) * 100).toFixed(1);
+
+		console.log('\n' + '='.repeat(60));
+		console.log('🌳 AST ANALYSIS WORKFLOW TEST RESULTS');
+		console.log('='.repeat(60));
+
+		console.log(`\n📊 Test Summary:`);
+		console.log(`   Tests Passed: ${passed}/${total}`);
+		console.log(`   Success Rate: ${successRate}%`);
+		console.log(`   Total Duration: ${duration}ms`);
+		console.log(`   Analysis Results: ${this.analysisResults.length}`);
+
+		console.log(`\n🔍 Analysis Performance:`);
+		if (this.analysisResults.length > 0) {
+			const totalFiles = this.analysisResults.reduce(
+				(sum, r) => sum + r.filesAnalyzed,
+				0
+			);
+			console.log(`   Total Files Analyzed: ${totalFiles}`);
+			console.log(
+				`   Average Analysis Time: ${Math.round(duration / this.analysisResults.length)}ms`
+			);
+		}
+
+		if (passed === total) {
+			console.log('\n🎉 All AST analysis workflow tests passed!');
+			console.log('   The system can handle complex multi-language analysis');
+		} else {
+			console.log(`\n❌ ${total - passed} analysis workflow test(s) failed`);
+			console.log('   Some analysis scenarios need attention');
+		}
+
+		console.log(`\n⚡ Performance Metrics:`);
+		console.log(`   Average test time: ${Math.round(duration / total)}ms`);
+		console.log(
+			`   Tests per second: ${(total / (duration / 1000)).toFixed(2)}`
+		);
+
+		if (successRate >= 90) {
+			console.log(
+				'\n🏆 EXCELLENT: Multi-language AST analysis working perfectly!'
+			);
+			process.exit(0);
+		} else if (successRate >= 75) {
+			console.log(
+				'\n⚠️  GOOD: AST analysis mostly working, some optimizations needed'
+			);
+			process.exit(0);
+		} else {
+			console.log('\n💥 NEEDS WORK: Critical AST analysis issues detected');
+			process.exit(1);
+		}
+	}
 }
 
 // Export for use in test runners
@@ -855,9 +881,9 @@ export { ASTAnalysisWorkflowTester };
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-    const tester = new ASTAnalysisWorkflowTester();
-    tester.run().catch(error => {
-        console.error('💥 AST analysis workflow tester crashed:', error);
-        process.exit(1);
-    });
-} 
+	const tester = new ASTAnalysisWorkflowTester();
+	tester.run().catch((error) => {
+		console.error('💥 AST analysis workflow tester crashed:', error);
+		process.exit(1);
+	});
+}

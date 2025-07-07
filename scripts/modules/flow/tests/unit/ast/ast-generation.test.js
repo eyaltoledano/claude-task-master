@@ -49,16 +49,16 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				],
 				sourceType: 'module'
 			};
-			
+
 			mockASTValidator.validateAST.mockReturnValue({
 				valid: true,
 				errors: [],
 				warnings: [],
 				nodeCount: 4
 			});
-			
+
 			const result = mockASTValidator.validateAST(validAST);
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.errors).toHaveLength(0);
 			expect(result.nodeCount).toBe(4);
@@ -79,7 +79,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockASTValidator.validateAST.mockReturnValue({
 				valid: false,
 				errors: [
@@ -93,9 +93,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				warnings: [],
 				nodeCount: 3
 			});
-			
+
 			const result = mockASTValidator.validateAST(invalidAST);
-			
+
 			expect(result.valid).toBe(false);
 			expect(result.errors).toHaveLength(1);
 			expect(result.errors[0].type).toBe('missing_required_field');
@@ -107,7 +107,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				{ type: 'Literal', value: 42 },
 				{ type: 'BinaryExpression', operator: '+', left: {}, right: {} }
 			];
-			
+
 			validNodes.forEach((node, index) => {
 				mockASTValidator.validateNode.mockReturnValueOnce({
 					valid: true,
@@ -115,8 +115,8 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					issues: []
 				});
 			});
-			
-			validNodes.forEach(node => {
+
+			validNodes.forEach((node) => {
 				const result = mockASTValidator.validateNode(node);
 				expect(result.valid).toBe(true);
 				expect(result.nodeType).toBe(node.type);
@@ -129,28 +129,44 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				{ type: 'Identifier' }, // Missing name
 				{ type: 'BinaryExpression', operator: '+' } // Missing left/right
 			];
-			
+
 			mockASTValidator.validateNode
 				.mockReturnValueOnce({
 					valid: false,
 					nodeType: 'InvalidNode',
-					issues: [{ type: 'unknown_node_type', message: 'Unknown node type: InvalidNode' }]
+					issues: [
+						{
+							type: 'unknown_node_type',
+							message: 'Unknown node type: InvalidNode'
+						}
+					]
 				})
 				.mockReturnValueOnce({
 					valid: false,
 					nodeType: 'Identifier',
-					issues: [{ type: 'missing_field', message: 'Identifier missing required field: name' }]
+					issues: [
+						{
+							type: 'missing_field',
+							message: 'Identifier missing required field: name'
+						}
+					]
 				})
 				.mockReturnValueOnce({
 					valid: false,
 					nodeType: 'BinaryExpression',
 					issues: [
-						{ type: 'missing_field', message: 'BinaryExpression missing required field: left' },
-						{ type: 'missing_field', message: 'BinaryExpression missing required field: right' }
+						{
+							type: 'missing_field',
+							message: 'BinaryExpression missing required field: left'
+						},
+						{
+							type: 'missing_field',
+							message: 'BinaryExpression missing required field: right'
+						}
 					]
 				});
-			
-			invalidNodes.forEach(node => {
+
+			invalidNodes.forEach((node) => {
 				const result = mockASTValidator.validateNode(node);
 				expect(result.valid).toBe(false);
 				expect(result.issues.length).toBeGreaterThan(0);
@@ -163,11 +179,13 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				body: [
 					{
 						type: 'VariableDeclaration',
-						declarations: [{
-							type: 'VariableDeclarator',
-							id: { type: 'Identifier', name: 'x' },
-							init: { type: 'Literal', value: 1 }
-						}]
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { type: 'Identifier', name: 'x' },
+								init: { type: 'Literal', value: 1 }
+							}
+						]
 					},
 					{
 						type: 'ExpressionStatement',
@@ -180,7 +198,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockASTValidator.checkIntegrity.mockReturnValue({
 				valid: true,
 				references: {
@@ -196,9 +214,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				],
 				issues: []
 			});
-			
+
 			const result = mockASTValidator.checkIntegrity(astWithReferences);
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.references.resolved).toContain('x');
 			expect(result.references.unresolved).toHaveLength(0);
@@ -207,16 +225,18 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should detect unresolved references', () => {
 			const astWithUnresolvedRef = {
 				type: 'Program',
-				body: [{
-					type: 'ExpressionStatement',
-					expression: {
-						type: 'CallExpression',
-						callee: { type: 'Identifier', name: 'undefinedFunction' },
-						arguments: []
+				body: [
+					{
+						type: 'ExpressionStatement',
+						expression: {
+							type: 'CallExpression',
+							callee: { type: 'Identifier', name: 'undefinedFunction' },
+							arguments: []
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockASTValidator.checkIntegrity.mockReturnValue({
 				valid: false,
 				references: {
@@ -239,9 +259,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				]
 			});
-			
+
 			const result = mockASTValidator.checkIntegrity(astWithUnresolvedRef);
-			
+
 			expect(result.valid).toBe(false);
 			expect(result.references.unresolved).toContain('undefinedFunction');
 			expect(result.issues[0].type).toBe('unresolved_reference');
@@ -251,31 +271,35 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 	describe('AST Generation Quality', () => {
 		test('should generate complete AST from simple code', async () => {
 			const code = 'function add(a, b) { return a + b; }';
-			
+
 			mockASTGenerator.generateAST.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Program',
-					body: [{
-						type: 'FunctionDeclaration',
-						id: { type: 'Identifier', name: 'add' },
-						params: [
-							{ type: 'Identifier', name: 'a' },
-							{ type: 'Identifier', name: 'b' }
-						],
-						body: {
-							type: 'BlockStatement',
-							body: [{
-								type: 'ReturnStatement',
-								argument: {
-									type: 'BinaryExpression',
-									operator: '+',
-									left: { type: 'Identifier', name: 'a' },
-									right: { type: 'Identifier', name: 'b' }
-								}
-							}]
+					body: [
+						{
+							type: 'FunctionDeclaration',
+							id: { type: 'Identifier', name: 'add' },
+							params: [
+								{ type: 'Identifier', name: 'a' },
+								{ type: 'Identifier', name: 'b' }
+							],
+							body: {
+								type: 'BlockStatement',
+								body: [
+									{
+										type: 'ReturnStatement',
+										argument: {
+											type: 'BinaryExpression',
+											operator: '+',
+											left: { type: 'Identifier', name: 'a' },
+											right: { type: 'Identifier', name: 'b' }
+										}
+									}
+								]
+							}
 						}
-					}],
+					],
 					sourceType: 'script'
 				},
 				metadata: {
@@ -284,9 +308,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					complexity: 1
 				}
 			});
-			
+
 			const result = await mockASTGenerator.generateAST(code, 'javascript');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.type).toBe('Program');
 			expect(result.ast.body[0].type).toBe('FunctionDeclaration');
@@ -296,7 +320,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 
 		test('should generate AST with proper source locations', async () => {
 			const code = 'const x = 1;\nconst y = 2;';
-			
+
 			mockASTGenerator.generateAST.mockResolvedValue({
 				success: true,
 				ast: {
@@ -304,11 +328,13 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					body: [
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								type: 'VariableDeclarator',
-								id: { type: 'Identifier', name: 'x' },
-								init: { type: 'Literal', value: 1 }
-							}],
+							declarations: [
+								{
+									type: 'VariableDeclarator',
+									id: { type: 'Identifier', name: 'x' },
+									init: { type: 'Literal', value: 1 }
+								}
+							],
 							loc: {
 								start: { line: 1, column: 0 },
 								end: { line: 1, column: 12 }
@@ -316,11 +342,13 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 						},
 						{
 							type: 'VariableDeclaration',
-							declarations: [{
-								type: 'VariableDeclarator',
-								id: { type: 'Identifier', name: 'y' },
-								init: { type: 'Literal', value: 2 }
-							}],
+							declarations: [
+								{
+									type: 'VariableDeclarator',
+									id: { type: 'Identifier', name: 'y' },
+									init: { type: 'Literal', value: 2 }
+								}
+							],
 							loc: {
 								start: { line: 2, column: 0 },
 								end: { line: 2, column: 12 }
@@ -334,9 +362,11 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				},
 				includesLocations: true
 			});
-			
-			const result = await mockASTGenerator.generateAST(code, 'javascript', { includeLocations: true });
-			
+
+			const result = await mockASTGenerator.generateAST(code, 'javascript', {
+				includeLocations: true
+			});
+
 			expect(result.success).toBe(true);
 			expect(result.includesLocations).toBe(true);
 			expect(result.ast.body[0].loc.start.line).toBe(1);
@@ -355,72 +385,83 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				}
 			`;
-			
+
 			mockASTGenerator.generateAST.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Program',
-					body: [{
-						type: 'ClassDeclaration',
-						id: { type: 'Identifier', name: 'User' },
-						body: {
-							type: 'ClassBody',
-							body: [
-								{
-									type: 'MethodDefinition',
-									key: { type: 'Identifier', name: 'constructor' },
-									kind: 'constructor',
-									value: {
-										type: 'FunctionExpression',
-										params: [{ type: 'Identifier', name: 'name' }],
-										body: {
-											type: 'BlockStatement',
-											body: [{
-												type: 'ExpressionStatement',
-												expression: {
-													type: 'AssignmentExpression',
-													operator: '=',
-													left: {
-														type: 'MemberExpression',
-														object: { type: 'ThisExpression' },
-														property: { type: 'Identifier', name: 'name' }
-													},
-													right: { type: 'Identifier', name: 'name' }
-												}
-											}]
+					body: [
+						{
+							type: 'ClassDeclaration',
+							id: { type: 'Identifier', name: 'User' },
+							body: {
+								type: 'ClassBody',
+								body: [
+									{
+										type: 'MethodDefinition',
+										key: { type: 'Identifier', name: 'constructor' },
+										kind: 'constructor',
+										value: {
+											type: 'FunctionExpression',
+											params: [{ type: 'Identifier', name: 'name' }],
+											body: {
+												type: 'BlockStatement',
+												body: [
+													{
+														type: 'ExpressionStatement',
+														expression: {
+															type: 'AssignmentExpression',
+															operator: '=',
+															left: {
+																type: 'MemberExpression',
+																object: { type: 'ThisExpression' },
+																property: { type: 'Identifier', name: 'name' }
+															},
+															right: { type: 'Identifier', name: 'name' }
+														}
+													}
+												]
+											}
+										}
+									},
+									{
+										type: 'MethodDefinition',
+										key: { type: 'Identifier', name: 'greet' },
+										kind: 'method',
+										value: {
+											type: 'FunctionExpression',
+											params: [],
+											body: {
+												type: 'BlockStatement',
+												body: [
+													{
+														type: 'ReturnStatement',
+														argument: {
+															type: 'TemplateLiteral',
+															quasis: [
+																{
+																	type: 'TemplateElement',
+																	value: { raw: 'Hello, ' }
+																},
+																{ type: 'TemplateElement', value: { raw: '!' } }
+															],
+															expressions: [
+																{
+																	type: 'MemberExpression',
+																	object: { type: 'ThisExpression' },
+																	property: { type: 'Identifier', name: 'name' }
+																}
+															]
+														}
+													}
+												]
+											}
 										}
 									}
-								},
-								{
-									type: 'MethodDefinition',
-									key: { type: 'Identifier', name: 'greet' },
-									kind: 'method',
-									value: {
-										type: 'FunctionExpression',
-										params: [],
-										body: {
-											type: 'BlockStatement',
-											body: [{
-												type: 'ReturnStatement',
-												argument: {
-													type: 'TemplateLiteral',
-													quasis: [
-														{ type: 'TemplateElement', value: { raw: 'Hello, ' } },
-														{ type: 'TemplateElement', value: { raw: '!' } }
-													],
-													expressions: [{
-														type: 'MemberExpression',
-														object: { type: 'ThisExpression' },
-														property: { type: 'Identifier', name: 'name' }
-													}]
-												}
-											}]
-										}
-									}
-								}
-							]
+								]
+							}
 						}
-					}]
+					]
 				},
 				metadata: {
 					nodeCount: 25,
@@ -429,9 +470,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					features: ['classes', 'template_literals', 'this_expressions']
 				}
 			});
-			
+
 			const result = await mockASTGenerator.generateAST(code, 'javascript');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].type).toBe('ClassDeclaration');
 			expect(result.ast.body[0].body.body).toHaveLength(2); // constructor + greet
@@ -447,41 +488,53 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					return true;
 				}
 			`;
-			
+
 			mockASTGenerator.generateAST.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Program',
-					body: [{
-						type: 'FunctionDeclaration',
-						id: { type: 'Identifier', name: 'test' },
-						params: [],
-						body: {
-							type: 'BlockStatement',
-							body: [{
-								type: 'ReturnStatement',
-								argument: { type: 'Literal', value: true }
-							}]
+					body: [
+						{
+							type: 'FunctionDeclaration',
+							id: { type: 'Identifier', name: 'test' },
+							params: [],
+							body: {
+								type: 'BlockStatement',
+								body: [
+									{
+										type: 'ReturnStatement',
+										argument: { type: 'Literal', value: true }
+									}
+								]
+							}
 						}
-					}],
+					],
 					comments: [
 						{
 							type: 'Line',
 							value: ' This is a comment',
-							loc: { start: { line: 2, column: 4 }, end: { line: 2, column: 25 } }
+							loc: {
+								start: { line: 2, column: 4 },
+								end: { line: 2, column: 25 }
+							}
 						},
 						{
 							type: 'Block',
 							value: ' Block comment ',
-							loc: { start: { line: 4, column: 5 }, end: { line: 4, column: 22 } }
+							loc: {
+								start: { line: 4, column: 5 },
+								end: { line: 4, column: 22 }
+							}
 						}
 					]
 				},
 				includesComments: true
 			});
-			
-			const result = await mockASTGenerator.generateAST(code, 'javascript', { includeComments: true });
-			
+
+			const result = await mockASTGenerator.generateAST(code, 'javascript', {
+				includeComments: true
+			});
+
 			expect(result.success).toBe(true);
 			expect(result.includesComments).toBe(true);
 			expect(result.ast.comments).toHaveLength(2);
@@ -494,32 +547,36 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should normalize AST structure', () => {
 			const rawAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { type: 'Identifier', name: 'test' },
-					params: [],
-					body: {
-						type: 'BlockStatement',
-						body: []
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { type: 'Identifier', name: 'test' },
+						params: [],
+						body: {
+							type: 'BlockStatement',
+							body: []
+						}
 					}
-				}],
+				],
 				// Parser-specific fields that should be normalized
 				tokens: [],
 				range: [0, 50],
 				extra: { raw: 'function test() {}' }
 			};
-			
+
 			mockASTGenerator.normalizeAST.mockReturnValue({
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { type: 'Identifier', name: 'test' },
-					params: [],
-					body: {
-						type: 'BlockStatement',
-						body: []
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { type: 'Identifier', name: 'test' },
+						params: [],
+						body: {
+							type: 'BlockStatement',
+							body: []
+						}
 					}
-				}],
+				],
 				sourceType: 'module',
 				// Normalized metadata
 				metadata: {
@@ -528,9 +585,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					removedFields: ['tokens', 'range', 'extra']
 				}
 			});
-			
+
 			const result = mockASTGenerator.normalizeAST(rawAST);
-			
+
 			expect(result.type).toBe('Program');
 			expect(result.tokens).toBeUndefined();
 			expect(result.range).toBeUndefined();
@@ -541,56 +598,64 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should enrich AST with additional metadata', () => {
 			const basicAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { type: 'Identifier', name: 'fibonacci' },
-					params: [{ type: 'Identifier', name: 'n' }],
-					body: {
-						type: 'BlockStatement',
-						body: [{
-							type: 'IfStatement',
-							test: {
-								type: 'BinaryExpression',
-								operator: '<=',
-								left: { type: 'Identifier', name: 'n' },
-								right: { type: 'Literal', value: 1 }
-							},
-							consequent: {
-								type: 'ReturnStatement',
-								argument: { type: 'Identifier', name: 'n' }
-							},
-							alternate: {
-								type: 'ReturnStatement',
-								argument: {
-									type: 'BinaryExpression',
-									operator: '+',
-									left: {
-										type: 'CallExpression',
-										callee: { type: 'Identifier', name: 'fibonacci' },
-										arguments: [{
-											type: 'BinaryExpression',
-											operator: '-',
-											left: { type: 'Identifier', name: 'n' },
-											right: { type: 'Literal', value: 1 }
-										}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { type: 'Identifier', name: 'fibonacci' },
+						params: [{ type: 'Identifier', name: 'n' }],
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'IfStatement',
+									test: {
+										type: 'BinaryExpression',
+										operator: '<=',
+										left: { type: 'Identifier', name: 'n' },
+										right: { type: 'Literal', value: 1 }
 									},
-									right: {
-										type: 'CallExpression',
-										callee: { type: 'Identifier', name: 'fibonacci' },
-										arguments: [{
+									consequent: {
+										type: 'ReturnStatement',
+										argument: { type: 'Identifier', name: 'n' }
+									},
+									alternate: {
+										type: 'ReturnStatement',
+										argument: {
 											type: 'BinaryExpression',
-											operator: '-',
-											left: { type: 'Identifier', name: 'n' },
-											right: { type: 'Literal', value: 2 }
-										}]
+											operator: '+',
+											left: {
+												type: 'CallExpression',
+												callee: { type: 'Identifier', name: 'fibonacci' },
+												arguments: [
+													{
+														type: 'BinaryExpression',
+														operator: '-',
+														left: { type: 'Identifier', name: 'n' },
+														right: { type: 'Literal', value: 1 }
+													}
+												]
+											},
+											right: {
+												type: 'CallExpression',
+												callee: { type: 'Identifier', name: 'fibonacci' },
+												arguments: [
+													{
+														type: 'BinaryExpression',
+														operator: '-',
+														left: { type: 'Identifier', name: 'n' },
+														right: { type: 'Literal', value: 2 }
+													}
+												]
+											}
+										}
 									}
 								}
-							}
-						}]
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockASTGenerator.enrichAST.mockReturnValue({
 				...basicAST,
 				enriched: true,
@@ -621,9 +686,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					patterns: ['recursion', 'conditional_return', 'binary_operations']
 				}
 			});
-			
+
 			const result = mockASTGenerator.enrichAST(basicAST);
-			
+
 			expect(result.enriched).toBe(true);
 			expect(result.metadata.complexity.cyclomatic).toBe(2);
 			expect(result.metadata.functions[0].recursive).toBe(true);
@@ -633,66 +698,82 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should transform AST for different targets', () => {
 			const sourceAST = {
 				type: 'Program',
-				body: [{
-					type: 'VariableDeclaration',
-					kind: 'const',
-					declarations: [{
-						type: 'VariableDeclarator',
-						id: { type: 'Identifier', name: 'arrow' },
-						init: {
-							type: 'ArrowFunctionExpression',
-							params: [{ type: 'Identifier', name: 'x' }],
-							body: {
-								type: 'BinaryExpression',
-								operator: '*',
-								left: { type: 'Identifier', name: 'x' },
-								right: { type: 'Literal', value: 2 }
-							}
-						}
-					}]
-				}]
-			};
-			
-			mockASTGenerator.transformAST.mockReturnValue({
-				type: 'Program',
-				body: [{
-					type: 'VariableDeclaration',
-					kind: 'var',
-					declarations: [{
-						type: 'VariableDeclarator',
-						id: { type: 'Identifier', name: 'arrow' },
-						init: {
-							type: 'FunctionExpression',
-							id: null,
-							params: [{ type: 'Identifier', name: 'x' }],
-							body: {
-								type: 'BlockStatement',
-								body: [{
-									type: 'ReturnStatement',
-									argument: {
+				body: [
+					{
+						type: 'VariableDeclaration',
+						kind: 'const',
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { type: 'Identifier', name: 'arrow' },
+								init: {
+									type: 'ArrowFunctionExpression',
+									params: [{ type: 'Identifier', name: 'x' }],
+									body: {
 										type: 'BinaryExpression',
 										operator: '*',
 										left: { type: 'Identifier', name: 'x' },
 										right: { type: 'Literal', value: 2 }
 									}
-								}]
+								}
 							}
-						}
-					}]
-				}],
+						]
+					}
+				]
+			};
+
+			mockASTGenerator.transformAST.mockReturnValue({
+				type: 'Program',
+				body: [
+					{
+						type: 'VariableDeclaration',
+						kind: 'var',
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { type: 'Identifier', name: 'arrow' },
+								init: {
+									type: 'FunctionExpression',
+									id: null,
+									params: [{ type: 'Identifier', name: 'x' }],
+									body: {
+										type: 'BlockStatement',
+										body: [
+											{
+												type: 'ReturnStatement',
+												argument: {
+													type: 'BinaryExpression',
+													operator: '*',
+													left: { type: 'Identifier', name: 'x' },
+													right: { type: 'Literal', value: 2 }
+												}
+											}
+										]
+									}
+								}
+							}
+						]
+					}
+				],
 				transformations: [
 					'const_to_var',
 					'arrow_function_to_function_expression',
 					'implicit_return_to_explicit'
 				]
 			});
-			
-			const result = mockASTGenerator.transformAST(sourceAST, { target: 'es5' });
-			
+
+			const result = mockASTGenerator.transformAST(sourceAST, {
+				target: 'es5'
+			});
+
 			expect(result.body[0].kind).toBe('var'); // const -> var
-			expect(result.body[0].declarations[0].init.type).toBe('FunctionExpression'); // arrow -> function
+			expect(result.body[0].declarations[0].init.type).toBe(
+				'FunctionExpression'
+			); // arrow -> function
 			expect(result.transformations).toContain('const_to_var');
-			expect(result.transformations).toContain('arrow_function_to_function_expression');
+			expect(result.transformations).toContain(
+				'arrow_function_to_function_expression'
+			);
 		});
 	});
 
@@ -700,39 +781,45 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should analyze code complexity', () => {
 			const complexAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { type: 'Identifier', name: 'complexFunction' },
-					params: [{ type: 'Identifier', name: 'data' }],
-					body: {
-						type: 'BlockStatement',
-						body: [
-							{
-								type: 'IfStatement',
-								test: { type: 'Identifier', name: 'data' },
-								consequent: {
-									type: 'BlockStatement',
-									body: [{
-										type: 'ForStatement',
-										init: null,
-										test: { type: 'Literal', value: true },
-										update: null,
-										body: {
-											type: 'BlockStatement',
-											body: [{
-												type: 'IfStatement',
-												test: { type: 'Identifier', name: 'condition' },
-												consequent: { type: 'BreakStatement' }
-											}]
-										}
-									}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { type: 'Identifier', name: 'complexFunction' },
+						params: [{ type: 'Identifier', name: 'data' }],
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'IfStatement',
+									test: { type: 'Identifier', name: 'data' },
+									consequent: {
+										type: 'BlockStatement',
+										body: [
+											{
+												type: 'ForStatement',
+												init: null,
+												test: { type: 'Literal', value: true },
+												update: null,
+												body: {
+													type: 'BlockStatement',
+													body: [
+														{
+															type: 'IfStatement',
+															test: { type: 'Identifier', name: 'condition' },
+															consequent: { type: 'BreakStatement' }
+														}
+													]
+												}
+											}
+										]
+									}
 								}
-							}
-						]
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockASTAnalyzer.analyzeComplexity.mockReturnValue({
 				cyclomatic: 4,
 				cognitive: 6,
@@ -754,9 +841,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				}
 			});
-			
+
 			const result = mockASTAnalyzer.analyzeComplexity(complexAST);
-			
+
 			expect(result.cyclomatic).toBe(4);
 			expect(result.cognitive).toBe(6);
 			expect(result.nesting).toBe(3);
@@ -769,11 +856,13 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				body: [
 					{
 						type: 'VariableDeclaration',
-						declarations: [{
-							type: 'VariableDeclarator',
-							id: { type: 'Identifier', name: 'x' },
-							init: { type: 'Literal', value: 1 }
-						}]
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { type: 'Identifier', name: 'x' },
+								init: { type: 'Literal', value: 1 }
+							}
+						]
 					},
 					{
 						type: 'FunctionDeclaration',
@@ -781,20 +870,22 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 						params: [{ type: 'Identifier', name: 'y' }],
 						body: {
 							type: 'BlockStatement',
-							body: [{
-								type: 'ReturnStatement',
-								argument: {
-									type: 'BinaryExpression',
-									operator: '+',
-									left: { type: 'Identifier', name: 'x' },
-									right: { type: 'Identifier', name: 'y' }
+							body: [
+								{
+									type: 'ReturnStatement',
+									argument: {
+										type: 'BinaryExpression',
+										operator: '+',
+										left: { type: 'Identifier', name: 'x' },
+										right: { type: 'Identifier', name: 'y' }
+									}
 								}
-							}]
+							]
 						}
 					}
 				]
 			};
-			
+
 			mockASTAnalyzer.extractSymbols.mockReturnValue({
 				declarations: [
 					{
@@ -845,21 +936,25 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				]
 			});
-			
+
 			const result = mockASTAnalyzer.extractSymbols(astWithSymbols);
-			
+
 			expect(result.declarations).toHaveLength(3);
 			expect(result.references).toHaveLength(2);
 			expect(result.scopes).toHaveLength(2);
-			expect(result.declarations.find(d => d.name === 'test').type).toBe('function');
+			expect(result.declarations.find((d) => d.name === 'test').type).toBe(
+				'function'
+			);
 		});
 
 		test('should calculate comprehensive metrics', () => {
 			const ast = {
 				type: 'Program',
-				body: [/* complex AST structure */]
+				body: [
+					/* complex AST structure */
+				]
 			};
-			
+
 			mockASTAnalyzer.calculateMetrics.mockReturnValue({
 				size: {
 					nodes: 45,
@@ -898,9 +993,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					circular: []
 				}
 			});
-			
+
 			const result = mockASTAnalyzer.calculateMetrics(ast);
-			
+
 			expect(result.size.nodes).toBe(45);
 			expect(result.complexity.cyclomatic).toBe(8);
 			expect(result.maintainability.index).toBe(72.5);
@@ -921,7 +1016,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockASTValidator.validateAST.mockReturnValue({
 				valid: false,
 				errors: [
@@ -940,9 +1035,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				nodeCount: 2,
 				canRecover: false
 			});
-			
+
 			const result = mockASTValidator.validateAST(malformedAST);
-			
+
 			expect(result.valid).toBe(false);
 			expect(result.errors).toHaveLength(2);
 			expect(result.canRecover).toBe(false);
@@ -955,7 +1050,7 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 			};
 			// Simulate circular reference
 			circularAST.body.push(circularAST);
-			
+
 			mockASTValidator.validateAST.mockReturnValue({
 				valid: false,
 				errors: [
@@ -969,9 +1064,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				nodeCount: -1, // Indicates counting failed due to circular reference
 				canRecover: false
 			});
-			
+
 			const result = mockASTValidator.validateAST(circularAST);
-			
+
 			expect(result.valid).toBe(false);
 			expect(result.errors[0].type).toBe('circular_reference');
 			expect(result.nodeCount).toBe(-1);
@@ -989,19 +1084,20 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				})
 			};
-			
+
 			mockASTValidator.validateAST.mockImplementation(() => {
 				const startTime = performance.now();
 				// Simulate processing time
 				const endTime = performance.now();
-				
+
 				return {
 					valid: true,
 					errors: [],
 					warnings: [
 						{
 							type: 'large_ast',
-							message: 'AST is very large (10000+ nodes), consider splitting into smaller modules'
+							message:
+								'AST is very large (10000+ nodes), consider splitting into smaller modules'
 						}
 					],
 					nodeCount: 30000,
@@ -1009,9 +1105,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					memoryUsage: 50 * 1024 * 1024 // 50MB
 				};
 			});
-			
+
 			const result = mockASTValidator.validateAST(largeAST);
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.nodeCount).toBe(30000);
 			expect(result.warnings[0].type).toBe('large_ast');
@@ -1021,20 +1117,24 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 		test('should provide recovery suggestions for common issues', () => {
 			const problematicAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { type: 'Identifier', name: 'test' },
-					params: [],
-					body: {
-						type: 'BlockStatement',
-						body: [{
-							type: 'ReturnStatement'
-							// Missing argument field
-						}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { type: 'Identifier', name: 'test' },
+						params: [],
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'ReturnStatement'
+									// Missing argument field
+								}
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockASTValidator.findIssues.mockReturnValue({
 				issues: [
 					{
@@ -1059,9 +1159,9 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				fixable: true,
 				autoFixAvailable: true
 			});
-			
+
 			const result = mockASTValidator.findIssues(problematicAST);
-			
+
 			expect(result.issues).toHaveLength(1);
 			expect(result.fixable).toBe(true);
 			expect(result.issues[0].suggestions).toHaveLength(2);
@@ -1076,8 +1176,8 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 				{ size: 'medium', nodeCount: 1000 },
 				{ size: 'large', nodeCount: 10000 }
 			];
-			
-			testCases.forEach(testCase => {
+
+			testCases.forEach((testCase) => {
 				mockASTValidator.validateAST.mockReturnValueOnce({
 					valid: true,
 					errors: [],
@@ -1090,22 +1190,26 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					}
 				});
 			});
-			
-			testCases.forEach(testCase => {
+
+			testCases.forEach((testCase) => {
 				const mockAST = { type: 'Program', body: [] };
 				const result = mockASTValidator.validateAST(mockAST);
-				
+
 				expect(result.nodeCount).toBe(testCase.nodeCount);
-				expect(result.performance.validationTime).toBeLessThan(testCase.nodeCount * 0.1);
+				expect(result.performance.validationTime).toBeLessThan(
+					testCase.nodeCount * 0.1
+				);
 			});
 		});
 
 		test('should handle concurrent validation requests', async () => {
-			const requests = Array(5).fill(null).map((_, i) => ({
-				ast: { type: 'Program', body: [] },
-				id: i
-			}));
-			
+			const requests = Array(5)
+				.fill(null)
+				.map((_, i) => ({
+					ast: { type: 'Program', body: [] },
+					id: i
+				}));
+
 			requests.forEach((req, index) => {
 				mockASTValidator.validateAST.mockReturnValueOnce({
 					valid: true,
@@ -1116,9 +1220,11 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 					timestamp: Date.now() + index
 				});
 			});
-			
-			const results = requests.map(req => mockASTValidator.validateAST(req.ast));
-			
+
+			const results = requests.map((req) =>
+				mockASTValidator.validateAST(req.ast)
+			);
+
 			expect(results).toHaveLength(5);
 			results.forEach((result, index) => {
 				expect(result.valid).toBe(true);
@@ -1126,4 +1232,4 @@ describe('AST Generation and Validation - Comprehensive Tests', () => {
 			});
 		});
 	});
-}); 
+});

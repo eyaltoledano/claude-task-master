@@ -10,7 +10,7 @@ import path from 'path';
 export class WorkflowStateManager extends EventEmitter {
 	constructor(config = {}) {
 		super();
-		
+
 		this.config = {
 			persistState: config.persistState !== false,
 			stateFile: config.stateFile || '.taskmaster/workflow-state.json',
@@ -23,7 +23,7 @@ export class WorkflowStateManager extends EventEmitter {
 		this.activeWorkflows = new Map();
 		this.workflowHistory = [];
 		this.stateTransitions = new Map();
-		
+
 		// State persistence
 		this.persistenceTimer = null;
 		this.isDirty = false;
@@ -51,9 +51,9 @@ export class WorkflowStateManager extends EventEmitter {
 
 		this.activeWorkflows.set(workflowId, workflow);
 		this.recordStateTransition(workflowId, null, 'initialized');
-		
+
 		await this.persistStateIfNeeded();
-		
+
 		this.emit('workflow:started', { workflowId, workflow });
 		return workflow;
 	}
@@ -68,10 +68,12 @@ export class WorkflowStateManager extends EventEmitter {
 		}
 
 		const previousState = workflow.state;
-		
+
 		// Validate state transition
 		if (!this.isValidTransition(previousState, newState)) {
-			throw new Error(`Invalid state transition from ${previousState} to ${newState}`);
+			throw new Error(
+				`Invalid state transition from ${previousState} to ${newState}`
+			);
 		}
 
 		// Create checkpoint before transition
@@ -80,7 +82,7 @@ export class WorkflowStateManager extends EventEmitter {
 		// Update workflow state
 		workflow.state = newState;
 		workflow.lastTransition = Date.now();
-		
+
 		// Add phase if provided
 		if (phaseData.phaseName) {
 			const phase = {
@@ -97,14 +99,14 @@ export class WorkflowStateManager extends EventEmitter {
 
 		// Record transition
 		this.recordStateTransition(workflowId, previousState, newState);
-		
+
 		await this.persistStateIfNeeded();
-		
-		this.emit('workflow:state-changed', { 
-			workflowId, 
-			previousState, 
-			newState, 
-			workflow 
+
+		this.emit('workflow:state-changed', {
+			workflowId,
+			previousState,
+			newState,
+			workflow
 		});
 
 		return workflow;
@@ -121,7 +123,8 @@ export class WorkflowStateManager extends EventEmitter {
 
 		// Complete current phase
 		workflow.currentPhase.endTime = Date.now();
-		workflow.currentPhase.duration = workflow.currentPhase.endTime - workflow.currentPhase.startTime;
+		workflow.currentPhase.duration =
+			workflow.currentPhase.endTime - workflow.currentPhase.startTime;
 		workflow.currentPhase.result = result;
 		workflow.currentPhase.state = 'completed';
 
@@ -131,11 +134,11 @@ export class WorkflowStateManager extends EventEmitter {
 		}
 
 		await this.persistStateIfNeeded();
-		
-		this.emit('workflow:phase-completed', { 
-			workflowId, 
+
+		this.emit('workflow:phase-completed', {
+			workflowId,
 			phase: workflow.currentPhase,
-			result 
+			result
 		});
 
 		return workflow;
@@ -163,7 +166,8 @@ export class WorkflowStateManager extends EventEmitter {
 		// Update current phase if exists
 		if (workflow.currentPhase) {
 			workflow.currentPhase.endTime = Date.now();
-			workflow.currentPhase.duration = workflow.currentPhase.endTime - workflow.currentPhase.startTime;
+			workflow.currentPhase.duration =
+				workflow.currentPhase.endTime - workflow.currentPhase.startTime;
 			workflow.currentPhase.error = errorRecord;
 			workflow.currentPhase.state = 'failed';
 		}
@@ -177,11 +181,11 @@ export class WorkflowStateManager extends EventEmitter {
 		}
 
 		await this.persistStateIfNeeded();
-		
-		this.emit('workflow:phase-failed', { 
-			workflowId, 
+
+		this.emit('workflow:phase-failed', {
+			workflowId,
 			error: errorRecord,
-			workflow 
+			workflow
 		});
 
 		return workflow;
@@ -206,14 +210,14 @@ export class WorkflowStateManager extends EventEmitter {
 		};
 
 		workflow.checkpoints.push(checkpoint);
-		
+
 		// Keep only recent checkpoints
 		if (workflow.checkpoints.length > 10) {
 			workflow.checkpoints = workflow.checkpoints.slice(-10);
 		}
 
 		await this.persistStateIfNeeded();
-		
+
 		this.emit('workflow:checkpoint-created', { workflowId, checkpoint });
 		return checkpoint;
 	}
@@ -227,25 +231,31 @@ export class WorkflowStateManager extends EventEmitter {
 			throw new Error(`No checkpoints available for workflow ${workflowId}`);
 		}
 
-		const lastCheckpoint = workflow.checkpoints[workflow.checkpoints.length - 1];
-		
+		const lastCheckpoint =
+			workflow.checkpoints[workflow.checkpoints.length - 1];
+
 		// Restore state from checkpoint
 		workflow.state = lastCheckpoint.state;
 		workflow.data = JSON.parse(JSON.stringify(lastCheckpoint.data));
-		
+
 		// Remove phases after checkpoint
 		workflow.phases = workflow.phases.slice(0, lastCheckpoint.phaseCount);
 		workflow.currentPhase = workflow.phases[workflow.phases.length - 1] || null;
 
 		// Record rollback
-		this.recordStateTransition(workflowId, 'failed', lastCheckpoint.state, 'rollback');
+		this.recordStateTransition(
+			workflowId,
+			'failed',
+			lastCheckpoint.state,
+			'rollback'
+		);
 
 		await this.persistStateIfNeeded();
-		
-		this.emit('workflow:rolled-back', { 
-			workflowId, 
+
+		this.emit('workflow:rolled-back', {
+			workflowId,
 			checkpoint: lastCheckpoint,
-			workflow 
+			workflow
 		});
 
 		return workflow;
@@ -279,14 +289,16 @@ export class WorkflowStateManager extends EventEmitter {
 
 		// Keep history size manageable
 		if (this.workflowHistory.length > this.config.maxHistorySize) {
-			this.workflowHistory = this.workflowHistory.slice(-this.config.maxHistorySize);
+			this.workflowHistory = this.workflowHistory.slice(
+				-this.config.maxHistorySize
+			);
 		}
 
 		// Remove from active workflows
 		this.activeWorkflows.delete(workflowId);
 
 		await this.persistStateIfNeeded();
-		
+
 		this.emit('workflow:completed', { workflowId, workflow, finalResult });
 		return workflow;
 	}
@@ -296,15 +308,23 @@ export class WorkflowStateManager extends EventEmitter {
 	 */
 	isValidTransition(fromState, toState) {
 		const validTransitions = {
-			'initialized': ['running', 'failed'],
-			'running': ['phase-1', 'phase-2', 'phase-3', 'phase-4', 'phase-5', 'completed', 'failed'],
+			initialized: ['running', 'failed'],
+			running: [
+				'phase-1',
+				'phase-2',
+				'phase-3',
+				'phase-4',
+				'phase-5',
+				'completed',
+				'failed'
+			],
 			'phase-1': ['phase-2', 'completed', 'failed'],
 			'phase-2': ['phase-3', 'completed', 'failed'],
 			'phase-3': ['phase-4', 'completed', 'failed'],
 			'phase-4': ['phase-5', 'completed', 'failed'],
 			'phase-5': ['completed', 'failed'],
-			'failed': ['running', 'completed'], // Allow recovery
-			'completed': [] // Terminal state
+			failed: ['running', 'completed'], // Allow recovery
+			completed: [] // Terminal state
 		};
 
 		return validTransitions[fromState]?.includes(toState) || false;
@@ -333,7 +353,7 @@ export class WorkflowStateManager extends EventEmitter {
 		const workflow = this.activeWorkflows.get(workflowId);
 		if (!workflow) {
 			// Check history
-			const historical = this.workflowHistory.find(w => w.id === workflowId);
+			const historical = this.workflowHistory.find((w) => w.id === workflowId);
 			return historical || null;
 		}
 
@@ -350,7 +370,9 @@ export class WorkflowStateManager extends EventEmitter {
 	 */
 	calculateProgress(workflow) {
 		const totalPhases = 5; // Based on our 5-phase system
-		const completedPhases = workflow.phases.filter(p => p.state === 'completed').length;
+		const completedPhases = workflow.phases.filter(
+			(p) => p.state === 'completed'
+		).length;
 		return Math.round((completedPhases / totalPhases) * 100);
 	}
 
@@ -360,12 +382,16 @@ export class WorkflowStateManager extends EventEmitter {
 	estimateTimeRemaining(workflow) {
 		if (workflow.phases.length === 0) return null;
 
-		const completedPhases = workflow.phases.filter(p => p.state === 'completed');
+		const completedPhases = workflow.phases.filter(
+			(p) => p.state === 'completed'
+		);
 		if (completedPhases.length === 0) return null;
 
-		const avgPhaseTime = completedPhases.reduce((sum, p) => sum + (p.duration || 0), 0) / completedPhases.length;
+		const avgPhaseTime =
+			completedPhases.reduce((sum, p) => sum + (p.duration || 0), 0) /
+			completedPhases.length;
 		const remainingPhases = 5 - completedPhases.length;
-		
+
 		return remainingPhases * avgPhaseTime;
 	}
 
@@ -379,11 +405,16 @@ export class WorkflowStateManager extends EventEmitter {
 			const stateData = {
 				activeWorkflows: Array.from(this.activeWorkflows.entries()),
 				workflowHistory: this.workflowHistory.slice(-10), // Keep recent history
-				stateTransitions: Array.from(this.stateTransitions.entries()).slice(-100),
+				stateTransitions: Array.from(this.stateTransitions.entries()).slice(
+					-100
+				),
 				timestamp: Date.now()
 			};
 
-			await fs.writeFile(this.config.stateFile, JSON.stringify(stateData, null, 2));
+			await fs.writeFile(
+				this.config.stateFile,
+				JSON.stringify(stateData, null, 2)
+			);
 			this.isDirty = false;
 		} catch (error) {
 			console.warn('Failed to persist workflow state:', error.message);
@@ -405,9 +436,9 @@ export class WorkflowStateManager extends EventEmitter {
 			this.workflowHistory = stateData.workflowHistory || [];
 			this.stateTransitions = new Map(stateData.stateTransitions || []);
 
-			this.emit('state:loaded', { 
+			this.emit('state:loaded', {
 				activeWorkflows: this.activeWorkflows.size,
-				historySize: this.workflowHistory.length 
+				historySize: this.workflowHistory.length
 			});
 		} catch (error) {
 			// File doesn't exist or is corrupted, start fresh
@@ -434,24 +465,27 @@ export class WorkflowStateManager extends EventEmitter {
 	 */
 	async cleanup() {
 		// Remove old history
-		const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000); // 7 days
-		this.workflowHistory = this.workflowHistory.filter(w => w.completedAt > cutoffTime);
+		const cutoffTime = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days
+		this.workflowHistory = this.workflowHistory.filter(
+			(w) => w.completedAt > cutoffTime
+		);
 
 		// Clean up old state transitions
-		const oldTransitions = Array.from(this.stateTransitions.entries())
-			.filter(([key, transition]) => transition.timestamp < cutoffTime);
-		
+		const oldTransitions = Array.from(this.stateTransitions.entries()).filter(
+			([key, transition]) => transition.timestamp < cutoffTime
+		);
+
 		for (const [key] of oldTransitions) {
 			this.stateTransitions.delete(key);
 		}
 
 		await this.persistStateIfNeeded();
-		
-		this.emit('cleanup:completed', { 
+
+		this.emit('cleanup:completed', {
 			removedHistory: oldTransitions.length,
-			currentHistory: this.workflowHistory.length 
+			currentHistory: this.workflowHistory.length
 		});
 	}
 }
 
-export default WorkflowStateManager; 
+export default WorkflowStateManager;

@@ -17,12 +17,23 @@ mockLanguageDetector.detectLanguageFromPath.mockImplementation((filePath) => {
 	if (!filePath) return null;
 	const ext = filePath.split('.').pop().toLowerCase();
 	const extensionMap = {
-		'js': 'javascript', 'jsx': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript',
-		'ts': 'typescript', 'tsx': 'typescript',
-		'py': 'python', 'pyi': 'python', 'pyw': 'python',
-		'go': 'go',
-		'java': 'java', 'cs': 'csharp', 'php': 'php', 'rb': 'ruby',
-		'c': 'c', 'cpp': 'cpp', 'rs': 'rust'
+		js: 'javascript',
+		jsx: 'javascript',
+		mjs: 'javascript',
+		cjs: 'javascript',
+		ts: 'typescript',
+		tsx: 'typescript',
+		py: 'python',
+		pyi: 'python',
+		pyw: 'python',
+		go: 'go',
+		java: 'java',
+		cs: 'csharp',
+		php: 'php',
+		rb: 'ruby',
+		c: 'c',
+		cpp: 'cpp',
+		rs: 'rust'
 	};
 	return extensionMap[ext] || null;
 });
@@ -31,7 +42,7 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (!content || typeof content !== 'string') {
 		return { language: null, confidence: 0, method: 'none' };
 	}
-	
+
 	// Shebang detection (highest priority) - check first few lines
 	const firstLines = content.split('\n').slice(0, 3).join('\n');
 	if (firstLines.includes('#!/usr/bin/env python')) {
@@ -46,12 +57,15 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (firstLines.includes('#!/bin/bash')) {
 		return { language: 'shell', confidence: 0.9, method: 'shebang' };
 	}
-	
+
 	// Content pattern detection
 	const scores = { javascript: 0, python: 0, go: 0, java: 0, rust: 0 };
-	
+
 	// JavaScript patterns
-	if (content.includes('import ') && (content.includes('from ') || content.includes("'"))) {
+	if (
+		content.includes('import ') &&
+		(content.includes('from ') || content.includes("'"))
+	) {
 		scores.javascript += 0.4;
 	}
 	if (content.includes('export ')) {
@@ -69,7 +83,11 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (content.includes('const ') || content.includes('let ')) {
 		scores.javascript += 0.2;
 	}
-	if (content.includes('React') || content.includes('useState') || content.includes('useEffect')) {
+	if (
+		content.includes('React') ||
+		content.includes('useState') ||
+		content.includes('useEffect')
+	) {
 		scores.javascript += 0.3;
 	}
 	if (content.includes('PropTypes')) {
@@ -79,7 +97,7 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (content.includes('import {') && content.includes('invalid')) {
 		scores.javascript += 0.3;
 	}
-	
+
 	// Python patterns
 	if (content.includes('def ')) {
 		scores.python += 0.3;
@@ -99,7 +117,7 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (content.includes('@dataclass') || content.includes('typing')) {
 		scores.python += 0.2;
 	}
-	
+
 	// Go patterns - increased scoring
 	if (content.includes('package ') && content.includes('func ')) {
 		scores.go += 0.6;
@@ -116,17 +134,20 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 	if (content.includes('&http.Server') || content.includes('log.Printf')) {
 		scores.go += 0.2;
 	}
-	
+
 	// Java patterns
-	if (content.includes('public class ') && content.includes('public static void main')) {
+	if (
+		content.includes('public class ') &&
+		content.includes('public static void main')
+	) {
 		scores.java += 0.5;
 	}
-	
+
 	// Rust patterns
 	if (content.includes('fn main()') && content.includes('println!')) {
 		scores.rust += 0.5;
 	}
-	
+
 	// Find the language with the highest score
 	let maxScore = 0;
 	let detectedLanguage = null;
@@ -136,7 +157,7 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 			detectedLanguage = lang;
 		}
 	}
-	
+
 	return {
 		language: maxScore > 0.1 ? detectedLanguage : null,
 		confidence: Math.min(maxScore, 0.9),
@@ -147,41 +168,46 @@ mockLanguageDetector.detectLanguageFromContent.mockImplementation((content) => {
 mockLanguageDetector.detectLanguage.mockImplementation((filePath, content) => {
 	const contentResult = mockLanguageDetector.detectLanguageFromContent(content);
 	const pathResult = mockLanguageDetector.detectLanguageFromPath(filePath);
-	
+
 	// Prefer shebang detection
 	if (contentResult.method === 'shebang') {
 		return contentResult;
 	}
-	
+
 	// If content detection found a language
 	if (contentResult.language) {
 		// If it matches the file extension, combine confidences
 		if (pathResult && contentResult.language === pathResult) {
-			const combinedConfidence = Math.max(0.51, Math.min(0.9, 0.4 + contentResult.confidence));
-			return { 
-				language: contentResult.language, 
-				confidence: combinedConfidence, 
-				method: 'combined' 
+			const combinedConfidence = Math.max(
+				0.51,
+				Math.min(0.9, 0.4 + contentResult.confidence)
+			);
+			return {
+				language: contentResult.language,
+				confidence: combinedConfidence,
+				method: 'combined'
 			};
 		}
-		
+
 		// For conflicts or high confidence, prefer content detection
 		if (contentResult.confidence > 0.2) {
 			return contentResult;
 		}
 	}
-	
+
 	// Fall back to extension
 	if (pathResult) {
 		return { language: pathResult, confidence: 0.6, method: 'extension' };
 	}
-	
+
 	return contentResult;
 });
 
-mockLanguageDetector.isLanguageSupported.mockImplementation((language, supportedLanguages = []) => {
-	return supportedLanguages.includes(language);
-});
+mockLanguageDetector.isLanguageSupported.mockImplementation(
+	(language, supportedLanguages = []) => {
+		return supportedLanguages.includes(language);
+	}
+);
 
 mockLanguageDetector.getFileExtension.mockImplementation((filePath) => {
 	if (!filePath || filePath === '.') return '';
@@ -252,8 +278,12 @@ describe('Language Detector - Comprehensive Tests', () => {
 
 		test('should handle complex file paths', () => {
 			expect(detectLanguageFromPath('/path/to/app.js')).toBe('javascript');
-			expect(detectLanguageFromPath('../../src/component.tsx')).toBe('typescript');
-			expect(detectLanguageFromPath('C:\\Users\\test\\script.py')).toBe('python');
+			expect(detectLanguageFromPath('../../src/component.tsx')).toBe(
+				'typescript'
+			);
+			expect(detectLanguageFromPath('C:\\Users\\test\\script.py')).toBe(
+				'python'
+			);
 		});
 	});
 
@@ -455,7 +485,7 @@ describe('Language Detector - Comprehensive Tests', () => {
 	describe('Language Support Validation', () => {
 		test('should correctly identify supported languages', () => {
 			const supportedLanguages = ['javascript', 'python', 'go', 'typescript'];
-			
+
 			expect(isLanguageSupported('javascript', supportedLanguages)).toBe(true);
 			expect(isLanguageSupported('python', supportedLanguages)).toBe(true);
 			expect(isLanguageSupported('ruby', supportedLanguages)).toBe(false);
@@ -510,7 +540,7 @@ describe('Language Detector - Comprehensive Tests', () => {
 			const start = performance.now();
 			const result = detectLanguageFromContent(largeContent);
 			const duration = performance.now() - start;
-			
+
 			expect(result.language).toBe('javascript');
 			expect(duration).toBeLessThan(100); // Should be under 100ms even for large files
 		});
@@ -518,14 +548,14 @@ describe('Language Detector - Comprehensive Tests', () => {
 		test('should handle repeated detections efficiently', () => {
 			const content = 'import React from "react";';
 			const iterations = 100;
-			
+
 			const start = performance.now();
 			for (let i = 0; i < iterations; i++) {
 				detectLanguageFromContent(content);
 			}
 			const duration = performance.now() - start;
 			const avgDuration = duration / iterations;
-			
+
 			expect(avgDuration).toBeLessThan(1); // Average should be under 1ms
 		});
 	});
@@ -560,7 +590,7 @@ describe('Language Detector - Comprehensive Tests', () => {
 				
 				export default MyComponent;
 			`;
-			
+
 			const result = detectLanguageFromContent(reactContent);
 			expect(result.language).toBe('javascript');
 			expect(result.confidence).toBeGreaterThan(0.7);
@@ -606,7 +636,7 @@ describe('Language Detector - Comprehensive Tests', () => {
 					manager.add_user(user)
 					print(f"Added user: {user.name}")
 			`;
-			
+
 			const result = detectLanguageFromContent(pythonContent);
 			expect(result.language).toBe('python');
 			expect(result.method).toBe('shebang'); // Should prefer shebang
@@ -675,7 +705,7 @@ describe('Language Detector - Comprehensive Tests', () => {
 					}
 				}
 			`;
-			
+
 			const result = detectLanguageFromContent(goContent);
 			expect(result.language).toBe('go');
 			expect(result.confidence).toBeGreaterThan(0.8);
@@ -721,4 +751,4 @@ describe('Language Detector - Comprehensive Tests', () => {
 			expect(result.language).toBe('python');
 		});
 	});
-}); 
+});

@@ -6,16 +6,31 @@
 const createMockFn = () => {
 	const fn = (...args) => fn.returnValue;
 	fn.calls = [];
-	fn.mockImplementation = (impl) => { fn.impl = impl; return fn; };
-	fn.mockReturnValue = (value) => { fn.returnValue = value; return fn; };
-	fn.mockClear = () => { fn.calls = []; return fn; };
+	fn.mockImplementation = (impl) => {
+		fn.impl = impl;
+		return fn;
+	};
+	fn.mockReturnValue = (value) => {
+		fn.returnValue = value;
+		return fn;
+	};
+	fn.mockClear = () => {
+		fn.calls = [];
+		return fn;
+	};
 	return fn;
 };
 
 global.mockTerminal = {
 	screen: { render: createMockFn(), destroy: createMockFn() },
-	box: createMockFn(() => ({ setContent: createMockFn(), focus: createMockFn() })),
-	list: createMockFn(() => ({ setItems: createMockFn(), select: createMockFn() }))
+	box: createMockFn(() => ({
+		setContent: createMockFn(),
+		focus: createMockFn()
+	})),
+	list: createMockFn(() => ({
+		setItems: createMockFn(),
+		select: createMockFn()
+	}))
 };
 
 // Setup test environment

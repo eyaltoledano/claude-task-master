@@ -4,13 +4,20 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { getNextTaskService, isNextTaskServiceInitialized } from '../../services/NextTaskService.js';
-import { getPRMonitoringService, isPRMonitoringServiceInitialized } from '../../services/PRMonitoringService.js';
+import {
+	getNextTaskService,
+	isNextTaskServiceInitialized
+} from '../../services/NextTaskService.js';
+import {
+	getPRMonitoringService,
+	isPRMonitoringServiceInitialized
+} from '../../services/PRMonitoringService.js';
 
 export default class ClaudeCodeStopHook {
 	constructor() {
 		this.version = '2.0.0';
-		this.description = 'Handles Claude Code session completion with enhanced safety checks and PR creation';
+		this.description =
+			'Handles Claude Code session completion with enhanced safety checks and PR creation';
 		this.events = ['claude-code-stop'];
 		this.timeout = 300000; // 5 minutes
 	}
@@ -30,16 +37,32 @@ export default class ClaudeCodeStopHook {
 
 			// Step 1: Detect repository type for workflow decision
 			const repoInfo = await this.detectRepositoryType(services);
-			console.log(`📍 Repository type: ${repoInfo.type} (${repoInfo.hasRemote ? 'remote' : 'local'})`);
+			console.log(
+				`📍 Repository type: ${repoInfo.type} (${repoInfo.hasRemote ? 'remote' : 'local'})`
+			);
 
 			// Step 2: Use WorktreeManager.completeSubtask() for comprehensive workflow
-			const workflowResult = await this.executeWorkflow(task, worktree, services, effectiveConfig, safetyMode, repoInfo);
+			const workflowResult = await this.executeWorkflow(
+				task,
+				worktree,
+				services,
+				effectiveConfig,
+				safetyMode,
+				repoInfo
+			);
 
 			// Step 3: Execute next task progression (if workflow was successful)
 			let nextTaskResult = null;
 			if (workflowResult.success) {
-				console.log('🎯 Workflow completed successfully, checking for next task progression...');
-				nextTaskResult = await this.executeNextTaskProgression(task, worktree, services, effectiveConfig);
+				console.log(
+					'🎯 Workflow completed successfully, checking for next task progression...'
+				);
+				nextTaskResult = await this.executeNextTaskProgression(
+					task,
+					worktree,
+					services,
+					effectiveConfig
+				);
 			} else {
 				console.log('⚠️ Workflow had issues, skipping next task progression');
 			}
@@ -52,7 +75,6 @@ export default class ClaudeCodeStopHook {
 				nextTask: nextTaskResult,
 				timestamp: new Date().toISOString()
 			};
-
 		} catch (error) {
 			console.error('❌ Claude Code Stop Hook failed:', error.message);
 			return {
@@ -71,7 +93,7 @@ export default class ClaudeCodeStopHook {
 		if (config.hooks?.builtIn?.claudeCodeStop?.safetyMode) {
 			return config.hooks.builtIn.claudeCodeStop.safetyMode;
 		}
-		
+
 		// Try flow config
 		if (config.safety?.mode) {
 			return config.safety.mode;
@@ -137,9 +159,11 @@ export default class ClaudeCodeStopHook {
 		}
 
 		// Determine overall status
-		const hasErrors = Object.values(results).some(r => r.status === 'failed');
-		const hasWarnings = Object.values(results).some(r => r.status === 'warning');
-		
+		const hasErrors = Object.values(results).some((r) => r.status === 'failed');
+		const hasWarnings = Object.values(results).some(
+			(r) => r.status === 'warning'
+		);
+
 		results.overall = hasErrors ? 'failed' : hasWarnings ? 'warning' : 'passed';
 
 		console.log(`✅ Safety checks completed with status: ${results.overall}`);
@@ -152,7 +176,7 @@ export default class ClaudeCodeStopHook {
 	async checkGitStatus(worktree) {
 		try {
 			console.log('  📋 Checking git status...');
-			
+
 			if (!worktree?.path) {
 				return { status: 'skipped', reason: 'no-worktree' };
 			}
@@ -162,13 +186,15 @@ export default class ClaudeCodeStopHook {
 
 			try {
 				// Check for uncommitted changes
-				const statusOutput = execSync('git status --porcelain', { encoding: 'utf8' });
+				const statusOutput = execSync('git status --porcelain', {
+					encoding: 'utf8'
+				});
 				const hasChanges = statusOutput.trim().length > 0;
 
 				if (hasChanges) {
 					console.log('    ⚠️  Uncommitted changes detected');
-					return { 
-						status: 'warning', 
+					return {
+						status: 'warning',
 						message: 'Uncommitted changes detected',
 						changes: statusOutput.trim().split('\n')
 					};
@@ -176,11 +202,9 @@ export default class ClaudeCodeStopHook {
 
 				console.log('    ✅ Git status clean');
 				return { status: 'passed', message: 'No uncommitted changes' };
-
 			} finally {
 				process.chdir(originalCwd);
 			}
-
 		} catch (error) {
 			console.log(`    ❌ Git status check failed: ${error.message}`);
 			return { status: 'failed', error: error.message };
@@ -196,7 +220,7 @@ export default class ClaudeCodeStopHook {
 
 			// Detect build command
 			const buildInfo = await this.detectBuildCommand();
-			
+
 			if (!buildInfo.hasPackageJson) {
 				console.log('    ⏭️  No package.json found, skipping build');
 				return { status: 'skipped', reason: 'no-package-json' };
@@ -227,13 +251,13 @@ export default class ClaudeCodeStopHook {
 					duration,
 					output: output.trim()
 				};
-
 			} catch (error) {
 				const duration = Date.now() - startTime;
 				console.log(`    ❌ Build failed after ${duration}ms`);
 
-				const shouldFail = config.buildValidation?.failOnError || config.safetyMode === 'strict';
-				
+				const shouldFail =
+					config.buildValidation?.failOnError || config.safetyMode === 'strict';
+
 				return {
 					status: shouldFail ? 'failed' : 'warning',
 					command: buildInfo.command,
@@ -242,7 +266,6 @@ export default class ClaudeCodeStopHook {
 					output: error.stdout || error.stderr || 'No output'
 				};
 			}
-
 		} catch (error) {
 			console.log(`    ❌ Build validation error: ${error.message}`);
 			return { status: 'failed', error: error.message };
@@ -258,7 +281,7 @@ export default class ClaudeCodeStopHook {
 
 			// Detect linting tools
 			const lintTools = await this.detectLintingTools();
-			
+
 			if (lintTools.length === 0) {
 				console.log('    ⏭️  No linting tools detected');
 				return { status: 'skipped', reason: 'no-lint-tools' };
@@ -270,7 +293,8 @@ export default class ClaudeCodeStopHook {
 
 			for (const tool of lintTools) {
 				// Check if tool is enabled in config
-				const toolEnabled = config.lintValidation?.tools?.[tool.name]?.enabled !== false;
+				const toolEnabled =
+					config.lintValidation?.tools?.[tool.name]?.enabled !== false;
 				if (!toolEnabled) {
 					console.log(`    ⏭️  ${tool.name} disabled in configuration`);
 					continue;
@@ -292,13 +316,13 @@ export default class ClaudeCodeStopHook {
 						command: tool.command,
 						output: output.trim()
 					});
-
 				} catch (error) {
 					console.log(`    ⚠️  ${tool.name} found issues`);
 
 					// Try auto-fix if enabled
 					if (config.lintValidation?.autoFix) {
-						const fixCommand = config.lintValidation.tools?.[tool.name]?.fixCommand;
+						const fixCommand =
+							config.lintValidation.tools?.[tool.name]?.fixCommand;
 						if (fixCommand) {
 							try {
 								console.log(`    🔧 Auto-fixing with: ${fixCommand}`);
@@ -310,7 +334,9 @@ export default class ClaudeCodeStopHook {
 						}
 					}
 
-					const shouldFail = config.lintValidation?.failOnError || config.safetyMode === 'strict';
+					const shouldFail =
+						config.lintValidation?.failOnError ||
+						config.safetyMode === 'strict';
 					if (shouldFail) {
 						hasErrors = true;
 					} else {
@@ -327,7 +353,11 @@ export default class ClaudeCodeStopHook {
 				}
 			}
 
-			const overallStatus = hasErrors ? 'failed' : hasWarnings ? 'warning' : 'passed';
+			const overallStatus = hasErrors
+				? 'failed'
+				: hasWarnings
+					? 'warning'
+					: 'passed';
 			console.log(`    📊 Lint validation completed: ${overallStatus}`);
 
 			return {
@@ -335,12 +365,11 @@ export default class ClaudeCodeStopHook {
 				tools: results,
 				summary: {
 					total: results.length,
-					passed: results.filter(r => r.status === 'passed').length,
-					warnings: results.filter(r => r.status === 'warning').length,
-					failed: results.filter(r => r.status === 'failed').length
+					passed: results.filter((r) => r.status === 'passed').length,
+					warnings: results.filter((r) => r.status === 'warning').length,
+					failed: results.filter((r) => r.status === 'failed').length
 				}
 			};
-
 		} catch (error) {
 			console.log(`    ❌ Lint validation error: ${error.message}`);
 			return { status: 'failed', error: error.message };
@@ -356,11 +385,11 @@ export default class ClaudeCodeStopHook {
 
 			// Detect test command
 			const testInfo = await this.detectTestCommand();
-			
+
 			if (!testInfo.hasTestScript) {
 				const message = 'No test script found in package.json';
 				console.log(`    ⚠️  ${message}`);
-				
+
 				// In strict mode, missing tests is an error
 				if (config.safetyMode === 'strict') {
 					return { status: 'failed', reason: 'no-test-script', message };
@@ -389,7 +418,6 @@ export default class ClaudeCodeStopHook {
 					duration,
 					output: output.trim()
 				};
-
 			} catch (error) {
 				const duration = Date.now() - startTime;
 				console.log(`    ❌ Tests failed after ${duration}ms`);
@@ -402,7 +430,6 @@ export default class ClaudeCodeStopHook {
 					output: error.stdout || error.stderr || 'No output'
 				};
 			}
-
 		} catch (error) {
 			console.log(`    ❌ Test validation error: ${error.message}`);
 			return { status: 'failed', error: error.message };
@@ -415,7 +442,7 @@ export default class ClaudeCodeStopHook {
 	async checkConflicts(worktree) {
 		try {
 			console.log('  🔍 Checking for conflicts...');
-			
+
 			if (!worktree?.path) {
 				return { status: 'skipped', reason: 'no-worktree' };
 			}
@@ -426,11 +453,13 @@ export default class ClaudeCodeStopHook {
 			try {
 				// Check for merge conflicts
 				const conflictFiles = [];
-				
+
 				// Look for conflict markers in tracked files
 				try {
 					const trackedFiles = execSync('git ls-files', { encoding: 'utf8' })
-						.trim().split('\n').filter(Boolean);
+						.trim()
+						.split('\n')
+						.filter(Boolean);
 
 					for (const file of trackedFiles) {
 						if (fs.existsSync(file)) {
@@ -445,7 +474,9 @@ export default class ClaudeCodeStopHook {
 				}
 
 				if (conflictFiles.length > 0) {
-					console.log(`    ❌ Conflict markers found in ${conflictFiles.length} files`);
+					console.log(
+						`    ❌ Conflict markers found in ${conflictFiles.length} files`
+					);
 					return {
 						status: 'failed',
 						message: `Conflict markers found in ${conflictFiles.length} files`,
@@ -455,11 +486,9 @@ export default class ClaudeCodeStopHook {
 
 				console.log('    ✅ No conflicts detected');
 				return { status: 'passed', message: 'No conflicts detected' };
-
 			} finally {
 				process.chdir(originalCwd);
 			}
-
 		} catch (error) {
 			console.log(`    ❌ Conflict check failed: ${error.message}`);
 			return { status: 'failed', error: error.message };
@@ -478,7 +507,9 @@ export default class ClaudeCodeStopHook {
 
 		// In strict mode, require manual approval if there are any failures
 		if (safetyMode === 'strict' && safetyResults.overall !== 'passed') {
-			console.log('🔒 Strict mode: Manual approval required due to safety check issues');
+			console.log(
+				'🔒 Strict mode: Manual approval required due to safety check issues'
+			);
 			return false;
 		}
 
@@ -506,7 +537,10 @@ export default class ClaudeCodeStopHook {
 			// Use existing completeSubtaskWithPR for subtasks, direct GitHub CLI for main tasks
 			if (task?.isSubtask || String(task?.id).includes('.')) {
 				console.log('  📝 Creating PR for subtask...');
-				prResult = await services.backend?.completeSubtaskWithPR?.(task.id, worktree);
+				prResult = await services.backend?.completeSubtaskWithPR?.(
+					task.id,
+					worktree
+				);
 			} else {
 				console.log('  📝 Creating PR for main task...');
 				prResult = await this.createMainTaskPR(task, worktree, safetyResults);
@@ -518,7 +552,6 @@ export default class ClaudeCodeStopHook {
 				message: 'PR created successfully',
 				prResult
 			};
-
 		} catch (error) {
 			console.error('❌ Failed to create PR:', error.message);
 			return {
@@ -562,7 +595,6 @@ export default class ClaudeCodeStopHook {
 				description: prBody,
 				branch: worktree.branch
 			};
-
 		} finally {
 			process.chdir(originalCwd);
 		}
@@ -574,33 +606,43 @@ export default class ClaudeCodeStopHook {
 	generateSafetyReport(safetyResults) {
 		const statusIcon = (status) => {
 			switch (status) {
-				case 'passed': return '✅';
-				case 'warning': return '⚠️';
-				case 'failed': return '❌';
-				case 'skipped': return '⏭️';
-				default: return '❓';
+				case 'passed':
+					return '✅';
+				case 'warning':
+					return '⚠️';
+				case 'failed':
+					return '❌';
+				case 'skipped':
+					return '⏭️';
+				default:
+					return '❓';
 			}
 		};
 
 		let report = '';
-		
+
 		if (safetyResults.git.status !== 'skipped') {
 			report += `${statusIcon(safetyResults.git.status)} **Git Status**: ${safetyResults.git.message || safetyResults.git.status}\n`;
 		}
-		
+
 		if (safetyResults.build.status !== 'skipped') {
 			report += `${statusIcon(safetyResults.build.status)} **Build**: ${safetyResults.build.command || 'Build check'} - ${safetyResults.build.status}\n`;
 		}
-		
+
 		if (safetyResults.lint.status !== 'skipped') {
-			const lintSummary = safetyResults.lint.summary || { total: 0, passed: 0, warnings: 0, failed: 0 };
+			const lintSummary = safetyResults.lint.summary || {
+				total: 0,
+				passed: 0,
+				warnings: 0,
+				failed: 0
+			};
 			report += `${statusIcon(safetyResults.lint.status)} **Lint**: ${lintSummary.passed}/${lintSummary.total} tools passed\n`;
 		}
-		
+
 		if (safetyResults.tests.status !== 'skipped') {
 			report += `${statusIcon(safetyResults.tests.status)} **Tests**: ${safetyResults.tests.message || safetyResults.tests.status}\n`;
 		}
-		
+
 		if (safetyResults.conflicts.status !== 'skipped') {
 			report += `${statusIcon(safetyResults.conflicts.status)} **Conflicts**: ${safetyResults.conflicts.message || safetyResults.conflicts.status}\n`;
 		}
@@ -696,7 +738,7 @@ export default class ClaudeCodeStopHook {
 		}
 
 		// Check package.json for eslint config
-		if (tools.find(t => t.name === 'eslint') === undefined) {
+		if (tools.find((t) => t.name === 'eslint') === undefined) {
 			try {
 				const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 				if (packageJson.eslintConfig) {
@@ -720,7 +762,7 @@ export default class ClaudeCodeStopHook {
 	async commitSessionChanges(task, worktree, services) {
 		try {
 			console.log('💾 Committing session changes...');
-			
+
 			if (!worktree?.path) {
 				return { success: false, error: 'No worktree available' };
 			}
@@ -732,15 +774,24 @@ export default class ClaudeCodeStopHook {
 				// Check if there are any changes to commit
 				let hasChanges = false;
 				try {
-					const status = execSync('git status --porcelain', { encoding: 'utf8' });
+					const status = execSync('git status --porcelain', {
+						encoding: 'utf8'
+					});
 					hasChanges = status.trim().length > 0;
 				} catch (error) {
-					return { success: false, error: `Git status check failed: ${error.message}` };
+					return {
+						success: false,
+						error: `Git status check failed: ${error.message}`
+					};
 				}
 
 				if (!hasChanges) {
 					console.log('  ℹ️  No changes to commit');
-					return { success: true, message: 'No changes to commit', hasChanges: false };
+					return {
+						success: true,
+						message: 'No changes to commit',
+						hasChanges: false
+					};
 				}
 
 				// Stage all changes
@@ -748,26 +799,35 @@ export default class ClaudeCodeStopHook {
 					execSync('git add .', { stdio: 'inherit' });
 					console.log('  ✅ Changes staged');
 				} catch (error) {
-					return { success: false, error: `Failed to stage changes: ${error.message}` };
+					return {
+						success: false,
+						error: `Failed to stage changes: ${error.message}`
+					};
 				}
 
 				// Create commit message
-				const commitMessage = task?.isSubtask || String(task?.id).includes('.')
-					? `Complete subtask ${task.id}: ${task.title || 'Claude Code session'}`
-					: `Complete task ${task.id}: ${task.title || 'Claude Code session'}`;
+				const commitMessage =
+					task?.isSubtask || String(task?.id).includes('.')
+						? `Complete subtask ${task.id}: ${task.title || 'Claude Code session'}`
+						: `Complete task ${task.id}: ${task.title || 'Claude Code session'}`;
 
 				// Commit changes
 				try {
 					execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
 					console.log(`  ✅ Changes committed: ${commitMessage}`);
 				} catch (error) {
-					return { success: false, error: `Failed to commit changes: ${error.message}` };
+					return {
+						success: false,
+						error: `Failed to commit changes: ${error.message}`
+					};
 				}
 
 				// Get commit hash for reference
 				let commitHash;
 				try {
-					commitHash = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+					commitHash = execSync('git rev-parse HEAD', {
+						encoding: 'utf8'
+					}).trim();
 				} catch (error) {
 					// Not critical if we can't get the hash
 					commitHash = 'unknown';
@@ -780,11 +840,9 @@ export default class ClaudeCodeStopHook {
 					commitMessage,
 					commitHash: commitHash.substring(0, 8) // Short hash
 				};
-
 			} finally {
 				process.chdir(originalCwd);
 			}
-
 		} catch (error) {
 			console.error('❌ Failed to commit session changes:', error.message);
 			return { success: false, error: error.message };
@@ -797,7 +855,7 @@ export default class ClaudeCodeStopHook {
 	async updateTaskStatus(task, services) {
 		try {
 			console.log('📝 Updating task status to done...');
-			
+
 			if (!task?.id) {
 				return { success: false, error: 'No task ID available' };
 			}
@@ -822,12 +880,11 @@ export default class ClaudeCodeStopHook {
 					newStatus: 'done'
 				};
 			} else {
-				return { 
-					success: false, 
-					error: result?.error || 'Failed to update task status' 
+				return {
+					success: false,
+					error: result?.error || 'Failed to update task status'
 				};
 			}
-
 		} catch (error) {
 			console.error('❌ Failed to update task status:', error.message);
 			return { success: false, error: error.message };
@@ -843,7 +900,11 @@ export default class ClaudeCodeStopHook {
 			if (services.backend?.detectRemoteRepository) {
 				const repoInfo = await services.backend.detectRemoteRepository();
 				return {
-					type: repoInfo.isGitHub ? 'github' : (repoInfo.hasRemote ? 'remote' : 'local'),
+					type: repoInfo.isGitHub
+						? 'github'
+						: repoInfo.hasRemote
+							? 'remote'
+							: 'local',
 					hasRemote: repoInfo.hasRemote,
 					isGitHub: repoInfo.isGitHub,
 					canCreatePR: repoInfo.hasGitHubCLI || false,
@@ -854,13 +915,13 @@ export default class ClaudeCodeStopHook {
 
 			// Fallback detection
 			try {
-				const remoteUrl = execSync('git remote get-url origin', { 
-					encoding: 'utf8', 
-					stdio: 'pipe' 
+				const remoteUrl = execSync('git remote get-url origin', {
+					encoding: 'utf8',
+					stdio: 'pipe'
 				}).trim();
-				
+
 				const isGitHub = remoteUrl.includes('github.com');
-				
+
 				// Check GitHub CLI availability
 				let hasGitHubCLI = false;
 				try {
@@ -906,17 +967,37 @@ export default class ClaudeCodeStopHook {
 	/**
 	 * Execute the appropriate workflow based on repository type and configuration
 	 */
-	async executeWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+	async executeWorkflow(
+		task,
+		worktree,
+		services,
+		config,
+		safetyMode,
+		repoInfo
+	) {
 		try {
 			console.log('🔄 Executing integrated workflow...');
 
 			// For subtasks, use the existing WorktreeManager workflow
 			if (task?.isSubtask || String(task?.id).includes('.')) {
-				return await this.executeSubtaskWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+				return await this.executeSubtaskWorkflow(
+					task,
+					worktree,
+					services,
+					config,
+					safetyMode,
+					repoInfo
+				);
 			} else {
-				return await this.executeTaskWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+				return await this.executeTaskWorkflow(
+					task,
+					worktree,
+					services,
+					config,
+					safetyMode,
+					repoInfo
+				);
 			}
-
 		} catch (error) {
 			console.error('❌ Workflow execution failed:', error.message);
 			return {
@@ -930,11 +1011,22 @@ export default class ClaudeCodeStopHook {
 	/**
 	 * Execute subtask workflow using WorktreeManager.completeSubtask()
 	 */
-	async executeSubtaskWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+	async executeSubtaskWorkflow(
+		task,
+		worktree,
+		services,
+		config,
+		safetyMode,
+		repoInfo
+	) {
 		try {
 			console.log('📋 Executing subtask workflow...');
 
-			const workflowChoice = this.determineWorkflowChoice(repoInfo, config, safetyMode);
+			const workflowChoice = this.determineWorkflowChoice(
+				repoInfo,
+				config,
+				safetyMode
+			);
 			console.log(`🔀 Workflow choice: ${workflowChoice}`);
 
 			// For PR workflow, do NOT mark task as done yet - wait for PR merge
@@ -953,28 +1045,40 @@ export default class ClaudeCodeStopHook {
 
 			// Use the worktree name to call completeSubtask
 			const worktreeName = worktree.name || `task-${task.id}`;
-			
+
 			if (!services.backend?.completeSubtask) {
 				throw new Error('Backend completeSubtask method not available');
 			}
 
-			const result = await services.backend.completeSubtask(worktreeName, options);
+			const result = await services.backend.completeSubtask(
+				worktreeName,
+				options
+			);
 
 			if (result.success) {
 				console.log('✅ Subtask workflow completed successfully');
-				
+
 				// Handle task status updates based on workflow choice
 				const statusResult = await this.handleTaskStatusAfterWorkflow(
-					task, services, workflowChoice, result
+					task,
+					services,
+					workflowChoice,
+					result
 				);
 
 				// Ensure worktree config cleanup (safety net for local merges)
-				if (workflowChoice === 'merge-local' && services.backend?.cleanupWorktreeLinks) {
+				if (
+					workflowChoice === 'merge-local' &&
+					services.backend?.cleanupWorktreeLinks
+				) {
 					try {
 						await services.backend.cleanupWorktreeLinks(worktreeName);
 						console.log('🧹 Worktree config cleanup completed');
 					} catch (cleanupError) {
-						console.warn('⚠️ Worktree config cleanup warning:', cleanupError.message);
+						console.warn(
+							'⚠️ Worktree config cleanup warning:',
+							cleanupError.message
+						);
 						// Don't fail the whole operation for cleanup issues
 					}
 				}
@@ -989,36 +1093,55 @@ export default class ClaudeCodeStopHook {
 				};
 			} else if (result.reason === 'workflow-choice-needed') {
 				// Handle case where user choice is needed
-				console.log('🤔 Workflow choice needed, applying automatic decision...');
-				
+				console.log(
+					'🤔 Workflow choice needed, applying automatic decision...'
+				);
+
 				// Make automatic choice based on repository type and safety mode
-				const autoChoice = this.makeAutomaticWorkflowChoice(repoInfo, config, safetyMode);
+				const autoChoice = this.makeAutomaticWorkflowChoice(
+					repoInfo,
+					config,
+					safetyMode
+				);
 				const autoShouldMarkDone = autoChoice === 'merge-local';
-				
-				const retryOptions = { 
-					...options, 
+
+				const retryOptions = {
+					...options,
 					workflowChoice: autoChoice,
 					autoMarkDone: autoShouldMarkDone
 				};
 
-				const retryResult = await services.backend.completeSubtask(worktreeName, retryOptions);
-				
+				const retryResult = await services.backend.completeSubtask(
+					worktreeName,
+					retryOptions
+				);
+
 				// Handle status updates for retry case
 				const statusResult = await this.handleTaskStatusAfterWorkflow(
-					task, services, autoChoice, retryResult
+					task,
+					services,
+					autoChoice,
+					retryResult
 				);
-				
+
 				// Ensure worktree config cleanup (safety net for local merges)
-				if (autoChoice === 'merge-local' && retryResult.success && services.backend?.cleanupWorktreeLinks) {
+				if (
+					autoChoice === 'merge-local' &&
+					retryResult.success &&
+					services.backend?.cleanupWorktreeLinks
+				) {
 					try {
 						await services.backend.cleanupWorktreeLinks(worktreeName);
 						console.log('🧹 Worktree config cleanup completed (retry)');
 					} catch (cleanupError) {
-						console.warn('⚠️ Worktree config cleanup warning (retry):', cleanupError.message);
+						console.warn(
+							'⚠️ Worktree config cleanup warning (retry):',
+							cleanupError.message
+						);
 						// Don't fail the whole operation for cleanup issues
 					}
 				}
-				
+
 				return {
 					success: retryResult.success,
 					workflowType: 'subtask',
@@ -1037,33 +1160,52 @@ export default class ClaudeCodeStopHook {
 					result
 				};
 			}
-
 		} catch (error) {
 			console.error('❌ Subtask workflow failed:', error.message);
-			
+
 			// Fallback to manual commit and status update
 			console.log('🔄 Falling back to manual workflow...');
-			return await this.executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo);
+			return await this.executeFallbackWorkflow(
+				task,
+				worktree,
+				services,
+				config,
+				safetyMode,
+				repoInfo
+			);
 		}
 	}
 
 	/**
 	 * Execute task workflow (for main tasks, not subtasks)
 	 */
-	async executeTaskWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+	async executeTaskWorkflow(
+		task,
+		worktree,
+		services,
+		config,
+		safetyMode,
+		repoInfo
+	) {
 		try {
 			console.log('📄 Executing main task workflow...');
 
-			// For main tasks, use the manual workflow since WorktreeManager.completeSubtask() 
+			// For main tasks, use the manual workflow since WorktreeManager.completeSubtask()
 			// is specifically for subtasks
-			const result = await this.executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo);
-			
+			const result = await this.executeFallbackWorkflow(
+				task,
+				worktree,
+				services,
+				config,
+				safetyMode,
+				repoInfo
+			);
+
 			// Add workflow type for consistency
 			result.workflowType = 'task';
 			result.isMainTask = true;
-			
-			return result;
 
+			return result;
 		} catch (error) {
 			console.error('❌ Task workflow failed:', error.message);
 			return {
@@ -1078,7 +1220,14 @@ export default class ClaudeCodeStopHook {
 	/**
 	 * Execute fallback workflow with manual steps
 	 */
-	async executeFallbackWorkflow(task, worktree, services, config, safetyMode, repoInfo) {
+	async executeFallbackWorkflow(
+		task,
+		worktree,
+		services,
+		config,
+		safetyMode,
+		repoInfo
+	) {
 		const results = {
 			success: true,
 			workflowType: 'fallback',
@@ -1088,8 +1237,12 @@ export default class ClaudeCodeStopHook {
 		try {
 			// Step 1: Commit changes
 			console.log('💾 Step 1: Committing changes...');
-			results.steps.commit = await this.commitSessionChanges(task, worktree, services);
-			
+			results.steps.commit = await this.commitSessionChanges(
+				task,
+				worktree,
+				services
+			);
+
 			if (!results.steps.commit.success) {
 				console.log('⚠️ Commit failed, but continuing...');
 			}
@@ -1097,47 +1250,72 @@ export default class ClaudeCodeStopHook {
 			// Step 2: Run safety checks if configured
 			if (config.runSafetyChecks !== false) {
 				console.log('🔍 Step 2: Running safety checks...');
-				results.steps.safetyChecks = await this.runSafetyChecks(config, worktree, services);
+				results.steps.safetyChecks = await this.runSafetyChecks(
+					config,
+					worktree,
+					services
+				);
 			}
 
 			// Step 3: Handle repository workflow
-			const workflowChoice = this.determineWorkflowChoice(repoInfo, config, safetyMode);
+			const workflowChoice = this.determineWorkflowChoice(
+				repoInfo,
+				config,
+				safetyMode
+			);
 			console.log(`🔀 Step 3: Executing ${workflowChoice} workflow...`);
 
 			if (workflowChoice === 'create-pr' && repoInfo.canCreatePR) {
-				results.steps.pr = await this.createPR(task, worktree, services, config, results.steps.safetyChecks);
+				results.steps.pr = await this.createPR(
+					task,
+					worktree,
+					services,
+					config,
+					results.steps.safetyChecks
+				);
 				// For PR workflow, do NOT mark task as done - it will be done when PR merges
-				console.log('📝 PR created - task status will be updated when PR is merged');
+				console.log(
+					'📝 PR created - task status will be updated when PR is merged'
+				);
 				results.steps.taskStatusDeferred = true;
 			} else if (workflowChoice === 'merge-local') {
-				results.steps.merge = await this.executeLocalMerge(task, worktree, services);
-				
+				results.steps.merge = await this.executeLocalMerge(
+					task,
+					worktree,
+					services
+				);
+
 				// For local merge, mark task as done after merge completes
 				if (results.steps.merge.success) {
 					console.log('📝 Step 4: Updating task status after local merge...');
 					const statusResult = await this.handleTaskStatusAfterWorkflow(
-						task, services, workflowChoice, { success: true }
+						task,
+						services,
+						workflowChoice,
+						{ success: true }
 					);
 					results.steps.taskStatus = statusResult;
 				}
 			} else {
 				console.log('ℹ️ No additional workflow steps required');
-				results.steps.workflow = { 
-					success: true, 
+				results.steps.workflow = {
+					success: true,
 					message: 'No additional workflow steps required',
-					choice: workflowChoice 
+					choice: workflowChoice
 				};
-				
+
 				// If no special workflow, mark task as done now
 				console.log('📝 Step 4: Updating task status...');
 				const statusResult = await this.handleTaskStatusAfterWorkflow(
-					task, services, workflowChoice, { success: true }
+					task,
+					services,
+					workflowChoice,
+					{ success: true }
 				);
 				results.steps.taskStatus = statusResult;
 			}
 
 			return results;
-
 		} catch (error) {
 			console.error('❌ Fallback workflow failed:', error.message);
 			results.success = false;
@@ -1189,7 +1367,7 @@ export default class ClaudeCodeStopHook {
 	async executeLocalMerge(task, worktree, services) {
 		try {
 			console.log('🔗 Executing local merge...');
-			
+
 			// This would integrate with LocalMergeManager if available
 			// For now, just return success since changes are already committed
 			return {
@@ -1198,7 +1376,6 @@ export default class ClaudeCodeStopHook {
 				type: 'local-merge',
 				branch: worktree.branch || worktree.name
 			};
-
 		} catch (error) {
 			console.error('❌ Local merge failed:', error.message);
 			return {
@@ -1213,7 +1390,12 @@ export default class ClaudeCodeStopHook {
 	 * Handle task status updates based on workflow choice and completion status
 	 * Phase 3: Enhanced with PR monitoring integration
 	 */
-	async handleTaskStatusAfterWorkflow(task, services, workflowChoice, workflowResult) {
+	async handleTaskStatusAfterWorkflow(
+		task,
+		services,
+		workflowChoice,
+		workflowResult
+	) {
 		try {
 			const result = {
 				updated: false,
@@ -1226,16 +1408,25 @@ export default class ClaudeCodeStopHook {
 			// For PR workflows, start monitoring instead of marking done immediately
 			if (workflowChoice === 'create-pr') {
 				if (workflowResult?.success && workflowResult.prUrl) {
-					console.log(`📝 PR created successfully, starting monitoring for ${task.id}...`);
-					const monitoringResult = await this.startPRMonitoring(task, workflowResult, services);
-					
+					console.log(
+						`📝 PR created successfully, starting monitoring for ${task.id}...`
+					);
+					const monitoringResult = await this.startPRMonitoring(
+						task,
+						workflowResult,
+						services
+					);
+
 					result.deferred = true;
 					result.reason = 'pr-monitoring-started';
 					result.prUrl = workflowResult.prUrl;
 					result.monitoringResult = monitoringResult;
-					result.message = 'Task status will be updated automatically when PR is merged';
+					result.message =
+						'Task status will be updated automatically when PR is merged';
 				} else {
-					console.log(`❌ PR creation failed for ${task.id} - keeping task pending`);
+					console.log(
+						`❌ PR creation failed for ${task.id} - keeping task pending`
+					);
 					result.deferred = true;
 					result.reason = 'pr-creation-failed';
 					result.error = workflowResult?.error || 'PR creation failed';
@@ -1246,7 +1437,9 @@ export default class ClaudeCodeStopHook {
 
 			// For other workflows, mark as done if workflow was successful
 			if (!workflowResult?.success) {
-				console.log(`📝 Skipping status update for ${task.id} - workflow not successful`);
+				console.log(
+					`📝 Skipping status update for ${task.id} - workflow not successful`
+				);
 				result.skipped = true;
 				result.reason = 'workflow-failed';
 				return result;
@@ -1255,20 +1448,25 @@ export default class ClaudeCodeStopHook {
 			// Update the current task/subtask to done
 			console.log(`📝 Marking ${task.id} as done...`);
 			const statusResult = await this.updateTaskStatus(task, services);
-			
+
 			if (statusResult.success) {
 				result.updated = true;
 				console.log(`✅ Task ${task.id} marked as done`);
 
 				// If this is a subtask, check if parent task should be marked as done
 				if (task.isSubtask || String(task.id).includes('.')) {
-					const parentResult = await this.checkAndUpdateParentTask(task, services);
+					const parentResult = await this.checkAndUpdateParentTask(
+						task,
+						services
+					);
 					result.parentChecked = true;
 					result.parentUpdated = parentResult.updated;
 					result.parentTaskId = parentResult.parentTaskId;
-					
+
 					if (parentResult.updated) {
-						console.log(`✅ Parent task ${parentResult.parentTaskId} also marked as done`);
+						console.log(
+							`✅ Parent task ${parentResult.parentTaskId} also marked as done`
+						);
 					}
 				}
 			} else {
@@ -1277,9 +1475,11 @@ export default class ClaudeCodeStopHook {
 			}
 
 			return result;
-
 		} catch (error) {
-			console.error('❌ Error handling task status after workflow:', error.message);
+			console.error(
+				'❌ Error handling task status after workflow:',
+				error.message
+			);
 			return {
 				updated: false,
 				parentChecked: false,
@@ -1295,13 +1495,17 @@ export default class ClaudeCodeStopHook {
 	async checkAndUpdateParentTask(subtask, services) {
 		try {
 			const subtaskId = String(subtask.id);
-			const parentTaskId = subtaskId.includes('.') ? subtaskId.split('.')[0] : null;
-			
+			const parentTaskId = subtaskId.includes('.')
+				? subtaskId.split('.')[0]
+				: null;
+
 			if (!parentTaskId) {
 				return { updated: false, reason: 'not-a-subtask' };
 			}
 
-			console.log(`🔍 Checking parent task ${parentTaskId} completion status...`);
+			console.log(
+				`🔍 Checking parent task ${parentTaskId} completion status...`
+			);
 
 			// Get the parent task to check all its subtasks
 			if (!services.backend?.getTask) {
@@ -1310,58 +1514,74 @@ export default class ClaudeCodeStopHook {
 			}
 
 			const parentTask = await services.backend.getTask({ id: parentTaskId });
-			
-			if (!parentTask || !parentTask.subtasks || parentTask.subtasks.length === 0) {
-				console.log(`⚠️ Parent task ${parentTaskId} not found or has no subtasks`);
+
+			if (
+				!parentTask ||
+				!parentTask.subtasks ||
+				parentTask.subtasks.length === 0
+			) {
+				console.log(
+					`⚠️ Parent task ${parentTaskId} not found or has no subtasks`
+				);
 				return { updated: false, parentTaskId, reason: 'parent-not-found' };
 			}
 
 			// Check if all subtasks are done
-			const allSubtasksDone = parentTask.subtasks.every(st => 
-				st.status === 'done' || st.status === 'completed'
+			const allSubtasksDone = parentTask.subtasks.every(
+				(st) => st.status === 'done' || st.status === 'completed'
 			);
 
-			if (allSubtasksDone && parentTask.status !== 'done' && parentTask.status !== 'completed') {
-				console.log(`🎯 All subtasks of task ${parentTaskId} are complete - marking parent as done`);
-				
+			if (
+				allSubtasksDone &&
+				parentTask.status !== 'done' &&
+				parentTask.status !== 'completed'
+			) {
+				console.log(
+					`🎯 All subtasks of task ${parentTaskId} are complete - marking parent as done`
+				);
+
 				const parentStatusResult = await services.backend.setTaskStatus({
 					id: parentTaskId,
 					status: 'done'
 				});
 
 				if (parentStatusResult?.success) {
-					return { 
-						updated: true, 
+					return {
+						updated: true,
 						parentTaskId,
-						message: `Parent task ${parentTaskId} marked as done` 
+						message: `Parent task ${parentTaskId} marked as done`
 					};
 				} else {
-					return { 
-						updated: false, 
+					return {
+						updated: false,
 						parentTaskId,
 						error: parentStatusResult?.error || 'Failed to update parent status'
 					};
 				}
 			} else {
-				const remainingSubtasks = parentTask.subtasks.filter(st => 
-					st.status !== 'done' && st.status !== 'completed'
+				const remainingSubtasks = parentTask.subtasks.filter(
+					(st) => st.status !== 'done' && st.status !== 'completed'
 				).length;
-				
-				console.log(`📊 Parent task ${parentTaskId} status: ${parentTask.status}, remaining subtasks: ${remainingSubtasks}`);
-				return { 
-					updated: false, 
+
+				console.log(
+					`📊 Parent task ${parentTaskId} status: ${parentTask.status}, remaining subtasks: ${remainingSubtasks}`
+				);
+				return {
+					updated: false,
 					parentTaskId,
-					reason: remainingSubtasks > 0 ? 'subtasks-remaining' : 'parent-already-done',
+					reason:
+						remainingSubtasks > 0
+							? 'subtasks-remaining'
+							: 'parent-already-done',
 					remainingSubtasks
 				};
 			}
-
 		} catch (error) {
 			console.error('❌ Error checking parent task:', error.message);
-			return { 
-				updated: false, 
+			return {
+				updated: false,
 				parentTaskId: parentTaskId || 'unknown',
-				error: error.message 
+				error: error.message
 			};
 		}
 	}
@@ -1372,7 +1592,9 @@ export default class ClaudeCodeStopHook {
 	async startPRMonitoring(task, prResult, services) {
 		try {
 			if (!isPRMonitoringServiceInitialized()) {
-				console.log('⚠️ PR monitoring service not initialized, cannot start monitoring');
+				console.log(
+					'⚠️ PR monitoring service not initialized, cannot start monitoring'
+				);
 				return {
 					monitoringSetup: false,
 					reason: 'service-not-initialized',
@@ -1382,12 +1604,14 @@ export default class ClaudeCodeStopHook {
 			}
 
 			const prMonitoringService = getPRMonitoringService();
-			
+
 			// Extract PR number from URL
 			const prNumber = this.extractPRNumberFromUrl(prResult.prUrl);
-			
+
 			if (!prNumber) {
-				console.log(`⚠️ Could not extract PR number from URL: ${prResult.prUrl}`);
+				console.log(
+					`⚠️ Could not extract PR number from URL: ${prResult.prUrl}`
+				);
 				return {
 					monitoringSetup: false,
 					reason: 'invalid-pr-url',
@@ -1408,8 +1632,13 @@ export default class ClaudeCodeStopHook {
 				maxMonitoringTime: 24 * 60 * 60 * 1000 // 24 hours
 			};
 
-			console.log(`🔍 Starting PR monitoring for task ${task.id}, PR #${prNumber}...`);
-			const monitoringResult = await prMonitoringService.startMonitoring(prNumber, monitoringConfig);
+			console.log(
+				`🔍 Starting PR monitoring for task ${task.id}, PR #${prNumber}...`
+			);
+			const monitoringResult = await prMonitoringService.startMonitoring(
+				prNumber,
+				monitoringConfig
+			);
 
 			if (monitoringResult) {
 				console.log(`✅ PR monitoring started for PR #${prNumber}`);
@@ -1431,7 +1660,6 @@ export default class ClaudeCodeStopHook {
 					taskId: task.id
 				};
 			}
-
 		} catch (error) {
 			console.error(`❌ Error starting PR monitoring: ${error.message}`);
 			return {
@@ -1462,7 +1690,12 @@ export default class ClaudeCodeStopHook {
 	 * Execute next task progression using NextTaskService
 	 * Phase 2 Implementation - Auto-progression to next available task
 	 */
-	async executeNextTaskProgression(currentTask, currentWorktree, services, config) {
+	async executeNextTaskProgression(
+		currentTask,
+		currentWorktree,
+		services,
+		config
+	) {
 		try {
 			console.log('\n🎯 [Claude Code Stop] Starting next task progression...');
 
@@ -1508,7 +1741,11 @@ export default class ClaudeCodeStopHook {
 			};
 
 			console.log('🚀 Executing next task progression workflow...');
-			const progressionResult = await nextTaskService.executeNextTaskProgression(currentContext, progressionOptions);
+			const progressionResult =
+				await nextTaskService.executeNextTaskProgression(
+					currentContext,
+					progressionOptions
+				);
 
 			if (progressionResult.success) {
 				if (progressionResult.completed) {
@@ -1522,7 +1759,9 @@ export default class ClaudeCodeStopHook {
 				}
 
 				if (progressionResult.skipped) {
-					console.log(`⏭️ Next task progression skipped: ${progressionResult.reason}`);
+					console.log(
+						`⏭️ Next task progression skipped: ${progressionResult.reason}`
+					);
 					return {
 						success: true,
 						skipped: true,
@@ -1532,8 +1771,10 @@ export default class ClaudeCodeStopHook {
 				}
 
 				// Successfully progressed to next task
-				console.log(`✅ Successfully progressed to task ${progressionResult.nextTask.id}`);
-				
+				console.log(
+					`✅ Successfully progressed to task ${progressionResult.nextTask.id}`
+				);
+
 				// Log the transition for visibility
 				this.logTaskTransition(currentTask, progressionResult.nextTask);
 
@@ -1555,11 +1796,12 @@ export default class ClaudeCodeStopHook {
 					message: progressionResult.message,
 					telemetryData: progressionResult.telemetryData
 				};
-
 			} else {
 				// Progression failed
-				console.error(`❌ Next task progression failed: ${progressionResult.error}`);
-				
+				console.error(
+					`❌ Next task progression failed: ${progressionResult.error}`
+				);
+
 				if (progressionResult.requiresManualIntervention) {
 					console.log('👨‍💻 Manual intervention required for next task');
 					return {
@@ -1577,12 +1819,15 @@ export default class ClaudeCodeStopHook {
 					error: progressionResult.error,
 					phase: progressionResult.phase,
 					retryCount: progressionResult.retryCount,
-					message: 'Next task progression failed - manual intervention may be required'
+					message:
+						'Next task progression failed - manual intervention may be required'
 				};
 			}
-
 		} catch (error) {
-			console.error('❌ [Claude Code Stop] Next task progression error:', error.message);
+			console.error(
+				'❌ [Claude Code Stop] Next task progression error:',
+				error.message
+			);
 			return {
 				success: false,
 				error: error.message,
@@ -1599,16 +1844,20 @@ export default class ClaudeCodeStopHook {
 		console.log('\n📋 Task Transition Summary:');
 		console.log(`  ✅ Completed: ${fromTask.id} - ${fromTask.title}`);
 		console.log(`  🎯 Starting:  ${toTask.id} - ${toTask.title}`);
-		
+
 		if (toTask.dependencies && toTask.dependencies.length > 0) {
 			console.log(`  📎 Dependencies: ${toTask.dependencies.join(', ')}`);
 		}
-		
+
 		if (toTask.subtasks && toTask.subtasks.length > 0) {
-			const pendingSubtasks = toTask.subtasks.filter(st => st.status === 'pending').length;
-			console.log(`  📝 Subtasks: ${pendingSubtasks}/${toTask.subtasks.length} pending`);
+			const pendingSubtasks = toTask.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+			console.log(
+				`  📝 Subtasks: ${pendingSubtasks}/${toTask.subtasks.length} pending`
+			);
 		}
-		
+
 		console.log(''); // Empty line for readability
 	}
-} 
+}

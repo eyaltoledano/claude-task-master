@@ -43,7 +43,7 @@ export default function WorktreeDetailsModal({
 	// Load worktree details
 	useEffect(() => {
 		loadDetails();
-		
+
 		// Listen for background operation completion to refresh data
 		const handleOperationCompleted = (operationId, result) => {
 			// Check if this operation was related to this worktree
@@ -51,9 +51,13 @@ export default function WorktreeDetailsModal({
 			if (operation && operation.operation.metadata) {
 				const metadata = operation.operation.metadata;
 				// If the operation was for this worktree, refresh the details
-				if (metadata.worktreePath === worktree.path || 
-					metadata.worktreeName === worktree.name) {
-					console.log(`🔄 [WorktreeDetailsModal] Refreshing after operation completion: ${operationId}`);
+				if (
+					metadata.worktreePath === worktree.path ||
+					metadata.worktreeName === worktree.name
+				) {
+					console.log(
+						`🔄 [WorktreeDetailsModal] Refreshing after operation completion: ${operationId}`
+					);
 					loadDetails();
 				}
 			}
@@ -61,12 +65,12 @@ export default function WorktreeDetailsModal({
 
 		// Add listener
 		backgroundOperations.on('operation-completed', handleOperationCompleted);
-		
+
 		// Cleanup listener on unmount
 		return () => {
 			backgroundOperations.off('operation-completed', handleOperationCompleted);
 		};
-		
+
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [worktree.path, worktree.name]);
 
@@ -79,7 +83,7 @@ export default function WorktreeDetailsModal({
 			]);
 			setDetails(info);
 			setLinkedTasks(tasks || []);
-			
+
 			// Load git status for workflow integration
 			await loadGitStatus();
 		} catch (err) {
@@ -109,9 +113,10 @@ export default function WorktreeDetailsModal({
 
 		try {
 			// Find the primary task/subtask for this worktree
-			const primaryTask = linkedTasks.find(task => 
-				task.status === 'done' || task.status === 'in-progress'
-			) || linkedTasks[0];
+			const primaryTask =
+				linkedTasks.find(
+					(task) => task.status === 'done' || task.status === 'in-progress'
+				) || linkedTasks[0];
 
 			if (!primaryTask) {
 				throw new Error('No suitable task found for workflow completion');
@@ -121,7 +126,7 @@ export default function WorktreeDetailsModal({
 			const result = await backend.completeSubtask(worktree.name, {
 				workflowChoice: choice,
 				autoCommit: choice === 'create-pr' || choice === 'merge-local', // Auto-commit for both workflows
-				prTitle: primaryTask.parentId 
+				prTitle: primaryTask.parentId
 					? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
 					: `Task ${primaryTask.id}: ${primaryTask.title}`,
 				prDescription: `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
@@ -149,7 +154,6 @@ Completed via Task Master Flow.`
 				setWorkflowOptions(result.options);
 				setViewMode('workflow');
 			}
-
 		} catch (error) {
 			setError(error.message);
 		} finally {
@@ -172,9 +176,10 @@ Completed via Task Master Flow.`
 
 		try {
 			// Find the primary task/subtask for this worktree
-			const primaryTask = linkedTasks.find(task => 
-				task.status === 'done' || task.status === 'in-progress'
-			) || linkedTasks[0];
+			const primaryTask =
+				linkedTasks.find(
+					(task) => task.status === 'done' || task.status === 'in-progress'
+				) || linkedTasks[0];
 
 			if (!primaryTask) {
 				throw new Error('No suitable task found for workflow completion');
@@ -184,7 +189,7 @@ Completed via Task Master Flow.`
 			const result = await backend.completeSubtask(worktree.name, {
 				workflowChoice: 'merge-local',
 				autoCommit: true,
-				prTitle: primaryTask.parentId 
+				prTitle: primaryTask.parentId
 					? `Task ${primaryTask.parentId}.${primaryTask.id}: ${primaryTask.title}`
 					: `Task ${primaryTask.id}: ${primaryTask.title}`,
 				prDescription: `Implemented ${primaryTask.parentId ? 'subtask' : 'task'} ${primaryTask.id}: ${primaryTask.title}
@@ -209,21 +214,23 @@ Completed via Task Master Flow automated workflow.`
 				if (primaryTask.status !== 'done') {
 					await handleSetTaskStatus(primaryTask.id, 'done');
 				}
-				
+
 				// Ensure worktree config cleanup (safety net)
 				try {
 					await backend.cleanupWorktreeLinks(worktree.name);
 				} catch (cleanupError) {
-					console.warn('Worktree config cleanup warning:', cleanupError.message);
+					console.warn(
+						'Worktree config cleanup warning:',
+						cleanupError.message
+					);
 					// Don't fail the whole operation for cleanup issues
 				}
-				
+
 				// Close the modal after a short delay to show success
 				setTimeout(() => {
 					onClose();
 				}, 2000);
 			}
-
 		} catch (error) {
 			setError(error.message);
 		} finally {
@@ -314,7 +321,7 @@ Completed via Task Master Flow automated workflow.`
 						'ESC back to details'
 					]
 				};
-			
+
 			default: {
 				const hints = [
 					'TAB quick actions',
@@ -323,25 +330,25 @@ Completed via Task Master Flow automated workflow.`
 					'w workflow',
 					'g jump to task'
 				];
-				
+
 				// Add subtask-specific hint if this worktree is linked to a subtask
-				const hasSubtask = linkedTasks.some(task => task.parentId);
+				const hasSubtask = linkedTasks.some((task) => task.parentId);
 				if (hasSubtask) {
 					hints.push('t jump to subtask');
 				}
-				
+
 				// Add complete workflow hint if there are changes
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
+				const hasChanges =
+					details?.status &&
+					(details.status.total > 0 ||
+						details.status.modified > 0 ||
+						details.status.added > 0 ||
+						details.status.deleted > 0 ||
+						details.status.untracked > 0);
 				if (hasChanges && linkedTasks.length > 0) {
 					hints.push('x manual complete');
 				}
-				
+
 				hints.push('ESC close');
 
 				return {
@@ -356,12 +363,17 @@ Completed via Task Master Flow automated workflow.`
 
 	const keyHandlers = {
 		escape: () => {
-			if (viewMode === 'tasks' || viewMode === 'jump' || viewMode === 'workflow' || viewMode === 'quickActions') {
+			if (
+				viewMode === 'tasks' ||
+				viewMode === 'jump' ||
+				viewMode === 'workflow' ||
+				viewMode === 'quickActions'
+			) {
 				setViewMode('details');
-					} else if (showTaskStatusModal) {
-			setShowTaskStatusModal(false);
-			setSelectedTaskForStatus(null);
-		} else {
+			} else if (showTaskStatusModal) {
+				setShowTaskStatusModal(false);
+				setSelectedTaskForStatus(null);
+			} else {
 				onClose();
 			}
 		},
@@ -447,13 +459,13 @@ Completed via Task Master Flow automated workflow.`
 
 		w: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
+				const hasChanges =
+					details?.status &&
+					(details.status.total > 0 ||
+						details.status.modified > 0 ||
+						details.status.added > 0 ||
+						details.status.deleted > 0 ||
+						details.status.untracked > 0);
 				if (hasChanges) {
 					setViewMode('workflow');
 				}
@@ -461,9 +473,13 @@ Completed via Task Master Flow automated workflow.`
 		},
 
 		t: () => {
-			if (viewMode === 'details' && onNavigateToTask && linkedTasks.length > 0) {
+			if (
+				viewMode === 'details' &&
+				onNavigateToTask &&
+				linkedTasks.length > 0
+			) {
 				// Find the first subtask in the linked tasks
-				const subtask = linkedTasks.find(task => task.parentId);
+				const subtask = linkedTasks.find((task) => task.parentId);
 				if (subtask) {
 					// Create a task object that represents the subtask
 					const subtaskNavData = {
@@ -490,13 +506,13 @@ Completed via Task Master Flow automated workflow.`
 
 		x: () => {
 			if (viewMode === 'details' && linkedTasks.length > 0) {
-				const hasChanges = details?.status && (
-					details.status.total > 0 || 
-					details.status.modified > 0 || 
-					details.status.added > 0 || 
-					details.status.deleted > 0 || 
-					details.status.untracked > 0
-				);
+				const hasChanges =
+					details?.status &&
+					(details.status.total > 0 ||
+						details.status.modified > 0 ||
+						details.status.added > 0 ||
+						details.status.deleted > 0 ||
+						details.status.untracked > 0);
 				if (hasChanges) {
 					handleCompleteWorkflow();
 				}
@@ -546,12 +562,28 @@ Completed via Task Master Flow automated workflow.`
 	// Show task status modal using Ink UI Select
 	if (showTaskStatusModal && selectedTaskForStatus) {
 		const statusOptions = [
-			{ value: 'pending', label: 'Pending', description: 'Ready to be worked on' },
-			{ value: 'in-progress', label: 'In Progress', description: 'Currently being implemented' },
+			{
+				value: 'pending',
+				label: 'Pending',
+				description: 'Ready to be worked on'
+			},
+			{
+				value: 'in-progress',
+				label: 'In Progress',
+				description: 'Currently being implemented'
+			},
 			{ value: 'done', label: 'Done', description: 'Completed and verified' },
 			{ value: 'review', label: 'Review', description: 'Ready for review' },
-			{ value: 'deferred', label: 'Deferred', description: 'Postponed for later' },
-			{ value: 'cancelled', label: 'Cancelled', description: 'No longer needed' }
+			{
+				value: 'deferred',
+				label: 'Deferred',
+				description: 'Postponed for later'
+			},
+			{
+				value: 'cancelled',
+				label: 'Cancelled',
+				description: 'No longer needed'
+			}
 		];
 
 		const handleStatusSelect = (selectedValue) => {
@@ -573,15 +605,16 @@ Completed via Task Master Flow automated workflow.`
 				<Box flexDirection="column">
 					<Box marginBottom={2}>
 						<Text color={theme.text}>
-							Current status: <Text color={theme.accent}>{selectedTaskForStatus.status}</Text>
+							Current status:{' '}
+							<Text color={theme.accent}>{selectedTaskForStatus.status}</Text>
 						</Text>
 						<Text color={theme.muted} marginTop={1}>
 							Choose a new status for this task:
 						</Text>
 					</Box>
-					
+
 					<Select
-						options={statusOptions.map(option => ({
+						options={statusOptions.map((option) => ({
 							label: `${option.label}`,
 							value: option.value
 						}))}
@@ -589,10 +622,14 @@ Completed via Task Master Flow automated workflow.`
 					/>
 
 					<Box marginTop={2}>
-						<Text color={theme.muted} bold>Status Descriptions:</Text>
+						<Text color={theme.muted} bold>
+							Status Descriptions:
+						</Text>
 						{statusOptions.map((option) => (
 							<Box key={option.value} marginTop={1}>
-								<Text color={theme.muted}>• {option.label}: {option.description}</Text>
+								<Text color={theme.muted}>
+									• {option.label}: {option.description}
+								</Text>
 							</Box>
 						))}
 					</Box>
@@ -631,26 +668,40 @@ Completed via Task Master Flow automated workflow.`
 			<BaseModal {...getModalProps()}>
 				<Box flexDirection="column">
 					<Box marginBottom={2}>
-						<Text bold color={theme.accent}>Workflow Options</Text>
-						<Text color={theme.muted}>Choose how to handle your completed work:</Text>
+						<Text bold color={theme.accent}>
+							Workflow Options
+						</Text>
+						<Text color={theme.muted}>
+							Choose how to handle your completed work:
+						</Text>
 					</Box>
-					
+
 					{isProcessingWorkflow && (
 						<Box marginBottom={2}>
 							<LoadingSpinner message="Processing workflow..." />
 						</Box>
 					)}
-					
+
 					{workflowResult && !workflowResult.success && (
-						<Box marginBottom={2} borderStyle="round" borderColor={theme.error} padding={1}>
+						<Box
+							marginBottom={2}
+							borderStyle="round"
+							borderColor={theme.error}
+							padding={1}
+						>
 							<Text color={theme.error}>
 								{workflowResult.message || 'Workflow failed'}
 							</Text>
 						</Box>
 					)}
-					
+
 					{workflowResult && workflowResult.success && (
-						<Box marginBottom={2} borderStyle="round" borderColor={theme.success} padding={1}>
+						<Box
+							marginBottom={2}
+							borderStyle="round"
+							borderColor={theme.success}
+							padding={1}
+						>
 							<Text color={theme.success}>
 								{workflowResult.message || 'Workflow completed successfully'}
 							</Text>
@@ -662,7 +713,7 @@ Completed via Task Master Flow automated workflow.`
 
 					<Box marginBottom={2}>
 						<Select
-							options={options.map(option => ({
+							options={options.map((option) => ({
 								label: `${option.label}`,
 								value: option.value
 							}))}
@@ -672,12 +723,16 @@ Completed via Task Master Flow automated workflow.`
 							}}
 						/>
 					</Box>
-					
+
 					<Box>
-						<Text color={theme.muted} bold>💡 Options:</Text>
+						<Text color={theme.muted} bold>
+							💡 Options:
+						</Text>
 						{options.map((option) => (
 							<Box key={option.value} marginTop={1}>
-								<Text color={theme.muted}>• {option.label}: {option.description}</Text>
+								<Text color={theme.muted}>
+									• {option.label}: {option.description}
+								</Text>
 							</Box>
 						))}
 					</Box>
@@ -805,7 +860,7 @@ Completed via Task Master Flow automated workflow.`
 	// Quick Actions view
 	if (viewMode === 'quickActions') {
 		const quickActionsOptions = [];
-		
+
 		// Always available actions
 		if (linkedTasks.length > 0) {
 			quickActionsOptions.push({
@@ -813,25 +868,25 @@ Completed via Task Master Flow automated workflow.`
 				label: '💡 Launch Claude Code',
 				description: 'Start a Claude Code session for this worktree'
 			});
-			
+
 			quickActionsOptions.push({
 				value: 'status',
 				label: '📊 Set Task Status',
 				description: 'Update the status of the linked task'
 			});
 		}
-		
+
 		// Workflow actions (only if there are changes)
 		const hasUncommittedChanges = gitStatus && gitStatus.hasUncommittedChanges;
 		const hasCommitsToShare = gitStatus && gitStatus.ahead > 0;
-		
+
 		if (hasUncommittedChanges || hasCommitsToShare) {
 			quickActionsOptions.push({
 				value: 'workflow',
 				label: '🔄 Commit & Workflow',
 				description: 'Commit changes and choose workflow (PR or merge)'
 			});
-			
+
 			if (hasUncommittedChanges) {
 				quickActionsOptions.push({
 					value: 'complete',
@@ -840,10 +895,10 @@ Completed via Task Master Flow automated workflow.`
 				});
 			}
 		}
-		
+
 		// Navigation actions
 		if (linkedTasks.length > 0 && onNavigateToTask) {
-			const subtask = linkedTasks.find(task => task.parentId);
+			const subtask = linkedTasks.find((task) => task.parentId);
 			if (subtask) {
 				quickActionsOptions.push({
 					value: 'jump-subtask',
@@ -851,21 +906,21 @@ Completed via Task Master Flow automated workflow.`
 					description: `Go to subtask ${subtask.id}: ${subtask.title}`
 				});
 			}
-			
+
 			quickActionsOptions.push({
 				value: 'view-tasks',
 				label: '📋 View All Tasks',
 				description: 'See all tasks linked to this worktree'
 			});
 		}
-		
+
 		// Additional actions
 		quickActionsOptions.push({
 			value: 'link-tasks',
 			label: '🔗 Link Tasks',
 			description: 'Link additional tasks to this worktree'
 		});
-		
+
 		if (!worktree.isCurrent && onDelete) {
 			quickActionsOptions.push({
 				value: 'delete',
@@ -897,7 +952,7 @@ Completed via Task Master Flow automated workflow.`
 					setViewMode('details');
 					break;
 				case 'jump-subtask': {
-					const subtask = linkedTasks.find(task => task.parentId);
+					const subtask = linkedTasks.find((task) => task.parentId);
 					if (subtask && onNavigateToTask) {
 						const subtaskNavData = {
 							id: subtask.id,
@@ -930,12 +985,14 @@ Completed via Task Master Flow automated workflow.`
 			<BaseModal {...getModalProps()}>
 				<Box flexDirection="column">
 					<Box marginBottom={2}>
-						<Text bold color={theme.accent}>Quick Actions</Text>
+						<Text bold color={theme.accent}>
+							Quick Actions
+						</Text>
 						<Text color={theme.muted} marginTop={1}>
 							Choose an action to perform on this worktree:
 						</Text>
 					</Box>
-					
+
 					{quickActionsOptions.length > 0 ? (
 						<Select
 							options={quickActionsOptions}
@@ -949,7 +1006,8 @@ Completed via Task Master Flow automated workflow.`
 
 					<Box marginTop={2}>
 						<Text color={theme.muted} fontSize="small">
-							💡 Tip: You can also use individual keys (c, s, w, t) for quick access
+							💡 Tip: You can also use individual keys (c, s, w, t) for quick
+							access
 						</Text>
 					</Box>
 				</Box>
@@ -982,15 +1040,15 @@ Completed via Task Master Flow automated workflow.`
 
 	// Linked Subtask - show early in the modal for visibility
 	console.log('🔍 [WorktreeDetailsModal] linkedTasks:', linkedTasks);
-	const linkedSubtask = linkedTasks.find(task => task.parentId);
+	const linkedSubtask = linkedTasks.find((task) => task.parentId);
 	console.log('🔍 [WorktreeDetailsModal] linkedSubtask found:', linkedSubtask);
-	
+
 	detailContent.push({ type: 'blank' });
 	detailContent.push({
 		type: 'header',
 		content: 'Linked Subtask:'
 	});
-	
+
 	if (!linkedSubtask) {
 		detailContent.push({
 			type: 'text',
@@ -998,7 +1056,7 @@ Completed via Task Master Flow automated workflow.`
 			color: theme.warning,
 			indent: 2
 		});
-		
+
 		// Debug: show what tasks we do have
 		if (linkedTasks.length > 0) {
 			detailContent.push({
@@ -1017,8 +1075,12 @@ Completed via Task Master Flow automated workflow.`
 			});
 		}
 	} else {
-		const statusIcon = linkedSubtask.status === 'done' ? ' ✓' : 
-						   linkedSubtask.status === 'in-progress' ? ' ⚡' : '';
+		const statusIcon =
+			linkedSubtask.status === 'done'
+				? ' ✓'
+				: linkedSubtask.status === 'in-progress'
+					? ' ⚡'
+					: '';
 
 		detailContent.push({
 			type: 'text',
@@ -1026,7 +1088,7 @@ Completed via Task Master Flow automated workflow.`
 			color: theme.accent,
 			indent: 2
 		});
-		
+
 		if (linkedSubtask.description) {
 			detailContent.push({
 				type: 'text',
@@ -1038,9 +1100,10 @@ Completed via Task Master Flow automated workflow.`
 
 		// Show a truncated version of details if available
 		if (linkedSubtask.details) {
-			const detailsPreview = linkedSubtask.details.length > 100 
-				? linkedSubtask.details.substring(0, 100) + '...'
-				: linkedSubtask.details;
+			const detailsPreview =
+				linkedSubtask.details.length > 100
+					? linkedSubtask.details.substring(0, 100) + '...'
+					: linkedSubtask.details;
 			detailContent.push({
 				type: 'text',
 				content: `     Details: ${detailsPreview}`,
@@ -1054,7 +1117,7 @@ Completed via Task Master Flow automated workflow.`
 	if (gitStatus) {
 		detailContent.push({ type: 'blank' });
 		detailContent.push({ type: 'header', content: 'Git Status:' });
-		
+
 		if (gitStatus.hasUncommittedChanges) {
 			detailContent.push({
 				type: 'text',
@@ -1062,7 +1125,7 @@ Completed via Task Master Flow automated workflow.`
 				color: theme.warning,
 				indent: 2
 			});
-			
+
 			if (gitStatus.staged > 0) {
 				detailContent.push({
 					type: 'text',
@@ -1071,7 +1134,7 @@ Completed via Task Master Flow automated workflow.`
 					indent: 2
 				});
 			}
-			
+
 			if (gitStatus.modified > 0) {
 				detailContent.push({
 					type: 'text',
@@ -1080,7 +1143,7 @@ Completed via Task Master Flow automated workflow.`
 					indent: 2
 				});
 			}
-			
+
 			if (gitStatus.untracked > 0) {
 				detailContent.push({
 					type: 'text',
@@ -1097,11 +1160,12 @@ Completed via Task Master Flow automated workflow.`
 				indent: 2
 			});
 		}
-		
+
 		if (gitStatus.ahead > 0 || gitStatus.behind > 0) {
 			let trackingStatus = '  ';
 			if (gitStatus.ahead > 0) trackingStatus += `↑ ${gitStatus.ahead} ahead `;
-			if (gitStatus.behind > 0) trackingStatus += `↓ ${gitStatus.behind} behind`;
+			if (gitStatus.behind > 0)
+				trackingStatus += `↓ ${gitStatus.behind} behind`;
 			detailContent.push({
 				type: 'text',
 				content: trackingStatus,
@@ -1115,7 +1179,7 @@ Completed via Task Master Flow automated workflow.`
 	if (workflowResult) {
 		detailContent.push({ type: 'blank' });
 		detailContent.push({ type: 'header', content: 'Workflow Status:' });
-		
+
 		if (workflowResult.success) {
 			detailContent.push({
 				type: 'text',
@@ -1123,7 +1187,7 @@ Completed via Task Master Flow automated workflow.`
 				color: theme.success,
 				indent: 2
 			});
-			
+
 			if (workflowResult.prUrl) {
 				detailContent.push({
 					type: 'text',
@@ -1132,7 +1196,7 @@ Completed via Task Master Flow automated workflow.`
 					indent: 2
 				});
 			}
-			
+
 			if (workflowResult.mergeCommit) {
 				detailContent.push({
 					type: 'text',
@@ -1155,11 +1219,12 @@ Completed via Task Master Flow automated workflow.`
 	if (viewMode === 'details') {
 		const primaryTask = getPrimaryTask();
 		const hasUncommittedChanges = gitStatus && gitStatus.hasUncommittedChanges;
-		const hasRemote = gitStatus && gitStatus.remotes && gitStatus.remotes.length > 0;
-		
+		const hasRemote =
+			gitStatus && gitStatus.remotes && gitStatus.remotes.length > 0;
+
 		detailContent.push({ type: 'blank' });
 		detailContent.push({ type: 'header', content: 'Next Steps:' });
-		
+
 		if (primaryTask) {
 			// **PRIORITY 1: Check for uncommitted changes first** - this indicates Claude has done work
 			if (hasUncommittedChanges) {
@@ -1222,7 +1287,7 @@ Completed via Task Master Flow automated workflow.`
 					color: theme.success,
 					indent: 2
 				});
-				
+
 				// Add note about automatic workflow
 				detailContent.push({
 					type: 'text',
@@ -1230,12 +1295,12 @@ Completed via Task Master Flow automated workflow.`
 					color: theme.textDim,
 					indent: 2
 				});
-				
+
 				// Check if there are committed changes ready for PR/merge
 				if (hasRemote) {
 					// Check if branch is ahead of remote (has commits to push)
 					const hasCommitsToShare = gitStatus && gitStatus.ahead > 0;
-					
+
 					if (hasCommitsToShare) {
 						detailContent.push({
 							type: 'text',
@@ -1280,11 +1345,11 @@ Completed via Task Master Flow automated workflow.`
 				indent: 2
 			});
 		}
-		
+
 		// Git status guidance
 		if (gitStatus) {
 			detailContent.push({ type: 'blank' });
-			
+
 			// Show commit status
 			if (gitStatus.ahead > 0) {
 				detailContent.push({
@@ -1294,7 +1359,7 @@ Completed via Task Master Flow automated workflow.`
 					indent: 2
 				});
 			}
-			
+
 			// Show working directory status
 			if (hasUncommittedChanges) {
 				detailContent.push({
@@ -1312,16 +1377,16 @@ Completed via Task Master Flow automated workflow.`
 				});
 			}
 		}
-		
+
 		// Quick actions reminder
 		detailContent.push({ type: 'blank' });
-		const hasChanges = details?.status && (
-			details.status.total > 0 || 
-			details.status.modified > 0 || 
-			details.status.added > 0 || 
-			details.status.deleted > 0 || 
-			details.status.untracked > 0
-		);
+		const hasChanges =
+			details?.status &&
+			(details.status.total > 0 ||
+				details.status.modified > 0 ||
+				details.status.added > 0 ||
+				details.status.deleted > 0 ||
+				details.status.untracked > 0);
 		const quickActions = ['c Claude', 's Status', 'w Workflow', 't Tasks'];
 		if (hasChanges && linkedTasks.length > 0) {
 			quickActions.push('x Manual Complete');
@@ -1389,22 +1454,22 @@ Completed via Task Master Flow automated workflow.`
 	// Note: Git status information is already displayed in the "Git Status:" section above
 	// No need to duplicate the changes information here
 
-
-
 	// Store content in ref for key handlers
 	detailContentRef.current = detailContent;
-	
+
 	// Calculate visible content based on scroll offset
 	const visibleContent = detailContent.slice(
 		scrollOffset,
 		scrollOffset + VISIBLE_ROWS
 	);
 	const totalLines = detailContent.length;
-	
+
 	// Calculate if we actually have scrollable content
 	// If all content fits in the visible area, don't show scroll indicators
 	const actualVisibleItems = visibleContent.length;
-	const hasMoreContentBelow = actualVisibleItems === VISIBLE_ROWS && scrollOffset + VISIBLE_ROWS < totalLines;
+	const hasMoreContentBelow =
+		actualVisibleItems === VISIBLE_ROWS &&
+		scrollOffset + VISIBLE_ROWS < totalLines;
 	const hasMoreContentAbove = scrollOffset > 0;
 	const showScrollIndicators = hasMoreContentBelow || hasMoreContentAbove;
 
@@ -1462,7 +1527,8 @@ Completed via Task Master Flow automated workflow.`
 						<Text color={theme.muted}>
 							{hasMoreContentAbove && '↑ '}
 							Line {Math.min(scrollOffset + 1, totalLines)}-
-							{Math.min(scrollOffset + actualVisibleItems, totalLines)} of {totalLines}
+							{Math.min(scrollOffset + actualVisibleItems, totalLines)} of{' '}
+							{totalLines}
 							{hasMoreContentBelow && ' ↓'}
 						</Text>
 					</Box>

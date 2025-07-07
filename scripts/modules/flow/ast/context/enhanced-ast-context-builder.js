@@ -16,7 +16,10 @@
  */
 
 import { loadASTConfig } from '../../config/ast-config.js';
-import { initializeDefaultRegistry, defaultParserRegistry } from '../parsers/parser-registry.js';
+import {
+	initializeDefaultRegistry,
+	defaultParserRegistry
+} from '../parsers/parser-registry.js';
 import { createCacheKey, getCachedOrExecute } from './cache-manager.js';
 import { createAnalyzerDispatcher } from '../analyzers/analyzer-dispatcher.js';
 import { ContextBuilder } from './context-builder.js';
@@ -176,8 +179,8 @@ export class EnhancedASTContextBuilder {
 			let assembledContext;
 			if (this.options.enablePhase21 && this.contextBuilder) {
 				assembledContext = await this.contextBuilder.buildTaskAwareContext(
-					'Task implementation context',  // task description
-					new Map(Object.entries(parseResults.byFile)),  // Convert to Map
+					'Task implementation context', // task description
+					new Map(Object.entries(parseResults.byFile)), // Convert to Map
 					{
 						worktreePath,
 						projectRoot: this.projectRoot,
@@ -444,7 +447,10 @@ export class EnhancedASTContextBuilder {
 							functions: astResult.analysis?.functions || [],
 							classes: astResult.analysis?.classes || [],
 							imports: astResult.analysis?.imports || [],
-							complexity: astResult.analysis?.complexity || enhancedAnalysis?.complexity || 1
+							complexity:
+								astResult.analysis?.complexity ||
+								enhancedAnalysis?.complexity ||
+								1
 						};
 
 						return {
@@ -461,7 +467,7 @@ export class EnhancedASTContextBuilder {
 						maxAge: this.config.cacheMaxAge,
 						language,
 						filePath: file.path,
-						projectRoot: worktreePath  // Pass the correct project root
+						projectRoot: worktreePath // Pass the correct project root
 					}
 				);
 
@@ -877,7 +883,7 @@ class ChangeEventProcessor {
 	isCriticalChange(change) {
 		return (
 			change.path.includes('package.json') ||
-							change.path.includes('.taskmaster/flow/config.json') ||
+			change.path.includes('.taskmaster/flow/config.json') ||
 			change.path.includes('tsconfig.json') ||
 			change.path.includes('.eslintrc')
 		);
@@ -902,7 +908,20 @@ class ChangeEventProcessor {
 	 */
 	isMediumImpactChange(change) {
 		const ext = path.extname(change.path);
-		return ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.html', '.htm', '.css', '.scss', '.sass', '.less'].includes(ext);
+		return [
+			'.js',
+			'.ts',
+			'.jsx',
+			'.tsx',
+			'.py',
+			'.go',
+			'.html',
+			'.htm',
+			'.css',
+			'.scss',
+			'.sass',
+			'.less'
+		].includes(ext);
 	}
 
 	/**

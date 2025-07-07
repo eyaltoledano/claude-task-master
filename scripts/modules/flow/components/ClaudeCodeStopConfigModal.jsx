@@ -4,10 +4,10 @@ import { BaseModal } from './BaseModal.jsx';
 import { useBaseModal } from '../hooks/modals/useBaseModal.js';
 import { useComponentTheme } from '../hooks/useComponentTheme.js';
 
-export default function ClaudeCodeStopConfigModal({ 
-	backend, 
-	onClose, 
-	onSave 
+export default function ClaudeCodeStopConfigModal({
+	backend,
+	onClose,
+	onSave
 }) {
 	const [loading, setLoading] = useState(true);
 	const [config, setConfig] = useState(null);
@@ -30,7 +30,10 @@ export default function ClaudeCodeStopConfigModal({
 			options: [
 				{ value: 'vibe', label: 'Vibe Mode - Fast, minimal checks' },
 				{ value: 'standard', label: 'Standard Mode - Balanced safety checks' },
-				{ value: 'strict', label: 'Strict Mode - Comprehensive checks, manual approval' }
+				{
+					value: 'strict',
+					label: 'Strict Mode - Comprehensive checks, manual approval'
+				}
 			],
 			description: 'Default safety mode for automatic PR creation'
 		},
@@ -69,9 +72,12 @@ export default function ClaudeCodeStopConfigModal({
 			if (claudeCodeStopConfig) {
 				setConfig({
 					enabled: claudeCodeStopConfig.enabled,
-					defaultSafetyMode: claudeCodeStopConfig.config?.defaultSafetyMode || 'standard',
-					allowModeOverride: claudeCodeStopConfig.config?.allowModeOverride !== false,
-					enableAutoCommit: claudeCodeStopConfig.config?.enableAutoCommit !== false,
+					defaultSafetyMode:
+						claudeCodeStopConfig.config?.defaultSafetyMode || 'standard',
+					allowModeOverride:
+						claudeCodeStopConfig.config?.allowModeOverride !== false,
+					enableAutoCommit:
+						claudeCodeStopConfig.config?.enableAutoCommit !== false,
 					enableAutoPR: claudeCodeStopConfig.config?.enableAutoPR !== false
 				});
 			} else {
@@ -97,8 +103,11 @@ export default function ClaudeCodeStopConfigModal({
 
 			// Update hook configuration
 			if (backend.hookIntegration) {
-				await backend.hookIntegration.setHookEnabled('claude-code-stop', config.enabled);
-				
+				await backend.hookIntegration.setHookEnabled(
+					'claude-code-stop',
+					config.enabled
+				);
+
 				// Update hook config (this would need to be implemented in HookIntegrationService)
 				// For now, we'll just trigger the save callback
 			}
@@ -116,18 +125,20 @@ export default function ClaudeCodeStopConfigModal({
 	};
 
 	const toggleBooleanOption = (key) => {
-		setConfig(prev => ({
+		setConfig((prev) => ({
 			...prev,
 			[key]: !prev[key]
 		}));
 	};
 
 	const cycleSelectOption = (key) => {
-		const option = configOptions.find(opt => opt.key === key);
+		const option = configOptions.find((opt) => opt.key === key);
 		if (option && option.options) {
-			const currentIndex = option.options.findIndex(opt => opt.value === config[key]);
+			const currentIndex = option.options.findIndex(
+				(opt) => opt.value === config[key]
+			);
 			const nextIndex = (currentIndex + 1) % option.options.length;
-			setConfig(prev => ({
+			setConfig((prev) => ({
 				...prev,
 				[key]: option.options[nextIndex].value
 			}));
@@ -143,9 +154,9 @@ export default function ClaudeCodeStopConfigModal({
 		}
 
 		if (key.upArrow) {
-			setSelectedOption(prev => Math.max(0, prev - 1));
+			setSelectedOption((prev) => Math.max(0, prev - 1));
 		} else if (key.downArrow) {
-			setSelectedOption(prev => Math.min(configOptions.length - 1, prev + 1));
+			setSelectedOption((prev) => Math.min(configOptions.length - 1, prev + 1));
 		} else if (key.return || input === ' ') {
 			const option = configOptions[selectedOption];
 			if (option.type === 'boolean') {
@@ -173,9 +184,7 @@ export default function ClaudeCodeStopConfigModal({
 			}),
 			footer: (
 				<Box>
-					<Text color={theme.muted}>
-						{hints.join(' • ')}
-					</Text>
+					<Text color={theme.muted}>{hints.join(' • ')}</Text>
 				</Box>
 			)
 		};
@@ -184,7 +193,12 @@ export default function ClaudeCodeStopConfigModal({
 	if (loading) {
 		return (
 			<BaseModal {...getModalProps()}>
-				<Box flexDirection="column" alignItems="center" justifyContent="center" height={10}>
+				<Box
+					flexDirection="column"
+					alignItems="center"
+					justifyContent="center"
+					height={10}
+				>
 					<Text color={theme.info}>Loading configuration...</Text>
 				</Box>
 			</BaseModal>
@@ -194,7 +208,12 @@ export default function ClaudeCodeStopConfigModal({
 	if (error) {
 		return (
 			<BaseModal {...getModalProps()}>
-				<Box flexDirection="column" alignItems="center" justifyContent="center" height={10}>
+				<Box
+					flexDirection="column"
+					alignItems="center"
+					justifyContent="center"
+					height={10}
+				>
 					<Text color="red">Error: {error}</Text>
 				</Box>
 			</BaseModal>
@@ -207,7 +226,7 @@ export default function ClaudeCodeStopConfigModal({
 				<Text bold color={theme.primary} marginBottom={1}>
 					Claude Code Stop Hook Settings
 				</Text>
-				
+
 				<Text color={theme.muted} marginBottom={2}>
 					Configure automatic PR creation when Claude Code sessions complete
 				</Text>
@@ -219,33 +238,33 @@ export default function ClaudeCodeStopConfigModal({
 					return (
 						<Box key={option.key} marginBottom={1}>
 							<Box>
-								<Text 
+								<Text
 									color={isSelected ? theme.accent : theme.text}
 									backgroundColor={isSelected ? theme.selectionBg : undefined}
 								>
 									{isSelected ? '► ' : '  '}
-									{option.label}: 
+									{option.label}:
 								</Text>
-								
+
 								{option.type === 'boolean' && (
-									<Text 
+									<Text
 										color={value ? theme.success : theme.error}
 										bold={isSelected}
 									>
-										{' '}{value ? 'Enabled' : 'Disabled'}
+										{' '}
+										{value ? 'Enabled' : 'Disabled'}
 									</Text>
 								)}
-								
+
 								{option.type === 'select' && (
-									<Text 
-										color={theme.accent}
-										bold={isSelected}
-									>
-										{' '}{option.options.find(opt => opt.value === value)?.label || value}
+									<Text color={theme.accent} bold={isSelected}>
+										{' '}
+										{option.options.find((opt) => opt.value === value)?.label ||
+											value}
 									</Text>
 								)}
 							</Box>
-							
+
 							{isSelected && (
 								<Box marginLeft={2} marginTop={1}>
 									<Text color={theme.muted} italic>
@@ -258,14 +277,25 @@ export default function ClaudeCodeStopConfigModal({
 				})}
 
 				<Box marginTop={2} paddingTop={1} borderTop borderColor={theme.border}>
-					<Text bold color={theme.primary}>Safety Mode Details:</Text>
+					<Text bold color={theme.primary}>
+						Safety Mode Details:
+					</Text>
 					<Box marginTop={1} flexDirection="column">
-						<Text color={theme.muted}>• <Text color={theme.accent}>Vibe:</Text> Fast mode - minimal checks, just commit and create PR</Text>
-						<Text color={theme.muted}>• <Text color={theme.accent}>Standard:</Text> Balanced mode - basic safety checks before PR creation</Text>
-						<Text color={theme.muted}>• <Text color={theme.accent}>Strict:</Text> Safe mode - comprehensive checks, manual PR approval</Text>
+						<Text color={theme.muted}>
+							• <Text color={theme.accent}>Vibe:</Text> Fast mode - minimal
+							checks, just commit and create PR
+						</Text>
+						<Text color={theme.muted}>
+							• <Text color={theme.accent}>Standard:</Text> Balanced mode -
+							basic safety checks before PR creation
+						</Text>
+						<Text color={theme.muted}>
+							• <Text color={theme.accent}>Strict:</Text> Safe mode -
+							comprehensive checks, manual PR approval
+						</Text>
 					</Box>
 				</Box>
 			</Box>
 		</BaseModal>
 	);
-} 
+}

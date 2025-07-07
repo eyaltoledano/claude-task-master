@@ -55,19 +55,19 @@ export default class PRLifecycleManagementHook {
 	async createNotificationService(context) {
 		// Load configuration
 		const config = await this.loadNotificationConfig();
-		
+
 		return {
 			notify: async (eventType, data, options = {}) => {
 				try {
 					// Determine which channels to use for this event
 					const channels = this.getChannelsForEvent(eventType, config, options);
-					
+
 					// Get message template
 					const template = this.getMessageTemplate(eventType, config);
-					
+
 					// Format message with data
 					const message = this.formatMessage(template, data);
-					
+
 					// Send notification via configured channels
 					await this.sendMultiChannelNotification(message, {
 						type: this.getNotificationType(eventType),
@@ -81,7 +81,9 @@ export default class PRLifecycleManagementHook {
 						}
 					});
 
-					console.log(`📢 Sent ${eventType} notification via channels: ${channels.join(', ')}`);
+					console.log(
+						`📢 Sent ${eventType} notification via channels: ${channels.join(', ')}`
+					);
 				} catch (error) {
 					console.error(`Failed to send ${eventType} notification:`, error);
 				}
@@ -103,10 +105,16 @@ export default class PRLifecycleManagementHook {
 			if (!flowConfig._config) {
 				await flowConfig.initialize();
 			}
-			
-			return flowConfig.get('notifications', this.getDefaultNotificationConfig());
+
+			return flowConfig.get(
+				'notifications',
+				this.getDefaultNotificationConfig()
+			);
 		} catch (error) {
-			console.warn('Failed to load notification config, using defaults:', error.message);
+			console.warn(
+				'Failed to load notification config, using defaults:',
+				error.message
+			);
 			return this.getDefaultNotificationConfig();
 		}
 	}
@@ -126,19 +134,21 @@ export default class PRLifecycleManagementHook {
 			},
 			templates: {
 				prCreated: {
-					title: "PR Created: {{prNumber}}",
-					message: "Pull request #{{prNumber}} has been created for task {{taskId}}",
-					priority: "normal"
+					title: 'PR Created: {{prNumber}}',
+					message:
+						'Pull request #{{prNumber}} has been created for task {{taskId}}',
+					priority: 'normal'
 				},
 				prMerged: {
-					title: "PR Merged: {{prNumber}}",
-					message: "Pull request #{{prNumber}} has been successfully merged",
-					priority: "normal"
+					title: 'PR Merged: {{prNumber}}',
+					message: 'Pull request #{{prNumber}} has been successfully merged',
+					priority: 'normal'
 				},
 				checksFailed: {
-					title: "PR Checks Failed: {{prNumber}}",
-					message: "Pull request #{{prNumber}} has failing checks: {{failedChecks}}",
-					priority: "high"
+					title: 'PR Checks Failed: {{prNumber}}',
+					message:
+						'Pull request #{{prNumber}} has failing checks: {{failedChecks}}',
+					priority: 'high'
 				}
 			}
 		};
@@ -157,14 +167,20 @@ export default class PRLifecycleManagementHook {
 
 		// Check each channel's event configuration
 		Object.entries(config.channels).forEach(([channelName, channelConfig]) => {
-			if (channelConfig.enabled && channelConfig.events && channelConfig.events.includes(eventType)) {
+			if (
+				channelConfig.enabled &&
+				channelConfig.events &&
+				channelConfig.events.includes(eventType)
+			) {
 				channels.push(channelName);
 			}
 		});
 
 		// Apply escalation rules if specified
 		if (options.escalate && config.escalation?.enabled) {
-			const escalationRule = config.escalation.rules.find(rule => rule.trigger === options.escalate);
+			const escalationRule = config.escalation.rules.find(
+				(rule) => rule.trigger === options.escalate
+			);
 			if (escalationRule) {
 				return [...new Set([...channels, ...escalationRule.channels])];
 			}
@@ -178,11 +194,13 @@ export default class PRLifecycleManagementHook {
 	 */
 	getMessageTemplate(eventType, config) {
 		const templates = config.templates || {};
-		return templates[eventType] || {
-			title: `Task Master: ${eventType}`,
-			message: `Event: ${eventType}`,
-			priority: 'normal'
-		};
+		return (
+			templates[eventType] || {
+				title: `Task Master: ${eventType}`,
+				message: `Event: ${eventType}`,
+				priority: 'normal'
+			}
+		);
 	}
 
 	/**
@@ -233,8 +251,8 @@ export default class PRLifecycleManagementHook {
 			'pr-merged': 'success',
 			'checks-failed': 'error',
 			'session-completed': 'success',
-			'error': 'error',
-			'critical': 'error'
+			error: 'error',
+			critical: 'error'
 		};
 		return typeMap[eventType] || 'info';
 	}
@@ -321,14 +339,18 @@ export default class PRLifecycleManagementHook {
 			};
 		} catch (error) {
 			console.error('Error in onPrCreated:', error);
-			
+
 			// Send error notification
 			if (this.notificationService) {
-				await this.notificationService.notify('error', {
-					errorType: 'PR Creation',
-					errorMessage: error.message,
-					prNumber: context.prResult?.prNumber
-				}, { priority: 'high' });
+				await this.notificationService.notify(
+					'error',
+					{
+						errorType: 'PR Creation',
+						errorMessage: error.message,
+						prNumber: context.prResult?.prNumber
+					},
+					{ priority: 'high' }
+				);
 			}
 
 			return {
@@ -476,13 +498,17 @@ export default class PRLifecycleManagementHook {
 			};
 		} catch (error) {
 			console.error('Error in onPrMerged:', error);
-			
+
 			// Send error notification
-			await this.notificationService.notify('error', {
-				errorType: 'PR Merge Cleanup',
-				errorMessage: error.message,
-				prNumber: context.prNumber
-			}, { priority: 'high' });
+			await this.notificationService.notify(
+				'error',
+				{
+					errorType: 'PR Merge Cleanup',
+					errorMessage: error.message,
+					prNumber: context.prNumber
+				},
+				{ priority: 'high' }
+			);
 
 			return {
 				success: false,
@@ -509,22 +535,26 @@ export default class PRLifecycleManagementHook {
 			}
 
 			// Send comprehensive check failure notification
-			await this.notificationService.notify('checks-failed', {
-				prNumber,
-				taskId: task?.id,
-				failedChecks: failedChecks.map(c => c.name).join(', '),
-				failedCheckCount: failedChecks.length,
-				totalChecks: prStatus.checks?.length || 0,
-				prUrl: prStatus.url,
-				checkDetails: failedChecks.map(check => ({
-					name: check.name,
-					conclusion: check.conclusion,
-					detailsUrl: check.details_url
-				}))
-			}, { 
-				priority: 'high',
-				escalate: failedChecks.length > 2 ? '15min' : '5min' // Escalate based on severity
-			});
+			await this.notificationService.notify(
+				'checks-failed',
+				{
+					prNumber,
+					taskId: task?.id,
+					failedChecks: failedChecks.map((c) => c.name).join(', '),
+					failedCheckCount: failedChecks.length,
+					totalChecks: prStatus.checks?.length || 0,
+					prUrl: prStatus.url,
+					checkDetails: failedChecks.map((check) => ({
+						name: check.name,
+						conclusion: check.conclusion,
+						detailsUrl: check.details_url
+					}))
+				},
+				{
+					priority: 'high',
+					escalate: failedChecks.length > 2 ? '15min' : '5min' // Escalate based on severity
+				}
+			);
 
 			return {
 				success: true,
@@ -549,14 +579,16 @@ export default class PRLifecycleManagementHook {
 	 */
 	async notifyCheckFailures(prNumber, failedChecks) {
 		try {
-			console.log(`🚨 Sending enhanced notifications for PR ${prNumber} check failures`);
+			console.log(
+				`🚨 Sending enhanced notifications for PR ${prNumber} check failures`
+			);
 
 			// Prepare detailed failure information
 			const failureData = {
 				prNumber,
-				failedChecks: failedChecks.map(c => c.name).join(', '),
+				failedChecks: failedChecks.map((c) => c.name).join(', '),
 				failedCheckCount: failedChecks.length,
-				checkDetails: failedChecks.map(check => ({
+				checkDetails: failedChecks.map((check) => ({
 					name: check.name,
 					conclusion: check.conclusion || 'failed',
 					detailsUrl: check.details_url || null
@@ -564,8 +596,12 @@ export default class PRLifecycleManagementHook {
 			};
 
 			// Send notification with escalation based on failure count
-			const escalationLevel = failedChecks.length > 3 ? 'critical' : 
-									failedChecks.length > 1 ? '15min' : '5min';
+			const escalationLevel =
+				failedChecks.length > 3
+					? 'critical'
+					: failedChecks.length > 1
+						? '15min'
+						: '5min';
 
 			await this.notificationService.notify('checks-failed', failureData, {
 				priority: 'high',
@@ -574,14 +610,17 @@ export default class PRLifecycleManagementHook {
 
 			// Additional notifications for critical failures
 			if (failedChecks.length > 3) {
-				await this.notificationService.notify('critical', {
-					alertType: 'Multiple Check Failures',
-					alertMessage: `PR ${prNumber} has ${failedChecks.length} failing checks`,
-					prNumber,
-					...failureData
-				}, { priority: 'critical' });
+				await this.notificationService.notify(
+					'critical',
+					{
+						alertType: 'Multiple Check Failures',
+						alertMessage: `PR ${prNumber} has ${failedChecks.length} failing checks`,
+						prNumber,
+						...failureData
+					},
+					{ priority: 'critical' }
+				);
 			}
-
 		} catch (error) {
 			console.error('Error in enhanced notifyCheckFailures:', error);
 		}

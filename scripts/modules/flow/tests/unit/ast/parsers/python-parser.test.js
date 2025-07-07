@@ -21,13 +21,17 @@ const mockParserRegistry = {
 describe('Python Parser - Comprehensive Tests', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Setup default mock behaviors
 		mockPythonParser.getLanguageId.mockReturnValue('python');
-		mockPythonParser.getSupportedExtensions.mockReturnValue(['.py', '.pyi', '.pyw']);
+		mockPythonParser.getSupportedExtensions.mockReturnValue([
+			'.py',
+			'.pyi',
+			'.pyw'
+		]);
 		mockPythonParser.isInitialized.mockReturnValue(true);
 		mockPythonParser.validateContent.mockReturnValue(true);
-		
+
 		mockParserRegistry.getParser.mockReturnValue(mockPythonParser);
 	});
 
@@ -44,7 +48,7 @@ def main():
 if __name__ == "__main__":
     main()
 			`;
-			
+
 			const expectedAST = {
 				type: 'Module',
 				body: [
@@ -89,15 +93,15 @@ if __name__ == "__main__":
 					}
 				]
 			};
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.type).toBe('Module');
 			expect(result.ast.body[0].type).toBe('FunctionDef');
@@ -135,66 +139,67 @@ class User:
     def from_dict(cls, data):
         return cls(data['name'], data['age'])
 			`;
-			
+
 			const expectedAST = {
 				type: 'Module',
-				body: [{
-					type: 'ClassDef',
-					name: 'User',
-					bases: [],
-					body: [
-						{
-							type: 'Expr',
-							value: { type: 'Constant', value: 'A user class with basic functionality.' }
-						},
-						{
-							type: 'FunctionDef',
-							name: '__init__',
-							args: {
-								args: [
-									{ arg: 'self' },
-									{ arg: 'name' },
-									{ arg: 'age' }
-								]
+				body: [
+					{
+						type: 'ClassDef',
+						name: 'User',
+						bases: [],
+						body: [
+							{
+								type: 'Expr',
+								value: {
+									type: 'Constant',
+									value: 'A user class with basic functionality.'
+								}
+							},
+							{
+								type: 'FunctionDef',
+								name: '__init__',
+								args: {
+									args: [{ arg: 'self' }, { arg: 'name' }, { arg: 'age' }]
+								}
+							},
+							{
+								type: 'FunctionDef',
+								name: 'greet',
+								decorator_list: []
+							},
+							{
+								type: 'FunctionDef',
+								name: 'id',
+								decorator_list: [{ type: 'Name', id: 'property' }]
+							},
+							{
+								type: 'FunctionDef',
+								name: 'id',
+								decorator_list: [{ type: 'Attribute', attr: 'setter' }]
+							},
+							{
+								type: 'FunctionDef',
+								name: 'create_guest',
+								decorator_list: [{ type: 'Name', id: 'staticmethod' }]
+							},
+							{
+								type: 'FunctionDef',
+								name: 'from_dict',
+								decorator_list: [{ type: 'Name', id: 'classmethod' }]
 							}
-						},
-						{
-							type: 'FunctionDef',
-							name: 'greet',
-							decorator_list: []
-						},
-						{
-							type: 'FunctionDef',
-							name: 'id',
-							decorator_list: [{ type: 'Name', id: 'property' }]
-						},
-						{
-							type: 'FunctionDef',
-							name: 'id',
-							decorator_list: [{ type: 'Attribute', attr: 'setter' }]
-						},
-						{
-							type: 'FunctionDef',
-							name: 'create_guest',
-							decorator_list: [{ type: 'Name', id: 'staticmethod' }]
-						},
-						{
-							type: 'FunctionDef',
-							name: 'from_dict',
-							decorator_list: [{ type: 'Name', id: 'classmethod' }]
-						}
-					]
-				}]
+						]
+					}
+				]
 			};
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: expectedAST,
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].type).toBe('ClassDef');
 			expect(result.ast.body[0].name).toBe('User');
@@ -220,7 +225,7 @@ squares = {x: x**2 for x in range(5)}
 # Set comprehension
 unique_chars = {char.lower() for char in "Hello World" if char.isalpha()}
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -232,11 +237,13 @@ unique_chars = {char.lower() for char in "Hello World" if char.isalpha()}
 							value: {
 								type: 'ListComp',
 								elt: { type: 'Name', id: 'x' },
-								generators: [{
-									type: 'comprehension',
-									target: { type: 'Name', id: 'x' },
-									iter: { type: 'Call', func: { type: 'Name', id: 'range' } }
-								}]
+								generators: [
+									{
+										type: 'comprehension',
+										target: { type: 'Name', id: 'x' },
+										iter: { type: 'Call', func: { type: 'Name', id: 'range' } }
+									}
+								]
 							}
 						},
 						{
@@ -244,10 +251,12 @@ unique_chars = {char.lower() for char in "Hello World" if char.isalpha()}
 							targets: [{ type: 'Name', id: 'evens' }],
 							value: {
 								type: 'ListComp',
-								generators: [{
-									type: 'comprehension',
-									ifs: [{ type: 'Compare' }]
-								}]
+								generators: [
+									{
+										type: 'comprehension',
+										ifs: [{ type: 'Compare' }]
+									}
+								]
 							}
 						},
 						{
@@ -272,9 +281,9 @@ unique_chars = {char.lower() for char in "Hello World" if char.isalpha()}
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[0].value.type).toBe('ListComp');
 			expect(result.ast.body[3].value.type).toBe('DictComp');
@@ -306,7 +315,7 @@ async def process_urls(urls):
 # Generator expression
 squares = (x**2 for x in range(10))
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -315,16 +324,20 @@ squares = (x**2 for x in range(10))
 						{
 							type: 'FunctionDef',
 							name: 'simple_generator',
-							body: [{
-								type: 'For',
-								body: [{
-									type: 'Expr',
-									value: {
-										type: 'Yield',
-										value: { type: 'Name', id: 'i' }
-									}
-								}]
-							}]
+							body: [
+								{
+									type: 'For',
+									body: [
+										{
+											type: 'Expr',
+											value: {
+												type: 'Yield',
+												value: { type: 'Name', id: 'i' }
+											}
+										}
+									]
+								}
+							]
 						},
 						{
 							type: 'FunctionDef',
@@ -349,13 +362,17 @@ squares = (x**2 for x in range(10))
 						{
 							type: 'AsyncFunctionDef',
 							name: 'fetch_data',
-							body: [{
-								type: 'AsyncWith',
-								items: [{
-									context_expr: { type: 'Call' },
-									optional_vars: { type: 'Name', id: 'session' }
-								}]
-							}]
+							body: [
+								{
+									type: 'AsyncWith',
+									items: [
+										{
+											context_expr: { type: 'Call' },
+											optional_vars: { type: 'Name', id: 'session' }
+										}
+									]
+								}
+							]
 						},
 						{
 							type: 'AsyncFunctionDef',
@@ -370,9 +387,9 @@ squares = (x**2 for x in range(10))
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[2].type).toBe('AsyncFunctionDef');
 			expect(result.ast.body[3].type).toBe('AsyncFunctionDef');
@@ -427,7 +444,7 @@ class APIClient:
     def validate_response(response):
         return response.status_code == 200
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -438,15 +455,19 @@ class APIClient:
 						{
 							type: 'FunctionDef',
 							name: 'retry',
-							body: [{
-								type: 'FunctionDef',
-								name: 'decorator',
-								body: [{
+							body: [
+								{
 									type: 'FunctionDef',
-									name: 'wrapper',
-									decorator_list: [{ type: 'Name', id: 'wraps' }]
-								}]
-							}]
+									name: 'decorator',
+									body: [
+										{
+											type: 'FunctionDef',
+											name: 'wrapper',
+											decorator_list: [{ type: 'Name', id: 'wraps' }]
+										}
+									]
+								}
+							]
 						},
 						{
 							type: 'FunctionDef',
@@ -481,9 +502,9 @@ class APIClient:
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[3].decorator_list[0].id).toBe('contextmanager');
 			expect(result.ast.body[4].decorator_list).toHaveLength(2);
@@ -535,7 +556,7 @@ async def fetch_user_data(user_id: int) -> Optional[Dict[str, any]]:
     # Simulate API call
     return {'id': user_id, 'name': 'Test User'}
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -600,9 +621,9 @@ async def fetch_user_data(user_id: int) -> Optional[Dict[str, any]]:
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body[3].decorator_list[0].id).toBe('dataclass');
 			expect(result.ast.body[4].bases[0].type).toBe('Subscript'); // Generic[T]
@@ -616,7 +637,7 @@ def broken_function():
 print("This is not indented correctly")
     return "broken"
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -627,9 +648,9 @@ print("This is not indented correctly")
 					file: 'test.py'
 				}
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.type).toBe('IndentationError');
 			expect(result.error.line).toBe(3);
@@ -641,7 +662,7 @@ def invalid_syntax():
     if True
         return "missing colon"
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -652,9 +673,9 @@ def invalid_syntax():
 					file: 'test.py'
 				}
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.type).toBe('SyntaxError');
 			expect(result.error.message).toContain('invalid syntax');
@@ -662,7 +683,7 @@ def invalid_syntax():
 
 		test('should handle empty files', async () => {
 			const content = '';
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
@@ -671,9 +692,9 @@ def invalid_syntax():
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(0);
 		});
@@ -686,24 +707,26 @@ def invalid_syntax():
 This is a docstring
 """
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: {
 					type: 'Module',
-					body: [{
-						type: 'Expr',
-						value: {
-							type: 'Constant',
-							value: '\nThis is a docstring\n'
+					body: [
+						{
+							type: 'Expr',
+							value: {
+								type: 'Constant',
+								value: '\nThis is a docstring\n'
+							}
 						}
-					}]
+					]
 				},
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(true);
 			expect(result.ast.body).toHaveLength(1); // Only the docstring
 		});
@@ -714,7 +737,7 @@ def test():
     # Invalid unicode: \x80
     return "test"
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: false,
 				error: {
@@ -724,9 +747,9 @@ def test():
 					file: 'test.py'
 				}
 			});
-			
+
 			const result = await mockPythonParser.parse(content, 'test.py');
-			
+
 			expect(result.success).toBe(false);
 			expect(result.error.type).toBe('UnicodeDecodeError');
 		});
@@ -735,39 +758,39 @@ def test():
 	describe('Performance Tests', () => {
 		test('should parse small files quickly', async () => {
 			const content = 'x = 1';
-			
+
 			mockPythonParser.parse.mockImplementation(async () => {
-				await new Promise(resolve => setTimeout(resolve, 1));
+				await new Promise((resolve) => setTimeout(resolve, 1));
 				return {
 					success: true,
 					ast: { type: 'Module', body: [] },
 					language: 'python'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockPythonParser.parse(content, 'test.py');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(10);
 		});
 
 		test('should handle large files efficiently', async () => {
 			const largeContent = Array(1000).fill('x = 1').join('\n');
-			
+
 			mockPythonParser.parse.mockImplementation(async () => {
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 				return {
 					success: true,
 					ast: { type: 'Module', body: [] },
 					language: 'python'
 				};
 			});
-			
+
 			const start = performance.now();
 			await mockPythonParser.parse(largeContent, 'test.py');
 			const duration = performance.now() - start;
-			
+
 			expect(duration).toBeLessThan(100);
 		});
 	});
@@ -775,7 +798,7 @@ def test():
 	describe('File Extension Support', () => {
 		test('should support all Python extensions', () => {
 			const extensions = mockPythonParser.getSupportedExtensions();
-			
+
 			expect(extensions).toContain('.py');
 			expect(extensions).toContain('.pyi');
 			expect(extensions).toContain('.pyw');
@@ -844,13 +867,13 @@ class Post(models.Model):
     def is_published(self):
         return self.published_at is not None
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'Module', body: [] },
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(djangoContent, 'models.py');
 			expect(result.success).toBe(true);
 		});
@@ -939,15 +962,15 @@ async def delete_user(user_id: int, current_user: dict = Depends(get_current_use
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 			`;
-			
+
 			mockPythonParser.parse.mockResolvedValue({
 				success: true,
 				ast: { type: 'Module', body: [] },
 				language: 'python'
 			});
-			
+
 			const result = await mockPythonParser.parse(fastApiContent, 'main.py');
 			expect(result.success).toBe(true);
 		});
 	});
-}); 
+});

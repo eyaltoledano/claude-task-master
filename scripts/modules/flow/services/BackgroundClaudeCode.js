@@ -153,8 +153,11 @@ export class BackgroundClaudeCode {
 			}
 
 			// Improved success detection - consider it successful if we have a sessionId or if result indicates completion
-			const isSuccessful = result.success || result.sessionId || (result.result && result.result.type === 'result');
-			
+			const isSuccessful =
+				result.success ||
+				result.sessionId ||
+				(result.result && result.result.type === 'result');
+
 			if (isSuccessful) {
 				// Save session if backend supports it and we have a sessionId
 				if (result.sessionId && this.backend.saveClaudeCodeSession) {
@@ -371,15 +374,19 @@ export class BackgroundClaudeCode {
 		try {
 			// Only trigger for worktree-based operations with task data
 			if (!metadata || !metadata.worktreePath || !metadata.taskData) {
-				console.log('🔄 [BackgroundClaudeCode] Skipping hook trigger - no worktree/task metadata');
+				console.log(
+					'🔄 [BackgroundClaudeCode] Skipping hook trigger - no worktree/task metadata'
+				);
 				return;
 			}
 
 			// Import hook integration service
 			const { hookIntegration } = await import('./HookIntegrationService.js');
-			
+
 			if (!hookIntegration.initialized) {
-				console.log('🔄 [BackgroundClaudeCode] Hook integration not initialized, skipping');
+				console.log(
+					'🔄 [BackgroundClaudeCode] Hook integration not initialized, skipping'
+				);
 				return;
 			}
 
@@ -389,7 +396,9 @@ export class BackgroundClaudeCode {
 				// Extract worktree name from the path (e.g., "/path/to/task-1-2" -> "task-1-2")
 				const pathParts = metadata.worktreePath.split('/');
 				worktreeName = pathParts[pathParts.length - 1];
-				console.log(`🔧 [BackgroundClaudeCode] Derived worktree name from path: ${worktreeName}`);
+				console.log(
+					`🔧 [BackgroundClaudeCode] Derived worktree name from path: ${worktreeName}`
+				);
 			}
 
 			// Build context for hook
@@ -425,18 +434,29 @@ export class BackgroundClaudeCode {
 
 			if (isFailure) {
 				// Trigger session failed hook
-				console.log(`🔄 [BackgroundClaudeCode] Triggering session failure hook for task ${task.id}`);
-				await hookIntegration.notifySessionFailed(session, result.error, task, worktree);
+				console.log(
+					`🔄 [BackgroundClaudeCode] Triggering session failure hook for task ${task.id}`
+				);
+				await hookIntegration.notifySessionFailed(
+					session,
+					result.error,
+					task,
+					worktree
+				);
 			} else {
 				// Trigger session completion hook (which includes task status updates)
-				console.log(`🔄 [BackgroundClaudeCode] Triggering session completion hook for task ${task.id} with worktree ${worktreeName}`);
+				console.log(
+					`🔄 [BackgroundClaudeCode] Triggering session completion hook for task ${task.id} with worktree ${worktreeName}`
+				);
 				await hookIntegration.notifySessionCompleted(session, task, worktree, {
 					...config,
 					services
 				});
 
 				// Also trigger claude-code-stop hook directly for the specific hook functionality
-				const { getHookIntegration } = await import('./HookIntegrationService.js');
+				const { getHookIntegration } = await import(
+					'./HookIntegrationService.js'
+				);
 				const hookInstance = getHookIntegration();
 				if (hookInstance?.hookManager) {
 					const { HOOK_EVENTS } = await import('../hooks/index.js');
@@ -447,12 +467,17 @@ export class BackgroundClaudeCode {
 						services,
 						sessionResult: result
 					};
-					await hookInstance.hookManager.executeHooks(HOOK_EVENTS.CLAUDE_CODE_STOP || 'claude-code-stop', stopContext);
+					await hookInstance.hookManager.executeHooks(
+						HOOK_EVENTS.CLAUDE_CODE_STOP || 'claude-code-stop',
+						stopContext
+					);
 				}
 			}
-
 		} catch (error) {
-			console.error('❌ [BackgroundClaudeCode] Error triggering Claude Code Stop hook:', error);
+			console.error(
+				'❌ [BackgroundClaudeCode] Error triggering Claude Code Stop hook:',
+				error
+			);
 			// Don't throw - this shouldn't break the main operation
 		}
 	}

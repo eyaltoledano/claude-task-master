@@ -46,7 +46,11 @@ export function ResearchInputModal({ onResearch, onClose }) {
 			{stage === 'query' && (
 				<Box marginTop={1}>
 					<Text>Enter research query: </Text>
-					<TextInput value={query} onChange={setQuery} onSubmit={() => setStage('confirm')} />
+					<TextInput
+						value={query}
+						onChange={setQuery}
+						onSubmit={() => setStage('confirm')}
+					/>
 				</Box>
 			)}
 
@@ -57,4 +61,4 @@ export function ResearchInputModal({ onResearch, onClose }) {
 			)}
 		</Box>
 	);
-} 
+}

@@ -44,7 +44,11 @@ export class JavaScriptAnalyzer {
 		const analysis = {
 			language: this.detectLanguageVariant(filePath, content),
 			framework: await this.detectFramework(astData, content),
-			patterns: await this.analyzeJavaScriptPatterns(astData, content, filePath),
+			patterns: await this.analyzeJavaScriptPatterns(
+				astData,
+				content,
+				filePath
+			),
 			complexity: await this.analyzeComplexity(astData, content),
 			codeQuality: await this.analyzeCodeQuality(astData, content),
 			recommendations: []

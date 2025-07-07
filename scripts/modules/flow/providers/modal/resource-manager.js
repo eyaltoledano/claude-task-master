@@ -1,321 +1,338 @@
 /**
  * @fileoverview Modal Resource Manager
- * 
+ *
  * Handles resource lifecycle tracking, metrics collection, and data persistence
  * for Modal functions and execution logs.
  */
 
-import fs from 'fs/promises'
-import path from 'path'
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * Modal Resource Manager
  * Tracks function resources, execution history, and metrics
  */
 export class ModalResourceManager {
-  constructor(config = {}) {
-    this.config = config
-    this.dataDir = path.join('.taskmaster', 'flow', 'data', 'modal')
-    this.resources = new Map()
-    this.executions = new Map()
-    this.metrics = {
-      totalResources: 0,
-      totalExecutions: 0,
-      totalUptime: 0,
-      totalCost: 0,
-      createdToday: 0,
-      executedToday: 0
-    }
-    
-    this.ensureDataDirectory()
-  }
+	constructor(config = {}) {
+		this.config = config;
+		this.dataDir = path.join('.taskmaster', 'flow', 'data', 'modal');
+		this.resources = new Map();
+		this.executions = new Map();
+		this.metrics = {
+			totalResources: 0,
+			totalExecutions: 0,
+			totalUptime: 0,
+			totalCost: 0,
+			createdToday: 0,
+			executedToday: 0
+		};
 
-  /**
-   * Ensure data directory exists
-   */
-  async ensureDataDirectory() {
-    try {
-      await fs.mkdir(this.dataDir, { recursive: true })
-    } catch (error) {
-      console.warn(`Failed to create Modal data directory: ${error.message}`)
-    }
-  }
+		this.ensureDataDirectory();
+	}
 
-  /**
-   * Track a new function resource
-   */
-  async trackResource(resource) {
-    try {
-      const resourceData = {
-        ...resource,
-        trackedAt: new Date().toISOString(),
-        uptime: 0,
-        totalExecutions: 0,
-        lastActivity: new Date().toISOString(),
-        cost: 0
-      }
+	/**
+	 * Ensure data directory exists
+	 */
+	async ensureDataDirectory() {
+		try {
+			await fs.mkdir(this.dataDir, { recursive: true });
+		} catch (error) {
+			console.warn(`Failed to create Modal data directory: ${error.message}`);
+		}
+	}
 
-      this.resources.set(resource.id, resourceData)
-      this.metrics.totalResources++
-      this.metrics.createdToday++
+	/**
+	 * Track a new function resource
+	 */
+	async trackResource(resource) {
+		try {
+			const resourceData = {
+				...resource,
+				trackedAt: new Date().toISOString(),
+				uptime: 0,
+				totalExecutions: 0,
+				lastActivity: new Date().toISOString(),
+				cost: 0
+			};
 
-      await this.persistResourceData(resource.id, resourceData)
-      await this.updateMetrics()
+			this.resources.set(resource.id, resourceData);
+			this.metrics.totalResources++;
+			this.metrics.createdToday++;
 
-      return resourceData
-    } catch (error) {
-      console.warn(`Failed to track Modal resource ${resource.id}: ${error.message}`)
-      throw error
-    }
-  }
+			await this.persistResourceData(resource.id, resourceData);
+			await this.updateMetrics();
 
-  /**
-   * Update existing resource
-   */
-  async updateResource(resourceId, updates) {
-    try {
-      const resource = this.resources.get(resourceId)
-      if (!resource) {
-        throw new Error(`Resource ${resourceId} not found`)
-      }
+			return resourceData;
+		} catch (error) {
+			console.warn(
+				`Failed to track Modal resource ${resource.id}: ${error.message}`
+			);
+			throw error;
+		}
+	}
 
-      const updatedResource = {
-        ...resource,
-        ...updates,
-        updatedAt: new Date().toISOString(),
-        lastActivity: new Date().toISOString()
-      }
+	/**
+	 * Update existing resource
+	 */
+	async updateResource(resourceId, updates) {
+		try {
+			const resource = this.resources.get(resourceId);
+			if (!resource) {
+				throw new Error(`Resource ${resourceId} not found`);
+			}
 
-      this.resources.set(resourceId, updatedResource)
-      await this.persistResourceData(resourceId, updatedResource)
-      await this.updateMetrics()
+			const updatedResource = {
+				...resource,
+				...updates,
+				updatedAt: new Date().toISOString(),
+				lastActivity: new Date().toISOString()
+			};
 
-      return updatedResource
-    } catch (error) {
-      console.warn(`Failed to update Modal resource ${resourceId}: ${error.message}`)
-      throw error
-    }
-  }
+			this.resources.set(resourceId, updatedResource);
+			await this.persistResourceData(resourceId, updatedResource);
+			await this.updateMetrics();
 
-  /**
-   * Remove resource tracking
-   */
-  async untrackResource(resourceId) {
-    try {
-      const resource = this.resources.get(resourceId)
-      if (resource) {
-        this.resources.delete(resourceId)
-        this.executions.delete(resourceId)
+			return updatedResource;
+		} catch (error) {
+			console.warn(
+				`Failed to update Modal resource ${resourceId}: ${error.message}`
+			);
+			throw error;
+		}
+	}
 
-        // Archive resource data instead of deleting
-        await this.archiveResourceData(resourceId, resource)
-        await this.updateMetrics()
-      }
+	/**
+	 * Remove resource tracking
+	 */
+	async untrackResource(resourceId) {
+		try {
+			const resource = this.resources.get(resourceId);
+			if (resource) {
+				this.resources.delete(resourceId);
+				this.executions.delete(resourceId);
 
-      return true
-    } catch (error) {
-      console.warn(`Failed to untrack Modal resource ${resourceId}: ${error.message}`)
-      throw error
-    }
-  }
+				// Archive resource data instead of deleting
+				await this.archiveResourceData(resourceId, resource);
+				await this.updateMetrics();
+			}
 
-  /**
-   * Log execution for a resource
-   */
-  async logExecution(resourceId, execution) {
-    try {
-      if (!this.executions.has(resourceId)) {
-        this.executions.set(resourceId, [])
-      }
+			return true;
+		} catch (error) {
+			console.warn(
+				`Failed to untrack Modal resource ${resourceId}: ${error.message}`
+			);
+			throw error;
+		}
+	}
 
-      const executionData = {
-        ...execution,
-        timestamp: new Date().toISOString(),
-        provider: 'modal'
-      }
+	/**
+	 * Log execution for a resource
+	 */
+	async logExecution(resourceId, execution) {
+		try {
+			if (!this.executions.has(resourceId)) {
+				this.executions.set(resourceId, []);
+			}
 
-      this.executions.get(resourceId).push(executionData)
-      this.metrics.totalExecutions++
-      this.metrics.executedToday++
+			const executionData = {
+				...execution,
+				timestamp: new Date().toISOString(),
+				provider: 'modal'
+			};
 
-      // Update resource execution count
-      const resource = this.resources.get(resourceId)
-      if (resource) {
-        resource.totalExecutions = (resource.totalExecutions || 0) + 1
-        resource.lastActivity = new Date().toISOString()
-        this.resources.set(resourceId, resource)
-        await this.persistResourceData(resourceId, resource)
-      }
+			this.executions.get(resourceId).push(executionData);
+			this.metrics.totalExecutions++;
+			this.metrics.executedToday++;
 
-      await this.persistExecutionData(resourceId, executionData)
-      await this.updateMetrics()
+			// Update resource execution count
+			const resource = this.resources.get(resourceId);
+			if (resource) {
+				resource.totalExecutions = (resource.totalExecutions || 0) + 1;
+				resource.lastActivity = new Date().toISOString();
+				this.resources.set(resourceId, resource);
+				await this.persistResourceData(resourceId, resource);
+			}
 
-      return executionData
-    } catch (error) {
-      console.warn(`Failed to log Modal execution for ${resourceId}: ${error.message}`)
-      throw error
-    }
-  }
+			await this.persistExecutionData(resourceId, executionData);
+			await this.updateMetrics();
 
-  /**
-   * Get resource logs
-   */
-  async getResourceLogs(resourceId, options = {}) {
-    try {
-      const executions = this.executions.get(resourceId) || []
-      
-      let filteredLogs = executions.map(exec => ({
-        timestamp: exec.timestamp,
-        level: exec.exitCode === 0 ? 'info' : 'error',
-        message: `Executed ${exec.action}: ${exec.output || exec.stdout || 'No output'}`,
-        provider: 'modal',
-        execution: exec
-      }))
+			return executionData;
+		} catch (error) {
+			console.warn(
+				`Failed to log Modal execution for ${resourceId}: ${error.message}`
+			);
+			throw error;
+		}
+	}
 
-      // Apply filters
-      if (options.since) {
-        const sinceDate = new Date(options.since)
-        filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) >= sinceDate)
-      }
+	/**
+	 * Get resource logs
+	 */
+	async getResourceLogs(resourceId, options = {}) {
+		try {
+			const executions = this.executions.get(resourceId) || [];
 
-      if (options.level) {
-        filteredLogs = filteredLogs.filter(log => log.level === options.level)
-      }
+			let filteredLogs = executions.map((exec) => ({
+				timestamp: exec.timestamp,
+				level: exec.exitCode === 0 ? 'info' : 'error',
+				message: `Executed ${exec.action}: ${exec.output || exec.stdout || 'No output'}`,
+				provider: 'modal',
+				execution: exec
+			}));
 
-      if (options.recent) {
-        filteredLogs = filteredLogs.slice(-10)
-      }
+			// Apply filters
+			if (options.since) {
+				const sinceDate = new Date(options.since);
+				filteredLogs = filteredLogs.filter(
+					(log) => new Date(log.timestamp) >= sinceDate
+				);
+			}
 
-      if (options.limit) {
-        filteredLogs = filteredLogs.slice(-options.limit)
-      }
+			if (options.level) {
+				filteredLogs = filteredLogs.filter(
+					(log) => log.level === options.level
+				);
+			}
 
-      return filteredLogs
-    } catch (error) {
-      console.warn(`Failed to get logs for Modal resource ${resourceId}: ${error.message}`)
-      return []
-    }
-  }
+			if (options.recent) {
+				filteredLogs = filteredLogs.slice(-10);
+			}
 
-  /**
-   * Get all tracked resources
-   */
-  getResources() {
-    return Array.from(this.resources.values())
-  }
+			if (options.limit) {
+				filteredLogs = filteredLogs.slice(-options.limit);
+			}
 
-  /**
-   * Get resource by ID
-   */
-  getResource(resourceId) {
-    return this.resources.get(resourceId)
-  }
+			return filteredLogs;
+		} catch (error) {
+			console.warn(
+				`Failed to get logs for Modal resource ${resourceId}: ${error.message}`
+			);
+			return [];
+		}
+	}
 
-  /**
-   * Get metrics summary
-   */
-  getMetrics() {
-    return {
-      ...this.metrics,
-      activeResources: this.resources.size,
-      provider: 'modal',
-      lastUpdated: new Date().toISOString()
-    }
-  }
+	/**
+	 * Get all tracked resources
+	 */
+	getResources() {
+		return Array.from(this.resources.values());
+	}
 
-  // Private helper methods
+	/**
+	 * Get resource by ID
+	 */
+	getResource(resourceId) {
+		return this.resources.get(resourceId);
+	}
 
-  /**
-   * Persist resource data to disk
-   */
-  async persistResourceData(resourceId, resourceData) {
-    try {
-      const filePath = path.join(this.dataDir, `resource-${resourceId}.json`)
-      await fs.writeFile(filePath, JSON.stringify(resourceData, null, 2))
-    } catch (error) {
-      console.warn(`Failed to persist Modal resource data: ${error.message}`)
-    }
-  }
+	/**
+	 * Get metrics summary
+	 */
+	getMetrics() {
+		return {
+			...this.metrics,
+			activeResources: this.resources.size,
+			provider: 'modal',
+			lastUpdated: new Date().toISOString()
+		};
+	}
 
-  /**
-   * Persist execution data to disk
-   */
-  async persistExecutionData(resourceId, executionData) {
-    try {
-      const fileName = `executions-${resourceId}.json`
-      const filePath = path.join(this.dataDir, fileName)
-      
-      let existingData = []
-      try {
-        const content = await fs.readFile(filePath, 'utf-8')
-        existingData = JSON.parse(content)
-      } catch (error) {
-        // File doesn't exist yet, start with empty array
-      }
+	// Private helper methods
 
-      existingData.push(executionData)
-      
-      // Keep only last 100 executions per resource
-      if (existingData.length > 100) {
-        existingData = existingData.slice(-100)
-      }
+	/**
+	 * Persist resource data to disk
+	 */
+	async persistResourceData(resourceId, resourceData) {
+		try {
+			const filePath = path.join(this.dataDir, `resource-${resourceId}.json`);
+			await fs.writeFile(filePath, JSON.stringify(resourceData, null, 2));
+		} catch (error) {
+			console.warn(`Failed to persist Modal resource data: ${error.message}`);
+		}
+	}
 
-      await fs.writeFile(filePath, JSON.stringify(existingData, null, 2))
-    } catch (error) {
-      console.warn(`Failed to persist Modal execution data: ${error.message}`)
-    }
-  }
+	/**
+	 * Persist execution data to disk
+	 */
+	async persistExecutionData(resourceId, executionData) {
+		try {
+			const fileName = `executions-${resourceId}.json`;
+			const filePath = path.join(this.dataDir, fileName);
 
-  /**
-   * Archive resource data when resource is deleted
-   */
-  async archiveResourceData(resourceId, resourceData) {
-    try {
-      const archiveDir = path.join(this.dataDir, 'archived')
-      await fs.mkdir(archiveDir, { recursive: true })
+			let existingData = [];
+			try {
+				const content = await fs.readFile(filePath, 'utf-8');
+				existingData = JSON.parse(content);
+			} catch (error) {
+				// File doesn't exist yet, start with empty array
+			}
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const fileName = `resource-${resourceId}-${timestamp}.json`
-      const filePath = path.join(archiveDir, fileName)
+			existingData.push(executionData);
 
-      const archiveData = {
-        ...resourceData,
-        archivedAt: new Date().toISOString()
-      }
+			// Keep only last 100 executions per resource
+			if (existingData.length > 100) {
+				existingData = existingData.slice(-100);
+			}
 
-      await fs.writeFile(filePath, JSON.stringify(archiveData, null, 2))
+			await fs.writeFile(filePath, JSON.stringify(existingData, null, 2));
+		} catch (error) {
+			console.warn(`Failed to persist Modal execution data: ${error.message}`);
+		}
+	}
 
-      // Clean up active resource file
-      const activeFilePath = path.join(this.dataDir, `resource-${resourceId}.json`)
-      try {
-        await fs.unlink(activeFilePath)
-      } catch (error) {
-        // File might not exist
-      }
-    } catch (error) {
-      console.warn(`Failed to archive Modal resource data: ${error.message}`)
-    }
-  }
+	/**
+	 * Archive resource data when resource is deleted
+	 */
+	async archiveResourceData(resourceId, resourceData) {
+		try {
+			const archiveDir = path.join(this.dataDir, 'archived');
+			await fs.mkdir(archiveDir, { recursive: true });
 
-  /**
-   * Update and persist metrics
-   */
-  async updateMetrics() {
-    try {
-      const today = new Date().toDateString()
-      const lastUpdate = this.metrics.lastUpdate || ''
+			const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+			const fileName = `resource-${resourceId}-${timestamp}.json`;
+			const filePath = path.join(archiveDir, fileName);
 
-      // Reset daily counters if it's a new day
-      if (lastUpdate !== today) {
-        this.metrics.createdToday = 0
-        this.metrics.executedToday = 0
-        this.metrics.lastUpdate = today
-      }
+			const archiveData = {
+				...resourceData,
+				archivedAt: new Date().toISOString()
+			};
 
-      const metricsPath = path.join(this.dataDir, 'metrics.json')
-      await fs.writeFile(metricsPath, JSON.stringify(this.metrics, null, 2))
-    } catch (error) {
-      console.warn(`Failed to update Modal metrics: ${error.message}`)
-    }
-  }
-} 
+			await fs.writeFile(filePath, JSON.stringify(archiveData, null, 2));
+
+			// Clean up active resource file
+			const activeFilePath = path.join(
+				this.dataDir,
+				`resource-${resourceId}.json`
+			);
+			try {
+				await fs.unlink(activeFilePath);
+			} catch (error) {
+				// File might not exist
+			}
+		} catch (error) {
+			console.warn(`Failed to archive Modal resource data: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Update and persist metrics
+	 */
+	async updateMetrics() {
+		try {
+			const today = new Date().toDateString();
+			const lastUpdate = this.metrics.lastUpdate || '';
+
+			// Reset daily counters if it's a new day
+			if (lastUpdate !== today) {
+				this.metrics.createdToday = 0;
+				this.metrics.executedToday = 0;
+				this.metrics.lastUpdate = today;
+			}
+
+			const metricsPath = path.join(this.dataDir, 'metrics.json');
+			await fs.writeFile(metricsPath, JSON.stringify(this.metrics, null, 2));
+		} catch (error) {
+			console.warn(`Failed to update Modal metrics: ${error.message}`);
+		}
+	}
+}

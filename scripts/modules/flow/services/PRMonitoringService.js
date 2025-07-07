@@ -3,7 +3,10 @@
  * Phase 3 Enhancement: Comprehensive task status updates and worktree cleanup
  */
 import { EventEmitter } from 'events';
-import { getNextTaskService, isNextTaskServiceInitialized } from './NextTaskService.js';
+import {
+	getNextTaskService,
+	isNextTaskServiceInitialized
+} from './NextTaskService.js';
 
 export class PRMonitoringService extends EventEmitter {
 	constructor(backend, options = {}) {
@@ -12,13 +15,13 @@ export class PRMonitoringService extends EventEmitter {
 		this.checkInterval = options.checkInterval || 30000; // 30 seconds
 		this.maxRetries = options.maxRetries || 3;
 		this.timeoutMs = options.timeoutMs || 300000; // 5 minutes
-		
+
 		// Monitoring state
 		this.monitoredPRs = new Map();
 		this.intervalId = null;
 		this.retryAttempts = new Map();
 		this.lastStatusCache = new Map();
-		
+
 		// Performance tracking
 		this.stats = {
 			checksPerformed: 0,
@@ -41,7 +44,9 @@ export class PRMonitoringService extends EventEmitter {
 			this.performMonitoringCheck();
 		}, this.checkInterval);
 
-		console.log(`🔍 PR Monitoring Service initialized (check interval: ${this.checkInterval}ms)`);
+		console.log(
+			`🔍 PR Monitoring Service initialized (check interval: ${this.checkInterval}ms)`
+		);
 		return { success: true };
 	}
 
@@ -72,7 +77,9 @@ export class PRMonitoringService extends EventEmitter {
 		// Perform initial check
 		await this.checkPRStatus(prNumber);
 
-		console.log(`🔍 Started monitoring PR ${prNumber} (auto-merge: ${monitoringConfig.config.autoMerge})`);
+		console.log(
+			`🔍 Started monitoring PR ${prNumber} (auto-merge: ${monitoringConfig.config.autoMerge})`
+		);
 		return monitoringConfig;
 	}
 
@@ -90,8 +97,8 @@ export class PRMonitoringService extends EventEmitter {
 		this.lastStatusCache.delete(prNumber);
 
 		console.log(`🛑 Stopped monitoring PR ${prNumber} (reason: ${reason})`);
-		return { 
-			success: true, 
+		return {
+			success: true,
 			monitoredFor: Date.now() - config.startTime,
 			checkCount: config.checkCount
 		};
@@ -105,7 +112,9 @@ export class PRMonitoringService extends EventEmitter {
 			return;
 		}
 
-		console.log(`🔍 Checking status of ${this.monitoredPRs.size} monitored PRs...`);
+		console.log(
+			`🔍 Checking status of ${this.monitoredPRs.size} monitored PRs...`
+		);
 
 		for (const [prNumber, config] of this.monitoredPRs) {
 			try {
@@ -113,7 +122,7 @@ export class PRMonitoringService extends EventEmitter {
 			} catch (error) {
 				console.error(`Error checking PR ${prNumber}:`, error.message);
 				this.stats.errorsEncountered++;
-				
+
 				// Emit monitoring error
 				this.emit('monitoringFailed', {
 					prNumber,
@@ -150,7 +159,9 @@ export class PRMonitoringService extends EventEmitter {
 				this.stats.statusChangesDetected++;
 				this.lastStatusCache.set(prNumber, currentState);
 
-				console.log(`📊 PR ${prNumber} status changed: ${lastStatus || 'unknown'} → ${currentState}`);
+				console.log(
+					`📊 PR ${prNumber} status changed: ${lastStatus || 'unknown'} → ${currentState}`
+				);
 
 				// Emit status change event
 				this.emit('statusChanged', {
@@ -162,13 +173,17 @@ export class PRMonitoringService extends EventEmitter {
 				});
 
 				// Handle specific state transitions
-				await this.handleStateTransition(prNumber, currentState, prStatus, config);
+				await this.handleStateTransition(
+					prNumber,
+					currentState,
+					prStatus,
+					config
+				);
 			}
 
 			// Update monitoring config
 			config.lastStatus = currentState;
 			config.lastPRStatus = prStatus;
-
 		} catch (error) {
 			console.error(`Failed to check PR ${prNumber} status:`, error.message);
 			this.handleMonitoringError(prNumber, error, config);
@@ -202,9 +217,11 @@ export class PRMonitoringService extends EventEmitter {
 		// Check if all required checks are passing
 		const requiredChecks = config.config.requiredChecks || [];
 		if (requiredChecks.length > 0) {
-			const passingChecks = prStatus.checks?.filter(check => 
-				requiredChecks.includes(check.name) && check.status === 'success'
-			) || [];
+			const passingChecks =
+				prStatus.checks?.filter(
+					(check) =>
+						requiredChecks.includes(check.name) && check.status === 'success'
+				) || [];
 
 			if (passingChecks.length < requiredChecks.length) {
 				return 'checks-pending';
@@ -212,18 +229,21 @@ export class PRMonitoringService extends EventEmitter {
 		}
 
 		// Check if there are any failing checks
-		const failingChecks = prStatus.checks?.filter(check => 
-			check.status === 'failure'
-		) || [];
+		const failingChecks =
+			prStatus.checks?.filter((check) => check.status === 'failure') || [];
 
 		if (failingChecks.length > 0) {
 			return 'checks-failed';
 		}
 
 		// Check if ready to merge (all checks passing, no conflicts)
-		if (prStatus.mergeable !== false && (prStatus.checks?.every(check => 
-			check.status === 'success' || check.status === 'skipped'
-		) || !prStatus.checks?.length)) {
+		if (
+			prStatus.mergeable !== false &&
+			(prStatus.checks?.every(
+				(check) => check.status === 'success' || check.status === 'skipped'
+			) ||
+				!prStatus.checks?.length)
+		) {
 			return 'ready-to-merge';
 		}
 
@@ -246,18 +266,24 @@ export class PRMonitoringService extends EventEmitter {
 				break;
 
 			case 'merged': {
-				console.log(`🎉 PR ${prNumber} merged successfully! Starting cleanup and task completion...`);
-				
+				console.log(
+					`🎉 PR ${prNumber} merged successfully! Starting cleanup and task completion...`
+				);
+
 				// Execute comprehensive merge completion workflow
-				const mergeResult = await this.handlePRMergeComplete(prNumber, prStatus, config);
-				
+				const mergeResult = await this.handlePRMergeComplete(
+					prNumber,
+					prStatus,
+					config
+				);
+
 				this.emit('mergeComplete', {
 					prNumber,
 					prStatus,
 					config: config.config,
 					mergeResult
 				});
-				
+
 				// Stop monitoring merged PRs
 				await this.stopMonitoring(prNumber, 'merged');
 				break;
@@ -267,7 +293,8 @@ export class PRMonitoringService extends EventEmitter {
 				this.emit('checksFailed', {
 					prNumber,
 					prStatus,
-					failedChecks: prStatus.checks?.filter(c => c.status === 'failure') || [],
+					failedChecks:
+						prStatus.checks?.filter((c) => c.status === 'failure') || [],
 					config: config.config
 				});
 				break;
@@ -281,18 +308,24 @@ export class PRMonitoringService extends EventEmitter {
 				break;
 
 			case 'closed': {
-				console.log(`🔒 PR ${prNumber} closed without merging. Handling cleanup...`);
-				
+				console.log(
+					`🔒 PR ${prNumber} closed without merging. Handling cleanup...`
+				);
+
 				// Handle closed PR (no merge)
-				const closeResult = await this.handlePRClosed(prNumber, prStatus, config);
-				
+				const closeResult = await this.handlePRClosed(
+					prNumber,
+					prStatus,
+					config
+				);
+
 				this.emit('prClosed', {
 					prNumber,
 					prStatus,
 					config: config.config,
 					closeResult
 				});
-				
+
 				// Stop monitoring closed PRs
 				await this.stopMonitoring(prNumber, 'closed');
 				break;
@@ -305,21 +338,25 @@ export class PRMonitoringService extends EventEmitter {
 	 */
 	handleMonitoringError(prNumber, error, config) {
 		const currentRetries = this.retryAttempts.get(prNumber) || 0;
-		
+
 		if (currentRetries < this.maxRetries) {
 			// Exponential backoff: 1s, 2s, 4s, 8s, etc.
-			const backoffDelay = (2 ** currentRetries) * 1000;
-			
-			console.log(`⏰ Scheduling retry ${currentRetries + 1}/${this.maxRetries} for PR ${prNumber} in ${backoffDelay}ms`);
-			
+			const backoffDelay = 2 ** currentRetries * 1000;
+
+			console.log(
+				`⏰ Scheduling retry ${currentRetries + 1}/${this.maxRetries} for PR ${prNumber} in ${backoffDelay}ms`
+			);
+
 			setTimeout(() => {
 				this.checkPRStatus(prNumber);
 			}, backoffDelay);
-			
+
 			this.retryAttempts.set(prNumber, currentRetries + 1);
 			this.stats.retriesExecuted++;
 		} else {
-			console.error(`❌ Max retries exceeded for PR ${prNumber}, stopping monitoring`);
+			console.error(
+				`❌ Max retries exceeded for PR ${prNumber}, stopping monitoring`
+			);
 			this.stopMonitoring(prNumber, 'max-retries-exceeded');
 		}
 	}
@@ -359,7 +396,7 @@ export class PRMonitoringService extends EventEmitter {
 
 		// Reset retry attempts
 		this.retryAttempts.set(prNumber, 0);
-		
+
 		// Perform immediate check
 		await this.checkPRStatus(prNumber);
 
@@ -380,7 +417,7 @@ export class PRMonitoringService extends EventEmitter {
 
 	/**
 	 * Phase 3: Handle complete PR merge workflow
-	 * - Update task status to 'done' 
+	 * - Update task status to 'done'
 	 * - Clean up worktrees and branches
 	 * - Handle parent task completion (for subtasks)
 	 * - Trigger next task progression
@@ -397,20 +434,22 @@ export class PRMonitoringService extends EventEmitter {
 		try {
 			// Step 1: Update task status to 'done'
 			if (config.config.taskId) {
-				console.log(`📝 Updating task ${config.config.taskId} status to 'done'...`);
+				console.log(
+					`📝 Updating task ${config.config.taskId} status to 'done'...`
+				);
 				try {
 					const statusResult = await this.backend.setTaskStatus({
 						id: config.config.taskId,
 						status: 'done'
 					});
-					
+
 					results.steps.taskStatus = {
 						success: statusResult?.success || true,
 						taskId: config.config.taskId,
 						previousStatus: 'in-progress',
 						newStatus: 'done'
 					};
-					
+
 					console.log(`  ✅ Task ${config.config.taskId} marked as done`);
 				} catch (error) {
 					console.error(`  ❌ Failed to update task status: ${error.message}`);
@@ -422,16 +461,21 @@ export class PRMonitoringService extends EventEmitter {
 				}
 			}
 
-			// Step 2: Clean up worktree and branch  
-			if (config.config.worktreeName && config.config.cleanupAfterMerge !== false) {
-				console.log(`🧹 Cleaning up worktree: ${config.config.worktreeName}...`);
+			// Step 2: Clean up worktree and branch
+			if (
+				config.config.worktreeName &&
+				config.config.cleanupAfterMerge !== false
+			) {
+				console.log(
+					`🧹 Cleaning up worktree: ${config.config.worktreeName}...`
+				);
 				try {
 					const cleanupResult = await this.cleanupWorktreeAfterMerge(
-						config.config.worktreeName, 
-						prStatus, 
+						config.config.worktreeName,
+						prStatus,
 						config.config
 					);
-					
+
 					results.steps.cleanup = cleanupResult;
 					console.log(`  ✅ Worktree cleanup completed`);
 				} catch (error) {
@@ -446,13 +490,19 @@ export class PRMonitoringService extends EventEmitter {
 
 			// Step 3: Handle parent task completion (for subtasks)
 			if (config.config.taskId && String(config.config.taskId).includes('.')) {
-				console.log(`👨‍👩‍👧‍👦 Checking parent task completion for subtask ${config.config.taskId}...`);
+				console.log(
+					`👨‍👩‍👧‍👦 Checking parent task completion for subtask ${config.config.taskId}...`
+				);
 				try {
-					const parentResult = await this.checkAndUpdateParentTaskCompletion(config.config.taskId);
+					const parentResult = await this.checkAndUpdateParentTaskCompletion(
+						config.config.taskId
+					);
 					results.steps.parentTaskCheck = parentResult;
-					
+
 					if (parentResult.parentCompleted) {
-						console.log(`  ✅ Parent task ${parentResult.parentTaskId} marked as done`);
+						console.log(
+							`  ✅ Parent task ${parentResult.parentTaskId} marked as done`
+						);
 					}
 				} catch (error) {
 					console.error(`  ❌ Parent task check failed: ${error.message}`);
@@ -464,7 +514,10 @@ export class PRMonitoringService extends EventEmitter {
 			}
 
 			// Step 4: Trigger next task progression (if enabled)
-			if (isNextTaskServiceInitialized() && config.config.autoProgressToNext !== false) {
+			if (
+				isNextTaskServiceInitialized() &&
+				config.config.autoProgressToNext !== false
+			) {
 				console.log(`🎯 Triggering next task progression...`);
 				try {
 					const nextTaskService = getNextTaskService();
@@ -473,9 +526,9 @@ export class PRMonitoringService extends EventEmitter {
 						completionType: 'pr-merged',
 						context: { prNumber, prUrl: prStatus.url }
 					});
-					
+
 					results.steps.nextTask = nextResult;
-					
+
 					if (nextResult.success && nextResult.nextTask) {
 						console.log(`  ✅ Next task identified: ${nextResult.nextTask.id}`);
 					} else {
@@ -490,9 +543,10 @@ export class PRMonitoringService extends EventEmitter {
 				}
 			}
 
-			console.log(`🎉 PR merge completion workflow finished for PR ${prNumber}`);
+			console.log(
+				`🎉 PR merge completion workflow finished for PR ${prNumber}`
+			);
 			return results;
-
 		} catch (error) {
 			console.error(`❌ PR merge completion workflow failed: ${error.message}`);
 			results.success = false;
@@ -517,15 +571,17 @@ export class PRMonitoringService extends EventEmitter {
 		};
 
 		try {
-			// Step 1: Reset task status 
+			// Step 1: Reset task status
 			if (config.config.taskId) {
-				console.log(`📝 Resetting task ${config.config.taskId} status (PR closed without merge)...`);
+				console.log(
+					`📝 Resetting task ${config.config.taskId} status (PR closed without merge)...`
+				);
 				try {
 					const statusResult = await this.backend.setTaskStatus({
 						id: config.config.taskId,
 						status: 'pending' // Reset to pending for potential retry
 					});
-					
+
 					results.steps.taskStatus = {
 						success: statusResult?.success || true,
 						taskId: config.config.taskId,
@@ -533,7 +589,7 @@ export class PRMonitoringService extends EventEmitter {
 						newStatus: 'pending',
 						reason: 'pr-closed-without-merge'
 					};
-					
+
 					console.log(`  ✅ Task ${config.config.taskId} reset to pending`);
 				} catch (error) {
 					console.error(`  ❌ Failed to reset task status: ${error.message}`);
@@ -547,7 +603,9 @@ export class PRMonitoringService extends EventEmitter {
 
 			// Step 2: Preserve worktree (don't clean up)
 			if (config.config.worktreeName) {
-				console.log(`📁 Preserving worktree ${config.config.worktreeName} for potential retry...`);
+				console.log(
+					`📁 Preserving worktree ${config.config.worktreeName} for potential retry...`
+				);
 				results.steps.worktreePreserved = {
 					success: true,
 					worktreeName: config.config.worktreeName,
@@ -555,9 +613,10 @@ export class PRMonitoringService extends EventEmitter {
 				};
 			}
 
-			console.log(`🔒 PR ${prNumber} closure handled, task available for retry`);
+			console.log(
+				`🔒 PR ${prNumber} closure handled, task available for retry`
+			);
 			return results;
-
 		} catch (error) {
 			console.error(`❌ PR closure handling failed: ${error.message}`);
 			results.success = false;
@@ -581,14 +640,15 @@ export class PRMonitoringService extends EventEmitter {
 			}
 
 			// Fallback cleanup (basic implementation)
-			console.log(`🧹 Performing basic worktree cleanup for ${worktreeName}...`);
+			console.log(
+				`🧹 Performing basic worktree cleanup for ${worktreeName}...`
+			);
 			return {
 				success: true,
 				worktreeName,
 				cleanupType: 'basic',
 				message: 'Worktree cleanup deferred to manual process'
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -604,10 +664,10 @@ export class PRMonitoringService extends EventEmitter {
 	async checkAndUpdateParentTaskCompletion(subtaskId) {
 		try {
 			const parentTaskId = String(subtaskId).split('.')[0];
-			
+
 			// Get parent task and all its subtasks
 			const parentTask = await this.backend.getTask({ id: parentTaskId });
-			
+
 			if (!parentTask?.success || !parentTask.data?.subtasks?.length) {
 				return {
 					success: true,
@@ -619,17 +679,19 @@ export class PRMonitoringService extends EventEmitter {
 
 			// Check if all subtasks are done
 			const subtasks = parentTask.data.subtasks;
-			const completedSubtasks = subtasks.filter(st => st.status === 'done');
+			const completedSubtasks = subtasks.filter((st) => st.status === 'done');
 			const allSubtasksComplete = completedSubtasks.length === subtasks.length;
 
 			if (allSubtasksComplete) {
-				console.log(`🎯 All subtasks complete for parent task ${parentTaskId}, marking as done...`);
-				
+				console.log(
+					`🎯 All subtasks complete for parent task ${parentTaskId}, marking as done...`
+				);
+
 				const statusResult = await this.backend.setTaskStatus({
 					id: parentTaskId,
 					status: 'done'
 				});
-				
+
 				return {
 					success: true,
 					parentTaskId,
@@ -648,7 +710,6 @@ export class PRMonitoringService extends EventEmitter {
 					reason: 'subtasks-still-pending'
 				};
 			}
-
 		} catch (error) {
 			return {
 				success: false,
@@ -667,7 +728,9 @@ export class PRMonitoringService extends EventEmitter {
 			this.intervalId = null;
 		}
 
-		console.log(`🛑 PR Monitoring Service shutdown (monitored ${this.monitoredPRs.size} PRs)`);
+		console.log(
+			`🛑 PR Monitoring Service shutdown (monitored ${this.monitoredPRs.size} PRs)`
+		);
 		return { success: true };
 	}
 }
@@ -702,5 +765,8 @@ export function getPRMonitoringService() {
  * Check if PR monitoring service is initialized
  */
 export function isPRMonitoringServiceInitialized() {
-	return prMonitoringServiceInstance !== null && prMonitoringServiceInstance.intervalId !== null;
-} 
+	return (
+		prMonitoringServiceInstance !== null &&
+		prMonitoringServiceInstance.intervalId !== null
+	);
+}

@@ -37,7 +37,8 @@ class HtmlAnalyzer {
 			},
 			accessibility: {
 				hasAltTexts: content.includes('alt='),
-				hasLangAttribute: content.includes('<html lang=') || content.includes('<html lang '),
+				hasLangAttribute:
+					content.includes('<html lang=') || content.includes('<html lang '),
 				score: this.calculateAccessibilityScore(content)
 			},
 			seo: {
@@ -104,9 +105,10 @@ class CssAnalyzer {
 		return {
 			total: selectors.length,
 			types: {
-				id: selectors.filter(s => s.includes('#')).length,
-				class: selectors.filter(s => s.includes('.')).length,
-				element: selectors.filter(s => !s.includes('#') && !s.includes('.')).length
+				id: selectors.filter((s) => s.includes('#')).length,
+				class: selectors.filter((s) => s.includes('.')).length,
+				element: selectors.filter((s) => !s.includes('#') && !s.includes('.'))
+					.length
 			}
 		};
 	}
@@ -115,7 +117,8 @@ class CssAnalyzer {
 		const properties = content.match(/\s*([a-z-]+)\s*:/g) || [];
 		return {
 			total: properties.length,
-			unique: [...new Set(properties.map(p => p.trim().replace(':', '')))].length
+			unique: [...new Set(properties.map((p) => p.trim().replace(':', '')))]
+				.length
 		};
 	}
 

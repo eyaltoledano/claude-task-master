@@ -88,10 +88,22 @@ export function ClaudeCodeScreen({
 		info: getColor(resolvedTheme.info, '#60a5fa'),
 
 		// Text colors with safe navigation
-		text: getColor(resolvedTheme.text?.primary || resolvedTheme.textPrimary, '#f1f5f9'),
-		textDim: getColor(resolvedTheme.text?.secondary || resolvedTheme.textSecondary, '#cbd5e1'),
-		textSecondary: getColor(resolvedTheme.text?.secondary || resolvedTheme.textSecondary, '#cbd5e1'),
-		textTertiary: getColor(resolvedTheme.text?.tertiary || resolvedTheme.textTertiary, '#94a3b8'),
+		text: getColor(
+			resolvedTheme.text?.primary || resolvedTheme.textPrimary,
+			'#f1f5f9'
+		),
+		textDim: getColor(
+			resolvedTheme.text?.secondary || resolvedTheme.textSecondary,
+			'#cbd5e1'
+		),
+		textSecondary: getColor(
+			resolvedTheme.text?.secondary || resolvedTheme.textSecondary,
+			'#cbd5e1'
+		),
+		textTertiary: getColor(
+			resolvedTheme.text?.tertiary || resolvedTheme.textTertiary,
+			'#94a3b8'
+		),
 
 		// Common status colors (using fallback colors)
 		statusDone: '#34d399',
@@ -166,9 +178,13 @@ export function ClaudeCodeScreen({
 					}
 				]);
 
-				// If the operation was successful and this is a subtask implementation, 
+				// If the operation was successful and this is a subtask implementation,
 				// automatically trigger the commit/merge workflow
-				if (result.success && initialMode === 'subtask-implementation' && initialContext) {
+				if (
+					result.success &&
+					initialMode === 'subtask-implementation' &&
+					initialContext
+				) {
 					handleSubtaskCompletion(operationId, result);
 				}
 			}
@@ -479,7 +495,9 @@ Additional context:
 					subtaskId: initialContext.currentSubtask.id,
 					parentTaskId: initialContext.parentTask.id,
 					worktreePath: initialContext.worktreePath,
-					worktreeName: initialContext.worktreePath ? initialContext.worktreePath.split('/').pop() : undefined,
+					worktreeName: initialContext.worktreePath
+						? initialContext.worktreePath.split('/').pop()
+						: undefined,
 					prompt: subtaskPrompt,
 					// Pass complete task data with parent info for CLAUDE.md generation
 					taskData: {
@@ -546,7 +564,8 @@ Working directory: ${initialContext.worktreePath}
 				...prev,
 				{
 					type: 'system',
-					content: '🎉 Implementation completed! Starting commit and merge workflow...',
+					content:
+						'🎉 Implementation completed! Starting commit and merge workflow...',
 					timestamp: new Date().toISOString()
 				}
 			]);
@@ -557,8 +576,11 @@ Working directory: ${initialContext.worktreePath}
 
 			// Check if there are changes to commit
 			const gitStatus = await backend.getWorktreeGitStatus(worktreePath);
-			
-			if (gitStatus && (gitStatus.staged?.length > 0 || gitStatus.unstaged?.length > 0)) {
+
+			if (
+				gitStatus &&
+				(gitStatus.staged?.length > 0 || gitStatus.unstaged?.length > 0)
+			) {
 				// There are changes to commit
 				setWatchMessages((prev) => [
 					...prev,
@@ -589,7 +611,7 @@ Auto-committed by Claude Code completion workflow.`;
 					commitMessage,
 					{
 						markAsDone: true, // Automatically mark subtask as done
-						autoStage: true   // Stage all changes automatically
+						autoStage: true // Stage all changes automatically
 					}
 				);
 
@@ -633,7 +655,8 @@ Auto-committed by Claude Code completion workflow.`;
 					...prev,
 					{
 						type: 'system',
-						content: '📝 No changes detected to commit. Marking subtask as done...',
+						content:
+							'📝 No changes detected to commit. Marking subtask as done...',
 						timestamp: new Date().toISOString()
 					}
 				]);
@@ -652,10 +675,12 @@ Auto-committed by Claude Code completion workflow.`;
 					handleBack();
 				}, 3000);
 			}
-
 		} catch (error) {
-			console.error('[ClaudeCodeScreen] Error in handleSubtaskCompletion:', error);
-			
+			console.error(
+				'[ClaudeCodeScreen] Error in handleSubtaskCompletion:',
+				error
+			);
+
 			setWatchMessages((prev) => [
 				...prev,
 				{
@@ -698,7 +723,9 @@ Auto-committed by Claude Code completion workflow.`;
 						subtaskId: initialContext.currentSubtask.id,
 						parentTaskId: initialContext.parentTask.id,
 						worktreePath: initialContext.worktreePath,
-						worktreeName: initialContext.worktreePath ? initialContext.worktreePath.split('/').pop() : undefined,
+						worktreeName: initialContext.worktreePath
+							? initialContext.worktreePath.split('/').pop()
+							: undefined,
 						// Pass complete task data with parent info for CLAUDE.md generation
 						taskData: {
 							id: initialContext.currentSubtask.id,
@@ -1210,7 +1237,7 @@ ${insightSummary}
 	};
 
 	const renderWatchMessage = (msg, idx) => {
-		const timeString = msg.timestamp 
+		const timeString = msg.timestamp
 			? new Date(msg.timestamp).toLocaleTimeString()
 			: new Date().toLocaleTimeString();
 
@@ -1232,72 +1259,78 @@ ${insightSummary}
 			if (typeof message.content === 'string') {
 				return message.content;
 			}
-			
+
 			// Direct content property (array from Claude SDK)
 			if (Array.isArray(message.content)) {
 				return message.content
-					.filter(part => part.type === 'text')
-					.map(part => part.text)
+					.filter((part) => part.type === 'text')
+					.map((part) => part.text)
 					.join('');
 			}
-			
+
 			// Nested message structure from Claude Code
 			if (message.message?.content) {
 				if (Array.isArray(message.message.content)) {
 					// Extract text from content array
 					return message.message.content
-						.filter(part => part.type === 'text')
-						.map(part => part.text)
+						.filter((part) => part.type === 'text')
+						.map((part) => part.text)
 						.join('');
 				} else if (typeof message.message.content === 'string') {
 					return message.message.content;
 				}
 			}
-			
+
 			// Legacy format fallback
 			if (message.message?.content?.[0]?.text) {
 				return message.message.content[0].text;
 			}
-			
+
 			// Claude SDK specific formats
 			if (message.text && typeof message.text === 'string') {
 				return message.text;
 			}
-			
+
 			// For result/system messages, extract relevant info
 			if (message.type === 'result') {
 				let resultText = 'Claude session completed';
 				if (message.num_turns) resultText += ` (${message.num_turns} turns)`;
-				if (message.total_cost_usd) resultText += ` - Cost: $${message.total_cost_usd.toFixed(4)}`;
+				if (message.total_cost_usd)
+					resultText += ` - Cost: $${message.total_cost_usd.toFixed(4)}`;
 				return resultText;
 			}
-			
+
 			if (message.type === 'system') {
 				let systemText = message.subtype || 'System message';
-				if (message.session_id) systemText += ` (Session: ${message.session_id.substring(0, 8)}...)`;
+				if (message.session_id)
+					systemText += ` (Session: ${message.session_id.substring(0, 8)}...)`;
 				if (message.model) systemText += ` - Model: ${message.model}`;
 				if (message.cwd) systemText += ` - Working dir: ${message.cwd}`;
 				return systemText;
 			}
-			
+
 			// Tool use messages
 			if (message.type === 'tool_use') {
 				return `🔧 Tool: ${message.name || 'Unknown'}\nInput: ${JSON.stringify(message.input || {}, null, 2)}`;
 			}
-			
+
 			if (message.type === 'tool_result') {
 				if (message.is_error) {
 					return `❌ Tool Error: ${message.content || 'Unknown error'}`;
 				} else {
-					const content = typeof message.content === 'string' 
-						? message.content 
-						: JSON.stringify(message.content, null, 2);
+					const content =
+						typeof message.content === 'string'
+							? message.content
+							: JSON.stringify(message.content, null, 2);
 					return `✅ Tool Result: ${content.substring(0, 500)}${content.length > 500 ? '...' : ''}`;
 				}
 			}
-			
+
 			// Last resort - show the raw message for debugging
-			console.warn('[ClaudeCodeScreen] Could not extract content from message:', message);
+			console.warn(
+				'[ClaudeCodeScreen] Could not extract content from message:',
+				message
+			);
 			return `[${message.type || 'unknown'}] ${JSON.stringify(message, null, 2).substring(0, 200)}...`;
 		};
 
@@ -1343,7 +1376,7 @@ ${insightSummary}
 					<Box key={idx} marginBottom={1}>
 						<Text color={safeTheme.textDim}>[{timeString}] </Text>
 						<Text color={safeTheme.success}>
-							Result: {msg.subtype || 'completed'} | 
+							Result: {msg.subtype || 'completed'} |
 							{msg.num_turns && ` Turns: ${msg.num_turns} |`}
 							{msg.total_cost_usd && ` Cost: $${msg.total_cost_usd.toFixed(4)}`}
 						</Text>

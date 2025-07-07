@@ -124,9 +124,10 @@ function createUtilities() {
 
 			if (matches.length === 0) {
 				// Also check for older pattern with info tags
-				const oldPattern = /<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
+				const oldPattern =
+					/<info added on ([^>]+)>\s*(.*?)\s*<\/info added on [^>]+>/gs;
 				const oldMatches = [...task.details.matchAll(oldPattern)];
-				
+
 				if (oldMatches.length === 0) {
 					return null;
 				}
@@ -153,12 +154,18 @@ function createUtilities() {
 			// Parse research sessions with the new format
 			const research = matches.map((match) => {
 				const dateTimeStr = match[1].trim();
-				
+
 				// Extract the content of this research session
 				const sessionStart = match.index;
-				const nextSessionMatch = task.details.indexOf('## Research Session -', sessionStart + 1);
-				const sessionEnd = nextSessionMatch === -1 ? task.details.length : nextSessionMatch;
-				const sessionContent = task.details.substring(sessionStart, sessionEnd).trim();
+				const nextSessionMatch = task.details.indexOf(
+					'## Research Session -',
+					sessionStart + 1
+				);
+				const sessionEnd =
+					nextSessionMatch === -1 ? task.details.length : nextSessionMatch;
+				const sessionContent = task.details
+					.substring(sessionStart, sessionEnd)
+					.trim();
 
 				return {
 					timestamp: dateTimeStr,
@@ -432,4 +439,3 @@ export function validateContext(context) {
 		errors
 	};
 }
- 

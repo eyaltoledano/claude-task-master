@@ -43,7 +43,6 @@ export const NotificationProvider = ({ children }) => {
 
 		// Add to history
 		setNotificationHistory((prev) => [notification, ...prev.slice(0, 99)]); // Keep last 100
-
 	}, []);
 
 	const sendToExternalChannels = async (notification) => {
@@ -75,7 +74,10 @@ export const NotificationProvider = ({ children }) => {
 	};
 
 	const sendEmailNotification = async (notification) => {
-		if (!notificationChannels.email.enabled || !notificationChannels.email.webhook) {
+		if (
+			!notificationChannels.email.enabled ||
+			!notificationChannels.email.webhook
+		) {
 			return;
 		}
 
@@ -94,34 +96,39 @@ export const NotificationProvider = ({ children }) => {
 	};
 
 	const sendSlackNotification = async (notification) => {
-		if (!notificationChannels.slack.enabled || !notificationChannels.slack.webhook) {
+		if (
+			!notificationChannels.slack.enabled ||
+			!notificationChannels.slack.webhook
+		) {
 			return;
 		}
 
 		const slackPayload = {
 			text: notification.message,
-			attachments: [{
-				color: getSlackColor(notification.type),
-				fields: [
-					{
-						title: 'Type',
-						value: notification.type.toUpperCase(),
-						short: true
-					},
-					{
-						title: 'Priority',
-						value: notification.priority.toUpperCase(),
-						short: true
-					},
-					{
-						title: 'Time',
-						value: new Date(notification.timestamp).toLocaleString(),
-						short: true
-					}
-				],
-				footer: 'Task Master Flow',
-				ts: Math.floor(new Date(notification.timestamp).getTime() / 1000)
-			}]
+			attachments: [
+				{
+					color: getSlackColor(notification.type),
+					fields: [
+						{
+							title: 'Type',
+							value: notification.type.toUpperCase(),
+							short: true
+						},
+						{
+							title: 'Priority',
+							value: notification.priority.toUpperCase(),
+							short: true
+						},
+						{
+							title: 'Time',
+							value: new Date(notification.timestamp).toLocaleString(),
+							short: true
+						}
+					],
+					footer: 'Task Master Flow',
+					ts: Math.floor(new Date(notification.timestamp).getTime() / 1000)
+				}
+			]
 		};
 
 		if (notification.context.prNumber) {
@@ -140,7 +147,10 @@ export const NotificationProvider = ({ children }) => {
 	};
 
 	const sendTelegramNotification = async (notification) => {
-		if (!notificationChannels.telegram.enabled || !notificationChannels.telegram.token) {
+		if (
+			!notificationChannels.telegram.enabled ||
+			!notificationChannels.telegram.token
+		) {
 			return;
 		}
 
@@ -183,7 +193,7 @@ export const NotificationProvider = ({ children }) => {
 		}
 
 		const smsMessage = `Task Master: ${notification.message}`;
-		
+
 		// Note: In a real implementation, you'd use the Twilio SDK
 		// This is a simplified version for demonstration
 		console.log('SMS would be sent:', smsMessage);
@@ -220,7 +230,7 @@ export const NotificationProvider = ({ children }) => {
 		message += `*Type:* ${notification.type.toUpperCase()}\n`;
 		message += `*Priority:* ${notification.priority.toUpperCase()}\n`;
 		message += `*Time:* ${new Date(notification.timestamp).toLocaleString()}\n`;
-		
+
 		if (notification.context.prNumber) {
 			message += `*PR:* #${notification.context.prNumber}\n`;
 		}
@@ -259,11 +269,13 @@ export const NotificationProvider = ({ children }) => {
 	};
 
 	return (
-		<NotificationContext.Provider value={{ 
-			addNotification,
-			notificationHistory,
-			channels: notificationChannels
-		}}>
+		<NotificationContext.Provider
+			value={{
+				addNotification,
+				notificationHistory,
+				channels: notificationChannels
+			}}
+		>
 			{children}
 			<NotificationManager notifications={notifications} />
 		</NotificationContext.Provider>

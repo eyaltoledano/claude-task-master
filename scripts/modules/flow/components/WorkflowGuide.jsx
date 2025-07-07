@@ -2,12 +2,12 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { useComponentTheme } from '../hooks/useTheme.js';
 
-export function WorkflowGuide({ 
-	currentStep, 
-	taskInfo, 
+export function WorkflowGuide({
+	currentStep,
+	taskInfo,
 	gitStatus,
 	repoInfo,
-	compact = false 
+	compact = false
 }) {
 	const theme = useComponentTheme('guide');
 
@@ -69,7 +69,7 @@ export function WorkflowGuide({
 			'uncommitted-changes': 2,
 			'ready-to-commit': 2,
 			'ready-for-workflow': 3,
-			'completed': 4
+			completed: 4
 		};
 
 		return stepMap[currentStep] || 0;
@@ -83,7 +83,8 @@ export function WorkflowGuide({
 		const actions = [...step.actions];
 
 		// Add context-specific actions
-		if (stepIndex === 3) { // Workflow step
+		if (stepIndex === 3) {
+			// Workflow step
 			actions.length = 0; // Clear default actions
 			if (repoInfo?.isGitHub) {
 				actions.push('Create Pull Request (recommended for GitHub)');
@@ -102,9 +103,7 @@ export function WorkflowGuide({
 	if (compact) {
 		return (
 			<Box flexDirection="row" alignItems="center">
-				<Text color={theme.accent}>
-					{currentStepInfo.icon}
-				</Text>
+				<Text color={theme.accent}>{currentStepInfo.icon}</Text>
 				<Text color={theme.text} marginLeft={1}>
 					{currentStepInfo.label}
 				</Text>
@@ -116,7 +115,12 @@ export function WorkflowGuide({
 	}
 
 	return (
-		<Box flexDirection="column" borderStyle="round" borderColor={theme.accent} padding={1}>
+		<Box
+			flexDirection="column"
+			borderStyle="round"
+			borderColor={theme.accent}
+			padding={1}
+		>
 			{/* Header */}
 			<Box flexDirection="row" alignItems="center" marginBottom={2}>
 				<Text color={theme.accent} bold>
@@ -131,26 +135,37 @@ export function WorkflowGuide({
 			<Box flexDirection="row" marginBottom={2}>
 				{workflowSteps.map((step, index) => (
 					<Box key={step.id} flexDirection="row" alignItems="center">
-						<Text 
+						<Text
 							color={
-								index < currentStepIndex ? theme.success :
-								index === currentStepIndex ? theme.accent :
-								theme.muted
+								index < currentStepIndex
+									? theme.success
+									: index === currentStepIndex
+										? theme.accent
+										: theme.muted
 							}
 						>
-							{index < currentStepIndex ? '✅' : 
-							 index === currentStepIndex ? step.icon : 
-							 '⭕'}
+							{index < currentStepIndex
+								? '✅'
+								: index === currentStepIndex
+									? step.icon
+									: '⭕'}
 						</Text>
 						{index < workflowSteps.length - 1 && (
-							<Text color={theme.muted} marginX={1}>→</Text>
+							<Text color={theme.muted} marginX={1}>
+								→
+							</Text>
 						)}
 					</Box>
 				))}
 			</Box>
 
 			{/* Current step details */}
-			<Box marginBottom={2} borderStyle="round" borderColor={theme.accent} padding={1}>
+			<Box
+				marginBottom={2}
+				borderStyle="round"
+				borderColor={theme.accent}
+				padding={1}
+			>
 				<Box flexDirection="row" alignItems="center" marginBottom={1}>
 					<Text color={theme.accent} bold>
 						{currentStepInfo.icon} {currentStepInfo.label}
@@ -168,7 +183,12 @@ export function WorkflowGuide({
 				</Text>
 				<Box flexDirection="column">
 					{nextActions.map((action) => (
-						<Box key={action} flexDirection="row" alignItems="center" marginBottom={0}>
+						<Box
+							key={action}
+							flexDirection="row"
+							alignItems="center"
+							marginBottom={0}
+						>
 							<Text color={theme.muted}>•</Text>
 							<Text color={theme.text} marginLeft={1}>
 								{action}
@@ -186,13 +206,19 @@ export function WorkflowGuide({
 					</Text>
 					{taskInfo && (
 						<Text color={theme.text}>
-							Task: {taskInfo.parentId ? `${taskInfo.parentId}.${taskInfo.id}` : taskInfo.id} - {taskInfo.title} ({taskInfo.status})
+							Task:{' '}
+							{taskInfo.parentId
+								? `${taskInfo.parentId}.${taskInfo.id}`
+								: taskInfo.id}{' '}
+							- {taskInfo.title} ({taskInfo.status})
 						</Text>
 					)}
 					{gitStatus && (
 						<Text color={theme.text}>
-							Git: {gitStatus.modified || 0}M {gitStatus.added || 0}A {gitStatus.deleted || 0}D
-							{gitStatus.uncommitted > 0 && ` (${gitStatus.uncommitted} uncommitted)`}
+							Git: {gitStatus.modified || 0}M {gitStatus.added || 0}A{' '}
+							{gitStatus.deleted || 0}D
+							{gitStatus.uncommitted > 0 &&
+								` (${gitStatus.uncommitted} uncommitted)`}
 						</Text>
 					)}
 					{repoInfo && (
@@ -206,4 +232,4 @@ export function WorkflowGuide({
 			)}
 		</Box>
 	);
-} 
+}

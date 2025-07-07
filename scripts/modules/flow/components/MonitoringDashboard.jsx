@@ -7,12 +7,12 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, Spacer } from 'ink';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 
-export const MonitoringDashboard = ({ 
-	serviceMesh, 
-	workflowStateManager, 
+export const MonitoringDashboard = ({
+	serviceMesh,
+	workflowStateManager,
 	prMonitoringService,
 	cleanupService,
-	refreshInterval = 2000 
+	refreshInterval = 2000
 }) => {
 	const { theme } = useTheme();
 	const [metrics, setMetrics] = useState({
@@ -59,7 +59,7 @@ export const MonitoringDashboard = ({
 		const seconds = Math.floor(uptime / 1000);
 		const minutes = Math.floor(seconds / 60);
 		const hours = Math.floor(minutes / 60);
-		
+
 		if (hours > 0) return `${hours}h ${minutes % 60}m`;
 		if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
 		return `${seconds}s`;
@@ -104,32 +104,38 @@ export const MonitoringDashboard = ({
 			{/* System Overview */}
 			<Box flexDirection="row" marginBottom={1}>
 				<Box flexDirection="column" width="50%">
-					<Text color={theme.secondary} bold>📊 System Overview</Text>
+					<Text color={theme.secondary} bold>
+						📊 System Overview
+					</Text>
 					<Box marginLeft={2}>
 						<Text>
 							Uptime: {formatUptime(metrics.system.startTime || Date.now())}
 						</Text>
+						<Text>CPU: {(metrics.performance.cpu || 0).toFixed(1)}%</Text>
 						<Text>
-							CPU: {(metrics.performance.cpu || 0).toFixed(1)}%
+							Memory:{' '}
+							{Math.round((metrics.performance.memory || 0) / 1024 / 1024)}MB
 						</Text>
-						<Text>
-							Memory: {Math.round((metrics.performance.memory || 0) / 1024 / 1024)}MB
-						</Text>
-						<Text>
-							Active Workflows: {metrics.workflows.length}
-						</Text>
+						<Text>Active Workflows: {metrics.workflows.length}</Text>
 					</Box>
 				</Box>
 
 				<Box flexDirection="column" width="50%">
-					<Text color={theme.secondary} bold>🔧 Service Health</Text>
+					<Text color={theme.secondary} bold>
+						🔧 Service Health
+					</Text>
 					<Box marginLeft={2}>
-						{Object.entries(metrics.services).map(([serviceName, serviceData]) => (
-							<Text key={serviceName}>
-								{getStatusIcon(serviceData.service?.healthy ? 'healthy' : 'unhealthy')} 
-								{serviceName}: {serviceData.service?.healthy ? 'Healthy' : 'Unhealthy'}
-							</Text>
-						))}
+						{Object.entries(metrics.services).map(
+							([serviceName, serviceData]) => (
+								<Text key={serviceName}>
+									{getStatusIcon(
+										serviceData.service?.healthy ? 'healthy' : 'unhealthy'
+									)}
+									{serviceName}:{' '}
+									{serviceData.service?.healthy ? 'Healthy' : 'Unhealthy'}
+								</Text>
+							)
+						)}
 						{Object.keys(metrics.services).length === 0 && (
 							<Text color={theme.muted}>No services registered</Text>
 						)}
@@ -139,7 +145,9 @@ export const MonitoringDashboard = ({
 
 			{/* Active Workflows */}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.secondary} bold>🚀 Active Workflows</Text>
+				<Text color={theme.secondary} bold>
+					🚀 Active Workflows
+				</Text>
 				<Box marginLeft={2}>
 					{metrics.workflows.length > 0 ? (
 						metrics.workflows.map((workflow) => (
@@ -147,15 +155,11 @@ export const MonitoringDashboard = ({
 								<Text width={20}>
 									{getStatusIcon(workflow.state)} {workflow.id}
 								</Text>
-								<Text width={15}>
-									{workflow.state}
-								</Text>
+								<Text width={15}>{workflow.state}</Text>
 								<Text width={15}>
 									Phase: {workflow.currentPhase?.name || 'None'}
 								</Text>
-								<Text>
-									Duration: {formatUptime(workflow.startTime)}
-								</Text>
+								<Text>Duration: {formatUptime(workflow.startTime)}</Text>
 							</Box>
 						))
 					) : (
@@ -166,7 +170,9 @@ export const MonitoringDashboard = ({
 
 			{/* Recent Workflow History */}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.secondary} bold>📜 Recent Completions</Text>
+				<Text color={theme.secondary} bold>
+					📜 Recent Completions
+				</Text>
 				<Box marginLeft={2}>
 					{metrics.workflowHistory.length > 0 ? (
 						metrics.workflowHistory.map((workflow) => (
@@ -174,14 +180,16 @@ export const MonitoringDashboard = ({
 								<Text width={20}>
 									{getStatusIcon(workflow.state)} {workflow.id}
 								</Text>
+								<Text width={15}>{workflow.state}</Text>
 								<Text width={15}>
-									{workflow.state}
-								</Text>
-								<Text width={15}>
-									Duration: {workflow.duration ? `${Math.round(workflow.duration / 1000)}s` : 'N/A'}
+									Duration:{' '}
+									{workflow.duration
+										? `${Math.round(workflow.duration / 1000)}s`
+										: 'N/A'}
 								</Text>
 								<Text>
-									Completed: {new Date(workflow.completedAt).toLocaleTimeString()}
+									Completed:{' '}
+									{new Date(workflow.completedAt).toLocaleTimeString()}
 								</Text>
 							</Box>
 						))
@@ -193,80 +201,90 @@ export const MonitoringDashboard = ({
 
 			{/* PR Monitoring Status */}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.secondary} bold>📋 PR Monitoring</Text>
+				<Text color={theme.secondary} bold>
+					📋 PR Monitoring
+				</Text>
 				<Box marginLeft={2}>
-					<Text>
-						Monitored PRs: {metrics.prMonitoring.monitoredPRs || 0}
-					</Text>
+					<Text>Monitored PRs: {metrics.prMonitoring.monitoredPRs || 0}</Text>
 					<Text>
 						Auto-Merge Eligible: {metrics.prMonitoring.autoMergeEligible || 0}
 					</Text>
-					<Text>
-						Failed Checks: {metrics.prMonitoring.failedChecks || 0}
-					</Text>
-					<Text>
-						Recent Merges: {metrics.prMonitoring.recentMerges || 0}
-					</Text>
+					<Text>Failed Checks: {metrics.prMonitoring.failedChecks || 0}</Text>
+					<Text>Recent Merges: {metrics.prMonitoring.recentMerges || 0}</Text>
 				</Box>
 			</Box>
 
 			{/* Service Performance Metrics */}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.secondary} bold>⚡ Performance Metrics</Text>
+				<Text color={theme.secondary} bold>
+					⚡ Performance Metrics
+				</Text>
 				<Box marginLeft={2}>
-					{Object.entries(metrics.services).map(([serviceName, serviceData]) => {
-						const serviceMetrics = serviceData.metrics;
-						if (!serviceMetrics || serviceMetrics.requests === 0) return null;
+					{Object.entries(metrics.services).map(
+						([serviceName, serviceData]) => {
+							const serviceMetrics = serviceData.metrics;
+							if (!serviceMetrics || serviceMetrics.requests === 0) return null;
 
-						const successRate = ((serviceMetrics.successes / serviceMetrics.requests) * 100).toFixed(1);
-						const avgResponseTime = serviceMetrics.averageResponseTime.toFixed(0);
+							const successRate = (
+								(serviceMetrics.successes / serviceMetrics.requests) *
+								100
+							).toFixed(1);
+							const avgResponseTime =
+								serviceMetrics.averageResponseTime.toFixed(0);
 
-						return (
-							<Box key={serviceName} flexDirection="row" marginBottom={0}>
-								<Text width={20}>{serviceName}:</Text>
-								<Text width={15}>
-									{serviceMetrics.requests} reqs
-								</Text>
-								<Text width={15}>
-									{successRate}% success
-								</Text>
-								<Text>
-									{avgResponseTime}ms avg
-								</Text>
-							</Box>
-						);
-					})}
+							return (
+								<Box key={serviceName} flexDirection="row" marginBottom={0}>
+									<Text width={20}>{serviceName}:</Text>
+									<Text width={15}>{serviceMetrics.requests} reqs</Text>
+									<Text width={15}>{successRate}% success</Text>
+									<Text>{avgResponseTime}ms avg</Text>
+								</Box>
+							);
+						}
+					)}
 				</Box>
 			</Box>
 
 			{/* Circuit Breaker Status */}
 			<Box flexDirection="column" marginBottom={1}>
-				<Text color={theme.secondary} bold>🔌 Circuit Breakers</Text>
+				<Text color={theme.secondary} bold>
+					🔌 Circuit Breakers
+				</Text>
 				<Box marginLeft={2}>
-					{Object.entries(metrics.services).map(([serviceName, serviceData]) => {
-						const circuitBreaker = serviceData.circuitBreaker;
-						if (!circuitBreaker) return null;
+					{Object.entries(metrics.services).map(
+						([serviceName, serviceData]) => {
+							const circuitBreaker = serviceData.circuitBreaker;
+							if (!circuitBreaker) return null;
 
-						const stateColor = circuitBreaker.state === 'closed' ? theme.success :
-							circuitBreaker.state === 'open' ? theme.error : theme.warning;
+							const stateColor =
+								circuitBreaker.state === 'closed'
+									? theme.success
+									: circuitBreaker.state === 'open'
+										? theme.error
+										: theme.warning;
 
-						return (
-							<Box key={serviceName} flexDirection="row" marginBottom={0}>
-								<Text width={20}>{serviceName}:</Text>
-								<Text color={stateColor} width={15}>
-									{circuitBreaker.state.toUpperCase()}
-								</Text>
-								<Text>
-									Failures: {circuitBreaker.failureCount}
-								</Text>
-							</Box>
-						);
-					})}
+							return (
+								<Box key={serviceName} flexDirection="row" marginBottom={0}>
+									<Text width={20}>{serviceName}:</Text>
+									<Text color={stateColor} width={15}>
+										{circuitBreaker.state.toUpperCase()}
+									</Text>
+									<Text>Failures: {circuitBreaker.failureCount}</Text>
+								</Box>
+							);
+						}
+					)}
 				</Box>
 			</Box>
 
 			{/* Footer */}
-			<Box flexDirection="row" marginTop={1} paddingTop={1} borderStyle="single" borderTop>
+			<Box
+				flexDirection="row"
+				marginTop={1}
+				paddingTop={1}
+				borderStyle="single"
+				borderTop
+			>
 				<Text color={theme.muted}>
 					Press 'r' to refresh • Press 'q' to quit monitoring
 				</Text>
@@ -280,7 +298,7 @@ async function getSystemMetrics() {
 	try {
 		const process = await import('process');
 		return {
-			startTime: Date.now() - (process.uptime() * 1000),
+			startTime: Date.now() - process.uptime() * 1000,
 			nodeVersion: process.version,
 			platform: process.platform,
 			arch: process.arch
@@ -308,4 +326,4 @@ async function getPerformanceMetrics() {
 	}
 }
 
-export default MonitoringDashboard; 
+export default MonitoringDashboard;

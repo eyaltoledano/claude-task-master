@@ -981,12 +981,12 @@ export const theme = new Proxy(
 			if (propertyMap[prop]) {
 				return propertyMap[prop];
 			}
-			
+
 			// Don't call getColor with Symbol properties or other non-strings
 			if (typeof prop === 'string' && prop.length > 0) {
 				return themeManager.getColor(prop);
 			}
-			
+
 			return undefined;
 		}
 	}

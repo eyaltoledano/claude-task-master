@@ -31,7 +31,9 @@ export function WorkflowDecisionModal({
 			// Load git status and repository information
 			const [status, repo] = await Promise.all([
 				backend.getWorktreeGitStatus(worktree.path),
-				backend.detectRemoteRepository ? backend.detectRemoteRepository() : Promise.resolve(null)
+				backend.detectRemoteRepository
+					? backend.detectRemoteRepository()
+					: Promise.resolve(null)
 			]);
 
 			setGitStatus(status);
@@ -40,7 +42,6 @@ export function WorkflowDecisionModal({
 			// Generate workflow options based on current state
 			const options = generateWorkflowOptions(status, repo);
 			setWorkflowOptions(options);
-
 		} catch (err) {
 			setError(err.message);
 		} finally {
@@ -50,13 +51,13 @@ export function WorkflowDecisionModal({
 
 	const generateWorkflowOptions = (status, repo) => {
 		const options = [];
-		const hasChanges = status && (
-			status.total > 0 || 
-			status.modified > 0 || 
-			status.added > 0 || 
-			status.deleted > 0 || 
-			status.untracked > 0
-		);
+		const hasChanges =
+			status &&
+			(status.total > 0 ||
+				status.modified > 0 ||
+				status.added > 0 ||
+				status.deleted > 0 ||
+				status.untracked > 0);
 
 		// Commit changes option (if uncommitted changes)
 		if (hasChanges && status.uncommitted > 0) {
@@ -104,8 +105,8 @@ export function WorkflowDecisionModal({
 		options.push({
 			value: 'close-worktree',
 			label: 'Close Worktree',
-			description: hasChanges 
-				? '⚠️  This will lose uncommitted changes!' 
+			description: hasChanges
+				? '⚠️  This will lose uncommitted changes!'
 				: 'Clean up and close the worktree',
 			icon: '🗑️',
 			recommended: false,
@@ -119,7 +120,7 @@ export function WorkflowDecisionModal({
 		if (isProcessing || workflowOptions.length === 0) return;
 
 		const selectedWorkflow = workflowOptions[selectedOption];
-		
+
 		// Show warning for destructive actions
 		if (selectedWorkflow.warning) {
 			// For now, proceed anyway - could add confirmation modal later
@@ -143,8 +144,14 @@ export function WorkflowDecisionModal({
 	const keyHandlers = {
 		escape: onClose,
 		up: () => setSelectedOption(Math.max(0, selectedOption - 1)),
-		down: () => setSelectedOption(Math.min(workflowOptions.length - 1, selectedOption + 1)),
-		j: () => setSelectedOption(Math.min(workflowOptions.length - 1, selectedOption + 1)),
+		down: () =>
+			setSelectedOption(
+				Math.min(workflowOptions.length - 1, selectedOption + 1)
+			),
+		j: () =>
+			setSelectedOption(
+				Math.min(workflowOptions.length - 1, selectedOption + 1)
+			),
 		k: () => setSelectedOption(Math.max(0, selectedOption - 1)),
 		return: handleSelection
 	};
@@ -156,12 +163,7 @@ export function WorkflowDecisionModal({
 		preset: error ? 'error' : 'info',
 		width: '80%',
 		height: '70%',
-		keyboardHints: [
-			'↑↓ navigate',
-			'j/k vim nav',
-			'ENTER select',
-			'ESC cancel'
-		],
+		keyboardHints: ['↑↓ navigate', 'j/k vim nav', 'ENTER select', 'ESC cancel'],
 		onClose
 	};
 
@@ -177,17 +179,25 @@ export function WorkflowDecisionModal({
 		<BaseModal {...modalProps}>
 			<Box flexDirection="column">
 				{/* Header with current state */}
-				<Box marginBottom={2} borderStyle="round" borderColor={theme.accent} padding={1}>
+				<Box
+					marginBottom={2}
+					borderStyle="round"
+					borderColor={theme.accent}
+					padding={1}
+				>
 					<Box flexDirection="column">
-						<Text bold color={theme.accent}>Current State</Text>
+						<Text bold color={theme.accent}>
+							Current State
+						</Text>
 						{gitStatus && (
 							<Box marginTop={1}>
 								<Text color={theme.text}>
-									📊 Git Status: {gitStatus.modified || 0} modified, {gitStatus.added || 0} added, {gitStatus.deleted || 0} deleted
+									📊 Git Status: {gitStatus.modified || 0} modified,{' '}
+									{gitStatus.added || 0} added, {gitStatus.deleted || 0} deleted
 								</Text>
 								{gitStatus.uncommitted > 0 && (
 									<Text color={theme.warning}>
-										⚠️  {gitStatus.uncommitted} uncommitted changes
+										⚠️ {gitStatus.uncommitted} uncommitted changes
 									</Text>
 								)}
 							</Box>
@@ -195,15 +205,21 @@ export function WorkflowDecisionModal({
 						{repoInfo && (
 							<Box marginTop={1}>
 								<Text color={theme.text}>
-									🌐 Repository: {repoInfo.provider || 'Local'} 
-									{repoInfo.isGitHub && repoInfo.hasGitHubCLI && ' (GitHub CLI available)'}
+									🌐 Repository: {repoInfo.provider || 'Local'}
+									{repoInfo.isGitHub &&
+										repoInfo.hasGitHubCLI &&
+										' (GitHub CLI available)'}
 								</Text>
 							</Box>
 						)}
 						{taskInfo && (
 							<Box marginTop={1}>
 								<Text color={theme.text}>
-									📋 Task: {taskInfo.parentId ? `${taskInfo.parentId}.${taskInfo.id}` : taskInfo.id} - {taskInfo.title}
+									📋 Task:{' '}
+									{taskInfo.parentId
+										? `${taskInfo.parentId}.${taskInfo.id}`
+										: taskInfo.id}{' '}
+									- {taskInfo.title}
 								</Text>
 							</Box>
 						)}
@@ -212,7 +228,12 @@ export function WorkflowDecisionModal({
 
 				{/* Error display */}
 				{error && (
-					<Box marginBottom={2} borderStyle="round" borderColor={theme.error} padding={1}>
+					<Box
+						marginBottom={2}
+						borderStyle="round"
+						borderColor={theme.error}
+						padding={1}
+					>
 						<Text color={theme.error}>❌ {error}</Text>
 					</Box>
 				)}
@@ -226,8 +247,10 @@ export function WorkflowDecisionModal({
 
 				{/* Workflow options */}
 				<Box flexDirection="column">
-					<Text bold color={theme.accent} marginBottom={1}>Available Workflows:</Text>
-					
+					<Text bold color={theme.accent} marginBottom={1}>
+						Available Workflows:
+					</Text>
+
 					{workflowOptions.map((option, index) => (
 						<Box
 							key={option.value}
@@ -235,25 +258,31 @@ export function WorkflowDecisionModal({
 							backgroundColor={
 								index === selectedOption ? theme.backgroundHighlight : undefined
 							}
-							borderStyle={index === selectedOption ? "round" : undefined}
+							borderStyle={index === selectedOption ? 'round' : undefined}
 							borderColor={index === selectedOption ? theme.accent : undefined}
 							paddingX={1}
 							paddingY={0}
 						>
 							<Box flexDirection="column" width="100%">
 								<Box flexDirection="row" alignItems="center">
-									<Text color={index === selectedOption ? theme.accent : theme.text}>
+									<Text
+										color={index === selectedOption ? theme.accent : theme.text}
+									>
 										{index === selectedOption ? '▸ ' : '  '}
 										{option.icon} {option.label}
 									</Text>
 									{option.recommended && (
-										<Text color={theme.success} marginLeft={2}>✨ Recommended</Text>
+										<Text color={theme.success} marginLeft={2}>
+											✨ Recommended
+										</Text>
 									)}
 									{option.warning && (
-										<Text color={theme.warning} marginLeft={2}>⚠️  Warning</Text>
+										<Text color={theme.warning} marginLeft={2}>
+											⚠️ Warning
+										</Text>
 									)}
 								</Box>
-								
+
 								{index === selectedOption && option.description && (
 									<Box marginLeft={4} marginTop={0}>
 										<Text color={theme.muted}>{option.description}</Text>
@@ -265,8 +294,15 @@ export function WorkflowDecisionModal({
 				</Box>
 
 				{/* Workflow guidance */}
-				<Box marginTop={2} borderStyle="round" borderColor={theme.muted} padding={1}>
-					<Text bold color={theme.accent}>💡 Workflow Guide</Text>
+				<Box
+					marginTop={2}
+					borderStyle="round"
+					borderColor={theme.muted}
+					padding={1}
+				>
+					<Text bold color={theme.accent}>
+						💡 Workflow Guide
+					</Text>
 					<Box marginTop={1}>
 						<Text color={theme.muted}>
 							• Create PR: Best for collaborative development and code review
@@ -282,4 +318,4 @@ export function WorkflowDecisionModal({
 			</Box>
 		</BaseModal>
 	);
-} 
+}

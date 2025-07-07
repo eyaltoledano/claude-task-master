@@ -14,10 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export class BranchAwarenessManager extends EventEmitter {
 	constructor(projectRoot, options = {}) {
 		super();
-		
+
 		this.projectRoot = projectRoot;
 		this.flowConfig = flowConfig;
-		
+
 		this.options = {
 			enabled: true,
 			rememberLastBranch: true,
@@ -31,7 +31,7 @@ export class BranchAwarenessManager extends EventEmitter {
 		this.branchHistory = [];
 		this.isGitRepo = false;
 		this.repositoryName = null;
-		
+
 		// Initialize on creation
 		this.initialize();
 	}
@@ -43,20 +43,20 @@ export class BranchAwarenessManager extends EventEmitter {
 		try {
 			// Check if we're in a git repository
 			this.isGitRepo = await this.checkIsGitRepository();
-			
+
 			if (this.isGitRepo) {
 				// Detect repository name
 				await this.detectRepositoryName();
-				
+
 				// Load saved state
 				await this.loadSavedState();
-				
+
 				// Detect current branch
 				await this.detectCurrentBranch();
-				
+
 				// Save initial state
 				await this.saveState();
-				
+
 				this.emit('initialized', {
 					currentBranch: this.currentBranch,
 					repositoryName: this.repositoryName,
@@ -117,12 +117,12 @@ export class BranchAwarenessManager extends EventEmitter {
 				// git@github.com:user/repo.git -> repo
 				// https://github.com/user/repo -> repo
 				let repoName = remoteUrl;
-				
+
 				// Remove .git suffix
 				if (repoName.endsWith('.git')) {
 					repoName = repoName.slice(0, -4);
 				}
-				
+
 				// Extract repo name from URL
 				const urlMatch = repoName.match(/[\/:]([^\/]+)$/);
 				if (urlMatch) {
@@ -136,7 +136,6 @@ export class BranchAwarenessManager extends EventEmitter {
 			// Fallback: use directory name
 			const projectName = path.basename(this.projectRoot);
 			this.repositoryName = projectName;
-
 		} catch (error) {
 			console.debug('Failed to detect repository name:', error.message);
 			// Final fallback: use directory name
@@ -164,7 +163,7 @@ export class BranchAwarenessManager extends EventEmitter {
 						cwd: this.projectRoot,
 						encoding: 'utf8'
 					}).trim();
-					
+
 					if (branch) {
 						this.currentBranch = branch;
 						return this.currentBranch;
@@ -176,7 +175,7 @@ export class BranchAwarenessManager extends EventEmitter {
 							cwd: this.projectRoot,
 							encoding: 'utf8'
 						}).trim();
-						
+
 						const branch = ref.replace('refs/heads/', '');
 						if (branch) {
 							this.currentBranch = branch;
@@ -184,7 +183,9 @@ export class BranchAwarenessManager extends EventEmitter {
 						}
 					} catch {
 						// Still no luck, repository might be in initial state
-						console.debug('Repository appears to be in initial state with no commits');
+						console.debug(
+							'Repository appears to be in initial state with no commits'
+						);
 						this.currentBranch = null;
 						return null;
 					}
@@ -255,17 +256,23 @@ export class BranchAwarenessManager extends EventEmitter {
 
 			// Get tracking branch info
 			try {
-				const trackingBranch = execSync('git rev-parse --abbrev-ref --symbolic-full-name @{u}', {
-					cwd: this.projectRoot,
-					encoding: 'utf8'
-				}).trim();
+				const trackingBranch = execSync(
+					'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
+					{
+						cwd: this.projectRoot,
+						encoding: 'utf8'
+					}
+				).trim();
 				info.trackingBranch = trackingBranch;
 
 				// Get ahead/behind counts
-				const revListOutput = execSync('git rev-list --left-right --count HEAD...@{u}', {
-					cwd: this.projectRoot,
-					encoding: 'utf8'
-				}).trim();
+				const revListOutput = execSync(
+					'git rev-list --left-right --count HEAD...@{u}',
+					{
+						cwd: this.projectRoot,
+						encoding: 'utf8'
+					}
+				).trim();
 				const [ahead, behind] = revListOutput.split('\t').map(Number);
 				info.ahead = ahead || 0;
 				info.behind = behind || 0;
@@ -309,8 +316,10 @@ export class BranchAwarenessManager extends EventEmitter {
 		if (!branchName || branchName === this.currentBranch) return;
 
 		// Remove if already in history
-		this.branchHistory = this.branchHistory.filter(b => b.name !== branchName);
-		
+		this.branchHistory = this.branchHistory.filter(
+			(b) => b.name !== branchName
+		);
+
 		// Add to front
 		this.branchHistory.unshift({
 			name: branchName,
@@ -319,7 +328,10 @@ export class BranchAwarenessManager extends EventEmitter {
 
 		// Trim to max size
 		if (this.branchHistory.length > this.options.maxHistorySize) {
-			this.branchHistory = this.branchHistory.slice(0, this.options.maxHistorySize);
+			this.branchHistory = this.branchHistory.slice(
+				0,
+				this.options.maxHistorySize
+			);
 		}
 	}
 
@@ -343,8 +355,13 @@ export class BranchAwarenessManager extends EventEmitter {
 				await this.flowConfig.initialize();
 			}
 
-			this.lastWorkingBranch = this.flowConfig.get('branchAwareness.lastWorkingBranch');
-			this.branchHistory = this.flowConfig.get('branchAwareness.branchHistory', []);
+			this.lastWorkingBranch = this.flowConfig.get(
+				'branchAwareness.lastWorkingBranch'
+			);
+			this.branchHistory = this.flowConfig.get(
+				'branchAwareness.branchHistory',
+				[]
+			);
 		} catch (error) {
 			console.debug('Failed to load branch awareness state:', error.message);
 		}
@@ -363,9 +380,15 @@ export class BranchAwarenessManager extends EventEmitter {
 			}
 
 			this.flowConfig.set('branchAwareness.currentBranch', this.currentBranch);
-			this.flowConfig.set('branchAwareness.lastWorkingBranch', this.lastWorkingBranch);
+			this.flowConfig.set(
+				'branchAwareness.lastWorkingBranch',
+				this.lastWorkingBranch
+			);
 			this.flowConfig.set('branchAwareness.branchHistory', this.branchHistory);
-			this.flowConfig.set('branchAwareness.lastUpdated', new Date().toISOString());
+			this.flowConfig.set(
+				'branchAwareness.lastUpdated',
+				new Date().toISOString()
+			);
 
 			await this.flowConfig.save();
 		} catch (error) {
@@ -382,7 +405,7 @@ export class BranchAwarenessManager extends EventEmitter {
 			repositoryName: this.repositoryName,
 			currentBranch: this.currentBranch,
 			lastWorkingBranch: this.lastWorkingBranch,
-			recentBranches: this.branchHistory.slice(0, 3).map(b => b.name),
+			recentBranches: this.branchHistory.slice(0, 3).map((b) => b.name),
 			hasHistory: this.branchHistory.length > 0
 		};
 	}
@@ -490,7 +513,7 @@ export class BranchAwarenessManager extends EventEmitter {
 	 */
 	async getRemoteInfo() {
 		const remoteInfo = await this.detectRemoteRepository();
-		
+
 		if (!remoteInfo.hasRemote) {
 			return remoteInfo;
 		}
@@ -503,10 +526,13 @@ export class BranchAwarenessManager extends EventEmitter {
 				stdio: 'pipe'
 			});
 
-			const remotes = remotesOutput.trim().split('\n').map(line => {
-				const [name, url, type] = line.split(/\s+/);
-				return { name, url, type: type?.replace(/[()]/g, '') };
-			});
+			const remotes = remotesOutput
+				.trim()
+				.split('\n')
+				.map((line) => {
+					const [name, url, type] = line.split(/\s+/);
+					return { name, url, type: type?.replace(/[()]/g, '') };
+				});
 
 			// Check if we can push to origin
 			let canPush = false;
@@ -557,9 +583,15 @@ export class BranchAwarenessManager extends EventEmitter {
 			return 'github';
 		} else if (lowerUrl.includes('gitlab.com') || lowerUrl.includes('gitlab')) {
 			return 'gitlab';
-		} else if (lowerUrl.includes('bitbucket.org') || lowerUrl.includes('bitbucket')) {
+		} else if (
+			lowerUrl.includes('bitbucket.org') ||
+			lowerUrl.includes('bitbucket')
+		) {
 			return 'bitbucket';
-		} else if (lowerUrl.includes('azure.com') || lowerUrl.includes('visualstudio.com')) {
+		} else if (
+			lowerUrl.includes('azure.com') ||
+			lowerUrl.includes('visualstudio.com')
+		) {
 			return 'azure';
 		} else {
 			return 'unknown';
@@ -584,13 +616,16 @@ export class BranchAwarenessManager extends EventEmitter {
 		} catch {
 			// Fallback: check common default branches
 			const commonDefaults = ['main', 'master', 'develop'];
-			
+
 			for (const branch of commonDefaults) {
 				try {
-					execSync(`git show-ref --verify --quiet refs/remotes/origin/${branch}`, {
-						cwd: this.projectRoot,
-						stdio: 'ignore'
-					});
+					execSync(
+						`git show-ref --verify --quiet refs/remotes/origin/${branch}`,
+						{
+							cwd: this.projectRoot,
+							stdio: 'ignore'
+						}
+					);
 					return branch;
 				} catch {
 					// Branch doesn't exist, try next one
@@ -638,4 +673,4 @@ export class BranchAwarenessManager extends EventEmitter {
 			};
 		}
 	}
-} 
+}

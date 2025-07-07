@@ -351,7 +351,9 @@ export default class SessionCompletionHook {
 	async updateTaskStatus(task, session, services) {
 		// Task status updates are now handled by claude-code-stop hook
 		// This method remains for backward compatibility but delegates to the main workflow
-		console.log('🔄 [SessionCompletionHook] Task status update delegated to claude-code-stop hook');
+		console.log(
+			'🔄 [SessionCompletionHook] Task status update delegated to claude-code-stop hook'
+		);
 	}
 
 	async generateCompletionSummary(session, task, worktree) {

@@ -38,9 +38,9 @@ export class CssParser extends BaseParser {
 
 			// Determine parser based on file extension
 			const parser = this.getParserForFile(filePath);
-			const ast = postcss.parse(content, { 
+			const ast = postcss.parse(content, {
 				parser,
-				from: filePath  // This helps PostCSS understand the source
+				from: filePath // This helps PostCSS understand the source
 			});
 
 			const analysis = {
@@ -94,10 +94,10 @@ export class CssParser extends BaseParser {
 	 */
 	extractRules(ast) {
 		const rules = [];
-		
-		ast.walkRules(rule => {
+
+		ast.walkRules((rule) => {
 			const declarations = [];
-			rule.walkDecls(decl => {
+			rule.walkDecls((decl) => {
 				declarations.push({
 					property: decl.prop,
 					value: decl.value,
@@ -135,7 +135,7 @@ export class CssParser extends BaseParser {
 			universal: 0
 		};
 
-		ast.walkRules(rule => {
+		ast.walkRules((rule) => {
 			selectors.add(rule.selector);
 			this.categorizeSelector(rule.selector, selectorTypes);
 		});
@@ -144,7 +144,9 @@ export class CssParser extends BaseParser {
 			unique: Array.from(selectors),
 			count: selectors.size,
 			types: selectorTypes,
-			averageSpecificity: this.calculateAverageSpecificity(Array.from(selectors))
+			averageSpecificity: this.calculateAverageSpecificity(
+				Array.from(selectors)
+			)
 		};
 	}
 
@@ -157,7 +159,7 @@ export class CssParser extends BaseParser {
 		const properties = new Map();
 		const values = new Map();
 
-		ast.walkDecls(decl => {
+		ast.walkDecls((decl) => {
 			// Count property usage
 			const propCount = properties.get(decl.prop) || 0;
 			properties.set(decl.prop, propCount + 1);
@@ -195,12 +197,13 @@ export class CssParser extends BaseParser {
 	extractMediaQueries(ast) {
 		const mediaQueries = [];
 
-		ast.walkAtRules('media', rule => {
+		ast.walkAtRules('media', (rule) => {
 			const rulesInside = [];
-			rule.walkRules(innerRule => {
+			rule.walkRules((innerRule) => {
 				rulesInside.push({
 					selector: innerRule.selector,
-					declarationCount: innerRule.nodes.filter(n => n.type === 'decl').length
+					declarationCount: innerRule.nodes.filter((n) => n.type === 'decl')
+						.length
 				});
 			});
 
@@ -226,18 +229,18 @@ export class CssParser extends BaseParser {
 		const usage = new Map();
 
 		// Find variable declarations
-		ast.walkDecls(decl => {
+		ast.walkDecls((decl) => {
 			if (decl.prop.startsWith('--')) {
 				variables.set(decl.prop, {
 					value: decl.value,
 					line: decl.source?.start?.line || 0
 				});
 			}
-			
+
 			// Find variable usage
 			if (decl.value.includes('var(')) {
 				const matches = decl.value.match(/var\((--[^,)]+)/g) || [];
-				matches.forEach(match => {
+				matches.forEach((match) => {
 					const varName = match.substring(4); // Remove 'var('
 					const count = usage.get(varName) || 0;
 					usage.set(varName, count + 1);
@@ -262,7 +265,7 @@ export class CssParser extends BaseParser {
 	extractAtRules(ast) {
 		const atRules = {};
 
-		ast.walkAtRules(rule => {
+		ast.walkAtRules((rule) => {
 			const ruleName = rule.name;
 			if (!atRules[ruleName]) {
 				atRules[ruleName] = [];
@@ -271,7 +274,7 @@ export class CssParser extends BaseParser {
 			atRules[ruleName].push({
 				params: rule.params,
 				line: rule.source?.start?.line || 0,
-				hasNestedRules: rule.nodes?.some(n => n.type === 'rule') || false
+				hasNestedRules: rule.nodes?.some((n) => n.type === 'rule') || false
 			});
 		});
 
@@ -287,10 +290,10 @@ export class CssParser extends BaseParser {
 		const colors = new Set();
 		const colorFormats = { hex: 0, rgb: 0, hsl: 0, named: 0, custom: 0 };
 
-		ast.walkDecls(decl => {
+		ast.walkDecls((decl) => {
 			if (this.isColorProperty(decl.prop)) {
 				const colorValues = this.extractColorValues(decl.value);
-				colorValues.forEach(color => {
+				colorValues.forEach((color) => {
 					colors.add(color.value);
 					colorFormats[color.format]++;
 				});
@@ -315,10 +318,12 @@ export class CssParser extends BaseParser {
 		const fontSizes = new Set();
 		const fontWeights = new Set();
 
-		ast.walkDecls(decl => {
+		ast.walkDecls((decl) => {
 			switch (decl.prop) {
 				case 'font-family':
-					this.parseFontFamily(decl.value).forEach(font => fontFamilies.add(font));
+					this.parseFontFamily(decl.value).forEach((font) =>
+						fontFamilies.add(font)
+					);
 					break;
 				case 'font-size':
 					fontSizes.add(decl.value);
@@ -355,7 +360,7 @@ export class CssParser extends BaseParser {
 		let declarationCount = 0;
 		let selectorCount = 0;
 
-		ast.walkRules(rule => {
+		ast.walkRules((rule) => {
 			ruleCount++;
 			selectorCount += rule.selector.split(',').length;
 			rule.walkDecls(() => declarationCount++);
@@ -365,8 +370,12 @@ export class CssParser extends BaseParser {
 			rules: ruleCount,
 			declarations: declarationCount,
 			selectors: selectorCount,
-			averageDeclarationsPerRule: ruleCount > 0 ? Math.round(declarationCount / ruleCount * 100) / 100 : 0,
-			averageSelectorsPerRule: ruleCount > 0 ? Math.round(selectorCount / ruleCount * 100) / 100 : 0
+			averageDeclarationsPerRule:
+				ruleCount > 0
+					? Math.round((declarationCount / ruleCount) * 100) / 100
+					: 0,
+			averageSelectorsPerRule:
+				ruleCount > 0 ? Math.round((selectorCount / ruleCount) * 100) / 100 : 0
 		};
 	}
 
@@ -446,12 +455,15 @@ export class CssParser extends BaseParser {
 
 	calculateAverageSpecificity(selectors) {
 		if (selectors.length === 0) return 0;
-		const total = selectors.reduce((sum, sel) => sum + this.calculateSpecificity(sel), 0);
-		return Math.round(total / selectors.length * 100) / 100;
+		const total = selectors.reduce(
+			(sum, sel) => sum + this.calculateSpecificity(sel),
+			0
+		);
+		return Math.round((total / selectors.length) * 100) / 100;
 	}
 
 	hasNestedRules(rule) {
-		return rule.nodes?.some(node => node.type === 'rule') || false;
+		return rule.nodes?.some((node) => node.type === 'rule') || false;
 	}
 
 	categorizeSelector(selector, types) {
@@ -471,13 +483,25 @@ export class CssParser extends BaseParser {
 	}
 
 	getLayoutProperties(properties) {
-		const layoutProps = ['display', 'position', 'float', 'clear', 'flex', 'grid'];
-		return layoutProps.filter(prop => properties.has(prop));
+		const layoutProps = [
+			'display',
+			'position',
+			'float',
+			'clear',
+			'flex',
+			'grid'
+		];
+		return layoutProps.filter((prop) => properties.has(prop));
 	}
 
 	getColorProperties(properties) {
-		const colorProps = ['color', 'background-color', 'border-color', 'outline-color'];
-		return colorProps.filter(prop => properties.has(prop));
+		const colorProps = [
+			'color',
+			'background-color',
+			'border-color',
+			'outline-color'
+		];
+		return colorProps.filter((prop) => properties.has(prop));
 	}
 
 	parseBreakpoint(params) {
@@ -487,26 +511,35 @@ export class CssParser extends BaseParser {
 	}
 
 	findUnusedVariables(variables, usage) {
-		return Array.from(variables.keys()).filter(varName => !usage.has(varName));
+		return Array.from(variables.keys()).filter(
+			(varName) => !usage.has(varName)
+		);
 	}
 
 	isColorProperty(prop) {
-		return ['color', 'background-color', 'border-color', 'outline-color', 'fill', 'stroke'].includes(prop);
+		return [
+			'color',
+			'background-color',
+			'border-color',
+			'outline-color',
+			'fill',
+			'stroke'
+		].includes(prop);
 	}
 
 	extractColorValues(value) {
 		const colors = [];
 		// Hex colors
 		const hexMatches = value.match(/#[0-9a-fA-F]{3,8}/g) || [];
-		hexMatches.forEach(hex => colors.push({ value: hex, format: 'hex' }));
+		hexMatches.forEach((hex) => colors.push({ value: hex, format: 'hex' }));
 
 		// RGB colors
 		const rgbMatches = value.match(/rgba?\([^)]+\)/g) || [];
-		rgbMatches.forEach(rgb => colors.push({ value: rgb, format: 'rgb' }));
+		rgbMatches.forEach((rgb) => colors.push({ value: rgb, format: 'rgb' }));
 
 		// HSL colors
 		const hslMatches = value.match(/hsla?\([^)]+\)/g) || [];
-		hslMatches.forEach(hsl => colors.push({ value: hsl, format: 'hsl' }));
+		hslMatches.forEach((hsl) => colors.push({ value: hsl, format: 'hsl' }));
 
 		return colors;
 	}
@@ -519,7 +552,7 @@ export class CssParser extends BaseParser {
 	}
 
 	parseFontFamily(value) {
-		return value.split(',').map(font => font.trim().replace(/['"]/g, ''));
+		return value.split(',').map((font) => font.trim().replace(/['"]/g, ''));
 	}
 
 	parseShorthandFont(value) {
@@ -527,20 +560,43 @@ export class CssParser extends BaseParser {
 		const parts = value.split(' ');
 		return {
 			family: parts[parts.length - 1]?.replace(/['"]/g, ''),
-			size: parts.find(part => part.includes('px') || part.includes('em') || part.includes('rem')),
-			weight: parts.find(part => ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'].includes(part))
+			size: parts.find(
+				(part) =>
+					part.includes('px') || part.includes('em') || part.includes('rem')
+			),
+			weight: parts.find((part) =>
+				[
+					'normal',
+					'bold',
+					'100',
+					'200',
+					'300',
+					'400',
+					'500',
+					'600',
+					'700',
+					'800',
+					'900'
+				].includes(part)
+			)
 		};
 	}
 
 	analyzeTypeScale(sizes) {
 		const numericSizes = sizes
-			.filter(size => size.includes('px') || size.includes('rem') || size.includes('em'))
-			.map(size => parseFloat(size))
-			.filter(size => !Number.isNaN(size))
+			.filter(
+				(size) =>
+					size.includes('px') || size.includes('rem') || size.includes('em')
+			)
+			.map((size) => parseFloat(size))
+			.filter((size) => !Number.isNaN(size))
 			.sort((a, b) => a - b);
 
 		return {
-			range: numericSizes.length > 0 ? `${numericSizes[0]} - ${numericSizes[numericSizes.length - 1]}` : 'N/A',
+			range:
+				numericSizes.length > 0
+					? `${numericSizes[0]} - ${numericSizes[numericSizes.length - 1]}`
+					: 'N/A',
 			steps: numericSizes.length,
 			sizes: numericSizes
 		};
@@ -548,10 +604,13 @@ export class CssParser extends BaseParser {
 
 	calculateMaxNestingDepth(ast, currentDepth = 0) {
 		let maxDepth = currentDepth;
-		
-		ast.walkRules(rule => {
-			rule.walkRules(nestedRule => {
-				const depth = this.calculateMaxNestingDepth(nestedRule, currentDepth + 1);
+
+		ast.walkRules((rule) => {
+			rule.walkRules((nestedRule) => {
+				const depth = this.calculateMaxNestingDepth(
+					nestedRule,
+					currentDepth + 1
+				);
 				maxDepth = Math.max(maxDepth, depth);
 			});
 		});
@@ -563,7 +622,7 @@ export class CssParser extends BaseParser {
 		const selectors = new Map();
 		const duplicates = [];
 
-		ast.walkRules(rule => {
+		ast.walkRules((rule) => {
 			if (selectors.has(rule.selector)) {
 				duplicates.push(rule.selector);
 			} else {
@@ -576,7 +635,7 @@ export class CssParser extends BaseParser {
 
 	countImportantDeclarations(ast) {
 		let count = 0;
-		ast.walkDecls(decl => {
+		ast.walkDecls((decl) => {
 			if (decl.important) count++;
 		});
 		return count;
@@ -596,4 +655,4 @@ export class CssParser extends BaseParser {
 	getSupportedExtensions() {
 		return this.extensions;
 	}
-} 
+}

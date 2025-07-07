@@ -15,7 +15,9 @@ jest.unstable_mockModule('child_process', () => ({
 }));
 
 // Import the module to test after mocks
-const { CodeQualityAnalyzer } = await import('../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js');
+const { CodeQualityAnalyzer } = await import(
+	'../../../../scripts/modules/flow/hooks/quality/code-quality-analyzer.js'
+);
 
 describe('CodeQualityAnalyzer', () => {
 	let analyzer;
@@ -26,7 +28,7 @@ describe('CodeQualityAnalyzer', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		analyzer = new CodeQualityAnalyzer({
 			enableBiomeAnalysis: true,
 			enableComplexityAnalysis: true,
@@ -48,8 +50,10 @@ describe('CodeQualityAnalyzer', () => {
 		mockTask = {
 			id: '5.2',
 			title: 'Implement Todo List Component',
-			description: 'Create a React component for displaying and filtering todos',
-			details: 'Should include filtering, toggle functionality, and delete capability',
+			description:
+				'Create a React component for displaying and filtering todos',
+			details:
+				'Should include filtering, toggle functionality, and delete capability',
 			isSubtask: true
 		};
 	});
@@ -81,7 +85,12 @@ describe('CodeQualityAnalyzer', () => {
 				code: 0
 			});
 
-			const result = await analyzer.analyzeSession(mockSession, mockTask, mockWorktree, mockServices);
+			const result = await analyzer.analyzeSession(
+				mockSession,
+				mockTask,
+				mockWorktree,
+				mockServices
+			);
 
 			expect(result.hasChanges).toBe(false);
 			expect(result.message).toBe('No code changes detected');
@@ -89,7 +98,8 @@ describe('CodeQualityAnalyzer', () => {
 		});
 
 		test('should analyze session with changed files successfully', async () => {
-			const mockGitOutput = 'M\tsrc/components/TodoList.jsx\nA\tsrc/utils/helpers.js';
+			const mockGitOutput =
+				'M\tsrc/components/TodoList.jsx\nA\tsrc/utils/helpers.js';
 			const mockFileContent = `import React from 'react';
 export function TodoList() {
 	return <div>Todo List</div>;
@@ -114,7 +124,12 @@ export function TodoList() {
 				warningCount: 0
 			});
 
-			const result = await analyzer.analyzeSession(mockSession, mockTask, mockWorktree, mockServices);
+			const result = await analyzer.analyzeSession(
+				mockSession,
+				mockTask,
+				mockWorktree,
+				mockServices
+			);
 
 			expect(result.hasChanges).toBe(true);
 			expect(result.fileCount).toBe(2);
@@ -127,9 +142,16 @@ export function TodoList() {
 		});
 
 		test('should handle analysis errors gracefully', async () => {
-			jest.spyOn(analyzer, 'executeCommand').mockRejectedValue(new Error('Git command failed'));
+			jest
+				.spyOn(analyzer, 'executeCommand')
+				.mockRejectedValue(new Error('Git command failed'));
 
-			const result = await analyzer.analyzeSession(mockSession, mockTask, mockWorktree, mockServices);
+			const result = await analyzer.analyzeSession(
+				mockSession,
+				mockTask,
+				mockWorktree,
+				mockServices
+			);
 
 			expect(result.error).toBeDefined();
 			expect(result.analysisTime).toBeDefined();
@@ -139,7 +161,8 @@ export function TodoList() {
 
 	describe('getSessionChanges', () => {
 		test('should parse git diff output correctly', async () => {
-			const mockGitOutput = 'M\tsrc/components/TodoList.jsx\nA\tsrc/utils/helpers.js\nD\tpackage-lock.json';
+			const mockGitOutput =
+				'M\tsrc/components/TodoList.jsx\nA\tsrc/utils/helpers.js\nD\tpackage-lock.json';
 			const mockTodoContent = 'React component content';
 			const mockHelperContent = 'Helper functions';
 
@@ -153,7 +176,10 @@ export function TodoList() {
 				.mockResolvedValueOnce(mockTodoContent)
 				.mockResolvedValueOnce(mockHelperContent);
 
-			const changes = await analyzer.getSessionChanges(mockWorktree, mockServices);
+			const changes = await analyzer.getSessionChanges(
+				mockWorktree,
+				mockServices
+			);
 
 			expect(changes).toHaveLength(2); // Only .jsx and .js files, not .json
 			expect(changes[0]).toEqual({
@@ -166,15 +192,21 @@ export function TodoList() {
 		});
 
 		test('should handle git command failure', async () => {
-			jest.spyOn(analyzer, 'executeCommand').mockRejectedValue(new Error('Git failed'));
+			jest
+				.spyOn(analyzer, 'executeCommand')
+				.mockRejectedValue(new Error('Git failed'));
 
-			const changes = await analyzer.getSessionChanges(mockWorktree, mockServices);
+			const changes = await analyzer.getSessionChanges(
+				mockWorktree,
+				mockServices
+			);
 
 			expect(changes).toEqual([]);
 		});
 
 		test('should filter out non-analyzable files', async () => {
-			const mockGitOutput = 'M\tsrc/test.js\nA\tnode_modules/package.json\nM\t.git/config';
+			const mockGitOutput =
+				'M\tsrc/test.js\nA\tnode_modules/package.json\nM\t.git/config';
 
 			jest.spyOn(analyzer, 'executeCommand').mockResolvedValue({
 				stdout: mockGitOutput,
@@ -184,7 +216,10 @@ export function TodoList() {
 
 			fs.readFile.mockResolvedValue('test content');
 
-			const changes = await analyzer.getSessionChanges(mockWorktree, mockServices);
+			const changes = await analyzer.getSessionChanges(
+				mockWorktree,
+				mockServices
+			);
 
 			expect(changes).toHaveLength(1);
 			expect(changes[0].path).toBe('src/test.js');
@@ -304,7 +339,9 @@ function test() {
 
 			expect(complexity.cyclomaticComplexity).toBeGreaterThan(1);
 			expect(complexity.complexityLevel).toBeDefined();
-			expect(['low', 'medium', 'high', 'very-high']).toContain(complexity.complexityLevel);
+			expect(['low', 'medium', 'high', 'very-high']).toContain(
+				complexity.complexityLevel
+			);
 		});
 
 		test('should handle simple code with low complexity', () => {
@@ -401,9 +438,14 @@ export const helper = () => {};`;
 
 		test('should handle Biome command failure', async () => {
 			fs.access.mockResolvedValue();
-			jest.spyOn(analyzer, 'executeCommand').mockRejectedValue(new Error('Biome failed'));
+			jest
+				.spyOn(analyzer, 'executeCommand')
+				.mockRejectedValue(new Error('Biome failed'));
 
-			const result = await analyzer.runBiomeAnalysis([{ path: 'test.js' }], mockWorktree);
+			const result = await analyzer.runBiomeAnalysis(
+				[{ path: 'test.js' }],
+				mockWorktree
+			);
 
 			expect(result.available).toBe(false);
 			expect(result.error).toBe('Biome failed');
@@ -517,8 +559,10 @@ export const helper = () => {};`;
 			expect(analyzer.shouldAnalyzeFile('src/test.tsx')).toBe(true);
 			expect(analyzer.shouldAnalyzeFile('package.json')).toBe(true);
 			expect(analyzer.shouldAnalyzeFile('README.md')).toBe(true);
-			
-			expect(analyzer.shouldAnalyzeFile('node_modules/package.json')).toBe(false);
+
+			expect(analyzer.shouldAnalyzeFile('node_modules/package.json')).toBe(
+				false
+			);
 			expect(analyzer.shouldAnalyzeFile('.git/config')).toBe(false);
 			expect(analyzer.shouldAnalyzeFile('dist/bundle.js')).toBe(false);
 			expect(analyzer.shouldAnalyzeFile('test.txt')).toBe(false);
@@ -543,7 +587,7 @@ export const helper = () => {};`;
 
 		test('extractTaskKeywords should extract correctly', () => {
 			const keywords = analyzer.extractTaskKeywords(mockTask);
-			
+
 			expect(keywords).toBeInstanceOf(Array);
 			expect(keywords.length).toBeGreaterThan(0);
 			expect(keywords).toContain('implement');
@@ -572,14 +616,21 @@ export const helper = () => {};`;
 
 			// Simulate successful command execution
 			setTimeout(() => {
-				const stdoutCallback = mockChild.stdout.on.mock.calls.find(call => call[0] === 'data')[1];
-				const closeCallback = mockChild.on.mock.calls.find(call => call[0] === 'close')[1];
-				
+				const stdoutCallback = mockChild.stdout.on.mock.calls.find(
+					(call) => call[0] === 'data'
+				)[1];
+				const closeCallback = mockChild.on.mock.calls.find(
+					(call) => call[0] === 'close'
+				)[1];
+
 				stdoutCallback('test output');
 				closeCallback(0);
 			}, 10);
 
-			const result = await analyzer.executeCommand('test command', '/test/path');
+			const result = await analyzer.executeCommand(
+				'test command',
+				'/test/path'
+			);
 
 			expect(result.stdout).toBe('test output');
 			expect(result.code).toBe(0);
@@ -597,10 +648,12 @@ export const helper = () => {};`;
 
 			// Don't trigger any callbacks to simulate timeout
 
-			await expect(analyzer.executeCommand('slow command', '/test/path')).rejects.toThrow('Command timeout');
-			
+			await expect(
+				analyzer.executeCommand('slow command', '/test/path')
+			).rejects.toThrow('Command timeout');
+
 			// Should kill the process
 			expect(mockChild.kill).toHaveBeenCalled();
 		});
 	});
-}); 
+});

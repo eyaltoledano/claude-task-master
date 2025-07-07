@@ -1,6 +1,6 @@
 /**
  * ImplementationLogger Service
- * 
+ *
  * Centralized service for managing implementation journey tracking with structured logging patterns.
  * Follows the dev_workflow.mdc patterns for iterative subtask implementation.
  */
@@ -54,7 +54,7 @@ export class ImplementationLogger {
 		const prompt = `## Quick Progress Update
 
 **${timestamp}:** ${message}`;
-		
+
 		return await this.backend.updateSubtask(subtaskId, { prompt });
 	}
 
@@ -74,13 +74,13 @@ export class ImplementationLogger {
 		return `## Exploration Phase
 
 **Files to modify:**
-${filesToModify.map(f => `- ${f.path}: ${f.description}`).join('\n') || '- None specified'}
+${filesToModify.map((f) => `- ${f.path}: ${f.description}`).join('\n') || '- None specified'}
 
 **Proposed approach:**
 ${approach || 'Not specified'}
 
 **Potential challenges:**
-${challenges.map(c => `- ${c}`).join('\n') || '- None identified'}
+${challenges.map((c) => `- ${c}`).join('\n') || '- None identified'}
 
 **Implementation plan:**
 ${implementationSteps.map((step, i) => `${i + 1}. ${step}`).join('\n') || '1. No steps defined'}`;
@@ -103,31 +103,39 @@ ${implementationSteps.map((step, i) => `${i + 1}. ${step}`).join('\n') || '1. No
 		return `## Implementation Progress
 
 **What worked:**
-${whatWorked.map(item => `- ${item}`).join('\n') || '- Nothing to report yet'}
+${whatWorked.map((item) => `- ${item}`).join('\n') || '- Nothing to report yet'}
 
 **What didn't work:**
-${whatDidntWork.map(item => 
-			typeof item === 'string' 
-				? `- ${item}` 
-				: `- ${item.issue}: ${item.reason}`
-		).join('\n') || '- No issues encountered'}
+${
+	whatDidntWork
+		.map((item) =>
+			typeof item === 'string' ? `- ${item}` : `- ${item.issue}: ${item.reason}`
+		)
+		.join('\n') || '- No issues encountered'
+}
 
 **Code changes made:**
-${codeChanges.map(change => 
+${
+	codeChanges
+		.map((change) =>
 			typeof change === 'string'
 				? `- ${change}`
 				: `- ${change.file}: ${change.description}`
-		).join('\n') || '- No code changes yet'}
+		)
+		.join('\n') || '- No code changes yet'
+}
 
 **Decisions made:**
-${decisions.map(d => 
-			typeof d === 'string'
-				? `- ${d}`
-				: `- ${d.decision}: ${d.reasoning}`
-		).join('\n') || '- No decisions made yet'}
+${
+	decisions
+		.map((d) =>
+			typeof d === 'string' ? `- ${d}` : `- ${d.decision}: ${d.reasoning}`
+		)
+		.join('\n') || '- No decisions made yet'
+}
 
 **Next steps:**
-${nextSteps.map(step => `- ${step}`).join('\n') || '- Continue implementation'}`;
+${nextSteps.map((step) => `- ${step}`).join('\n') || '- Continue implementation'}`;
 	}
 
 	/**
@@ -150,10 +158,10 @@ ${nextSteps.map(step => `- ${step}`).join('\n') || '- Continue implementation'}`
 ${finalApproach || 'Not specified'}
 
 **Key learnings:**
-${keyLearnings.map(learning => `- ${learning}`).join('\n') || '- No specific learnings documented'}
+${keyLearnings.map((learning) => `- ${learning}`).join('\n') || '- No specific learnings documented'}
 
 **Code patterns established:**
-${codePatterns.map(pattern => `- ${pattern}`).join('\n') || '- No new patterns established'}
+${codePatterns.map((pattern) => `- ${pattern}`).join('\n') || '- No new patterns established'}
 
 **Testing completed:**
 ${testing || 'No testing information provided'}
@@ -179,21 +187,27 @@ ${documentation || 'No documentation updates specified'}`;
 		};
 
 		// Check for exploration phase
-		const explorationMatch = details.match(/## Exploration Phase([\s\S]*?)(?=##|$)/);
+		const explorationMatch = details.match(
+			/## Exploration Phase([\s\S]*?)(?=##|$)/
+		);
 		if (explorationMatch) {
 			journey.hasExploration = true;
 			journey.explorationContent = explorationMatch[1].trim();
 		}
 
 		// Check for implementation progress (multiple entries possible)
-		const progressMatches = details.matchAll(/## Implementation Progress([\s\S]*?)(?=##|$)/g);
+		const progressMatches = details.matchAll(
+			/## Implementation Progress([\s\S]*?)(?=##|$)/g
+		);
 		for (const match of progressMatches) {
 			journey.hasProgress = true;
 			journey.progressEntries.push(match[1].trim());
 		}
 
 		// Check for completion
-		const completionMatch = details.match(/## Implementation Complete([\s\S]*?)(?=##|$)/);
+		const completionMatch = details.match(
+			/## Implementation Complete([\s\S]*?)(?=##|$)/
+		);
 		if (completionMatch) {
 			journey.hasCompletion = true;
 			journey.completionContent = completionMatch[1].trim();
@@ -300,4 +314,4 @@ ${documentation || 'No documentation updates specified'}`;
 
 		return templates[phase] || templates.implementation;
 	}
-} 
+}

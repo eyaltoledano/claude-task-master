@@ -14,33 +14,57 @@ const mockAnalyzerDispatcher = {
 const mockJavaScriptAnalyzer = {
 	analyze: jest.fn(),
 	getLanguageId: jest.fn(() => 'javascript'),
-	getSupportedFeatures: jest.fn(() => ['jsx', 'async_await', 'destructuring', 'classes'])
+	getSupportedFeatures: jest.fn(() => [
+		'jsx',
+		'async_await',
+		'destructuring',
+		'classes'
+	])
 };
 
 const mockPythonAnalyzer = {
 	analyze: jest.fn(),
 	getLanguageId: jest.fn(() => 'python'),
-	getSupportedFeatures: jest.fn(() => ['decorators', 'generators', 'comprehensions', 'async_await'])
+	getSupportedFeatures: jest.fn(() => [
+		'decorators',
+		'generators',
+		'comprehensions',
+		'async_await'
+	])
 };
 
 const mockGoAnalyzer = {
 	analyze: jest.fn(),
 	getLanguageId: jest.fn(() => 'go'),
-	getSupportedFeatures: jest.fn(() => ['goroutines', 'channels', 'interfaces', 'defer'])
+	getSupportedFeatures: jest.fn(() => [
+		'goroutines',
+		'channels',
+		'interfaces',
+		'defer'
+	])
 };
 
 const mockGenericAnalyzer = {
 	analyze: jest.fn(),
 	getLanguageId: jest.fn(() => 'generic'),
-	getSupportedFeatures: jest.fn(() => ['basic_patterns', 'complexity', 'structure'])
+	getSupportedFeatures: jest.fn(() => [
+		'basic_patterns',
+		'complexity',
+		'structure'
+	])
 };
 
 describe('AST Analyzers - Comprehensive Tests', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
+
 		// Setup analyzer dispatcher mock
-		mockAnalyzerDispatcher.getSupportedLanguages.mockReturnValue(['javascript', 'python', 'go', 'generic']);
+		mockAnalyzerDispatcher.getSupportedLanguages.mockReturnValue([
+			'javascript',
+			'python',
+			'go',
+			'generic'
+		]);
 		mockAnalyzerDispatcher.getAnalyzer.mockImplementation((language) => {
 			switch (language) {
 				case 'javascript':
@@ -60,12 +84,14 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should dispatch to correct language analyzer', async () => {
 			const jsAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { name: 'test' }
-				}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { name: 'test' }
+					}
+				]
 			};
-			
+
 			mockAnalyzerDispatcher.analyzeCode.mockResolvedValue({
 				success: true,
 				language: 'javascript',
@@ -76,9 +102,14 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					features: ['es6_functions']
 				}
 			});
-			
-			const result = await mockAnalyzerDispatcher.analyzeCode(jsAST, 'test.js', 'content', 'javascript');
-			
+
+			const result = await mockAnalyzerDispatcher.analyzeCode(
+				jsAST,
+				'test.js',
+				'content',
+				'javascript'
+			);
+
 			expect(result.success).toBe(true);
 			expect(result.language).toBe('javascript');
 			expect(result.analyzer).toBe('JavaScriptAnalyzer');
@@ -86,7 +117,7 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 
 		test('should fallback to generic analyzer for unknown languages', async () => {
 			const unknownAST = { type: 'Program', body: [] };
-			
+
 			mockAnalyzerDispatcher.analyzeCode.mockResolvedValue({
 				success: true,
 				language: 'unknown',
@@ -96,9 +127,14 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					patterns: ['basic_structure']
 				}
 			});
-			
-			const result = await mockAnalyzerDispatcher.analyzeCode(unknownAST, 'test.unknown', 'content', 'unknown');
-			
+
+			const result = await mockAnalyzerDispatcher.analyzeCode(
+				unknownAST,
+				'test.unknown',
+				'content',
+				'unknown'
+			);
+
 			expect(result.success).toBe(true);
 			expect(result.analyzer).toBe('GenericAnalyzer');
 		});
@@ -109,15 +145,18 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 				getLanguageId: jest.fn(() => 'rust'),
 				getSupportedFeatures: jest.fn(() => ['ownership', 'borrowing'])
 			};
-			
+
 			mockAnalyzerDispatcher.registerAnalyzer.mockReturnValue({
 				success: true,
 				language: 'rust',
 				analyzer: customAnalyzer
 			});
-			
-			const result = mockAnalyzerDispatcher.registerAnalyzer('rust', customAnalyzer);
-			
+
+			const result = mockAnalyzerDispatcher.registerAnalyzer(
+				'rust',
+				customAnalyzer
+			);
+
 			expect(result.success).toBe(true);
 			expect(result.language).toBe('rust');
 		});
@@ -127,34 +166,43 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should analyze JavaScript code complexity', async () => {
 			const jsAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					id: { name: 'complexFunction' },
-					body: {
-						type: 'BlockStatement',
-						body: [
-							{
-								type: 'IfStatement',
-								test: { type: 'Identifier', name: 'condition' },
-								consequent: {
-									type: 'BlockStatement',
-									body: [{
-										type: 'ForStatement',
-										body: {
-											type: 'BlockStatement',
-											body: [{
-												type: 'IfStatement',
-												test: { type: 'Identifier', name: 'innerCondition' }
-											}]
-										}
-									}]
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						id: { name: 'complexFunction' },
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'IfStatement',
+									test: { type: 'Identifier', name: 'condition' },
+									consequent: {
+										type: 'BlockStatement',
+										body: [
+											{
+												type: 'ForStatement',
+												body: {
+													type: 'BlockStatement',
+													body: [
+														{
+															type: 'IfStatement',
+															test: {
+																type: 'Identifier',
+																name: 'innerCondition'
+															}
+														}
+													]
+												}
+											}
+										]
+									}
 								}
-							}
-						]
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 4,
@@ -186,9 +234,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					testability: 'low'
 				}
 			});
-			
-			const result = await mockJavaScriptAnalyzer.analyze(jsAST, 'test.js', 'content');
-			
+
+			const result = await mockJavaScriptAnalyzer.analyze(
+				jsAST,
+				'test.js',
+				'content'
+			);
+
 			expect(result.complexity.cyclomatic).toBe(4);
 			expect(result.complexity.cognitive).toBe(6);
 			expect(result.patterns.controlFlow).toContain('nested_conditions');
@@ -198,24 +250,28 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should detect React/JSX patterns', async () => {
 			const reactAST = {
 				type: 'Program',
-				body: [{
-					type: 'VariableDeclaration',
-					declarations: [{
-						type: 'VariableDeclarator',
-						id: { name: 'Component' },
-						init: {
-							type: 'ArrowFunctionExpression',
-							body: {
-								type: 'JSXElement',
-								openingElement: {
-									name: { name: 'div' }
+				body: [
+					{
+						type: 'VariableDeclaration',
+						declarations: [
+							{
+								type: 'VariableDeclarator',
+								id: { name: 'Component' },
+								init: {
+									type: 'ArrowFunctionExpression',
+									body: {
+										type: 'JSXElement',
+										openingElement: {
+											name: { name: 'div' }
+										}
+									}
 								}
 							}
-						}
-					}]
-				}]
+						]
+					}
+				]
 			};
-			
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 1,
@@ -232,17 +288,23 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					hooks: false,
 					es6: true
 				},
-				components: [{
-					name: 'Component',
-					type: 'functional',
-					props: [],
-					hooks: [],
-					complexity: 1
-				}]
+				components: [
+					{
+						name: 'Component',
+						type: 'functional',
+						props: [],
+						hooks: [],
+						complexity: 1
+					}
+				]
 			});
-			
-			const result = await mockJavaScriptAnalyzer.analyze(reactAST, 'Component.jsx', 'content');
-			
+
+			const result = await mockJavaScriptAnalyzer.analyze(
+				reactAST,
+				'Component.jsx',
+				'content'
+			);
+
 			expect(result.features.react).toBe(true);
 			expect(result.features.jsx).toBe(true);
 			expect(result.patterns.react).toContain('functional_component');
@@ -252,37 +314,45 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should analyze async/await patterns', async () => {
 			const asyncAST = {
 				type: 'Program',
-				body: [{
-					type: 'FunctionDeclaration',
-					async: true,
-					id: { name: 'fetchData' },
-					body: {
-						type: 'BlockStatement',
-						body: [{
-							type: 'TryStatement',
-							block: {
-								body: [{
-									type: 'VariableDeclaration',
-									declarations: [{
-										init: {
-											type: 'AwaitExpression',
-											argument: {
-												type: 'CallExpression',
-												callee: { name: 'fetch' }
+				body: [
+					{
+						type: 'FunctionDeclaration',
+						async: true,
+						id: { name: 'fetchData' },
+						body: {
+							type: 'BlockStatement',
+							body: [
+								{
+									type: 'TryStatement',
+									block: {
+										body: [
+											{
+												type: 'VariableDeclaration',
+												declarations: [
+													{
+														init: {
+															type: 'AwaitExpression',
+															argument: {
+																type: 'CallExpression',
+																callee: { name: 'fetch' }
+															}
+														}
+													}
+												]
 											}
-										}
-									}]
-								}]
-							},
-							handler: {
-								type: 'CatchClause',
-								param: { name: 'error' }
-							}
-						}]
+										]
+									},
+									handler: {
+										type: 'CatchClause',
+										param: { name: 'error' }
+									}
+								}
+							]
+						}
 					}
-				}]
+				]
 			};
-			
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 2, // try-catch adds complexity
@@ -305,9 +375,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					errorHandling: 'try_catch'
 				}
 			});
-			
-			const result = await mockJavaScriptAnalyzer.analyze(asyncAST, 'async.js', 'content');
-			
+
+			const result = await mockJavaScriptAnalyzer.analyze(
+				asyncAST,
+				'async.js',
+				'content'
+			);
+
 			expect(result.features.async).toBe(true);
 			expect(result.patterns.async).toContain('await_expression');
 			expect(result.asyncAnalysis.asyncFunctions).toContain('fetchData');
@@ -320,35 +394,39 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					{
 						type: 'VariableDeclaration',
 						kind: 'const',
-						declarations: [{
-							id: {
-								type: 'ObjectPattern',
-								properties: [
-									{ key: { name: 'name' } },
-									{ key: { name: 'age' } }
-								]
-							},
-							init: { type: 'Identifier', name: 'user' }
-						}]
+						declarations: [
+							{
+								id: {
+									type: 'ObjectPattern',
+									properties: [
+										{ key: { name: 'name' } },
+										{ key: { name: 'age' } }
+									]
+								},
+								init: { type: 'Identifier', name: 'user' }
+							}
+						]
 					},
 					{
 						type: 'VariableDeclaration',
 						kind: 'const',
-						declarations: [{
-							id: { name: 'greet' },
-							init: {
-								type: 'ArrowFunctionExpression',
-								params: [{ name: 'name' }],
-								body: {
-									type: 'TemplateLiteral',
-									expressions: [{ name: 'name' }]
+						declarations: [
+							{
+								id: { name: 'greet' },
+								init: {
+									type: 'ArrowFunctionExpression',
+									params: [{ name: 'name' }],
+									body: {
+										type: 'TemplateLiteral',
+										expressions: [{ name: 'name' }]
+									}
 								}
 							}
-						}]
+						]
 					}
 				]
 			};
-			
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 1,
@@ -379,9 +457,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					classes: 0
 				}
 			});
-			
-			const result = await mockJavaScriptAnalyzer.analyze(es6AST, 'modern.js', 'content');
-			
+
+			const result = await mockJavaScriptAnalyzer.analyze(
+				es6AST,
+				'modern.js',
+				'content'
+			);
+
 			expect(result.features.es6).toBe(true);
 			expect(result.patterns.es6).toContain('destructuring_assignment');
 			expect(result.es6Analysis.arrowFunctions).toBe(1);
@@ -392,33 +474,31 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should analyze Python class structure', async () => {
 			const pythonAST = {
 				type: 'Module',
-				body: [{
-					type: 'ClassDef',
-					name: 'User',
-					bases: [],
-					decorator_list: [],
-					body: [
-						{
-							type: 'FunctionDef',
-							name: '__init__',
-							args: {
-								args: [
-									{ arg: 'self' },
-									{ arg: 'name' },
-									{ arg: 'age' }
-								]
+				body: [
+					{
+						type: 'ClassDef',
+						name: 'User',
+						bases: [],
+						decorator_list: [],
+						body: [
+							{
+								type: 'FunctionDef',
+								name: '__init__',
+								args: {
+									args: [{ arg: 'self' }, { arg: 'name' }, { arg: 'age' }]
+								},
+								decorator_list: []
 							},
-							decorator_list: []
-						},
-						{
-							type: 'FunctionDef',
-							name: 'greet',
-							decorator_list: [{ id: 'property' }]
-						}
-					]
-				}]
+							{
+								type: 'FunctionDef',
+								name: 'greet',
+								decorator_list: [{ id: 'property' }]
+							}
+						]
+					}
+				]
 			};
-			
+
 			mockPythonAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 2,
@@ -444,19 +524,25 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					inheritance: false
 				},
 				classAnalysis: {
-					classes: [{
-						name: 'User',
-						methods: ['__init__', 'greet'],
-						properties: ['greet'],
-						inheritance: [],
-						decorators: 1,
-						complexity: 2
-					}]
+					classes: [
+						{
+							name: 'User',
+							methods: ['__init__', 'greet'],
+							properties: ['greet'],
+							inheritance: [],
+							decorators: 1,
+							complexity: 2
+						}
+					]
 				}
 			});
-			
-			const result = await mockPythonAnalyzer.analyze(pythonAST, 'user.py', 'content');
-			
+
+			const result = await mockPythonAnalyzer.analyze(
+				pythonAST,
+				'user.py',
+				'content'
+			);
+
 			expect(result.features.classes).toBe(true);
 			expect(result.patterns.oop).toContain('class_definition');
 			expect(result.classAnalysis.classes[0].name).toBe('User');
@@ -477,15 +563,17 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 								op: { type: 'Pow' },
 								right: { value: 2 }
 							},
-							generators: [{
-								target: { id: 'x' },
-								iter: {
-									type: 'Call',
-									func: { id: 'range' },
-									args: [{ value: 10 }]
-								},
-								ifs: []
-							}]
+							generators: [
+								{
+									target: { id: 'x' },
+									iter: {
+										type: 'Call',
+										func: { id: 'range' },
+										args: [{ value: 10 }]
+									},
+									ifs: []
+								}
+							]
 						}
 					},
 					{
@@ -493,19 +581,23 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 						targets: [{ id: 'filtered' }],
 						value: {
 							type: 'ListComp',
-							generators: [{
-								ifs: [{
-									type: 'Compare',
-									left: { id: 'x' },
-									ops: [{ type: 'Mod' }],
-									comparators: [{ value: 2 }]
-								}]
-							}]
+							generators: [
+								{
+									ifs: [
+										{
+											type: 'Compare',
+											left: { id: 'x' },
+											ops: [{ type: 'Mod' }],
+											comparators: [{ value: 2 }]
+										}
+									]
+								}
+							]
 						}
 					}
 				]
 			};
-			
+
 			mockPythonAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 3, // Comprehensions with conditions add complexity
@@ -530,9 +622,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					conditionalComprehensions: 1
 				}
 			});
-			
-			const result = await mockPythonAnalyzer.analyze(comprehensionAST, 'comprehensions.py', 'content');
-			
+
+			const result = await mockPythonAnalyzer.analyze(
+				comprehensionAST,
+				'comprehensions.py',
+				'content'
+			);
+
 			expect(result.features.comprehensions).toBe(true);
 			expect(result.patterns.comprehensions).toContain('list_comprehension');
 			expect(result.comprehensionAnalysis.listComprehensions).toBe(2);
@@ -541,60 +637,76 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 		test('should analyze async/await in Python', async () => {
 			const asyncPythonAST = {
 				type: 'Module',
-				body: [{
-					type: 'AsyncFunctionDef',
-					name: 'fetch_data',
-					args: { args: [{ arg: 'url' }] },
-					body: [{
-						type: 'AsyncWith',
-						items: [{
-							context_expr: {
-								type: 'Call',
-								func: {
-									type: 'Attribute',
-									value: { id: 'aiohttp' },
-									attr: 'ClientSession'
-								}
-							},
-							optional_vars: { id: 'session' }
-						}],
-						body: [{
-							type: 'AsyncWith',
-							items: [{
-								context_expr: {
-									type: 'Call',
-									func: {
-										type: 'Attribute',
-										value: { id: 'session' },
-										attr: 'get'
+				body: [
+					{
+						type: 'AsyncFunctionDef',
+						name: 'fetch_data',
+						args: { args: [{ arg: 'url' }] },
+						body: [
+							{
+								type: 'AsyncWith',
+								items: [
+									{
+										context_expr: {
+											type: 'Call',
+											func: {
+												type: 'Attribute',
+												value: { id: 'aiohttp' },
+												attr: 'ClientSession'
+											}
+										},
+										optional_vars: { id: 'session' }
 									}
-								}
-							}],
-							body: [{
-								type: 'Return',
-								value: {
-									type: 'Await',
-									value: {
-										type: 'Call',
-										func: {
-											type: 'Attribute',
-											attr: 'json'
-										}
+								],
+								body: [
+									{
+										type: 'AsyncWith',
+										items: [
+											{
+												context_expr: {
+													type: 'Call',
+													func: {
+														type: 'Attribute',
+														value: { id: 'session' },
+														attr: 'get'
+													}
+												}
+											}
+										],
+										body: [
+											{
+												type: 'Return',
+												value: {
+													type: 'Await',
+													value: {
+														type: 'Call',
+														func: {
+															type: 'Attribute',
+															attr: 'json'
+														}
+													}
+												}
+											}
+										]
 									}
-								}
-							}]
-						}]
-					}]
-				}]
+								]
+							}
+						]
+					}
+				]
 			};
-			
+
 			mockPythonAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 1,
 					cognitive: 3 // Nested async context managers
 				},
 				patterns: {
-					async: ['async_function', 'await_expression', 'async_context_manager'],
+					async: [
+						'async_function',
+						'await_expression',
+						'async_context_manager'
+					],
 					contextManagers: ['async_with', 'nested_context_managers'],
 					pythonic: ['context_manager_usage']
 				},
@@ -610,9 +722,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					asyncGenerators: 0
 				}
 			});
-			
-			const result = await mockPythonAnalyzer.analyze(asyncPythonAST, 'async_client.py', 'content');
-			
+
+			const result = await mockPythonAnalyzer.analyze(
+				asyncPythonAST,
+				'async_client.py',
+				'content'
+			);
+
 			expect(result.features.asyncio).toBe(true);
 			expect(result.patterns.async).toContain('async_context_manager');
 			expect(result.asyncAnalysis.asyncContextManagers).toBe(2);
@@ -630,22 +746,26 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 						name: { name: 'worker' },
 						type: {
 							params: {
-								list: [{
-									names: [{ name: 'jobs' }],
-									type: {
-										type: 'ChanType',
-										dir: 'recv',
-										value: { name: 'int' }
+								list: [
+									{
+										names: [{ name: 'jobs' }],
+										type: {
+											type: 'ChanType',
+											dir: 'recv',
+											value: { name: 'int' }
+										}
 									}
-								}]
+								]
 							}
 						},
 						body: {
-							list: [{
-								type: 'RangeStmt',
-								key: { name: 'job' },
-								x: { name: 'jobs' }
-							}]
+							list: [
+								{
+									type: 'RangeStmt',
+									key: { name: 'job' },
+									x: { name: 'jobs' }
+								}
+							]
 						}
 					},
 					{
@@ -656,14 +776,18 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 								{
 									type: 'AssignStmt',
 									lhs: [{ name: 'jobs' }],
-									rhs: [{
-										type: 'CallExpr',
-										fun: { name: 'make' },
-										args: [{
-											type: 'ChanType',
-											value: { name: 'int' }
-										}]
-									}]
+									rhs: [
+										{
+											type: 'CallExpr',
+											fun: { name: 'make' },
+											args: [
+												{
+													type: 'ChanType',
+													value: { name: 'int' }
+												}
+											]
+										}
+									]
 								},
 								{
 									type: 'GoStmt',
@@ -677,7 +801,7 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockGoAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 2,
@@ -686,7 +810,11 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					channels: 1
 				},
 				patterns: {
-					concurrency: ['goroutine', 'channel_communication', 'range_over_channel'],
+					concurrency: [
+						'goroutine',
+						'channel_communication',
+						'range_over_channel'
+					],
 					channels: ['channel_creation', 'channel_receive'],
 					go: ['go_statement', 'make_builtin']
 				},
@@ -708,9 +836,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					waitGroups: 0
 				}
 			});
-			
-			const result = await mockGoAnalyzer.analyze(goAST, 'worker.go', 'content');
-			
+
+			const result = await mockGoAnalyzer.analyze(
+				goAST,
+				'worker.go',
+				'content'
+			);
+
 			expect(result.features.goroutines).toBe(true);
 			expect(result.patterns.concurrency).toContain('goroutine');
 			expect(result.concurrencyAnalysis.channels.directional).toBe(1);
@@ -724,40 +856,48 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					{
 						type: 'GenDecl',
 						tok: 'type',
-						specs: [{
-							type: 'TypeSpec',
-							name: { name: 'Reader' },
-							type: {
-								type: 'InterfaceType',
-								methods: {
-									list: [{
-										names: [{ name: 'Read' }],
-										type: { type: 'FuncType' }
-									}]
+						specs: [
+							{
+								type: 'TypeSpec',
+								name: { name: 'Reader' },
+								type: {
+									type: 'InterfaceType',
+									methods: {
+										list: [
+											{
+												names: [{ name: 'Read' }],
+												type: { type: 'FuncType' }
+											}
+										]
+									}
 								}
 							}
-						}]
+						]
 					},
 					{
 						type: 'FuncDecl',
 						name: { name: 'process' },
 						body: {
-							list: [{
-								type: 'TypeSwitchStmt',
-								assign: {
-									lhs: [{ name: 'v' }],
-									rhs: [{
-										type: 'TypeAssertExpr',
-										x: { name: 'r' },
-										type: null
-									}]
+							list: [
+								{
+									type: 'TypeSwitchStmt',
+									assign: {
+										lhs: [{ name: 'v' }],
+										rhs: [
+											{
+												type: 'TypeAssertExpr',
+												x: { name: 'r' },
+												type: null
+											}
+										]
+									}
 								}
-							}]
+							]
 						}
 					}
 				]
 			};
-			
+
 			mockGoAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 2, // Type switch adds complexity
@@ -774,19 +914,25 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					typeSwitch: true
 				},
 				typeAnalysis: {
-					interfaces: [{
-						name: 'Reader',
-						methods: ['Read'],
-						embedded: []
-					}],
+					interfaces: [
+						{
+							name: 'Reader',
+							methods: ['Read'],
+							embedded: []
+						}
+					],
 					typeAssertions: 1,
 					typeSwitches: 1,
 					customTypes: 1
 				}
 			});
-			
-			const result = await mockGoAnalyzer.analyze(interfaceAST, 'interfaces.go', 'content');
-			
+
+			const result = await mockGoAnalyzer.analyze(
+				interfaceAST,
+				'interfaces.go',
+				'content'
+			);
+
 			expect(result.features.interfaces).toBe(true);
 			expect(result.patterns.interfaces).toContain('interface_definition');
 			expect(result.typeAnalysis.interfaces[0].name).toBe('Reader');
@@ -796,55 +942,61 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 			const errorHandlingAST = {
 				type: 'File',
 				package: { name: 'main' },
-				decls: [{
-					type: 'FuncDecl',
-					name: { name: 'readFile' },
-					type: {
-						results: {
+				decls: [
+					{
+						type: 'FuncDecl',
+						name: { name: 'readFile' },
+						type: {
+							results: {
+								list: [
+									{ type: { name: 'string' } },
+									{ type: { name: 'error' } }
+								]
+							}
+						},
+						body: {
 							list: [
-								{ type: { name: 'string' } },
-								{ type: { name: 'error' } }
+								{
+									type: 'AssignStmt',
+									lhs: [{ name: 'data' }, { name: 'err' }],
+									tok: ':=',
+									rhs: [
+										{
+											type: 'CallExpr',
+											fun: {
+												type: 'SelectorExpr',
+												x: { name: 'ioutil' },
+												sel: { name: 'ReadFile' }
+											}
+										}
+									]
+								},
+								{
+									type: 'IfStmt',
+									cond: {
+										type: 'BinaryExpr',
+										op: '!=',
+										x: { name: 'err' },
+										y: { name: 'nil' }
+									},
+									body: {
+										list: [
+											{
+												type: 'ReturnStmt',
+												results: [
+													{ type: 'BasicLit', value: '""' },
+													{ name: 'err' }
+												]
+											}
+										]
+									}
+								}
 							]
 						}
-					},
-					body: {
-						list: [
-							{
-								type: 'AssignStmt',
-								lhs: [{ name: 'data' }, { name: 'err' }],
-								tok: ':=',
-								rhs: [{
-									type: 'CallExpr',
-									fun: {
-										type: 'SelectorExpr',
-										x: { name: 'ioutil' },
-										sel: { name: 'ReadFile' }
-									}
-								}]
-							},
-							{
-								type: 'IfStmt',
-								cond: {
-									type: 'BinaryExpr',
-									op: '!=',
-									x: { name: 'err' },
-									y: { name: 'nil' }
-								},
-								body: {
-									list: [{
-										type: 'ReturnStmt',
-										results: [
-											{ type: 'BasicLit', value: '""' },
-											{ name: 'err' }
-										]
-									}]
-								}
-							}
-						]
 					}
-				}]
+				]
 			};
-			
+
 			mockGoAnalyzer.analyze.mockResolvedValue({
 				complexity: {
 					cyclomatic: 2,
@@ -868,9 +1020,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					recoverUsage: 0
 				}
 			});
-			
-			const result = await mockGoAnalyzer.analyze(errorHandlingAST, 'file_reader.go', 'content');
-			
+
+			const result = await mockGoAnalyzer.analyze(
+				errorHandlingAST,
+				'file_reader.go',
+				'content'
+			);
+
 			expect(result.features.errorHandling).toBe(true);
 			expect(result.patterns.idioms).toContain('go_error_idiom');
 			expect(result.errorAnalysis.nilChecks).toBe(1);
@@ -896,7 +1052,7 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockGenericAnalyzer.analyze.mockResolvedValue({
 				structure: {
 					nodeCount: 6,
@@ -920,9 +1076,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					expressionsCount: 2
 				}
 			});
-			
-			const result = await mockGenericAnalyzer.analyze(unknownAST, 'test.unknown', 'content');
-			
+
+			const result = await mockGenericAnalyzer.analyze(
+				unknownAST,
+				'test.unknown',
+				'content'
+			);
+
 			expect(result.structure.nodeCount).toBe(6);
 			expect(result.complexity.cyclomatic).toBe(3);
 			expect(result.patterns.controlFlow).toContain('conditional');
@@ -947,7 +1107,7 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					}
 				]
 			};
-			
+
 			mockGenericAnalyzer.analyze.mockResolvedValue({
 				structure: {
 					nodeCount: 4,
@@ -959,16 +1119,22 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					oop: ['class_declaration', 'static_method'],
 					structure: ['method_definition']
 				},
-				designPatterns: [{
-					name: 'Singleton',
-					type: 'creational',
-					confidence: 0.8,
-					indicators: ['static_getInstance_method', 'single_class']
-				}]
+				designPatterns: [
+					{
+						name: 'Singleton',
+						type: 'creational',
+						confidence: 0.8,
+						indicators: ['static_getInstance_method', 'single_class']
+					}
+				]
 			});
-			
-			const result = await mockGenericAnalyzer.analyze(patternAST, 'singleton.js', 'content');
-			
+
+			const result = await mockGenericAnalyzer.analyze(
+				patternAST,
+				'singleton.js',
+				'content'
+			);
+
 			expect(result.patterns.designPatterns).toContain('singleton_pattern');
 			expect(result.designPatterns[0].type).toBe('creational');
 			expect(result.designPatterns[0].confidence).toBe(0.8);
@@ -982,68 +1148,72 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 				patterns: { async: ['promise'] },
 				features: { es6: true }
 			};
-			
+
 			const pyResult = {
 				complexity: { cyclomatic: 2 },
 				patterns: { async: ['asyncio'] },
 				features: { asyncio: true }
 			};
-			
+
 			const goResult = {
 				complexity: { cyclomatic: 2 },
 				patterns: { concurrency: ['goroutine'] },
 				features: { goroutines: true }
 			};
-			
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue(jsResult);
 			mockPythonAnalyzer.analyze.mockResolvedValue(pyResult);
 			mockGoAnalyzer.analyze.mockResolvedValue(goResult);
-			
+
 			const results = [
 				await mockJavaScriptAnalyzer.analyze({}, 'app.js', ''),
 				await mockPythonAnalyzer.analyze({}, 'app.py', ''),
 				await mockGoAnalyzer.analyze({}, 'app.go', '')
 			];
-			
+
 			// Verify each language has unique patterns
 			expect(results[0].patterns.async).toContain('promise');
 			expect(results[1].patterns.async).toContain('asyncio');
 			expect(results[2].patterns.concurrency).toContain('goroutine');
-			
+
 			// Verify complexity comparison
-			const complexities = results.map(r => r.complexity.cyclomatic);
+			const complexities = results.map((r) => r.complexity.cyclomatic);
 			expect(Math.max(...complexities)).toBe(3);
 			expect(Math.min(...complexities)).toBe(2);
 		});
 
 		test('should identify common patterns across languages', async () => {
-			const commonPatterns = ['function_declaration', 'conditional_logic', 'variable_assignment'];
-			
+			const commonPatterns = [
+				'function_declaration',
+				'conditional_logic',
+				'variable_assignment'
+			];
+
 			mockJavaScriptAnalyzer.analyze.mockResolvedValue({
 				patterns: { common: commonPatterns, specific: ['arrow_function'] }
 			});
-			
+
 			mockPythonAnalyzer.analyze.mockResolvedValue({
 				patterns: { common: commonPatterns, specific: ['list_comprehension'] }
 			});
-			
+
 			mockGoAnalyzer.analyze.mockResolvedValue({
 				patterns: { common: commonPatterns, specific: ['goroutine'] }
 			});
-			
+
 			const results = [
 				await mockJavaScriptAnalyzer.analyze({}, 'test.js', ''),
 				await mockPythonAnalyzer.analyze({}, 'test.py', ''),
 				await mockGoAnalyzer.analyze({}, 'test.go', '')
 			];
-			
+
 			// Verify common patterns exist in all languages
-			results.forEach(result => {
-				commonPatterns.forEach(pattern => {
+			results.forEach((result) => {
+				commonPatterns.forEach((pattern) => {
 					expect(result.patterns.common).toContain(pattern);
 				});
 			});
-			
+
 			// Verify language-specific patterns are unique
 			expect(results[0].patterns.specific).toContain('arrow_function');
 			expect(results[1].patterns.specific).toContain('list_comprehension');
@@ -1054,11 +1224,17 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 	describe('Performance and Error Handling', () => {
 		test('should handle analysis errors gracefully', async () => {
 			const malformedAST = { type: 'Invalid' };
-			
-			mockJavaScriptAnalyzer.analyze.mockRejectedValue(new Error('Invalid AST structure'));
-			
+
+			mockJavaScriptAnalyzer.analyze.mockRejectedValue(
+				new Error('Invalid AST structure')
+			);
+
 			try {
-				await mockJavaScriptAnalyzer.analyze(malformedAST, 'broken.js', 'content');
+				await mockJavaScriptAnalyzer.analyze(
+					malformedAST,
+					'broken.js',
+					'content'
+				);
 			} catch (error) {
 				expect(error.message).toBe('Invalid AST structure');
 			}
@@ -1072,13 +1248,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					expression: { type: 'Literal', value: 1 }
 				})
 			};
-			
+
 			mockGenericAnalyzer.analyze.mockImplementation(async () => {
 				const startTime = performance.now();
 				// Simulate processing time
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 				const endTime = performance.now();
-				
+
 				return {
 					structure: { nodeCount: 1001 },
 					complexity: { cyclomatic: 1 },
@@ -1088,21 +1264,27 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					}
 				};
 			});
-			
-			const result = await mockGenericAnalyzer.analyze(largeAST, 'large.js', 'content');
-			
+
+			const result = await mockGenericAnalyzer.analyze(
+				largeAST,
+				'large.js',
+				'content'
+			);
+
 			expect(result.structure.nodeCount).toBe(1001);
 			expect(result.performance.analysisTime).toBeGreaterThan(0);
 			expect(result.performance.memoryUsage).toBeGreaterThan(0);
 		});
 
 		test('should handle concurrent analysis requests', async () => {
-			const requests = Array(5).fill(null).map((_, i) => ({
-				ast: { type: 'Program', body: [] },
-				file: `test${i}.js`,
-				content: `const x${i} = 1;`
-			}));
-			
+			const requests = Array(5)
+				.fill(null)
+				.map((_, i) => ({
+					ast: { type: 'Program', body: [] },
+					file: `test${i}.js`,
+					content: `const x${i} = 1;`
+				}));
+
 			requests.forEach((req, index) => {
 				mockJavaScriptAnalyzer.analyze.mockResolvedValueOnce({
 					complexity: { cyclomatic: 1 },
@@ -1110,13 +1292,13 @@ describe('AST Analyzers - Comprehensive Tests', () => {
 					requestId: index
 				});
 			});
-			
-			const promises = requests.map(req => 
+
+			const promises = requests.map((req) =>
 				mockJavaScriptAnalyzer.analyze(req.ast, req.file, req.content)
 			);
-			
+
 			const results = await Promise.all(promises);
-			
+
 			expect(results).toHaveLength(5);
 			results.forEach((result, index) => {
 				expect(result.requestId).toBe(index);

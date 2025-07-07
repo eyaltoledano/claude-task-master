@@ -257,7 +257,7 @@ export class ASTContextBuilder {
 						maxAge: this.config.cacheMaxAge,
 						language,
 						filePath: file.path,
-						projectRoot: worktreePath  // Pass the correct project root
+						projectRoot: worktreePath // Pass the correct project root
 					}
 				);
 

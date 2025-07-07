@@ -2,22 +2,22 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { useComponentTheme } from '../hooks/useTheme.js';
 
-export function WorkflowStatusIndicator({ 
-	task, 
-	worktree, 
-	gitStatus, 
+export function WorkflowStatusIndicator({
+	task,
+	worktree,
+	gitStatus,
 	repoInfo,
 	currentStep,
-	compact = false 
+	compact = false
 }) {
 	const theme = useComponentTheme('status');
 
 	const getWorkflowStep = () => {
 		if (currentStep) return currentStep;
-		
+
 		// Determine workflow step based on task status and git status
 		if (!task) return 'no-task';
-		
+
 		if (task.status === 'pending') return 'ready-to-start';
 		if (task.status === 'in-progress') {
 			if (gitStatus?.uncommitted > 0) return 'uncommitted-changes';
@@ -25,7 +25,7 @@ export function WorkflowStatusIndicator({
 			return 'in-development';
 		}
 		if (task.status === 'done') return 'completed';
-		
+
 		return 'unknown';
 	};
 
@@ -73,13 +73,13 @@ export function WorkflowStatusIndicator({
 				color: theme.accent,
 				description: 'Ready for local merge'
 			},
-			'completed': {
+			completed: {
 				icon: '🎉',
 				label: 'Completed',
 				color: theme.success,
 				description: 'Task implementation complete'
 			},
-			'unknown': {
+			unknown: {
 				icon: '❓',
 				label: 'Unknown',
 				color: theme.muted,
@@ -98,9 +98,9 @@ export function WorkflowStatusIndicator({
 			'ready-to-commit': 'Create workflow',
 			'ready-for-pr': 'Create pull request',
 			'ready-for-merge': 'Merge locally',
-			'completed': 'Task complete',
+			completed: 'Task complete',
 			'no-task': 'Link a task',
-			'unknown': 'Check status'
+			unknown: 'Check status'
 		};
 
 		return actionConfig[step] || 'Check status';
@@ -127,9 +127,7 @@ export function WorkflowStatusIndicator({
 	if (compact) {
 		return (
 			<Box flexDirection="row" alignItems="center">
-				<Text color={stepInfo.color}>
-					{stepInfo.icon}
-				</Text>
+				<Text color={stepInfo.color}>{stepInfo.icon}</Text>
 				<Text color={theme.text} marginLeft={1}>
 					{stepInfo.label}
 				</Text>
@@ -143,7 +141,12 @@ export function WorkflowStatusIndicator({
 	}
 
 	return (
-		<Box flexDirection="column" borderStyle="round" borderColor={stepInfo.color} padding={1}>
+		<Box
+			flexDirection="column"
+			borderStyle="round"
+			borderColor={stepInfo.color}
+			padding={1}
+		>
 			{/* Header */}
 			<Box flexDirection="row" alignItems="center" marginBottom={1}>
 				<Text color={stepInfo.color} bold>
@@ -249,7 +252,7 @@ export function GitStatusIndicator({ gitStatus, compact = true }) {
 					{statusIcon} Git Status
 				</Text>
 			</Box>
-			
+
 			<Box flexDirection="column">
 				{gitStatus.modified > 0 && (
 					<Text color={theme.text}>Modified: {gitStatus.modified}</Text>
@@ -264,7 +267,9 @@ export function GitStatusIndicator({ gitStatus, compact = true }) {
 					<Text color={theme.text}>Untracked: {gitStatus.untracked}</Text>
 				)}
 				{gitStatus.uncommitted > 0 && (
-					<Text color={theme.warning}>Uncommitted: {gitStatus.uncommitted}</Text>
+					<Text color={theme.warning}>
+						Uncommitted: {gitStatus.uncommitted}
+					</Text>
 				)}
 				{gitStatus.total === 0 && (
 					<Text color={theme.success}>Working directory clean</Text>
@@ -272,4 +277,4 @@ export function GitStatusIndicator({ gitStatus, compact = true }) {
 			</Box>
 		</Box>
 	);
-} 
+}
