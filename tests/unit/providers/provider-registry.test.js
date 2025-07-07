@@ -100,7 +100,7 @@ describe('ProviderRegistry', () => {
 			expect(registry._initialized).toBe(true);
 			expect(result).toBe(registry);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				'Initializing Provider Registry'
 			);
 		});
