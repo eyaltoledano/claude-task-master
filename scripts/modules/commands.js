@@ -79,7 +79,7 @@ import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	TASKMASTER_TASKS_FILE,
-	TASKMASTER_DOCS_DIR,
+	TASKMASTER_DOCS_DIR
 } from '../../src/constants/paths.js';
 
 import { initTaskMaster } from '../../src/task-master.js';
@@ -839,7 +839,7 @@ function registerCommands(programInstance) {
 				console.error(chalk.red(`\nError: ${error.message}`));
 				process.exit(1);
 			}
-			
+
 			const numTasks = parseInt(options.numTasks, 10);
 			const force = options.force || false;
 			const append = options.append || false;
@@ -848,7 +848,8 @@ function registerCommands(programInstance) {
 			const useAppend = append;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -911,13 +912,18 @@ function registerCommands(programInstance) {
 				}
 
 				spinner = ora('Parsing PRD and generating tasks...\n').start();
-				await parsePRD(taskMaster.getPrdPath(), taskMaster.getTasksPath(), numTasks, {
-					append: useAppend,
-					force: useForce,
-					research: research,
-					projectRoot: taskMaster.getProjectRoot(),
-					tag: tag
-				});
+				await parsePRD(
+					taskMaster.getPrdPath(),
+					taskMaster.getTasksPath(),
+					numTasks,
+					{
+						append: useAppend,
+						force: useForce,
+						research: research,
+						projectRoot: taskMaster.getProjectRoot(),
+						tag: tag
+					}
+				);
 				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
 				if (spinner) {
@@ -959,13 +965,14 @@ function registerCommands(programInstance) {
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1052,14 +1059,14 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
-
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
 
 				// Resolve tag using standard pattern
-				const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+				const tag =
+					options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1223,14 +1230,14 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
-
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
 
 				// Resolve tag using standard pattern
-				const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+				const tag =
+					options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1392,14 +1399,19 @@ function registerCommands(programInstance) {
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const outputDir = options.output;
 			const tag = options.tag;
 
-			console.log(chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`));
+			console.log(
+				chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`)
+			);
 			console.log(chalk.blue(`Output directory: ${outputDir}`));
 
-			await generateTaskFiles(taskMaster.getTasksPath(), outputDir, { projectRoot: taskMaster.getProjectRoot(), tag });
+			await generateTaskFiles(taskMaster.getTasksPath(), outputDir, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// set-status command
@@ -1427,7 +1439,7 @@ function registerCommands(programInstance) {
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const taskId = options.id;
 			const status = options.status;
 			const tag = options.tag;
@@ -1448,14 +1460,18 @@ function registerCommands(programInstance) {
 			}
 
 			// Resolve tag using standard pattern and show current tag context
-			const resolvedTag = tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const resolvedTag =
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 			displayCurrentTagIndicator(resolvedTag);
 
 			console.log(
 				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
 			);
 
-			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, { projectRoot: taskMaster.getProjectRoot(), tag });
+			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// list command
@@ -1481,15 +1497,18 @@ function registerCommands(programInstance) {
 				tasksPath: options.file || true,
 				complexityReportPath: options.report || false
 			});
-			
+
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
-			console.log(chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`));
+			console.log(
+				chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
+			);
 			if (statusFilter) {
 				console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
 			}
@@ -1542,7 +1561,9 @@ function registerCommands(programInstance) {
 			const tag = options.tag;
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master');
+			displayCurrentTagIndicator(
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
+			);
 
 			if (options.all) {
 				// --- Handle expand --all ---
@@ -1642,14 +1663,15 @@ function registerCommands(programInstance) {
 				tasksPath: options.file || true,
 				complexityReportPath: options.output || true
 			});
-			
+
 			const tag = options.tag;
 			const modelOverride = options.model;
 			const thresholdScore = parseFloat(options.threshold);
 			const useResearch = options.research || false;
 
 			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag = tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const targetTag =
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(targetTag);
@@ -1661,7 +1683,11 @@ function registerCommands(programInstance) {
 					? baseOutputPath.replace('.json', `_${targetTag}.json`)
 					: baseOutputPath;
 
-			console.log(chalk.blue(`Analyzing task complexity from: ${taskMaster.getTasksPath()}`));
+			console.log(
+				chalk.blue(
+					`Analyzing task complexity from: ${taskMaster.getTasksPath()}`
+				)
+			);
 			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
 
 			if (options.id) {
@@ -1833,7 +1859,8 @@ function registerCommands(programInstance) {
 				}
 			}
 
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1841,7 +1868,11 @@ function registerCommands(programInstance) {
 			// Validate tasks file exists if task IDs are specified
 			if (taskIds.length > 0) {
 				try {
-					const tasksData = readJSON(taskMaster.getTasksPath(), taskMaster.getProjectRoot(), tag);
+					const tasksData = readJSON(
+						taskMaster.getTasksPath(),
+						taskMaster.getProjectRoot(),
+						tag
+					);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(
@@ -2071,7 +2102,9 @@ ${result.result}
 			});
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master');
+			displayCurrentTagIndicator(
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
+			);
 
 			if (!taskIds && !all) {
 				console.error(
@@ -2084,15 +2117,25 @@ ${result.result}
 
 			if (all) {
 				// If --all is specified, get all task IDs
-				const data = readJSON(taskMaster.getTasksPath(), taskMaster.getProjectRoot(), tag);
+				const data = readJSON(
+					taskMaster.getTasksPath(),
+					taskMaster.getProjectRoot(),
+					tag
+				);
 				if (!data || !data.tasks) {
 					console.error(chalk.red('Error: No valid tasks found'));
 					process.exit(1);
 				}
 				const allIds = data.tasks.map((t) => t.id).join(',');
-				clearSubtasks(taskMaster.getTasksPath(), allIds, { projectRoot: taskMaster.getProjectRoot(), tag });
+				clearSubtasks(taskMaster.getTasksPath(), allIds, {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				});
 			} else {
-				clearSubtasks(taskMaster.getTasksPath(), taskIds, { projectRoot: taskMaster.getProjectRoot(), tag });
+				clearSubtasks(taskMaster.getTasksPath(), taskIds, {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				});
 			}
 		});
 
@@ -2255,9 +2298,15 @@ ${result.result}
 			});
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master');
+			displayCurrentTagIndicator(
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
+			);
 
-			await displayNextTask(taskMaster.getTasksPath(), taskMaster.getComplexityReportPath(), { projectRoot: taskMaster.getProjectRoot(), tag });
+			await displayNextTask(
+				taskMaster.getTasksPath(),
+				taskMaster.getComplexityReportPath(),
+				{ projectRoot: taskMaster.getProjectRoot(), tag }
+			);
 		});
 
 	// show command
@@ -2295,7 +2344,9 @@ ${result.result}
 			const tag = options.tag;
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master');
+			displayCurrentTagIndicator(
+				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
+			);
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -2347,12 +2398,13 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2373,10 +2425,15 @@ ${result.result}
 				? dependencyId
 				: parseInt(dependencyId, 10);
 
-			await addDependency(taskMaster.getTasksPath(), formattedTaskId, formattedDependencyId, {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			});
+			await addDependency(
+				taskMaster.getTasksPath(),
+				formattedTaskId,
+				formattedDependencyId,
+				{
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				}
+			);
 		});
 
 	// remove-dependency command
@@ -2396,12 +2453,13 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2452,7 +2510,8 @@ ${result.result}
 			});
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2479,7 +2538,8 @@ ${result.result}
 			});
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2506,7 +2566,8 @@ ${result.result}
 			});
 
 			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const targetTag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(targetTag);
@@ -2556,7 +2617,8 @@ ${result.result}
 			const generateFiles = !options.skipGenerate;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2733,7 +2795,7 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
 			const generateFiles = !options.skipGenerate;
@@ -3034,11 +3096,12 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const taskIdsString = options.id;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -3065,7 +3128,11 @@ ${result.result}
 
 			try {
 				// Read data once for checks and confirmation
-				const data = readJSON(taskMaster.getTasksPath(), taskMaster.getProjectRoot(), tag);
+				const data = readJSON(
+					taskMaster.getTasksPath(),
+					taskMaster.getProjectRoot(),
+					tag
+				);
 				if (!data || !data.tasks) {
 					console.error(
 						chalk.red(`Error: No valid tasks found in ${tasksPath}`)
@@ -3205,10 +3272,14 @@ ${result.result}
 				const existingIdsString = existingTasksToRemove
 					.map(({ id }) => id)
 					.join(',');
-				const result = await removeTask(taskMaster.getTasksPath(), existingIdsString, {
-					projectRoot: taskMaster.getProjectRoot(),
-					tag
-				});
+				const result = await removeTask(
+					taskMaster.getTasksPath(),
+					existingIdsString,
+					{
+						projectRoot: taskMaster.getProjectRoot(),
+						tag
+					}
+				);
 
 				stopLoadingIndicator(indicator);
 
@@ -3672,7 +3743,7 @@ Examples:
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const sourceId = options.from;
 			const destinationId = options.to;
 			const tag = options.tag;
@@ -3716,7 +3787,11 @@ Examples:
 
 				try {
 					// Read tasks data once to validate destination IDs
-					const tasksData = readJSON(taskMaster.getTasksPath(), taskMaster.getProjectRoot(), tag);
+					const tasksData = readJSON(
+						taskMaster.getTasksPath(),
+						taskMaster.getProjectRoot(),
+						tag
+					);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
@@ -4117,7 +4192,7 @@ Examples:
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			
+
 			const withSubtasks = options.withSubtasks || false;
 			const status = options.status || null;
 
@@ -4173,7 +4248,6 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
-
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4257,7 +4331,13 @@ Examples:
 						description: options.description
 					};
 
-					await createTag(taskMaster.getTasksPath(), tagName, createOptions, context, 'text');
+					await createTag(
+						taskMaster.getTasksPath(),
+						tagName,
+						createOptions,
+						context,
+						'text'
+					);
 				}
 
 				// Handle auto-switch if requested
@@ -4270,7 +4350,13 @@ Examples:
 								)
 							)
 						: tagName;
-					await useTag(taskMaster.getTasksPath(), finalTagName, {}, context, 'text');
+					await useTag(
+						taskMaster.getTasksPath(),
+						finalTagName,
+						{},
+						context,
+						'text'
+					);
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error creating tag: ${error.message}`));
@@ -4302,7 +4388,6 @@ Examples:
 					tasksPath: options.file || true
 				});
 
-
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
 					console.error(
@@ -4321,7 +4406,13 @@ Examples:
 					outputType: 'cli'
 				};
 
-				await deleteTag(taskMaster.getTasksPath(), tagName, deleteOptions, context, 'text');
+				await deleteTag(
+					taskMaster.getTasksPath(),
+					tagName,
+					deleteOptions,
+					context,
+					'text'
+				);
 			} catch (error) {
 				console.error(chalk.red(`Error deleting tag: ${error.message}`));
 				showDeleteTagHelp();
@@ -4350,7 +4441,6 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
-
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4401,7 +4491,6 @@ Examples:
 					tasksPath: options.file || true
 				});
 
-
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
 					console.error(
@@ -4447,7 +4536,6 @@ Examples:
 					tasksPath: options.file || true
 				});
 
-
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
 					console.error(
@@ -4462,7 +4550,14 @@ Examples:
 					outputType: 'cli'
 				};
 
-				await renameTag(taskMaster.getTasksPath(), oldName, newName, {}, context, 'text');
+				await renameTag(
+					taskMaster.getTasksPath(),
+					oldName,
+					newName,
+					{},
+					context,
+					'text'
+				);
 			} catch (error) {
 				console.error(chalk.red(`Error renaming tag: ${error.message}`));
 				process.exit(1);
@@ -4491,7 +4586,6 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
-
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4737,7 +4831,7 @@ async function runCLI(argv = process.argv) {
 		try {
 			// Use initTaskMaster with no required fields - will only fail if no project root
 			const taskMaster = initTaskMaster({});
-			
+
 			const tasksPath = taskMaster.getTasksPath();
 			const statePath = taskMaster.getStatePath();
 
