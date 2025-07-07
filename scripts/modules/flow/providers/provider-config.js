@@ -1,29 +1,35 @@
 /**
  * Enhanced Provider Configuration Management
- * Handles dynamic configuration, persistence, and environment-based profiles
+ * 
+ * ⚠️ DEPRECATION NOTICE: This provider configuration system is being simplified
+ * in favor of the unified flow-config.js. Complex features like profiles,
+ * environment management, and dynamic switching are now handled by VibeKit.
+ * 
+ * Use scripts/modules/flow/config/flow-config.js for new configurations.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 
-// Configuration schema for VibeKit providers
+// Simplified configuration schema for VibeKit providers
+// Note: This is now deprecated in favor of flow-config.js
 const ProviderConfigSchema = z.object({
   version: z.string().default('1.0.0'),
   activeProvider: z.string().default('vibekit'),
   providers: z.object({
     vibekit: z.object({
       enabled: z.boolean().default(true),
-      defaultAgent: z.enum(['claude', 'codex', 'gemini', 'opencode']).default('claude'),
+      defaultAgent: z.enum(['claude-code', 'codex', 'gemini-cli', 'opencode']).default('claude-code'),
       streamingEnabled: z.boolean().default(true),
       githubIntegration: z.boolean().default(true),
       autoCreatePR: z.boolean().default(false),
       timeout: z.number().min(1000).max(600000).default(300000), // 5 minutes
       maxRetries: z.number().min(0).max(5).default(2),
       
-      // Agent-specific configurations
+      // Agent-specific configurations (Updated to VibeKit spec)
       agentConfigs: z.object({
-        claude: z.object({
+        'claude-code': z.object({
           enabled: z.boolean().default(true),
           maxTokens: z.number().default(4000),
           temperature: z.number().min(0).max(1).default(0.1)
@@ -35,7 +41,7 @@ const ProviderConfigSchema = z.object({
           temperature: z.number().min(0).max(1).default(0.1)
         }).default({}),
         
-        gemini: z.object({
+        'gemini-cli': z.object({
           enabled: z.boolean().default(false),
           maxTokens: z.number().default(3000),
           temperature: z.number().min(0).max(1).default(0.1)

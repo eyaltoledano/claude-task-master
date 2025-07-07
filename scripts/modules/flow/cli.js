@@ -40,6 +40,9 @@ export function registerFlowCommand(programInstance) {
         case 'batch':
           console.log('💡 Use: task-master flow batch <taskId1> <taskId2> ...');
           break;
+        case 'config':
+          console.log('💡 Use: task-master flow config --show');
+          break;
         default:
           console.error(`Unknown subcommand: ${subcommand}`);
           console.log('');
@@ -48,6 +51,7 @@ export function registerFlowCommand(programInstance) {
           console.log('  generate "<prompt>"  - Generate code from prompt');
           console.log('  agents              - List available agents and their status');
           console.log('  batch <taskIds...>  - Execute multiple tasks in sequence');
+          console.log('  config              - Manage VibeKit configuration');
           console.log('');
           console.log('For interactive mode, just run: task-master flow');
           process.exit(1);
@@ -110,6 +114,51 @@ export function registerFlowCommand(programInstance) {
       try {
         await executeTasks(taskIds, options);
       } catch (error) {
+        process.exit(1);
+      }
+    });
+
+  // Configuration subcommand
+  programInstance
+    .command('flow config')
+    .description('Manage VibeKit Flow configuration')
+    .option('--show', 'Show current configuration')
+    .option('--validate', 'Validate configuration and environment')
+    .option('--init', 'Initialize configuration with defaults')
+    .option('--set <path> <value>', 'Set configuration value (use dot notation)')
+    .option('--json', 'Output in JSON format')
+    .option('--force', 'Force overwrite existing config (with --init)')
+    .option('--project-root <path>', 'Project root directory')
+    .action(async (options) => {
+      try {
+        if (options.show) {
+          const { showConfig } = await import('./commands/config.command.js');
+          await showConfig(options);
+        } else if (options.validate) {
+          const { validateConfig } = await import('./commands/config.command.js');
+          await validateConfig(options);
+        } else if (options.init) {
+          const { initConfig } = await import('./commands/config.command.js');
+          await initConfig(options);
+        } else if (options.set) {
+          const [path, value] = options.set.split(' ');
+          const { setConfigValue } = await import('./commands/config.command.js');
+          await setConfigValue(path, value, options);
+        } else {
+          console.log('VibeKit Flow Configuration Commands:');
+          console.log('  --show      Show current configuration');
+          console.log('  --validate  Validate configuration and environment');
+          console.log('  --init      Initialize configuration with defaults');
+          console.log('  --set <path> <value>  Set configuration value');
+          console.log('');
+          console.log('Examples:');
+          console.log('  task-master flow config --show');
+          console.log('  task-master flow config --validate');
+          console.log('  task-master flow config --init');
+          console.log('  task-master flow config --set vibekit.defaultAgent claude-code');
+        }
+      } catch (error) {
+        console.error('❌ Configuration command failed:', error.message);
         process.exit(1);
       }
     });
