@@ -3670,7 +3670,8 @@ Examples:
 		.option('--response <response_language>', 'Set the response language')
 		.option('--setup', 'Run interactive setup to configure response language')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
+			const taskMaster = initTaskMaster({});
+			const projectRoot = taskMaster.getProjectRoot(); // Find project root for context
 			const { response, setup } = options;
 			console.log(
 				chalk.blue('Response language set to:', JSON.stringify(options))
@@ -3888,7 +3889,8 @@ Examples:
 		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
 		)
 		.action(async (action, profiles, options) => {
-			const projectRoot = findProjectRoot();
+			const taskMaster = initTaskMaster({});
+			const projectRoot = taskMaster.getProjectRoot();
 			if (!projectRoot) {
 				console.error(chalk.red('Error: Could not find project root.'));
 				process.exit(1);
