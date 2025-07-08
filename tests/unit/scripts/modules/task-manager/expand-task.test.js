@@ -138,8 +138,14 @@ jest.unstable_mockModule(
 			mainResult: {
 				[Symbol.asyncIterator]: async function* () {
 					yield { textDelta: '{"subtasks": [' };
-					yield { textDelta: '{"id": 1, "title": "Test subtask 1", "description": "Test desc 1", "dependencies": [], "details": "Test details 1", "status": "pending", "testStrategy": "Test strategy 1"},' };
-					yield { textDelta: '{"id": 2, "title": "Test subtask 2", "description": "Test desc 2", "dependencies": [1], "details": "Test details 2", "status": "pending", "testStrategy": "Test strategy 2"}' };
+					yield {
+						textDelta:
+							'{"id": 1, "title": "Test subtask 1", "description": "Test desc 1", "dependencies": [], "details": "Test details 1", "status": "pending", "testStrategy": "Test strategy 1"},'
+					};
+					yield {
+						textDelta:
+							'{"id": 2, "title": "Test subtask 2", "description": "Test desc 2", "dependencies": [1], "details": "Test details 2", "status": "pending", "testStrategy": "Test strategy 2"}'
+					};
 					yield { textDelta: ']}' };
 				}
 			},
@@ -761,7 +767,10 @@ describe('expandTask', () => {
 				mainResult: {
 					[Symbol.asyncIterator]: async function* () {
 						yield { textDelta: '{"subtasks": [' };
-						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
 						yield { textDelta: ']}' };
 					}
 				},
@@ -805,7 +814,10 @@ describe('expandTask', () => {
 				mainResult: {
 					[Symbol.asyncIterator]: async function* () {
 						yield { textDelta: '{"subtasks": [' };
-						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
 						yield { textDelta: ']}' };
 					}
 				},
@@ -872,7 +884,10 @@ describe('expandTask', () => {
 				mainResult: {
 					[Symbol.asyncIterator]: async function* () {
 						yield { textDelta: '{"subtasks": [' };
-						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
 						yield { textDelta: ']}' };
 					}
 				},
@@ -1292,8 +1307,8 @@ describe('expandTask', () => {
 	describe('Dynamic Subtask Generation', () => {
 		const tasksPath = 'tasks/tasks.json';
 		const taskId = 1;
-		const context = { 
-			session: null, 
+		const context = {
+			session: null,
 			mcpLog: createMcpLogMock(), // Force non-streaming mode
 			projectRoot: '/mock/project/root'
 		};
