@@ -41,15 +41,16 @@ describe('Claude Profile Initialization Functionality', () => {
 		);
 	});
 
-	test('claude.js copies AGENTS.md to CLAUDE.md', () => {
+	test('claude.js creates .taskmaster/CLAUDE.md and adds import to CLAUDE.md', () => {
 		expect(claudeProfileContent).toContain("'AGENTS.md'");
-		expect(claudeProfileContent).toContain("'CLAUDE.md'");
+		expect(claudeProfileContent).toContain("'.taskmaster'");
+		expect(claudeProfileContent).toContain("'@./.taskmaster/CLAUDE.md'");
 		expect(claudeProfileContent).toContain('copyFileSync');
 	});
 
 	test('claude.js has proper error handling', () => {
 		expect(claudeProfileContent).toContain('try {');
 		expect(claudeProfileContent).toContain('} catch (err) {');
-		expect(claudeProfileContent).toContain("log('error'");
+		expect(claudeProfileContent).toContain("'error'");
 	});
 });

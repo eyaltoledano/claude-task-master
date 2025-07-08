@@ -4017,10 +4017,6 @@ Examples:
 						projectRoot,
 						profileConfig
 					);
-					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						const assetsDir = path.join(projectRoot, 'assets');
-						profileConfig.onAddRulesProfile(projectRoot, assetsDir);
-					}
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)
 					);
