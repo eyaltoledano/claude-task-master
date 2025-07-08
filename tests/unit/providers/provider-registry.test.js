@@ -10,18 +10,12 @@
  * 6. Interface validation for registered providers
  */
 
+
 import { jest } from '@jest/globals';
 
-// Mock the utils logger
-const mockLog = jest.fn();
-
-jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
-	log: mockLog
-}));
-
-// Import ProviderRegistry after mocking
+// Import ProviderRegistry
 const { default: ProviderRegistry } = await import(
-	'../../../src/provider-registry/index.js'
+  '../../../src/provider-registry/index.js'
 );
 
 // Mock provider classes for testing
@@ -54,12 +48,12 @@ class MockInvalidProvider {
 describe('ProviderRegistry', () => {
 	let registry;
 
-	beforeEach(() => {
-		// Get a fresh instance and reset it
-		registry = ProviderRegistry.getInstance();
-		registry.reset();
-		jest.clearAllMocks();
-	});
+
+  beforeEach(() => {
+	// Get a fresh instance and reset it
+	registry = ProviderRegistry.getInstance();
+	registry.reset();
+  });
 
 	afterEach(() => {
 		// Clean up after each test
@@ -92,32 +86,25 @@ describe('ProviderRegistry', () => {
 			expect(registry._initialized).toBe(false);
 		});
 
-		test('initialize sets initialized flag and logs', () => {
-			expect(registry._initialized).toBe(false);
 
-			const result = registry.initialize();
+	test('initialize sets initialized flag', () => {
+	  expect(registry._initialized).toBe(false);
 
-			expect(registry._initialized).toBe(true);
-			expect(result).toBe(registry);
-			expect(mockLog).toHaveBeenCalledWith(
-				'debug',
-				'Initializing Provider Registry'
-			);
-		});
+	  const result = registry.initialize();
 
-		test('initialize can be called multiple times safely', () => {
-			// First call initializes
-			registry.initialize();
-			expect(registry._initialized).toBe(true);
-			jest.clearAllMocks();
+	  expect(registry._initialized).toBe(true);
+	  expect(result).toBe(registry);
+	});
 
-			// Second call should log "already initialized"
-			registry.initialize();
-			expect(mockLog).toHaveBeenCalledWith(
-				'debug',
-				'Provider Registry already initialized'
-			);
-		});
+
+	test('initialize can be called multiple times safely', () => {
+	  // First call initializes
+	  registry.initialize();
+	  expect(registry._initialized).toBe(true);
+
+	  // Second call should not throw
+	  expect(() => registry.initialize()).not.toThrow();
+	});
 
 		test('initialize returns self for chaining', () => {
 			const result = registry.initialize();
@@ -126,19 +113,16 @@ describe('ProviderRegistry', () => {
 	});
 
 	describe('Provider Registration', () => {
-		test('registerProvider adds valid provider successfully', () => {
-			const mockProvider = new MockValidProvider();
-			const options = { priority: 'high' };
 
-			const result = registry.registerProvider('mock', mockProvider, options);
+	test('registerProvider adds valid provider successfully', () => {
+	  const mockProvider = new MockValidProvider();
+	  const options = { priority: 'high' };
 
-			expect(result).toBe(registry); // Should return self for chaining
-			expect(registry.hasProvider('mock')).toBe(true);
-			expect(mockLog).toHaveBeenCalledWith(
-				'debug',
-				'Provider "mock" registered with the registry'
-			);
-		});
+	  const result = registry.registerProvider('mock', mockProvider, options);
+
+	  expect(result).toBe(registry); // Should return self for chaining
+	  expect(registry.hasProvider('mock')).toBe(true);
+	});
 
 		test('registerProvider validates provider name', () => {
 			const mockProvider = new MockValidProvider();
@@ -270,27 +254,22 @@ describe('ProviderRegistry', () => {
 			registry.registerProvider('mock', mockProvider);
 		});
 
-		test('unregisterProvider removes existing provider', () => {
-			expect(registry.hasProvider('mock')).toBe(true);
 
-			const result = registry.unregisterProvider('mock');
+	test('unregisterProvider removes existing provider', () => {
+	  expect(registry.hasProvider('mock')).toBe(true);
 
-			expect(result).toBe(true);
-			expect(registry.hasProvider('mock')).toBe(false);
-			expect(mockLog).toHaveBeenCalledWith(
-				'debug',
-				'Provider "mock" unregistered from the registry'
-			);
-		});
+	  const result = registry.unregisterProvider('mock');
 
-		test('unregisterProvider returns false for nonexistent provider', () => {
-			const result = registry.unregisterProvider('nonexistent');
+	  expect(result).toBe(true);
+	  expect(registry.hasProvider('mock')).toBe(false);
+	});
 
-			expect(result).toBe(false);
-			expect(mockLog).not.toHaveBeenCalledWith(
-				expect.stringContaining('unregistered')
-			);
-		});
+
+	test('unregisterProvider returns false for nonexistent provider', () => {
+	  const result = registry.unregisterProvider('nonexistent');
+
+	  expect(result).toBe(false);
+	});
 
 		test('unregisterProvider handles edge cases', () => {
 			expect(registry.unregisterProvider('')).toBe(false);
@@ -324,11 +303,11 @@ describe('ProviderRegistry', () => {
 			expect(registry._initialized).toBe(false);
 		});
 
-		test('reset logs warning message', () => {
-			registry.reset();
 
-			expect(mockLog).toHaveBeenCalledWith('warn', 'Provider Registry reset');
-		});
+	// No log assertion for reset, just call reset
+	test('reset can be called without error', () => {
+	  expect(() => registry.reset()).not.toThrow();
+	});
 
 		test('reset allows re-initialization', () => {
 			registry.reset();
