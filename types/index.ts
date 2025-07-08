@@ -1,6 +1,6 @@
 /**
  * Main type exports for claude-task-master
- * 
+ *
  * This file serves as the central export point for all TypeScript types
  * used throughout the application.
  */

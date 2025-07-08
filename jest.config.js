@@ -1,7 +1,7 @@
 export default {
 	// Use ts-jest preset for TypeScript support
 	preset: 'ts-jest/presets/default-esm',
-	
+
 	// Use Node.js environment for testing
 	testEnvironment: 'node',
 
@@ -15,30 +15,38 @@ export default {
 	coverageDirectory: 'coverage',
 
 	// A list of paths to directories that Jest should use to search for files in
-	roots: ['<rootDir>/tests', '<rootDir>/src', '<rootDir>/scripts', '<rootDir>/mcp-server'],
+	roots: [
+		'<rootDir>/tests',
+		'<rootDir>/src',
+		'<rootDir>/scripts',
+		'<rootDir>/mcp-server'
+	],
 
 	// The glob patterns Jest uses to detect test files
-	testMatch: [
-		'**/__tests__/**/*.[jt]s',
-		'**/?(*.)+(spec|test).[jt]s'
-	],
+	testMatch: ['**/__tests__/**/*.[jt]s', '**/?(*.)+(spec|test).[jt]s'],
 
 	// Transform files
 	transform: {
-		'^.+\\.tsx?$': ['ts-jest', {
-			useESM: true,
-			tsconfig: {
-				allowJs: true,
-				esModuleInterop: true,
-			},
-		}],
-		'^.+\\.jsx?$': ['ts-jest', {
-			useESM: true,
-			tsconfig: {
-				allowJs: true,
-				esModuleInterop: true,
-			},
-		}],
+		'^.+\\.tsx?$': [
+			'ts-jest',
+			{
+				useESM: true,
+				tsconfig: {
+					allowJs: true,
+					esModuleInterop: true
+				}
+			}
+		],
+		'^.+\\.jsx?$': [
+			'ts-jest',
+			{
+				useESM: true,
+				tsconfig: {
+					allowJs: true,
+					esModuleInterop: true
+				}
+			}
+		]
 	},
 
 	// Disable transformations for node_modules except for ES modules
@@ -52,7 +60,7 @@ export default {
 	// Set moduleNameMapper for absolute paths
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/$1',
-		'^(\\.{1,2}/.*)\\.js$': '$1',
+		'^(\\.{1,2}/.*)\\.js$': '$1'
 	},
 
 	// Setup module aliases
@@ -76,7 +84,7 @@ export default {
 
 	// Setup file
 	setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-	
+
 	// ESM support
-	extensionsToTreatAsEsm: ['.ts'],
+	extensionsToTreatAsEsm: ['.ts']
 };

@@ -92,43 +92,47 @@ describe('ContextManager', () => {
 	describe('Cache Key Bug Detection', () => {
 		it('should expose the cache key mismatch bug in updateContext', async () => {
 			// Create initial context with metadata
-			const initialContext = await contextManager.getContext('test-id', { 
+			const initialContext = await contextManager.getContext('test-id', {
 				initial: true,
-				other: 'value' 
+				other: 'value'
 			});
-			
+
 			// Verify initial context was cached (should be a cache miss)
 			expect(contextManager.stats.misses).toBe(1);
 			expect(contextManager.stats.hits).toBe(0);
-			
+
 			// Now call updateContext - this should find the existing context
-			const updatedContext = await contextManager.updateContext('test-id', { 
-				updated: true 
+			const updatedContext = await contextManager.updateContext('test-id', {
+				updated: true
 			});
-			
+
 			// BUG: updateContext calls getContext without metadata, creating new cache key
 			// This means it creates a NEW context instead of updating the existing one
-			
+
 			// The bug is exposed here - original metadata is lost
 			expect(updatedContext.metadata.initial).toBe(true); // This will fail
 			expect(updatedContext.metadata.other).toBe('value'); // This will fail
 			expect(updatedContext.metadata.updated).toBe(true); // This will pass
-			
+
 			// Additional evidence: updateContext should NOT increment misses
 			// But due to the bug, it creates a new context (cache miss)
 			expect(contextManager.stats.misses).toBe(1); // Should stay 1, but bug makes it 2
 		});
-		
+
 		it('should demonstrate that contexts with different metadata create different cache entries', async () => {
 			// Create two contexts with same ID but different metadata
-			const context1 = await contextManager.getContext('same-id', { type: 'first' });
-			const context2 = await contextManager.getContext('same-id', { type: 'second' });
-			
+			const context1 = await contextManager.getContext('same-id', {
+				type: 'first'
+			});
+			const context2 = await contextManager.getContext('same-id', {
+				type: 'second'
+			});
+
 			// These should be different objects due to different cache keys
 			expect(context1).not.toBe(context2);
 			expect(context1.metadata.type).toBe('first');
 			expect(context2.metadata.type).toBe('second');
-			
+
 			// Both should be cache misses
 			expect(contextManager.stats.misses).toBe(2);
 			expect(contextManager.stats.hits).toBe(0);

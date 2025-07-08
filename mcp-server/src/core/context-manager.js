@@ -84,7 +84,7 @@ export class ContextManager {
 		// Search for existing context in cache by iterating through entries
 		let existingContext = null;
 		let existingCacheKey = null;
-		
+
 		for (const [key, value] of this.cache.entries()) {
 			if (value.id === contextId) {
 				existingContext = value;
@@ -96,16 +96,19 @@ export class ContextManager {
 		if (existingContext) {
 			// Apply updates to existing context
 			Object.assign(existingContext.metadata, updates);
-			
+
 			// Update cache with new metadata in the cache key
-			const newCacheKey = this._getCacheKey(contextId, existingContext.metadata);
-			
+			const newCacheKey = this._getCacheKey(
+				contextId,
+				existingContext.metadata
+			);
+
 			// Remove old cache entry and add new one if cache key changed
 			if (existingCacheKey !== newCacheKey) {
 				this.cache.delete(existingCacheKey);
 				this.cache.set(newCacheKey, existingContext);
 			}
-			
+
 			return existingContext;
 		}
 
