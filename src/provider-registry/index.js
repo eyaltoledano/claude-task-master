@@ -6,7 +6,6 @@
  * static PROVIDERS object in ai-services-unified.js.
  */
 
-
 // Singleton instance
 let instance = null;
 
