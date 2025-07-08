@@ -1,15 +1,15 @@
 {
 	"models": {
 		"main": {
-			"provider": "mcp",
-			"modelId": "mcp-sampling",
-			"maxTokens": 50000,
+			"provider": "groq",
+			"modelId": "llama-3.1-8b-instant",
+			"maxTokens": 131072,
 			"temperature": 0.2
 		},
 		"research": {
-			"provider": "mcp",
-			"modelId": "mcp-sampling",
-			"maxTokens": 8700,
+			"provider": "groq",
+			"modelId": "llama-3.3-70b-versatile",
+			"maxTokens": 32768,
 			"temperature": 0.1
 		},
 		"fallback": {
