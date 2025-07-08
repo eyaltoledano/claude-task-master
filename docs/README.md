@@ -13,11 +13,6 @@ Welcome to the Task Master documentation. Use the links below to navigate to the
 - [Task Structure](task-structure.md) - Understanding the task format and features
 - [Available Models](models.md) - Complete list of supported AI models and providers
 
-## Advanced Features
-
-- [MCP Provider Guide](mcp-provider-guide.md) - Integration with Model Context Protocol for IDE usage
-- [MCP Provider Implementation](mcp-provider.md) - Technical documentation for the unified MCP provider
-
 ## Examples & Licensing
 
 - [Example Interactions](examples.md) - Common Cursor AI interaction examples  
