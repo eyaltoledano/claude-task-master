@@ -33,7 +33,6 @@ import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
 // GitWorktreeScreen removed in Phase 2: VibeKit Integration
-import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from './components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
@@ -44,6 +43,7 @@ import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
 import { initializePRMonitoringService } from './services/PRMonitoringService.js';
+import { ConfigScreen } from './components/ConfigScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -107,16 +107,15 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/exec', description: 'Manage task executions' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
-			{ name: '/agents', description: 'Manage AI agents' },
+			{ name: '/config', description: 'Configure agents and sandboxes' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			// worktree functionality removed in Phase 2: VibeKit Integration
-			{ name: '/claude', description: 'Claude Code assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
-			{ name: '/settings', description: 'Open Flow TUI settings & configuration' },
-			{ name: '/theme', description: 'Toggle theme' },
-			{ name: '/exit', description: 'Exit the application' }
+			{ name: '/theme', description: 'Toggle theme (auto/light/dark)' },
+			{ name: '/exit', description: 'Exit Task Master Flow' },
+			{ name: '/quit', description: 'Exit Task Master Flow' }
 		];
 
 		// Only include task-related commands if tasks.json exists
@@ -463,9 +462,6 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('chat');
 					break;
 				// worktree functionality removed in Phase 2: VibeKit Integration
-				case 'claude':
-					setCurrentScreen('claude-code');
-					break;
 				case 'exit':
 				case 'quit':
 					exit();
@@ -475,7 +471,8 @@ function FlowApp({ backend, options = {} }) {
 					setCurrentScreen('executions');
 					break;
 				case 'agents':
-					setCurrentScreen('providers');
+				case 'config':
+					setCurrentScreen('config');
 					break;
 				case 'settings':
 					setShowSettings(true);
@@ -595,10 +592,10 @@ function FlowApp({ backend, options = {} }) {
 					case 'c':
 						setCurrentScreen('chat');
 						break;
-					// worktree functionality removed in Phase 2: VibeKit Integration
-					case 'l':
-						setCurrentScreen('claude-code');
+					case 'j':
+						setCurrentScreen('config');
 						break;
+					// worktree functionality removed in Phase 2: VibeKit Integration
 					case 'v':
 						setCurrentScreen('mcp-management');
 						break;
@@ -729,7 +726,6 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'tasks' &&
 				currentScreen !== 'chat' &&
 				currentScreen !== 'status' &&
-				currentScreen !== 'claude-code' &&
 				currentScreen !== 'providers' &&
 				currentScreen !== 'executions' &&
 				!showSettings
@@ -908,16 +904,6 @@ function FlowApp({ backend, options = {} }) {
 							projectRoot={currentBackend.projectRoot}
 							onExit={() => setCurrentScreen('welcome')}
 						/>
-					) : currentScreen === 'claude-code' ? (
-						<ClaudeCodeScreen
-							backend={currentBackend}
-							onBack={() => setCurrentScreen('welcome')}
-							navigationData={navigationData}
-							initialContext={navigationData?.initialContext}
-							mode={navigationData?.mode}
-							returnTo={navigationData?.returnTo}
-							returnData={navigationData?.returnData}
-						/>
 					) : currentScreen === 'mcp-management' ? (
 						<MCPManagementScreen />
 					) : currentScreen === 'worktreePrompt' ? (
@@ -979,6 +965,8 @@ function FlowApp({ backend, options = {} }) {
 								});
 							}}
 						/>
+					) : currentScreen === 'config' ? (
+						<ConfigScreen />
 					) : currentScreen === 'executions' ? (
 						<ExecutionManagementScreen
 							onBack={() => setCurrentScreen('welcome')}

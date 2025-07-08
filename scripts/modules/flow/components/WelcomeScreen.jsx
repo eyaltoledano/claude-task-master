@@ -142,21 +142,12 @@ export function WelcomeScreen() {
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
-								<Text color={theme.accent}>/work</Text>
+								<Text color={theme.accent}>/config</Text>
 							</Box>
 							<Box width={34}>
-								<Text>Manage Git worktrees</Text>
+								<Text>Configure agents and sandboxes</Text>
 							</Box>
-							<Text color={theme.textDim}>ctrl+x w</Text>
-						</Box>
-						<Box flexDirection="row">
-							<Box width={12}>
-								<Text color={theme.accent}>/claude</Text>
-							</Box>
-							<Box width={34}>
-								<Text>Claude Code assistant</Text>
-							</Box>
-							<Text color={theme.textDim}>ctrl+x l</Text>
+							<Text color={theme.textDim}>ctrl+x j</Text>
 						</Box>
 						<Box flexDirection="row">
 							<Box width={12}>
