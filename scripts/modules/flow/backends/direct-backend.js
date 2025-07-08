@@ -16,7 +16,7 @@ import {
 } from '../personas/index.js';
 import { findProjectRoot } from '../../utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
-import { WorktreeManager } from '../worktree-manager.js';
+
 
 // Import direct functions
 import { listTasksDirect } from '../../../../mcp-server/src/core/direct-functions/list-tasks.js';
@@ -888,650 +888,15 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
-	async listWorktrees() {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
+	// Worktree functionality removed in Phase 2: VibeKit Integration
 
-			// Get the main repository root
-			const mainRepoRoot = await this.getRepositoryRoot();
+	// Worktree details and git status methods removed in Phase 2: VibeKit Integration
 
-			const { stdout } = await execAsync('git worktree list --porcelain', {
-				cwd: this.projectRoot
-			});
+	// Worktree management methods removed in Phase 2: VibeKit Integration
 
-			const worktrees = [];
-			let currentWorktree = {};
+	// Worktree-Task linking methods removed in Phase 2: VibeKit Integration
 
-			stdout.split('\n').forEach((line) => {
-				if (!line.trim()) {
-					if (Object.keys(currentWorktree).length > 0) {
-						// Check if this is the main worktree
-						currentWorktree.isMain = currentWorktree.path === mainRepoRoot;
-						worktrees.push(currentWorktree);
-						currentWorktree = {};
-					}
-					return;
-				}
-
-				const [key, ...valueParts] = line.split(' ');
-				const value = valueParts.join(' ');
-
-				switch (key) {
-					case 'worktree':
-						currentWorktree.path = value;
-						currentWorktree.name = value.split('/').pop() || value;
-						break;
-					case 'HEAD':
-						currentWorktree.head = value;
-						break;
-					case 'branch':
-						currentWorktree.branch = value.replace('refs/heads/', '');
-						break;
-					case 'bare':
-						currentWorktree.isBare = true;
-						break;
-					case 'detached':
-						currentWorktree.isDetached = true;
-						break;
-					case 'locked':
-						currentWorktree.isLocked = true;
-						if (value) {
-							currentWorktree.lockReason = value;
-						}
-						break;
-					case 'prunable':
-						currentWorktree.isPrunable = true;
-						if (value) {
-							currentWorktree.prunableReason = value;
-						}
-						break;
-				}
-			});
-
-			// Don't forget the last worktree
-			if (Object.keys(currentWorktree).length > 0) {
-				currentWorktree.isMain = currentWorktree.path === mainRepoRoot;
-				worktrees.push(currentWorktree);
-			}
-
-			// Get current path to mark current worktree
-			const currentPath = process.cwd();
-			worktrees.forEach((wt) => {
-				wt.isCurrent = wt.path === currentPath;
-			});
-
-			// Separate main worktree from linked worktrees
-			const mainWorktree = worktrees.find((wt) => wt.isMain);
-			const linkedWorktrees = worktrees.filter((wt) => !wt.isMain);
-
-			return {
-				main: mainWorktree,
-				linked: linkedWorktrees,
-				all: worktrees
-			};
-		} catch (error) {
-			throw new Error('Failed to list worktrees: ' + error.message);
-		}
-	}
-
-	async getWorktreeDetails(worktreePath) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const fs = await import('fs');
-			const execAsync = promisify(exec);
-
-			// Get basic info from list
-			const worktreeResult = await this.listWorktrees();
-			const worktrees = worktreeResult.all || [];
-			const worktree = worktrees.find((wt) => wt.path === worktreePath);
-
-			if (!worktree) {
-				throw new Error('Worktree not found');
-			}
-
-			// Get additional details
-			const details = { ...worktree };
-
-			// Ensure name is set
-			if (!details.name) {
-				details.name = path.basename(details.path);
-			}
-
-			// Get latest commit info
-			try {
-				const { stdout: logOutput } = await execAsync(
-					'git log -1 --pretty=format:"%H|%an|%ae|%ad|%s" --date=iso',
-					{ cwd: worktreePath }
-				);
-				const [hash, author, email, date, subject] = logOutput.split('|');
-				details.latestCommit = {
-					hash,
-					author,
-					email,
-					date,
-					subject
-				};
-			} catch (e) {
-				// Might be a new worktree with no commits
-				details.latestCommit = null;
-			}
-
-			// Get status summary
-			try {
-				const { stdout: statusOutput } = await execAsync(
-					'git status --porcelain',
-					{ cwd: worktreePath }
-				);
-				const statusLines = statusOutput.trim().split('\n').filter(Boolean);
-				details.status = {
-					modified: statusLines.filter((l) => l.startsWith(' M')).length,
-					added: statusLines.filter((l) => l.startsWith('A ')).length,
-					deleted: statusLines.filter((l) => l.startsWith(' D')).length,
-					untracked: statusLines.filter((l) => l.startsWith('??')).length,
-					total: statusLines.length
-				};
-			} catch (e) {
-				details.status = {
-					modified: 0,
-					added: 0,
-					deleted: 0,
-					untracked: 0,
-					total: 0
-				};
-			}
-
-			// Get branch tracking info
-			try {
-				const { stdout: trackingOutput } = await execAsync(
-					'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
-					{ cwd: worktreePath }
-				);
-				details.trackingBranch = trackingOutput.trim();
-
-				// Get ahead/behind counts
-				const { stdout: revListOutput } = await execAsync(
-					'git rev-list --left-right --count HEAD...@{u}',
-					{ cwd: worktreePath }
-				);
-				const [ahead, behind] = revListOutput.trim().split('\t').map(Number);
-				details.ahead = ahead;
-				details.behind = behind;
-			} catch (e) {
-				// No tracking branch
-				details.trackingBranch = null;
-				details.ahead = 0;
-				details.behind = 0;
-			}
-
-			// Check if worktree is locked
-			const adminDir = path.join(
-				await this.getRepositoryRoot(),
-				'.git',
-				'worktrees',
-				path.basename(worktreePath),
-				'locked'
-			);
-			details.isLocked = fs.default.existsSync(adminDir);
-
-			// Get disk usage
-			try {
-				const { stdout: duOutput } = await execAsync(
-					`du -sh "${worktreePath}" | cut -f1`,
-					{ shell: true }
-				);
-				details.diskUsage = duOutput.trim();
-			} catch (e) {
-				details.diskUsage = 'Unknown';
-			}
-
-			return details;
-		} catch (error) {
-			throw new Error('Failed to get worktree details: ' + error.message);
-		}
-	}
-
-	/**
-	 * Get enhanced git status information for a worktree
-	 * @param {string} worktreePath - Path to the worktree
-	 * @returns {Promise<Object>} Git status information with workflow integration
-	 */
-	async getWorktreeGitStatus(worktreePath) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Get git status information
-			const status = {
-				hasUncommittedChanges: false,
-				staged: 0,
-				modified: 0,
-				untracked: 0,
-				deleted: 0,
-				ahead: 0,
-				behind: 0,
-				isClean: true,
-				trackingBranch: null
-			};
-
-			// Get porcelain status
-			try {
-				const { stdout: statusOutput } = await execAsync(
-					'git status --porcelain',
-					{ cwd: worktreePath }
-				);
-
-				const statusLines = statusOutput.trim().split('\n').filter(Boolean);
-
-				if (statusLines.length > 0) {
-					status.hasUncommittedChanges = true;
-					status.isClean = false;
-
-					// Count different types of changes
-					statusLines.forEach((line) => {
-						const staged = line[0];
-						const working = line[1];
-
-						// Check staged changes
-						if (
-							staged === 'A' ||
-							staged === 'M' ||
-							staged === 'D' ||
-							staged === 'R' ||
-							staged === 'C'
-						) {
-							status.staged++;
-						}
-
-						// Check working directory changes
-						if (working === 'M') {
-							status.modified++;
-						} else if (working === 'D') {
-							status.deleted++;
-						} else if (line.startsWith('??')) {
-							status.untracked++;
-						}
-					});
-				}
-			} catch (e) {
-				// If git status fails, assume clean
-				this.log.debug('Git status failed:', e.message);
-			}
-
-			// Get tracking branch info
-			try {
-				const { stdout: trackingOutput } = await execAsync(
-					'git rev-parse --abbrev-ref --symbolic-full-name @{u}',
-					{ cwd: worktreePath }
-				);
-				status.trackingBranch = trackingOutput.trim();
-
-				// Get ahead/behind counts
-				const { stdout: revListOutput } = await execAsync(
-					'git rev-list --left-right --count HEAD...@{u}',
-					{ cwd: worktreePath }
-				);
-				const [ahead, behind] = revListOutput.trim().split('\t').map(Number);
-				status.ahead = ahead || 0;
-				status.behind = behind || 0;
-			} catch (e) {
-				// No tracking branch or not connected to remote
-				status.trackingBranch = null;
-				status.ahead = 0;
-				status.behind = 0;
-			}
-
-			return status;
-		} catch (error) {
-			throw new Error('Failed to get git status: ' + error.message);
-		}
-	}
-
-	async addWorktree(name, options = {}) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Pre-flight checks
-			if (!(await this.isGitRepository())) {
-				throw new Error('Not in a Git repository');
-			}
-
-			// Sanitize name (replace spaces with dashes)
-			const sanitizedName = name.replace(/\s+/g, '-');
-
-			// Get repository name
-			const repoRoot = await this.getRepositoryRoot();
-			const repoName = path.basename(repoRoot);
-
-			// Check if worktree already exists
-			const worktreeResult = await this.listWorktrees();
-			const existingWorktrees = worktreeResult.all || [];
-			const worktreePath = path.join(
-				repoRoot,
-				'..',
-				`${repoName}-${sanitizedName}`
-			);
-
-			if (existingWorktrees.some((wt) => wt.path === worktreePath)) {
-				throw new Error(`Worktree already exists at ${worktreePath}`);
-			}
-
-			// Check if branch exists
-			let branchExists = false;
-			try {
-				await execAsync(
-					`git show-ref --verify --quiet refs/heads/${sanitizedName}`,
-					{
-						cwd: this.projectRoot
-					}
-				);
-				branchExists = true;
-			} catch (e) {
-				// Branch doesn't exist
-			}
-
-			// Create worktree
-			const command = branchExists
-				? `git worktree add "${worktreePath}" "${sanitizedName}"`
-				: `git worktree add "${worktreePath}" -b "${sanitizedName}"`;
-
-			const { stdout, stderr } = await execAsync(command, {
-				cwd: this.projectRoot
-			});
-
-			return {
-				success: true,
-				name: sanitizedName,
-				path: worktreePath,
-				branchCreated: !branchExists,
-				output: stdout || stderr
-			};
-		} catch (error) {
-			throw new Error('Failed to add worktree: ' + error.message);
-		}
-	}
-
-	async removeWorktree(worktreePath, options = {}) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Check if it's the current worktree
-			const currentPath = await this.getRepositoryRoot();
-			if (worktreePath === currentPath) {
-				throw new Error('Cannot remove the current worktree');
-			}
-
-			// Determine if we should use force
-			const forceFlag = options.force ? '--force' : '';
-
-			try {
-				const { stdout, stderr } = await execAsync(
-					`git worktree remove ${forceFlag} "${worktreePath}"`,
-					{ cwd: this.projectRoot }
-				);
-
-				return {
-					success: true,
-					output: stdout || stderr,
-					usedForce: options.force || false
-				};
-			} catch (error) {
-				// Check if the error is due to modified/untracked files and we haven't tried force yet
-				if (
-					!options.force &&
-					error.message.includes('contains modified or untracked files')
-				) {
-					// Return a special response indicating force is needed
-					return {
-						success: false,
-						needsForce: true,
-						error: 'Worktree contains modified or untracked files'
-					};
-				}
-				// Re-throw other errors
-				throw error;
-			}
-		} catch (error) {
-			throw new Error('Failed to remove worktree: ' + error.message);
-		}
-	}
-
-	async pruneWorktrees(options = {}) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			const dryRunFlag = options.dryRun ? '--dry-run' : '';
-			const { stdout, stderr } = await execAsync(
-				`git worktree prune ${dryRunFlag}`,
-				{ cwd: this.projectRoot }
-			);
-
-			return {
-				success: true,
-				output: stdout || stderr
-			};
-		} catch (error) {
-			throw new Error('Failed to prune worktrees: ' + error.message);
-		}
-	}
-
-	async lockWorktree(worktreePath, reason = '') {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			const reasonFlag = reason ? `--reason "${reason}"` : '';
-			const { stdout, stderr } = await execAsync(
-				`git worktree lock ${reasonFlag} "${worktreePath}"`,
-				{ cwd: this.projectRoot }
-			);
-
-			return {
-				success: true,
-				output: stdout || stderr
-			};
-		} catch (error) {
-			throw new Error('Failed to lock worktree: ' + error.message);
-		}
-	}
-
-	async unlockWorktree(worktreePath) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			const { stdout, stderr } = await execAsync(
-				`git worktree unlock "${worktreePath}"`,
-				{ cwd: this.projectRoot }
-			);
-
-			return {
-				success: true,
-				output: stdout || stderr
-			};
-		} catch (error) {
-			throw new Error('Failed to unlock worktree: ' + error.message);
-		}
-	}
-
-	async repairWorktree(worktree) {
-		try {
-			const { exec } = await import('child_process');
-			const { promisify } = await import('util');
-			const execAsync = promisify(exec);
-
-			// Try to repair the worktree
-			await execAsync(`git worktree repair ${worktree.path}`);
-
-			return { success: true };
-		} catch (error) {
-			return {
-				success: false,
-				error: `Failed to repair worktree: ${error.message}`
-			};
-		}
-	}
-
-	// Worktree-Task linking methods
-	async getWorktreesConfig() {
-		try {
-			const fs = await import('fs');
-			const worktreesPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'worktrees.json'
-			);
-
-			if (!fs.default.existsSync(worktreesPath)) {
-				// Create default structure
-				const defaultConfig = {
-					version: '1.0.0',
-					worktrees: {}
-				};
-				const dir = path.dirname(worktreesPath);
-				if (!fs.default.existsSync(dir)) {
-					fs.default.mkdirSync(dir, { recursive: true });
-				}
-				fs.default.writeFileSync(
-					worktreesPath,
-					JSON.stringify(defaultConfig, null, 2)
-				);
-				return defaultConfig;
-			}
-
-			const content = fs.default.readFileSync(worktreesPath, 'utf8');
-			return JSON.parse(content);
-		} catch (error) {
-			this.log.error(`Error reading worktrees config: ${error.message}`);
-			return { version: '1.0.0', worktrees: {} };
-		}
-	}
-
-	async saveWorktreesConfig(config) {
-		try {
-			const fs = await import('fs');
-			const worktreesPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'worktrees.json'
-			);
-			fs.default.writeFileSync(worktreesPath, JSON.stringify(config, null, 2));
-			return true;
-		} catch (error) {
-			this.log.error(`Error saving worktrees config: ${error.message}`);
-			return false;
-		}
-	}
-
-	async linkWorktreeToTasks(worktreeName, taskIds, options = {}) {
-		try {
-			const config = await this.getWorktreesConfig();
-			const worktreeResult = await this.listWorktrees();
-			const worktrees = worktreeResult.all || [];
-			const worktree = worktrees.find((wt) => wt.name === worktreeName);
-
-			if (!worktree) {
-				return {
-					success: false,
-					error: `Worktree '${worktreeName}' not found`
-				};
-			}
-
-			// Get all tasks to check for subtasks
-			const tasksResult = await this.listTasks();
-			const allTaskIds = new Set();
-
-			// Process each task ID and check for subtasks
-			for (const taskId of taskIds) {
-				const taskIdStr = String(taskId);
-				allTaskIds.add(taskIdStr);
-
-				// If it's not already a subtask, check if it has subtasks
-				if (!taskIdStr.includes('.')) {
-					const parentTask = tasksResult.tasks.find(
-						(t) => t.id.toString() === taskIdStr
-					);
-					if (
-						parentTask &&
-						parentTask.subtasks &&
-						parentTask.subtasks.length > 0
-					) {
-						// If includeSubtasks option is not explicitly false, add all subtasks
-						if (options.includeSubtasks !== false) {
-							for (const subtask of parentTask.subtasks) {
-								const subtaskId = `${taskIdStr}.${subtask.id}`;
-								allTaskIds.add(subtaskId);
-							}
-						}
-					}
-				}
-			}
-
-			// Parse task IDs to determine type
-			const linkedTasks = Array.from(allTaskIds).map((id) => {
-				const isSubtask = id.includes('.');
-				return {
-					id,
-					type: isSubtask ? 'subtask' : 'task',
-					tag: options.tag || 'master'
-				};
-			});
-
-			// Update or create worktree entry
-			if (!config.worktrees[worktreeName]) {
-				config.worktrees[worktreeName] = {
-					path: worktree.path,
-					linkedTasks: [],
-					createdAt: new Date().toISOString(),
-					lastUpdated: new Date().toISOString(),
-					description: options.description || '',
-					status: 'active'
-				};
-			}
-
-			// Add new linked tasks (avoid duplicates)
-			const existingIds = config.worktrees[worktreeName].linkedTasks.map(
-				(t) => t.id
-			);
-			const newTasks = linkedTasks.filter((t) => !existingIds.includes(t.id));
-			config.worktrees[worktreeName].linkedTasks.push(...newTasks);
-			config.worktrees[worktreeName].lastUpdated = new Date().toISOString();
-
-			// Save config
-			await this.saveWorktreesConfig(config);
-
-			// Optionally sync to git notes
-			if (options.syncToGit) {
-				await this.syncWorktreeToGitNotes(
-					worktreeName,
-					config.worktrees[worktreeName]
-				);
-			}
-
-			return {
-				success: true,
-				linkedTasks: config.worktrees[worktreeName].linkedTasks,
-				addedCount: newTasks.length,
-				totalCount: config.worktrees[worktreeName].linkedTasks.length
-			};
-		} catch (error) {
-			return {
-				success: false,
-				error: `Failed to link tasks: ${error.message}`
-			};
-		}
-	}
+	// Worktree linking methods removed in Phase 2: VibeKit Integration
 
 	async unlinkWorktreeTask(worktreeName, taskId) {
 		try {
@@ -2271,33 +1636,26 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	// Prepare Claude context with CLAUDE.md using new TaskContextGenerator
-	async prepareClaudeContext(worktree, tasks, options = {}) {
+	// Updated for Phase 2: Works with main project directory instead of worktrees
+	async prepareClaudeContext(outputPath, tasks, options = {}) {
 		try {
-			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
+			// outputPath can be a directory or specific file path
+			const isDirectory = !outputPath.endsWith('.md');
+			const claudeMdPath = isDirectory 
+				? path.join(outputPath, 'CLAUDE.md')
+				: outputPath;
 
 			// Use new TaskContextGenerator for consistent context generation
 			const { TaskContextGenerator } = await import('../services/context-generation/index.js');
 			
 			const contextGenerator = new TaskContextGenerator({
 				backend: this,
-				projectRoot: worktree.path, // Use worktree path for context
+				projectRoot: this.projectRoot, // Use main project root
 				astMode: 'optional' // Try to use AST if available
 			});
 
 			// Initialize and generate context
 			await contextGenerator.initialize();
-
-			// Detect persona if not provided (preserve existing persona logic)
-			let persona = options.persona;
-			if (!persona && tasks.length > 0) {
-				try {
-					const detectedPersonas = await detectPersona(tasks[0], worktree);
-					persona = detectedPersonas[0]?.persona || 'architect';
-				} catch (error) {
-					console.debug('Persona detection failed, using default:', error.message);
-					persona = 'architect';
-				}
-			}
 
 			// Generate comprehensive context using new services
 			const contextResult = await contextGenerator.generateContext({
@@ -2306,7 +1664,7 @@ export class DirectBackend extends FlowBackend {
 				includeProjectStructure: options.includeStructure !== false,
 				executionOptions: {
 					mode: options.mode || 'headless',
-					target: worktree.name,
+					target: options.target || 'main',
 					requirements: options.requirements || [],
 					constraints: options.constraints || []
 				},
@@ -2315,26 +1673,20 @@ export class DirectBackend extends FlowBackend {
 
 			let content = contextResult.content;
 
-			// Add worktree-specific note for subtask worktrees
-			if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
-				content = content.replace('Generated context for development assistance', 
-					'Generated context for development assistance\n\n**Note:** This worktree was automatically created for the specific subtask implementation.');
-			}
-
 			// Add custom headless prompt if provided
 			if (options.headlessPrompt) {
 				content += '\n## Additional User Instructions\n\n';
 				content += options.headlessPrompt + '\n';
 			}
 
-			// Write CLAUDE.md to the worktree
+			// Write CLAUDE.md to the specified path
 			const fs = await import('fs');
 			await fs.promises.writeFile(claudeMdPath, content);
 
 			return {
 				contextFile: claudeMdPath,
-				persona,
-				tasksCount: tasks.length
+				tasksCount: tasks.length,
+				content: content
 			};
 		} catch (err) {
 			throw new Error(`Failed to prepare Claude context: ${err.message}`);

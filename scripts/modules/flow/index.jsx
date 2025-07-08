@@ -32,7 +32,7 @@ import { MCPServerManager } from './components/MCPServerManager.jsx';
 import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
 import { NextTaskModal } from './components/NextTaskModal.jsx';
-import GitWorktreeScreen from './components/GitWorktreeScreen.jsx';
+// GitWorktreeScreen removed in Phase 2: VibeKit Integration
 import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from './components/ProvidersScreen.jsx';
@@ -109,7 +109,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/mcp', description: 'Manage MCP servers' },
 			{ name: '/agents', description: 'Manage AI agents' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
-			{ name: '/work', description: 'Manage Git worktrees' },
+			// worktree functionality removed in Phase 2: VibeKit Integration
 			{ name: '/claude', description: 'Claude Code assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
@@ -462,9 +462,7 @@ function FlowApp({ backend, options = {} }) {
 				case 'chat':
 					setCurrentScreen('chat');
 					break;
-				case 'work':
-					setCurrentScreen('worktrees');
-					break;
+				// worktree functionality removed in Phase 2: VibeKit Integration
 				case 'claude':
 					setCurrentScreen('claude-code');
 					break;
@@ -597,9 +595,7 @@ function FlowApp({ backend, options = {} }) {
 					case 'c':
 						setCurrentScreen('chat');
 						break;
-					case 'w':
-						setCurrentScreen('worktrees');
-						break;
+					// worktree functionality removed in Phase 2: VibeKit Integration
 					case 'l':
 						setCurrentScreen('claude-code');
 						break;
@@ -733,7 +729,6 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'tasks' &&
 				currentScreen !== 'chat' &&
 				currentScreen !== 'status' &&
-				currentScreen !== 'worktrees' &&
 				currentScreen !== 'claude-code' &&
 				currentScreen !== 'providers' &&
 				currentScreen !== 'executions' &&
@@ -912,18 +907,6 @@ function FlowApp({ backend, options = {} }) {
 							mcpClient={currentBackend}
 							projectRoot={currentBackend.projectRoot}
 							onExit={() => setCurrentScreen('welcome')}
-						/>
-					) : currentScreen === 'worktrees' ? (
-						<GitWorktreeScreen
-							backend={currentBackend}
-							onBack={() => setCurrentScreen('welcome')}
-							onExit={exit}
-							navigationData={navigationData}
-							onNavigateToTask={handleNavigateToTask}
-							setCurrentScreen={(screen, data) => {
-								setCurrentScreen(screen);
-								setNavigationData(data);
-							}}
 						/>
 					) : currentScreen === 'claude-code' ? (
 						<ClaudeCodeScreen
