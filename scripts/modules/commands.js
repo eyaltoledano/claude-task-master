@@ -1562,7 +1562,7 @@ function registerCommands(programInstance) {
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.num, // Pass num
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
@@ -1588,7 +1588,7 @@ function registerCommands(programInstance) {
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.id,
 						options.num,
 						options.research,
