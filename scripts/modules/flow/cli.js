@@ -1,8 +1,10 @@
 /**
  * Flow CLI Commands
- * Simplified VibeKit-powered task execution and code generation
+ * Enhanced VibeKit-powered task execution with comprehensive CLI best practices
  */
 
+import chalk from 'chalk';
+import ora from 'ora';
 import { 
   executeTask, 
   generateCode, 
@@ -10,156 +12,381 @@ import {
   executeTasks
 } from './commands/execution.command.js';
 
+// Enhanced error handling with proper logging and exit codes
+const handleCommandError = (error, command, options = {}) => {
+  const isVerbose = options.verbose || options.debug;
+  
+  // Log error with appropriate level
+  if (error.code === 'VALIDATION_ERROR') {
+    console.error(chalk.red('❌ Invalid input:'), error.message);
+    if (error.suggestion) {
+      console.log(chalk.yellow('💡 Suggestion:'), error.suggestion);
+    }
+    process.exit(2); // Invalid input
+  } else if (error.code === 'NETWORK_ERROR') {
+    console.error(chalk.red('🌐 Network error:'), error.message);
+    console.log(chalk.yellow('💡 Try:'), 'Check your internet connection and API keys');
+    process.exit(3); // Network failure
+  } else if (error.code === 'API_ERROR') {
+    console.error(chalk.red('🤖 VibeKit API error:'), error.message);
+    if (isVerbose && error.details) {
+      console.error(chalk.gray('Details:'), error.details);
+    }
+    process.exit(4); // API failure
+  } else {
+    console.error(chalk.red(`❌ ${command} failed:`), error.message);
+    if (isVerbose && error.stack) {
+      console.error(chalk.gray('Stack trace:'));
+      console.error(error.stack);
+    }
+    process.exit(1); // General error
+  }
+};
+
+// Validation helper
+const validateTaskId = (taskId) => {
+  if (!taskId || taskId.trim() === '') {
+    throw {
+      code: 'VALIDATION_ERROR',
+      message: 'Task ID is required',
+      suggestion: 'Provide a valid task ID (e.g., "5" or "5.2")'
+    };
+  }
+  
+  // Basic task ID format validation
+  if (!/^\d+(\.\d+)?$/.test(taskId.trim())) {
+    throw {
+      code: 'VALIDATION_ERROR',
+      message: `Invalid task ID format: "${taskId}"`,
+      suggestion: 'Use format like "5" for tasks or "5.2" for subtasks'
+    };
+  }
+  
+  return taskId.trim();
+};
+
+// Agent validation helper
+const validateAgent = async (agentType, options = {}) => {
+  try {
+    const { globalRegistry } = await import('./providers/registry.js');
+    const providerInfo = globalRegistry.getProviderInfo('vibekit');
+    
+    if (!providerInfo.agents.includes(agentType)) {
+      throw {
+        code: 'VALIDATION_ERROR',
+        message: `Unknown agent: "${agentType}"`,
+        suggestion: `Available agents: ${providerInfo.agents.join(', ')}`
+      };
+    }
+    
+    // Check if agent has required API key
+    const validation = globalRegistry.validateProviderConfig('vibekit');
+    if (!validation.valid && options.requireConfigured) {
+      const missing = validation.missing.join(', ');
+      throw {
+        code: 'VALIDATION_ERROR',
+        message: `Agent "${agentType}" is not properly configured`,
+        suggestion: `Set required environment variables: ${missing}`
+      };
+    }
+    
+    return agentType;
+  } catch (error) {
+    if (error.code) throw error;
+    throw {
+      code: 'VALIDATION_ERROR',
+      message: 'Failed to validate agent configuration',
+      suggestion: 'Check your VibeKit configuration and API keys'
+    };
+  }
+};
+
 export function registerFlowCommand(programInstance) {
-  // Main flow command with simplified subcommands
+  // Main flow command with enhanced options and help
   programInstance
-    .command('flow [subcommand]')
-    .description('VibeKit-powered task execution and code generation')
-    .option('--agent <type>', 'Agent type: claude-code, codex, gemini-cli, opencode')
-    .option('--mode <mode>', 'Execution mode: code or ask')
-    .option('--no-stream', 'Disable streaming output')
-    .option('--project-root <path>', 'Project root directory')
-    .action(async (subcommand, options) => {
-      if (!subcommand) {
-        // Launch TUI by default
-        const { run } = await import('./index.jsx');
-        await run(options);
-        return;
-      }
-
-      // Handle subcommands
-      switch (subcommand) {
-        case 'execute':
-          console.log('💡 Use: task-master flow execute <taskId>');
-          break;
-        case 'generate':
-          console.log('💡 Use: task-master flow generate "<prompt>"');
-          break;
-        case 'agents':
-          return await listAgents(options);
-        case 'batch':
-          console.log('💡 Use: task-master flow batch <taskId1> <taskId2> ...');
-          break;
-        case 'config':
-          console.log('💡 Use: task-master flow config --show');
-          break;
-        default:
-          console.error(`Unknown subcommand: ${subcommand}`);
-          console.log('');
-          console.log('Available subcommands:');
-          console.log('  execute <taskId>     - Execute a single task');
-          console.log('  generate "<prompt>"  - Generate code from prompt');
-          console.log('  agents              - List available agents and their status');
-          console.log('  batch <taskIds...>  - Execute multiple tasks in sequence');
-          console.log('  config              - Manage VibeKit configuration');
-          console.log('');
-          console.log('For interactive mode, just run: task-master flow');
-          process.exit(1);
-      }
-    });
-
-  // Execute task subcommand
-  programInstance
-    .command('flow execute <taskId>')
-    .description('Execute a task using VibeKit')
-    .option('--agent <type>', 'Agent type: claude-code, codex, gemini-cli, opencode', 'claude-code')
-    .option('--branch <name>', 'Git branch to use')
-    .option('--mode <mode>', 'Execution mode: code or ask', 'code')
-    .option('--project-root <path>', 'Project root directory')
-    .action(async (taskId, options) => {
-      try {
-        await executeTask(taskId, options);
-      } catch (error) {
-        process.exit(1);
-      }
-    });
-
-  // Generate code subcommand
-  programInstance
-    .command('flow generate <prompt>')
-    .description('Generate code using VibeKit')
-    .option('--agent <type>', 'Agent type: claude-code, codex, gemini-cli, opencode', 'claude-code')
-    .option('--mode <mode>', 'Generation mode: code or ask', 'code')
-    .option('--no-stream', 'Disable streaming output')
-    .action(async (prompt, options) => {
-      try {
-        await generateCode(prompt, options);
-      } catch (error) {
-        process.exit(1);
-      }
-    });
-
-  // List agents subcommand
-  programInstance
-    .command('flow agents')
-    .description('List available VibeKit agents')
-    .option('--json', 'Output as JSON')
-    .action(async (options) => {
-      try {
-        await listAgents(options);
-      } catch (error) {
-        process.exit(1);
-      }
-    });
-
-  // Batch execute subcommand
-  programInstance
-    .command('flow batch <taskIds...>')
-    .description('Execute multiple tasks in sequence')
+    .command('flow [subcommand] [taskIdOrPrompt] [additionalArgs...]')
+    .description('🤖 VibeKit-powered task execution and code generation')
     .option('--agent <type>', 'Agent type: claude-code, codex, gemini-cli, opencode', 'claude-code')
     .option('--mode <mode>', 'Execution mode: code or ask', 'code')
+    .option('--no-stream', 'Disable streaming output')
     .option('--project-root <path>', 'Project root directory')
-    .option('--stop-on-error', 'Stop execution if any task fails')
-    .action(async (taskIds, options) => {
-      try {
-        await executeTasks(taskIds, options);
-      } catch (error) {
-        process.exit(1);
-      }
-    });
+    .option('--verbose', 'Enable verbose output for debugging')
+    .option('--json', 'Output results in JSON format')
+    .option('--dry-run', 'Preview execution plan without running (execute only)')
+    .option('--retry <count>', 'Number of retries on failure (execute only)', '2')
+    .option('--output <file>', 'Save generated code to file (generate only)')
+    .option('--context <taskId>', 'Use task context for enhanced generation (generate only)')
+    .option('--check', 'Check agent connectivity (agents only)')
+    .option('--stop-on-error', 'Stop execution if any task fails (batch only)')
+    .option('--parallel <count>', 'Run tasks in parallel (batch only)', '1')
+    .option('--summary', 'Show detailed summary after completion (batch only)')
+    .option('--show', 'Show current configuration (config only)')
+    .option('--validate', 'Validate configuration and environment (config only)')
+    .option('--init', 'Initialize configuration with defaults (config only)')
+    .option('--set <path> <value>', 'Set configuration value (config only)')
+    .option('--force', 'Force overwrite existing config (config only)')
+    .option('--branch <name>', 'Git branch to use for execution context')
+    .addHelpText('after', `
+Examples:
+  $ task-master flow                                 # Launch interactive TUI
+  $ task-master flow execute 5                      # Execute task 5 with default agent
+  $ task-master flow execute 5.2 --agent gemini-cli # Execute subtask with specific agent
+  $ task-master flow execute 8 --dry-run            # Preview execution plan
+  $ task-master flow generate "Hello world"         # Generate code from prompt
+  $ task-master flow generate "Add validation" --context 5  # With task context
+  $ task-master flow agents                         # List available agents
+  $ task-master flow agents --check                 # Test agent connectivity
+  $ task-master flow batch 5 6 7                   # Execute multiple tasks
+  $ task-master flow batch 1 2 3 --parallel 2      # Run 2 tasks concurrently
+  $ task-master flow config --show                 # Show current configuration
+  $ task-master flow config --validate             # Check configuration
+  
+Agent Types:
+  claude-code    Anthropic Claude for coding (default)
+  codex          OpenAI Codex for code completion  
+  gemini-cli     Google Gemini for CLI development
+  opencode       Full-stack development agent
 
-  // Configuration subcommand
-  programInstance
-    .command('flow config')
-    .description('Manage VibeKit Flow configuration')
-    .option('--show', 'Show current configuration')
-    .option('--validate', 'Validate configuration and environment')
-    .option('--init', 'Initialize configuration with defaults')
-    .option('--set <path> <value>', 'Set configuration value (use dot notation)')
-    .option('--json', 'Output in JSON format')
-    .option('--force', 'Force overwrite existing config (with --init)')
-    .option('--project-root <path>', 'Project root directory')
-    .action(async (options) => {
+Subcommands:
+  execute <taskId>        Execute a single task with VibeKit
+  generate "<prompt>"     Generate code from natural language prompt
+  agents                  List available agents and their status
+  batch <taskIds...>      Execute multiple tasks in sequence
+  config                  Manage VibeKit configuration
+
+For more details: task-master flow <subcommand> --help
+    `)
+    .action(async (subcommand, taskIdOrPrompt, additionalArgs, options) => {
       try {
-        if (options.show) {
-          const { showConfig } = await import('./commands/config.command.js');
-          await showConfig(options);
-        } else if (options.validate) {
-          const { validateConfig } = await import('./commands/config.command.js');
-          await validateConfig(options);
-        } else if (options.init) {
-          const { initConfig } = await import('./commands/config.command.js');
-          await initConfig(options);
-        } else if (options.set) {
-          const [path, value] = options.set.split(' ');
-          const { setConfigValue } = await import('./commands/config.command.js');
-          await setConfigValue(path, value, options);
-        } else {
-          console.log('VibeKit Flow Configuration Commands:');
-          console.log('  --show      Show current configuration');
-          console.log('  --validate  Validate configuration and environment');
-          console.log('  --init      Initialize configuration with defaults');
-          console.log('  --set <path> <value>  Set configuration value');
-          console.log('');
-          console.log('Examples:');
-          console.log('  task-master flow config --show');
-          console.log('  task-master flow config --validate');
-          console.log('  task-master flow config --init');
-          console.log('  task-master flow config --set vibekit.defaultAgent claude-code');
+        if (!subcommand) {
+          // Launch TUI with enhanced loading
+          const spinner = options.verbose ? null : ora('Starting VibeKit interface...').start();
+          try {
+            const { run } = await import('./index.jsx');
+            if (spinner) spinner.stop();
+            await run(options);
+          } catch (error) {
+            if (spinner) spinner.fail('Failed to start TUI');
+            throw error;
+          }
+          return;
+        }
+
+        // Handle subcommands with enhanced validation and UX
+        switch (subcommand.toLowerCase()) {
+          case 'execute': {
+            if (!taskIdOrPrompt) {
+              throw {
+                code: 'VALIDATION_ERROR',
+                message: 'Task ID is required for execute command',
+                suggestion: 'Usage: task-master flow execute <taskId>'
+              };
+            }
+
+            const spinner = options.verbose ? null : ora('Validating task...').start();
+            
+            try {
+              // Enhanced validation with progress feedback
+              const validTaskId = validateTaskId(taskIdOrPrompt);
+              const validAgent = await validateAgent(options.agent, { requireConfigured: true });
+              
+              if (spinner) {
+                spinner.text = `Executing task ${validTaskId} with ${validAgent}...`;
+              } else if (options.verbose) {
+                console.log(chalk.blue('🔍 Validated:'), `Task ${validTaskId}, Agent ${validAgent}`);
+              }
+
+              if (options.dryRun) {
+                if (spinner) spinner.succeed('Dry run validation completed');
+                console.log(chalk.green('✅ Dry run:'), `Task ${validTaskId} would execute with agent ${validAgent}`);
+                console.log(chalk.gray('Mode:'), options.mode);
+                console.log(chalk.gray('Branch:'), options.branch || 'current');
+                console.log(chalk.gray('Retries:'), options.retry);
+                return;
+              }
+
+              if (spinner) spinner.stop();
+              
+              await executeTask(validTaskId, {
+                ...options,
+                agent: validAgent,
+                onProgress: options.verbose ? (data) => {
+                  console.log(chalk.blue('📊 Progress:'), `${data.progress || 0}% - ${data.message || 'Processing...'}`);
+                } : undefined
+              });
+              
+              console.log(chalk.green('✅ Task execution completed successfully!'));
+              
+            } catch (error) {
+              if (spinner) spinner.fail('Task execution failed');
+              throw error;
+            }
+            break;
+          }
+
+          case 'generate': {
+            if (!taskIdOrPrompt) {
+              throw {
+                code: 'VALIDATION_ERROR',
+                message: 'Prompt is required for generate command',
+                suggestion: 'Usage: task-master flow generate "<prompt>"'
+              };
+            }
+
+            const spinner = options.verbose ? null : ora('Preparing code generation...').start();
+            
+            try {
+              // Validation
+              if (taskIdOrPrompt.trim().length < 5) {
+                throw {
+                  code: 'VALIDATION_ERROR',
+                  message: 'Prompt is too short',
+                  suggestion: 'Provide a detailed description of what you want to generate'
+                };
+              }
+              
+              const validAgent = await validateAgent(options.agent, { requireConfigured: true });
+              
+              if (spinner) {
+                spinner.text = `Generating code with ${validAgent}...`;
+              } else if (options.verbose) {
+                console.log(chalk.blue('🤖 Agent:'), validAgent);
+                console.log(chalk.blue('📝 Prompt:'), taskIdOrPrompt.substring(0, 100) + (taskIdOrPrompt.length > 100 ? '...' : ''));
+              }
+
+              if (spinner) spinner.stop();
+              
+              const result = await generateCode(taskIdOrPrompt, {
+                ...options,
+                agent: validAgent,
+                onUpdate: options.verbose ? (data) => {
+                  if (data.progress) {
+                    console.log(chalk.blue('📊 Progress:'), `${data.progress}%`);
+                  }
+                } : undefined
+              });
+              
+              if (options.output && result.code) {
+                const fs = await import('node:fs');
+                await fs.promises.writeFile(options.output, result.code, 'utf8');
+                console.log(chalk.green('💾 Saved to:'), options.output);
+              }
+              
+              console.log(chalk.green('✅ Code generation completed!'));
+              
+            } catch (error) {
+              if (spinner) spinner.fail('Code generation failed');
+              throw error;
+            }
+            break;
+          }
+
+          case 'agents': {
+            if (options.check) {
+              const spinner = options.verbose ? null : ora('Testing agent connectivity...').start();
+              if (spinner) spinner.stop();
+            }
+            
+            await listAgents(options);
+            break;
+          }
+
+          case 'batch': {
+            if (!taskIdOrPrompt && !additionalArgs?.length) {
+              throw {
+                code: 'VALIDATION_ERROR',
+                message: 'Task IDs are required for batch command',
+                suggestion: 'Usage: task-master flow batch <taskId1> <taskId2> ...'
+              };
+            }
+
+            const spinner = options.verbose ? null : ora('Validating batch execution...').start();
+            
+            try {
+              // Collect all task IDs
+              const allTaskIds = [taskIdOrPrompt, ...(additionalArgs || [])].filter(Boolean);
+              
+              // Validate all task IDs
+              const validTaskIds = allTaskIds.map(validateTaskId);
+              const validAgent = await validateAgent(options.agent, { requireConfigured: true });
+              
+              if (spinner) {
+                spinner.text = `Executing ${validTaskIds.length} tasks with ${validAgent}...`;
+              } else if (options.verbose) {
+                console.log(chalk.blue('📋 Tasks:'), validTaskIds.join(', '));
+                console.log(chalk.blue('🤖 Agent:'), validAgent);
+                console.log(chalk.blue('⚙️ Mode:'), options.mode);
+                console.log(chalk.blue('🔄 Parallel:'), options.parallel || '1');
+              }
+
+              if (spinner) spinner.stop();
+              
+              await executeTasks(validTaskIds, {
+                ...options,
+                agent: validAgent,
+                onProgress: options.verbose ? (data) => {
+                  console.log(chalk.blue(`📊 Task ${data.taskId}:`), `${data.progress || 0}% - ${data.message || 'Processing...'}`);
+                } : undefined
+              });
+              
+              console.log(chalk.green('✅ Batch execution completed!'));
+              
+            } catch (error) {
+              if (spinner) spinner.fail('Batch execution failed');
+              throw error;
+            }
+            break;
+          }
+
+          case 'config': {
+            if (options.show) {
+              const { showConfig } = await import('./commands/config.command.js');
+              await showConfig(options);
+            } else if (options.validate) {
+              const { validateConfig } = await import('./commands/config.command.js');
+              await validateConfig(options);
+            } else if (options.init) {
+              const { initConfig } = await import('./commands/config.command.js');
+              await initConfig(options);
+            } else if (options.set) {
+              const [path, value] = options.set.split(' ');
+              if (!path || !value) {
+                throw {
+                  code: 'VALIDATION_ERROR',
+                  message: 'Invalid --set format',
+                  suggestion: 'Use: --set "path value" (e.g., --set "vibekit.defaultAgent claude-code")'
+                };
+              }
+              const { setConfigValue } = await import('./commands/config.command.js');
+              await setConfigValue(path, value, options);
+            } else {
+              console.log(chalk.cyan('🔧 VibeKit Flow Configuration Commands:'));
+              console.log('');
+              console.log('  --show      Show current configuration');
+              console.log('  --validate  Validate configuration and environment');
+              console.log('  --init      Initialize configuration with defaults');
+              console.log('  --set <path> <value>  Set configuration value');
+              console.log('');
+              console.log(chalk.yellow('Examples:'));
+              console.log('  task-master flow config --show');
+              console.log('  task-master flow config --validate');
+              console.log('  task-master flow config --init');
+              console.log('  task-master flow config --set vibekit.defaultAgent claude-code');
+              console.log('');
+              console.log(chalk.gray('💡 Use --help for detailed information'));
+            }
+            break;
+          }
+
+          default:
+            throw {
+              code: 'VALIDATION_ERROR',
+              message: `Unknown subcommand: "${subcommand}"`,
+              suggestion: 'Available subcommands: execute, generate, agents, batch, config'
+            };
         }
       } catch (error) {
-        console.error('❌ Configuration command failed:', error.message);
-        process.exit(1);
+        handleCommandError(error, 'flow', options);
       }
     });
 }
