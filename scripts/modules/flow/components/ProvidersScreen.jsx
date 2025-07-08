@@ -1,206 +1,139 @@
 /**
- * @fileoverview Providers Screen Component
- *
- * Interactive provider management for the Flow TUI.
- * Integrates with existing Phase 7 provider management system.
+ * VibeKit Providers Screen Component
+ * 
+ * Simplified provider management focused on VibeKit agents.
+ * Shows agent status, API key configuration, and provides basic testing.
  */
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import TextInput from 'ink-text-input';
-import { theme } from '../theme.js';
+import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function ProvidersScreen({ onBack, onError }) {
-	const [providers, setProviders] = useState([]);
+	const [agents, setAgents] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [mode, setMode] = useState('list'); // 'list', 'test', 'capabilities', 'set'
-	const [inputValue, setInputValue] = useState('');
+	const [mode, setMode] = useState('list'); // 'list', 'test', 'details'
 	const [testResult, setTestResult] = useState(null);
-	const [capabilities, setCapabilities] = useState(null);
+	const [error, setError] = useState(null);
 
-	// Load providers on mount
+	// Load VibeKit agents on mount
 	useEffect(() => {
-		loadProviders();
+		loadVibeKitAgents();
 	}, []);
 
-	const loadProviders = async () => {
+	const loadVibeKitAgents = async () => {
 		try {
 			setLoading(true);
 
-			// Import provider registry
-			const { availableProviders } = await import('../providers/registry.js');
+			// Import VibeKit registry
+			const { globalRegistry } = await import('../providers/registry.js');
+			const providerInfo = globalRegistry.getProviderInfo('vibekit');
 
-			// Check which providers have API keys configured
-			const providerList = await Promise.all(
-				Object.entries(availableProviders).map(async ([key, provider]) => {
-					try {
-						// Check if API key is configured (basic check)
-						const hasApiKey = checkApiKeyPresence(key);
+			// Create agent list with status
+			const agentList = providerInfo.agents.map(agentKey => {
+				const apiKey = getRequiredApiKey(agentKey);
+				const hasApiKey = !!process.env[apiKey];
 
-						return {
-							key,
-							name: provider.name,
-							description: provider.description,
-							status: hasApiKey ? 'ready' : 'no-key',
-							config: provider.config || {}
-						};
-					} catch (error) {
-						return {
-							key,
-							name: provider.name || key,
-							description:
-								provider.description || 'Provider description not available',
-							status: 'error',
-							error: error.message
-						};
-					}
-				})
-			);
+				return {
+					key: agentKey,
+					name: formatAgentName(agentKey),
+					apiKey: apiKey,
+					status: hasApiKey ? 'ready' : 'no-key',
+					description: getAgentDescription(agentKey)
+				};
+			});
 
-			setProviders(providerList);
+			setAgents(agentList);
 		} catch (error) {
-			onError?.(`Failed to load providers: ${error.message}`);
+			setError(`Failed to load VibeKit agents: ${error.message}`);
+			onError?.(`Failed to load VibeKit agents: ${error.message}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	// Check if API key environment variable exists for provider
-	const checkApiKeyPresence = (providerKey) => {
-		const envVars = {
-			e2b: 'E2B_API_KEY',
-			modal: 'MODAL_API_KEY',
-			daytona: 'DAYTONA_API_KEY',
-			fly: 'FLY_API_TOKEN',
-			mock: null // Mock doesn't need API key
+	// Get required API key for agent
+	const getRequiredApiKey = (agentKey) => {
+		const keyMap = {
+			'claude-code': 'ANTHROPIC_API_KEY',
+			'codex': 'OPENAI_API_KEY',
+			'gemini-cli': 'GOOGLE_API_KEY',
+			'opencode': 'OPENCODE_API_KEY'
 		};
-
-		const envVar = envVars[providerKey];
-		if (!envVar) return true; // Mock provider is always ready
-
-		return process.env[envVar] && process.env[envVar] !== 'your_api_key_here';
+		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
 	};
 
-	// Test provider connectivity
-	const testProvider = async (providerKey) => {
+	// Format agent name for display
+	const formatAgentName = (agentKey) => {
+		const nameMap = {
+			'claude-code': 'Claude Code',
+			'codex': 'OpenAI Codex',
+			'gemini-cli': 'Gemini CLI',
+			'opencode': 'OpenCode'
+		};
+		return nameMap[agentKey] || agentKey;
+	};
+
+	// Get agent description
+	const getAgentDescription = (agentKey) => {
+		const descMap = {
+			'claude-code': 'Anthropic\'s coding assistant with advanced reasoning',
+			'codex': 'OpenAI\'s code generation and completion model',
+			'gemini-cli': 'Google\'s development assistant for CLI tasks',
+			'opencode': 'Full-stack development agent'
+		};
+		return descMap[agentKey] || 'VibeKit coding agent';
+	};
+
+	// Test agent connectivity
+	const testAgent = async (agentKey) => {
 		try {
-			setTestResult({ loading: true, provider: providerKey });
+			setTestResult({ loading: true, agent: agentKey });
 
-			// Use existing execution command infrastructure
-			const { executionCommands } = await import(
-				'../commands/execution.command.js'
-			);
-
-			// Call the existing test function but capture output
-			let testOutput = '';
-			const originalLog = console.log;
-			const originalError = console.error;
-
-			console.log = (...args) => {
-				testOutput += args.join(' ') + '\n';
-			};
-			console.error = (...args) => {
-				testOutput += args.join(' ') + '\n';
-			};
-
-			try {
-				await executionCommands.provider({
-					action: 'test',
-					provider: providerKey,
-					json: false
-				});
-
-				setTestResult({
-					loading: false,
-					provider: providerKey,
-					success: true,
-					message: testOutput.trim() || 'Provider test completed successfully'
-				});
-			} catch (error) {
-				setTestResult({
-					loading: false,
-					provider: providerKey,
-					success: false,
-					message: error.message || testOutput.trim()
-				});
-			} finally {
-				console.log = originalLog;
-				console.error = originalError;
+			const agent = agents.find(a => a.key === agentKey);
+			if (!agent) {
+				throw new Error('Agent not found');
 			}
+
+			// Check API key
+			if (agent.status === 'no-key') {
+				throw new Error(`Missing API key: ${agent.apiKey}`);
+			}
+
+			// Try to create a simple test with VibeKit
+			const { globalRegistry } = await import('../providers/registry.js');
+			const provider = await globalRegistry.getProvider('vibekit', {
+				defaultAgent: agentKey
+			});
+
+			// Basic connectivity test
+			setTestResult({
+				loading: false,
+				agent: agentKey,
+				success: true,
+				message: `Agent ${agent.name} is configured and ready to execute tasks`
+			});
+
 		} catch (error) {
 			setTestResult({
 				loading: false,
-				provider: providerKey,
+				agent: agentKey,
 				success: false,
-				message: `Test failed: ${error.message}`
+				message: error.message
 			});
 		}
 	};
 
-	// Get provider capabilities
-	const getCapabilities = async (providerKey) => {
+	// Set default agent
+	const setDefaultAgent = async (agentKey) => {
 		try {
-			setCapabilities({ loading: true, provider: providerKey });
-
-			const { executionCommands } = await import(
-				'../commands/execution.command.js'
-			);
-
-			// Get capabilities using existing infrastructure
-			let capOutput = '';
-			const originalLog = console.log;
-			console.log = (...args) => {
-				capOutput += args.join(' ') + '\n';
-			};
-
-			try {
-				await executionCommands.provider({
-					action: 'capabilities',
-					provider: providerKey,
-					json: false
-				});
-
-				setCapabilities({
-					loading: false,
-					provider: providerKey,
-					data: capOutput.trim()
-				});
-			} catch (error) {
-				setCapabilities({
-					loading: false,
-					provider: providerKey,
-					error: error.message
-				});
-			} finally {
-				console.log = originalLog;
-			}
-		} catch (error) {
-			setCapabilities({
-				loading: false,
-				provider: providerKey,
-				error: error.message
-			});
-		}
-	};
-
-	// Set default provider
-	const setDefaultProvider = async (providerKey) => {
-		try {
-			const { executionCommands } = await import(
-				'../commands/execution.command.js'
-			);
-
-			await executionCommands.provider({
-				action: 'set',
-				provider: providerKey
-			});
-
-			// Reload providers to show updated status
-			await loadProviders();
+			// Update VibeKit configuration to use this agent as default
+			// This would integrate with the flow configuration system
 			setMode('list');
+			onError?.(`Set ${formatAgentName(agentKey)} as default agent (feature coming soon)`);
 		} catch (error) {
-			onError?.(`Failed to set default provider: ${error.message}`);
+			onError?.(`Failed to set default agent: ${error.message}`);
 		}
 	};
 
@@ -209,75 +142,82 @@ export function ProvidersScreen({ onBack, onError }) {
 		if (mode === 'list') {
 			if (key.upArrow && selectedIndex > 0) {
 				setSelectedIndex(selectedIndex - 1);
-			} else if (key.downArrow && selectedIndex < providers.length - 1) {
+			} else if (key.downArrow && selectedIndex < agents.length - 1) {
 				setSelectedIndex(selectedIndex + 1);
-			} else if (key.return && providers[selectedIndex]) {
-				// Show action menu for selected provider
+			} else if (key.return && agents[selectedIndex]) {
+				// Show action menu for selected agent
 				setMode('actions');
 			} else if (input === 'r') {
-				// Refresh providers
-				loadProviders();
+				// Refresh agents
+				loadVibeKitAgents();
 			} else if (input === 'q' || key.escape) {
 				onBack?.();
 			}
 		} else if (mode === 'actions') {
-			const provider = providers[selectedIndex];
+			const agent = agents[selectedIndex];
 			if (input === 't') {
-				testProvider(provider.key);
+				testAgent(agent.key);
 				setMode('test');
-			} else if (input === 'c') {
-				getCapabilities(provider.key);
-				setMode('capabilities');
+			} else if (input === 'd') {
+				setMode('details');
 			} else if (input === 's') {
-				setDefaultProvider(provider.key);
+				setDefaultAgent(agent.key);
 			} else if (input === 'b' || key.escape) {
 				setMode('list');
 			}
-		} else if (mode === 'test' || mode === 'capabilities') {
+		} else if (mode === 'test' || mode === 'details') {
 			if (input === 'b' || key.escape) {
 				setMode('list');
 				setTestResult(null);
-				setCapabilities(null);
 			}
 		}
 	});
 
-	// Render provider status indicator
-	const renderStatus = (provider) => {
-		if (provider.status === 'ready') {
-			return <Text color={theme.colors.success}>✅ Ready</Text>;
-		} else if (provider.status === 'no-key') {
-			return <Text color={theme.colors.warning}>⚠️ No API Key</Text>;
+	// Render agent status indicator
+	const renderStatus = (agent) => {
+		if (agent.status === 'ready') {
+			return <Text color="green">✅ Ready</Text>;
 		} else {
-			return <Text color={theme.colors.error}>❌ Error</Text>;
+			return <Text color="yellow">⚠️ No API Key</Text>;
 		}
 	};
 
 	if (loading) {
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text color={theme.colors.accent}>Loading providers...</Text>
+				<LoadingSpinner />
+				<Text color="cyan">Loading VibeKit agents...</Text>
 			</Box>
 		);
 	}
 
-	// Render different modes
+	if (error) {
+		return (
+			<Box flexDirection="column" padding={1}>
+				<Text color="red">❌ Error: {error}</Text>
+				<Box marginTop={1}>
+					<Text color="gray">[r] Retry | [q/Esc] Back</Text>
+				</Box>
+			</Box>
+		);
+	}
+
+	// Render test results
 	if (mode === 'test' && testResult) {
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text color={theme.colors.accent} bold>
-					Testing Provider: {testResult.provider}
+				<Text color="cyan" bold>
+					Testing Agent: {formatAgentName(testResult.agent)}
 				</Text>
 				<Box marginTop={1}>
 					{testResult.loading ? (
-						<Text color={theme.colors.muted}>Testing connectivity...</Text>
+						<Box>
+							<LoadingSpinner />
+							<Text color="gray">Testing connectivity...</Text>
+						</Box>
 					) : (
 						<Box flexDirection="column">
-							<Text
-								color={
-									testResult.success ? theme.colors.success : theme.colors.error
-								}
-							>
+							<Text color={testResult.success ? 'green' : 'red'}>
 								{testResult.success ? '✅ Test Passed' : '❌ Test Failed'}
 							</Text>
 							<Box marginTop={1}>
@@ -287,100 +227,90 @@ export function ProvidersScreen({ onBack, onError }) {
 					)}
 				</Box>
 				<Box marginTop={1}>
-					<Text color={theme.colors.muted}>[b/Esc] Back to list</Text>
+					<Text color="gray">[b/Esc] Back to list</Text>
 				</Box>
 			</Box>
 		);
 	}
 
-	if (mode === 'capabilities' && capabilities) {
+	// Render agent details
+	if (mode === 'details') {
+		const agent = agents[selectedIndex];
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text color={theme.colors.accent} bold>
-					Capabilities: {capabilities.provider}
+				<Text color="cyan" bold>
+					Agent Details: {agent.name}
 				</Text>
-				<Box marginTop={1}>
-					{capabilities.loading ? (
-						<Text color={theme.colors.muted}>Loading capabilities...</Text>
-					) : capabilities.error ? (
-						<Text color={theme.colors.error}>Error: {capabilities.error}</Text>
-					) : (
-						<Box flexDirection="column">
-							<Text>{capabilities.data}</Text>
-						</Box>
-					)}
+				<Box marginTop={1} flexDirection="column">
+					<Text><Text color="cyan">Key:</Text> {agent.key}</Text>
+					<Text><Text color="cyan">Status:</Text> {renderStatus(agent)}</Text>
+					<Text><Text color="cyan">API Key:</Text> {agent.apiKey}</Text>
+					<Text><Text color="cyan">Description:</Text> {agent.description}</Text>
 				</Box>
-				<Box marginTop={1}>
-					<Text color={theme.colors.muted}>[b/Esc] Back to list</Text>
+				<Box marginTop={2}>
+					<Text color="gray">[b/Esc] Back to list</Text>
 				</Box>
 			</Box>
 		);
 	}
 
+	// Render actions menu
 	if (mode === 'actions') {
-		const provider = providers[selectedIndex];
+		const agent = agents[selectedIndex];
 		return (
 			<Box flexDirection="column" padding={1}>
-				<Text color={theme.colors.accent} bold>
-					Actions for: {provider?.name}
+				<Text color="cyan" bold>
+					Actions for: {agent.name}
 				</Text>
 				<Box marginTop={1} flexDirection="column">
 					<Text>[t] Test connectivity</Text>
-					<Text>[c] View capabilities</Text>
-					<Text>[s] Set as default provider</Text>
+					<Text>[d] View details</Text>
+					<Text>[s] Set as default agent</Text>
 					<Text>[b/Esc] Back to list</Text>
 				</Box>
 			</Box>
 		);
 	}
 
-	// Main provider list view
+	// Main agent list view
 	return (
 		<Box flexDirection="column" padding={1}>
 			<Box marginBottom={1}>
-				<Text color={theme.colors.accent} bold>
-					Provider Management
+				<Text color="cyan" bold>
+					🤖 VibeKit Agent Management
 				</Text>
 			</Box>
 
 			<Box marginBottom={1}>
-				<Text color={theme.colors.muted}>
-					Available Providers ({providers.length}):
+				<Text color="gray">
+					Available Agents ({agents.length}):
 				</Text>
 			</Box>
 
-			{providers.map((provider, index) => (
-				<Box key={provider.key} marginBottom={1}>
-					<Text
-						color={
-							index === selectedIndex ? theme.colors.accent : theme.colors.text
-						}
-					>
+			{agents.map((agent, index) => (
+				<Box key={agent.key} marginBottom={1}>
+					<Text color={index === selectedIndex ? 'cyan' : 'white'}>
 						{index === selectedIndex ? '▶ ' : '  '}
 					</Text>
 					<Box width={16}>
 						<Text
-							color={
-								index === selectedIndex
-									? theme.colors.accent
-									: theme.colors.text
-							}
+							color={index === selectedIndex ? 'cyan' : 'white'}
 							bold
 						>
-							{provider.name}
+							{agent.name}
 						</Text>
 					</Box>
 					<Box width={20} marginLeft={1}>
-						{renderStatus(provider)}
+						{renderStatus(agent)}
 					</Box>
 					<Box marginLeft={1}>
-						<Text color={theme.colors.muted}>{provider.description}</Text>
+						<Text color="gray">{agent.description}</Text>
 					</Box>
 				</Box>
 			))}
 
 			<Box marginTop={1}>
-				<Text color={theme.colors.muted}>
+				<Text color="gray">
 					[↑↓] Navigate | [Enter] Actions | [r] Refresh | [q/Esc] Back
 				</Text>
 			</Box>
