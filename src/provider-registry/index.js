@@ -6,7 +6,6 @@
  * static PROVIDERS object in ai-services-unified.js.
  */
 
-import { log } from '../../scripts/modules/utils.js';
 
 // Singleton instance
 let instance = null;
@@ -21,8 +20,6 @@ class ProviderRegistry {
 
 		// Flag to track initialization
 		this._initialized = false;
-
-		log('debug', 'Provider Registry created');
 	}
 
 	/**
@@ -42,11 +39,9 @@ class ProviderRegistry {
 	 */
 	initialize() {
 		if (this._initialized) {
-			log('debug', 'Provider Registry already initialized');
 			return this;
 		}
 
-		log('debug', 'Initializing Provider Registry');
 		this._initialized = true;
 		return this;
 	}
@@ -83,7 +78,6 @@ class ProviderRegistry {
 			registeredAt: new Date()
 		});
 
-		log('debug', `Provider "${providerName}" registered with the registry`);
 		return this;
 	}
 
@@ -122,7 +116,6 @@ class ProviderRegistry {
 	unregisterProvider(providerName) {
 		if (this._providers.has(providerName)) {
 			this._providers.delete(providerName);
-			log('debug', `Provider "${providerName}" unregistered from the registry`);
 			return true;
 		}
 		return false;
@@ -134,7 +127,6 @@ class ProviderRegistry {
 	reset() {
 		this._providers.clear();
 		this._initialized = false;
-		log('warn', 'Provider Registry reset');
 	}
 }
 
