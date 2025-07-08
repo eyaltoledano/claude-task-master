@@ -59,7 +59,26 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	warnLoadingIndicator: jest.fn(),
 	infoLoadingIndicator: jest.fn(),
 	displayAiUsageSummary: jest.fn(),
-	displayContextAnalysis: jest.fn()
+	displayContextAnalysis: jest.fn(),
+	displayExpandStart: jest.fn(),
+	displayExpandSummary: jest.fn(),
+	createExpandTracker: jest.fn(() => ({
+		start: jest.fn(),
+		stop: jest.fn(),
+		progressBar: {
+			update: jest.fn()
+		},
+		updateSubtaskGeneration: jest.fn(),
+		updateTokens: jest.fn(),
+		addSubtaskLine: jest.fn(),
+		subtasksCreated: 0,
+		completedExpansions: 0,
+		addTelemetryData: jest.fn(),
+		getSummary: jest.fn(() => ({
+			elapsedTime: '1.5s',
+			totalCost: 0.05
+		}))
+	}))
 }));
 
 jest.unstable_mockModule(
@@ -116,9 +135,25 @@ jest.unstable_mockModule(
 			}
 		}),
 		streamTextService: jest.fn().mockResolvedValue({
-			// Mock a simple async iterator for streamTextService
-			[Symbol.asyncIterator]: async function* () {
-				yield { textDelta: 'Mock streaming response' };
+			mainResult: {
+				[Symbol.asyncIterator]: async function* () {
+					yield { textDelta: '{"subtasks": [' };
+					yield { textDelta: '{"id": 1, "title": "Test subtask 1", "description": "Test desc 1", "dependencies": [], "details": "Test details 1", "status": "pending", "testStrategy": "Test strategy 1"},' };
+					yield { textDelta: '{"id": 2, "title": "Test subtask 2", "description": "Test desc 2", "dependencies": [1], "details": "Test details 2", "status": "pending", "testStrategy": "Test strategy 2"}' };
+					yield { textDelta: ']}' };
+				}
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'expand-task',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
 			}
 		})
 	})
@@ -160,7 +195,7 @@ jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
 				testStrategy: 'UI tests and visual regression testing'
 			}
 		],
-		metadata: { totalItems: 3 }
+		usedFallback: false
 	})
 }));
 
@@ -713,17 +748,21 @@ describe('expandTask', () => {
 				reportProgress: jest.fn(() => Promise.resolve())
 			};
 
-			// Mock streamTextService for streaming path
+			// Import modules
 			const { streamTextService } = await import(
 				'../../../../../scripts/modules/ai-services-unified.js'
 			);
+			const { parseStream } = await import(
+				'../../../../../src/utils/stream-parser.js'
+			);
 
+			// Set up mocks for this test
 			streamTextService.mockResolvedValueOnce({
 				mainResult: {
-					textStream: {
-						[Symbol.asyncIterator]: async function* () {
-							yield { textDelta: '{"subtasks": []}' };
-						}
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield { textDelta: ']}' };
 					}
 				},
 				telemetryData: {
@@ -756,17 +795,18 @@ describe('expandTask', () => {
 				// No mcpLog provided (CLI mode)
 			};
 
-			// Mock streamTextService for CLI streaming
+			// Import modules
 			const { streamTextService } = await import(
 				'../../../../../scripts/modules/ai-services-unified.js'
 			);
 
+			// Set up mocks for this test
 			streamTextService.mockResolvedValueOnce({
 				mainResult: {
-					textStream: {
-						[Symbol.asyncIterator]: async function* () {
-							yield { textDelta: '{"subtasks": []}' };
-						}
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield { textDelta: ']}' };
 					}
 				},
 				telemetryData: {
@@ -808,7 +848,7 @@ describe('expandTask', () => {
 				expect.objectContaining({
 					role: 'main',
 					commandName: 'expand-task',
-					outputType: 'mcp'
+					outputType: 'json'
 				})
 			);
 		});
@@ -822,17 +862,18 @@ describe('expandTask', () => {
 				// No mcpLog provided (CLI mode)
 			};
 
-			// Mock streamTextService for research streaming
+			// Import modules
 			const { streamTextService } = await import(
 				'../../../../../scripts/modules/ai-services-unified.js'
 			);
 
+			// Set up mocks for this test
 			streamTextService.mockResolvedValueOnce({
 				mainResult: {
-					textStream: {
-						[Symbol.asyncIterator]: async function* () {
-							yield { textDelta: '{"subtasks": []}' };
-						}
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield { textDelta: '{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}' };
+						yield { textDelta: ']}' };
 					}
 				},
 				telemetryData: {
@@ -864,12 +905,13 @@ describe('expandTask', () => {
 				// No mcpLog provided (CLI mode)
 			};
 
-			// Mock streamTextService to fail
+			// Import modules
 			const { streamTextService } = await import(
 				'../../../../../scripts/modules/ai-services-unified.js'
 			);
 
-			streamTextService.mockRejectedValueOnce(new Error('Streaming failed'));
+			// Mock streamTextService to fail with streaming-specific error
+			streamTextService.mockRejectedValueOnce(new Error('not async iterable'));
 
 			// Act
 			await expandTask(tasksPath, taskId, 3, false, '', context, false);
@@ -880,7 +922,7 @@ describe('expandTask', () => {
 				expect.objectContaining({
 					role: 'main',
 					commandName: 'expand-task',
-					outputType: 'cli'
+					outputType: 'text'
 				})
 			);
 		});
@@ -1250,7 +1292,11 @@ describe('expandTask', () => {
 	describe('Dynamic Subtask Generation', () => {
 		const tasksPath = 'tasks/tasks.json';
 		const taskId = 1;
-		const context = { session: null, mcpLog: null };
+		const context = { 
+			session: null, 
+			mcpLog: createMcpLogMock(), // Force non-streaming mode
+			projectRoot: '/mock/project/root'
+		};
 
 		beforeEach(() => {
 			// Reset all mocks

@@ -652,6 +652,7 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 
 		// --- AI Subtask Generation ---
 		let generatedSubtasks = [];
+		let loadingIndicator = null;
 		let aiServiceResponse = null;
 
 		// Determine if we should use streaming (same pattern as parse-prd)
@@ -713,7 +714,6 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 			});
 		}
 
-		loadingIndicator = null;
 		try {
 			const role = useResearch ? 'research' : 'main';
 
@@ -860,7 +860,7 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 				// Use non-streaming approach (fallback)
 				if (outputFormat === 'text') {
 					loadingIndicator = startLoadingIndicator(
-						`Generating ${finalSubtaskCount} subtasks...\n`
+						`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 					);
 				}
 
@@ -927,7 +927,7 @@ CRITICAL: Your response must start with { and end with }. Do not wrap the JSON i
 				// Fallback to non-streaming
 				if (outputFormat === 'text') {
 					loadingIndicator = startLoadingIndicator(
-						`Generating ${finalSubtaskCount} subtasks...\n`
+						`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 					);
 				}
 
