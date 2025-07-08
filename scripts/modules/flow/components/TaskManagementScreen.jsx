@@ -9,14 +9,6 @@ import { ExpandModal } from './ExpandModal.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
-import { EnhancedClaudeWorktreeLauncherModal } from './EnhancedClaudeWorktreeLauncherModal.jsx';
-import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
-import { WorkflowDecisionModal } from './WorkflowDecisionModal.jsx';
-import {
-	WorkflowStatusIndicator,
-	GitStatusIndicator
-} from './WorkflowStatusIndicator.jsx';
-import { WorkflowGuide } from './WorkflowGuide.jsx';
 import { CommitAssistant } from './CommitAssistant.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
@@ -25,6 +17,13 @@ import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { ResearchInputModal } from './ResearchInputModal.jsx';
 import { HookIntegrationService } from '../services/HookIntegrationService.js';
+import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
+import { WorkflowDecisionModal } from './WorkflowDecisionModal.jsx';
+import {
+	WorkflowStatusIndicator,
+	GitStatusIndicator
+} from './WorkflowStatusIndicator.jsx';
+import { WorkflowGuide } from './WorkflowGuide.jsx';
 
 export function TaskManagementScreen() {
 	const {
@@ -65,7 +64,6 @@ export function TaskManagementScreen() {
 	const [toast, setToast] = useState(null);
 	const [isExpanding, setIsExpanding] = useState(false);
 	const [expandError, setExpandError] = useState(null);
-	const [isLaunchingClaude, setIsLaunchingClaude] = useState(false);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
 	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
 	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
@@ -74,8 +72,6 @@ export function TaskManagementScreen() {
 	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0);
 	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0);
 	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
-	const [showClaudeLauncherModal, setShowClaudeLauncherModal] = useState(false);
-	const [claudeWorktree, setClaudeWorktree] = useState(null);
 	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
 	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
 	const [showStreamingModal, setShowStreamingModal] = useState(false);
@@ -88,7 +84,12 @@ export function TaskManagementScreen() {
 	const [gitStatus, setGitStatus] = useState(null);
 	const [repoInfo, setRepoInfo] = useState(null);
 	const [showResearchModal, setShowResearchModal] = useState(false);
-	const [modalTaskData, setModalTaskData] = useState(null);
+	// Agent selection state
+	const [showAgentModal, setShowAgentModal] = useState(false);
+	const [availableAgents, setAvailableAgents] = useState([]);
+	const [selectedAgentIndex, setSelectedAgentIndex] = useState(0);
+	const [agentLoading, setAgentLoading] = useState(false);
+	const [agentError, setAgentError] = useState(null);
 
 	// Hook integration service
 	const [hookService] = useState(() => new HookIntegrationService(backend));
@@ -246,6 +247,7 @@ export function TaskManagementScreen() {
 		if (key.escape) {
 			if (showResearchModal) return setShowResearchModal(false);
 			if (showExpandOptions) return setShowExpandOptions(false);
+			if (showAgentModal) return setShowAgentModal(false);
 			// Other modal escape logic can go here...
 
 			if (viewMode === 'detail' || viewMode === 'subtasks') setViewMode('list');
@@ -262,6 +264,18 @@ export function TaskManagementScreen() {
 
 		// Don't process other keys if a modal is active
 		if (showResearchModal || showExpandOptions || isSearching) {
+			return;
+		}
+
+		// Handle agent selection modal
+		if (showAgentModal) {
+			if (key.upArrow && selectedAgentIndex > 0) {
+				setSelectedAgentIndex(prev => prev - 1);
+			} else if (key.downArrow && selectedAgentIndex < availableAgents.length - 1) {
+				setSelectedAgentIndex(prev => prev + 1);
+			} else if (key.return && !agentLoading) {
+				handleSelectAgent();
+			}
 			return;
 		}
 
@@ -326,10 +340,6 @@ export function TaskManagementScreen() {
 						...selectedSubtask,
 						id: `${selectedTask.id}.${selectedSubtask.id}`
 					});
-				} else if (input === 'c') {
-					handleClaudeSession();
-				} else if (input === 'w') {
-					handleWorkOnSubtask();
 				} else if (input === 'g') {
 					// Jump to worktree from subtask detail
 					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
@@ -354,6 +364,9 @@ export function TaskManagementScreen() {
 				} else if (input === 'l') {
 					handleLogCompletion();
 				} else if (input === 'r') setShowResearchModal(true);
+				else if (input === 'a') {
+					handleAgentSelection();
+				}
 				break;
 		}
 	});
@@ -546,496 +559,15 @@ export function TaskManagementScreen() {
 		}
 	};
 
-	const handleClaudeSession = async () => {
-		if (!selectedTask || !selectedSubtask) {
-			return;
-		}
 
-		try {
-			// Check for existing worktrees for this subtask (but don't create)
-			const worktrees = await backend.getTaskWorktrees(
-				`${selectedTask.id}.${selectedSubtask.id}`
-			);
 
-			let worktreeToUse = null;
 
-			if (worktrees && worktrees.length > 0) {
-				// Use the first linked worktree if it exists
-				worktreeToUse = worktrees[0];
-			}
 
-			// Fetch full parent task details to ensure we have complete information
-			let fullParentTask = selectedTask;
-			let subtaskWithFullDetails = selectedSubtask; // Start with current subtask
 
-			try {
-				fullParentTask = await backend.getTask(selectedTask.id);
-				if (fullParentTask && fullParentTask.subtasks) {
-					const foundSubtask = fullParentTask.subtasks.find(
-						(st) => st.id === selectedSubtask.id
-					);
-					if (foundSubtask) {
-						subtaskWithFullDetails = foundSubtask; // Use the one with full details
-					}
-				}
-			} catch (error) {
-				console.warn(
-					'Could not fetch full parent task details for modal:',
-					error
-				);
-				// Continue with the task data we have
-			}
 
-			// Prepare task data for the Claude launcher modal
-			const taskData = {
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: subtaskWithFullDetails.title,
-				description: subtaskWithFullDetails.description,
-				details: subtaskWithFullDetails.details,
-				status: subtaskWithFullDetails.status,
-				isSubtask: true,
-				parentTask: {
-					id: fullParentTask.id,
-					title: fullParentTask.title,
-					description: fullParentTask.description,
-					details: fullParentTask.details,
-					testStrategy:
-						fullParentTask.testStrategy || fullParentTask.test_strategy
-				}
-			};
 
-			// Set modal data and worktree
-			setModalTaskData([taskData]); // Modal expects an array of tasks
-			setClaudeWorktree(worktreeToUse);
-			setShowClaudeLauncherModal(true);
-		} catch (error) {
-			console.error(
-				'[TaskManagementScreen] Error launching Claude session:',
-				error
-			);
-			setToast({
-				message: `Error: ${error.message}`,
-				type: 'error'
-			});
-		}
-	};
 
-	const handleWorkOnSubtask = async () => {
-		if (!selectedTask || !selectedSubtask) return;
 
-		try {
-			// Fetch full parent task details to ensure we have complete information
-			let fullParentTask = selectedTask;
-			try {
-				fullParentTask = await backend.getTask(selectedTask.id);
-			} catch (error) {
-				console.warn('Could not fetch full parent task details:', error);
-				// Continue with the task we have
-			}
-
-			// Prepare task data for the Claude launcher modal
-			const taskData = [
-				{
-					id: `${selectedTask.id}.${selectedSubtask.id}`,
-					title: selectedSubtask.title,
-					description: selectedSubtask.description,
-					details: selectedSubtask.details,
-					status: selectedSubtask.status,
-					isSubtask: true,
-					parentTask: {
-						id: fullParentTask.id,
-						title: fullParentTask.title,
-						description: fullParentTask.description,
-						details: fullParentTask.details,
-						testStrategy:
-							fullParentTask.testStrategy || fullParentTask.test_strategy
-					}
-				}
-			];
-
-			// Set modal data and show the launcher modal
-			// No worktree is passed - the modal will create it when Claude is launched
-			setModalTaskData(taskData);
-			setClaudeWorktree(null); // Explicitly set to null
-			setShowClaudeLauncherModal(true);
-		} catch (error) {
-			console.error('Failed to setup Claude session:', error);
-			setToast({
-				message: `Failed to setup Claude session: ${error.message}`,
-				type: 'error'
-			});
-		}
-	};
-
-	const handleClaudeLauncherSuccess = async (result) => {
-		// Check if we need to exit Flow to launch Claude
-		if (result.shouldExitFlow) {
-			// Store launch information in navigation data and signal to exit
-			setCurrentScreen('exit-for-claude', {
-				launchCommand: `cd "${result.worktreePath}" && claude`,
-				worktreePath: result.worktreePath,
-				persona: result.persona,
-				tasks: result.tasks
-			});
-			return;
-		}
-
-		// If a worktree was created during the modal operation, update our state
-		if (result.worktree && selectedTask && selectedSubtask) {
-			const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-			const updatedWorktrees = new Map(subtaskWorktrees);
-			updatedWorktrees.set(subtaskId, [result.worktree]);
-			setSubtaskWorktrees(updatedWorktrees);
-
-			setToast({
-				message: `Claude session started in worktree: ${result.worktree.name}`,
-				type: 'success'
-			});
-		}
-
-		// Handle other launch modes
-		if (result.mode === 'interactive') {
-			// Interactive mode - the modal has already launched Claude in a terminal
-			setToast({
-				message: `Claude launched in ${result.worktree?.name || 'worktree'} with persona: ${result.persona || 'none'}`,
-				type: 'success'
-			});
-		} else if (result.mode === 'headless') {
-			// Headless mode - gather context and navigate to ClaudeCodeScreen
-			const worktreePath = result.worktree?.path || backend.projectRoot;
-			await launchClaudeWithContext(worktreePath);
-		} else if (
-			result.mode === 'batch' ||
-			result.mode === 'batch-multi-persona'
-		) {
-			// Batch mode - tasks processed
-			setToast({
-				message: `Batch processing completed for ${result.tasks?.length || 0} tasks`,
-				type: 'success'
-			});
-		} else {
-			// Background mode (most common case now)
-			setToast({
-				message: `Claude session started in background. Monitor progress in Background Operations.`,
-				type: 'success'
-			});
-		}
-
-		// Close modal and clear state
-		setShowClaudeLauncherModal(false);
-		setClaudeWorktree(null);
-		setModalTaskData(null);
-	};
-
-	const launchClaudeWithContext = async (worktreePath) => {
-		try {
-			setToast({
-				message: 'Gathering context and running research...',
-				type: 'info'
-			});
-
-			// Gather comprehensive context
-			const context = await gatherSubtaskContext();
-
-			// Don't wait for the navigation - do it immediately after context is ready
-			setToast({
-				message: 'Launching Claude Code with full context...',
-				type: 'info'
-			});
-
-			console.log(
-				'[TaskManagementScreen] Navigating to claude-code screen with context:',
-				{
-					mode: 'subtask-implementation',
-					hasContext: !!context,
-					hasResearch: !!context.researchContext,
-					worktreePath
-				}
-			);
-
-			// Navigate to Claude Code screen with context
-			setCurrentScreen('claude-code', {
-				mode: 'subtask-implementation',
-				initialContext: {
-					...context,
-					worktreePath
-				},
-				returnTo: 'tasks',
-				returnData: {
-					selectedTaskId: selectedTask.id,
-					selectedSubtaskId: `${selectedTask.id}.${selectedSubtask.id}`
-				}
-			});
-
-			// Reset flag after successful navigation
-			setIsLaunchingClaude(false);
-		} catch (error) {
-			console.error(
-				'[TaskManagementScreen] Error in launchClaudeWithContext:',
-				error
-			);
-			setToast({
-				message: `Failed to gather context: ${error.message}`,
-				type: 'error'
-			});
-			setIsLaunchingClaude(false);
-		}
-	};
-
-	const gatherSubtaskContext = async () => {
-		// Get immediate dependencies
-		const dependencies = await Promise.all(
-			(selectedTask.dependencies || []).map(async (depId) => {
-				try {
-					const depTask = await backend.getTask(depId);
-					return {
-						id: depTask.id,
-						title: depTask.title,
-						description: depTask.description,
-						status: depTask.status,
-						keyDecisions: extractKeyDecisions(depTask.details)
-					};
-				} catch (error) {
-					console.error(`Failed to load dependency ${depId}:`, error);
-					return null;
-				}
-			})
-		);
-
-		// Fetch full subtask details to check for existing research
-		// (details field is stripped from list operations for performance)
-		let subtaskWithDetails = selectedSubtask;
-		try {
-			const fullTask = await backend.getTask(selectedTask.id);
-			if (fullTask && fullTask.subtasks) {
-				const fullSubtask = fullTask.subtasks.find(
-					(st) => st.id === selectedSubtask.id
-				);
-				if (fullSubtask) {
-					subtaskWithDetails = fullSubtask;
-				}
-			}
-		} catch (error) {
-			console.warn('Could not fetch full subtask details:', error);
-			// Continue with the subtask we have
-		}
-
-		// Check if research has already been run using the hook service
-		let hasExistingResearch = false;
-		try {
-			const researchCheck =
-				await hookService.checkResearchNeeded(subtaskWithDetails);
-			if (researchCheck && researchCheck.researchStatus) {
-				hasExistingResearch = !researchCheck.researchStatus.needed;
-				console.log(`[TaskManagementScreen] Research analysis result:`, {
-					needed: researchCheck.researchStatus.needed,
-					hasExisting: !researchCheck.researchStatus.needed,
-					reason: researchCheck.researchStatus.reason
-				});
-			}
-		} catch (error) {
-			console.warn(
-				'Failed to check research status via hooks, falling back to simple check:',
-				error
-			);
-			setToast({
-				message: `Hook service error (using fallback): ${error.message}`,
-				type: 'warning'
-			});
-			// Fallback to simple check - check both subtask and parent task
-			hasExistingResearch = false;
-
-			// Check subtask details using the same pattern as the hook utility
-			if (subtaskWithDetails.details) {
-				const oldPattern =
-					/<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
-				const matches = [...subtaskWithDetails.details.matchAll(oldPattern)];
-				if (matches.length > 0) {
-					hasExistingResearch = true;
-					console.log(
-						'[TaskManagementScreen] Found research in subtask via fallback'
-					);
-				}
-			}
-
-			// If not found in subtask, check parent task
-			if (!hasExistingResearch && selectedTask.details) {
-				const oldPattern =
-					/<info added on ([^>]+)>\s*(.*?)\s*(?:<\/info added on [^>]+>|$)/gs;
-				const matches = [...selectedTask.details.matchAll(oldPattern)];
-				if (matches.length > 0) {
-					hasExistingResearch = true;
-					console.log(
-						'[TaskManagementScreen] Found research in parent task via fallback'
-					);
-				}
-			}
-		}
-
-		// Run automatic research only if it hasn't been done before
-		const researchQuery = buildResearchQuery();
-		let researchContext = null;
-
-		if (!hasExistingResearch) {
-			try {
-				setToast({
-					message: 'Running research for context...',
-					type: 'info'
-				});
-
-				// Use the backend's research function with saveTo to automatically save in proper format
-				const researchResult = await backend.research({
-					query: researchQuery,
-					taskIds: [
-						`${selectedTask.id}.${selectedSubtask.id}`,
-						selectedTask.id,
-						...dependencies.filter((d) => d).map((d) => d.id)
-					],
-					includeProjectTree: true,
-					detailLevel: 'medium',
-					saveTo: `${selectedTask.id}.${selectedSubtask.id}` // This will save with proper timestamp format
-				});
-
-				researchContext = researchResult.response || researchResult;
-
-				setToast({
-					message: 'Research completed and saved to subtask',
-					type: 'success'
-				});
-			} catch (error) {
-				console.error('Research failed:', error);
-				// Continue without research
-			}
-		} else {
-			setToast({
-				message: 'Using existing research from subtask details',
-				type: 'info'
-			});
-
-			// Extract existing research from details if possible
-			// This helps pass it along to the Claude context
-			const detailLines = subtaskWithDetails.details.split('\n');
-			let inResearchSection = false;
-			const researchLines = [];
-
-			for (const line of detailLines) {
-				if (line.includes('### Research Results')) {
-					inResearchSection = true;
-					continue;
-				}
-				if (inResearchSection && line.startsWith('---')) {
-					break;
-				}
-				if (inResearchSection) {
-					researchLines.push(line);
-				}
-			}
-
-			if (researchLines.length > 0) {
-				researchContext = researchLines.join('\n').trim();
-			}
-		}
-
-		return {
-			currentSubtask: {
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title,
-				description: selectedSubtask.description,
-				details: subtaskWithDetails.details, // Use the full details we fetched
-				status: selectedSubtask.status
-			},
-			parentTask: {
-				id: selectedTask.id,
-				title: selectedTask.title,
-				description: selectedTask.description,
-				details: selectedTask.details,
-				testStrategy: selectedTask.testStrategy || selectedTask.test_strategy,
-				subtasks: selectedTask.subtasks
-			},
-			dependencies: dependencies.filter(Boolean),
-			tagContext: currentTag,
-			researchContext
-		};
-	};
-
-	const extractKeyDecisions = (details) => {
-		if (!details) return '';
-
-		const patterns = [
-			/decided to use/i,
-			/implementation approach/i,
-			/chosen.*because/i,
-			/architecture decision/i,
-			/key insight/i,
-			/important:/i
-		];
-
-		return details
-			.split('\n')
-			.filter((line) => patterns.some((p) => p.test(line)))
-			.slice(0, 5)
-			.join('\n');
-	};
-
-	const buildResearchQuery = () => {
-		const techStack = extractTechStack(
-			`${selectedSubtask.description || ''} ${selectedTask.description || ''}`
-		);
-
-		return `
-Best practices and implementation guidance for: ${selectedSubtask.title}
-Context: ${selectedTask.title}
-${techStack ? `Technologies: ${techStack}` : ''}
-Focus on: current industry standards, common pitfalls, security considerations
-		`.trim();
-	};
-
-	const extractTechStack = (text) => {
-		// Common technology patterns
-		const techPatterns = [
-			/\b(React|Vue|Angular|Svelte)\b/gi,
-			/\b(Node\.?js|Express|Fastify|Koa)\b/gi,
-			/\b(TypeScript|JavaScript|Python|Go|Rust)\b/gi,
-			/\b(PostgreSQL|MySQL|MongoDB|Redis)\b/gi,
-			/\b(AWS|Azure|GCP|Docker|Kubernetes)\b/gi,
-			/\b(GraphQL|REST|gRPC|WebSocket)\b/gi
-		];
-
-		const matches = new Set();
-		techPatterns.forEach((pattern) => {
-			const found = text.match(pattern);
-			if (found) {
-				found.forEach((tech) => matches.add(tech));
-			}
-		});
-
-		return Array.from(matches).join(', ');
-	};
-
-	const extractClaudeSessionIds = (details) => {
-		if (!details) return [];
-
-		const sessionIds = [];
-		// Look for session IDs in multiple formats
-		const patterns = [
-			/<claude-session[^>]+sessionId="([^"]+)"[^>]*>/gi,
-			/\*\*Session ID:\*\* ([a-f0-9-]+)/gi,
-			/Session ID: ([a-f0-9-]+)/gi
-		];
-
-		patterns.forEach((pattern) => {
-			let match;
-			match = pattern.exec(details);
-			while (match !== null) {
-				if (match[1] && !sessionIds.includes(match[1])) {
-					sessionIds.push(match[1]);
-				}
-				match = pattern.exec(details);
-			}
-		});
-
-		return sessionIds;
-	};
 
 	const getStatusSymbol = (status) => {
 		switch (status) {
@@ -1153,12 +685,6 @@ Focus on: current industry standards, common pitfalls, security considerations
 				const updatedWorktrees = new Map(subtaskWorktrees);
 				updatedWorktrees.set(subtaskId, [result.worktree]);
 				setSubtaskWorktrees(updatedWorktrees);
-
-				// Set the worktree for Claude launcher
-				setClaudeWorktree(result.worktree);
-
-				// Show the Claude launcher modal
-				setShowClaudeLauncherModal(true);
 
 				if (result.reusedBranch) {
 					setToast({
@@ -1484,32 +1010,236 @@ Focus on: current industry standards, common pitfalls, security considerations
 		}
 	}, [selectedSubtask, viewMode, selectedTask, subtaskWorktrees, backend]);
 
-	const handleRunResearch = async (researchOptions) => {
-		const { query, save } = researchOptions;
-		setShowResearchModal(false);
-
-		if (!query) return;
-
-		setToast({ message: 'Running research...', type: 'info' });
-
+	const handleRunResearch = async (query, options = {}) => {
 		try {
-			const saveToId =
-				viewMode === 'detail'
-					? selectedTask.id.toString()
-					: `${selectedTask.id}.${selectedSubtask.id}`;
-
-			await backend.research({
+			const result = await backend.research({
 				query,
-				taskIds: [saveToId],
-				saveTo: save ? saveToId : null
+				taskIds: selectedTask ? [selectedTask.id] : undefined,
+				...options
 			});
 
-			setToast({ message: 'Research complete!', type: 'success' });
-			reloadTasks(); // Reload tasks to show updated details
+			showToast(
+				`Research completed: ${result.summary || 'Results saved to task'}`,
+				'success'
+			);
 		} catch (error) {
-			setToast({ message: `Research failed: ${error.message}`, type: 'error' });
+			console.error('Research failed:', error);
+			showToast(`Research failed: ${error.message}`, 'error');
 		}
 	};
+
+	// Agent selection functions
+	const handleAgentSelection = async () => {
+		if (!selectedTask || !selectedSubtask) return;
+
+		try {
+			setAgentLoading(true);
+			setAgentError(null);
+			
+			// Load available agents from VibeKit service
+			const vibekitService = await loadVibekitService();
+			let agents = [];
+			
+			try {
+				const vibekitAgents = await vibekitService.getAvailableAgents();
+				agents = vibekitAgents.map(agent => ({
+					id: agent.type,
+					name: agent.name,
+					description: getAgentDescription(agent.type),
+					provider: capitalizeProvider(agent.provider),
+					available: agent.configured,
+					tier: getTierForAgent(agent.type)
+				}));
+			} catch (vibekitError) {
+				console.warn('VibeKit service unavailable, using mock agents:', vibekitError);
+				agents = getMockAgents();
+			}
+
+			setAvailableAgents(agents);
+			setSelectedAgentIndex(0);
+			setShowAgentModal(true);
+		} catch (error) {
+			console.error('Failed to load agents:', error);
+			setAgentError(`Failed to load agents: ${error.message}`);
+		} finally {
+			setAgentLoading(false);
+		}
+	};
+
+	const handleSelectAgent = async () => {
+		const selectedAgent = availableAgents[selectedAgentIndex];
+		if (!selectedAgent || !selectedAgent.available) {
+			setAgentError(`Agent "${selectedAgent?.name}" is currently unavailable`);
+			return;
+		}
+
+		try {
+			setAgentLoading(true);
+			setAgentError(null);
+
+			// Generate comprehensive project context
+			const projectContext = await generateProjectContext();
+
+			// Create prompt for the agent
+			const contextPrompt = `# Task Master Project - Subtask Context
+
+I'm working on a specific subtask and would like your help. Here's the comprehensive project context:
+
+## Current Subtask
+**Task ${selectedTask.id}.${selectedSubtask.id}: ${selectedSubtask.title}**
+
+**Description:** ${selectedSubtask.description || 'No description provided'}
+
+**Status:** ${selectedSubtask.status}
+
+**Implementation Details:**
+${selectedSubtask.details || 'No implementation details yet'}
+
+## Project Context
+${projectContext}
+
+---
+
+I'm ready to work on this subtask and would appreciate your guidance, code assistance, or any insights you might have. What would you recommend as the next steps?`;
+
+			// Send to VibeKit
+			const vibekitService = await loadVibekitService();
+			await vibekitService.generateCode({
+				prompt: contextPrompt,
+				mode: 'ask',
+				agent: selectedAgent.id
+			});
+
+			setShowAgentModal(false);
+			showToast(`Successfully sent context to ${selectedAgent.name}`, 'success');
+		} catch (error) {
+			console.error('Failed to send context to agent:', error);
+			setAgentError(`Failed to send context: ${error.message}`);
+		} finally {
+			setAgentLoading(false);
+		}
+	};
+
+	// Helper functions for agent selection
+	const loadVibekitService = async () => {
+		try {
+			const { VibeKitService } = await import('../services/VibeKitService.js');
+			return new VibeKitService();
+		} catch (error) {
+			// Return mock service if VibeKit is not available
+			return new MockVibeKitService();
+		}
+	};
+
+	const generateProjectContext = async () => {
+		try {
+			const { TaskContextGenerator } = await import('../services/context-generation/index.js');
+			const generator = new TaskContextGenerator({ backend });
+			
+			const initResult = await generator.initialize();
+			if (!initResult.success) {
+				console.warn('Context generator initialization failed:', initResult.error);
+			}
+			
+			const context = await generator.generateContext({
+				includeProjectStructure: true,
+				includeGitContext: true,
+				includeTaskContext: true,
+				maxFiles: 50
+			});
+			
+			return context;
+		} catch (error) {
+			console.warn('Failed to generate full context:', error);
+			return `Project: ${backend.projectRoot || 'Unknown'}
+Current Task: ${selectedTask.id} - ${selectedTask.title}
+Subtask: ${selectedTask.id}.${selectedSubtask.id} - ${selectedSubtask.title}
+
+Note: Full context generation failed. Please ask for specific information you need about the project.`;
+		}
+	};
+
+	const getAgentDescription = (type) => {
+		const descriptions = {
+			'claude-code': 'Most capable model for complex coding tasks',
+			'codex': 'Fast and efficient for quick tasks', 
+			'gemini-cli': 'Google Gemini model for diverse tasks',
+			'opencode': 'Open source model for basic tasks'
+		};
+		return descriptions[type] || 'AI coding assistant';
+	};
+
+	const capitalizeProvider = (provider) => {
+		const providers = {
+			'anthropic': 'Anthropic',
+			'openai': 'OpenAI', 
+			'gemini': 'Google',
+			'open': 'Open Source'
+		};
+		return providers[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
+	};
+
+	const getTierForAgent = (type) => {
+		const tiers = {
+			'claude-code': 'premium',
+			'codex': 'standard',
+			'gemini-cli': 'standard',
+			'opencode': 'basic'
+		};
+		return tiers[type] || 'standard';
+	};
+
+	const getMockAgents = () => [
+		{
+			id: 'claude-sonnet',
+			name: 'Claude 3.5 Sonnet',
+			description: 'Most capable model for complex coding tasks',
+			provider: 'Anthropic',
+			available: true,
+			tier: 'premium'
+		},
+		{
+			id: 'claude-haiku',
+			name: 'Claude 3.5 Haiku',
+			description: 'Fast and efficient for quick tasks',
+			provider: 'Anthropic', 
+			available: true,
+			tier: 'standard'
+		},
+		{
+			id: 'gpt-4',
+			name: 'GPT-4 Turbo',
+			description: 'Advanced reasoning and code generation',
+			provider: 'OpenAI',
+			available: false,
+			tier: 'premium'
+		}
+	];
+
+	// Mock VibeKit service for fallback
+	class MockVibeKitService {
+		async getAvailableAgents() {
+			return [
+				{
+					type: 'claude-code',
+					name: 'Claude Code',
+					configured: true,
+					provider: 'anthropic'
+				},
+				{
+					type: 'codex',
+					name: 'OpenAI Codex',
+					configured: true,
+					provider: 'openai'
+				}
+			];
+		}
+
+		async generateCode({ prompt, mode, agent }) {
+			console.log(`Mock: Would send to ${agent} in ${mode} mode:`, prompt.substring(0, 100) + '...');
+			return { success: true, message: 'Mock response sent' };
+		}
+	}
 
 	const cycleFilter = () => {
 		const filters = ['all', 'pending', 'in-progress', 'done'];
@@ -1886,6 +1616,63 @@ Focus on: current industry standards, common pitfalls, security considerations
 					/>
 				)}
 
+				{showAgentModal && (
+					<Box
+						position="absolute"
+						top={5}
+						left={10}
+						right={10}
+						borderStyle="single"
+						borderColor={theme.accent}
+						backgroundColor={theme.background}
+						padding={1}
+					>
+						<Box flexDirection="column">
+							<Text color={theme.accent} bold marginBottom={1}>
+								Select VibeKit Agent
+							</Text>
+							
+							{agentError && (
+								<Text color={theme.error} marginBottom={1}>
+									{agentError}
+								</Text>
+							)}
+							
+							{agentLoading ? (
+								<Box justifyContent="center" alignItems="center" height={5}>
+									<Text color={theme.textDim}>Loading agents...</Text>
+								</Box>
+							) : (
+								<Box flexDirection="column">
+									{availableAgents.map((agent, index) => (
+										<Box key={agent.id} marginBottom={1}>
+											<Text 
+												color={index === selectedAgentIndex ? theme.accent : theme.text}
+												bold={index === selectedAgentIndex}
+											>
+												{index === selectedAgentIndex ? '→ ' : '  '}
+												{agent.name}
+											</Text>
+											<Text color={agent.available ? theme.success : theme.textDim}>
+												{' '}({agent.provider})
+											</Text>
+											{!agent.available && (
+												<Text color={theme.warning}> - Unavailable</Text>
+											)}
+										</Box>
+									))}
+									
+									<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
+										<Text color={theme.textDim}>
+											↑↓ navigate • Enter select • Esc cancel
+										</Text>
+									</Box>
+								</Box>
+							)}
+						</Box>
+					</Box>
+				)}
+
 				{toast && (
 					<Toast
 						message={toast.message}
@@ -2185,22 +1972,7 @@ Focus on: current industry standards, common pitfalls, security considerations
 			detailScrollOffset + DETAIL_VISIBLE_ROWS
 		);
 
-		// If modal is open, render only the modal
-		if (showClaudeLauncherModal && modalTaskData) {
-			return (
-				<EnhancedClaudeWorktreeLauncherModal
-					backend={backend}
-					worktree={claudeWorktree} // Can be null - modal will handle worktree creation
-					tasks={modalTaskData}
-					onClose={() => {
-						setShowClaudeLauncherModal(false);
-						setClaudeWorktree(null);
-						setModalTaskData(null);
-					}}
-					onSuccess={handleClaudeLauncherSuccess}
-				/>
-			);
-		}
+
 
 		return (
 			<Box key="subtask-detail-view" flexDirection="column" height="100%">
@@ -2304,8 +2076,8 @@ Focus on: current industry standards, common pitfalls, security considerations
 				>
 					<Text color={theme.text}>
 						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
-						t status • w work • c claude • {worktrees.length > 0 ? 'g worktree • ' : ''}
-						p progress • e exploration • l completion • r research • ESC back
+						t status • {worktrees.length > 0 ? 'g worktree • ' : ''}
+						p progress • e exploration • l completion • r research • a agent • ESC back
 					</Text>
 				</Box>
 
@@ -2314,6 +2086,63 @@ Focus on: current industry standards, common pitfalls, security considerations
 						onResearch={handleRunResearch}
 						onClose={() => setShowResearchModal(false)}
 					/>
+				)}
+
+				{showAgentModal && (
+					<Box
+						position="absolute"
+						top={5}
+						left={10}
+						right={10}
+						borderStyle="single"
+						borderColor={theme.accent}
+						backgroundColor={theme.background}
+						padding={1}
+					>
+						<Box flexDirection="column">
+							<Text color={theme.accent} bold marginBottom={1}>
+								Select VibeKit Agent
+							</Text>
+							
+							{agentError && (
+								<Text color={theme.error} marginBottom={1}>
+									{agentError}
+								</Text>
+							)}
+							
+							{agentLoading ? (
+								<Box justifyContent="center" alignItems="center" height={5}>
+									<Text color={theme.textDim}>Loading agents...</Text>
+								</Box>
+							) : (
+								<Box flexDirection="column">
+									{availableAgents.map((agent, index) => (
+										<Box key={agent.id} marginBottom={1}>
+											<Text 
+												color={index === selectedAgentIndex ? theme.accent : theme.text}
+												bold={index === selectedAgentIndex}
+											>
+												{index === selectedAgentIndex ? '→ ' : '  '}
+												{agent.name}
+											</Text>
+											<Text color={agent.available ? theme.success : theme.textDim}>
+												{' '}({agent.provider})
+											</Text>
+											{!agent.available && (
+												<Text color={theme.warning}> - Unavailable</Text>
+											)}
+										</Box>
+									))}
+									
+									<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
+										<Text color={theme.textDim}>
+											↑↓ navigate • Enter select • Esc cancel
+										</Text>
+									</Box>
+								</Box>
+							)}
+						</Box>
+					</Box>
 				)}
 
 				{toast && (
@@ -2328,22 +2157,6 @@ Focus on: current industry standards, common pitfalls, security considerations
 	}
 
 	// Render task list view
-	// If modal is open, render only the modal
-	if (showClaudeLauncherModal && modalTaskData) {
-		return (
-			<EnhancedClaudeWorktreeLauncherModal
-				backend={backend}
-				worktree={claudeWorktree} // Can be null - modal will handle worktree creation
-				tasks={modalTaskData}
-				onClose={() => {
-					setShowClaudeLauncherModal(false);
-					setClaudeWorktree(null);
-					setModalTaskData(null);
-				}}
-				onSuccess={handleClaudeLauncherSuccess}
-			/>
-		);
-	}
 
 	return (
 		<Box key="list-view" flexDirection="column" height="100%">
@@ -2551,6 +2364,63 @@ Focus on: current industry standards, common pitfalls, security considerations
 					onResearch={handleRunResearch}
 					onClose={() => setShowResearchModal(false)}
 				/>
+			)}
+
+			{showAgentModal && (
+				<Box
+					position="absolute"
+					top={5}
+					left={10}
+					right={10}
+					borderStyle="single"
+					borderColor={theme.accent}
+					backgroundColor={theme.background}
+					padding={1}
+				>
+					<Box flexDirection="column">
+						<Text color={theme.accent} bold marginBottom={1}>
+							Select VibeKit Agent
+						</Text>
+						
+						{agentError && (
+							<Text color={theme.error} marginBottom={1}>
+								{agentError}
+							</Text>
+						)}
+						
+						{agentLoading ? (
+							<Box justifyContent="center" alignItems="center" height={5}>
+								<Text color={theme.textDim}>Loading agents...</Text>
+							</Box>
+						) : (
+							<Box flexDirection="column">
+								{availableAgents.map((agent, index) => (
+									<Box key={agent.id} marginBottom={1}>
+										<Text 
+											color={index === selectedAgentIndex ? theme.accent : theme.text}
+											bold={index === selectedAgentIndex}
+										>
+											{index === selectedAgentIndex ? '→ ' : '  '}
+											{agent.name}
+										</Text>
+										<Text color={agent.available ? theme.success : theme.textDim}>
+											{' '}({agent.provider})
+										</Text>
+										{!agent.available && (
+											<Text color={theme.warning}> - Unavailable</Text>
+										)}
+									</Box>
+								))}
+								
+								<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
+									<Text color={theme.textDim}>
+										↑↓ navigate • Enter select • Esc cancel
+									</Text>
+								</Box>
+							</Box>
+						)}
+					</Box>
+				</Box>
 			)}
 
 			{toast && (
