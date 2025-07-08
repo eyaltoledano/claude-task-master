@@ -539,7 +539,7 @@ async function expandTask(
 		);
 		let taskAnalysis = null;
 
-		logger.info(
+		logger.debug(
 			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
 		);
 

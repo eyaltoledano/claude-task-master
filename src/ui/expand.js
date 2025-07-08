@@ -102,7 +102,12 @@ function displayExpandStart({
 			content += chalk.blue(`${subtaskText}: ${numSubtasks} (using default)\n`);
 		}
 	} else {
-		content += chalk.blue(`${subtaskText}: Appropriate number\n`);
+		// When numSubtasks is not specified, check if complexity analysis is available
+		if (hasComplexityAnalysis) {
+			content += chalk.blue(`${subtaskText}: Based on complexity analysis\n`);
+		} else {
+			content += chalk.blue(`${subtaskText}: Appropriate number\n`);
+		}
 	}
 
 	// Add custom prompt info if provided

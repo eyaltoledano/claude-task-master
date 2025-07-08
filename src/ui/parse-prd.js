@@ -104,7 +104,6 @@ function displayParsePrdStart({
  * @param {number} summary.elapsedTime - Total elapsed time in seconds
  * @param {Object} summary.taskPriorities - Breakdown of tasks by category/priority
  * @param {boolean} summary.usedFallback - Whether fallback parsing was used
- * @param {string} summary.taskFilesGenerated - Information about generated task files
  * @param {string} summary.actionVerb - Whether tasks were 'generated' or 'appended'
  */
 function displayParsePrdSummary(summary) {
@@ -116,7 +115,6 @@ function displayParsePrdSummary(summary) {
 		outputPath,
 		elapsedTime,
 		usedFallback = false,
-		taskFilesGenerated,
 		actionVerb = 'generated' // Default to 'generated' if not provided
 	} = summary;
 
@@ -214,21 +212,6 @@ function displayParsePrdSummary(summary) {
 		[chalk.cyan('PRD source:'), chalk.italic(prdFilePath)],
 		[chalk.cyan('Tasks file:'), chalk.italic(outputPath)]
 	);
-
-	// Add task files generation info if available
-	if (taskFilesGenerated) {
-		table.push([
-			chalk.cyan('Files generated:'),
-			chalk.italic(taskFilesGenerated)
-		]);
-	} else if (totalTasks > 0) {
-		// Create formatted task file range
-		const firstTaskId = '001';
-		const lastTaskId = totalTasks.toString().padStart(3, '0');
-		const fileRange = `task_${firstTaskId}.txt -> task_${lastTaskId}.txt`;
-
-		table.push([chalk.cyan(`Files ${actionVerb}:`), chalk.italic(fileRange)]);
-	}
 
 	// Add fallback parsing indicator if applicable
 	if (usedFallback) {

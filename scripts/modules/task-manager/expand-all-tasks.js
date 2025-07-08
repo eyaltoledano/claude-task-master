@@ -145,7 +145,7 @@ async function expandAllTasks(
 				tagName: data.tag || contextTag,
 				totalPendingTasks: tasksToExpandCount,
 				tasksFilePath: tasksPath,
-				numSubtasks: numSubtasks || 'Auto-calculated',
+				numSubtasks: numSubtasks, // Pass the actual numSubtasks (could be undefined)
 				explicitSubtasks: Boolean(numSubtasks),
 				hasComplexityAnalysis: Boolean(complexityReport),
 				force: force,
