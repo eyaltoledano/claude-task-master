@@ -37,6 +37,7 @@ import { ClaudeCodeScreen } from './components/ClaudeCodeScreen.jsx';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from './components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
+import SettingsModal from './components/SettingsModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
@@ -76,6 +77,7 @@ function FlowApp({ backend, options = {} }) {
 	const [inputKey, setInputKey] = useState(0);
 	const [nextTask, setNextTask] = useState(null);
 	const [showNextTaskModal, setShowNextTaskModal] = useState(false);
+	const [showSettings, setShowSettings] = useState(false);
 	const [hookManager, setHookManager] = useState(null);
 	const [branchManager, setBranchManager] = useState(null);
 	const [currentBranch, setCurrentBranch] = useState(null);
@@ -105,13 +107,14 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/exec', description: 'Manage task executions' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
-			{ name: '/providers', description: 'Manage sandbox providers' },
+			{ name: '/agents', description: 'Manage AI agents' },
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			{ name: '/work', description: 'Manage Git worktrees' },
 			{ name: '/claude', description: 'Claude Code assistant' },
 			{ name: '/status', description: 'View project status details' },
 			{ name: '/models', description: 'Configure AI models' },
 			{ name: '/rules', description: 'Configure AI assistant rules' },
+			{ name: '/settings', description: 'Open Flow TUI settings & configuration' },
 			{ name: '/theme', description: 'Toggle theme' },
 			{ name: '/exit', description: 'Exit the application' }
 		];
@@ -138,7 +141,7 @@ function FlowApp({ backend, options = {} }) {
 		} else {
 			setTheme(currentTheme);
 		}
-	}, []);
+	}, [currentTheme]);
 
 	// Autocomplete filtering effect
 	useEffect(() => {
@@ -473,8 +476,11 @@ function FlowApp({ backend, options = {} }) {
 				case 'executions':
 					setCurrentScreen('executions');
 					break;
-				case 'providers':
+				case 'agents':
 					setCurrentScreen('providers');
+					break;
+				case 'settings':
+					setShowSettings(true);
 					break;
 				default:
 					setMessages([
@@ -670,11 +676,14 @@ function FlowApp({ backend, options = {} }) {
 					case 'q':
 						exit();
 						break;
-					case 'p':
+					case 'o':
 						setCurrentScreen('providers');
 						break;
-					case 'e':
+					case 'x':
 						setCurrentScreen('executions');
+						break;
+					case 'u':
+						setShowSettings(true);
 						break;
 					default:
 						setNotification({
@@ -727,7 +736,8 @@ function FlowApp({ backend, options = {} }) {
 				currentScreen !== 'worktrees' &&
 				currentScreen !== 'claude-code' &&
 				currentScreen !== 'providers' &&
-				currentScreen !== 'executions'
+				currentScreen !== 'executions' &&
+				!showSettings
 		}
 	);
 
@@ -867,6 +877,20 @@ function FlowApp({ backend, options = {} }) {
 								setShowNextTaskModal(false);
 								setNextTask(null);
 							}}
+						/>
+					) : showSettings ? (
+						<SettingsModal
+							onClose={() => setShowSettings(false)}
+							onSettingsChange={(newSettings) => {
+								// Handle settings changes
+								console.log('Settings updated:', newSettings);
+								setNotification({
+									message: 'Settings saved successfully!',
+									type: 'success',
+									duration: 2000
+								});
+							}}
+							projectRoot={currentBackend?.projectRoot || process.cwd()}
 						/>
 					) : currentScreen === 'tasks' ? (
 						<TaskManagementScreen />

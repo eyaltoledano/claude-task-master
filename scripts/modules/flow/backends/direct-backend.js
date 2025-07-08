@@ -2270,330 +2270,55 @@ export class DirectBackend extends FlowBackend {
 		}
 	}
 
-	// Prepare Claude context with CLAUDE.md
+	// Prepare Claude context with CLAUDE.md using new TaskContextGenerator
 	async prepareClaudeContext(worktree, tasks, options = {}) {
 		try {
-			const execAsync = promisify(exec);
 			const claudeMdPath = path.join(worktree.path, 'CLAUDE.md');
 
-			// Enhance subtasks with parent task information
-			const enhancedTasks = await Promise.all(
-				tasks.map(async (task) => {
-					const isSubtask = task.isSubtask || String(task.id).includes('.');
+			// Use new TaskContextGenerator for consistent context generation
+			const { TaskContextGenerator } = await import('../services/context-generation/index.js');
+			
+			const contextGenerator = new TaskContextGenerator({
+				backend: this,
+				projectRoot: worktree.path, // Use worktree path for context
+				astMode: 'optional' // Try to use AST if available
+			});
 
-					if (isSubtask && !task.parentTask) {
-						// Look up parent task information
-						try {
-							const [parentId] = String(task.id).split('.');
-							const parentTask = await this.getTask(parentId);
+			// Initialize and generate context
+			await contextGenerator.initialize();
 
-							if (parentTask) {
-								return {
-									...task,
-									parentTask: {
-										id: parentTask.id,
-										title: parentTask.title,
-										description: parentTask.description,
-										details: parentTask.details,
-										testStrategy:
-											parentTask.testStrategy || parentTask.test_strategy
-									}
-								};
-							}
-						} catch (error) {
-							console.warn(
-								`Could not load parent task for subtask ${task.id}:`,
-								error.message
-							);
-						}
-					}
-
-					return task;
-				})
-			);
-
-			// Import Enhanced AST context builder for Phase 2.3 (dynamic import to avoid circular dependencies)
-			let enhancedAstContextBuilder = null;
-			let enhancedAstContext = null;
-
-			try {
-				const { createEnhancedASTContextBuilder } = await import(
-					'../ast/context/enhanced-ast-context-builder.js'
-				);
-				enhancedAstContextBuilder = createEnhancedASTContextBuilder(
-					this.projectRoot,
-					{
-						enablePhase21: true, // Advanced context enhancement
-						enablePhase22: true, // Language-specific analysis
-						enableTaskAwareness: true, // Task-aware context building
-						enableIntelligentSelection: true // Intelligent file selection
-					}
-				);
-
-				// Build enhanced AST context for the worktree with Phase 2.1 + 2.2 capabilities
-				enhancedAstContext =
-					await enhancedAstContextBuilder.buildWorktreeContext(worktree.path, {
-						tasks: enhancedTasks,
-						includeComplexity: true,
-						includeImports: true,
-						includeDependencyAnalysis: true,
-						includeFrameworkDetection: true,
-						includePatternAnalysis: true
-					});
-
-				console.debug('[Enhanced AST] Context building result:', {
-					enabled: enhancedAstContext.enabled,
-					success: enhancedAstContext.success,
-					filesAnalyzed: enhancedAstContext.metadata?.filesAnalyzed || 0,
-					phase: enhancedAstContext.metadata?.phase || 'Unknown',
-					enhancedFeatures: enhancedAstContext.metadata?.enhancedFeatures || {}
-				});
-			} catch (error) {
-				console.debug(
-					'[Enhanced AST] Failed to build enhanced AST context:',
-					error.message
-				);
-				enhancedAstContext = { enabled: false, error: error.message };
-			}
-
-			// Detect persona if not provided
+			// Detect persona if not provided (preserve existing persona logic)
 			let persona = options.persona;
 			if (!persona && tasks.length > 0) {
-				const detectedPersonas = await detectPersona(tasks[0], worktree);
-				persona = detectedPersonas[0]?.persona || 'architect';
-			}
-
-			let content = '';
-
-			// Phase 2.3: Use Enhanced CLAUDE.md Formatter for rich, task-aware context
-			try {
-				const { formatEnhancedClaudeContext } = await import(
-					'../ast/context/enhanced-claude-formatter.js'
-				);
-
-				if (
-					enhancedAstContext &&
-					enhancedAstContext.enabled &&
-					enhancedAstContext.success
-				) {
-					// Generate rich, enhanced CLAUDE.md content with Phase 2.1 + 2.2 analysis
-					content = await formatEnhancedClaudeContext(
-						enhancedAstContext,
-						enhancedTasks,
-						{
-							worktreePath: worktree.path,
-							includeTaskAnalysis: true,
-							includeArchitectureOverview: true,
-							includePrioritizedContext: true,
-							includeDependencyAnalysis: true,
-							includeComplexityInsights: true,
-							includeImplementationGuidance: true,
-							detailLevel: 'comprehensive',
-							backend: this // Pass backend instance for re-fetching
-						}
-					);
-
-					console.debug(
-						'[Enhanced CLAUDE.md] Generated rich context with Phase 2.3 formatter'
-					);
-				} else {
-					// Fallback to enhanced formatter with error handling
-					content = await formatEnhancedClaudeContext(
-						enhancedAstContext,
-						enhancedTasks,
-						{
-							worktreePath: worktree.path,
-							detailLevel: 'basic',
-							backend: this // Pass backend instance for re-fetching
-						}
-					);
-
-					console.debug(
-						'[Enhanced CLAUDE.md] Generated fallback context due to AST analysis failure'
-					);
-				}
-			} catch (formatterError) {
-				console.warn(
-					'[Enhanced CLAUDE.md] Formatter failed, using basic context:',
-					formatterError.message
-				);
-
-				// Ultimate fallback to basic context generation
-				content = `# Task Implementation Context
-
-Generated by Task Master for worktree: ${worktree.name}
-Branch: ${worktree.branch || 'unknown'}
-
-`;
-
-				// Add worktree-specific note for subtask worktrees
-				if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
-					content += `**Note:** This worktree was automatically created for the specific subtask implementation.\n\n`;
-				}
-
-				// Add tasks with full details
-				content += '## Tasks to Implement\n\n';
-				for (const task of enhancedTasks) {
-					// Check if this is a subtask by looking at the ID or isSubtask property
-					const isSubtask = task.isSubtask || String(task.id).includes('.');
-					const taskType = isSubtask ? 'Subtask' : 'Task';
-
-					// If this is a subtask, first show parent task context
-					if (isSubtask && task.parentTask) {
-						content += `### Parent Task Context: ${task.parentTask.id}: ${task.parentTask.title}\n\n`;
-
-						if (task.parentTask.description) {
-							content += `**Parent Description:**\n${task.parentTask.description}\n\n`;
-						}
-
-						if (task.parentTask.details) {
-							content += `**Parent Implementation Details:**\n${task.parentTask.details}\n\n`;
-						}
-
-						// Check for parent test strategy
-						const parentTestStrategy =
-							task.parentTask.testStrategy ||
-							task.parentTask.test_strategy ||
-							null;
-						if (parentTestStrategy !== null && parentTestStrategy !== '') {
-							content += `**Parent Test Strategy:**\n${parentTestStrategy}\n\n`;
-						}
-
-						content += '---\n\n';
-					}
-
-					content += `### ${taskType} to Implement: ${task.id}: ${task.title}\n\n`;
-					content += `**Status:** ${task.status}\n\n`;
-
-					if (task.description) {
-						content += `**Description:**\n${task.description}\n\n`;
-					}
-
-					if (task.details) {
-						content += `**Implementation Details:**\n${task.details}\n\n`;
-					}
-
-					// Check for test strategy (handle empty strings)
-					const testStrategy = task.testStrategy || task.test_strategy || null;
-					if (testStrategy !== null && testStrategy !== '') {
-						content += `**Test Strategy:**\n${testStrategy}\n\n`;
-					} else if (isSubtask) {
-						// For subtasks without test strategy, add a placeholder
-						content += `**Test Strategy:**\n(No specific test strategy defined for this subtask)\n\n`;
-					}
-
-					if (task.dependencies && task.dependencies.length > 0) {
-						content += `**Dependencies:** ${task.dependencies.join(', ')}\n`;
-					}
-
-					// Only show subtasks section if this is a parent task with subtasks
-					if (!isSubtask && task.subtasks && task.subtasks.length > 0) {
-						content += `**Subtasks:**\n`;
-						for (const subtask of task.subtasks) {
-							content += `- ${subtask.id}: ${subtask.title} (${subtask.status || 'pending'})\n`;
-							if (subtask.details) {
-								content += `  - Details: ${subtask.details.substring(0, 200)}${subtask.details.length > 200 ? '...' : ''}\n`;
-							}
-							if (subtask.testStrategy && subtask.testStrategy.trim() !== '') {
-								content += `  - Test Strategy: ${subtask.testStrategy}\n`;
-							}
-						}
-						content += '\n';
-					}
-
-					content += '\n---\n\n';
-				}
-
-				// Add basic AST context if available
-				if (
-					enhancedAstContext &&
-					enhancedAstContext.enabled &&
-					enhancedAstContext.success &&
-					enhancedAstContext.context
-				) {
-					content += '## Code Structure Analysis\n\n';
-					content +=
-						'*Basic AST analysis (enhanced formatter unavailable)*\n\n';
-					if (typeof enhancedAstContext.context === 'string') {
-						content += enhancedAstContext.context;
-					} else {
-						content += 'AST analysis completed but formatting failed.\n\n';
-					}
-				} else if (enhancedAstContext && enhancedAstContext.enabled) {
-					content += '## Code Structure Analysis\n\n';
-					content += `*AST analysis failed: ${enhancedAstContext.error || 'Unknown error'}*\n\n`;
-				}
-			}
-
-			// Only add basic project structure and Git context for ultimate fallback case
-			// (Enhanced formatter handles these sections with richer analysis)
-			if (
-				content.includes('Ultimate fallback') ||
-				!content.includes('Enhanced Task Implementation Context')
-			) {
-				// Add project structure (filtered to relevant files)
-				if (options.includeStructure !== false) {
-					content += '## Project Structure\n\n';
-					content += '```\n';
-
-					try {
-						// Get project files, excluding common directories and files
-						const { stdout } = await execAsync(
-							`cd "${worktree.path}" && find . -type f \\( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.json" -o -name "*.md" \\) | grep -v node_modules | grep -v "\\.git" | grep -v "dist/" | grep -v "build/" | grep -v "coverage/" | head -50 | sort`
-						);
-
-						if (stdout.trim()) {
-							content += stdout;
-						} else {
-							content += '(No project files found yet)\n';
-						}
-					} catch (err) {
-						content += '(Unable to list project files)\n';
-					}
-
-					content += '```\n\n';
-				}
-
-				// Add Git context
-				content += '## Git Context\n\n';
 				try {
-					const { stdout: branch } = await execAsync(
-						`cd "${worktree.path}" && git rev-parse --abbrev-ref HEAD`
-					);
-					content += `**Current branch:** ${branch.trim()}\n`;
-
-					const { stdout: status } = await execAsync(
-						`cd "${worktree.path}" && git status --short`
-					);
-					if (status.trim()) {
-						content += '\n**Uncommitted changes:**\n```\n' + status + '```\n';
-					} else {
-						content += '\n**Working directory:** Clean\n';
-					}
-
-					// Add recent commits
-					try {
-						const { stdout: commits } = await execAsync(
-							`cd "${worktree.path}" && git log --oneline -5`
-						);
-						if (commits.trim()) {
-							content += '\n**Recent commits:**\n```\n' + commits + '```\n';
-						}
-					} catch {
-						// Might be a new branch with no commits
-					}
-				} catch (err) {
-					content += 'Git information unavailable\n';
+					const detectedPersonas = await detectPersona(tasks[0], worktree);
+					persona = detectedPersonas[0]?.persona || 'architect';
+				} catch (error) {
+					console.debug('Persona detection failed, using default:', error.message);
+					persona = 'architect';
 				}
+			}
 
-				// Add instructions for Claude
-				content += '\n## Instructions\n\n';
-				content +=
-					'Please implement the tasks listed above, following the implementation details and test strategies provided.\n';
-				content +=
-					'Ensure all code follows project conventions and includes appropriate tests.\n';
-				content +=
-					'This context file provides a comprehensive overview of the task requirements and current project state.\n';
+			// Generate comprehensive context using new services
+			const contextResult = await contextGenerator.generateContext({
+				tasks,
+				includeGitContext: true,
+				includeProjectStructure: options.includeStructure !== false,
+				executionOptions: {
+					mode: options.mode || 'headless',
+					target: worktree.name,
+					requirements: options.requirements || [],
+					constraints: options.constraints || []
+				},
+				format: 'markdown'
+			});
+
+			let content = contextResult.content;
+
+			// Add worktree-specific note for subtask worktrees
+			if (worktree.name && worktree.name.match(/^task-\d+\.\d+$/)) {
+				content = content.replace('Generated context for development assistance', 
+					'Generated context for development assistance\n\n**Note:** This worktree was automatically created for the specific subtask implementation.');
 			}
 
 			// Add custom headless prompt if provided
@@ -2602,13 +2327,14 @@ Branch: ${worktree.branch || 'unknown'}
 				content += options.headlessPrompt + '\n';
 			}
 
-			// Write CLAUDE.md
-			await fs.writeFile(claudeMdPath, content);
+			// Write CLAUDE.md to the worktree
+			const fs = await import('fs');
+			await fs.promises.writeFile(claudeMdPath, content);
 
 			return {
 				contextFile: claudeMdPath,
 				persona,
-				tasksCount: enhancedTasks.length
+				tasksCount: tasks.length
 			};
 		} catch (err) {
 			throw new Error(`Failed to prepare Claude context: ${err.message}`);

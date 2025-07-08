@@ -16,6 +16,9 @@ export class VibeKitService {
     this.flowConfig = new FlowConfig(config.projectRoot || process.cwd());
     const flowVibeKitConfig = this.flowConfig.getVibeKitConfig();
     
+    // Store validation mode (strict by default, non-strict for settings modal)
+    this.strictValidation = config.strictValidation !== false;
+    
     this.config = {
       defaultAgent: config.defaultAgent || flowVibeKitConfig.defaultAgent || 'claude-code',
       
@@ -150,13 +153,20 @@ export class VibeKitService {
     if (issues.length > 0) {
       console.error('VibeKit Configuration Issues:');
       issues.forEach(issue => console.error(`  ❌ ${issue}`));
-      throw new Error(`VibeKit configuration validation failed: ${issues.join(', ')}`);
+      
+      // Only throw in strict validation mode
+      if (this.strictValidation) {
+        throw new Error(`VibeKit configuration validation failed: ${issues.join(', ')}`);
+      }
     }
 
     if (warnings.length > 0) {
       console.warn('VibeKit Configuration Warnings:');
       warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`));
     }
+    
+    // Store validation results for non-strict mode
+    this.validationResults = { issues, warnings };
   }
 
   /**
@@ -191,7 +201,9 @@ export class VibeKitService {
       },
       streaming: {
         enabled: this.config.streaming?.enabled
-      }
+      },
+      // Include validation results if available (from non-strict mode)
+      validation: this.validationResults || { issues: [], warnings: [] }
     };
   }
 

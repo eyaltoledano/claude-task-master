@@ -1,198 +1,149 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { Alert, StatusMessage, Badge } from '@inkjs/ui';
+import { FlowConfig } from '../config/flow-config.js';
+import VibeKitSetupGuide from './VibeKitSetupGuide.jsx';
 
-const DEFAULT_SETTINGS = {
-	telemetry: {
-		enabled: false,
-		endpoint: '',
-		samplingRate: 1.0
-	},
-	performance: {
-		memoryThreshold: 100,
-		cleanupInterval: 30000,
-		renderOptimization: true
-	},
-	ui: {
-		autoRefresh: true,
-		refreshInterval: 2000,
-		maxLogMessages: 50,
-		theme: 'default'
-	},
-	vibekit: {
-		defaultProvider: 'e2b',
-		timeoutMs: 300000,
-		retryAttempts: 3
-	}
-};
+export default function SettingsModal({ onClose, onSettingsChange, projectRoot }) {
+	const [currentSection, setCurrentSection] = useState('vibekit');
+	const [showSetupGuide, setShowSetupGuide] = useState(false);
 
-export default function SettingsModal({ onClose, onSettingsChange }) {
-	const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-	const [currentCategory, setCurrentCategory] = useState('performance');
-	const [hasChanges, setHasChanges] = useState(false);
+	// Initialize config with fallbacks
+	const config = new FlowConfig(projectRoot);
+	const vibekitConfig = config.getVibeKitConfig() || {};
+	
+	// Ensure we have arrays to work with
+	const agents = vibekitConfig.agents || [];
+	const environments = vibekitConfig.environments || [];
+	const github = vibekitConfig.github || {};
 
+	// Input handling
 	useInput((input, key) => {
 		if (key.escape || input === 'q') {
 			onClose();
-		}
-		if (input === 's' && hasChanges) {
-			onSettingsChange(settings);
-			setHasChanges(false);
-		}
-		if (key.tab) {
-			const categories = Object.keys(settings);
-			const currentIndex = categories.indexOf(currentCategory);
-			const nextIndex = (currentIndex + 1) % categories.length;
-			setCurrentCategory(categories[nextIndex]);
+		} else if (input === 'h' && currentSection === 'vibekit') {
+			setShowSetupGuide(!showSetupGuide);
+		} else if (input === '1') {
+			setCurrentSection('vibekit');
+			setShowSetupGuide(false);
+		} else if (input === '2') {
+			setCurrentSection('flow');
+			setShowSetupGuide(false);
 		}
 	});
 
-	const updateSetting = (category, key, value) => {
-		setSettings((prev) => ({
-			...prev,
-			[category]: {
-				...prev[category],
-				[key]: value
-			}
-		}));
-		setHasChanges(true);
+	// Helper functions
+	const getAgentStatusColor = (agentId) => {
+		const agent = agents.find(a => a.id === agentId);
+		if (!agent) return 'gray';
+		return agent.configured ? 'green' : 'red';
 	};
 
-	const resetToDefaults = () => {
-		setSettings(DEFAULT_SETTINGS);
-		setHasChanges(true);
+	const getEnvironmentStatus = (envId) => {
+		const env = environments.find(e => e.id === envId);
+		if (!env) return '❌';
+		return env.available ? '✅' : '❌';
 	};
+
+	// Show setup guide if requested
+	if (showSetupGuide) {
+		return (
+			<VibeKitSetupGuide 
+				onClose={() => setShowSetupGuide(false)}
+				projectRoot={projectRoot}
+			/>
+		);
+	}
 
 	return (
-		<Box
-			position="absolute"
-			top={0}
-			left={0}
-			width="100%"
-			height="100%"
-			backgroundColor="black"
-			justifyContent="center"
-			alignItems="center"
-		>
-			<Box width={80} height={25} flexDirection="column">
-				<Alert variant="info">
-					<Box flexDirection="column" padding={1}>
-						<Box
-							flexDirection="row"
-							justifyContent="space-between"
-							marginBottom={1}
-						>
-							<Text color="cyan" bold>
-								Flow TUI - Settings & Configuration
-							</Text>
-							{hasChanges && <Badge color="yellow">Unsaved Changes</Badge>}
-						</Box>
+		<Box flexDirection="column" padding={1}>
+			<Box borderStyle="single" borderColor="blue" flexDirection="column" padding={1} marginBottom={1}>
+				<Text bold color="blue">⚙️  Task Master Settings</Text>
+				<Text color="gray">Press 'q' or ESC to close • Press 'h' for VibeKit setup help</Text>
+			</Box>
 
-						{/* Category Navigation */}
-						<Box flexDirection="row" marginBottom={2}>
-							{Object.keys(settings).map((category) => (
-								<Box key={category} marginRight={2}>
-									<Text color={currentCategory === category ? 'green' : 'gray'}>
-										{category.charAt(0).toUpperCase() + category.slice(1)}
-									</Text>
-								</Box>
-							))}
-						</Box>
+			<Box flexDirection="row" height={20}>
+				{/* Left sidebar - Navigation */}
+				<Box flexDirection="column" width={25} marginRight={2}>
+					<Box borderStyle="single" flexDirection="column" padding={1}>
+						<Text bold>📋 Categories</Text>
+						<Text color={currentSection === 'vibekit' ? 'cyan' : 'white'}>
+							{currentSection === 'vibekit' ? '▶ ' : '  '}1. VibeKit Integration
+						</Text>
+						<Text color={currentSection === 'flow' ? 'cyan' : 'white'}>
+							{currentSection === 'flow' ? '▶ ' : '  '}2. Flow Configuration
+						</Text>
+					</Box>
+				</Box>
 
-						{/* Settings Content */}
-						<Box
-							height={15}
-							flexDirection="column"
-							borderStyle="single"
-							padding={1}
-						>
-							<Text color="yellow" bold>
-								{currentCategory.charAt(0).toUpperCase() +
-									currentCategory.slice(1)}{' '}
-								Settings
-							</Text>
+				{/* Right content area */}
+				<Box flexDirection="column" flexGrow={1}>
+					{currentSection === 'vibekit' && (
+						<Box flexDirection="column">
+							{/* VibeKit Status */}
+							<Box borderStyle="single" borderColor="green" flexDirection="column" padding={1} marginBottom={1}>
+								<Text bold color="green">🤖 VibeKit Service Status</Text>
+								<Text>Status: {vibekitConfig.isConfigured ? '✅ Configured' : '❌ Not Configured'}</Text>
+								<Text>Agents: {agents.filter(a => a.configured).length}/4 configured</Text>
+								<Text>Default Agent: {vibekitConfig.defaultAgent || 'Not set'}</Text>
+								<Text>Environments: {environments.filter(e => e.available).length}/3 available</Text>
+							</Box>
 
-							<Box marginTop={1}>
-								{currentCategory === 'performance' && (
-									<Box flexDirection="column">
-										<Text>
-											Memory Threshold: {settings.performance.memoryThreshold}{' '}
-											MB
-										</Text>
-										<Text>
-											Cleanup Interval:{' '}
-											{settings.performance.cleanupInterval / 1000}s
-										</Text>
-										<Text>
-											Render Optimization:{' '}
-											{settings.performance.renderOptimization
-												? 'Enabled'
-												: 'Disabled'}
-										</Text>
-									</Box>
-								)}
+							{/* Agents Panel */}
+							<Box borderStyle="single" flexDirection="column" padding={1} marginBottom={1}>
+								<Text bold>🤖 AI Agents ({agents.filter(a => a.configured).length}/4)</Text>
+								<Text color={getAgentStatusColor('claude')}>
+									Claude: {getAgentStatusColor('claude') === 'green' ? '✅' : '❌'} Configured
+									{vibekitConfig.defaultAgent === 'claude' && <Text color="cyan"> (Default)</Text>}
+								</Text>
+								<Text color={getAgentStatusColor('gpt4')}>
+									GPT-4: {getAgentStatusColor('gpt4') === 'green' ? '✅' : '❌'} Configured
+									{vibekitConfig.defaultAgent === 'gpt4' && <Text color="cyan"> (Default)</Text>}
+								</Text>
+								<Text color={getAgentStatusColor('gemini')}>
+									Gemini: {getAgentStatusColor('gemini') === 'green' ? '✅' : '❌'} Configured
+									{vibekitConfig.defaultAgent === 'gemini' && <Text color="cyan"> (Default)</Text>}
+								</Text>
+								<Text color={getAgentStatusColor('opencode')}>
+									OpenCode: {getAgentStatusColor('opencode') === 'green' ? '✅' : '❌'} Configured
+									{vibekitConfig.defaultAgent === 'opencode' && <Text color="cyan"> (Default)</Text>}
+								</Text>
+							</Box>
 
-								{currentCategory === 'telemetry' && (
-									<Box flexDirection="column">
-										<Text>
-											Telemetry:{' '}
-											{settings.telemetry.enabled ? 'Enabled' : 'Disabled'}
-										</Text>
-										<Text>
-											Sampling Rate:{' '}
-											{(settings.telemetry.samplingRate * 100).toFixed(0)}%
-										</Text>
-										<Text>
-											Endpoint:{' '}
-											{settings.telemetry.endpoint || 'Not configured'}
-										</Text>
-									</Box>
-								)}
+							{/* Environments Panel */}
+							<Box borderStyle="single" flexDirection="column" padding={1} marginBottom={1}>
+								<Text bold>🏗️  Sandbox Environments ({environments.filter(e => e.available).length}/3)</Text>
+								<Text>E2B: {getEnvironmentStatus('e2b')} Available</Text>
+								<Text>Northflank: {getEnvironmentStatus('northflank')} Available</Text>
+								<Text>Daytona: {getEnvironmentStatus('daytona')} Available</Text>
+							</Box>
 
-								{currentCategory === 'ui' && (
-									<Box flexDirection="column">
-										<Text>
-											Auto-refresh:{' '}
-											{settings.ui.autoRefresh ? 'Enabled' : 'Disabled'}
-										</Text>
-										<Text>
-											Refresh Interval: {settings.ui.refreshInterval / 1000}s
-										</Text>
-										<Text>Max Log Messages: {settings.ui.maxLogMessages}</Text>
-										<Text>Theme: {settings.ui.theme}</Text>
-									</Box>
-								)}
-
-								{currentCategory === 'vibekit' && (
-									<Box flexDirection="column">
-										<Text>
-											Default Provider: {settings.vibekit.defaultProvider}
-										</Text>
-										<Text>Timeout: {settings.vibekit.timeoutMs / 1000}s</Text>
-										<Text>
-											Retry Attempts: {settings.vibekit.retryAttempts}
-										</Text>
-									</Box>
+							{/* GitHub Integration */}
+							<Box borderStyle="single" flexDirection="column" padding={1}>
+								<Text bold>🐙 GitHub Integration</Text>
+								<Text>Status: {github.configured ? '✅ Connected' : '❌ Not Connected'}</Text>
+								{github.configured && (
+									<Text>Repository: {github.repository || 'Not specified'}</Text>
 								)}
 							</Box>
 						</Box>
+					)}
 
-						{/* Footer */}
-						<Box
-							marginTop={1}
-							flexDirection="row"
-							justifyContent="space-between"
-						>
-							<Text color="gray">
-								[Tab] Categories | [r] Reset | {hasChanges ? '[s] Save' : ''} |
-								[Esc/q] Close
-							</Text>
-							<StatusMessage variant={hasChanges ? 'warning' : 'success'}>
-								{hasChanges ? 'Modified' : 'Saved'}
-							</StatusMessage>
+					{currentSection === 'flow' && (
+						<Box borderStyle="single" flexDirection="column" padding={1}>
+							<Text bold color="blue">🌊 Flow Configuration</Text>
+							<Text>Theme: Auto</Text>
+							<Text>Project Root: {projectRoot}</Text>
+							<Text>Debug Mode: Disabled</Text>
+							<Text color="gray">Flow configuration options coming soon...</Text>
 						</Box>
-					</Box>
-				</Alert>
+					)}
+				</Box>
+			</Box>
+
+			<Box borderStyle="single" borderColor="gray" padding={1} marginTop={1}>
+				<Text color="gray">
+					💡 Tip: Press 'h' for VibeKit setup guide • Numbers 1-2 to switch sections • 'q' to close
+				</Text>
 			</Box>
 		</Box>
 	);

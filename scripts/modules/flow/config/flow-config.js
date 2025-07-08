@@ -735,3 +735,101 @@ export const flowConfig = {
 };
 
 export { FlowConfigSchema };
+
+/**
+ * FlowConfig class - Enhanced interface for VibeKit integration
+ * Provides VibeKit-specific configuration methods
+ */
+export class FlowConfig {
+  constructor(projectRoot = process.cwd()) {
+    this.manager = new FlowConfigManager({ projectRoot });
+    this.loaded = false;
+  }
+
+  async ensureLoaded() {
+    if (!this.loaded) {
+      await this.manager.loadConfig();
+      this.loaded = true;
+    }
+  }
+
+  /**
+   * Get VibeKit-specific configuration
+   */
+  getVibeKitConfig() {
+    return this.manager.getValue('vibekit', {});
+  }
+
+  /**
+   * Get agent configuration
+   */
+  getAgentConfig(agentType) {
+    return this.manager.getValue(`vibekit.agents.${agentType}`, {});
+  }
+
+  /**
+   * Get environment configuration
+   */
+  getEnvironmentConfig(envType) {
+    return this.manager.getValue(`vibekit.environments.${envType}`, {});
+  }
+
+  /**
+   * Get GitHub configuration
+   */
+  getGitHubConfig() {
+    return this.manager.getValue('github', {});
+  }
+
+  /**
+   * Check if VibeKit is enabled
+   */
+  isVibeKitEnabled() {
+    return this.manager.getValue('vibekit.enabled', true);
+  }
+
+  /**
+   * Get available agents with configuration status
+   */
+  getAvailableAgents() {
+    const vibeKitConfig = this.getVibeKitConfig();
+    const agents = vibeKitConfig.agents || {};
+    
+    return Object.keys(agents).filter(agent => agents[agent].enabled);
+  }
+
+  /**
+   * Get available environments with configuration status
+   */
+  getAvailableEnvironments() {
+    const vibeKitConfig = this.getVibeKitConfig();
+    const environments = vibeKitConfig.environments || {};
+    
+    return Object.keys(environments).filter(env => environments[env].enabled);
+  }
+
+  /**
+   * Update VibeKit configuration
+   */
+  async updateVibeKitConfig(newConfig) {
+    await this.ensureLoaded();
+    this.manager.setValue('vibekit', { ...this.getVibeKitConfig(), ...newConfig });
+    return this.manager.saveConfig();
+  }
+
+  /**
+   * Get all configuration
+   */
+  async getConfig() {
+    await this.ensureLoaded();
+    return this.manager.getConfig();
+  }
+
+  /**
+   * Save configuration
+   */
+  async saveConfig() {
+    await this.ensureLoaded();
+    return this.manager.saveConfig();
+  }
+}

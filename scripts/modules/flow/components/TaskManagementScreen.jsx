@@ -2303,14 +2303,9 @@ Focus on: current industry standards, common pitfalls, security considerations
 					flexShrink={0}
 				>
 					<Text color={theme.text}>
-						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}w
-						work on subtask •{' '}
-						{worktrees.length > 0 ? 'g go to worktree • ' : ''}c claude • p
-						progress • e exploration • l completion
-						{worktrees.length > 0 && gitStatus
-							? ' • W workflow • C commit'
-							: ''}{' '}
-						• ESC back
+						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
+						t status • w work • c claude • {worktrees.length > 0 ? 'g worktree • ' : ''}
+						p progress • e exploration • l completion • r research • ESC back
 					</Text>
 				</Box>
 
