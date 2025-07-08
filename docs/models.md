@@ -1,4 +1,4 @@
-# Available Models as of July 2, 2025
+# Available Models as of July 8, 2025
 
 ## Main Models
 
@@ -72,6 +72,15 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
+| groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
+| groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |
+| groq        | llama-4-scout                                  | 0.45      | 0.11       | 0.34        |
+| groq        | llama-4-maverick                               | 0.52      | 0.5        | 0.77        |
+| groq        | mixtral-8x7b-32768                             | 0.35      | 0.24       | 0.24        |
+| groq        | qwen-qwq-32b-preview                           | 0.4       | 0.18       | 0.18        |
+| groq        | deepseek-r1-distill-llama-70b                  | 0.52      | 0.75       | 0.99        |
+| groq        | gemma2-9b-it                                   | 0.3       | 0.2        | 0.2         |
+| groq        | whisper-large-v3                               | —         | 0.11       | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
@@ -97,6 +106,11 @@
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
 | xai         | grok-3                                       | —         | 3          | 15          |
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
+| groq        | llama-3.3-70b-versatile                      | 0.55      | 0.59       | 0.79        |
+| groq        | llama-4-scout                                | 0.45      | 0.11       | 0.34        |
+| groq        | llama-4-maverick                             | 0.52      | 0.5        | 0.77        |
+| groq        | qwen-qwq-32b-preview                         | 0.4       | 0.18       | 0.18        |
+| groq        | deepseek-r1-distill-llama-70b                | 0.52      | 0.75       | 0.99        |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
 | mcp         | mcp-sampling               | -         | 0          | 0           |
@@ -165,6 +179,13 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
+| groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
+| groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |
+| groq        | llama-4-scout                                  | 0.45      | 0.11       | 0.34        |
+| groq        | llama-4-maverick                               | 0.52      | 0.5        | 0.77        |
+| groq        | mixtral-8x7b-32768                             | 0.35      | 0.24       | 0.24        |
+| groq        | qwen-qwq-32b-preview                           | 0.4       | 0.18       | 0.18        |
+| groq        | gemma2-9b-it                                   | 0.3       | 0.2        | 0.2         |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |

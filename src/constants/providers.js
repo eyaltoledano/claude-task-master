@@ -10,6 +10,7 @@ export const VALIDATED_PROVIDERS = [
 	'google',
 	'perplexity',
 	'xai',
+	'groq',
 	'mistral'
 ];
 
