@@ -24,7 +24,9 @@ describe('initTaskMaster', () => {
 
 	beforeEach(() => {
 		// Create a temporary directory for testing
-		tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'taskmaster-test-')));
+		tempDir = fs.realpathSync(
+			fs.mkdtempSync(path.join(os.tmpdir(), 'taskmaster-test-'))
+		);
 		originalCwd = process.cwd();
 
 		// Clear all mocks
