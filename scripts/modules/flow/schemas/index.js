@@ -1,25 +1,9 @@
 /**
  * Task Master Flow - Schema Definitions
- * Phase 1: Schema & Storage Layer
- *
- * Modern Effect Schema definitions for Flow module following 2024-2025 best practices.
+ * Simplified schema definitions focused on TUI functionality
+ * (Execution schemas removed - handled by VibeKit SDK)
  */
 
-export {
-	SandboxConfig,
-	SandboxProvider,
-	SandboxResourceConfig
-} from './sandbox.schema.js';
-export {
-	AgentConfig,
-	AgentProvider,
-	AgentModelConfig
-} from './agent.schema.js';
-export {
-	ExecutionConfig,
-	ExecutionEnvironment,
-	ExecutionResult
-} from './execution.schema.js';
 export { FlowMetadata, SchemaVersion } from './metadata.schema.js';
 
 /**
@@ -37,11 +21,9 @@ export {
 } from './validation.js';
 
 /**
- * Schema type guards for runtime checks
+ * Schema type guards for runtime checks (TUI-focused)
  */
 export {
-	isSandboxConfig,
-	isAgentConfig,
-	isExecutionConfig,
-	isValidProvider
+	isValidFlowMetadata,
+	isValidSchemaVersion
 } from './guards.js';
