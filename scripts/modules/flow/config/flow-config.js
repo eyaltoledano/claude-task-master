@@ -23,32 +23,83 @@ const FlowConfigSchema = z.object({
     githubIntegration: z.boolean().default(true),
     autoCreatePR: z.boolean().default(false),
     
+    // Environment configurations
+    environments: z.object({
+      e2b: z.object({
+        enabled: z.boolean().default(true),
+        apiKey: z.string().optional(),
+        // Additional E2B config can be added here
+      }).default({}),
+      
+      northflank: z.object({
+        enabled: z.boolean().default(false),
+        apiKey: z.string().optional(),
+        projectId: z.string().optional(),
+      }).default({}),
+      
+      daytona: z.object({
+        enabled: z.boolean().default(false),
+        apiKey: z.string().optional(),
+        workspaceId: z.string().optional(),
+      }).default({})
+    }).default({}),
+    
+    // Telemetry configuration
+    telemetry: z.object({
+      enabled: z.boolean().default(false),
+      endpoint: z.string().optional(),
+      apiKey: z.string().optional(),
+      samplingRate: z.number().min(0).max(1).default(0.1),
+      batchSize: z.number().min(1).max(1000).default(100),
+      flushInterval: z.number().min(1000).default(30000) // milliseconds
+    }).default({}),
+    
+    // Session management
+    sessionManagement: z.object({
+      enabled: z.boolean().default(true),
+      persistSessions: z.boolean().default(true),
+      sessionDir: z.string().default('.taskmaster/flow/sessions'),
+      maxSessionAge: z.number().default(7 * 24 * 60 * 60 * 1000), // 7 days in ms
+      cleanupInterval: z.number().default(24 * 60 * 60 * 1000) // 24 hours in ms
+    }).default({}),
+    
     // Agent-specific settings
     agents: z.object({
       'claude-code': z.object({
         enabled: z.boolean().default(true),
         maxTokens: z.number().min(1).max(32000).default(4000),
-        temperature: z.number().min(0).max(1).default(0.1)
+        temperature: z.number().min(0).max(1).default(0.1),
+        modelName: z.string().default('claude-3-opus-20240229'),
+        provider: z.string().default('anthropic')
       }).default({}),
       
       codex: z.object({
         enabled: z.boolean().default(false),
         maxTokens: z.number().min(1).max(8000).default(2000),
-        temperature: z.number().min(0).max(1).default(0.1)
+        temperature: z.number().min(0).max(1).default(0.1),
+        modelName: z.string().default('gpt-4-turbo-preview'),
+        provider: z.string().default('openai')
       }).default({}),
       
       'gemini-cli': z.object({
         enabled: z.boolean().default(false),
         maxTokens: z.number().min(1).max(8000).default(3000),
-        temperature: z.number().min(0).max(1).default(0.1)
+        temperature: z.number().min(0).max(1).default(0.1),
+        modelName: z.string().default('gemini-1.5-pro'),
+        provider: z.string().default('gemini')
       }).default({}),
       
       opencode: z.object({
         enabled: z.boolean().default(false),
         maxTokens: z.number().min(1).max(8000).default(2000),
-        temperature: z.number().min(0).max(1).default(0.1)
+        temperature: z.number().min(0).max(1).default(0.1),
+        modelName: z.string().default('deepseek-coder-v2'),
+        provider: z.string().default('opencode')
       }).default({})
-    }).default({})
+    }).default({}),
+    
+    // Working directory configuration
+    workingDirectory: z.string().optional()
   }).default({}),
 
   // GitHub Integration
@@ -150,6 +201,74 @@ export class FlowConfigManager {
     
     if (env.VIBEKIT_GITHUB_INTEGRATION !== undefined) {
       configData.vibekit.githubIntegration = env.VIBEKIT_GITHUB_INTEGRATION === 'true';
+    }
+    
+    if (env.VIBEKIT_WORKING_DIRECTORY) {
+      configData.vibekit.workingDirectory = env.VIBEKIT_WORKING_DIRECTORY;
+    }
+    
+    // Telemetry overrides
+    if (!configData.vibekit.telemetry) configData.vibekit.telemetry = {};
+    
+    if (env.VIBEKIT_TELEMETRY_ENABLED !== undefined) {
+      configData.vibekit.telemetry.enabled = env.VIBEKIT_TELEMETRY_ENABLED === 'true';
+    }
+    
+    if (env.VIBEKIT_TELEMETRY_ENDPOINT) {
+      configData.vibekit.telemetry.endpoint = env.VIBEKIT_TELEMETRY_ENDPOINT;
+    }
+    
+    if (env.VIBEKIT_TELEMETRY_API_KEY) {
+      configData.vibekit.telemetry.apiKey = env.VIBEKIT_TELEMETRY_API_KEY;
+    }
+    
+    if (env.VIBEKIT_TELEMETRY_SAMPLING_RATE) {
+      configData.vibekit.telemetry.samplingRate = parseFloat(env.VIBEKIT_TELEMETRY_SAMPLING_RATE);
+    }
+    
+    // Session management overrides
+    if (!configData.vibekit.sessionManagement) configData.vibekit.sessionManagement = {};
+    
+    if (env.VIBEKIT_SESSION_ENABLED !== undefined) {
+      configData.vibekit.sessionManagement.enabled = env.VIBEKIT_SESSION_ENABLED === 'true';
+    }
+    
+    if (env.VIBEKIT_SESSION_PERSIST !== undefined) {
+      configData.vibekit.sessionManagement.persistSessions = env.VIBEKIT_SESSION_PERSIST === 'true';
+    }
+    
+    if (env.VIBEKIT_SESSION_DIR) {
+      configData.vibekit.sessionManagement.sessionDir = env.VIBEKIT_SESSION_DIR;
+    }
+    
+    // Environment provider overrides
+    if (!configData.vibekit.environments) configData.vibekit.environments = {};
+    
+    // E2B overrides
+    if (!configData.vibekit.environments.e2b) configData.vibekit.environments.e2b = {};
+    if (env.E2B_API_KEY) {
+      configData.vibekit.environments.e2b.apiKey = env.E2B_API_KEY;
+      configData.vibekit.environments.e2b.enabled = true;
+    }
+    
+    // Northflank overrides
+    if (!configData.vibekit.environments.northflank) configData.vibekit.environments.northflank = {};
+    if (env.NORTHFLANK_API_KEY) {
+      configData.vibekit.environments.northflank.apiKey = env.NORTHFLANK_API_KEY;
+      configData.vibekit.environments.northflank.enabled = true;
+    }
+    if (env.NORTHFLANK_PROJECT_ID) {
+      configData.vibekit.environments.northflank.projectId = env.NORTHFLANK_PROJECT_ID;
+    }
+    
+    // Daytona overrides
+    if (!configData.vibekit.environments.daytona) configData.vibekit.environments.daytona = {};
+    if (env.DAYTONA_API_KEY) {
+      configData.vibekit.environments.daytona.apiKey = env.DAYTONA_API_KEY;
+      configData.vibekit.environments.daytona.enabled = true;
+    }
+    if (env.DAYTONA_WORKSPACE_ID) {
+      configData.vibekit.environments.daytona.workspaceId = env.DAYTONA_WORKSPACE_ID;
     }
 
     // Execution overrides
@@ -306,14 +425,47 @@ export class FlowConfigManager {
       }
     }
 
-    // Check VibeKit requirements
-    if (!process.env.E2B_API_KEY) {
-      warnings.push('Missing E2B_API_KEY (required for sandbox execution)');
+    // Check environment provider requirements
+    if (this.config?.vibekit?.environments) {
+      // E2B is typically required for sandbox execution
+      if (this.config.vibekit.environments.e2b?.enabled && !process.env.E2B_API_KEY) {
+        issues.push('Missing E2B_API_KEY (required for sandbox execution)');
+      }
+      
+      // Northflank checks
+      if (this.config.vibekit.environments.northflank?.enabled) {
+        if (!process.env.NORTHFLANK_API_KEY) {
+          warnings.push('Missing NORTHFLANK_API_KEY (required for Northflank environment)');
+        }
+        if (!process.env.NORTHFLANK_PROJECT_ID) {
+          warnings.push('Missing NORTHFLANK_PROJECT_ID (recommended for Northflank)');
+        }
+      }
+      
+      // Daytona checks
+      if (this.config.vibekit.environments.daytona?.enabled) {
+        if (!process.env.DAYTONA_API_KEY) {
+          warnings.push('Missing DAYTONA_API_KEY (required for Daytona environment)');
+        }
+        if (!process.env.DAYTONA_WORKSPACE_ID) {
+          warnings.push('Missing DAYTONA_WORKSPACE_ID (recommended for Daytona)');
+        }
+      }
     }
 
     // Check GitHub integration requirements
     if (this.config?.vibekit?.githubIntegration && !process.env.GITHUB_TOKEN) {
       warnings.push('Missing GITHUB_TOKEN (required for GitHub integration)');
+    }
+    
+    // Check telemetry requirements
+    if (this.config?.vibekit?.telemetry?.enabled) {
+      if (!this.config.vibekit.telemetry.endpoint && !process.env.VIBEKIT_TELEMETRY_ENDPOINT) {
+        warnings.push('Missing telemetry endpoint (VIBEKIT_TELEMETRY_ENDPOINT)');
+      }
+      if (!this.config.vibekit.telemetry.apiKey && !process.env.VIBEKIT_TELEMETRY_API_KEY) {
+        warnings.push('Missing telemetry API key (VIBEKIT_TELEMETRY_API_KEY)');
+      }
     }
 
     return { 

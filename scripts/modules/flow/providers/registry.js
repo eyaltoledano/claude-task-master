@@ -8,7 +8,7 @@ export const availableProviders = {
   vibekit: {
     name: 'VibeKit SDK',
     type: 'vibekit',
-    description: 'Secure sandbox execution using VibeKit SDK',
+    description: 'Secure sandbox execution using VibeKit SDK with full configuration support',
     agents: ['claude-code', 'codex', 'gemini-cli', 'opencode'],
     features: [
       'secure-sandbox',
@@ -16,13 +16,35 @@ export const availableProviders = {
       'github-integration', 
       'multi-agent',
       'code-generation',
-      'qa-mode'
+      'qa-mode',
+      'telemetry',
+      'session-management',
+      'multi-environment'
     ],
+    environments: ['e2b', 'northflank', 'daytona'],
     factory: (config) => new VibeKitService(config),
     config: {
       authentication: {
         required: ['ANTHROPIC_API_KEY', 'E2B_API_KEY'],
-        optional: ['GITHUB_TOKEN', 'OPENAI_API_KEY', 'GOOGLE_API_KEY']
+        optional: [
+          'GITHUB_TOKEN', 
+          'OPENAI_API_KEY', 
+          'GOOGLE_API_KEY',
+          'OPENCODE_API_KEY',
+          'NORTHFLANK_API_KEY',
+          'NORTHFLANK_PROJECT_ID',
+          'DAYTONA_API_KEY',
+          'DAYTONA_WORKSPACE_ID',
+          'VIBEKIT_TELEMETRY_API_KEY'
+        ]
+      },
+      telemetry: {
+        supported: true,
+        configurable: true
+      },
+      sessionManagement: {
+        supported: true,
+        persistent: true
       }
     }
   }
