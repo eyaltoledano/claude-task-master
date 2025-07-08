@@ -6,11 +6,10 @@
 import { z } from 'zod';
 import {
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	handleApiResult
 } from './utils.js';
 import { addTagDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the addTag tool with the MCP server
@@ -50,50 +49,34 @@ export function registerAddTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Starting add-tag with args: ${JSON.stringify(args)}`);
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
+			log.info(`Starting add-tag with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+			// Call the direct function
+			const result = await addTagDirect(
+				{
+					tasksJsonPath: taskMaster.getTasksPath(),
+					name: args.name,
+					copyFromCurrent: args.copyFromCurrent,
+					copyFromTag: args.copyFromTag,
+					fromBranch: args.fromBranch,
+					description: args.description,
+					projectRoot: taskMaster.getProjectRoot()
+				},
+				log,
+				{ session }
+			);
 
-				// Call the direct function
-				const result = await addTagDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						name: args.name,
-						copyFromCurrent: args.copyFromCurrent,
-						copyFromTag: args.copyFromTag,
-						fromBranch: args.fromBranch,
-						description: args.description,
-						projectRoot: args.projectRoot
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error creating tag',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in add-tag tool: ${error.message}`);
-				return createErrorResponse(error.message);
-			}
+			return handleApiResult(
+				result,
+				log,
+				'Error creating tag',
+				undefined,
+				taskMaster.getProjectRoot()
+			);
 		})
 	});
 }

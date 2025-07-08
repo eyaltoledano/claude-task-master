@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import {
+	
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	handleApiResult
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
@@ -70,7 +72,7 @@ export function registerInitializeProjectTool(server) {
 					log,
 					'Initialization failed',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				const errorMessage = `Project initialization tool failed: ${error.message || 'Unknown error'}`;

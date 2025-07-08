@@ -6,11 +6,10 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
 } from './utils.js';
 import { addSubtaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the addSubtask tool with the MCP server
@@ -61,23 +60,15 @@ export function registerAddSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				const tasksJsonPath = taskMaster.getTasksPath();
 
 				const result = await addSubtaskDirect(
 					{
@@ -108,12 +99,8 @@ export function registerAddSubtaskTool(server) {
 					log,
 					'Error adding subtask',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
-			} catch (error) {
-				log.error(`Error in addSubtask tool: ${error.message}`);
-				return createErrorResponse(error.message);
-			}
 		})
 	});
 }

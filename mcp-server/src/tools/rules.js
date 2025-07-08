@@ -5,10 +5,12 @@
 
 import { z } from 'zod';
 import {
+	
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	handleApiResult
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { rulesDirect } from '../core/direct-functions/rules.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
@@ -43,10 +45,12 @@ export function registerRulesTool(server) {
 					'DANGEROUS: Force removal even if it would leave no rule profiles. Only use if you are absolutely certain.'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			required: []
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
-					`[rules tool] Executing action: ${args.action} for profiles: ${args.profiles.join(', ')} in ${args.projectRoot}`
+					`[rules tool] Executing action: ${args.action} for profiles: ${args.profiles.join(', ')} in ${taskMaster.getProjectRoot()}`
 				);
 				const result = await rulesDirect(args, log, { session });
 				return handleApiResult(result, log);

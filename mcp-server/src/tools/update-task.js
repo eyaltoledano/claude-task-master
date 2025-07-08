@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the update-task tool with the MCP server
@@ -45,7 +46,10 @@ export function registerUpdateTaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update_task';
 			try {
 				log.info(
@@ -55,7 +59,7 @@ export function registerUpdateTaskTool(server) {
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
@@ -69,12 +73,12 @@ export function registerUpdateTaskTool(server) {
 				// 3. Call Direct Function - Include projectRoot
 				const result = await updateTaskByIdDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
 						append: args.append,
-						projectRoot: args.projectRoot
+						projectRoot: taskMaster.getProjectRoot()
 					},
 					log,
 					{ session }
@@ -89,7 +93,7 @@ export function registerUpdateTaskTool(server) {
 					log,
 					'Error updating task',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(

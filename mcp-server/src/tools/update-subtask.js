@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { updateSubtaskByIdDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the update-subtask tool with the MCP server
@@ -37,7 +38,10 @@ export function registerUpdateSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update_subtask';
 			try {
 				log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
@@ -45,7 +49,7 @@ export function registerUpdateSubtaskTool(server) {
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -57,11 +61,11 @@ export function registerUpdateSubtaskTool(server) {
 
 				const result = await updateSubtaskByIdDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: taskMaster.getProjectRoot()
 					},
 					log,
 					{ session }
@@ -80,7 +84,7 @@ export function registerUpdateSubtaskTool(server) {
 					log,
 					'Error updating subtask',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(

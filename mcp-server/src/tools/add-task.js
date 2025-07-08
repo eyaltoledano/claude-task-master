@@ -6,11 +6,10 @@
 import { z } from 'zod';
 import {
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	handleApiResult
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the addTask tool with the MCP server
@@ -63,53 +62,37 @@ export function registerAddTaskTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for task creation')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
+			log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+			// Call the direct function
+			const result = await addTaskDirect(
+				{
+					tasksJsonPath: taskMaster.getTasksPath(),
+					prompt: args.prompt,
+					title: args.title,
+					description: args.description,
+					details: args.details,
+					testStrategy: args.testStrategy,
+					dependencies: args.dependencies,
+					priority: args.priority,
+					research: args.research,
+					projectRoot: taskMaster.getProjectRoot()
+				},
+				log,
+				{ session }
+			);
 
-				// Call the direct functionP
-				const result = await addTaskDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						prompt: args.prompt,
-						title: args.title,
-						description: args.description,
-						details: args.details,
-						testStrategy: args.testStrategy,
-						dependencies: args.dependencies,
-						priority: args.priority,
-						research: args.research,
-						projectRoot: args.projectRoot
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error adding task',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in add-task tool: ${error.message}`);
-				return createErrorResponse(error.message);
-			}
+			return handleApiResult(
+				result,
+				log,
+				'Error adding task',
+				undefined,
+				taskMaster.getProjectRoot()
+			);
 		})
 	});
 }

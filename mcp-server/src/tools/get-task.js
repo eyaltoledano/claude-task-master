@@ -5,15 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { showTaskDirect } from '../core/task-master-core.js';
-import {
-	findTasksPath,
-	findComplexityReportPath
-} from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -69,7 +67,13 @@ export function registerShowTaskTool(server) {
 					'Absolute path to the project root directory (Optional, usually from session)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			'tasksPath': 'file',
+			'complexityReportPath': 'complexityReport',
+			'required': [
+						'tasksPath'
+			]
+})(async (taskMaster, args, { log, session }) => {
 			const { id, file, status, projectRoot } = args;
 
 			try {
@@ -108,7 +112,7 @@ export function registerShowTaskTool(server) {
 				}
 				const result = await showTaskDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						reportPath: complexityReportPath,
 						// Pass other relevant args
 						id: id,

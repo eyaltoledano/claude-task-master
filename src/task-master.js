@@ -295,3 +295,43 @@ export function initTaskMaster(overrides = {}) {
 
 	return new TaskMaster(paths);
 }
+
+/**
+ * Higher-order function that wraps MCP tool handlers with TaskMaster initialization.
+ * This replaces withNormalizedProjectRoot by providing a TaskMaster instance
+ * that contains all resolved paths upfront.
+ *
+ * @param {Object} pathConfig - Configuration object for path mapping
+ * @param {Object} pathConfig.parameterMap - Maps arg names to TaskMaster path names
+ * @param {string[]} pathConfig.required - Array of TaskMaster path names that are required
+ * @returns {Function} - Function that takes a handler and returns wrapped handler
+ */
+export function withTaskMaster(pathConfig = {}) {
+	return (handler) => {
+		return async (args, context) => {
+			const overrides = {
+				projectRoot: args.projectRoot
+			};
+			
+			// Apply path configuration mappings
+			Object.entries(pathConfig).forEach(([taskMasterPath, argName]) => {
+				if (argName in args) {
+					const isRequired = pathConfig.required?.includes(taskMasterPath);
+					overrides[taskMasterPath] = args[argName] || (isRequired ? true : false);
+				}
+			});
+			
+			// Handle required paths that weren't explicitly mapped
+			if (pathConfig.required) {
+				pathConfig.required.forEach(requiredPath => {
+					if (!(requiredPath in overrides)) {
+						overrides[requiredPath] = true;
+					}
+				});
+			}
+			
+			const taskMaster = initTaskMaster(overrides);
+			return await handler(taskMaster, args, context);
+		};
+	};
+}

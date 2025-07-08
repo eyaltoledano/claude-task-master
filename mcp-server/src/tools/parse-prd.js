@@ -5,10 +5,12 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	withNormalizedProjectRoot,
 	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
 	PRD_FILE,
@@ -61,7 +63,13 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('Append generated tasks to existing file.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			'prdPath': 'input',
+			'tasksPath': 'output',
+			'required': [
+						'prdPath'
+			]
+})(async (taskMaster, args, { log, session }) => {
 			try {
 				const result = await parsePRDDirect(args, log, { session });
 				return handleApiResult(
@@ -69,7 +77,7 @@ export function registerParsePRDTool(server) {
 					log,
 					'Error parsing PRD',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in parse_prd: ${error.message}`);

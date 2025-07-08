@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
+	handleApiResult
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { useTagDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the useTag tool with the MCP server
@@ -30,15 +31,18 @@ export function registerUseTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting use-tag with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -51,9 +55,9 @@ export function registerUseTagTool(server) {
 				// Call the direct function
 				const result = await useTagDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						name: args.name,
-						projectRoot: args.projectRoot
+						projectRoot: taskMaster.getProjectRoot()
 					},
 					log,
 					{ session }
@@ -64,7 +68,7 @@ export function registerUseTagTool(server) {
 					log,
 					'Error switching tag',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in use-tag tool: ${error.message}`);

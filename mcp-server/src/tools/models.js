@@ -5,10 +5,12 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { modelsDirect } from '../core/task-master-core.js';
 
 /**
@@ -71,13 +73,15 @@ export function registerModelsTool(server) {
 					'Indicates the set model ID is a custom Google Vertex AI model.'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			required: []
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting models tool with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				const result = await modelsDirect(
-					{ ...args, projectRoot: args.projectRoot },
+					{ ...args, projectRoot: taskMaster.getProjectRoot() },
 					log,
 					{ session }
 				);
@@ -87,7 +91,7 @@ export function registerModelsTool(server) {
 					log,
 					'Error managing models',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in models tool: ${error.message}`);

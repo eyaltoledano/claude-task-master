@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { moveTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the moveTask tool with the MCP server
@@ -38,7 +39,10 @@ export function registerMoveTaskTool(server) {
 					'Root directory of the project (typically derived from session)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				// Find tasks.json path if not provided
 				let tasksJsonPath = args.file;
@@ -78,8 +82,8 @@ export function registerMoveTaskTool(server) {
 							{
 								sourceId: fromId,
 								destinationId: toId,
-								tasksJsonPath,
-								projectRoot: args.projectRoot
+								tasksJsonPath: taskMaster.getTasksPath(),
+								projectRoot: taskMaster.getProjectRoot()
 							},
 							log,
 							{ session }
@@ -105,7 +109,7 @@ export function registerMoveTaskTool(server) {
 						log,
 						'Error moving multiple tasks',
 						undefined,
-						args.projectRoot
+						taskMaster.getProjectRoot()
 					);
 				} else {
 					// Moving a single task
@@ -114,8 +118,8 @@ export function registerMoveTaskTool(server) {
 							{
 								sourceId: args.from,
 								destinationId: args.to,
-								tasksJsonPath,
-								projectRoot: args.projectRoot
+								tasksJsonPath: taskMaster.getTasksPath(),
+								projectRoot: taskMaster.getProjectRoot()
 							},
 							log,
 							{ session }
@@ -123,7 +127,7 @@ export function registerMoveTaskTool(server) {
 						log,
 						'Error moving task',
 						undefined,
-						args.projectRoot
+						taskMaster.getProjectRoot()
 					);
 				}
 			} catch (error) {

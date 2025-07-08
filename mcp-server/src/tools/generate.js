@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 import path from 'path';
 
 /**
@@ -32,15 +33,18 @@ export function registerGenerateTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -51,14 +55,14 @@ export function registerGenerateTool(server) {
 				}
 
 				const outputDir = args.output
-					? path.resolve(args.projectRoot, args.output)
+					? path.resolve(taskMaster.getProjectRoot(), args.output)
 					: path.dirname(tasksJsonPath);
 
 				const result = await generateTaskFilesDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						outputDir: outputDir,
-						projectRoot: args.projectRoot
+						projectRoot: taskMaster.getProjectRoot()
 					},
 					log,
 					{ session }
@@ -77,7 +81,7 @@ export function registerGenerateTool(server) {
 					log,
 					'Error generating task files',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in generate tool: ${error.message}`);

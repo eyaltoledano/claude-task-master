@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { fixDependenciesDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the fixDependencies tool with the MCP server
@@ -27,15 +28,18 @@ export function registerFixDependenciesTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -47,8 +51,8 @@ export function registerFixDependenciesTool(server) {
 
 				const result = await fixDependenciesDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
-						projectRoot: args.projectRoot,
+						tasksJsonPath: taskMaster.getTasksPath(),
+						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag
 					},
 					log
@@ -65,7 +69,7 @@ export function registerFixDependenciesTool(server) {
 					log,
 					'Error fixing dependencies',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in fixDependencies tool: ${error.message}`);

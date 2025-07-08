@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { removeTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the remove-task tool with the MCP server
@@ -41,15 +42,18 @@ export function registerRemoveTaskTool(server) {
 					'Specify which tag context to operate on. Defaults to the current active tag.'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -63,9 +67,9 @@ export function registerRemoveTaskTool(server) {
 
 				const result = await removeTaskDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
-						projectRoot: args.projectRoot,
+						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag
 					},
 					log,
@@ -83,7 +87,7 @@ export function registerRemoveTaskTool(server) {
 					log,
 					'Error removing task',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in remove-task tool: ${error.message}`);

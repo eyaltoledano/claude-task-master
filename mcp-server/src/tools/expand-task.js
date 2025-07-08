@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -48,15 +49,18 @@ export function registerExpandTaskTool(server) {
 				.describe('Force expansion even if subtasks exist'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
 						log
 					);
 				} catch (error) {
@@ -68,13 +72,13 @@ export function registerExpandTaskTool(server) {
 
 				const result = await expandTaskDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: args.projectRoot,
+						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag || 'master'
 					},
 					log,
@@ -86,7 +90,7 @@ export function registerExpandTaskTool(server) {
 					log,
 					'Error expanding task',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in expand-task tool: ${error.message}`);

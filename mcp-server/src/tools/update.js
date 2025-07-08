@@ -5,12 +5,13 @@
 
 import { z } from 'zod';
 import {
+	
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+	createErrorResponse
+
 } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the update tool with the MCP server
@@ -46,7 +47,10 @@ export function registerUpdateTool(server) {
 				),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			tasksPath: 'file',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update';
 			const { from, prompt, research, file, projectRoot, tag } = args;
 
@@ -68,7 +72,7 @@ export function registerUpdateTool(server) {
 
 				const result = await updateTasksDirect(
 					{
-						tasksJsonPath: tasksJsonPath,
+						tasksJsonPath: taskMaster.getTasksPath(),
 						from: from,
 						prompt: prompt,
 						research: research,
@@ -87,7 +91,7 @@ export function registerUpdateTool(server) {
 					log,
 					'Error updating tasks',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(
