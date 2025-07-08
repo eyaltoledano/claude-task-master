@@ -89,7 +89,7 @@ function displayExpandStart({
 		? 'Subtasks per task'
 		: 'Subtasks to generate';
 
-	if (numSubtasks) {
+	if (numSubtasks && numSubtasks > 0) {
 		if (explicitSubtasks) {
 			content += chalk.blue(
 				`${subtaskText}: ${numSubtasks} (explicitly provided)\n`
@@ -102,7 +102,7 @@ function displayExpandStart({
 			content += chalk.blue(`${subtaskText}: ${numSubtasks} (using default)\n`);
 		}
 	} else {
-		content += chalk.blue(`${subtaskText}: Auto-calculated\n`);
+		content += chalk.blue(`${subtaskText}: Appropriate number\n`);
 	}
 
 	// Add custom prompt info if provided

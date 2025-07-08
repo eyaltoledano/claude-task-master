@@ -13,12 +13,14 @@ import fs from 'fs';
  * Fix invalid dependencies in tasks.json automatically
  * @param {Object} args - Function arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root directory
+ * @param {string} args.tag - Tag for the project
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function fixDependenciesDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath } = args;
+	const { tasksJsonPath, projectRoot, tag } = args;
 	try {
 		log.info(`Fixing invalid dependencies in tasks: ${tasksJsonPath}`);
 
@@ -51,8 +53,10 @@ export async function fixDependenciesDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
-		// Call the original command function using the provided path
-		await fixDependenciesCommand(tasksPath);
+		// Call the original command function using the provided path and proper context
+		await fixDependenciesCommand(tasksPath, {
+			context: { projectRoot, tag }
+		});
 
 		// Restore normal logging
 		disableSilentMode();
@@ -61,7 +65,8 @@ export async function fixDependenciesDirect(args, log) {
 			success: true,
 			data: {
 				message: 'Dependencies fixed successfully',
-				tasksPath
+				tasksPath,
+				tag: tag || 'master'
 			}
 		};
 	} catch (error) {

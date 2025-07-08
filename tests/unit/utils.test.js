@@ -22,10 +22,26 @@ jest.mock('fs', () => ({
 }));
 
 jest.mock('path', () => ({
-	join: jest.fn((dir, file) => `${dir}/${file}`),
+	join: jest.fn((...paths) => paths.join('/')),
 	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
 	resolve: jest.fn((...paths) => paths.join('/')),
-	basename: jest.fn((filePath) => filePath.split('/').pop())
+	basename: jest.fn((filePath) => filePath.split('/').pop()),
+	parse: jest.fn((filePath) => {
+		const parts = filePath.split('/');
+		const fileName = parts[parts.length - 1];
+		const extIndex = fileName.lastIndexOf('.');
+		return {
+			dir: parts.length > 1 ? parts.slice(0, -1).join('/') : '',
+			name: extIndex > 0 ? fileName.substring(0, extIndex) : fileName,
+			ext: extIndex > 0 ? fileName.substring(extIndex) : '',
+			base: fileName
+		};
+	}),
+	format: jest.fn((pathObj) => {
+		const dir = pathObj.dir || '';
+		const base = pathObj.base || `${pathObj.name || ''}${pathObj.ext || ''}`;
+		return dir ? `${dir}/${base}` : base;
+	})
 }));
 
 jest.mock('chalk', () => ({
@@ -72,7 +88,9 @@ import {
 	taskExists,
 	formatTaskId,
 	findCycles,
-	toKebabCase
+	toKebabCase,
+	slugifyTagForFilePath,
+	getTagAwareFilePath
 } from '../../scripts/modules/utils.js';
 
 // Import the mocked modules for use in tests
@@ -119,6 +137,8 @@ describe('Utils Module', () => {
 	beforeEach(() => {
 		// Clear all mocks before each test
 		jest.clearAllMocks();
+		// Restore the original path.join mock
+		jest.spyOn(path, 'join').mockImplementation((...paths) => paths.join('/'));
 	});
 
 	describe('truncate function', () => {
@@ -676,4 +696,52 @@ describe('CLI Flag Format Validation', () => {
 			kebabCase: 'prompt-text'
 		});
 	});
+});
+
+test('slugifyTagForFilePath should create filesystem-safe tag names', () => {
+	expect(slugifyTagForFilePath('feature/user-auth')).toBe('feature-user-auth');
+	expect(slugifyTagForFilePath('Feature Branch')).toBe('feature-branch');
+	expect(slugifyTagForFilePath('test@special#chars')).toBe(
+		'test-special-chars'
+	);
+	expect(slugifyTagForFilePath('UPPERCASE')).toBe('uppercase');
+	expect(slugifyTagForFilePath('multiple---hyphens')).toBe('multiple-hyphens');
+	expect(slugifyTagForFilePath('--leading-trailing--')).toBe(
+		'leading-trailing'
+	);
+	expect(slugifyTagForFilePath('')).toBe('unknown-tag');
+	expect(slugifyTagForFilePath(null)).toBe('unknown-tag');
+	expect(slugifyTagForFilePath(undefined)).toBe('unknown-tag');
+});
+
+test('getTagAwareFilePath should use slugified tags in file paths', () => {
+	const basePath = '.taskmaster/reports/complexity-report.json';
+	const projectRoot = '/test/project';
+
+	// Master tag should not be slugified
+	expect(getTagAwareFilePath(basePath, 'master', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report.json'
+	);
+
+	// Null/undefined tags should use base path
+	expect(getTagAwareFilePath(basePath, null, projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report.json'
+	);
+
+	// Regular tag should be slugified
+	expect(getTagAwareFilePath(basePath, 'feature-branch', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-branch.json'
+	);
+
+	// Tag with special characters should be slugified
+	expect(getTagAwareFilePath(basePath, 'feature/user-auth', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-user-auth.json'
+	);
+
+	// Tag with spaces and special characters
+	expect(
+		getTagAwareFilePath(basePath, 'Feature Branch @Test', projectRoot)
+	).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-branch-test.json'
+	);
 });

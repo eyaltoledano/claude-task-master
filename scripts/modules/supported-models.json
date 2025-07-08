@@ -692,6 +692,98 @@
 			"max_tokens": 32768
 		}
 	],
+	"groq": [
+		{
+			"id": "llama-3.3-70b-versatile",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": {
+				"input": 0.59,
+				"output": 0.79
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "llama-3.1-8b-instant",
+			"swe_score": 0.32,
+			"cost_per_1m_tokens": {
+				"input": 0.05,
+				"output": 0.08
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 131072
+		},
+		{
+			"id": "llama-4-scout",
+			"swe_score": 0.45,
+			"cost_per_1m_tokens": {
+				"input": 0.11,
+				"output": 0.34
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "llama-4-maverick",
+			"swe_score": 0.52,
+			"cost_per_1m_tokens": {
+				"input": 0.5,
+				"output": 0.77
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "mixtral-8x7b-32768",
+			"swe_score": 0.35,
+			"cost_per_1m_tokens": {
+				"input": 0.24,
+				"output": 0.24
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "qwen-qwq-32b-preview",
+			"swe_score": 0.4,
+			"cost_per_1m_tokens": {
+				"input": 0.18,
+				"output": 0.18
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768
+		},
+		{
+			"id": "deepseek-r1-distill-llama-70b",
+			"swe_score": 0.52,
+			"cost_per_1m_tokens": {
+				"input": 0.75,
+				"output": 0.99
+			},
+			"allowed_roles": ["main", "research"],
+			"max_tokens": 8192
+		},
+		{
+			"id": "gemma2-9b-it",
+			"swe_score": 0.3,
+			"cost_per_1m_tokens": {
+				"input": 0.2,
+				"output": 0.2
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 8192
+		},
+		{
+			"id": "whisper-large-v3",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.11,
+				"output": 0
+			},
+			"allowed_roles": ["main"],
+			"max_tokens": 0
+		}
+	],
 	"claude-code": [
 		{
 			"id": "opus",
@@ -712,6 +804,28 @@
 			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 64000
+		}
+	],
+	"gemini-cli": [
+		{
+			"id": "gemini-2.5-pro",
+			"swe_score": 0.72,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 65536
+		},
+		{
+			"id": "gemini-2.5-flash",
+			"swe_score": 0.71,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 65536
 		}
 	]
 }

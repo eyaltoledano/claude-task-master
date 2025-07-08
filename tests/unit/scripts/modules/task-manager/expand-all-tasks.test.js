@@ -547,4 +547,141 @@ describe('expandAllTasks', () => {
 			);
 		});
 	});
+
+	describe('Streaming Context Pass-through', () => {
+		test('should pass reportProgress function to expand-task for streaming', async () => {
+			// Arrange
+			const mockReportProgress = jest.fn(() => Promise.resolve());
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act
+			await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					reportProgress: mockReportProgress // Add reportProgress to context
+				},
+				'json'
+			);
+
+			// Assert - Should pass reportProgress to expand-task
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number),
+				3,
+				false,
+				'',
+				expect.objectContaining({
+					reportProgress: mockReportProgress
+				}),
+				false
+			);
+		});
+
+		test('should pass CLI context to expand-task for streaming', async () => {
+			// Arrange
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act - No mcpLog provided (CLI mode)
+			await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				{
+					session: mockSession,
+					projectRoot: mockProjectRoot
+					// No mcpLog - should trigger CLI streaming in expand-task
+				},
+				'text'
+			);
+
+			// Assert - Should pass CLI context to expand-task
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number),
+				3,
+				false,
+				'',
+				expect.objectContaining({
+					session: mockSession,
+					projectRoot: mockProjectRoot
+				}),
+				false
+			);
+			// Should not have mcpLog in the context
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number),
+				3,
+				false,
+				'',
+				expect.not.objectContaining({
+					mcpLog: expect.any(Object)
+				}),
+				false
+			);
+		});
+
+		test('should pass MCP context to expand-task for non-streaming', async () => {
+			// Arrange
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act - With mcpLog but no reportProgress
+			await expandAllTasks(
+				mockTasksPath,
+				3,
+				false,
+				'',
+				false,
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot
+					// No reportProgress - should trigger non-streaming in expand-task
+				},
+				'json'
+			);
+
+			// Assert - Should pass MCP context to expand-task
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number),
+				3,
+				false,
+				'',
+				expect.objectContaining({
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot
+				}),
+				false
+			);
+			// Should not have reportProgress in context
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number),
+				3,
+				false,
+				'',
+				expect.not.objectContaining({
+					reportProgress: expect.any(Function)
+				}),
+				false
+			);
+		});
+	});
 });

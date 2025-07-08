@@ -15,6 +15,7 @@ import {
 	getFallbackProvider,
 	getFallbackModelId,
 	getParametersForRole,
+	getResponseLanguage,
 	getUserId,
 	MODEL_MAP,
 	getDebugFlag,
@@ -24,7 +25,8 @@ import {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	providersWithoutApiKeys
 } from './config-manager.js';
 import {
 	log,
@@ -45,7 +47,8 @@ import {
 	BedrockAIProvider,
 	AzureProvider,
 	VertexAIProvider,
-	ClaudeCodeProvider
+	ClaudeCodeProvider,
+	GeminiCliProvider
 } from '../../src/ai-providers/index.js';
 
 // Create provider instances
@@ -60,7 +63,8 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
-	'claude-code': new ClaudeCodeProvider()
+	'claude-code': new ClaudeCodeProvider(),
+	'gemini-cli': new GeminiCliProvider()
 };
 
 // Helper function to get cost for a specific model
@@ -247,6 +251,12 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		return 'claude-code-no-key-required';
 	}
 
+	// Gemini CLI can work without an API key (uses CLI auth)
+	if (providerName === 'gemini-cli') {
+		const apiKey = resolveEnvVariable('GEMINI_API_KEY', session, projectRoot);
+		return apiKey || 'gemini-cli-no-key-required';
+	}
+
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
@@ -259,7 +269,8 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		ollama: 'OLLAMA_API_KEY',
 		bedrock: 'AWS_ACCESS_KEY_ID',
 		vertex: 'GOOGLE_API_KEY',
-		'claude-code': 'CLAUDE_CODE_API_KEY' // Not actually used, but included for consistency
+		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
+		'gemini-cli': 'GEMINI_API_KEY'
 	};
 
 	const envVarName = keyMap[providerName];
@@ -272,7 +283,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
 	// Special handling for providers that can use alternative auth
-	if (providerName === 'ollama' || providerName === 'bedrock') {
+	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 		return apiKey || null;
 	}
 
@@ -472,7 +483,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -556,9 +567,12 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			const messages = [];
-			if (systemPrompt) {
-				messages.push({ role: 'system', content: systemPrompt });
-			}
+			const responseLanguage = getResponseLanguage(effectiveProjectRoot);
+			const systemPromptWithLanguage = `${systemPrompt} \n\n Always respond in ${responseLanguage}.`;
+			messages.push({
+				role: 'system',
+				content: systemPromptWithLanguage.trim()
+			});
 
 			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
 			// {

@@ -523,6 +523,24 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = CUSTOM_PROVIDERS.VERTEX;
 					warningMessage = `Warning: Custom Vertex AI model '${modelId}' set. Please ensure the model is valid and accessible in your Google Cloud project.`;
 					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.GEMINI_CLI) {
+					// Gemini CLI provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.GEMINI_CLI;
+					// Re-find modelData specifically for gemini-cli provider
+					const geminiCliModels = availableModels.filter(
+						(m) => m.provider === 'gemini-cli'
+					);
+					const geminiCliModelData = geminiCliModels.find(
+						(m) => m.id === modelId
+					);
+					if (geminiCliModelData) {
+						// Update modelData to the found gemini-cli model
+						modelData = geminiCliModelData;
+						report('info', `Setting Gemini CLI model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: Gemini CLI model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
