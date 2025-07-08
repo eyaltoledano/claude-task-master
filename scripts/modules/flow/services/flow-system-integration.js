@@ -7,7 +7,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { flowConfig, initializeFlowConfig } from '../config/flow-config.js';
+import { flowConfig } from '../config/flow-config.js';
 import {
 	initializeErrorHandling,
 	errorRecoveryManager

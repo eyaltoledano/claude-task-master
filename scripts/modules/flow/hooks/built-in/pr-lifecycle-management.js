@@ -101,12 +101,10 @@ export default class PRLifecycleManagementHook {
 	 */
 	async loadNotificationConfig() {
 		try {
-			// Ensure config is initialized
-			if (!flowConfig._config) {
-				await flowConfig.initialize();
-			}
+			// Initialize flow config
+			await flowConfig.initialize();
 
-			return flowConfig.get(
+			return await flowConfig.getValue(
 				'notifications',
 				this.getDefaultNotificationConfig()
 			);

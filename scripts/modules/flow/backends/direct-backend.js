@@ -2059,12 +2059,10 @@ export class DirectBackend extends FlowBackend {
 	// Get Claude Code configuration
 	async getClaudeCodeConfig() {
 		try {
-			// Ensure config is initialized
-			if (!flowConfig._config) {
-				await flowConfig.initialize();
-			}
+			// Initialize flow config
+			await flowConfig.initialize(this.projectRoot);
 
-			const claudeCodeConfig = flowConfig.get('claudeCode', {
+			const claudeCodeConfig = await flowConfig.getValue('vibekit.agents.claude-code', {
 				enabled: false,
 				permissionMode: 'acceptEdits',
 				defaultMaxTurns: 3,
@@ -2091,13 +2089,11 @@ export class DirectBackend extends FlowBackend {
 	// Save Claude Code configuration
 	async saveClaudeCodeConfig(claudeConfig) {
 		try {
-			// Ensure config is initialized
-			if (!flowConfig._config) {
-				await flowConfig.initialize();
-			}
+			// Initialize flow config
+			await flowConfig.initialize(this.projectRoot);
 
-			flowConfig.set('claudeCode', claudeConfig);
-			await flowConfig.save();
+			await flowConfig.setValue('vibekit.agents.claude-code', claudeConfig);
+			await flowConfig.saveConfig();
 
 			return { success: true };
 		} catch (error) {

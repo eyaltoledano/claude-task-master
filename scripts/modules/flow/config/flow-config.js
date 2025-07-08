@@ -476,26 +476,66 @@ export class FlowConfigManager {
   }
 }
 
-// Global configuration instance for convenience
-let globalConfig = null;
+// Global configuration instance - auto-initializing singleton
 
 /**
- * Get or create global configuration instance
+ * Simple flowConfig singleton that auto-initializes
+ * Provides the same interface as the old flowConfig but with the new implementation
  */
-export function getFlowConfig(projectRoot = process.cwd()) {
-  if (!globalConfig) {
-    globalConfig = new FlowConfigManager({ projectRoot });
+export const flowConfig = {
+  _manager: null,
+  _initialized: false,
+
+  async _getManager(projectRoot = process.cwd()) {
+    if (!this._manager) {
+      this._manager = new FlowConfigManager({ projectRoot });
+    }
+    if (!this._initialized) {
+      await this._manager.loadConfig();
+      this._initialized = true;
+    }
+    return this._manager;
+  },
+
+  async getValue(path, defaultValue) {
+    const manager = await this._getManager();
+    return manager.getValue(path, defaultValue);
+  },
+
+  async setValue(path, value) {
+    const manager = await this._getManager();
+    return manager.setValue(path, value);
+  },
+
+  async saveConfig() {
+    const manager = await this._getManager();
+    return manager.saveConfig();
+  },
+
+  async getConfig() {
+    const manager = await this._getManager();
+    return manager.getConfig();
+  },
+
+  async initialize(projectRoot) {
+    this._manager = new FlowConfigManager({ projectRoot: projectRoot || process.cwd() });
+    await this._manager.loadConfig();
+    this._initialized = true;
+    return this;
+  },
+
+  // Legacy methods for backward compatibility
+  async get(path, defaultValue) {
+    return this.getValue(path, defaultValue);
+  },
+
+  async set(path, value) {
+    return this.setValue(path, value);
+  },
+
+  async save() {
+    return this.saveConfig();
   }
-  return globalConfig;
-}
-
-/**
- * Load and return global configuration
- */
-export async function loadFlowConfig(projectRoot = process.cwd()) {
-  const configManager = getFlowConfig(projectRoot);
-  await configManager.loadConfig();
-  return configManager;
-}
+};
 
 export { FlowConfigSchema };

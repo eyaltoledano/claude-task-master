@@ -159,12 +159,12 @@ For more details: task-master flow <subcommand> --help
     .action(async (subcommand, taskIdOrPrompt, additionalArgs, options) => {
       try {
         if (!subcommand) {
-          // Launch TUI with enhanced loading
+          // Launch TUI with enhanced loading using tsx wrapper
           const spinner = options.verbose ? null : ora('Starting VibeKit interface...').start();
           try {
-            const { run } = await import('./index.jsx');
+            const { launchFlow } = await import('./cli-wrapper.js');
             if (spinner) spinner.stop();
-            await run(options);
+            await launchFlow(options);
           } catch (error) {
             if (spinner) spinner.fail('Failed to start TUI');
             throw error;

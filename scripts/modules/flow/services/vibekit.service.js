@@ -139,11 +139,11 @@ export class VibeKitService {
         throw new Error('mode parameter is required and must be "ask" or "code"');
       }
       
-      const vibeKit = this.createVibeKit(options.taskContext);
-      
+    const vibeKit = this.createVibeKit(options.taskContext);
+    
       // Build generateCode parameters according to official API
       const generateOptions = {
-        prompt: this.enhancePromptWithContext(prompt, options.taskContext),
+      prompt: this.enhancePromptWithContext(prompt, options.taskContext),
         mode,
         // Include optional parameters only if provided
         ...(branch && { branch }),

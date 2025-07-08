@@ -350,15 +350,12 @@ export class BranchAwarenessManager extends EventEmitter {
 	 */
 	async loadSavedState() {
 		try {
-			// Ensure config is initialized
-			if (!this.flowConfig._config) {
-				await this.flowConfig.initialize();
-			}
+			await this.flowConfig.initialize(this.projectRoot);
 
-			this.lastWorkingBranch = this.flowConfig.get(
+			this.lastWorkingBranch = await this.flowConfig.getValue(
 				'branchAwareness.lastWorkingBranch'
 			);
-			this.branchHistory = this.flowConfig.get(
+			this.branchHistory = await this.flowConfig.getValue(
 				'branchAwareness.branchHistory',
 				[]
 			);
@@ -374,23 +371,20 @@ export class BranchAwarenessManager extends EventEmitter {
 		if (!this.options.rememberLastBranch) return;
 
 		try {
-			// Ensure config is initialized
-			if (!this.flowConfig._config) {
-				await this.flowConfig.initialize();
-			}
+			await this.flowConfig.initialize(this.projectRoot);
 
-			this.flowConfig.set('branchAwareness.currentBranch', this.currentBranch);
-			this.flowConfig.set(
+			await this.flowConfig.setValue('branchAwareness.currentBranch', this.currentBranch);
+			await this.flowConfig.setValue(
 				'branchAwareness.lastWorkingBranch',
 				this.lastWorkingBranch
 			);
-			this.flowConfig.set('branchAwareness.branchHistory', this.branchHistory);
-			this.flowConfig.set(
+			await this.flowConfig.setValue('branchAwareness.branchHistory', this.branchHistory);
+			await this.flowConfig.setValue(
 				'branchAwareness.lastUpdated',
 				new Date().toISOString()
 			);
 
-			await this.flowConfig.save();
+			await this.flowConfig.saveConfig();
 		} catch (error) {
 			console.debug('Failed to save branch awareness state:', error.message);
 		}
