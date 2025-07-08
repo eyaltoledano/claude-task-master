@@ -59,17 +59,29 @@ class TaskMasterMCPServer {
 
 	/**
 	 * Start the MCP server
+	 * @param {Object} options - Server options
+	 * @param {string} [options.transportType='stdio'] - Transport type ('stdio' or 'httpStream')
+	 * @param {number} [options.port=3000] - Port number for HTTP streaming transport
 	 */
-	async start() {
+	async start(options = {}) {
 		if (!this.initialized) {
 			await this.init();
 		}
 
-		// Start the FastMCP server with increased timeout
-		await this.server.start({
-			transportType: 'stdio',
+		const transportType = options.transportType || 'stdio';
+		const serverOptions = {
+			transportType,
 			timeout: 120000 // 2 minutes timeout (in milliseconds)
-		});
+		};
+
+		if (transportType === 'httpStream') {
+			serverOptions.httpStream = {
+				port: options.port || 3000
+			};
+		}
+
+		// Start the FastMCP server
+		await this.server.start(serverOptions);
 
 		return this;
 	}
