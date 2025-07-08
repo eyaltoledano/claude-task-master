@@ -2,71 +2,103 @@
  * VibeKit Service
  * Enhanced service using VibeKit SDK for AI agent execution
  * Fully aligned with official VibeKit configuration API
+ * Integrated with Task Master Flow configuration system
  */
 
 import { VibeKit } from '@vibe-kit/sdk';
 import path from 'node:path';
 import fs from 'node:fs';
+import { FlowConfig } from '../config/flow-config.js';
 
 export class VibeKitService {
   constructor(config = {}) {
+    // Initialize Flow configuration for enhanced integration
+    this.flowConfig = new FlowConfig(config.projectRoot || process.cwd());
+    const flowVibeKitConfig = this.flowConfig.getVibeKitConfig();
+    
     this.config = {
-      defaultAgent: config.defaultAgent || 'claude-code',
+      defaultAgent: config.defaultAgent || flowVibeKitConfig.defaultAgent || 'claude-code',
       
-      // Agent configuration
+      // Agent configuration - merge Flow config with passed config
       agent: {
-        type: config.agent?.type || config.defaultAgent || 'claude-code',
+        type: config.agent?.type || flowVibeKitConfig.defaultAgent || 'claude-code',
         model: {
           apiKey: config.agent?.model?.apiKey,
-          name: config.agent?.model?.name,
+          name: config.agent?.model?.name || flowVibeKitConfig.agents?.[config.agent?.type || flowVibeKitConfig.defaultAgent]?.model?.name,
           provider: config.agent?.model?.provider,
+          ...flowVibeKitConfig.agents?.[config.agent?.type || flowVibeKitConfig.defaultAgent]?.model,
           ...config.agent?.model
         }
       },
       
-      // Environment configurations - support all official providers
+      // Environment configurations - merge Flow config with environment variables
       environments: {
         e2b: {
-          apiKey: process.env.E2B_API_KEY,
-          // Additional E2B config options
+          apiKey: process.env.E2B_API_KEY || flowVibeKitConfig.environments?.e2b?.apiKey,
+          templateId: process.env.E2B_TEMPLATE_ID || flowVibeKitConfig.environments?.e2b?.templateId,
+          ...flowVibeKitConfig.environments?.e2b,
           ...config.environments?.e2b
         },
         northflank: {
-          apiKey: process.env.NORTHFLANK_API_KEY,
-          projectId: process.env.NORTHFLANK_PROJECT_ID,
+          apiKey: process.env.NORTHFLANK_API_KEY || flowVibeKitConfig.environments?.northflank?.apiKey,
+          projectId: process.env.NORTHFLANK_PROJECT_ID || flowVibeKitConfig.environments?.northflank?.projectId,
+          ...flowVibeKitConfig.environments?.northflank,
           ...config.environments?.northflank
         },
         daytona: {
-          apiKey: process.env.DAYTONA_API_KEY,
-          workspaceId: process.env.DAYTONA_WORKSPACE_ID,
+          apiKey: process.env.DAYTONA_API_KEY || flowVibeKitConfig.environments?.daytona?.apiKey,
+          workspaceId: process.env.DAYTONA_WORKSPACE_ID || flowVibeKitConfig.environments?.daytona?.workspaceId,
+          ...flowVibeKitConfig.environments?.daytona,
           ...config.environments?.daytona
         }
       },
       
-      // GitHub integration with full configuration
+      // GitHub integration with full configuration - merge Flow config
       github: {
-        token: process.env.GITHUB_TOKEN,
-        repository: config.repository || this.detectGitRepository(),
+        token: process.env.GITHUB_API_KEY || flowVibeKitConfig.github?.token,
+        repository: config.repository || flowVibeKitConfig.github?.repository || this.detectGitRepository(),
+        ...flowVibeKitConfig.github,
         ...config.github
       },
       
-      // Telemetry configuration (optional)
-      telemetry: config.telemetry || {
-        enabled: process.env.VIBEKIT_TELEMETRY_ENABLED === 'true',
-        endpoint: process.env.VIBEKIT_TELEMETRY_ENDPOINT,
-        apiKey: process.env.VIBEKIT_TELEMETRY_API_KEY,
-        samplingRate: parseFloat(process.env.VIBEKIT_TELEMETRY_SAMPLING_RATE || '0.1')
+      // Telemetry configuration - merge Flow config with environment variables
+      telemetry: {
+        enabled: process.env.VIBEKIT_TELEMETRY_ENABLED === 'true' || flowVibeKitConfig.telemetry?.enabled || false,
+        endpoint: process.env.VIBEKIT_TELEMETRY_ENDPOINT || flowVibeKitConfig.telemetry?.endpoint,
+        apiKey: process.env.VIBEKIT_TELEMETRY_API_KEY || flowVibeKitConfig.telemetry?.apiKey,
+        samplingRate: parseFloat(process.env.VIBEKIT_TELEMETRY_SAMPLING_RATE || flowVibeKitConfig.telemetry?.samplingRate || '0.1'),
+        ...flowVibeKitConfig.telemetry,
+        ...config.telemetry
       },
       
-      // Session management
+      // Session management - merge Flow config
       sessionManagement: {
-        enabled: config.sessionManagement?.enabled ?? true,
-        persistSessions: config.sessionManagement?.persistSessions ?? true,
-        sessionDir: config.sessionManagement?.sessionDir || '.taskmaster/flow/sessions'
+        enabled: config.sessionManagement?.enabled ?? flowVibeKitConfig.sessionManagement?.enabled ?? true,
+        persistSessions: config.sessionManagement?.persistSessions ?? flowVibeKitConfig.sessionManagement?.persistSessions ?? true,
+        sessionDir: config.sessionManagement?.sessionDir || flowVibeKitConfig.sessionManagement?.sessionDir || '.taskmaster/flow/sessions',
+        ...flowVibeKitConfig.sessionManagement,
+        ...config.sessionManagement
+      },
+      
+      // Streaming configuration from Flow config
+      streaming: {
+        enabled: flowVibeKitConfig.streamingEnabled ?? true,
+        bufferSize: flowVibeKitConfig.streaming?.bufferSize || 1024,
+        timeout: flowVibeKitConfig.streaming?.timeout || 30000,
+        ...flowVibeKitConfig.streaming,
+        ...config.streaming
       },
       
       // Working directory configuration
       workingDirectory: config.workingDirectory || process.cwd(),
+      
+      // Flow TUI integration settings
+      flowIntegration: {
+        enabled: config.flowIntegration?.enabled ?? true,
+        progressCallbacks: config.flowIntegration?.progressCallbacks ?? true,
+        errorHandling: config.flowIntegration?.errorHandling ?? 'enhanced',
+        ...config.flowIntegration
+      },
       
       ...config
     };
@@ -78,6 +110,89 @@ export class VibeKitService {
         fs.mkdirSync(sessionPath, { recursive: true });
       }
     }
+    
+    // Validate essential configuration
+    this.validateConfiguration();
+  }
+
+  /**
+   * Validate VibeKit configuration and provide helpful error messages
+   */
+  validateConfiguration() {
+    const issues = [];
+    const warnings = [];
+
+    // Check if at least one agent is properly configured
+    const agentType = this.config.agent.type;
+    const apiKey = this.getApiKeyForAgent(agentType);
+    
+    if (!apiKey) {
+      issues.push(`Missing API key for agent '${agentType}'. Please set the appropriate environment variable.`);
+    }
+
+    // Check if at least one sandbox environment is configured
+    const activeEnvironments = this.getActiveEnvironmentConfig();
+    if (Object.keys(activeEnvironments).length === 0) {
+      warnings.push('No sandbox environments configured. VibeKit will run in local mode only.');
+    }
+
+    // Check GitHub configuration for PR/branch operations
+    if (!this.config.github?.token) {
+      warnings.push('GitHub token not configured. Pull request and branch operations will not be available.');
+    }
+
+    // Check telemetry configuration
+    if (this.config.telemetry?.enabled && !this.config.telemetry?.endpoint) {
+      warnings.push('Telemetry enabled but no endpoint configured. Telemetry data will not be sent.');
+    }
+
+    // Log issues and warnings
+    if (issues.length > 0) {
+      console.error('VibeKit Configuration Issues:');
+      issues.forEach(issue => console.error(`  ❌ ${issue}`));
+      throw new Error(`VibeKit configuration validation failed: ${issues.join(', ')}`);
+    }
+
+    if (warnings.length > 0) {
+      console.warn('VibeKit Configuration Warnings:');
+      warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`));
+    }
+  }
+
+  /**
+   * Get VibeKit configuration status for Flow TUI display
+   */
+  getConfigurationStatus() {
+    const agentType = this.config.agent.type;
+    const activeEnvironments = this.getActiveEnvironmentConfig();
+    
+    return {
+      agent: {
+        type: agentType,
+        configured: !!this.getApiKeyForAgent(agentType),
+        model: this.getModelNameForAgent(agentType)
+      },
+      environments: {
+        available: Object.keys(activeEnvironments),
+        count: Object.keys(activeEnvironments).length
+      },
+      github: {
+        configured: !!this.config.github?.token,
+        repository: this.config.github?.repository
+      },
+      telemetry: {
+        enabled: this.config.telemetry?.enabled,
+        configured: !!(this.config.telemetry?.enabled && this.config.telemetry?.endpoint)
+      },
+      sessionManagement: {
+        enabled: this.config.sessionManagement?.enabled,
+        persistSessions: this.config.sessionManagement?.persistSessions,
+        sessionDir: this.config.sessionManagement?.sessionDir
+      },
+      streaming: {
+        enabled: this.config.streaming?.enabled
+      }
+    };
   }
 
   /**
@@ -179,7 +294,7 @@ export class VibeKitService {
   }
 
   /**
-   * Execute task-specific code generation with enhanced context
+   * Execute task-specific code generation with enhanced context and Flow TUI integration
    */
   async executeTask(task, options = {}) {
     const prompt = this.createTaskPrompt(task);
@@ -193,36 +308,111 @@ export class VibeKitService {
       modelConfig: options.modelConfig
     };
 
-    // Create callbacks that match VibeKit's official API
+    // Enhanced callbacks for Flow TUI integration
     const callbacks = {
       onUpdate: (message) => {
-        // Emit progress updates for TUI
-        if (options.onProgress) {
+        // Emit detailed progress updates for Flow TUI
+        if (options.onProgress && this.config.flowIntegration?.progressCallbacks) {
           options.onProgress({
             taskId: task.id,
-            phase: 'executing',
+            phase: 'code-generation',
             progress: 50, // Default progress
-            message: message || 'Processing...',
-            data: { message }
+            message: message || 'Generating code...',
+            timestamp: new Date().toISOString(),
+            data: { 
+              message,
+              agent: taskContext.agent || this.config.defaultAgent,
+              sessionId: taskContext.sessionId,
+              streaming: this.config.streaming?.enabled
+            }
           });
         }
       },
       onError: (error) => {
+        // Enhanced error handling for Flow TUI
         if (options.onError) {
           options.onError(error);
+        }
+        
+        if (options.onProgress && this.config.flowIntegration?.errorHandling === 'enhanced') {
+          options.onProgress({
+            taskId: task.id,
+            phase: 'error',
+            progress: 0,
+            message: `Code generation failed: ${error.message}`,
+            timestamp: new Date().toISOString(),
+            data: { 
+              error: error.message,
+              errorType: error.constructor.name,
+              agent: taskContext.agent || this.config.defaultAgent
+            }
+          });
         }
       }
     };
 
-    return await this.generateCode({
-      prompt,
-      mode: options.mode || 'code',
-      branch: options.branch,
-      history: options.history,
-      callbacks,
-      taskContext,
-      ...options
-    });
+    // Emit start progress for Flow TUI
+    if (options.onProgress && this.config.flowIntegration?.progressCallbacks) {
+      options.onProgress({
+        taskId: task.id,
+        phase: 'initializing',
+        progress: 10,
+        message: 'Initializing VibeKit agent...',
+        timestamp: new Date().toISOString(),
+        data: { 
+          agent: taskContext.agent || this.config.defaultAgent,
+          mode: options.mode || 'code',
+          sandbox: Object.keys(this.getActiveEnvironmentConfig())[0] || 'local'
+        }
+      });
+    }
+
+    try {
+      const result = await this.generateCode({
+        prompt,
+        mode: options.mode || 'code',
+        branch: options.branch,
+        history: options.history,
+        callbacks,
+        taskContext,
+        ...options
+      });
+
+      // Emit completion progress for Flow TUI
+      if (options.onProgress && this.config.flowIntegration?.progressCallbacks) {
+        options.onProgress({
+          taskId: task.id,
+          phase: 'completed',
+          progress: 100,
+          message: 'Code generation completed successfully',
+          timestamp: new Date().toISOString(),
+          data: { 
+            filesGenerated: result.filesGenerated || 0,
+            summary: result.summary,
+            sessionId: taskContext.sessionId
+          }
+        });
+      }
+
+      return result;
+    } catch (error) {
+      // Final error state for Flow TUI
+      if (options.onProgress && this.config.flowIntegration?.errorHandling === 'enhanced') {
+        options.onProgress({
+          taskId: task.id,
+          phase: 'failed',
+          progress: 0,
+          message: `Task execution failed: ${error.message}`,
+          timestamp: new Date().toISOString(),
+          data: { 
+            error: error.message,
+            errorType: error.constructor.name
+          }
+        });
+      }
+      
+      throw error;
+    }
   }
 
   /**
@@ -1770,5 +1960,197 @@ Please implement this task completely, including any necessary dependencies, err
       default:
         return process.env.ANTHROPIC_API_KEY; // Default to Claude
     }
+  }
+
+  // ============================================================================
+  // Flow TUI Integration Methods
+  // ============================================================================
+
+  /**
+   * Check if VibeKit is ready for task execution
+   * Useful for Flow TUI to show readiness status
+   */
+  isReady() {
+    const agentConfigured = !!this.getApiKeyForAgent(this.config.agent.type);
+    const hasEnvironment = Object.keys(this.getActiveEnvironmentConfig()).length > 0;
+    
+    return {
+      ready: agentConfigured,
+      agent: {
+        type: this.config.agent.type,
+        configured: agentConfigured
+      },
+      sandbox: {
+        available: hasEnvironment,
+        environments: Object.keys(this.getActiveEnvironmentConfig())
+      },
+      github: {
+        configured: !!this.config.github?.token
+      }
+    };
+  }
+
+  /**
+   * Get available agents that are properly configured
+   * Useful for Flow TUI agent selection
+   */
+  getAvailableAgents() {
+    const agents = ['claude-code', 'codex', 'gemini-cli', 'opencode'];
+    
+    return agents.map(agent => ({
+      type: agent,
+      name: this.getAgentDisplayName(agent),
+      configured: !!this.getApiKeyForAgent(agent),
+      model: this.getModelNameForAgent(agent),
+      provider: this.getProviderForAgent(agent)
+    })).filter(agent => agent.configured);
+  }
+
+  /**
+   * Get display name for agent types
+   */
+  getAgentDisplayName(agentType) {
+    const displayNames = {
+      'claude-code': 'Claude Code',
+      'codex': 'OpenAI Codex',
+      'gemini-cli': 'Google Gemini',
+      'opencode': 'OpenCode'
+    };
+    
+    return displayNames[agentType] || agentType;
+  }
+
+  /**
+   * Get available sandbox environments that are configured
+   * Useful for Flow TUI environment selection
+   */
+  getAvailableEnvironments() {
+    const allEnvironments = {
+      e2b: {
+        name: 'E2B',
+        description: 'Secure cloud sandboxes',
+        configured: !!(this.config.environments.e2b?.apiKey)
+      },
+      northflank: {
+        name: 'Northflank',
+        description: 'Developer platform with containers',
+        configured: !!(this.config.environments.northflank?.apiKey)
+      },
+      daytona: {
+        name: 'Daytona',
+        description: 'Development environment manager',
+        configured: !!(this.config.environments.daytona?.apiKey)
+      }
+    };
+
+    return Object.entries(allEnvironments)
+      .filter(([key, env]) => env.configured)
+      .map(([key, env]) => ({ key, ...env }));
+  }
+
+  /**
+   * Create a VibeKit instance specifically for Flow TUI task execution
+   * Includes enhanced error handling and progress tracking
+   */
+  createFlowVibeKit(task, options = {}) {
+    const taskContext = {
+      taskId: task.id,
+      projectRoot: options.projectRoot,
+      branch: options.branch || `task-${task.id}`,
+      agent: options.agent || this.config.defaultAgent,
+      sessionId: options.sessionId || `flow-task-${task.id}-${Date.now()}`,
+      workingDirectory: options.workingDirectory,
+      modelConfig: options.modelConfig
+    };
+
+    return this.createVibeKit(taskContext);
+  }
+
+  /**
+   * Execute a complete task workflow optimized for Flow TUI
+   * Combines code generation, testing, and PR creation with enhanced progress tracking
+   */
+  async executeFlowTask(task, options = {}) {
+    const workflowOptions = {
+      // Default Flow TUI workflow settings
+      generateCode: options.generateCode !== false,
+      runTests: options.runTests !== false,
+      createPullRequest: options.createPullRequest !== false && !!this.config.github?.token,
+      cleanupSandbox: options.cleanupSandbox !== false,
+      
+      // Enhanced progress tracking for Flow TUI
+      onProgress: (progress) => {
+        if (options.onProgress) {
+          // Add Flow TUI specific metadata
+          options.onProgress({
+            ...progress,
+            vibekit: {
+              agent: this.config.agent.type,
+              sandbox: Object.keys(this.getActiveEnvironmentConfig())[0] || 'local',
+              sessionManagement: this.config.sessionManagement.enabled
+            }
+          });
+        }
+      },
+      
+      // Flow TUI specific settings
+      mode: options.mode || 'code',
+      branch: options.branch || `task-${task.id}`,
+      agent: options.agent || this.config.defaultAgent,
+      
+      ...options
+    };
+
+    return await this.executeCompleteWorkflow(task, workflowOptions);
+  }
+
+  /**
+   * Get session information for Flow TUI display
+   */
+  async getSessionInfo() {
+    try {
+      const sessionId = await this.getSession();
+      
+      return {
+        hasActiveSession: !!sessionId,
+        sessionId: sessionId,
+        sessionManagement: {
+          enabled: this.config.sessionManagement.enabled,
+          persistSessions: this.config.sessionManagement.persistSessions,
+          sessionDir: this.config.sessionManagement.sessionDir
+        }
+      };
+    } catch (error) {
+      return {
+        hasActiveSession: false,
+        sessionId: null,
+        error: error.message,
+        sessionManagement: {
+          enabled: this.config.sessionManagement.enabled,
+          persistSessions: this.config.sessionManagement.persistSessions,
+          sessionDir: this.config.sessionManagement.sessionDir
+        }
+      };
+    }
+  }
+
+  /**
+   * Update Flow configuration and reinitialize VibeKit service
+   * Useful when user changes settings in Flow TUI
+   */
+  updateFlowConfiguration(newConfig) {
+    // Reinitialize Flow configuration
+    this.flowConfig = new FlowConfig(newConfig.projectRoot || process.cwd());
+    
+    // Merge new configuration
+    this.config = {
+      ...this.config,
+      ...newConfig
+    };
+    
+    // Re-validate configuration
+    this.validateConfiguration();
+    
+    return this.getConfigurationStatus();
   }
 }

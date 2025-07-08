@@ -44,11 +44,16 @@ export function ExecutionManagementScreen({ onBack }) {
 
 	const loadAvailableTasks = async () => {
 		try {
-			const { getTasks } = await import('../../task-manager/get-tasks.js');
-			const result = await getTasks({ status: 'pending' }, { projectRoot: process.cwd() });
+			if (!backend) {
+				console.error('Backend not available');
+				return;
+			}
+			
+			const result = await backend.listTasks({ status: 'pending' });
 			setAvailableTasks(result.tasks || []);
 		} catch (error) {
 			console.error('Failed to load tasks:', error);
+			setError(`Failed to load tasks: ${error.message}`);
 		}
 	};
 

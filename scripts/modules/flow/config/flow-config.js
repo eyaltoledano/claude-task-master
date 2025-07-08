@@ -23,35 +23,49 @@ const FlowConfigSchema = z.object({
     githubIntegration: z.boolean().default(true),
     autoCreatePR: z.boolean().default(false),
     
-    // Environment configurations
+    // Core VibeKit SDK settings
+    sdk: z.object({
+      version: z.string().default('latest'),
+      timeout: z.number().min(1000).max(600000).default(120000), // 2 minutes
+      retryAttempts: z.number().min(0).max(5).default(3),
+      baseUrl: z.string().optional(), // For custom VibeKit instances
+    }).default({}),
+    
+    // Environment configurations (sandbox providers)
     environments: z.object({
       e2b: z.object({
         enabled: z.boolean().default(true),
-        apiKey: z.string().optional(),
+        apiKey: z.string().optional(), // Will use E2B_API_KEY from .env
+        templateId: z.string().optional(),
+        region: z.string().default('us-east-1'),
         // Additional E2B config can be added here
       }).default({}),
       
       northflank: z.object({
         enabled: z.boolean().default(false),
-        apiKey: z.string().optional(),
-        projectId: z.string().optional(),
+        apiKey: z.string().optional(), // Will use NORTHFLANK_API_KEY from .env
+        projectId: z.string().optional(), // Will use NORTHFLANK_PROJECT_ID from .env
+        region: z.string().default('europe-west'),
       }).default({}),
       
       daytona: z.object({
         enabled: z.boolean().default(false),
-        apiKey: z.string().optional(),
-        workspaceId: z.string().optional(),
+        apiKey: z.string().optional(), // Will use DAYTONA_API_KEY from .env
+        workspaceId: z.string().optional(), // Will use DAYTONA_WORKSPACE_ID from .env
+        region: z.string().default('us-central'),
       }).default({})
     }).default({}),
     
-    // Telemetry configuration
+    // Telemetry configuration (OpenTelemetry)
     telemetry: z.object({
       enabled: z.boolean().default(false),
-      endpoint: z.string().optional(),
-      apiKey: z.string().optional(),
+      endpoint: z.string().optional(), // Will use VIBEKIT_TELEMETRY_ENDPOINT from .env
+      apiKey: z.string().optional(), // Will use VIBEKIT_TELEMETRY_API_KEY from .env
       samplingRate: z.number().min(0).max(1).default(0.1),
       batchSize: z.number().min(1).max(1000).default(100),
-      flushInterval: z.number().min(1000).default(30000) // milliseconds
+      flushInterval: z.number().min(1000).default(30000), // milliseconds
+      serviceName: z.string().default('taskmaster-flow'),
+      serviceVersion: z.string().default('1.0.0'),
     }).default({}),
     
     // Session management
@@ -60,17 +74,28 @@ const FlowConfigSchema = z.object({
       persistSessions: z.boolean().default(true),
       sessionDir: z.string().default('.taskmaster/flow/sessions'),
       maxSessionAge: z.number().default(7 * 24 * 60 * 60 * 1000), // 7 days in ms
-      cleanupInterval: z.number().default(24 * 60 * 60 * 1000) // 24 hours in ms
+      cleanupInterval: z.number().default(24 * 60 * 60 * 1000), // 24 hours in ms
+      autoResume: z.boolean().default(true),
     }).default({}),
     
-    // Agent-specific settings
+    // Secrets management
+    secrets: z.object({
+      enabled: z.boolean().default(true),
+      provider: z.enum(['env', 'vault', 'aws-secrets']).default('env'),
+      encryptionKey: z.string().optional(), // Will use VIBEKIT_ENCRYPTION_KEY from .env
+      vaultUrl: z.string().optional(),
+      awsRegion: z.string().optional(),
+    }).default({}),
+    
+    // Agent-specific settings (reusing existing Task Master API keys)
     agents: z.object({
       'claude-code': z.object({
         enabled: z.boolean().default(true),
         maxTokens: z.number().min(1).max(32000).default(4000),
         temperature: z.number().min(0).max(1).default(0.1),
         modelName: z.string().default('claude-3-opus-20240229'),
-        provider: z.string().default('anthropic')
+        provider: z.string().default('anthropic'),
+        apiKey: z.string().optional(), // Will use ANTHROPIC_API_KEY from .env
       }).default({}),
       
       codex: z.object({
@@ -78,7 +103,8 @@ const FlowConfigSchema = z.object({
         maxTokens: z.number().min(1).max(8000).default(2000),
         temperature: z.number().min(0).max(1).default(0.1),
         modelName: z.string().default('gpt-4-turbo-preview'),
-        provider: z.string().default('openai')
+        provider: z.string().default('openai'),
+        apiKey: z.string().optional(), // Will use OPENAI_API_KEY from .env
       }).default({}),
       
       'gemini-cli': z.object({
@@ -86,7 +112,8 @@ const FlowConfigSchema = z.object({
         maxTokens: z.number().min(1).max(8000).default(3000),
         temperature: z.number().min(0).max(1).default(0.1),
         modelName: z.string().default('gemini-1.5-pro'),
-        provider: z.string().default('gemini')
+        provider: z.string().default('gemini'),
+        apiKey: z.string().optional(), // Will use GOOGLE_API_KEY from .env
       }).default({}),
       
       opencode: z.object({
@@ -94,33 +121,57 @@ const FlowConfigSchema = z.object({
         maxTokens: z.number().min(1).max(8000).default(2000),
         temperature: z.number().min(0).max(1).default(0.1),
         modelName: z.string().default('deepseek-coder-v2'),
-        provider: z.string().default('opencode')
+        provider: z.string().default('opencode'),
+        apiKey: z.string().optional(), // Will use custom OPENCODE_API_KEY from .env
       }).default({})
     }).default({}),
     
     // Working directory configuration
-    workingDirectory: z.string().optional()
+    workingDirectory: z.string().optional(),
+    
+    // Ask Mode configuration
+    askMode: z.object({
+      enabled: z.boolean().default(true),
+      defaultMode: z.enum(['interactive', 'batch', 'streaming']).default('interactive'),
+      timeout: z.number().min(5000).max(300000).default(60000), // 1 minute
+      maxQuestions: z.number().min(1).max(50).default(10),
+    }).default({}),
+    
+    // Streaming configuration
+    streaming: z.object({
+      enabled: z.boolean().default(true),
+      bufferSize: z.number().min(1).max(10000).default(1000),
+      flushInterval: z.number().min(100).max(5000).default(500), // milliseconds
+      compression: z.boolean().default(false),
+    }).default({})
   }).default({}),
 
-  // GitHub Integration
+  // GitHub Integration (enhanced for VibeKit)
   github: z.object({
     enabled: z.boolean().default(true),
     autoDetectRepo: z.boolean().default(true),
     defaultBranch: z.string().default('main'),
-    prTemplate: z.string().optional()
+    prTemplate: z.string().optional(),
+    token: z.string().optional(), // Will use GITHUB_API_KEY from .env
+    webhookSecret: z.string().optional(), // Will use GITHUB_WEBHOOK_SECRET from .env
+    autoSync: z.boolean().default(false),
+    branchPrefix: z.string().default('taskmaster/'),
   }).default({}),
 
   // Execution Settings
   execution: z.object({
     timeout: z.number().min(1000).max(3600000).default(300000), // 5 minutes
     maxRetries: z.number().min(0).max(5).default(2),
-    streamOutput: z.boolean().default(true)
+    streamOutput: z.boolean().default(true),
+    parallelTasks: z.number().min(1).max(10).default(3),
   }).default({}),
 
   // Logging
   logging: z.object({
     level: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
-    enableTelemetry: z.boolean().default(true)
+    enableTelemetry: z.boolean().default(true),
+    logFile: z.string().optional(),
+    maxLogSize: z.number().default(10 * 1024 * 1024), // 10MB
   }).default({})
 });
 
@@ -175,6 +226,7 @@ export class FlowConfigManager {
   /**
    * Apply environment variable overrides
    * Follows best practice of env vars taking precedence
+   * Reuses existing Task Master .env file keys where possible
    */
   applyEnvironmentOverrides(configData) {
     const env = process.env;
@@ -205,6 +257,21 @@ export class FlowConfigManager {
     
     if (env.VIBEKIT_WORKING_DIRECTORY) {
       configData.vibekit.workingDirectory = env.VIBEKIT_WORKING_DIRECTORY;
+    }
+
+    // VibeKit SDK overrides
+    if (!configData.vibekit.sdk) configData.vibekit.sdk = {};
+    
+    if (env.VIBEKIT_SDK_VERSION) {
+      configData.vibekit.sdk.version = env.VIBEKIT_SDK_VERSION;
+    }
+    
+    if (env.VIBEKIT_SDK_TIMEOUT) {
+      configData.vibekit.sdk.timeout = parseInt(env.VIBEKIT_SDK_TIMEOUT, 10);
+    }
+    
+    if (env.VIBEKIT_SDK_BASE_URL) {
+      configData.vibekit.sdk.baseUrl = env.VIBEKIT_SDK_BASE_URL;
     }
     
     // Telemetry overrides
@@ -240,8 +307,41 @@ export class FlowConfigManager {
     if (env.VIBEKIT_SESSION_DIR) {
       configData.vibekit.sessionManagement.sessionDir = env.VIBEKIT_SESSION_DIR;
     }
+
+    // Secrets management overrides
+    if (!configData.vibekit.secrets) configData.vibekit.secrets = {};
     
-    // Environment provider overrides
+    if (env.VIBEKIT_SECRETS_PROVIDER) {
+      configData.vibekit.secrets.provider = env.VIBEKIT_SECRETS_PROVIDER;
+    }
+    
+    if (env.VIBEKIT_ENCRYPTION_KEY) {
+      configData.vibekit.secrets.encryptionKey = env.VIBEKIT_ENCRYPTION_KEY;
+    }
+
+    // Ask Mode overrides
+    if (!configData.vibekit.askMode) configData.vibekit.askMode = {};
+    
+    if (env.VIBEKIT_ASK_MODE_ENABLED !== undefined) {
+      configData.vibekit.askMode.enabled = env.VIBEKIT_ASK_MODE_ENABLED === 'true';
+    }
+    
+    if (env.VIBEKIT_ASK_MODE_DEFAULT) {
+      configData.vibekit.askMode.defaultMode = env.VIBEKIT_ASK_MODE_DEFAULT;
+    }
+
+    // Streaming overrides
+    if (!configData.vibekit.streaming) configData.vibekit.streaming = {};
+    
+    if (env.VIBEKIT_STREAMING_BUFFER_SIZE) {
+      configData.vibekit.streaming.bufferSize = parseInt(env.VIBEKIT_STREAMING_BUFFER_SIZE, 10);
+    }
+    
+    if (env.VIBEKIT_STREAMING_COMPRESSION !== undefined) {
+      configData.vibekit.streaming.compression = env.VIBEKIT_STREAMING_COMPRESSION === 'true';
+    }
+    
+    // Environment provider overrides (reusing existing Task Master keys)
     if (!configData.vibekit.environments) configData.vibekit.environments = {};
     
     // E2B overrides
@@ -249,6 +349,12 @@ export class FlowConfigManager {
     if (env.E2B_API_KEY) {
       configData.vibekit.environments.e2b.apiKey = env.E2B_API_KEY;
       configData.vibekit.environments.e2b.enabled = true;
+    }
+    if (env.E2B_TEMPLATE_ID) {
+      configData.vibekit.environments.e2b.templateId = env.E2B_TEMPLATE_ID;
+    }
+    if (env.E2B_REGION) {
+      configData.vibekit.environments.e2b.region = env.E2B_REGION;
     }
     
     // Northflank overrides
@@ -260,6 +366,9 @@ export class FlowConfigManager {
     if (env.NORTHFLANK_PROJECT_ID) {
       configData.vibekit.environments.northflank.projectId = env.NORTHFLANK_PROJECT_ID;
     }
+    if (env.NORTHFLANK_REGION) {
+      configData.vibekit.environments.northflank.region = env.NORTHFLANK_REGION;
+    }
     
     // Daytona overrides
     if (!configData.vibekit.environments.daytona) configData.vibekit.environments.daytona = {};
@@ -269,6 +378,53 @@ export class FlowConfigManager {
     }
     if (env.DAYTONA_WORKSPACE_ID) {
       configData.vibekit.environments.daytona.workspaceId = env.DAYTONA_WORKSPACE_ID;
+    }
+    if (env.DAYTONA_REGION) {
+      configData.vibekit.environments.daytona.region = env.DAYTONA_REGION;
+    }
+
+    // Agent API key overrides (reusing existing Task Master keys)
+    if (!configData.vibekit.agents) configData.vibekit.agents = {};
+    
+    // Claude Code agent
+    if (!configData.vibekit.agents['claude-code']) configData.vibekit.agents['claude-code'] = {};
+    if (env.ANTHROPIC_API_KEY) {
+      configData.vibekit.agents['claude-code'].apiKey = env.ANTHROPIC_API_KEY;
+      configData.vibekit.agents['claude-code'].enabled = true;
+    }
+    
+    // Codex agent
+    if (!configData.vibekit.agents.codex) configData.vibekit.agents.codex = {};
+    if (env.OPENAI_API_KEY) {
+      configData.vibekit.agents.codex.apiKey = env.OPENAI_API_KEY;
+    }
+    
+    // Gemini CLI agent
+    if (!configData.vibekit.agents['gemini-cli']) configData.vibekit.agents['gemini-cli'] = {};
+    if (env.GOOGLE_API_KEY) {
+      configData.vibekit.agents['gemini-cli'].apiKey = env.GOOGLE_API_KEY;
+    }
+    
+    // OpenCode agent (custom)
+    if (!configData.vibekit.agents.opencode) configData.vibekit.agents.opencode = {};
+    if (env.OPENCODE_API_KEY) {
+      configData.vibekit.agents.opencode.apiKey = env.OPENCODE_API_KEY;
+    }
+
+    // GitHub integration overrides (reusing existing Task Master key)
+    if (!configData.github) configData.github = {};
+    
+    if (env.GITHUB_API_KEY) {
+      configData.github.token = env.GITHUB_API_KEY;
+      configData.github.enabled = true;
+    }
+    
+    if (env.GITHUB_WEBHOOK_SECRET) {
+      configData.github.webhookSecret = env.GITHUB_WEBHOOK_SECRET;
+    }
+    
+    if (env.GITHUB_DEFAULT_BRANCH) {
+      configData.github.defaultBranch = env.GITHUB_DEFAULT_BRANCH;
     }
 
     // Execution overrides
@@ -281,12 +437,20 @@ export class FlowConfigManager {
     if (env.FLOW_MAX_RETRIES) {
       configData.execution.maxRetries = parseInt(env.FLOW_MAX_RETRIES, 10);
     }
+    
+    if (env.FLOW_PARALLEL_TASKS) {
+      configData.execution.parallelTasks = parseInt(env.FLOW_PARALLEL_TASKS, 10);
+    }
 
     // Logging overrides
     if (!configData.logging) configData.logging = {};
     
     if (env.FLOW_LOG_LEVEL) {
       configData.logging.level = env.FLOW_LOG_LEVEL;
+    }
+    
+    if (env.FLOW_LOG_FILE) {
+      configData.logging.logFile = env.FLOW_LOG_FILE;
     }
 
     return configData;
@@ -400,13 +564,14 @@ export class FlowConfigManager {
   }
 
   /**
-   * Check if required environment variables are set for agents
+   * Check if required environment variables are set for VibeKit integration
+   * Validates both existing Task Master keys and new VibeKit-specific requirements
    */
   validateEnvironment() {
     const issues = [];
     const warnings = [];
 
-    // Check API keys for enabled agents
+    // Check API keys for enabled agents (reusing Task Master .env keys)
     const agentKeyMap = {
       'claude-code': 'ANTHROPIC_API_KEY',
       'codex': 'OPENAI_API_KEY', 
@@ -419,13 +584,13 @@ export class FlowConfigManager {
         if (agentConfig.enabled) {
           const requiredKey = agentKeyMap[agent];
           if (requiredKey && !process.env[requiredKey]) {
-            issues.push(`Missing API key: ${requiredKey} (required for ${agent})`);
+            issues.push(`Missing API key: ${requiredKey} (required for ${agent} agent)`);
           }
         }
       }
     }
 
-    // Check environment provider requirements
+    // Check sandbox environment provider requirements
     if (this.config?.vibekit?.environments) {
       // E2B is typically required for sandbox execution
       if (this.config.vibekit.environments.e2b?.enabled && !process.env.E2B_API_KEY) {
@@ -453,9 +618,11 @@ export class FlowConfigManager {
       }
     }
 
-    // Check GitHub integration requirements
-    if (this.config?.vibekit?.githubIntegration && !process.env.GITHUB_TOKEN) {
-      warnings.push('Missing GITHUB_TOKEN (required for GitHub integration)');
+    // Check GitHub integration requirements (reusing Task Master key)
+    if (this.config?.vibekit?.githubIntegration || this.config?.github?.enabled) {
+      if (!process.env.GITHUB_API_KEY) {
+        warnings.push('Missing GITHUB_API_KEY (required for GitHub integration and PR automation)');
+      }
     }
     
     // Check telemetry requirements
@@ -465,6 +632,35 @@ export class FlowConfigManager {
       }
       if (!this.config.vibekit.telemetry.apiKey && !process.env.VIBEKIT_TELEMETRY_API_KEY) {
         warnings.push('Missing telemetry API key (VIBEKIT_TELEMETRY_API_KEY)');
+      }
+    }
+
+    // Check secrets management requirements
+    if (this.config?.vibekit?.secrets?.enabled) {
+      if (this.config.vibekit.secrets.provider === 'vault' && !this.config.vibekit.secrets.vaultUrl) {
+        warnings.push('Missing vault URL for secrets management');
+      }
+      if (this.config.vibekit.secrets.provider === 'aws-secrets' && !this.config.vibekit.secrets.awsRegion) {
+        warnings.push('Missing AWS region for secrets management');
+      }
+    }
+
+    // VibeKit-specific validation
+    if (this.config?.vibekit?.enabled) {
+      // At least one sandbox environment should be available
+      const hasEnvironment = this.config.vibekit.environments?.e2b?.enabled ||
+                            this.config.vibekit.environments?.northflank?.enabled ||
+                            this.config.vibekit.environments?.daytona?.enabled;
+      
+      if (!hasEnvironment) {
+        warnings.push('No sandbox environment enabled (E2B, Northflank, or Daytona required for VibeKit)');
+      }
+
+      // At least one agent should be available
+      const hasAgent = Object.values(this.config.vibekit.agents || {}).some(agent => agent.enabled);
+      
+      if (!hasAgent) {
+        warnings.push('No AI agent enabled (at least one agent required for VibeKit)');
       }
     }
 
