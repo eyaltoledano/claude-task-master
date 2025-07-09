@@ -9,6 +9,7 @@ import { VibeKit } from '@vibe-kit/sdk';
 import path from 'node:path';
 import fs from 'node:fs';
 import { FlowConfig } from '../config/flow-config.js';
+import { GitHubAuthService } from './github-auth.service.js';
 
 export class VibeKitService {
   constructor(config = {}) {
@@ -34,35 +35,90 @@ export class VibeKitService {
         }
       },
       
-      // Environment configurations - merge Flow config with environment variables
-      environments: {
-        e2b: {
+      // Environment configurations - only include environments specified in config
+      environments: (() => {
+        const envConfig = {};
+        
+        // If specific environments are provided in config, use only those
+        if (config.environments) {
+          Object.keys(config.environments).forEach(envType => {
+            if (envType === 'e2b') {
+              envConfig.e2b = {
           apiKey: process.env.E2B_API_KEY || flowVibeKitConfig.environments?.e2b?.apiKey,
           templateId: process.env.E2B_TEMPLATE_ID || flowVibeKitConfig.environments?.e2b?.templateId,
           ...flowVibeKitConfig.environments?.e2b,
-          ...config.environments?.e2b
-        },
-        northflank: {
+                ...config.environments.e2b
+              };
+              
+              // Add Docker image for agent type if available
+              const dockerImage = this.getDockerImageForAgent(this.config.agent.type);
+              if (dockerImage) {
+                envConfig.e2b.image = dockerImage;
+              }
+            } else if (envType === 'northflank') {
+              envConfig.northflank = {
           apiKey: process.env.NORTHFLANK_API_KEY || flowVibeKitConfig.environments?.northflank?.apiKey,
           projectId: process.env.NORTHFLANK_PROJECT_ID || flowVibeKitConfig.environments?.northflank?.projectId,
           ...flowVibeKitConfig.environments?.northflank,
-          ...config.environments?.northflank
-        },
-        daytona: {
+                ...config.environments.northflank
+              };
+            } else if (envType === 'daytona') {
+              envConfig.daytona = {
           apiKey: process.env.DAYTONA_API_KEY || flowVibeKitConfig.environments?.daytona?.apiKey,
           workspaceId: process.env.DAYTONA_WORKSPACE_ID || flowVibeKitConfig.environments?.daytona?.workspaceId,
           ...flowVibeKitConfig.environments?.daytona,
-          ...config.environments?.daytona
+                ...config.environments.daytona
+              };
+            }
+          });
+        } else {
+          // Default behavior: include all environments if none specified
+          envConfig.e2b = {
+            apiKey: process.env.E2B_API_KEY || flowVibeKitConfig.environments?.e2b?.apiKey,
+            templateId: process.env.E2B_TEMPLATE_ID || flowVibeKitConfig.environments?.e2b?.templateId,
+            ...flowVibeKitConfig.environments?.e2b
+          };
+          
+          // Add Docker image for agent type if available
+          const dockerImage = this.getDockerImageForAgent(this.config.agent.type);
+          if (dockerImage) {
+            envConfig.e2b.image = dockerImage;
+          }
+          
+          envConfig.northflank = {
+            apiKey: process.env.NORTHFLANK_API_KEY || flowVibeKitConfig.environments?.northflank?.apiKey,
+            projectId: process.env.NORTHFLANK_PROJECT_ID || flowVibeKitConfig.environments?.northflank?.projectId,
+            ...flowVibeKitConfig.environments?.northflank
+          };
+          envConfig.daytona = {
+            apiKey: process.env.DAYTONA_API_KEY || flowVibeKitConfig.environments?.daytona?.apiKey,
+            workspaceId: process.env.DAYTONA_WORKSPACE_ID || flowVibeKitConfig.environments?.daytona?.workspaceId,
+            ...flowVibeKitConfig.environments?.daytona
+          };
         }
-      },
+        
+        return envConfig;
+      })(),
       
       // GitHub integration with full configuration - merge Flow config
-      github: {
+      github: (() => {
+        // Extract repository from config.github to avoid overwriting normalized value
+        const { repository: configRepo, ...otherGithubConfig } = config.github || {};
+        
+        const baseConfig = {
         token: process.env.GITHUB_API_KEY || flowVibeKitConfig.github?.token,
-        repository: config.repository || flowVibeKitConfig.github?.repository || this.detectGitRepository(),
+          repository: config.repository || configRepo || flowVibeKitConfig.github?.repository || this.detectGitRepository(),
         ...flowVibeKitConfig.github,
-        ...config.github
-      },
+          ...otherGithubConfig  // Spread other config.github properties (excluding repository)
+        };
+        
+        // Apply URL normalization after all merging is complete
+        if (baseConfig.repository) {
+          baseConfig.repository = this.normalizeRepositoryUrl(baseConfig.repository);
+        }
+        
+        return baseConfig;
+      })(),
       
       // Telemetry configuration - merge Flow config with environment variables
       telemetry: {
@@ -103,7 +159,16 @@ export class VibeKitService {
         ...config.flowIntegration
       },
       
-      ...config
+      // Spread remaining config properties (excluding those we've already handled)
+      ...(() => {
+        const { 
+          agents, environments, github, telemetry, sessionManagement, 
+          streaming, workingDirectory, flowIntegration, defaultAgent, 
+          agent, repository, projectRoot, strictValidation,
+          ...otherConfig 
+        } = config;
+        return otherConfig;
+      })()
     };
     
     // Ensure session directory exists if session management is enabled
@@ -116,6 +181,21 @@ export class VibeKitService {
     
     // Validate essential configuration
     this.validateConfiguration();
+    
+    // Initialize GitHub Auth Service if credentials are available
+    this.githubAuth = null;
+    try {
+      if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+        this.githubAuth = new GitHubAuthService({
+          clientId: process.env.GITHUB_CLIENT_ID,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET,
+          scopes: ['repo', 'user:email']
+        });
+      }
+    } catch (error) {
+      // GitHub auth not available - continue without it
+      console.warn('GitHub OAuth not available:', error.message);
+    }
   }
 
   /**
@@ -216,7 +296,7 @@ export class VibeKitService {
     const config = {
       // Agent configuration with full model details
       agent: {
-        type: agentType,
+        type: this.mapAgentTypeForVibeKit(agentType),  // Map agent type for VibeKit SDK
         model: {
           apiKey: this.getApiKeyForAgent(agentType),
           name: this.getModelNameForAgent(agentType, taskContext),
@@ -249,6 +329,34 @@ export class VibeKitService {
     }
 
     return new VibeKit(config);
+  }
+
+  /**
+   * Map internal agent types to VibeKit SDK agent types
+   * Our internal types: claude-code, codex, gemini-cli, opencode
+   * VibeKit SDK types: claude, codex, gemini, etc.
+   */
+  mapAgentTypeForVibeKit(agentType) {
+    const agentMapping = {
+      'claude-code': 'claude',  // Map claude-code to claude
+      'codex': 'codex',         // codex stays the same
+      'gemini-cli': 'gemini',   // Map gemini-cli to gemini
+      'opencode': 'opencode',   // opencode might stay the same or need mapping
+      'claude': 'claude'        // Support direct claude type too
+    };
+    
+    return agentMapping[agentType] || 'claude';  // Default to claude if unknown
+  }
+
+  /**
+   * Get the appropriate Docker image for an agent type
+   * Based on the VibeKit Docker images in vibekit/images/
+   */
+  getDockerImageForAgent(agentType) {
+    // E2B uses template IDs, not arbitrary Docker images
+    // The vibekit/* Docker images don't exist in public registries
+    // For now, we'll use the default E2B template and rely on the standard environment
+    return null;  // Let E2B use the default template
   }
 
   /**
@@ -2164,5 +2272,172 @@ Please implement this task completely, including any necessary dependencies, err
     this.validateConfiguration();
     
     return this.getConfigurationStatus();
+  }
+
+  /**
+   * Normalize GitHub repository URL to prevent VibeKit SDK issues
+   * Removes .git suffix and ensures proper format
+   */
+  normalizeRepositoryUrl(url) {
+    if (!url) return url;
+    
+    // Remove .git suffix if present
+    if (url.endsWith('.git')) {
+      url = url.slice(0, -4);
+    }
+    
+    // Handle shorthand GitHub repository format (owner/repo)
+    if (url.match(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/)) {
+      url = `https://github.com/${url}`;
+    }
+    // Only add https prefix for github.com URLs that don't already have a protocol
+    // Don't modify SSH URLs (git@github.com:...)
+    else if (url.includes('github.com') && !url.startsWith('http') && !url.startsWith('git@')) {
+      url = `https://${url}`;
+    }
+    
+    return url;
+  }
+
+  // GitHub Authentication Integration Methods
+
+  /**
+   * Start GitHub OAuth Device Flow authentication
+   * Returns authentication result with access token and user info
+   */
+  async authenticateGitHub(options = {}) {
+    if (!this.githubAuth) {
+      return {
+        success: false,
+        error: 'GitHub OAuth not configured. Please set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET environment variables.'
+      };
+    }
+
+    try {
+      const authResult = await this.githubAuth.authenticate(options);
+      
+      if (authResult.success) {
+        // Update the service configuration with the new token
+        this.config.github.token = authResult.accessToken;
+        
+        // Verify the token and get user info
+        const verification = await this.githubAuth.verifyToken(authResult.accessToken);
+        
+        return {
+          success: true,
+          access_token: authResult.accessToken,
+          token_type: authResult.tokenType || 'bearer',
+          scope: authResult.scope,
+          user: verification.success ? verification.user : null
+        };
+      }
+      
+      return authResult;
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Get current GitHub authentication status
+   * Returns authentication state and user information
+   */
+  async getGitHubAuthStatus() {
+    const status = {
+      available: !!this.githubAuth,
+      authenticated: false,
+      user: null,
+      hasToken: !!this.config.github?.token
+    };
+
+    if (!this.githubAuth) {
+      return status;
+    }
+
+    try {
+      const authStatus = await this.githubAuth.getAuthStatus();
+      status.authenticated = authStatus.authenticated;
+      status.user = authStatus.user;
+      
+      // If we have a token in config but no stored token, use the config token
+      if (!authStatus.authenticated && this.config.github?.token) {
+        const verification = await this.githubAuth.verifyToken(this.config.github.token);
+        if (verification.success) {
+          status.authenticated = true;
+          status.user = verification.user;
+        }
+      }
+      
+      return status;
+    } catch (error) {
+      console.warn('Error checking GitHub auth status:', error.message);
+      return status;
+    }
+  }
+
+  /**
+   * Logout from GitHub (remove stored token)
+   */
+  async logoutGitHub() {
+    if (!this.githubAuth) {
+      return {
+        success: false,
+        error: 'GitHub OAuth not configured'
+      };
+    }
+
+    try {
+      const result = await this.githubAuth.logout();
+      
+      // Also remove token from service config
+      if (this.config.github) {
+        this.config.github.token = null;
+      }
+      
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Automatically load GitHub token from storage if available
+   */
+  async autoLoadGitHubToken() {
+    if (!this.githubAuth) {
+      return { success: false, error: 'GitHub OAuth not configured' };
+    }
+
+    try {
+      const storedToken = await this.githubAuth.getStoredToken();
+      
+      if (storedToken.success) {
+        // Update service configuration with stored token
+        this.config.github.token = storedToken.accessToken;
+        
+        // Verify the token is still valid
+        const verification = await this.githubAuth.verifyToken(storedToken.accessToken);
+        
+        return {
+          success: verification.success,
+          accessToken: storedToken.accessToken,
+          user: verification.user,
+          error: verification.success ? null : verification.error
+        };
+      }
+      
+      return storedToken;
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 }

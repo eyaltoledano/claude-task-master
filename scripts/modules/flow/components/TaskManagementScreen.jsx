@@ -9,21 +9,15 @@ import { ExpandModal } from './ExpandModal.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { SimpleTable } from './SimpleTable.jsx';
-import { CommitAssistant } from './CommitAssistant.jsx';
 import TextInput from 'ink-text-input';
-import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { ResearchInputModal } from './ResearchInputModal.jsx';
-import { HookIntegrationService } from '../services/HookIntegrationService.js';
-import { ProgressLoggingModal } from './ProgressLoggingModal.jsx';
-import { WorkflowDecisionModal } from './WorkflowDecisionModal.jsx';
-import {
-	WorkflowStatusIndicator,
-	GitStatusIndicator
-} from './WorkflowStatusIndicator.jsx';
-import { WorkflowGuide } from './WorkflowGuide.jsx';
+
+import { VibeKitExecutionModal } from './VibeKitExecutionModal.jsx';
+import { VibeKitSettingsModal } from './VibeKitSettingsModal.jsx';
+import { SandboxControlPanel } from './SandboxControlPanel.jsx';
 
 export function TaskManagementScreen() {
 	const {
@@ -65,58 +59,25 @@ export function TaskManagementScreen() {
 	const [isExpanding, setIsExpanding] = useState(false);
 	const [expandError, setExpandError] = useState(null);
 	const [detailScrollOffset, setDetailScrollOffset] = useState(0);
-	const [taskWorktrees, setTaskWorktrees] = useState([]); // Add state for worktrees
-	const [subtaskWorktrees, setSubtaskWorktrees] = useState(new Map()); // Add state for subtask worktrees
 	const [complexityReport, setComplexityReport] = useState(null);
 	const [loadingComplexity, setLoadingComplexity] = useState(false);
 	const [selectedSubtaskIndex, setSelectedSubtaskIndex] = useState(0);
 	const [subtasksScrollOffset, setSubtasksScrollOffset] = useState(0);
 	const [selectedSubtask, setSelectedSubtask] = useState(null); // For subtask detail view
-	const [showBranchConflictModal, setShowBranchConflictModal] = useState(false);
-	const [branchConflictInfo, setBranchConflictInfo] = useState(null);
 	const [showStreamingModal, setShowStreamingModal] = useState(false);
-	const [showProgressModal, setShowProgressModal] = useState(false);
-	const [progressModalData, setProgressModalData] = useState(null);
-	const [showWorkflowModal, setShowWorkflowModal] = useState(false);
-	const [workflowModalData, setWorkflowModalData] = useState(null);
-	const [showCommitAssistant, setShowCommitAssistant] = useState(false);
-	const [commitAssistantData, setCommitAssistantData] = useState(null);
-	const [gitStatus, setGitStatus] = useState(null);
-	const [repoInfo, setRepoInfo] = useState(null);
-	const [showResearchModal, setShowResearchModal] = useState(false);
-	// Agent selection state
-	const [showAgentModal, setShowAgentModal] = useState(false);
-	const [availableAgents, setAvailableAgents] = useState([]);
-	const [selectedAgentIndex, setSelectedAgentIndex] = useState(0);
-	const [agentLoading, setAgentLoading] = useState(false);
-	const [agentError, setAgentError] = useState(null);
 
-	// Hook integration service
-	const [hookService] = useState(() => new HookIntegrationService(backend));
+	const [showResearchModal, setShowResearchModal] = useState(false);
+
+	
+	// VibeKit modals state
+	const [showVibeKitModal, setShowVibeKitModal] = useState(false);
+	const [showVibeKitSettings, setShowVibeKitSettings] = useState(false);
+	const [showSandboxControl, setShowSandboxControl] = useState(false);
+	const [vibeKitService, setVibeKitService] = useState(null);
 
 	// Constants for display
 	const VISIBLE_ROWS = 15; // Reduced for better visibility
 	const DETAIL_VISIBLE_ROWS = 20; // Visible rows in detail view
-
-	// Initialize hook service
-	useEffect(() => {
-		console.log('[TaskManagementScreen] Initializing hook service...');
-		try {
-			hookService.initialize();
-			console.log(
-				'[TaskManagementScreen] Hook service initialized successfully'
-			);
-		} catch (error) {
-			console.error(
-				'[TaskManagementScreen] Hook service initialization failed:',
-				error
-			);
-			setToast({
-				message: `Hook service initialization failed: ${error.message}`,
-				type: 'error'
-			});
-		}
-	}, [hookService]);
 
 	// Reload tasks on mount
 	useEffect(() => {
@@ -247,7 +208,9 @@ export function TaskManagementScreen() {
 		if (key.escape) {
 			if (showResearchModal) return setShowResearchModal(false);
 			if (showExpandOptions) return setShowExpandOptions(false);
-			if (showAgentModal) return setShowAgentModal(false);
+			if (showVibeKitModal) return setShowVibeKitModal(false);
+			if (showVibeKitSettings) return setShowVibeKitSettings(false);
+			if (showSandboxControl) return setShowSandboxControl(false);
 			// Other modal escape logic can go here...
 
 			if (viewMode === 'detail' || viewMode === 'subtasks') setViewMode('list');
@@ -263,19 +226,8 @@ export function TaskManagementScreen() {
 		}
 
 		// Don't process other keys if a modal is active
-		if (showResearchModal || showExpandOptions || isSearching) {
-			return;
-		}
-
-		// Handle agent selection modal
-		if (showAgentModal) {
-			if (key.upArrow && selectedAgentIndex > 0) {
-				setSelectedAgentIndex(prev => prev - 1);
-			} else if (key.downArrow && selectedAgentIndex < availableAgents.length - 1) {
-				setSelectedAgentIndex(prev => prev + 1);
-			} else if (key.return && !agentLoading) {
-				handleSelectAgent();
-			}
+		if (showResearchModal || showExpandOptions || isSearching || 
+			showVibeKitModal || showVibeKitSettings || showSandboxControl) {
 			return;
 		}
 
@@ -340,32 +292,10 @@ export function TaskManagementScreen() {
 						...selectedSubtask,
 						id: `${selectedTask.id}.${selectedSubtask.id}`
 					});
-				} else if (input === 'g') {
-					// Jump to worktree from subtask detail
-					const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-					const worktrees = subtaskWorktrees.get(subtaskId) || [];
-
-					if (worktrees.length > 0) {
-						// Navigate to worktree detail page for the first linked worktree
-						setCurrentScreen('worktrees', {
-							selectedWorktree: worktrees[0],
-							showDetails: true
-						});
-					} else {
-						setToast({
-							message: 'No worktrees linked to this subtask',
-							type: 'warning'
-						});
-					}
-				} else if (input === 'p') {
-					handleLogProgress();
-				} else if (input === 'e') {
-					handleLogExploration();
-				} else if (input === 'l') {
-					handleLogCompletion();
 				} else if (input === 'r') setShowResearchModal(true);
 				else if (input === 'a') {
-					handleAgentSelection();
+					// Launch VibeKit agent execution
+					setShowVibeKitModal(true);
 				}
 				break;
 		}
@@ -377,53 +307,8 @@ export function TaskManagementScreen() {
 			const fullTask = await backend.getTask(task.id);
 			setSelectedTask(fullTask);
 
-			// Fetch worktrees linked to this task
-			try {
-				const worktrees = await backend.getTaskWorktrees(task.id);
-				setTaskWorktrees(worktrees || []);
-			} catch (error) {
-				console.error('Failed to load task worktrees:', error);
-				setTaskWorktrees([]);
-			}
-
 			setViewMode('detail');
 			setDetailScrollOffset(0); // Reset scroll position when opening a new task
-
-			// Fetch subtask worktrees if task has subtasks
-			if (fullTask.subtasks && fullTask.subtasks.length > 0) {
-				const subtaskWorktreePromises = fullTask.subtasks.map(
-					async (subtask) => {
-						const subtaskId = `${fullTask.id}.${subtask.id}`;
-
-						try {
-							const subtaskWorktrees =
-								await backend.getTaskWorktrees(subtaskId);
-							return { subtaskId, worktrees: subtaskWorktrees || [] };
-						} catch (error) {
-							console.error(
-								`Error fetching worktrees for ${subtaskId}:`,
-								error
-							);
-							return { subtaskId, worktrees: [] };
-						}
-					}
-				);
-
-				// Wait for all subtask worktree fetches to complete
-				const subtaskWorktreeResults = await Promise.all(
-					subtaskWorktreePromises
-				);
-
-				const subtaskWorktreeMap = new Map(
-					subtaskWorktreeResults.map((result) => [
-						result.subtaskId,
-						result.worktrees
-					])
-				);
-				setSubtaskWorktrees(subtaskWorktreeMap);
-			} else {
-				setSubtaskWorktrees(new Map());
-			}
 
 			// Return the full task so callers can use it
 			return fullTask;
@@ -629,386 +514,11 @@ export function TaskManagementScreen() {
 		return dependencies.join(', ');
 	};
 
-	const handleBranchConflictDecision = async (decision) => {
-		setShowBranchConflictModal(false);
 
-		if (!branchConflictInfo) return;
 
-		if (decision === 'cancel') {
-			setToast({
-				message: 'Worktree creation cancelled',
-				type: 'info'
-			});
-			setBranchConflictInfo(null);
-			return;
-		}
 
-		try {
-			setIsExpanding(true);
-			let result;
 
-			if (decision === 'use-existing') {
-				// Use the existing branch
-				setToast({
-					message: 'Using existing branch...',
-					type: 'info'
-				});
 
-				result = await backend.useExistingBranchForSubtask(
-					branchConflictInfo.taskId,
-					branchConflictInfo.subtaskId,
-					{
-						subtaskTitle: branchConflictInfo.subtaskTitle,
-						sourceBranch: branchConflictInfo.sourceBranch
-					}
-				);
-			} else if (decision === 'recreate') {
-				// Force recreate
-				setToast({
-					message: 'Removing existing branch and creating fresh...',
-					type: 'info'
-				});
-
-				result = await backend.forceCreateWorktreeForSubtask(
-					branchConflictInfo.taskId,
-					branchConflictInfo.subtaskId,
-					{
-						subtaskTitle: branchConflictInfo.subtaskTitle,
-						sourceBranch: branchConflictInfo.sourceBranch
-					}
-				);
-			}
-
-			if (result && result.worktree) {
-				// Update subtask worktrees state
-				const subtaskId = `${branchConflictInfo.taskId}.${branchConflictInfo.subtaskId}`;
-				const updatedWorktrees = new Map(subtaskWorktrees);
-				updatedWorktrees.set(subtaskId, [result.worktree]);
-				setSubtaskWorktrees(updatedWorktrees);
-
-				if (result.reusedBranch) {
-					setToast({
-						message: `Using existing branch: ${result.worktree.branch}`,
-						type: 'success'
-					});
-				} else {
-					setToast({
-						message: `Created fresh worktree: ${result.worktree.branch}`,
-						type: 'success'
-					});
-				}
-			}
-		} catch (error) {
-			console.error('Failed to handle branch conflict:', error);
-			setToast({
-				message: `Failed: ${error.message}`,
-				type: 'error'
-			});
-		} finally {
-			setIsExpanding(false);
-			setBranchConflictInfo(null);
-		}
-	};
-
-	// Progress logging handlers
-	const handleLogProgress = () => {
-		if (!selectedSubtask) return;
-
-		setProgressModalData({
-			subtask: {
-				...selectedSubtask,
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title
-			},
-			phase: 'implementation'
-		});
-		setShowProgressModal(true);
-	};
-
-	const handleLogExploration = () => {
-		if (!selectedSubtask) return;
-
-		setProgressModalData({
-			subtask: {
-				...selectedSubtask,
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title
-			},
-			phase: 'exploration'
-		});
-		setShowProgressModal(true);
-	};
-
-	const handleLogCompletion = () => {
-		if (!selectedSubtask) return;
-
-		setProgressModalData({
-			subtask: {
-				...selectedSubtask,
-				id: `${selectedTask.id}.${selectedSubtask.id}`,
-				title: selectedSubtask.title
-			},
-			phase: 'completion'
-		});
-		setShowProgressModal(true);
-	};
-
-	const handleProgressSave = async (progressUpdate) => {
-		try {
-			const subtaskId = progressModalData.subtask.id;
-			const result = await backend.updateSubtask(subtaskId, {
-				prompt: progressUpdate,
-				research: false
-			});
-
-			if (result.success) {
-				setToast({
-					message: 'Progress logged successfully',
-					type: 'success'
-				});
-
-				// Refresh task data to show updated progress
-				await reloadTasks();
-
-				// Refresh the selected task details
-				if (selectedTask) {
-					const updatedTask = await backend.getTask(selectedTask.id);
-					setSelectedTask(updatedTask);
-
-					// Update the selected subtask
-					const updatedSubtask = updatedTask.subtasks?.find(
-						(s) => `${updatedTask.id}.${s.id}` === subtaskId
-					);
-					if (updatedSubtask) {
-						setSelectedSubtask(updatedSubtask);
-					}
-				}
-			} else {
-				setToast({
-					message: result.error || 'Failed to log progress',
-					type: 'error'
-				});
-			}
-		} catch (error) {
-			setToast({
-				message: `Error logging progress: ${error.message}`,
-				type: 'error'
-			});
-		} finally {
-			setShowProgressModal(false);
-			setProgressModalData(null);
-		}
-	};
-
-	const handleProgressCancel = () => {
-		setShowProgressModal(false);
-		setProgressModalData(null);
-	};
-
-	// Enhanced workflow handlers for Phase 3
-	const handleWorkflowDecision = (worktree, taskInfo) => {
-		setWorkflowModalData({
-			worktree,
-			taskInfo
-		});
-		setShowWorkflowModal(true);
-	};
-
-	const handleWorkflowChoice = async (choice, options) => {
-		try {
-			// Delegate to existing worktree completion logic
-			const result = await backend.completeSubtask(
-				options.workflowOption.worktree?.name || 'unknown',
-				{
-					workflowChoice: choice,
-					...options
-				}
-			);
-
-			if (result.success) {
-				// Extract subtask ID from the workflow data to mark it as done
-				const subtaskInfo = workflowModalData?.taskInfo;
-				if (subtaskInfo && choice === 'complete') {
-					try {
-						// Mark the subtask as done using base Taskmaster calls
-						await backend.setTaskStatus(subtaskInfo.id, 'done');
-						setToast({
-							message: `Workflow completed and subtask ${subtaskInfo.id} marked as done`,
-							type: 'success'
-						});
-					} catch (statusError) {
-						console.warn('Failed to update subtask status:', statusError);
-						setToast({
-							message: `Workflow completed: ${choice} (status update failed)`,
-							type: 'warning'
-						});
-					}
-				} else {
-					setToast({
-						message: `Workflow completed: ${choice}`,
-						type: 'success'
-					});
-				}
-
-				// Refresh task data
-				await reloadTasks();
-
-				// Refresh the selected task details if we're viewing it
-				if (selectedTask) {
-					const updatedTask = await backend.getTask(selectedTask.id);
-					setSelectedTask(updatedTask);
-
-					// Update the selected subtask if it matches
-					if (
-						selectedSubtask &&
-						subtaskInfo &&
-						selectedSubtask.id === subtaskInfo.id.split('.')[1]
-					) {
-						const updatedSubtask = updatedTask.subtasks?.find(
-							(s) => `${updatedTask.id}.${s.id}` === subtaskInfo.id
-						);
-						if (updatedSubtask) {
-							setSelectedSubtask(updatedSubtask);
-						}
-					}
-				}
-			} else {
-				setToast({
-					message: result.error || 'Workflow failed',
-					type: 'error'
-				});
-			}
-		} catch (error) {
-			setToast({
-				message: `Workflow error: ${error.message}`,
-				type: 'error'
-			});
-		} finally {
-			setShowWorkflowModal(false);
-			setWorkflowModalData(null);
-		}
-	};
-
-	const handleCommitAssistance = (worktree, subtaskInfo, gitStatus) => {
-		setCommitAssistantData({
-			worktree,
-			subtaskInfo,
-			gitStatus
-		});
-		setShowCommitAssistant(true);
-	};
-
-	const handleCommit = async (commitMessage, options) => {
-		try {
-			const result = await backend.commitSubtaskProgress(
-				options.worktree?.path || commitAssistantData.worktree?.path,
-				commitAssistantData.subtaskInfo,
-				commitMessage,
-				options
-			);
-
-			if (result.success) {
-				// Check if this commit indicates subtask completion
-				const subtaskInfo = commitAssistantData.subtaskInfo;
-				const markAsDone = options.markAsDone || false; // Allow option to mark as done
-
-				if (subtaskInfo && markAsDone) {
-					try {
-						// Mark the subtask as done using base Taskmaster calls
-						await backend.setTaskStatus(subtaskInfo.id, 'done');
-						setToast({
-							message: `Changes committed and subtask ${subtaskInfo.id} marked as done`,
-							type: 'success'
-						});
-
-						// Refresh task data to show updated status
-						await reloadTasks();
-
-						// Refresh the selected task details if we're viewing it
-						if (selectedTask) {
-							const updatedTask = await backend.getTask(selectedTask.id);
-							setSelectedTask(updatedTask);
-
-							// Update the selected subtask if it matches
-							if (
-								selectedSubtask &&
-								selectedSubtask.id === subtaskInfo.id.split('.')[1]
-							) {
-								const updatedSubtask = updatedTask.subtasks?.find(
-									(s) => `${updatedTask.id}.${s.id}` === subtaskInfo.id
-								);
-								if (updatedSubtask) {
-									setSelectedSubtask(updatedSubtask);
-								}
-							}
-						}
-					} catch (statusError) {
-						console.warn('Failed to update subtask status:', statusError);
-						setToast({
-							message: 'Changes committed successfully (status update failed)',
-							type: 'warning'
-						});
-					}
-				} else {
-					setToast({
-						message: 'Changes committed successfully',
-						type: 'success'
-					});
-				}
-
-				// Refresh git status
-				await loadGitStatus();
-			} else {
-				setToast({
-					message: result.error || 'Commit failed',
-					type: 'error'
-				});
-			}
-		} catch (error) {
-			setToast({
-				message: `Commit error: ${error.message}`,
-				type: 'error'
-			});
-		} finally {
-			setShowCommitAssistant(false);
-			setCommitAssistantData(null);
-		}
-	};
-
-	// Load git and repo info when subtask changes
-	useEffect(() => {
-		const loadGitStatus = async () => {
-			if (!selectedTask || !selectedSubtask) return;
-
-			try {
-				// Find worktree for current subtask
-				const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-
-				if (worktrees.length > 0) {
-					const status = await backend.getWorktreeGitStatus(worktrees[0].path);
-					setGitStatus(status);
-				}
-			} catch (error) {
-				console.warn('Failed to load git status:', error.message);
-			}
-		};
-
-		const loadRepoInfo = async () => {
-			try {
-				const info = await backend.detectRemoteRepository();
-				setRepoInfo(info);
-			} catch (error) {
-				console.warn('Failed to detect repository info:', error.message);
-				setRepoInfo(null); // Ensure repoInfo is null on error
-			}
-		};
-
-		if (selectedSubtask && viewMode === 'subtask-detail') {
-			loadGitStatus();
-			loadRepoInfo();
-		}
-	}, [selectedSubtask, viewMode, selectedTask, subtaskWorktrees, backend]);
 
 	const handleRunResearch = async (query, options = {}) => {
 		try {
@@ -1028,218 +538,54 @@ export function TaskManagementScreen() {
 		}
 	};
 
-	// Agent selection functions
-	const handleAgentSelection = async () => {
-		if (!selectedTask || !selectedSubtask) return;
 
+
+
+
+	// VibeKit handlers
+	const handleVibeKitComplete = async (result) => {
 		try {
-			setAgentLoading(true);
-			setAgentError(null);
-			
-			// Load available agents from VibeKit service
-			const vibekitService = await loadVibekitService();
-			let agents = [];
-			
-			try {
-				const vibekitAgents = await vibekitService.getAvailableAgents();
-				agents = vibekitAgents.map(agent => ({
-					id: agent.type,
-					name: agent.name,
-					description: getAgentDescription(agent.type),
-					provider: capitalizeProvider(agent.provider),
-					available: agent.configured,
-					tier: getTierForAgent(agent.type)
-				}));
-			} catch (vibekitError) {
-				console.warn('VibeKit service unavailable, using mock agents:', vibekitError);
-				agents = getMockAgents();
-			}
+			if (result.success) {
+				// Refresh task data to show any updates
+				await reloadTasks();
 
-			setAvailableAgents(agents);
-			setSelectedAgentIndex(0);
-			setShowAgentModal(true);
-		} catch (error) {
-			console.error('Failed to load agents:', error);
-			setAgentError(`Failed to load agents: ${error.message}`);
-		} finally {
-			setAgentLoading(false);
-		}
-	};
+				// Refresh the selected task details
+				if (selectedTask) {
+					const updatedTask = await backend.getTask(selectedTask.id);
+					setSelectedTask(updatedTask);
 
-	const handleSelectAgent = async () => {
-		const selectedAgent = availableAgents[selectedAgentIndex];
-		if (!selectedAgent || !selectedAgent.available) {
-			setAgentError(`Agent "${selectedAgent?.name}" is currently unavailable`);
-			return;
-		}
-
-		try {
-			setAgentLoading(true);
-			setAgentError(null);
-
-			// Generate comprehensive project context
-			const projectContext = await generateProjectContext();
-
-			// Create prompt for the agent
-			const contextPrompt = `# Task Master Project - Subtask Context
-
-I'm working on a specific subtask and would like your help. Here's the comprehensive project context:
-
-## Current Subtask
-**Task ${selectedTask.id}.${selectedSubtask.id}: ${selectedSubtask.title}**
-
-**Description:** ${selectedSubtask.description || 'No description provided'}
-
-**Status:** ${selectedSubtask.status}
-
-**Implementation Details:**
-${selectedSubtask.details || 'No implementation details yet'}
-
-## Project Context
-${projectContext}
-
----
-
-I'm ready to work on this subtask and would appreciate your guidance, code assistance, or any insights you might have. What would you recommend as the next steps?`;
-
-			// Send to VibeKit
-			const vibekitService = await loadVibekitService();
-			await vibekitService.generateCode({
-				prompt: contextPrompt,
-				mode: 'ask',
-				agent: selectedAgent.id
-			});
-
-			setShowAgentModal(false);
-			showToast(`Successfully sent context to ${selectedAgent.name}`, 'success');
-		} catch (error) {
-			console.error('Failed to send context to agent:', error);
-			setAgentError(`Failed to send context: ${error.message}`);
-		} finally {
-			setAgentLoading(false);
-		}
-	};
-
-	// Helper functions for agent selection
-	const loadVibekitService = async () => {
-		try {
-			const { VibeKitService } = await import('../services/VibeKitService.js');
-			return new VibeKitService();
-		} catch (error) {
-			// Return mock service if VibeKit is not available
-			return new MockVibeKitService();
-		}
-	};
-
-	const generateProjectContext = async () => {
-		try {
-			const { TaskContextGenerator } = await import('../services/context-generation/index.js');
-			const generator = new TaskContextGenerator({ backend });
-			
-			const initResult = await generator.initialize();
-			if (!initResult.success) {
-				console.warn('Context generator initialization failed:', initResult.error);
-			}
-			
-			const context = await generator.generateContext({
-				includeProjectStructure: true,
-				includeGitContext: true,
-				includeTaskContext: true,
-				maxFiles: 50
-			});
-			
-			return context;
-		} catch (error) {
-			console.warn('Failed to generate full context:', error);
-			return `Project: ${backend.projectRoot || 'Unknown'}
-Current Task: ${selectedTask.id} - ${selectedTask.title}
-Subtask: ${selectedTask.id}.${selectedSubtask.id} - ${selectedSubtask.title}
-
-Note: Full context generation failed. Please ask for specific information you need about the project.`;
-		}
-	};
-
-	const getAgentDescription = (type) => {
-		const descriptions = {
-			'claude-code': 'Most capable model for complex coding tasks',
-			'codex': 'Fast and efficient for quick tasks', 
-			'gemini-cli': 'Google Gemini model for diverse tasks',
-			'opencode': 'Open source model for basic tasks'
-		};
-		return descriptions[type] || 'AI coding assistant';
-	};
-
-	const capitalizeProvider = (provider) => {
-		const providers = {
-			'anthropic': 'Anthropic',
-			'openai': 'OpenAI', 
-			'gemini': 'Google',
-			'open': 'Open Source'
-		};
-		return providers[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
-	};
-
-	const getTierForAgent = (type) => {
-		const tiers = {
-			'claude-code': 'premium',
-			'codex': 'standard',
-			'gemini-cli': 'standard',
-			'opencode': 'basic'
-		};
-		return tiers[type] || 'standard';
-	};
-
-	const getMockAgents = () => [
-		{
-			id: 'claude-sonnet',
-			name: 'Claude 3.5 Sonnet',
-			description: 'Most capable model for complex coding tasks',
-			provider: 'Anthropic',
-			available: true,
-			tier: 'premium'
-		},
-		{
-			id: 'claude-haiku',
-			name: 'Claude 3.5 Haiku',
-			description: 'Fast and efficient for quick tasks',
-			provider: 'Anthropic', 
-			available: true,
-			tier: 'standard'
-		},
-		{
-			id: 'gpt-4',
-			name: 'GPT-4 Turbo',
-			description: 'Advanced reasoning and code generation',
-			provider: 'OpenAI',
-			available: false,
-			tier: 'premium'
-		}
-	];
-
-	// Mock VibeKit service for fallback
-	class MockVibeKitService {
-		async getAvailableAgents() {
-			return [
-				{
-					type: 'claude-code',
-					name: 'Claude Code',
-					configured: true,
-					provider: 'anthropic'
-				},
-				{
-					type: 'codex',
-					name: 'OpenAI Codex',
-					configured: true,
-					provider: 'openai'
+					// Update the selected subtask
+					if (selectedSubtask) {
+					const updatedSubtask = updatedTask.subtasks?.find(
+							(s) => s.id === selectedSubtask.id
+					);
+					if (updatedSubtask) {
+						setSelectedSubtask(updatedSubtask);
+					}
 				}
-			];
+				}
+				
+						setToast({
+					message: 'VibeKit execution completed successfully!',
+							type: 'success'
+						});
+				} else {
+					setToast({
+					message: `VibeKit execution failed: ${result.error}`,
+					type: 'error'
+				});
+			}
+		} catch (error) {
+			setToast({
+				message: `Error handling VibeKit completion: ${error.message}`,
+				type: 'error'
+			});
+		} finally {
+			setShowVibeKitModal(false);
 		}
+	};
 
-		async generateCode({ prompt, mode, agent }) {
-			console.log(`Mock: Would send to ${agent} in ${mode} mode:`, prompt.substring(0, 100) + '...');
-			return { success: true, message: 'Mock response sent' };
-		}
-	}
+
 
 	const cycleFilter = () => {
 		const filters = ['all', 'pending', 'in-progress', 'done'];
@@ -1347,31 +693,7 @@ Note: Full context generation failed. Please ask for specific information you ne
 					: '-'
 		});
 
-		// Add worktree information with git status
-		if (taskWorktrees.length > 0) {
-			contentLines.push({
-				type: 'field',
-				label: 'Git Worktrees:',
-				value: `${taskWorktrees.length} worktree${taskWorktrees.length > 1 ? 's' : ''}`,
-				color: theme.success
-			});
 
-			// Add detailed worktree status
-			taskWorktrees.forEach((wt) => {
-				contentLines.push({
-					type: 'text',
-					text: `  🌳 ${wt.name} ${wt.status ? `(${wt.status})` : ''}`,
-					color: theme.text
-				});
-			});
-		} else {
-			contentLines.push({
-				type: 'field',
-				label: 'Git Worktrees:',
-				value: '-',
-				color: theme.textDim
-			});
-		}
 
 		if (selectedTask.complexity) {
 			contentLines.push({
@@ -1416,16 +738,9 @@ Note: Full context generation failed. Please ask for specific information you ne
 			});
 
 			selectedTask.subtasks.forEach((subtask) => {
-				const subtaskId = `${selectedTask.id}.${subtask.id}`;
-				const worktrees = subtaskWorktrees.get(subtaskId) || [];
-				const worktreeText =
-					worktrees.length > 0
-						? ` 🌳 ${worktrees.map((wt) => wt.name).join(', ')}`
-						: '';
-
 				contentLines.push({
 					type: 'subtask',
-					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}${worktreeText}`,
+					text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}`,
 					color: getStatusColor(subtask.status)
 				});
 			});
@@ -1616,63 +931,6 @@ Note: Full context generation failed. Please ask for specific information you ne
 					/>
 				)}
 
-				{showAgentModal && (
-					<Box
-						position="absolute"
-						top={5}
-						left={10}
-						right={10}
-						borderStyle="single"
-						borderColor={theme.accent}
-						backgroundColor={theme.background}
-						padding={1}
-					>
-						<Box flexDirection="column">
-							<Text color={theme.accent} bold marginBottom={1}>
-								Select VibeKit Agent
-							</Text>
-							
-							{agentError && (
-								<Text color={theme.error} marginBottom={1}>
-									{agentError}
-								</Text>
-							)}
-							
-							{agentLoading ? (
-								<Box justifyContent="center" alignItems="center" height={5}>
-									<Text color={theme.textDim}>Loading agents...</Text>
-								</Box>
-							) : (
-								<Box flexDirection="column">
-									{availableAgents.map((agent, index) => (
-										<Box key={agent.id} marginBottom={1}>
-											<Text 
-												color={index === selectedAgentIndex ? theme.accent : theme.text}
-												bold={index === selectedAgentIndex}
-											>
-												{index === selectedAgentIndex ? '→ ' : '  '}
-												{agent.name}
-											</Text>
-											<Text color={agent.available ? theme.success : theme.textDim}>
-												{' '}({agent.provider})
-											</Text>
-											{!agent.available && (
-												<Text color={theme.warning}> - Unavailable</Text>
-											)}
-										</Box>
-									))}
-									
-									<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
-										<Text color={theme.textDim}>
-											↑↓ navigate • Enter select • Esc cancel
-										</Text>
-									</Box>
-								</Box>
-							)}
-						</Box>
-					</Box>
-				)}
-
 				{toast && (
 					<Toast
 						message={toast.message}
@@ -1681,17 +939,7 @@ Note: Full context generation failed. Please ask for specific information you ne
 					/>
 				)}
 
-				{showBranchConflictModal && branchConflictInfo && (
-					<WorktreeBranchConflictModal
-						branchName={branchConflictInfo.branchName}
-						branchInUseAt={branchConflictInfo.branchInUseAt}
-						onDecision={handleBranchConflictDecision}
-						onClose={() => {
-							setShowBranchConflictModal(false);
-							setBranchConflictInfo(null);
-						}}
-					/>
-				)}
+				
 			</Box>
 		);
 	}
@@ -1739,7 +987,6 @@ Note: Full context generation failed. Please ask for specific information you ne
 							const actualIndex = displayIndex + subtasksScrollOffset;
 							const isSelected = actualIndex === selectedSubtaskIndex;
 							const subtaskId = `${selectedTask.id}.${subtask.id}`;
-							const worktrees = subtaskWorktrees.get(subtaskId) || [];
 
 							return {
 								' ': isSelected ? '→' : ' ',
@@ -1749,21 +996,11 @@ Note: Full context generation failed. Please ask for specific information you ne
 										? subtask.title.substring(0, 57) + '...'
 										: subtask.title,
 								Status: `${getStatusSymbol(subtask.status)} ${subtask.status}`,
-								Worktrees:
-									worktrees.length > 0
-										? `🌳 ${worktrees.map((wt) => wt.name).join(', ')}`
-										: '-',
 								_renderCell: (col, value) => {
 									let color = isSelected ? theme.selectionText : theme.text;
 
 									if (col === 'Status') {
 										color = getStatusColor(subtask.status);
-									} else if (col === 'Worktrees') {
-										color = isSelected
-											? theme.selectionText
-											: worktrees.length > 0
-												? theme.success
-												: theme.textDim;
 									}
 
 									return (
@@ -1774,7 +1011,7 @@ Note: Full context generation failed. Please ask for specific information you ne
 								}
 							};
 						})}
-						columns={[' ', 'ID', 'Title', 'Status', 'Worktrees']}
+						columns={[' ', 'ID', 'Title', 'Status']}
 						selectedIndex={selectedSubtaskIndex - subtasksScrollOffset}
 						borders={true}
 					/>
@@ -1905,10 +1142,6 @@ Note: Full context generation failed. Please ask for specific information you ne
 			});
 		}
 
-		// Check for worktrees
-		const subtaskId = `${selectedTask.id}.${selectedSubtask.id}`;
-		const worktrees = subtaskWorktrees.get(subtaskId) || [];
-
 		if (selectedSubtask.testStrategy) {
 			contentLines.push({ type: 'spacer' });
 			contentLines.push({
@@ -1919,50 +1152,6 @@ Note: Full context generation failed. Please ask for specific information you ne
 			const testLines = selectedSubtask.testStrategy.split('\n');
 			testLines.forEach((line) => {
 				contentLines.push({ type: 'text', text: line });
-			});
-		}
-
-		contentLines.push({ type: 'spacer' });
-		// Add worktree information with git status for subtask
-		if (worktrees.length > 0) {
-			contentLines.push({
-				type: 'field',
-				label: 'Git Worktrees:',
-				value: `${worktrees.length} worktree${worktrees.length > 1 ? 's' : ''}`,
-				color: theme.success
-			});
-
-			// Add detailed worktree status for subtask
-			worktrees.forEach((wt) => {
-				contentLines.push({
-					type: 'text',
-					text: `  🌳 ${wt.name} ${wt.status ? `(${wt.status})` : ''}`,
-					color: theme.text
-				});
-			});
-
-			// Add workflow status information
-			if (
-				gitStatus &&
-				repoInfo &&
-				typeof repoInfo === 'object' &&
-				!repoInfo.error
-			) {
-				contentLines.push({ type: 'spacer' });
-				contentLines.push({
-					type: 'workflow-status',
-					task: selectedSubtask,
-					worktree: worktrees[0],
-					gitStatus,
-					repoInfo
-				});
-			}
-		} else {
-			contentLines.push({
-				type: 'field',
-				label: 'Git Worktrees:',
-				value: '-',
-				color: theme.textDim
 			});
 		}
 
@@ -2030,18 +1219,7 @@ Note: Full context generation failed. Please ask for specific information you ne
 							);
 						} else if (line.type === 'spacer') {
 							return <Box key={key} height={1} />;
-						} else if (line.type === 'workflow-status') {
-							return (
-								<Box key={key}>
-									<WorkflowStatusIndicator
-										task={line.task}
-										worktree={line.worktree}
-										gitStatus={line.gitStatus}
-										repoInfo={line.repoInfo}
-										compact={false}
-									/>
-								</Box>
-							);
+
 						}
 						return null;
 					})}
@@ -2076,8 +1254,7 @@ Note: Full context generation failed. Please ask for specific information you ne
 				>
 					<Text color={theme.text}>
 						{contentLines.length > DETAIL_VISIBLE_ROWS ? '↑↓ scroll • ' : ''}
-						t status • {worktrees.length > 0 ? 'g worktree • ' : ''}
-						p progress • e exploration • l completion • r research • a agent • ESC back
+						t status • r research • a agent • ESC back
 					</Text>
 				</Box>
 
@@ -2086,63 +1263,6 @@ Note: Full context generation failed. Please ask for specific information you ne
 						onResearch={handleRunResearch}
 						onClose={() => setShowResearchModal(false)}
 					/>
-				)}
-
-				{showAgentModal && (
-					<Box
-						position="absolute"
-						top={5}
-						left={10}
-						right={10}
-						borderStyle="single"
-						borderColor={theme.accent}
-						backgroundColor={theme.background}
-						padding={1}
-					>
-						<Box flexDirection="column">
-							<Text color={theme.accent} bold marginBottom={1}>
-								Select VibeKit Agent
-							</Text>
-							
-							{agentError && (
-								<Text color={theme.error} marginBottom={1}>
-									{agentError}
-								</Text>
-							)}
-							
-							{agentLoading ? (
-								<Box justifyContent="center" alignItems="center" height={5}>
-									<Text color={theme.textDim}>Loading agents...</Text>
-								</Box>
-							) : (
-								<Box flexDirection="column">
-									{availableAgents.map((agent, index) => (
-										<Box key={agent.id} marginBottom={1}>
-											<Text 
-												color={index === selectedAgentIndex ? theme.accent : theme.text}
-												bold={index === selectedAgentIndex}
-											>
-												{index === selectedAgentIndex ? '→ ' : '  '}
-												{agent.name}
-											</Text>
-											<Text color={agent.available ? theme.success : theme.textDim}>
-												{' '}({agent.provider})
-											</Text>
-											{!agent.available && (
-												<Text color={theme.warning}> - Unavailable</Text>
-											)}
-										</Box>
-									))}
-									
-									<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
-										<Text color={theme.textDim}>
-											↑↓ navigate • Enter select • Esc cancel
-										</Text>
-									</Box>
-								</Box>
-							)}
-						</Box>
-					</Box>
 				)}
 
 				{toast && (
@@ -2366,80 +1486,11 @@ Note: Full context generation failed. Please ask for specific information you ne
 				/>
 			)}
 
-			{showAgentModal && (
-				<Box
-					position="absolute"
-					top={5}
-					left={10}
-					right={10}
-					borderStyle="single"
-					borderColor={theme.accent}
-					backgroundColor={theme.background}
-					padding={1}
-				>
-					<Box flexDirection="column">
-						<Text color={theme.accent} bold marginBottom={1}>
-							Select VibeKit Agent
-						</Text>
-						
-						{agentError && (
-							<Text color={theme.error} marginBottom={1}>
-								{agentError}
-							</Text>
-						)}
-						
-						{agentLoading ? (
-							<Box justifyContent="center" alignItems="center" height={5}>
-								<Text color={theme.textDim}>Loading agents...</Text>
-							</Box>
-						) : (
-							<Box flexDirection="column">
-								{availableAgents.map((agent, index) => (
-									<Box key={agent.id} marginBottom={1}>
-										<Text 
-											color={index === selectedAgentIndex ? theme.accent : theme.text}
-											bold={index === selectedAgentIndex}
-										>
-											{index === selectedAgentIndex ? '→ ' : '  '}
-											{agent.name}
-										</Text>
-										<Text color={agent.available ? theme.success : theme.textDim}>
-											{' '}({agent.provider})
-										</Text>
-										{!agent.available && (
-											<Text color={theme.warning}> - Unavailable</Text>
-										)}
-									</Box>
-								))}
-								
-								<Box marginTop={1} borderTop={true} borderColor={theme.border} paddingTop={1}>
-									<Text color={theme.textDim}>
-										↑↓ navigate • Enter select • Esc cancel
-									</Text>
-								</Box>
-							</Box>
-						)}
-					</Box>
-				</Box>
-			)}
-
 			{toast && (
 				<Toast
 					message={toast.message}
 					type={toast.type}
 					onDismiss={() => setToast(null)}
-				/>
-			)}
-
-			{showBranchConflictModal && branchConflictInfo && (
-				<WorktreeBranchConflictModal
-					branchName={branchConflictInfo.branchName}
-					branchInUseAt={branchConflictInfo.branchInUseAt}
-					onDecision={handleBranchConflictDecision}
-					onClose={() => {
-						setShowBranchConflictModal(false);
-						setBranchConflictInfo(null);
-					}}
 				/>
 			)}
 
@@ -2449,48 +1500,41 @@ Note: Full context generation failed. Please ask for specific information you ne
 				onClose={() => setShowStreamingModal(false)}
 			/>
 
-			{/* Progress Logging Modal */}
-			{showProgressModal && progressModalData && (
-				<ProgressLoggingModal
-					subtask={progressModalData.subtask}
-					phase={progressModalData.phase}
-					onSave={handleProgressSave}
-					onCancel={handleProgressCancel}
-					backend={backend}
-				/>
-			)}
 
-			{/* Workflow Decision Modal */}
-			{showWorkflowModal && workflowModalData && (
-				<WorkflowDecisionModal
-					worktree={workflowModalData.worktree}
-					taskInfo={workflowModalData.taskInfo}
-					backend={backend}
-					onDecision={handleWorkflowChoice}
-					onClose={() => {
-						setShowWorkflowModal(false);
-						setWorkflowModalData(null);
-					}}
-				/>
-			)}
-
-			{/* Commit Assistant Modal */}
-			{showCommitAssistant && commitAssistantData && (
-				<CommitAssistant
-					worktree={commitAssistantData.worktree}
-					subtaskInfo={commitAssistantData.subtaskInfo}
-					gitStatus={commitAssistantData.gitStatus}
-					backend={backend}
-					onCommit={handleCommit}
-					onClose={() => {
-						setShowCommitAssistant(false);
-						setCommitAssistantData(null);
-					}}
-				/>
-			)}
 
 			{/* Overflow Indicator */}
 			<OverflowIndicator position="bottom-right" showCount={true} symbol="⋯" />
+
+			{/* VibeKit Execution Modal */}
+			{showVibeKitModal && selectedTask && selectedSubtask && (
+				<VibeKitExecutionModal
+					task={selectedTask}
+					subtask={selectedSubtask}
+					isVisible={showVibeKitModal}
+					onClose={() => setShowVibeKitModal(false)}
+					onComplete={handleVibeKitComplete}
+					projectRoot={backend?.projectRoot}
+				/>
+			)}
+
+			{/* VibeKit Settings Modal */}
+			{showVibeKitSettings && (
+				<VibeKitSettingsModal
+					isVisible={showVibeKitSettings}
+					onClose={() => setShowVibeKitSettings(false)}
+					projectRoot={backend?.projectRoot}
+				/>
+			)}
+
+			{/* Sandbox Control Panel */}
+			{showSandboxControl && (
+				<SandboxControlPanel
+					isVisible={showSandboxControl}
+					onClose={() => setShowSandboxControl(false)}
+					projectRoot={backend?.projectRoot}
+					vibeKitService={vibeKitService}
+				/>
+			)}
 		</Box>
 	);
 }

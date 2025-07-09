@@ -11,7 +11,7 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function VibeKitAgentSelector({ 
 	onSelect, 
-	selectedAgent = 'claude-code',
+	selectedAgent = 'claude',
 	showStatus = true,
 	compact = false,
 	title = "🤖 Select VibeKit Agent"
@@ -63,9 +63,9 @@ export function VibeKitAgentSelector({
 
 	const getRequiredApiKey = (agentKey) => {
 		const keyMap = {
-			'claude-code': 'ANTHROPIC_API_KEY',
+			'claude': 'ANTHROPIC_API_KEY',
 			'codex': 'OPENAI_API_KEY',
-			'gemini-cli': 'GOOGLE_API_KEY',
+			'gemini': 'GOOGLE_API_KEY',
 			'opencode': 'OPENCODE_API_KEY'
 		};
 		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
@@ -73,9 +73,9 @@ export function VibeKitAgentSelector({
 
 	const formatAgentName = (agentKey) => {
 		const nameMap = {
-			'claude-code': 'Claude Code',
+			'claude': 'Claude Code',
 			'codex': 'OpenAI Codex',
-			'gemini-cli': 'Gemini CLI',
+			'gemini': 'Gemini CLI',
 			'opencode': 'OpenCode'
 		};
 		return nameMap[agentKey] || agentKey;
@@ -83,9 +83,9 @@ export function VibeKitAgentSelector({
 
 	const getAgentDescription = (agentKey) => {
 		const descMap = {
-			'claude-code': 'Advanced reasoning and code generation',
+			'claude': 'Advanced reasoning and code generation',
 			'codex': 'OpenAI code completion and generation',
-			'gemini-cli': 'Google development assistant',
+			'gemini': 'Google development assistant',
 			'opencode': 'Full-stack development agent'
 		};
 		return descMap[agentKey] || 'VibeKit coding agent';
@@ -187,7 +187,7 @@ export function VibeKitAgentSelector({
  * Compact grid view of all agents with status indicators
  */
 export function VibeKitAgentStatusGrid({ 
-	selectedAgent = 'claude-code',
+	selectedAgent = 'claude',
 	onAgentClick,
 	showLabels = true
 }) {
@@ -224,9 +224,9 @@ export function VibeKitAgentStatusGrid({
 
 	const getRequiredApiKey = (agentKey) => {
 		const keyMap = {
-			'claude-code': 'ANTHROPIC_API_KEY',
+			'claude': 'ANTHROPIC_API_KEY',
 			'codex': 'OPENAI_API_KEY',
-			'gemini-cli': 'GOOGLE_API_KEY',
+			'gemini': 'GOOGLE_API_KEY',
 			'opencode': 'OPENCODE_API_KEY'
 		};
 		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
@@ -234,9 +234,9 @@ export function VibeKitAgentStatusGrid({
 
 	const formatAgentName = (agentKey) => {
 		const nameMap = {
-			'claude-code': 'Claude',
+			'claude': 'Claude',
 			'codex': 'Codex',
-			'gemini-cli': 'Gemini',
+			'gemini': 'Gemini',
 			'opencode': 'OpenCode'
 		};
 		return nameMap[agentKey] || agentKey;
