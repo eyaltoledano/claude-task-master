@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { FlowConfig } from '../src/src/config/flow-config.js';
+import { FlowConfig } from '../src/config/flow-config.js';
 import VibeKitSetupGuide from './VibeKitSetupGuide.jsx';
 
 export default function SettingsModal({ onClose, onSettingsChange, projectRoot }) {
