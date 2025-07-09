@@ -1,0 +1,30 @@
+{
+  "defaultAgent": "claude-code",
+  "defaultSandbox": "e2b",
+  "enabledAgents": [
+    "claude-code",
+    "codex"
+  ],
+  "enabledSandboxes": [
+    "e2b",
+    "daytona"
+  ],
+  "ui": {
+    "showAgentSelector": true,
+    "showSandboxSelector": true,
+    "autoStartWithDefaults": false
+  },
+  "session": {
+    "rememberLastUsed": true,
+    "sessionTimeout": 3600000
+  },
+  "features": {
+    "githubIntegration": true,
+    "streamingOutput": true,
+    "autoSave": true
+  },
+  "limits": {
+    "maxConcurrentSessions": 3,
+    "maxHistoryEntries": 100
+  }
+} 
