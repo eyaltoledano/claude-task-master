@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { moveTaskDirect } from '../core/task-master-core.js';
 
@@ -44,13 +39,6 @@ export function registerMoveTaskTool(server) {
 			required: ['tasksPath']
 		})(async (taskMaster, args, { log, session }) => {
 			try {
-				// Find tasks.json path if not provided
-				let tasksJsonPath = args.file;
-
-				if (!tasksJsonPath) {
-					tasksJsonPath = findTasksPath(args, log);
-				}
-
 				// Parse comma-separated IDs
 				const fromIds = args.from.split(',').map((id) => id.trim());
 				const toIds = args.to.split(',').map((id) => id.trim());
@@ -79,12 +67,8 @@ export function registerMoveTaskTool(server) {
 
 						const shouldGenerateFiles = i === fromIds.length - 1;
 						const result = await moveTaskDirect(
-							{
-								sourceId: fromId,
-								destinationId: toId,
-								tasksJsonPath: taskMaster.getTasksPath(),
-								projectRoot: taskMaster.getProjectRoot()
-							},
+							taskMaster,
+							{ sourceId: fromId, destinationId: toId },
 							log,
 							{ session }
 						);
@@ -115,11 +99,10 @@ export function registerMoveTaskTool(server) {
 					// Moving a single task
 					return handleApiResult(
 						await moveTaskDirect(
+							taskMaster,
 							{
 								sourceId: args.from,
-								destinationId: args.to,
-								tasksJsonPath: taskMaster.getTasksPath(),
-								projectRoot: taskMaster.getProjectRoot()
+								destinationId: args.to
 							},
 							log,
 							{ session }

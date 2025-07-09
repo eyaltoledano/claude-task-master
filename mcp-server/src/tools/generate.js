@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
 import path from 'path';
@@ -40,30 +35,13 @@ export function registerGenerateTool(server) {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
 				const outputDir = args.output
 					? path.resolve(taskMaster.getProjectRoot(), args.output)
-					: path.dirname(tasksJsonPath);
+					: path.dirname(taskMaster.getTasksPath());
 
 				const result = await generateTaskFilesDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						outputDir: outputDir,
-						projectRoot: taskMaster.getProjectRoot()
-					},
+					taskMaster,
+					{ outputDir: outputDir },
 					log,
 					{ session }
 				);

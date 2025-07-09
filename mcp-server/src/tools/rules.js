@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { rulesDirect } from '../core/direct-functions/rules.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';

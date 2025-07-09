@@ -4,12 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import path from 'path';
+import fs from 'fs';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -64,14 +61,32 @@ export function registerParsePRDTool(server) {
 				.describe('Append generated tasks to existing file.')
 		}),
 		execute: withTaskMaster({
-			'prdPath': 'input',
-			'tasksPath': 'output',
-			'required': [
-						'prdPath'
-			]
-})(async (taskMaster, args, { log, session }) => {
+			prdPath: 'input',
+			tasksPath: 'output',
+			required: ['prdPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
-				const result = await parsePRDDirect(args, log, { session });
+				// TODO(cluster444): Handle this during init?
+				const outputPath = args.output
+					? path.isAbsolute(args.output)
+						? args.output
+						: path.resolve(taskMaster.getProjectRoot(), args.output)
+					: taskMaster.getTasksPath() ||
+						path.resolve(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
+
+				const outputDir = path.dirname(outputPath);
+				try {
+					if (!fs.existsSync(outputDir)) {
+						log.info(`Creating output directory: ${outputDir}`);
+						fs.mkdirSync(outputDir, { recursive: true });
+					}
+				} catch (error) {
+					const errorMsg = `Failed to create output directory ${outputDir}: ${error.message}`;
+					log.error(errorMsg);
+					return createErrorResponse(errorMsg);
+				}
+
+				const result = await parsePRDDirect(taskMaster, args, log, { session });
 				return handleApiResult(
 					result,
 					log,

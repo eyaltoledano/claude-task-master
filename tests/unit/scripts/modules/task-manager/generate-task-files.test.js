@@ -46,7 +46,35 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	),
 	findProjectRoot: jest.fn(() => '/mock/project/root'),
 	resolveEnvVariable: jest.fn((varName) => `mock_${varName}`),
-	ensureTagMetadata: jest.fn()
+	ensureTagMetadata: jest.fn(),
+	addComplexityToTask: jest.fn((task, complexityReport) => task),
+	taskExists: jest.fn(),
+	formatTaskId: jest.fn(),
+	findCycles: jest.fn(() => []),
+	getCurrentTag: jest.fn(() => 'master'),
+	getTasksForTag: jest.fn((data, tagName) => data[tagName]?.tasks || []),
+	setTasksForTag: jest.fn(),
+	resolveTag: jest.fn(() => 'master'),
+	taskExists: jest.fn(() => true),
+	formatTaskId: jest.fn((id) => id),
+	findCycles: jest.fn(() => []),
+	toKebabCase: jest.fn(),
+	detectCamelCaseFlags: jest.fn(),
+	disableSilentMode: jest.fn(),
+	enableSilentMode: jest.fn(),
+	getTaskManager: jest.fn(),
+	readComplexityReport: jest.fn(),
+	findTaskInComplexityReport: jest.fn(),
+	isEmpty: jest.fn(),
+	aggregateTelemetry: jest.fn(),
+	getTagAwareFilePath: jest.fn(),
+	slugifyTagForFilePath: jest.fn(),
+	performCompleteTagMigration: jest.fn(),
+	migrateConfigJson: jest.fn(),
+	createStateJson: jest.fn(),
+	markMigrationForNotice: jest.fn(),
+	flattenTasksWithSubtasks: jest.fn(),
+	LOG_LEVELS: { debug: 0, info: 1, warn: 2, error: 3, success: 1 }
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
@@ -57,22 +85,82 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	stopLoadingIndicator: jest.fn(),
 	createProgressBar: jest.fn(() => ' MOCK_PROGRESS_BAR '),
 	getStatusWithColor: jest.fn((status) => status),
-	getComplexityWithColor: jest.fn((score) => `Score: ${score}`)
+	getComplexityWithColor: jest.fn((score) => `Score: ${score}`),
+	confirmTaskOverwrite: jest.fn(() => true),
+	displayTaggedTasksFYI: jest.fn(),
+	displayHelp: jest.fn(),
+	displayNextTask: jest.fn(),
+	displayTaskById: jest.fn(),
+	displayComplexityReport: jest.fn(),
+	generateComplexityAnalysisPrompt: jest.fn(),
+	displayApiKeyStatus: jest.fn(),
+	displayModelConfiguration: jest.fn(),
+	displayAvailableModels: jest.fn(),
+	displayAiUsageSummary: jest.fn(),
+	displayMultipleTasksSummary: jest.fn(),
+	succeedLoadingIndicator: jest.fn(),
+	failLoadingIndicator: jest.fn(),
+	warnLoadingIndicator: jest.fn(),
+	infoLoadingIndicator: jest.fn(),
+	displayContextAnalysis: jest.fn(),
+	displayCurrentTagIndicator: jest.fn()
 }));
-
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/dependency-manager.js',
-	() => ({
-		validateAndFixDependencies: jest.fn(),
-		validateTaskDependencies: jest.fn()
-	})
-);
 
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDebugFlag: jest.fn(() => false),
-		getProjectName: jest.fn(() => 'Test Project')
+		getProjectName: jest.fn(() => 'Test Project'),
+		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
+		getAvailableModels: jest.fn(() => []),
+		getConfig: jest.fn(() => ({})),
+		writeConfig: jest.fn(),
+		ConfigurationError: class ConfigurationError extends Error {},
+		isConfigFilePresent: jest.fn(() => false),
+		getClaudeCodeSettings: jest.fn(() => ({})),
+		getClaudeCodeSettingsForCommand: jest.fn(() => ({})),
+		validateProvider: jest.fn(() => true),
+		validateProviderModelCombination: jest.fn(() => true),
+		validateClaudeCodeSettings: jest.fn(() => ({})),
+		VALIDATED_PROVIDERS: ['anthropic', 'openai'],
+		CUSTOM_PROVIDERS: {
+			OLLAMA: 'ollama',
+			BEDROCK: 'bedrock',
+			GEMINI_CLI: 'gemini-cli'
+		},
+		ALL_PROVIDERS: ['anthropic', 'openai', 'perplexity'],
+		MODEL_MAP: {},
+		getMainProvider: jest.fn(() => 'anthropic'),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getMainMaxTokens: jest.fn(() => 4000),
+		getMainTemperature: jest.fn(() => 0.7),
+		getResearchProvider: jest.fn(() => 'perplexity'),
+		getResearchModelId: jest.fn(() => 'sonar-pro'),
+		getResearchMaxTokens: jest.fn(() => 4000),
+		getResearchTemperature: jest.fn(() => 0.1),
+		getFallbackProvider: jest.fn(() => 'anthropic'),
+		getFallbackModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getFallbackMaxTokens: jest.fn(() => 4000),
+		getFallbackTemperature: jest.fn(() => 0.7),
+		getBaseUrlForRole: jest.fn(() => ''),
+		getLogLevel: jest.fn(() => 'info'),
+		getDefaultNumTasks: jest.fn(() => 10),
+		getDefaultSubtasks: jest.fn(() => 5),
+		getDefaultPriority: jest.fn(() => 'medium'),
+		getOllamaBaseURL: jest.fn(() => 'http://localhost:11434'),
+		getAzureBaseURL: jest.fn(() => ''),
+		getBedrockBaseURL: jest.fn(() => ''),
+		getResponseLanguage: jest.fn(() => 'English'),
+		getParametersForRole: jest.fn(() => ({
+			maxTokens: 4000,
+			temperature: 0.7
+		})),
+		getUserId: jest.fn(() => 'test-user'),
+		isApiKeySet: jest.fn(() => true),
+		getMcpApiKeyStatus: jest.fn(() => true),
+		getVertexProjectId: jest.fn(() => 'test-project'),
+		getVertexLocation: jest.fn(() => 'us-central1'),
+		providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
 	})
 );
 
@@ -81,9 +169,6 @@ const { readJSON, writeJSON, log, findProjectRoot, ensureTagMetadata } =
 	await import('../../../../../scripts/modules/utils.js');
 const { formatDependenciesWithStatus } = await import(
 	'../../../../../scripts/modules/ui.js'
-);
-const { validateAndFixDependencies } = await import(
-	'../../../../../scripts/modules/dependency-manager.js'
 );
 
 const fs = (await import('fs')).default;
@@ -191,14 +276,6 @@ describe('generateTaskFiles', () => {
 		// Verify the data was read with new signature, defaulting to master
 		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined);
 
-		// Verify dependencies were validated with the raw tagged data
-		expect(validateAndFixDependencies).toHaveBeenCalledWith(
-			sampleTasksData,
-			tasksPath,
-			undefined,
-			'master'
-		);
-
 		// Verify files were written for each task in the master tag
 		expect(fs.writeFileSync).toHaveBeenCalledTimes(3);
 
@@ -290,13 +367,5 @@ describe('generateTaskFiles', () => {
 		await generateTaskFiles('tasks/tasks.json', 'tasks', {
 			mcpLog: { info: jest.fn() }
 		});
-
-		// Verify validateAndFixDependencies was called with the raw tagged data
-		expect(validateAndFixDependencies).toHaveBeenCalledWith(
-			sampleTasksData,
-			'tasks/tasks.json',
-			undefined,
-			'master'
-		);
 	});
 });

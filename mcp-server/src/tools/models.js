@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { modelsDirect } from '../core/task-master-core.js';
 
@@ -79,12 +74,9 @@ export function registerModelsTool(server) {
 			try {
 				log.info(`Starting models tool with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
-				const result = await modelsDirect(
-					{ ...args, projectRoot: taskMaster.getProjectRoot() },
-					log,
-					{ session }
-				);
+				const result = await modelsDirect(taskMaster, { ...args }, log, {
+					session
+				});
 
 				return handleApiResult(
 					result,

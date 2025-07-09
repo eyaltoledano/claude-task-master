@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { responseLanguageDirect } from '../core/direct-functions/response-language.js';
 
@@ -33,10 +28,8 @@ export function registerResponseLanguageTool(server) {
 				);
 
 				const result = await responseLanguageDirect(
-					{
-						...args,
-						projectRoot: taskMaster.getProjectRoot()
-					},
+					taskMaster,
+					{ ...args },
 					log,
 					{ session }
 				);

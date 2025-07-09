@@ -14,40 +14,32 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for updateTaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments containing id, prompt, useResearch, taskMaster.getTasksPath(), and taskMaster.getProjectRoot().
+ * @param {string} taskMaster.getTasksPath() - Explicit path to the tasks.json file.
  * @param {string} args.id - Task ID (or subtask ID like "1.2").
  * @param {string} args.prompt - New information/context prompt.
  * @param {boolean} [args.research] - Whether to use research role.
- * @param {boolean} [args.append] - Whether to append timestamped information instead of full update.
- * @param {string} [args.projectRoot] - Project root path.
- * @param {Object} log - Logger object.
+ * @param {boolean} [args.append] - Whether to append timestamped information instead of full update. * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function updateTaskByIdDirect(args, log, context = {}) {
+export async function updateTaskByIdDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, append, projectRoot } = args;
+	// Destructure expected args, including taskMaster.getProjectRoot()
+	const { id, prompt, research, append } = args;
 
 	const logWrapper = createLogWrapper(log);
 
 	try {
 		logWrapper.info(
-			`Updating task by ID via direct function. ID: ${id}, ProjectRoot: ${projectRoot}`
-		);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			logWrapper.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
-
-		// Check required parameters (id and prompt)
+			`Updating task by ID via direct function. ID: ${id}, ProjectRoot: ${taskMaster.getProjectRoot()}`
+		); // Check required parameters (id and prompt)
 		if (!id) {
 			const errorMessage =
 				'No task ID specified. Please provide a task ID to update.';
@@ -91,7 +83,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		}
 
 		// Use the provided path
-		const tasksPath = tasksJsonPath;
+		const tasksPath = taskMaster.getTasksPath();
 
 		// Get research flag
 		const useResearch = research === true;
@@ -115,7 +107,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				{
 					mcpLog: logWrapper,
 					session,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'update-task',
 					outputType: 'mcp'
 				},

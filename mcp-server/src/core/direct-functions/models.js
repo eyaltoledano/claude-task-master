@@ -30,7 +30,8 @@ function getProviderHint(args) {
 /**
  * Handle setting models for different roles
  * @param {Object} args - Arguments containing role-specific model IDs
- * @param {Object} context - Context object with session, mcpLog, projectRoot
+ * @param {Object} context - Context object with session, mcpLog,
+					taskMaster.getProjectRoot()
  * @returns {Object|null} Result if a model was set, null if no model setting was requested
  */
 async function handleModelSetting(args, context) {
@@ -56,15 +57,15 @@ async function handleModelSetting(args, context) {
  * @param {Object} context - MCP context (contains session)
  * @returns {Object} Result object with success, data/error fields
  */
-export async function modelsDirect(args, log, context = {}) {
+export async function modelsDirect(taskMaster, args, log, context = {}) {
 	const { session } = context;
-	const { projectRoot } = args; // Extract projectRoot from args
+	const {} = args; // Extract taskMaster.getProjectRoot() from args
 
 	// Create a logger wrapper that the core functions can use
 	const mcpLog = createLogWrapper(log);
 
 	log.info(`Executing models_direct with args: ${JSON.stringify(args)}`);
-	log.info(`Using project root: ${projectRoot}`);
+	log.info(`Using project root: ${taskMaster.getProjectRoot()}`);
 
 	// Validate flags: only one custom provider flag can be used simultaneously
 	const customProviderFlags = CUSTOM_PROVIDERS_ARRAY.filter(
@@ -94,12 +95,16 @@ export async function modelsDirect(args, log, context = {}) {
 				return await getAvailableModelsList({
 					session,
 					mcpLog,
-					projectRoot
+					projectRoot: taskMaster.getProjectRoot()
 				});
 			}
 
 			// Handle setting any model role using unified function
-			const modelContext = { session, mcpLog, projectRoot };
+			const modelContext = {
+				session,
+				mcpLog,
+				projectRoot: taskMaster.getProjectRoot()
+			};
 			const modelSetResult = await handleModelSetting(args, modelContext);
 			if (modelSetResult) {
 				return modelSetResult;
@@ -109,7 +114,7 @@ export async function modelsDirect(args, log, context = {}) {
 			return await getModelConfiguration({
 				session,
 				mcpLog,
-				projectRoot
+				projectRoot: taskMaster.getProjectRoot()
 			});
 		} finally {
 			disableSilentMode();

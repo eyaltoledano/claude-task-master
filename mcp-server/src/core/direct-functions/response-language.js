@@ -10,20 +10,25 @@ import {
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
-export async function responseLanguageDirect(args, log, context = {}) {
-	const { projectRoot, language } = args;
+export async function responseLanguageDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
+	const { language } = args;
 	const mcpLog = createLogWrapper(log);
 
 	log.info(
 		`Executing response-language_direct with args: ${JSON.stringify(args)}`
 	);
-	log.info(`Using project root: ${projectRoot}`);
+	log.info(`Using project root: ${taskMaster.getProjectRoot()}`);
 
 	try {
 		enableSilentMode();
 		return setResponseLanguage(language, {
 			mcpLog,
-			projectRoot
+			projectRoot: taskMaster.getProjectRoot()
 		});
 	} catch (error) {
 		return {

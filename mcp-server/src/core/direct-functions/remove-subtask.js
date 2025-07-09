@@ -10,35 +10,24 @@ import {
 
 /**
  * Remove a subtask from its parent task
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Subtask ID in format "parentId.subtaskId" (required)
  * @param {boolean} [args.convert] - Whether to convert the subtask to a standalone task
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
  * @param {Object} log - Logger object
+ * @param {Object} [context] - Additional context (session, etc.)
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function removeSubtaskDirect(args, log) {
+export async function removeSubtaskDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, id, convert, skipGenerate } = args;
+	const { id, convert, skipGenerate } = args;
+	const { session } = context;
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
 		log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('removeSubtaskDirect called without tasksJsonPath');
-			disableSilentMode(); // Disable before returning
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
 
 		if (!id) {
 			disableSilentMode(); // Disable before returning
@@ -64,9 +53,6 @@ export async function removeSubtaskDirect(args, log) {
 			};
 		}
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
 		// Convert convertToTask to a boolean
 		const convertToTask = convert === true;
 
@@ -79,7 +65,7 @@ export async function removeSubtaskDirect(args, log) {
 
 		// Use the provided tasksPath
 		const result = await removeSubtask(
-			tasksPath,
+			taskMaster.getTasksPath(),
 			id,
 			convertToTask,
 			generateFiles

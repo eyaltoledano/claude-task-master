@@ -17,30 +17,19 @@ import {
  * Direct function wrapper for removeTask with error handling.
  * Supports removing multiple tasks at once with comma-separated IDs.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} taskMaster.getTasksPath() - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID(s) of the task(s) or subtask(s) to remove (comma-separated for multiple).
  * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag).
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function removeTaskDirect(args, log, context = {}) {
+export async function removeTaskDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, id, projectRoot, tag } = args;
+	const { id, tag } = args;
 	const { session } = context;
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('removeTaskDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
 		// Validate task ID parameter
 		if (!id) {
 			log.error('Task ID is required');
@@ -57,17 +46,21 @@ export async function removeTaskDirect(args, log, context = {}) {
 		const taskIdArray = id.split(',').map((taskId) => taskId.trim());
 
 		log.info(
-			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${tasksJsonPath}${tag ? ` in tag '${tag}'` : ''}`
+			`Removing ${taskIdArray.length} task(s) with ID(s): ${taskIdArray.join(', ')} from ${taskMaster.getTasksPath()}${tag ? ` in tag '${tag}'` : ''}`
 		);
 
 		// Validate all task IDs exist before proceeding
-		const data = readJSON(tasksJsonPath, projectRoot, tag);
+		const data = readJSON(
+			taskMaster.getTasksPath(),
+			taskMaster.getProjectRoot(),
+			tag
+		);
 		if (!data || !data.tasks) {
 			return {
 				success: false,
 				error: {
 					code: 'INVALID_TASKS_FILE',
-					message: `No valid tasks found in ${tasksJsonPath}${tag ? ` for tag '${tag}'` : ''}`
+					message: `No valid tasks found in ${taskMaster.getTasksPath()}${tag ? ` for tag '${tag}'` : ''}`
 				}
 			};
 		}
@@ -91,8 +84,8 @@ export async function removeTaskDirect(args, log, context = {}) {
 
 		try {
 			// Call removeTask with proper context including tag
-			const result = await removeTask(tasksJsonPath, id, {
-				projectRoot,
+			const result = await removeTask(taskMaster.getTasksPath(), id, {
+				projectRoot: taskMaster.getProjectRoot(),
 				tag
 			});
 
@@ -116,7 +109,7 @@ export async function removeTaskDirect(args, log, context = {}) {
 					failed: taskIdArray.length - result.removedTasks.length,
 					removedTasks: result.removedTasks,
 					message: result.message,
-					tasksPath: tasksJsonPath,
+					tasksPath: taskMaster.getTasksPath(),
 					tag: data.tag || tag || 'master'
 				}
 			};

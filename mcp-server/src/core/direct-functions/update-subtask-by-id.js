@@ -14,39 +14,31 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
  *
- * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments containing id, prompt, useResearch, taskMaster.getTasksPath(), and taskMaster.getProjectRoot().
+ * @param {string} taskMaster.getTasksPath() - Explicit path to the tasks.json file.
  * @param {string} args.id - Subtask ID in format "parent.sub".
  * @param {string} args.prompt - Information to append to the subtask.
- * @param {boolean} [args.research] - Whether to use research role.
- * @param {string} [args.projectRoot] - Project root path.
- * @param {Object} log - Logger object.
+ * @param {boolean} [args.research] - Whether to use research role. * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function updateSubtaskByIdDirect(args, log, context = {}) {
+export async function updateSubtaskByIdDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+	// Destructure expected args, including taskMaster.getProjectRoot()
+	const { id, prompt, research } = args;
 
 	const logWrapper = createLogWrapper(log);
 
 	try {
 		logWrapper.info(
-			`Updating subtask by ID via direct function. ID: ${id}, ProjectRoot: ${projectRoot}`
-		);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			logWrapper.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
-
-		// Basic validation for ID format (e.g., '5.2')
+			`Updating subtask by ID via direct function. ID: ${id}, ProjectRoot: ${taskMaster.getProjectRoot()}`
+		); // Basic validation for ID format (e.g., '5.2')
 		if (!id || typeof id !== 'string' || !id.includes('.')) {
 			const errorMessage =
 				'Invalid subtask ID format. Must be in format "parentId.subtaskId" (e.g., "5.2").';
@@ -88,8 +80,6 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		// Use the provided path
-		const tasksPath = tasksJsonPath;
 		const useResearch = research === true;
 
 		log.info(
@@ -104,14 +94,14 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		try {
 			// Execute core updateSubtaskById function
 			const coreResult = await updateSubtaskById(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				subtaskIdStr,
 				prompt,
 				useResearch,
 				{
 					mcpLog: logWrapper,
 					session,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'update-subtask',
 					outputType: 'mcp'
 				},
@@ -137,7 +127,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					subtaskId: subtaskIdStr,
 					parentId: subtaskIdStr.split('.')[0],
 					subtask: coreResult.updatedSubtask,
-					tasksPath,
+					tasksPath: taskMaster.getTasksPath(),
 					useResearch,
 					telemetryData: coreResult.telemetryData,
 					tagInfo: coreResult.tagInfo

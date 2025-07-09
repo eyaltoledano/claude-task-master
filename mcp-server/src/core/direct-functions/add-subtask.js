@@ -10,8 +10,8 @@ import {
 
 /**
  * Add a subtask to an existing task
+ * @param {Object} taskMaster - TaskMaster instance
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Parent task ID
  * @param {string} [args.taskId] - Existing task ID to convert to subtask (optional)
  * @param {string} [args.title] - Title for new subtask (when creating a new subtask)
@@ -20,15 +20,13 @@ import {
  * @param {string} [args.status] - Status for new subtask (default: 'pending')
  * @param {string} [args.dependencies] - Comma-separated list of dependency IDs
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
- * @param {string} [args.projectRoot] - Project root directory
  * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
-export async function addSubtaskDirect(args, log) {
+export async function addSubtaskDirect(taskMaster, args, log) {
 	// Destructure expected args
 	const {
-		tasksJsonPath,
 		id,
 		taskId,
 		title,
@@ -37,23 +35,10 @@ export async function addSubtaskDirect(args, log) {
 		status,
 		dependencies: dependenciesStr,
 		skipGenerate,
-		projectRoot,
 		tag
 	} = args;
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('addSubtaskDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
 
 		if (!id) {
 			return {
@@ -76,9 +61,6 @@ export async function addSubtaskDirect(args, log) {
 			};
 		}
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
 		// Parse dependencies if provided
 		let dependencies = [];
 		if (dependenciesStr) {
@@ -100,13 +82,13 @@ export async function addSubtaskDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
-		const context = { projectRoot, tag };
+		const context = { projectRoot: taskMaster.getProjectRoot(), tag };
 
 		// Case 1: Convert existing task to subtask
 		if (existingTaskId) {
 			log.info(`Converting task ${existingTaskId} to a subtask of ${parentId}`);
 			const result = await addSubtask(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				parentId,
 				existingTaskId,
 				null,
@@ -138,7 +120,7 @@ export async function addSubtaskDirect(args, log) {
 			};
 
 			const result = await addSubtask(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				parentId,
 				null,
 				newSubtaskData,

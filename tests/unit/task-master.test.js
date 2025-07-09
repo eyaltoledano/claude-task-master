@@ -2,7 +2,15 @@
  * Tests for task-master.js initTaskMaster function
  */
 
-import { jest } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	test,
+	beforeEach,
+	afterEach,
+	expect
+} from '@jest/globals';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';

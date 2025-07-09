@@ -9,66 +9,42 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import fs from 'fs';
+import path from 'path';
 import { createLogWrapper } from '../../tools/utils.js'; // Import the new utility
 
 /**
  * Analyze task complexity and generate recommendations
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.outputPath - Explicit absolute path to save the report.
  * @param {string|number} [args.threshold] - Minimum complexity score to recommend expansion (1-10)
  * @param {boolean} [args.research] - Use Perplexity AI for research-backed complexity analysis
  * @param {string} [args.ids] - Comma-separated list of task IDs to analyze
  * @param {number} [args.from] - Starting task ID in a range to analyze
  * @param {number} [args.to] - Ending task ID in a range to analyze
- * @param {string} [args.projectRoot] - Project root path.
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
  * @param {Object} [context.session] - MCP session object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function analyzeTaskComplexityDirect(args, log, context = {}) {
+export async function analyzeTaskComplexityDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	const { session } = context;
-	const {
-		tasksJsonPath,
-		outputPath,
-		threshold,
-		research,
-		projectRoot,
-		ids,
-		from,
-		to
-	} = args;
+	const { threshold, research, ids, from, to } = args;
 
 	const logWrapper = createLogWrapper(log);
 
-	// --- Initial Checks (remain the same) ---
+	// --- Initial Checks ---
 	try {
 		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
 
-		if (!tasksJsonPath) {
-			log.error('analyzeTaskComplexityDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-		if (!outputPath) {
-			log.error('analyzeTaskComplexityDirect called without outputPath');
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: 'outputPath is required' }
-			};
-		}
-
-		const tasksPath = tasksJsonPath;
-		const resolvedOutputPath = outputPath;
-
-		log.info(`Analyzing task complexity from: ${tasksPath}`);
-		log.info(`Output report will be saved to: ${resolvedOutputPath}`);
+		log.info(`Analyzing task complexity from: ${taskMaster.getTasksPath()}`);
+		log.info(
+			`Output report will be saved to: ${taskMaster.getComplexityReportPath()}`
+		);
 
 		if (ids) {
 			log.info(`Analyzing specific task IDs: ${ids}`);
@@ -82,13 +58,13 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			log.info('Using research role for complexity analysis');
 		}
 
-		// Prepare options for the core function - REMOVED mcpLog and session here
+		// Prepare options for the core function
 		const coreOptions = {
-			file: tasksJsonPath,
-			output: outputPath,
+			file: taskMaster.getTasksPath(),
+			output: taskMaster.getComplexityReportPath(),
 			threshold: threshold,
 			research: research === true, // Ensure boolean
-			projectRoot: projectRoot, // Pass projectRoot here
+			projectRoot: taskMaster.getProjectRoot(),
 			id: ids, // Pass the ids parameter to the core function as 'id'
 			from: from, // Pass from parameter
 			to: to // Pass to parameter
@@ -137,18 +113,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			}
 		}
 
-		// --- Result Handling (remains largely the same) ---
-		// Verify the report file was created (core function writes it)
-		if (!fs.existsSync(resolvedOutputPath)) {
-			return {
-				success: false,
-				error: {
-					code: 'ANALYZE_REPORT_MISSING', // Specific code
-					message:
-						'Analysis completed but no report file was created at the expected path.'
-				}
-			};
-		}
+		// --- Result Handling ---
 
 		if (
 			!coreResult ||
@@ -187,8 +152,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${outputPath}`,
-					reportPath: outputPath,
+					message: `Task complexity analysis complete. Report saved to ${taskMaster.getComplexityReportPath()}`,
+					reportPath: taskMaster.getComplexityReportPath(),
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,

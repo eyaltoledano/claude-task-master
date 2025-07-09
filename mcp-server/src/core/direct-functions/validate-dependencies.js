@@ -7,52 +7,23 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
 
 /**
  * Validate dependencies in tasks.json
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function validateDependenciesDirect(args, log) {
-	// Destructure the explicit tasksJsonPath
-	const { tasksJsonPath } = args;
-
-	if (!tasksJsonPath) {
-		log.error('validateDependenciesDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
-
+export async function validateDependenciesDirect(taskMaster, args, log) {
 	try {
-		log.info(`Validating dependencies in tasks: ${tasksJsonPath}`);
-
-		// Use the provided tasksJsonPath
-		const tasksPath = tasksJsonPath;
-
-		// Verify the file exists
-		if (!fs.existsSync(tasksPath)) {
-			return {
-				success: false,
-				error: {
-					code: 'FILE_NOT_FOUND',
-					message: `Tasks file not found at ${tasksPath}`
-				}
-			};
-		}
+		log.info(`Validating dependencies in tasks: ${taskMaster.getTasksPath()}`);
 
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
-		// Call the original command function using the provided tasksPath
-		await validateDependenciesCommand(tasksPath);
+		// Call the original command function using the tasksPath from taskMaster
+		await validateDependenciesCommand(taskMaster.getTasksPath());
 
 		// Restore normal logging
 		disableSilentMode();
@@ -61,7 +32,7 @@ export async function validateDependenciesDirect(args, log) {
 			success: true,
 			data: {
 				message: 'Dependencies validated successfully',
-				tasksPath
+				tasksPath: taskMaster.getTasksPath()
 			}
 		};
 	} catch (error) {

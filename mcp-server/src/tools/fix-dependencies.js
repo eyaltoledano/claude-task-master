@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { fixDependenciesDirect } from '../core/task-master-core.js';
 
@@ -35,24 +30,9 @@ export function registerFixDependenciesTool(server) {
 			try {
 				log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
 				const result = await fixDependenciesDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag
 					},
 					log

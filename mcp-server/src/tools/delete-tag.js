@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { deleteTagDirect } from '../core/task-master-core.js';
 
@@ -42,7 +37,6 @@ export function registerDeleteTagTool(server) {
 			try {
 				log.info(`Starting delete-tag with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -58,12 +52,8 @@ export function registerDeleteTagTool(server) {
 
 				// Call the direct function (always skip confirmation for MCP)
 				const result = await deleteTagDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						name: args.name,
-						yes: args.yes !== undefined ? args.yes : true, // Default to true for MCP
-						projectRoot: taskMaster.getProjectRoot()
-					},
+					taskMaster,
+					{ name: args.name, yes: args.yes !== undefined ? args.yes : true }, // Default to true for MCP
 					log,
 					{ session }
 				);

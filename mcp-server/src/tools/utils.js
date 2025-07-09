@@ -780,8 +780,6 @@ function withNormalizedProjectRoot(executeFn) {
 
 // Ensure all functions are exported
 export {
-	getProjectRoot,
-	getProjectRootFromSession,
 	getTagInfo,
 	handleApiResult,
 	executeTaskMasterCommand,
@@ -789,8 +787,5 @@ export {
 	processMCPResponseData,
 	createContentResponse,
 	createErrorResponse,
-	createLogWrapper,
-	normalizeProjectRoot,
-	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	createLogWrapper
 };

@@ -13,6 +13,7 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for adding a new task with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} [args.prompt] - Description of the task to add (required if not using manual fields)
  * @param {string} [args.title] - Task title (for manual task creation)
@@ -21,23 +22,14 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.testStrategy] - Test strategy (for manual task creation)
  * @param {string} [args.dependencies] - Comma-separated list of task IDs this task depends on
  * @param {string} [args.priority='medium'] - Task priority (high, medium, low)
- * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
  * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
- * @param {string} [args.projectRoot] - Project root path
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function addTaskDirect(args, log, context = {}) {
-	// Destructure expected args (including research and projectRoot)
-	const {
-		tasksJsonPath,
-		prompt,
-		dependencies,
-		priority,
-		research,
-		projectRoot
-	} = args;
+export async function addTaskDirect(taskMaster, args, log, context = {}) {
+	// Destructure expected args
+	const { prompt, dependencies, priority, research } = args;
 	const { session } = context; // Destructure session from context
 
 	// Enable silent mode to prevent console logs from interfering with JSON response
@@ -47,22 +39,6 @@ export async function addTaskDirect(args, log, context = {}) {
 	const mcpLog = createLogWrapper(log);
 
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('addTaskDirect called without tasksJsonPath');
-			disableSilentMode(); // Disable before returning
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
 		// Check if this is manual task creation or AI-driven task creation
 		const isManualCreation = args.title && args.description;
 
@@ -112,20 +88,21 @@ export async function addTaskDirect(args, log, context = {}) {
 
 			// Call the addTask function with manual task data
 			const result = await addTask(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				null, // prompt is null for manual creation
 				taskDependencies,
 				taskPriority,
 				{
 					session,
 					mcpLog,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'add-task',
 					outputType: 'mcp'
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
-				false // research flag is false for manual creation
+				false, // research flag is false for manual creation
+				taskMaster.getProjectRoot() // Pass projectRoot
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
@@ -138,20 +115,21 @@ export async function addTaskDirect(args, log, context = {}) {
 
 			// Call the addTask function, passing the research flag
 			const result = await addTask(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				prompt, // Use the prompt for AI creation
 				taskDependencies,
 				taskPriority,
 				{
 					session,
 					mcpLog,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'add-task',
 					outputType: 'mcp'
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation
-				research // Pass the research flag
+				research, // Pass the research flag
+				taskMaster.getProjectRoot() // Pass projectRoot
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;

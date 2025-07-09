@@ -24,30 +24,32 @@ import fs from 'fs';
 
 /**
  * Direct function wrapper for adding or removing rules.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {"add"|"remove"} args.action - Action to perform: add or remove rules
  * @param {string[]} args.profiles - List of profiles to add or remove
- * @param {string} args.projectRoot - Absolute path to the project root
+ * @param {string} taskMaster.getProjectRoot() - Absolute path to the project root
  * @param {boolean} [args.yes=true] - Run non-interactively
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function rulesDirect(args, log, context = {}) {
+export async function rulesDirect(taskMaster, args, log, context = {}) {
 	enableSilentMode();
 	try {
-		const { action, profiles, projectRoot, yes, force } = args;
+		const { action, profiles, yes, force } = args;
 		if (
 			!action ||
 			!Array.isArray(profiles) ||
 			profiles.length === 0 ||
-			!projectRoot
+			!taskMaster.getProjectRoot()
 		) {
 			return {
 				success: false,
 				error: {
 					code: 'MISSING_ARGUMENT',
-					message: 'action, profiles, and projectRoot are required.'
+					message:
+						'action, profiles, and taskMaster.getProjectRoot() are required.'
 				}
 			};
 		}
@@ -57,8 +59,13 @@ export async function rulesDirect(args, log, context = {}) {
 
 		if (action === RULES_ACTIONS.REMOVE) {
 			// Safety check: Ensure this won't remove all rule profiles (unless forced)
-			if (!force && wouldRemovalLeaveNoProfiles(projectRoot, profiles)) {
-				const installedProfiles = getInstalledProfiles(projectRoot);
+			if (
+				!force &&
+				wouldRemovalLeaveNoProfiles(taskMaster.getProjectRoot(), profiles)
+			) {
+				const installedProfiles = getInstalledProfiles(
+					taskMaster.getProjectRoot()
+				);
 				const remainingProfiles = installedProfiles.filter(
 					(profile) => !profiles.includes(profile)
 				);
@@ -81,7 +88,10 @@ export async function rulesDirect(args, log, context = {}) {
 					continue;
 				}
 				const profileConfig = getRulesProfile(profile);
-				const result = removeProfileRules(projectRoot, profileConfig);
+				const result = removeProfileRules(
+					taskMaster.getProjectRoot(),
+					profileConfig
+				);
 				removalResults.push(result);
 			}
 			const successes = removalResults
@@ -127,18 +137,24 @@ export async function rulesDirect(args, log, context = {}) {
 				}
 				const profileConfig = getRulesProfile(profile);
 				const { success, failed } = convertAllRulesToProfileRules(
-					projectRoot,
+					taskMaster.getProjectRoot(),
 					profileConfig
 				);
 
 				// Determine paths
 				const rulesDir = profileConfig.rulesDir;
-				const profileRulesDir = path.join(projectRoot, rulesDir);
+				const profileRulesDir = path.join(
+					taskMaster.getProjectRoot(),
+					rulesDir
+				);
 				const profileDir = profileConfig.profileDir;
 				const mcpConfig = profileConfig.mcpConfig !== false;
 				const mcpPath =
 					mcpConfig && profileConfig.mcpConfigPath
-						? path.join(projectRoot, profileConfig.mcpConfigPath)
+						? path.join(
+								taskMaster.getProjectRoot(),
+								profileConfig.mcpConfigPath
+							)
 						: null;
 
 				// Check what was created
@@ -146,7 +162,7 @@ export async function rulesDirect(args, log, context = {}) {
 					mcpConfig && mcpPath ? fs.existsSync(mcpPath) : undefined;
 				const rulesDirCreated = fs.existsSync(profileRulesDir);
 				const profileFolderCreated = fs.existsSync(
-					path.join(projectRoot, profileDir)
+					path.join(taskMaster.getProjectRoot(), profileDir)
 				);
 
 				const error =

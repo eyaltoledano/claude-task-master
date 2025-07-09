@@ -8,43 +8,35 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import path from 'path';
 
 /**
  * Direct function wrapper for generateTaskFiles with error handling.
  *
- * @param {Object} args - Command arguments containing tasksJsonPath and outputDir.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments containing outputDir.
+ * @param {string} [args.outputDir] - Output directory for generated files (defaults to directory containing tasks.json)
  * @param {Object} log - Logger object.
+ * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function generateTaskFilesDirect(args, log) {
+export async function generateTaskFilesDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	// Destructure expected args
-	const { tasksJsonPath, outputDir } = args;
+	const { outputDir } = args;
 	try {
 		log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
-		// Check if paths were provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
-		if (!outputDir) {
-			const errorMessage = 'outputDir is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
+		const resolvedOutputDir =
+			outputDir || path.dirname(taskMaster.getTasksPath());
 
-		// Use the provided paths
-		const tasksPath = tasksJsonPath;
-		const resolvedOutputDir = outputDir;
-
-		log.info(`Generating task files from ${tasksPath} to ${resolvedOutputDir}`);
+		log.info(
+			`Generating task files from ${taskMaster.getTasksPath()} to ${resolvedOutputDir}`
+		);
 
 		// Execute core generateTaskFiles function in a separate try/catch
 		try {
@@ -52,7 +44,7 @@ export async function generateTaskFilesDirect(args, log) {
 			enableSilentMode();
 
 			// The function is synchronous despite being awaited elsewhere
-			generateTaskFiles(tasksPath, resolvedOutputDir);
+			generateTaskFiles(taskMaster.getTasksPath(), resolvedOutputDir);
 
 			// Restore normal logging after task generation
 			disableSilentMode();
@@ -72,7 +64,7 @@ export async function generateTaskFilesDirect(args, log) {
 			success: true,
 			data: {
 				message: `Successfully generated task files`,
-				tasksPath: tasksPath,
+				tasksPath: taskMaster.getTasksPath(),
 				outputDir: resolvedOutputDir,
 				taskFiles:
 					'Individual task files have been generated in the output directory'

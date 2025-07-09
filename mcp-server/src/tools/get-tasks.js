@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 

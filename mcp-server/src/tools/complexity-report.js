@@ -4,14 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
-import { complexityReportDirect } from '../core/task-master-core.js';
+import { complexityReportDirect } from '../core/direct-functions/complexity-report.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 
 /**
@@ -34,35 +29,14 @@ export function registerComplexityReportTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			'complexityReportPath': 'file',
-			'required': [
-						'complexityReportPath'
-			]
-})(async (taskMaster, args, { log, session }) => {
+			complexityReportPath: 'file'
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Getting complexity report with args: ${JSON.stringify(args)}`
 				);
 
-				const pathArgs = {
-					projectRoot: taskMaster.getProjectRoot(),
-					complexityReport: args.file
-				};
-
-				const reportPath = findComplexityReportPath(pathArgs, log);
-
-				if (!reportPath) {
-					return createErrorResponse(
-						'No complexity report found. Run task-master analyze-complexity first.'
-					);
-				}
-
-				const result = await complexityReportDirect(
-					{
-						reportPath: reportPath
-					},
-					log
-				);
+				const result = await complexityReportDirect(taskMaster, args, log);
 
 				if (result.success) {
 					log.info('Successfully retrieved complexity report');

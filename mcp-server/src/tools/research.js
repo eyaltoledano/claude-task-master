@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { researchDirect } from '../core/task-master-core.js';
 
@@ -66,7 +61,7 @@ export function registerResearchTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			required: []
+			required: ['tasksPath']
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
@@ -75,6 +70,7 @@ export function registerResearchTool(server) {
 
 				// Call the direct function
 				const result = await researchDirect(
+					taskMaster,
 					{
 						query: args.query,
 						taskIds: args.taskIds,
@@ -83,8 +79,7 @@ export function registerResearchTool(server) {
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
 						saveTo: args.saveTo,
-						saveToFile: args.saveToFile || false,
-						projectRoot: taskMaster.getProjectRoot()
+						saveToFile: args.saveToFile || false
 					},
 					log,
 					{ session }

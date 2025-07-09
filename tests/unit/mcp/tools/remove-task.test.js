@@ -74,7 +74,6 @@ const registerRemoveTaskTool = (server) => {
 			try {
 				log.info && log.info(`Removing task(s) with ID(s): ${args.id}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = mockFindTasksPath(

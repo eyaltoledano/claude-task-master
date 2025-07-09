@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { useTagDirect } from '../core/task-master-core.js';
 
@@ -38,7 +33,6 @@ export function registerUseTagTool(server) {
 			try {
 				log.info(`Starting use-tag with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -54,11 +48,8 @@ export function registerUseTagTool(server) {
 
 				// Call the direct function
 				const result = await useTagDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						name: args.name,
-						projectRoot: taskMaster.getProjectRoot()
-					},
+					taskMaster,
+					{ name: args.name },
 					log,
 					{ session }
 				);

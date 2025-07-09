@@ -4,17 +4,9 @@
  */
 
 import { z } from 'zod';
-import path from 'path';
-import fs from 'fs'; // Import fs for directory check/creation
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
-import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
-import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { analyzeTaskComplexityDirect } from '../core/task-master-core.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -43,7 +35,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.string()
 				.optional()
 				.describe(
-					`Output file path relative to project root (default: ${COMPLEXITY_REPORT_FILE}).`
+					'Output file path relative to project root (default: complexity-report.json).'
 				),
 			file: z
 				.string()
@@ -74,62 +66,21 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			'tasksPath': 'file',
-			'complexityReportPath': 'output',
-			'required': [
-						'tasksPath'
-			]
-})(async (taskMaster, args, { log, session }) => {
+			tasksPath: 'file',
+			complexityReportPath: 'output',
+			required: ['tasksPath', 'complexityReportPath']
+		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'analyze_project_complexity'; // Define tool name for logging
 			try {
 				log.info(
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json within project root '${taskMaster.getProjectRoot()}': ${error.message}`
-					);
-				}
-
-				const outputPath = args.output
-					? path.resolve(taskMaster.getProjectRoot(), args.output)
-					: path.resolve(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
-
-				log.info(`${toolName}: Report output path: ${outputPath}`);
-
-				// Ensure output directory exists
-				const outputDir = path.dirname(outputPath);
-				try {
-					if (!fs.existsSync(outputDir)) {
-						fs.mkdirSync(outputDir, { recursive: true });
-						log.info(`${toolName}: Created output directory: ${outputDir}`);
-					}
-				} catch (dirError) {
-					log.error(
-						`${toolName}: Failed to create output directory ${outputDir}: ${dirError.message}`
-					);
-					return createErrorResponse(
-						`Failed to create output directory: ${dirError.message}`
-					);
-				}
-
-				// 3. Call Direct Function - Pass projectRoot in first arg object
 				const result = await analyzeTaskComplexityDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						outputPath: outputPath,
 						threshold: args.threshold,
 						research: args.research,
-						projectRoot: taskMaster.getProjectRoot(),
 						ids: args.ids,
 						from: args.from,
 						to: args.to
@@ -138,7 +89,6 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					{ session }
 				);
 
-				// 4. Handle Result
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);

@@ -14,29 +14,20 @@ import {
 /**
  * Direct function wrapper for updating tasks based on new context.
  *
- * @param {Object} args - Command arguments containing projectRoot, from, prompt, research options.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments containing taskMaster.getProjectRoot(), from, prompt, research options.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function updateTasksDirect(args, log, context = {}) {
+export async function updateTasksDirect(taskMaster, args, log, context = {}) {
 	const { session } = context;
-	const { from, prompt, research, tasksJsonPath, projectRoot, tag } = args;
+	const { from, prompt, research, tag } = args;
 
 	// Create the standard logger wrapper
 	const logWrapper = createLogWrapper(log);
 
 	// --- Input Validation ---
-	if (!projectRoot) {
-		logWrapper.error('updateTasksDirect requires a projectRoot argument.');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'projectRoot is required.'
-			}
-		};
-	}
 
 	if (!from) {
 		logWrapper.error('updateTasksDirect called without from ID');
@@ -61,21 +52,21 @@ export async function updateTasksDirect(args, log, context = {}) {
 	}
 
 	logWrapper.info(
-		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksJsonPath}, ProjectRoot: ${projectRoot}`
+		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${taskMaster.getTasksPath()}, ProjectRoot: ${taskMaster.getProjectRoot()}`
 	);
 
 	enableSilentMode(); // Enable silent mode
 	try {
 		// Call the core updateTasks function
 		const result = await updateTasks(
-			tasksJsonPath,
+			taskMaster.getTasksPath(),
 			from,
 			prompt,
 			research,
 			{
 				session,
 				mcpLog: logWrapper,
-				projectRoot,
+				projectRoot: taskMaster.getProjectRoot(),
 				tag
 			},
 			'json'
@@ -89,7 +80,7 @@ export async function updateTasksDirect(args, log, context = {}) {
 				success: true,
 				data: {
 					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
-					tasksPath: tasksJsonPath,
+					tasksPath: taskMaster.getTasksPath(),
 					updatedCount: result.updatedTasks.length,
 					telemetryData: result.telemetryData,
 					tagInfo: result.tagInfo

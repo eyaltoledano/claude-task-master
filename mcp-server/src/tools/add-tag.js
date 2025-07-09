@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { addTagDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 
@@ -57,14 +54,13 @@ export function registerAddTagTool(server) {
 
 			// Call the direct function
 			const result = await addTagDirect(
+				taskMaster,
 				{
-					tasksJsonPath: taskMaster.getTasksPath(),
 					name: args.name,
 					copyFromCurrent: args.copyFromCurrent,
 					copyFromTag: args.copyFromTag,
 					fromBranch: args.fromBranch,
-					description: args.description,
-					projectRoot: taskMaster.getProjectRoot()
+					description: args.description
 				},
 				log,
 				{ session }

@@ -3,9 +3,17 @@ import {
 	wouldRemovalLeaveNoProfiles
 } from '../../../src/utils/profiles.js';
 import { rulesDirect } from '../../../mcp-server/src/core/direct-functions/rules.js';
+import { TaskMaster } from '../../../src/task-master.js';
 import fs from 'fs';
 import path from 'path';
-import { jest } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	beforeEach,
+	afterEach,
+	expect
+} from '@jest/globals';
 
 // Mock logger
 const mockLog = {
@@ -105,6 +113,11 @@ describe('Rules Safety Check', () => {
 	describe('MCP Safety Check Integration', () => {
 		it('should block removal of all profiles without force', async () => {
 			const projectRoot = '/test/project';
+			const taskMaster = new TaskMaster({
+				projectRoot,
+				tasksPath: path.join(projectRoot, 'tasks.json'),
+				complexityReportPath: path.join(projectRoot, 'complexity-report.json')
+			});
 
 			// Mock fs.existsSync to simulate installed profiles
 			mockExistsSync.mockImplementation((filePath) => {
@@ -112,10 +125,10 @@ describe('Rules Safety Check', () => {
 			});
 
 			const result = await rulesDirect(
+				taskMaster,
 				{
 					action: 'remove',
 					profiles: ['cursor', 'roo'],
-					projectRoot,
 					force: false
 				},
 				mockLog
@@ -128,15 +141,20 @@ describe('Rules Safety Check', () => {
 
 		it('should allow removal of all profiles with force', async () => {
 			const projectRoot = '/test/project';
+			const taskMaster = new TaskMaster({
+				projectRoot,
+				tasksPath: path.join(projectRoot, 'tasks.json'),
+				complexityReportPath: path.join(projectRoot, 'complexity-report.json')
+			});
 
 			// Mock fs.existsSync and other file operations for successful removal
 			mockExistsSync.mockReturnValue(true);
 
 			const result = await rulesDirect(
+				taskMaster,
 				{
 					action: 'remove',
 					profiles: ['cursor', 'roo'],
-					projectRoot,
 					force: true
 				},
 				mockLog
@@ -148,6 +166,11 @@ describe('Rules Safety Check', () => {
 
 		it('should allow partial removal without force', async () => {
 			const projectRoot = '/test/project';
+			const taskMaster = new TaskMaster({
+				projectRoot,
+				tasksPath: path.join(projectRoot, 'tasks.json'),
+				complexityReportPath: path.join(projectRoot, 'complexity-report.json')
+			});
 
 			// Mock fs.existsSync to simulate multiple profiles installed
 			mockExistsSync.mockImplementation((filePath) => {
@@ -159,10 +182,10 @@ describe('Rules Safety Check', () => {
 			});
 
 			const result = await rulesDirect(
+				taskMaster,
 				{
 					action: 'remove',
 					profiles: ['roo'], // Only removing one profile
-					projectRoot,
 					force: false
 				},
 				mockLog

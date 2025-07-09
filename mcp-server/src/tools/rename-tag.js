@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { renameTagDirect } from '../core/task-master-core.js';
 
@@ -39,7 +34,6 @@ export function registerRenameTagTool(server) {
 			try {
 				log.info(`Starting rename-tag with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -55,12 +49,8 @@ export function registerRenameTagTool(server) {
 
 				// Call the direct function
 				const result = await renameTagDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						oldName: args.oldName,
-						newName: args.newName,
-						projectRoot: taskMaster.getProjectRoot()
-					},
+					taskMaster,
+					{ oldName: args.oldName, newName: args.newName },
 					log,
 					{ session }
 				);

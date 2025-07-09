@@ -35,22 +35,11 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	getComplexityWithColor: jest.fn((score) => `Score: ${score}`)
 }));
 
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/dependency-manager.js',
-	() => ({
-		validateAndFixDependencies: jest.fn(),
-		validateTaskDependencies: jest.fn()
-	})
-);
-
 // Import the mocked modules
 const { readJSON, log, readComplexityReport, addComplexityToTask } =
 	await import('../../../../../scripts/modules/utils.js');
 const { displayTaskList } = await import(
 	'../../../../../scripts/modules/ui.js'
-);
-const { validateAndFixDependencies } = await import(
-	'../../../../../scripts/modules/dependency-manager.js'
 );
 
 // Import the module under test
@@ -137,7 +126,6 @@ describe('listTasks', () => {
 		// Set up default mock return values
 		readJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
 		readComplexityReport.mockReturnValue(null);
-		validateAndFixDependencies.mockImplementation(() => {});
 		displayTaskList.mockImplementation(() => {});
 		addComplexityToTask.mockImplementation(() => {});
 	});
@@ -282,7 +270,6 @@ describe('listTasks', () => {
 
 		// Assert
 		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
-		// Note: validateAndFixDependencies is not called by listTasks function
 		// This test just verifies the function runs without error
 	});
 

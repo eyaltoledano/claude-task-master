@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 
@@ -56,7 +51,6 @@ export function registerExpandTaskTool(server) {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -71,14 +65,13 @@ export function registerExpandTaskTool(server) {
 				}
 
 				const result = await expandTaskDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag || 'master'
 					},
 					log,

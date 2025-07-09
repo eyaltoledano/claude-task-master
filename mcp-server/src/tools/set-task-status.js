@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import {
 	setTaskStatusDirect,
@@ -49,16 +44,13 @@ export function registerSetTaskStatusTool(server) {
 			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
 		execute: withTaskMaster({
-			'tasksPath': 'file',
-			'complexityReportPath': 'complexityReport',
-			'required': [
-						'tasksPath'
-			]
-})(async (taskMaster, args, { log, session }) => {
+			tasksPath: 'file',
+			complexityReportPath: 'complexityReport',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -86,12 +78,11 @@ export function registerSetTaskStatusTool(server) {
 				}
 
 				const result = await setTaskStatusDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						status: args.status,
 						complexityReportPath,
-						projectRoot: taskMaster.getProjectRoot(),
 						tag: args.tag
 					},
 					log,

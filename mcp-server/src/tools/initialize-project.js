@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
@@ -56,16 +51,17 @@ export function registerInitializeProjectTool(server) {
 					`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, context) => {
-			const { log } = context;
-			const session = context.session;
-
+		execute: withTaskMaster({
+			required: []
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Executing initialize_project tool with args: ${JSON.stringify(args)}`
 				);
 
-				const result = await initializeProjectDirect(args, log, { session });
+				const result = await initializeProjectDirect(taskMaster, args, log, {
+					session
+				});
 
 				return handleApiResult(
 					result,

@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { copyTagDirect } from '../core/task-master-core.js';
 
@@ -44,7 +39,6 @@ export function registerCopyTagTool(server) {
 			try {
 				log.info(`Starting copy-tag with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -60,12 +54,11 @@ export function registerCopyTagTool(server) {
 
 				// Call the direct function
 				const result = await copyTagDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						sourceName: args.sourceName,
 						targetName: args.targetName,
-						description: args.description,
-						projectRoot: taskMaster.getProjectRoot()
+						description: args.description
 					},
 					log,
 					{ session }

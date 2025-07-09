@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { addDependencyDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 
@@ -42,10 +39,10 @@ export function registerAddDependencyTool(server) {
 				`Adding dependency for task ${args.id} to depend on ${args.dependsOn}`
 			);
 
-			// Call the direct function with the resolved path
+			// Call the direct function with taskMaster
 			const result = await addDependencyDirect(
+				taskMaster,
 				{
-					tasksJsonPath: taskMaster.getTasksPath(),
 					id: args.id,
 					dependsOn: args.dependsOn
 				},

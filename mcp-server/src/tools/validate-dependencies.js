@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { validateDependenciesDirect } from '../core/task-master-core.js';
 
@@ -35,26 +30,7 @@ export function registerValidateDependenciesTool(server) {
 			try {
 				log.info(`Validating dependencies with args: ${JSON.stringify(args)}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				const result = await validateDependenciesDirect(
-					{
-						tasksJsonPath: tasksJsonPath
-					},
-					log
-				);
+				const result = await validateDependenciesDirect(taskMaster, args, log);
 
 				if (result.success) {
 					log.info(

@@ -13,18 +13,16 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for renaming a tag with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} args.oldName - Current name of the tag to rename
- * @param {string} args.newName - New name for the tag
- * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
- * @param {string} [args.projectRoot] - Project root path
- * @param {Object} log - Logger object
+ * @param {string} args.newName - New name for the tag * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function renameTagDirect(args, log, context = {}) {
+export async function renameTagDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, oldName, newName, projectRoot } = args;
+	const { oldName, newName } = args;
 	const { session } = context;
 
 	// Enable silent mode to prevent console logs from interfering with JSON response
@@ -34,19 +32,6 @@ export async function renameTagDirect(args, log, context = {}) {
 	const mcpLog = createLogWrapper(log);
 
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('renameTagDirect called without tasksJsonPath');
-			disableSilentMode();
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
 		// Check required parameters
 		if (!oldName || typeof oldName !== 'string') {
 			log.error('Missing required parameter: oldName');
@@ -76,14 +61,14 @@ export async function renameTagDirect(args, log, context = {}) {
 
 		// Call the renameTag function
 		const result = await renameTag(
-			tasksJsonPath,
+			taskMaster.getTasksPath(),
 			oldName,
 			newName,
 			{}, // options (empty for now)
 			{
 				session,
 				mcpLog,
-				projectRoot
+				projectRoot: taskMaster.getProjectRoot()
 			},
 			'json' // outputFormat - use 'json' to suppress CLI UI
 		);

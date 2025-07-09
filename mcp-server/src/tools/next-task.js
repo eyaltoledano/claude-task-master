@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	createErrorResponse,
-	handleApiResult
-
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
 
@@ -35,45 +30,14 @@ export function registerNextTaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			'tasksPath': 'file',
-			'complexityReportPath': 'complexityReport',
-			'required': [
-						'tasksPath'
-			]
-})(async (taskMaster, args, { log, session }) => {
+			tasksPath: 'file',
+			complexityReportPath: 'complexityReport',
+			required: ['tasksPath']
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);
 
-				// Resolve the path to tasks.json using new path utilities
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = resolveTasksPath(args, session);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				// Resolve the path to complexity report (optional)
-				let complexityReportPath;
-				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-					// This is optional, so we don't fail the operation
-					complexityReportPath = null;
-				}
-
-				const result = await nextTaskDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						reportPath: complexityReportPath,
-						projectRoot: taskMaster.getProjectRoot()
-					},
-					log,
-					{ session }
-				);
+				const result = await nextTaskDirect(taskMaster, {}, log, { session });
 
 				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);
 				return handleApiResult(

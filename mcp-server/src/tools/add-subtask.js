@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { addSubtaskDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 
@@ -67,12 +64,9 @@ export function registerAddSubtaskTool(server) {
 			try {
 				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				const tasksJsonPath = taskMaster.getTasksPath();
-
 				const result = await addSubtaskDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						taskId: args.taskId,
 						title: args.title,
@@ -81,11 +75,9 @@ export function registerAddSubtaskTool(server) {
 						status: args.status,
 						dependencies: args.dependencies,
 						skipGenerate: args.skipGenerate,
-						projectRoot: args.projectRoot,
 						tag: args.tag
 					},
-					log,
-					{ session }
+					log
 				);
 
 				if (result.success) {
@@ -101,6 +93,10 @@ export function registerAddSubtaskTool(server) {
 					undefined,
 					taskMaster.getProjectRoot()
 				);
+			} catch (error) {
+				log.error(`Error in add-subtask tool: ${error.message}`);
+				return createErrorResponse(error.message);
+			}
 		})
 	});
 }

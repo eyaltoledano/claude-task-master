@@ -13,30 +13,18 @@ import { nextTaskDirect } from './next-task.js';
 /**
  * Direct function wrapper for setTaskStatus with error handling.
  *
- * @param {Object} args - Command arguments containing id, status, tasksJsonPath, and projectRoot.
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments containing id, status, taskMaster.getTasksPath(), and taskMaster.getProjectRoot().
  * @param {Object} log - Logger object.
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function setTaskStatusDirect(args, log, context = {}) {
-	// Destructure expected args, including the resolved tasksJsonPath and projectRoot
-	const { tasksJsonPath, id, status, complexityReportPath, projectRoot, tag } =
-		args;
+export async function setTaskStatusDirect(taskMaster, args, log, context = {}) {
+	// Destructure expected args, including the resolved taskMaster.getTasksPath() and taskMaster.getProjectRoot()
+	const { id, status, tag } = args;
 	const { session } = context;
 	try {
-		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
-
-		// Check required parameters (id and status)
+		log.info(`Setting task status with args: ${JSON.stringify(args)}`); // Check required parameters (id and status)
 		if (!id) {
 			const errorMessage =
 				'No task ID specified. Please provide a task ID to update.';
@@ -57,57 +45,45 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 			};
 		}
 
-		// Use the provided path
-		const tasksPath = tasksJsonPath;
-
 		// Execute core setTaskStatus function
-		const taskId = id;
-		const newStatus = status;
-
-		log.info(`Setting task ${taskId} status to "${newStatus}"`);
+		log.info(`Setting task ${id} status to "${status}"`);
 
 		// Call the core function with proper silent mode handling
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
 			await setTaskStatus(
-				tasksPath,
-				taskId,
-				newStatus,
+				taskMaster.getTasksPath(),
+				id,
+				status,
 				{
 					mcpLog: log,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					session
 				},
 				tag
 			);
 
-			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
+			log.info(`Successfully set task ${id} status to ${status}`);
 
 			// Return success data
 			const result = {
 				success: true,
 				data: {
-					message: `Successfully updated task ${taskId} status to "${newStatus}"`,
-					taskId,
-					status: newStatus,
-					tasksPath: tasksPath // Return the path used
+					message: `Successfully updated task ${id} status to "${status}"`,
+					taskId: id,
+					status: status,
+					tasksPath: taskMaster.getTasksPath() // Return the path used
 				}
 			};
 
 			// If the task was completed, attempt to fetch the next task
 			if (result.data.status === 'done') {
 				try {
-					log.info(`Attempting to fetch next task for task ${taskId}`);
-					const nextResult = await nextTaskDirect(
-						{
-							tasksJsonPath: tasksJsonPath,
-							reportPath: complexityReportPath,
-							projectRoot: projectRoot
-						},
-						log,
-						{ session }
-					);
+					log.info(`Attempting to fetch next task for task ${id}`);
+					const nextResult = await nextTaskDirect(taskMaster, {}, log, {
+						session
+					});
 
 					if (nextResult.success) {
 						log.info(

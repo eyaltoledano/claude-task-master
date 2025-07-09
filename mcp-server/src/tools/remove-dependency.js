@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { removeDependencyDirect } from '../core/task-master-core.js';
 
@@ -38,51 +33,35 @@ export function registerRemoveDependencyTool(server) {
 			tasksPath: 'file',
 			required: ['tasksPath']
 		})(async (taskMaster, args, { log, session }) => {
-			try {
-				log.info(
-					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
-				);
+			log.info(
+				`Removing dependency for task ${args.id} from ${args.dependsOn}`
+			);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+			// Call the direct function with taskMaster
+			const result = await removeDependencyDirect(
+				taskMaster,
+				{
+					id: args.id,
+					dependsOn: args.dependsOn
+				},
+				log
+			);
 
-				const result = await removeDependencyDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						id: args.id,
-						dependsOn: args.dependsOn
-					},
-					log
-				);
-
-				if (result.success) {
-					log.info(`Successfully removed dependency: ${result.data.message}`);
-				} else {
-					log.error(`Failed to remove dependency: ${result.error.message}`);
-				}
-
-				return handleApiResult(
-					result,
-					log,
-					'Error removing dependency',
-					undefined,
-					taskMaster.getProjectRoot()
-				);
-			} catch (error) {
-				log.error(`Error in removeDependency tool: ${error.message}`);
-				return createErrorResponse(error.message);
+			// Log result
+			if (result.success) {
+				log.info(`Successfully removed dependency: ${result.data.message}`);
+			} else {
+				log.error(`Failed to remove dependency: ${result.error.message}`);
 			}
+
+			// Use handleApiResult to format the response
+			return handleApiResult(
+				result,
+				log,
+				'Error removing dependency',
+				undefined,
+				taskMaster.getProjectRoot()
+			);
 		})
 	});
 }

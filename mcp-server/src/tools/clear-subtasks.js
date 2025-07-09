@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 
@@ -48,15 +45,9 @@ export function registerClearSubtasksTool(server) {
 			log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
 			const result = await clearSubtasksDirect(
-				{
-					tasksJsonPath: taskMaster.getTasksPath(),
-					id: args.id,
-					all: args.all,
-					projectRoot: taskMaster.getProjectRoot(),
-					tag: args.tag || 'master'
-				},
-				log,
-				{ session }
+				taskMaster,
+				{ id: args.id, all: args.all, tag: args.tag },
+				log
 			);
 
 			if (result.success) {

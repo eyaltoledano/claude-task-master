@@ -12,39 +12,37 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Expand all pending tasks with subtasks (Direct Function Wrapper)
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} taskMaster.getTasksPath() - Explicit path to the tasks.json file.
  * @param {number|string} [args.num] - Number of subtasks to generate
  * @param {boolean} [args.research] - Enable research-backed subtask generation
  * @param {string} [args.prompt] - Additional context to guide subtask generation
- * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
- * @param {string} [args.projectRoot] - Project root path.
- * @param {Object} log - Logger object from FastMCP
+ * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them * @param {Object} log - Logger object from FastMCP
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function expandAllTasksDirect(args, log, context = {}) {
+export async function expandAllTasksDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	const { session } = context; // Extract session
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, num, research, prompt, force, projectRoot } = args;
+	// Destructure expected args, including taskMaster.getProjectRoot()
+	const { num, research, prompt, force } = args;
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
 
-	if (!tasksJsonPath) {
-		log.error('expandAllTasksDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
-
 	enableSilentMode(); // Enable silent mode for the core function call
 	try {
 		log.info(
-			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, projectRoot })}`
+			`Calling core expandAllTasks with args: ${JSON.stringify({
+				num,
+				research,
+				prompt,
+				force,
+				projectRoot: taskMaster.getProjectRoot()
+			})}`
 		);
 
 		// Parse parameters (ensure correct types)
@@ -53,14 +51,14 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
 
-		// Call the core function, passing options and the context object { session, mcpLog, projectRoot }
+		// Call the core function, passing options and the context object
 		const result = await expandAllTasks(
-			tasksJsonPath,
+			taskMaster.getTasksPath(),
 			numSubtasks,
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot },
+			{ session, mcpLog, projectRoot: taskMaster.getProjectRoot() },
 			'json'
 		);
 

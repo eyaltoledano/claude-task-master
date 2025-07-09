@@ -4,12 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	
-	handleApiResult,
-	createErrorResponse
-
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 import { removeTaskDirect } from '../core/task-master-core.js';
 
@@ -49,7 +44,6 @@ export function registerRemoveTaskTool(server) {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
 
-				// Use taskMaster.getProjectRoot() directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
@@ -66,12 +60,8 @@ export function registerRemoveTaskTool(server) {
 				log.info(`Using tasks file path: ${tasksJsonPath}`);
 
 				const result = await removeTaskDirect(
-					{
-						tasksJsonPath: taskMaster.getTasksPath(),
-						id: args.id,
-						projectRoot: taskMaster.getProjectRoot(),
-						tag: args.tag
-					},
+					taskMaster,
+					{ id: args.id, tag: args.tag },
 					log,
 					{ session }
 				);

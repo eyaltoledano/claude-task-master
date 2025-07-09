@@ -11,41 +11,27 @@ import fs from 'fs';
 
 /**
  * Fix invalid dependencies in tasks.json automatically
+ * @param {Object} taskMaster - TaskMaster instance
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.projectRoot - Project root directory
  * @param {string} args.tag - Tag for the project
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function fixDependenciesDirect(args, log) {
+export async function fixDependenciesDirect(taskMaster, args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, projectRoot, tag } = args;
+	const { tag } = args;
 	try {
-		log.info(`Fixing invalid dependencies in tasks: ${tasksJsonPath}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('fixDependenciesDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
-		// Use provided path
-		const tasksPath = tasksJsonPath;
+		log.info(
+			`Fixing invalid dependencies in tasks: ${taskMaster.getTasksPath()}`
+		);
 
 		// Verify the file exists
-		if (!fs.existsSync(tasksPath)) {
+		if (!fs.existsSync(taskMaster.getTasksPath())) {
 			return {
 				success: false,
 				error: {
 					code: 'FILE_NOT_FOUND',
-					message: `Tasks file not found at ${tasksPath}`
+					message: `Tasks file not found at ${taskMaster.getTasksPath()}`
 				}
 			};
 		}
@@ -54,8 +40,8 @@ export async function fixDependenciesDirect(args, log) {
 		enableSilentMode();
 
 		// Call the original command function using the provided path and proper context
-		await fixDependenciesCommand(tasksPath, {
-			context: { projectRoot, tag }
+		await fixDependenciesCommand(taskMaster.getTasksPath(), {
+			context: { projectRoot: taskMaster.getProjectRoot(), tag }
 		});
 
 		// Restore normal logging
@@ -65,7 +51,7 @@ export async function fixDependenciesDirect(args, log) {
 			success: true,
 			data: {
 				message: 'Dependencies fixed successfully',
-				tasksPath,
+				tasksPath: taskMaster.getTasksPath(),
 				tag: tag || 'master'
 			}
 		};

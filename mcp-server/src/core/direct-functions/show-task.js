@@ -8,54 +8,32 @@ import {
 	readComplexityReport,
 	readJSON
 } from '../../../../scripts/modules/utils.js';
-import { findTasksPath } from '../utils/path-utils.js';
 
 /**
  * Direct function wrapper for getting task details.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments.
  * @param {string} args.id - Task ID to show.
- * @param {string} [args.file] - Optional path to the tasks file (passed to findTasksPath).
- * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {string} [args.status] - Optional status to filter subtasks by.
- * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function showTaskDirect(args, log) {
+export async function showTaskDirect(taskMaster, args, log, context = {}) {
 	// This function doesn't need session context since it only reads data
-	// Destructure projectRoot and other args. projectRoot is assumed normalized.
-	const { id, file, reportPath, status, projectRoot } = args;
+	// Destructure args
+	const { id, status } = args;
 
 	log.info(
-		`Showing task direct function. ID: ${id}, File: ${file}, Status Filter: ${status}, ProjectRoot: ${projectRoot}`
+		`Showing task direct function. ID: ${id}, Status Filter: ${status}, ProjectRoot: ${taskMaster.getProjectRoot()}`
 	);
 
-	// --- Path Resolution using the passed (already normalized) projectRoot ---
-	let tasksJsonPath;
 	try {
-		// Use the projectRoot passed directly from args
-		tasksJsonPath = findTasksPath(
-			{ projectRoot: projectRoot, file: file },
-			log
+		const tasksData = readJSON(
+			taskMaster.getTasksPath(),
+			taskMaster.getProjectRoot()
 		);
-		log.info(`Resolved tasks path: ${tasksJsonPath}`);
-	} catch (error) {
-		log.error(`Error finding tasks.json: ${error.message}`);
-		return {
-			success: false,
-			error: {
-				code: 'TASKS_FILE_NOT_FOUND',
-				message: `Failed to find tasks.json: ${error.message}`
-			}
-		};
-	}
-	// --- End Path Resolution ---
-
-	// --- Rest of the function remains the same, using tasksJsonPath ---
-	try {
-		const tasksData = readJSON(tasksJsonPath, projectRoot);
 		if (!tasksData || !tasksData.tasks) {
 			return {
 				success: false,
@@ -63,7 +41,9 @@ export async function showTaskDirect(args, log) {
 			};
 		}
 
-		const complexityReport = readComplexityReport(reportPath);
+		const complexityReport = readComplexityReport(
+			taskMaster.getComplexityReportPath()
+		);
 
 		// Parse comma-separated IDs
 		const taskIds = id

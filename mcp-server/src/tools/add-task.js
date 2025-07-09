@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { withTaskMaster } from '../../../src/task-master.js';
 
@@ -70,8 +67,8 @@ export function registerAddTaskTool(server) {
 
 			// Call the direct function
 			const result = await addTaskDirect(
+				taskMaster,
 				{
-					tasksJsonPath: taskMaster.getTasksPath(),
 					prompt: args.prompt,
 					title: args.title,
 					description: args.description,
@@ -79,8 +76,7 @@ export function registerAddTaskTool(server) {
 					testStrategy: args.testStrategy,
 					dependencies: args.dependencies,
 					priority: args.priority,
-					research: args.research,
-					projectRoot: taskMaster.getProjectRoot()
+					research: args.research
 				},
 				log,
 				{ session }
