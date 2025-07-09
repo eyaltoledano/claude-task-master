@@ -38,18 +38,27 @@ function removeDirectoryRecursive(dirPath) {
 
 // Lifecycle functions for Claude Code profile
 function onAddRulesProfile(targetDir, assetsDir) {
-	// Copy .claude directory recursively
-	const claudeSourceDir = path.join(assetsDir, 'claude');
-	const claudeDestDir = path.join(targetDir, '.claude');
+	// Use the provided assets directory to find the source file
+	const sourceFile = path.join(assetsDir, 'AGENTS.md');
 	const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
-	const importLine = '@./.claude/TM_COMMANDS_GUIDE.md';
+	const taskMasterClaudeFile = path.join(targetDir, '.taskmaster', 'CLAUDE.md');
+	const importLine = '@./.taskmaster/CLAUDE.md';
 	const importSection = `\n## Task Master AI Instructions\n**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**\n${importLine}`;
 
-	if (fs.existsSync(claudeSourceDir)) {
+	if (fs.existsSync(sourceFile)) {
 		try {
-			// Copy Task Master instructions to .claude/
-			copyRecursiveSync(claudeSourceDir, claudeDestDir);
-			log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
+			// Ensure .taskmaster directory exists
+			const taskMasterDir = path.join(targetDir, '.taskmaster');
+			if (!fs.existsSync(taskMasterDir)) {
+				fs.mkdirSync(taskMasterDir, { recursive: true });
+			}
+
+			// Copy Task Master instructions to .taskmaster/CLAUDE.md
+			fs.copyFileSync(sourceFile, taskMasterClaudeFile);
+			log(
+				'debug',
+				`[Claude] Created Task Master instructions at ${taskMasterClaudeFile}`
+			);
 
 			// Handle user's CLAUDE.md
 			if (fs.existsSync(userClaudeFile)) {
@@ -88,15 +97,15 @@ function onAddRulesProfile(targetDir, assetsDir) {
 }
 
 function onRemoveRulesProfile(targetDir) {
-	// Remove .claude directory recursively
-	const claudeDir = path.join(targetDir, '.claude');
 	const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
-	const importLine = '@./.claude/TM_COMMANDS_GUIDE.md';
+	const taskMasterClaudeFile = path.join(targetDir, '.taskmaster', 'CLAUDE.md');
+	const importLine = '@./.taskmaster/CLAUDE.md';
 
 	try {
-		// Remove .claude directory
-		if (removeDirectoryRecursive(claudeDir)) {
-			log('debug', `[Claude] Removed .claude directory from ${claudeDir}`);
+		// Remove Task Master CLAUDE.md from .taskmaster
+		if (fs.existsSync(taskMasterClaudeFile)) {
+			fs.rmSync(taskMasterClaudeFile, { force: true });
+			log('debug', `[Claude] Removed ${taskMasterClaudeFile}`);
 		}
 
 		// Clean up import from user's CLAUDE.md
@@ -176,7 +185,7 @@ export const claudeProfile = createProfile({
 	mcpConfigName: null,
 	includeDefaultRules: false,
 	fileMap: {
-		'claude/TM_COMMANDS_GUIDE.md': '.claude/TM_COMMANDS_GUIDE.md'
+		'AGENTS.md': '.taskmaster/CLAUDE.md'
 	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,

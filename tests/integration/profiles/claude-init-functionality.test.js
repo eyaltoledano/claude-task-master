@@ -24,7 +24,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain('mcpConfig: false'); // non-default
 		expect(claudeProfileContent).toContain('includeDefaultRules: false'); // non-default
 		expect(claudeProfileContent).toContain(
-			"'claude/TM_COMMANDS_GUIDE.md': '.claude/TM_COMMANDS_GUIDE.md'"
+			"'AGENTS.md': '.taskmaster/CLAUDE.md'"
 		);
 
 		// Check the final computed properties on the profile object
@@ -35,9 +35,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfile.mcpConfig).toBe(false);
 		expect(claudeProfile.mcpConfigName).toBe(null); // computed
 		expect(claudeProfile.includeDefaultRules).toBe(false);
-		expect(claudeProfile.fileMap['claude/TM_COMMANDS_GUIDE.md']).toBe(
-			'.claude/TM_COMMANDS_GUIDE.md'
-		);
+		expect(claudeProfile.fileMap['AGENTS.md']).toBe('.taskmaster/CLAUDE.md');
 	});
 
 	test('claude.js has lifecycle functions for file management', () => {
@@ -48,10 +46,10 @@ describe('Claude Profile Initialization Functionality', () => {
 		);
 	});
 
-	test('claude.js handles .claude directory and CLAUDE.md import in lifecycle functions', () => {
-		expect(claudeProfileContent).toContain('.claude');
-		expect(claudeProfileContent).toContain('copyRecursiveSync');
-		expect(claudeProfileContent).toContain("'@./.claude/TM_COMMANDS_GUIDE.md'");
+	test('claude.js handles .taskmaster directory and CLAUDE.md import in lifecycle functions', () => {
+		expect(claudeProfileContent).toContain('.taskmaster');
+		expect(claudeProfileContent).toContain('copyFileSync');
+		expect(claudeProfileContent).toContain("'@./.taskmaster/CLAUDE.md'");
 	});
 
 	test('claude.js has proper error handling in lifecycle functions', () => {
