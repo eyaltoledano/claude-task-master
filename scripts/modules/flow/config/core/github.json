@@ -1,0 +1,37 @@
+{
+  "enabled": true,
+  "autoDetectRepo": true,
+  "defaultBranch": "main",
+  "prTemplate": null,
+  "token": null,
+  "webhookSecret": null,
+  "autoSync": false,
+  "branchPrefix": "taskmaster/",
+  "integration": {
+    "enabled": true,
+    "autoCreatePR": false,
+    "autoMerge": false,
+    "requireReviews": true,
+    "deleteSourceBranch": false
+  },
+  "pullRequest": {
+    "template": null,
+    "assignToCreator": true,
+    "addLabels": ["taskmaster", "automated"],
+    "requestReviewers": [],
+    "draft": false
+  },
+  "commit": {
+    "messageTemplate": "[TaskMaster] {task_title}",
+    "signCommits": false,
+    "author": {
+      "name": null,
+      "email": null
+    }
+  },
+  "webhooks": {
+    "enabled": false,
+    "secret": null,
+    "events": ["push", "pull_request"]
+  }
+} 

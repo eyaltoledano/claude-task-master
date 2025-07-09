@@ -20,7 +20,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { EventEmitter } from 'events';
 import { execAsync } from '../../utils.js';
-import { loadASTConfig } from '../config/ast-config.js';
+import { loadASTConfig } from '../src/config/ast-config.js';
 
 /**
  * Universal file watcher with intelligent filtering and git integration

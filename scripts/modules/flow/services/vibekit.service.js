@@ -8,7 +8,7 @@
 import { VibeKit } from '@vibe-kit/sdk';
 import path from 'node:path';
 import fs from 'node:fs';
-import { FlowConfig } from '../config/flow-config.js';
+import { FlowConfig } from '../src/config/flow-config.js';
 import { GitHubAuthService } from './github-auth.service.js';
 
 export class VibeKitService {

@@ -1,0 +1,50 @@
+{
+  "name": "e2b",
+  "displayName": "E2B",
+  "enabled": true,
+  "apiKey": null,
+  "templateId": null,
+  "region": "us-east-1",
+  "description": "E2B cloud sandbox environment for secure code execution",
+  "capabilities": [
+    "code-execution",
+    "file-system",
+    "network-access",
+    "package-installation",
+    "environment-isolation"
+  ],
+  "limits": {
+    "maxExecutionTime": 300,
+    "maxMemoryMB": 1024,
+    "maxCpuCores": 2,
+    "maxStorageGB": 10,
+    "concurrentSessions": 5
+  },
+  "features": {
+    "persistence": true,
+    "networking": true,
+    "customImages": true,
+    "prebuiltTemplates": true,
+    "realTimeCollaboration": false
+  },
+  "supportedLanguages": [
+    "javascript",
+    "typescript",
+    "python",
+    "go",
+    "rust",
+    "java",
+    "bash"
+  ],
+  "availableRegions": [
+    "us-east-1",
+    "us-west-2",
+    "eu-west-1",
+    "ap-southeast-1"
+  ],
+  "pricing": {
+    "freeMinutesPerMonth": 100,
+    "costPerMinute": 0.01,
+    "currency": "USD"
+  }
+} 

@@ -1,0 +1,37 @@
+{
+  "name": "codex",
+  "displayName": "OpenAI Codex",
+  "enabled": false,
+  "maxTokens": 2000,
+  "temperature": 0.1,
+  "modelName": "gpt-4-turbo-preview",
+  "provider": "openai",
+  "apiKey": null,
+  "description": "OpenAI's GPT-4 Turbo optimized for code generation",
+  "capabilities": [
+    "code-generation",
+    "code-analysis",
+    "debugging",
+    "refactoring",
+    "documentation",
+    "explanation"
+  ],
+  "limits": {
+    "maxTokens": 2000,
+    "contextWindow": 128000,
+    "rateLimitRpm": 500,
+    "rateLimitTpm": 30000
+  },
+  "features": {
+    "streaming": true,
+    "functionCalling": true,
+    "codeExecution": false,
+    "imageAnalysis": false,
+    "multimodal": false
+  },
+  "pricing": {
+    "inputCostPer1kTokens": 0.01,
+    "outputCostPer1kTokens": 0.03,
+    "currency": "USD"
+  }
+} 

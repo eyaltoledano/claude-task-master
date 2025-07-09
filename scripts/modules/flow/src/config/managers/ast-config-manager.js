@@ -5,7 +5,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { DEFAULT_ADVANCED_AST_CONFIG } from '../ast-config.js';
+import { loadASTConfig } from '../ast-config.js';
 import { ConfigValidator } from '../schemas/ast-config-schema.js';
 import { mergeConfigurations, parseConfigValue } from '../utils/config-utils.js';
 
@@ -29,17 +29,35 @@ export class ASTConfigManager {
 		this.validationErrors = [];
 		this.validationWarnings = [];
 
-		// Default configuration with research-backed settings
+		// Default configuration loaded from JSON
 		this.defaultConfig = this.getDefaultConfiguration();
 
 		console.log('ASTConfigManager initialized');
 	}
 
 	/**
-	 * Get default configuration with research-backed settings
+	 * Get default configuration from JSON file
 	 */
 	getDefaultConfiguration() {
-		return DEFAULT_ADVANCED_AST_CONFIG;
+		const result = loadASTConfig();
+		if (result.success) {
+			return { ast: result.config }; // Wrap in 'ast' object for compatibility
+		} else {
+			console.warn('Failed to load default AST config, using fallback');
+			return {
+				ast: {
+					enabled: false,
+					version: '4.1',
+					parsing: {
+						supportedLanguages: ['javascript', 'typescript', 'python', 'go'],
+						excludePatterns: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
+						maxFileSize: '1MB',
+						timeoutMs: 5000,
+						enableFallback: true
+					}
+				}
+			};
+		}
 	}
 
 	/**

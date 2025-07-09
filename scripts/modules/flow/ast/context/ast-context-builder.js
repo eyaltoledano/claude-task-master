@@ -1,4 +1,4 @@
-import { loadASTConfig } from '../config/ast-config.js';
+import { loadASTConfig } from '../src/config/ast-config.js';
 import { initializeDefaultRegistry } from '../parsers/parser-registry.js';
 import { createCacheKey, getCachedOrExecute } from './cache-manager.js';
 import { scoreCodeRelevance } from './code-relevance-scorer.js';

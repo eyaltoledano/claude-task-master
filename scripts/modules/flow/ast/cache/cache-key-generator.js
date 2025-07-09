@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import path from 'path';
 import { detectLanguage } from '../language-detector.js';
-import { loadASTConfig } from '../../config/ast-config.js';
+import { loadASTConfig } from '../../src/config/ast-config.js';
 
 /**
  * Generate cache keys for AST parsing results

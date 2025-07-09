@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { CacheKeyGenerator } from './cache-key-generator.js';
-import { loadASTConfig } from '../../config/ast-config.js';
+import { loadASTConfig } from '../../src/config/ast-config.js';
 
 /**
  * AST Cache Manager

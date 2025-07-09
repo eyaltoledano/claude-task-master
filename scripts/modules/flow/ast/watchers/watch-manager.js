@@ -21,7 +21,7 @@ import { EventEmitter } from 'events';
 import path from 'path';
 import fs from 'fs-extra';
 import { execAsync } from '../../utils.js';
-import { loadASTConfig } from '../config/ast-config.js';
+import { loadASTConfig } from '../src/config/ast-config.js';
 import { createFileWatcher } from './file-watcher.js';
 import { createChangeProcessor } from './change-processor.js';
 import { createBatchProcessor, BatchStrategy } from './batch-processor.js';

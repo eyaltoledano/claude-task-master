@@ -5,7 +5,7 @@
  * in favor of the unified flow-config.js. Complex features like profiles,
  * environment management, and dynamic switching are now handled by VibeKit.
  * 
- * Use scripts/modules/flow/config/flow-config.js for new configurations.
+ * Use scripts/modules/flow/src/config/flow-config.js for new configurations.
  */
 
 import fs from 'node:fs';

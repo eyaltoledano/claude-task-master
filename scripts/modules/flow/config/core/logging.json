@@ -1,0 +1,52 @@
+{
+  "level": "info",
+  "enableTelemetry": true,
+  "logFile": null,
+  "maxLogSize": 10485760,
+  "console": {
+    "enabled": true,
+    "colorize": true,
+    "timestamp": true,
+    "format": "simple"
+  },
+  "file": {
+    "enabled": false,
+    "path": ".taskmaster/logs/flow.log",
+    "maxSize": "10MB",
+    "maxFiles": 5,
+    "rotateDaily": true
+  },
+  "structured": {
+    "enabled": false,
+    "format": "json",
+    "includeStackTrace": true,
+    "includeMetadata": true
+  },
+  "filters": {
+    "excludePatterns": [
+      "token",
+      "password",
+      "secret",
+      "key"
+    ],
+    "sensitiveFields": [
+      "apiKey",
+      "token",
+      "password",
+      "secret"
+    ]
+  },
+  "levels": {
+    "error": true,
+    "warn": true,
+    "info": true,
+    "debug": false,
+    "verbose": false
+  },
+  "performance": {
+    "enabled": true,
+    "trackSlowOperations": true,
+    "slowOperationThreshold": 1000,
+    "includeMemoryUsage": true
+  }
+} 

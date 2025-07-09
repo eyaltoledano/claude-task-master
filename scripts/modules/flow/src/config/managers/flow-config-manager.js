@@ -7,7 +7,7 @@ import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import { FlowConfigSchema } from '../schemas/flow-config-schema.js';
-import { DEFAULT_FLOW_CONFIG } from '../flow-config.js';
+import { loadFlowConfig } from '../flow-config.js';
 import { applyEnvironmentOverrides } from '../utils/env-overrides.js';
 
 /**
@@ -22,18 +22,47 @@ export class FlowConfigManager {
   }
 
   /**
+   * Get default configuration from JSON files
+   */
+  getDefaultConfig() {
+    const result = loadFlowConfig();
+    if (result.success) {
+      return result.config;
+    } else {
+      console.warn('Failed to load default Flow config, using fallback');
+      return {
+        nodeEnv: 'development',
+        vibekit: {
+          enabled: true,
+          defaultAgent: 'claude-code',
+          streamingEnabled: true,
+          githubIntegration: true,
+          agents: {},
+          environments: {}
+        },
+        github: { enabled: true },
+        execution: { timeout: 300000 },
+        logging: { level: 'info' }
+      };
+    }
+  }
+
+  /**
    * Load configuration with precedence: env vars > config file > defaults
    */
   async loadConfig() {
     try {
-      // Start with defaults
-      let configData = {};
+      // Start with defaults from JSON files
+      let configData = this.getDefaultConfig();
 
       // Load from config file if it exists
       if (fs.existsSync(this.configFile)) {
         try {
           const fileContent = fs.readFileSync(this.configFile, 'utf8');
-          configData = JSON.parse(fileContent);
+          const fileConfig = JSON.parse(fileContent);
+          
+          // Deep merge file config with defaults
+          configData = this.deepMerge(configData, fileConfig);
         } catch (error) {
           console.warn(`⚠️ Invalid config file ${this.configFile}, using defaults:`, error.message);
         }
@@ -56,6 +85,27 @@ export class FlowConfigManager {
       }
       throw error;
     }
+  }
+
+  /**
+   * Deep merge two objects
+   */
+  deepMerge(target, source) {
+    const result = { ...target };
+    
+    for (const key in source) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (result[key] && typeof result[key] === 'object' && !Array.isArray(result[key])) {
+          result[key] = this.deepMerge(result[key], source[key]);
+        } else {
+          result[key] = source[key];
+        }
+      } else {
+        result[key] = source[key];
+      }
+    }
+    
+    return result;
   }
 
   /**
