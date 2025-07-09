@@ -2,12 +2,13 @@
   "defaultAgent": "claude-code",
   "defaultSandbox": "e2b",
   "enabledAgents": [
-    "claude-code",
-    "codex"
+    "claude",
+    "codex",
+    "gemini",
+    "opencode"
   ],
   "enabledSandboxes": [
-    "e2b",
-    "daytona"
+    "e2b"
   ],
   "ui": {
     "showAgentSelector": true,
