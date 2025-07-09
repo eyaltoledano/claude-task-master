@@ -4021,10 +4021,6 @@ Examples:
 						projectRoot,
 						profileConfig
 					);
-					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						const assetsDir = path.join(projectRoot, 'assets');
-						profileConfig.onAddRulesProfile(projectRoot, assetsDir);
-					}
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)
 					);
@@ -4054,37 +4050,27 @@ Examples:
 
 			// Print summary for additions
 			if (action === RULES_ACTIONS.ADD && addResults.length > 0) {
-				const {
-					allSuccessfulProfiles,
-					totalSuccess,
-					totalFailed,
-					simpleProfiles
-				} = categorizeProfileResults(addResults);
+				const { allSuccessfulProfiles, totalSuccess, totalFailed } =
+					categorizeProfileResults(addResults);
 
 				if (allSuccessfulProfiles.length > 0) {
 					console.log(
 						chalk.green(
-							`\nSuccessfully added rules for: ${allSuccessfulProfiles.join(', ')}`
+							`\nSuccessfully processed profiles: ${allSuccessfulProfiles.join(', ')}`
 						)
 					);
 
-					// Create a more descriptive summary
-					if (totalSuccess > 0 && simpleProfiles.length > 0) {
+					// Create a descriptive summary
+					if (totalSuccess > 0) {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${totalSuccess} files processed, ${totalFailed} failed.`
 							)
 						);
-					} else if (totalSuccess > 0) {
+					} else {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
-							)
-						);
-					} else if (simpleProfiles.length > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${allSuccessfulProfiles.length} profile(s) set up successfully.`
 							)
 						);
 					}
