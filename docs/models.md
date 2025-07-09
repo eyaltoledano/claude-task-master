@@ -1,4 +1,4 @@
-# Available Models as of July 8, 2025
+# Available Models as of July 9, 2025
 
 ## Main Models
 
@@ -40,7 +40,6 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
-| mcp         | mcp-sampling                                   | -         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -70,6 +69,7 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct:free  | —         | 0          | 0           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
+| openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
@@ -83,6 +83,7 @@
 | groq        | whisper-large-v3                               | —         | 0.11       | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 
@@ -113,7 +114,7 @@
 | groq        | deepseek-r1-distill-llama-70b                | 0.52      | 0.75       | 0.99        |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
-| mcp         | mcp-sampling               | -         | 0          | 0           |
+| mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
 
@@ -148,7 +149,6 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
-| mcp         | mcp-sampling                                   | -         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -188,5 +188,6 @@
 | groq        | gemma2-9b-it                                   | 0.3       | 0.2        | 0.2         |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
