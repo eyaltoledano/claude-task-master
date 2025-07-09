@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * test-parse-prd.js
+ * test-analyze-complexity.js
  *
- * Comprehensive integration test for parse-prd functionality.
+ * Comprehensive integration test for analyze-complexity functionality.
  * Tests MCP streaming, CLI streaming, and non-streaming modes.
  * Validates token tracking, message formats, and priority indicators across all contexts.
  */
@@ -17,11 +17,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Get project root (two levels up from tests/progress/)
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+// Get project root (three levels up from tests/manual/progress/)
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
 
-// Import the parse-prd function
-import parsePRD from '../../scripts/modules/task-manager/parse-prd.js';
+// Import the analyze-complexity function
+import analyzeTaskComplexity from '../../../scripts/modules/task-manager/analyze-task-complexity.js';
 
 /**
  * Mock Progress Reporter for testing
@@ -45,7 +45,7 @@ class MockProgressReporter {
 
 		if (this.enableDebug) {
 			const percentage = data.total
-				? Math.round((data.progress / data.total) * 100)
+				? Math.round((data.current / data.total) * 100)
 				: 0;
 			console.log(
 				chalk.blue(`[${timestamp}ms]`),
@@ -68,7 +68,7 @@ class MockProgressReporter {
 
 		this.progressHistory.forEach((entry, index) => {
 			const percentage = entry.total
-				? Math.round((entry.progress / entry.total) * 100)
+				? Math.round((entry.current / entry.total) * 100)
 				: 0;
 			console.log(
 				`${index + 1}. [${entry.timestamp}ms] ${percentage}% - ${entry.message}`
@@ -76,32 +76,27 @@ class MockProgressReporter {
 		});
 
 		// Check for expected message formats
-		const hasInitialMessage = this.progressHistory.some(
-			(entry) =>
-				entry.message.includes('Starting PRD analysis') &&
-				entry.message.includes('Input:') &&
-				entry.message.includes('tokens')
-		);
-		// Make regex more flexible to handle potential whitespace variations
+		// Note: analyze-complexity only sends individual task analysis messages,
+		// not initial/completion messages like parse-prd does
+
+		// Check for task progress messages - actual format: "Analyzed Task 1: Title (Score: 5, Subtasks: 4)"
 		const hasTaskMessages = this.progressHistory.some((entry) =>
-			/^[🔴🟠🟢⚪]{3} Task \d+\/\d+ - .+ \| ~Output: \d+ tokens/u.test(
+			/^Analyzed Task \d+: .+ \(Score: \d+, Subtasks: \d+\)/.test(
 				entry.message.trim()
 			)
 		);
 
-		const hasCompletionMessage = this.progressHistory.some(
-			(entry) =>
-				entry.message.includes('✅ Task Generation Completed') &&
-				entry.message.includes('Tokens (I/O):')
-		);
+		// Check that we have the expected number of task messages (one per task)
+		const taskMessageCount = this.progressHistory.filter((entry) =>
+			/^Analyzed Task \d+: .+ \(Score: \d+, Subtasks: \d+\)/.test(
+				entry.message.trim()
+			)
+		).length;
 
 		console.log(chalk.cyan('\n=== Message Format Validation ==='));
-		console.log(
-			`✅ Initial message format: ${hasInitialMessage ? 'PASS' : 'FAIL'}`
-		);
 		console.log(`✅ Task message format: ${hasTaskMessages ? 'PASS' : 'FAIL'}`);
 		console.log(
-			`✅ Completion message format: ${hasCompletionMessage ? 'PASS' : 'FAIL'}`
+			`✅ Task message count: ${taskMessageCount === 5 ? 'PASS' : 'FAIL'} (${taskMessageCount}/5)`
 		);
 	}
 }
@@ -159,10 +154,75 @@ class MockMCPLogger {
 }
 
 /**
- * Get the path to the sample PRD file
+ * Create a test tasks.json file
  */
-function getSamplePRDPath() {
-	return path.resolve(PROJECT_ROOT, 'tests', 'fixtures', 'sample-prd.txt');
+function createTestTasksFile() {
+	const testTasks = {
+		tasks: [
+			{
+				id: 1,
+				title: 'Setup Project Structure and HTML Foundation',
+				description:
+					'Create the basic project structure with HTML, CSS, and JavaScript files for a todo application.',
+				status: 'pending',
+				priority: 'high',
+				dependencies: [],
+				details:
+					'Set up the foundational files and folder structure for the todo app.',
+				testStrategy: 'Verify that all files are created and properly linked.'
+			},
+			{
+				id: 2,
+				title: 'Implement Core Todo Data Management',
+				description:
+					'Create JavaScript functions to manage todo items including add, edit, delete, and toggle completion.',
+				status: 'pending',
+				priority: 'high',
+				dependencies: [1],
+				details: 'Implement the core CRUD operations for todo items.',
+				testStrategy: 'Test all CRUD operations work correctly.'
+			},
+			{
+				id: 3,
+				title: 'Build User Interface Interaction Logic',
+				description:
+					'Implement event handlers and DOM manipulation for user interactions with the todo interface.',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [1, 2],
+				details: 'Connect the UI elements to the data management functions.',
+				testStrategy: 'Test all UI interactions work as expected.'
+			},
+			{
+				id: 4,
+				title: 'Add Local Storage Persistence',
+				description:
+					'Implement local storage functionality to persist todo items between browser sessions.',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [2],
+				details: 'Save and load todo data from localStorage.',
+				testStrategy: 'Verify data persists after page refresh.'
+			},
+			{
+				id: 5,
+				title: 'Enhance User Experience',
+				description:
+					'Add animations, transitions, and improved styling to create a polished user experience.',
+				status: 'pending',
+				priority: 'low',
+				dependencies: [3],
+				details:
+					'Polish the UI with smooth animations and better visual feedback.',
+				testStrategy:
+					'Test that animations work smoothly and enhance usability.'
+			}
+		]
+	};
+
+	const testTasksPath = path.join(__dirname, 'test-tasks.json');
+	fs.writeFileSync(testTasksPath, JSON.stringify(testTasks, null, 2));
+	return testTasksPath;
 }
 
 /**
@@ -216,16 +276,19 @@ function createTestConfig() {
 /**
  * Test MCP streaming with proper MCP context
  */
-async function testMCPStreaming(numTasks = 10) {
+async function testMCPStreaming() {
 	console.log(chalk.cyan('🧪 Testing MCP Streaming Functionality\n'));
 
-	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-mcp-tasks.json');
+	const testTasksPath = createTestTasksFile();
+	const testReportPath = path.join(
+		__dirname,
+		'test-mcp-complexity-report.json'
+	);
 	const configPath = createTestConfig();
 
 	// Clean up existing files
-	if (fs.existsSync(testTasksPath)) {
-		fs.unlinkSync(testTasksPath);
+	if (fs.existsSync(testReportPath)) {
+		fs.unlinkSync(testReportPath);
 	}
 
 	const progressReporter = new MockProgressReporter(true);
@@ -235,15 +298,20 @@ async function testMCPStreaming(numTasks = 10) {
 		console.log(chalk.yellow('Starting MCP streaming test...'));
 		const startTime = Date.now();
 
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
-			reportProgress: progressReporter.reportProgress.bind(progressReporter),
-			projectRoot: PROJECT_ROOT,
-			// Add MCP context - this is the key difference
-			mcpLog: mcpLogger
-		});
+		const result = await analyzeTaskComplexity(
+			{
+				file: testTasksPath,
+				output: testReportPath,
+				threshold: 5,
+				research: false,
+				projectRoot: PROJECT_ROOT
+			},
+			{
+				reportProgress: progressReporter.reportProgress.bind(progressReporter),
+				// Add MCP context - this is the key difference
+				mcpLog: mcpLogger
+			}
+		);
 
 		const endTime = Date.now();
 		const duration = endTime - startTime;
@@ -272,39 +340,39 @@ async function testMCPStreaming(numTasks = 10) {
 			);
 		});
 
-		// Verify MCP-specific message formats (should use emoji indicators)
-		const hasEmojiIndicators = progressReporter
+		// Verify MCP-specific message formats (should have task analysis messages)
+		const hasAnalysisMessages = progressReporter
 			.getProgressHistory()
-			.some((entry) => /[🔴🟠🟢]/.test(entry.message));
+			.some((entry) => entry.message.includes('Analyzed Task'));
 
 		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
 		console.log(
-			`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`
+			`✅ Analysis progress messages: ${hasAnalysisMessages ? 'PASS' : 'FAIL'}`
 		);
 
 		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
+		if (fs.existsSync(testReportPath)) {
+			const reportData = JSON.parse(fs.readFileSync(testReportPath, 'utf8'));
 			console.log(
 				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
+					`\n✅ Complexity report created with ${reportData.complexityAnalysis?.length || 0} task analyses`
 				)
 			);
 
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
+			// Verify report structure
+			const firstAnalysis = reportData.complexityAnalysis?.[0];
 			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
+				firstAnalysis &&
+				firstAnalysis.taskId &&
+				firstAnalysis.taskTitle &&
+				typeof firstAnalysis.complexityScore === 'number'
 			) {
-				console.log(chalk.green('✅ Task structure is valid'));
+				console.log(chalk.green('✅ Report structure is valid'));
 			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
+				console.log(chalk.red('❌ Report structure is invalid'));
 			}
 		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
+			console.log(chalk.red('❌ Complexity report was not created'));
 		}
 
 		return {
@@ -312,7 +380,7 @@ async function testMCPStreaming(numTasks = 10) {
 			duration,
 			progressHistory: progressReporter.getProgressHistory(),
 			mcpLogs: mcpLogger.getLogs(),
-			hasEmojiIndicators,
+			hasAnalysisMessages,
 			result
 		};
 	} catch (error) {
@@ -324,6 +392,7 @@ async function testMCPStreaming(numTasks = 10) {
 	} finally {
 		// Clean up
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
+		if (fs.existsSync(testReportPath)) fs.unlinkSync(testReportPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
 }
@@ -331,30 +400,39 @@ async function testMCPStreaming(numTasks = 10) {
 /**
  * Test CLI streaming (no reportProgress)
  */
-async function testCLIStreaming(numTasks = 10) {
-	console.log(chalk.cyan('🧪 Testing CLI Streaming (No Progress Reporter)\n'));
+async function testCLIStreaming() {
+	console.log(chalk.cyan('🧪 Testing CLI Streaming (With Progress Tracker)\n'));
 
-	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-cli-tasks.json');
+	const testTasksPath = createTestTasksFile();
+	const testReportPath = path.join(
+		__dirname,
+		'test-cli-complexity-report.json'
+	);
 	const configPath = createTestConfig();
 
 	// Clean up existing files
-	if (fs.existsSync(testTasksPath)) {
-		fs.unlinkSync(testTasksPath);
+	if (fs.existsSync(testReportPath)) {
+		fs.unlinkSync(testReportPath);
 	}
 
 	try {
 		console.log(chalk.yellow('Starting CLI streaming test...'));
 		const startTime = Date.now();
 
-		// No reportProgress - should use non-streaming path
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
-			// No reportProgress provided
-			projectRoot: PROJECT_ROOT
-		});
+		// Enable progressTracker to trigger streaming in CLI mode
+		const result = await analyzeTaskComplexity(
+			{
+				file: testTasksPath,
+				output: testReportPath,
+				threshold: 5,
+				research: false,
+				projectRoot: PROJECT_ROOT,
+				progressTracker: true // Enable streaming for CLI
+			},
+			{
+				// No reportProgress provided (this is CLI mode, not MCP)
+			}
+		);
 
 		const endTime = Date.now();
 		const duration = endTime - startTime;
@@ -364,28 +442,28 @@ async function testCLIStreaming(numTasks = 10) {
 		);
 
 		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
+		if (fs.existsSync(testReportPath)) {
+			const reportData = JSON.parse(fs.readFileSync(testReportPath, 'utf8'));
 			console.log(
 				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
+					`\n✅ Complexity report created with ${reportData.complexityAnalysis?.length || 0} task analyses`
 				)
 			);
 
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
+			// Verify report structure
+			const firstAnalysis = reportData.complexityAnalysis?.[0];
 			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
+				firstAnalysis &&
+				firstAnalysis.taskId &&
+				firstAnalysis.taskTitle &&
+				typeof firstAnalysis.complexityScore === 'number'
 			) {
-				console.log(chalk.green('✅ Task structure is valid'));
+				console.log(chalk.green('✅ Report structure is valid'));
 			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
+				console.log(chalk.red('❌ Report structure is invalid'));
 			}
 		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
+			console.log(chalk.red('❌ Complexity report was not created'));
 		}
 
 		return {
@@ -402,6 +480,7 @@ async function testCLIStreaming(numTasks = 10) {
 	} finally {
 		// Clean up
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
+		if (fs.existsSync(testReportPath)) fs.unlinkSync(testReportPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
 }
@@ -409,16 +488,19 @@ async function testCLIStreaming(numTasks = 10) {
 /**
  * Test non-streaming functionality
  */
-async function testNonStreaming(numTasks = 10) {
+async function testNonStreaming() {
 	console.log(chalk.cyan('🧪 Testing Non-Streaming Functionality\n'));
 
-	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-non-streaming-tasks.json');
+	const testTasksPath = createTestTasksFile();
+	const testReportPath = path.join(
+		__dirname,
+		'test-non-streaming-complexity-report.json'
+	);
 	const configPath = createTestConfig();
 
 	// Clean up existing files
-	if (fs.existsSync(testTasksPath)) {
-		fs.unlinkSync(testTasksPath);
+	if (fs.existsSync(testReportPath)) {
+		fs.unlinkSync(testReportPath);
 	}
 
 	try {
@@ -426,13 +508,18 @@ async function testNonStreaming(numTasks = 10) {
 		const startTime = Date.now();
 
 		// Force non-streaming by not providing reportProgress
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
-			projectRoot: PROJECT_ROOT
-			// No reportProgress - should use generateObjectService
-		});
+		const result = await analyzeTaskComplexity(
+			{
+				file: testTasksPath,
+				output: testReportPath,
+				threshold: 5,
+				research: false,
+				projectRoot: PROJECT_ROOT
+			},
+			{
+				// No reportProgress - should use generateTextService
+			}
+		);
 
 		const endTime = Date.now();
 		const duration = endTime - startTime;
@@ -442,28 +529,28 @@ async function testNonStreaming(numTasks = 10) {
 		);
 
 		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
+		if (fs.existsSync(testReportPath)) {
+			const reportData = JSON.parse(fs.readFileSync(testReportPath, 'utf8'));
 			console.log(
 				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
+					`\n✅ Complexity report created with ${reportData.complexityAnalysis?.length || 0} task analyses`
 				)
 			);
 
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
+			// Verify report structure
+			const firstAnalysis = reportData.complexityAnalysis?.[0];
 			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
+				firstAnalysis &&
+				firstAnalysis.taskId &&
+				firstAnalysis.taskTitle &&
+				typeof firstAnalysis.complexityScore === 'number'
 			) {
-				console.log(chalk.green('✅ Task structure is valid'));
+				console.log(chalk.green('✅ Report structure is valid'));
 			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
+				console.log(chalk.red('❌ Report structure is invalid'));
 			}
 		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
+			console.log(chalk.red('❌ Complexity report was not created'));
 		}
 
 		return {
@@ -480,6 +567,7 @@ async function testNonStreaming(numTasks = 10) {
 	} finally {
 		// Clean up
 		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
+		if (fs.existsSync(testReportPath)) fs.unlinkSync(testReportPath);
 		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
 	}
 }
@@ -526,27 +614,27 @@ function compareResults(streamingResult, nonStreamingResult) {
 async function main() {
 	const args = process.argv.slice(2);
 	const testType = args[0] || 'streaming';
-	const numTasks = parseInt(args[1]) || 8;
 
-	console.log(chalk.bold.cyan('🚀 Task Master PRD Streaming Tests\n'));
-	console.log(chalk.blue(`Test type: ${testType}`));
-	console.log(chalk.blue(`Number of tasks: ${numTasks}\n`));
+	console.log(
+		chalk.bold.cyan('🚀 Task Master Analyze-Complexity Streaming Tests\n')
+	);
+	console.log(chalk.blue(`Test type: ${testType}\n`));
 
 	try {
 		switch (testType.toLowerCase()) {
 			case 'mcp':
 			case 'mcp-streaming':
-				await testMCPStreaming(numTasks);
+				await testMCPStreaming();
 				break;
 
 			case 'cli':
 			case 'cli-streaming':
-				await testCLIStreaming(numTasks);
+				await testCLIStreaming();
 				break;
 
 			case 'non-streaming':
 			case 'non':
-				await testNonStreaming(numTasks);
+				await testNonStreaming();
 				break;
 
 			case 'both':
@@ -555,23 +643,23 @@ async function main() {
 						'Running both MCP streaming and non-streaming tests...\n'
 					)
 				);
-				const mcpStreamingResult = await testMCPStreaming(numTasks);
+				const mcpStreamingResult = await testMCPStreaming();
 				console.log('\n' + '='.repeat(60) + '\n');
-				const nonStreamingResult = await testNonStreaming(numTasks);
+				const nonStreamingResult = await testNonStreaming();
 				compareResults(mcpStreamingResult, nonStreamingResult);
 				break;
 
 			case 'all':
 				console.log(chalk.yellow('Running all test types...\n'));
-				const mcpResult = await testMCPStreaming(numTasks);
+				const mcpResult = await testMCPStreaming();
 				console.log('\n' + '='.repeat(60) + '\n');
-				const cliResult = await testCLIStreaming(numTasks);
+				const cliResult = await testCLIStreaming();
 				console.log('\n' + '='.repeat(60) + '\n');
-				const nonStreamResult = await testNonStreaming(numTasks);
+				const nonStreamResult = await testNonStreaming();
 
 				console.log(chalk.cyan('\n=== All Tests Summary ==='));
 				console.log(
-					`MCP Streaming: ${mcpResult.success ? '✅ PASS' : '❌ FAIL'} ${mcpResult.hasEmojiIndicators ? '(✅ Emojis)' : '(❌ No Emojis)'}`
+					`MCP Streaming: ${mcpResult.success ? '✅ PASS' : '❌ FAIL'} ${mcpResult.hasAnalysisMessages ? '(✅ Analysis)' : '(❌ No Analysis)'}`
 				);
 				console.log(
 					`CLI Streaming: ${cliResult.success ? '✅ PASS' : '❌ FAIL'}`

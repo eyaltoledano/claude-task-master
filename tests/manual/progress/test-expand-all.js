@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * test-expand.js
+ * test-expand-all.js
  *
- * Comprehensive integration test for expand-task functionality.
+ * Comprehensive integration test for expand-all-tasks functionality.
  * Tests MCP streaming, CLI streaming, and non-streaming modes.
- * Validates token tracking, message formats, and subtask generation across all contexts.
+ * Validates token tracking, message formats, dual progress bars, and fractional progress across all contexts.
  */
 
 import fs from 'fs';
@@ -17,11 +17,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Get project root (two levels up from tests/progress/)
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+// Get project root (three levels up from tests/manual/progress/)
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
 
-// Import the expand-task function
-import expandTask from '../../scripts/modules/task-manager/expand-task.js';
+// Import the expand-all-tasks function
+import expandAllTasks from '../../../scripts/modules/task-manager/expand-all-tasks.js';
 
 /**
  * Mock Progress Reporter for testing
@@ -44,9 +44,17 @@ class MockProgressReporter {
 		this.progressHistory.push(entry);
 
 		if (this.enableDebug) {
-			const percentage = data.total
-				? Math.round((data.current / data.total) * 100)
-				: 0;
+			// Skip subtask-level progress display
+			if (
+				data.type === 'subtask_generation' ||
+				data.type === 'subtask_generation_start' ||
+				data.type === 'subtask_generation_complete'
+			) {
+				return; // Don't display these
+			}
+
+			const percentage = data.total ? Math.round(data.progress * 100) : 0;
+
 			console.log(
 				chalk.blue(`[${timestamp}ms]`),
 				chalk.green(`${percentage}%`),
@@ -59,7 +67,7 @@ class MockProgressReporter {
 		return this.progressHistory;
 	}
 
-	printSummary() {
+	printSummary(showSubtaskProgress = false) {
 		console.log(chalk.green('\n=== Progress Summary ==='));
 		console.log(`Total progress reports: ${this.progressHistory.length}`);
 		console.log(
@@ -67,42 +75,80 @@ class MockProgressReporter {
 		);
 
 		this.progressHistory.forEach((entry, index) => {
-			const percentage = entry.total
-				? Math.round((entry.current / entry.total) * 100)
-				: 0;
+			// Skip subtask-level progress if not requested
+			if (
+				!showSubtaskProgress &&
+				(entry.type === 'subtask_generation' ||
+					entry.type === 'subtask_generation_start' ||
+					entry.type === 'subtask_generation_complete')
+			) {
+				return;
+			}
+
+			const percentage = entry.total ? Math.round(entry.progress * 100) : 0;
+
 			console.log(
 				`${index + 1}. [${entry.timestamp}ms] ${percentage}% - ${entry.message}`
 			);
 		});
 
 		// Check for expected message formats
-		const hasInitialMessage = this.progressHistory.some(
+		const hasStartMessage = this.progressHistory.some(
 			(entry) =>
-				entry.message.includes('Starting subtask generation') &&
-				entry.message.includes('Input:') &&
-				entry.message.includes('tokens')
+				entry.type === 'expand_all_start' &&
+				entry.message.includes('Starting expansion')
 		);
 
-		const hasSubtaskMessages = this.progressHistory.some((entry) =>
-			/Generated subtask \d+\/\d+: .+/.test(entry.message.trim())
+		const hasTaskExpansionStart = this.progressHistory.some(
+			(entry) => entry.type === 'task_expansion_start'
+		);
+
+		const hasFractionalProgress = this.progressHistory.some(
+			(entry) => entry.type === 'subtask_progress' && entry.progress % 1 !== 0
 		);
 
 		const hasCompletionMessage = this.progressHistory.some(
 			(entry) =>
-				entry.message.includes('✅ Subtask generation completed') &&
-				entry.message.includes('Tokens (I/O):')
+				entry.type === 'expand_all_complete' &&
+				entry.message.includes('Expansion complete')
 		);
 
 		console.log(chalk.cyan('\n=== Message Format Validation ==='));
 		console.log(
-			`✅ Initial message format: ${hasInitialMessage ? 'PASS' : 'FAIL'}`
+			`✅ Start message format: ${hasStartMessage ? 'PASS' : 'FAIL'}`
 		);
 		console.log(
-			`✅ Subtask message format: ${hasSubtaskMessages ? 'PASS' : 'FAIL'}`
+			`✅ Task expansion start: ${hasTaskExpansionStart ? 'PASS' : 'FAIL'}`
+		);
+		console.log(
+			`✅ Fractional progress: ${hasFractionalProgress ? 'PASS' : 'FAIL'}`
 		);
 		console.log(
 			`✅ Completion message format: ${hasCompletionMessage ? 'PASS' : 'FAIL'}`
 		);
+
+		// Analyze fractional progress
+		const fractionalEntries = this.progressHistory.filter(
+			(entry) => entry.type === 'subtask_progress'
+		);
+		if (fractionalEntries.length > 0) {
+			console.log(chalk.cyan('\n=== Fractional Progress Analysis ==='));
+			console.log(`Total fractional updates: ${fractionalEntries.length}`);
+			const progressValues = fractionalEntries.map((e) => e.progress);
+			console.log(
+				`Progress range: ${Math.min(...progressValues).toFixed(3)} - ${Math.max(...progressValues).toFixed(3)}`
+			);
+		}
+
+		// Show progress type breakdown
+		const typeBreakdown = {};
+		this.progressHistory.forEach((entry) => {
+			typeBreakdown[entry.type] = (typeBreakdown[entry.type] || 0) + 1;
+		});
+		console.log(chalk.cyan('\n=== Progress Type Breakdown ==='));
+		Object.entries(typeBreakdown).forEach(([type, count]) => {
+			console.log(`${type}: ${count}`);
+		});
 	}
 }
 
@@ -159,28 +205,46 @@ class MockMCPLogger {
 }
 
 /**
- * Create a test tasks.json file with a single task
+ * Create a test tasks.json file with multiple tasks
  */
 function createTestTasksFile() {
 	const testTasks = {
 		tasks: [
 			{
 				id: 1,
-				title: 'Implement User Authentication System',
+				title: 'Setup Project Structure',
 				description:
-					'Create a complete user authentication system with registration, login, password reset, and session management.',
+					'Initialize the project with proper structure and configuration.',
 				status: 'pending',
 				priority: 'high',
 				dependencies: [],
-				details:
-					'Build a secure authentication system following best practices. Include JWT tokens, password hashing with bcrypt, email verification, and rate limiting.',
-				testStrategy:
-					'Test all authentication flows including edge cases and security vulnerabilities.'
+				details: 'Create folder structure, initialize npm, setup TypeScript.',
+				testStrategy: 'Verify all files and configurations are in place.'
+			},
+			{
+				id: 2,
+				title: 'Implement Authentication',
+				description: 'Build user authentication system with JWT.',
+				status: 'pending',
+				priority: 'high',
+				dependencies: [1],
+				details: 'Create auth endpoints, JWT handling, user sessions.',
+				testStrategy: 'Test all auth flows and edge cases.'
+			},
+			{
+				id: 3,
+				title: 'Create Database Schema',
+				description: 'Design and implement the database schema.',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [1],
+				details: 'Design tables, relationships, and indexes.',
+				testStrategy: 'Verify schema integrity and performance.'
 			}
 		]
 	};
 
-	const testTasksPath = path.join(__dirname, 'test-expand-tasks.json');
+	const testTasksPath = path.join(__dirname, 'test-expand-all-tasks.json');
 	fs.writeFileSync(testTasksPath, JSON.stringify(testTasks, null, 2));
 	return testTasksPath;
 }
@@ -234,10 +298,14 @@ function createTestConfig() {
 }
 
 /**
- * Test MCP streaming with proper MCP context
+ * Test MCP streaming with proper MCP context and fractional progress
  */
-async function testMCPStreaming(numSubtasks = 5) {
-	console.log(chalk.cyan('🧪 Testing MCP Streaming Functionality\n'));
+async function testMCPStreaming(numSubtasks = 3) {
+	console.log(
+		chalk.cyan(
+			'🧪 Testing MCP Streaming Functionality with Fractional Progress\n'
+		)
+	);
 
 	const testTasksPath = createTestTasksFile();
 	const configPath = createTestConfig();
@@ -249,19 +317,19 @@ async function testMCPStreaming(numSubtasks = 5) {
 		console.log(chalk.yellow('Starting MCP streaming test...'));
 		const startTime = Date.now();
 
-		const result = await expandTask(
+		const result = await expandAllTasks(
 			testTasksPath,
-			1, // Task ID
-			numSubtasks, // Number of subtasks
+			numSubtasks, // Number of subtasks per task
 			false, // useResearch
 			'', // additionalContext
+			true, // force
 			{
 				reportProgress: progressReporter.reportProgress.bind(progressReporter),
 				mcpLog: mcpLogger,
-				projectRoot: PROJECT_ROOT,
+				projectRoot: PROJECT_ROOT, // Use actual project root
 				session: {}
 			},
-			true // force
+			'json' // outputFormat for MCP
 		);
 
 		const endTime = Date.now();
@@ -292,22 +360,19 @@ async function testMCPStreaming(numSubtasks = 5) {
 		});
 
 		// Verify results
-		const subtasksGenerated = result.task?.subtasks?.length || 0;
-
 		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
-		console.log(
-			`✅ Subtasks generated: ${subtasksGenerated} (expected: ${numSubtasks})`
-		);
+		console.log(`✅ Tasks expanded: ${result.expandedCount} (expected: 3)`);
 		console.log(
 			`✅ Progress reports count: ${progressReporter.getProgressHistory().length}`
 		);
+		console.log(`✅ Success: ${result.success}`);
 
 		return {
 			success: true,
 			duration,
 			progressHistory: progressReporter.getProgressHistory(),
 			mcpLogs: mcpLogger.getLogs(),
-			subtasksGenerated,
+			expandedCount: result.expandedCount,
 			result
 		};
 	} catch (error) {
@@ -324,30 +389,38 @@ async function testMCPStreaming(numSubtasks = 5) {
 }
 
 /**
- * Test CLI streaming (no reportProgress but with progress bar)
+ * Test CLI streaming (no reportProgress but with dual progress bars)
  */
-async function testCLIStreaming(numSubtasks = 5) {
-	console.log(chalk.cyan('🧪 Testing CLI Streaming (With Progress Bar)\n'));
+async function testCLIStreaming(numSubtasks = 3) {
+	console.log(
+		chalk.cyan('🧪 Testing CLI Streaming (With Dual Progress Bars)\n')
+	);
 
 	const testTasksPath = createTestTasksFile();
 	const configPath = createTestConfig();
 
 	try {
 		console.log(chalk.yellow('Starting CLI streaming test...'));
+		console.log(chalk.gray(`[DEBUG] PROJECT_ROOT: ${PROJECT_ROOT}`));
+		console.log(
+			chalk.gray(`[DEBUG] PROJECT_ROOT type: ${typeof PROJECT_ROOT}`)
+		);
 		const startTime = Date.now();
 
 		// No reportProgress - should use CLI progress bars
-		const result = await expandTask(
+		// Note: expandAllTasks has different parameter order than expandTask
+		// (tasksPath, numSubtasks, useResearch, additionalContext, force, context, outputFormat)
+		const result = await expandAllTasks(
 			testTasksPath,
-			1, // Task ID
-			numSubtasks, // Number of subtasks
+			numSubtasks, // Number of subtasks per task
 			false, // useResearch
 			'', // additionalContext
+			true, // force
 			{
-				projectRoot: PROJECT_ROOT,
+				projectRoot: PROJECT_ROOT, // Use actual project root
 				session: {}
 			},
-			true // force
+			'text' // outputFormat for CLI
 		);
 
 		const endTime = Date.now();
@@ -358,17 +431,14 @@ async function testCLIStreaming(numSubtasks = 5) {
 		);
 
 		// Verify results
-		const subtasksGenerated = result.task?.subtasks?.length || 0;
-
 		console.log(chalk.cyan('\n=== CLI-Specific Validation ==='));
-		console.log(
-			`✅ Subtasks generated: ${subtasksGenerated} (expected: ${numSubtasks})`
-		);
+		console.log(`✅ Tasks expanded: ${result.expandedCount} (expected: 3)`);
+		console.log(`✅ Success: ${result.success}`);
 
 		return {
 			success: true,
 			duration,
-			subtasksGenerated,
+			expandedCount: result.expandedCount,
 			result
 		};
 	} catch (error) {
@@ -387,7 +457,7 @@ async function testCLIStreaming(numSubtasks = 5) {
 /**
  * Test non-streaming functionality
  */
-async function testNonStreaming(numSubtasks = 5) {
+async function testNonStreaming(numSubtasks = 3) {
 	console.log(chalk.cyan('🧪 Testing Non-Streaming Functionality\n'));
 
 	const testTasksPath = createTestTasksFile();
@@ -397,15 +467,15 @@ async function testNonStreaming(numSubtasks = 5) {
 		console.log(chalk.yellow('Starting non-streaming test...'));
 		const startTime = Date.now();
 
-		// Force non-streaming by setting outputFormat to 'json'
-		const result = await expandTask(
+		// Force non-streaming by using JSON output without reportProgress
+		const result = await expandAllTasks(
 			testTasksPath,
-			1, // Task ID
-			numSubtasks, // Number of subtasks
+			numSubtasks, // Number of subtasks per task
 			false, // useResearch
 			'', // additionalContext
+			true, // force
 			{
-				projectRoot: PROJECT_ROOT,
+				projectRoot: PROJECT_ROOT, // Use actual project root
 				session: {},
 				mcpLog: {
 					info: () => {},
@@ -414,7 +484,7 @@ async function testNonStreaming(numSubtasks = 5) {
 					debug: () => {}
 				}
 			},
-			true // force
+			'json' // outputFormat
 		);
 
 		const endTime = Date.now();
@@ -425,17 +495,14 @@ async function testNonStreaming(numSubtasks = 5) {
 		);
 
 		// Verify results
-		const subtasksGenerated = result.task?.subtasks?.length || 0;
-
 		console.log(chalk.cyan('\n=== Non-Streaming Validation ==='));
-		console.log(
-			`✅ Subtasks generated: ${subtasksGenerated} (expected: ${numSubtasks})`
-		);
+		console.log(`✅ Tasks expanded: ${result.expandedCount} (expected: 3)`);
+		console.log(`✅ Success: ${result.success}`);
 
 		return {
 			success: true,
 			duration,
-			subtasksGenerated,
+			expandedCount: result.expandedCount,
 			result
 		};
 	} catch (error) {
@@ -471,11 +538,11 @@ function compareResults(results) {
 		}
 	});
 
-	// Compare subtask counts
-	console.log(chalk.yellow('\nSubtask Generation:'));
+	// Compare expansion counts
+	console.log(chalk.yellow('\nTasks Expanded:'));
 	results.forEach((result) => {
 		if (result.success) {
-			console.log(`${result.name}: ${result.subtasksGenerated} subtasks`);
+			console.log(`${result.name}: ${result.expandedCount} tasks`);
 		}
 	});
 
@@ -486,17 +553,24 @@ function compareResults(results) {
 			console.log(
 				`${result.name}: ${result.progressHistory.length} progress reports`
 			);
+			// Check for fractional progress
+			const fractionalCount = result.progressHistory.filter(
+				(entry) => entry.type === 'subtask_progress'
+			).length;
+			if (fractionalCount > 0) {
+				console.log(`  - Fractional progress updates: ${fractionalCount}`);
+			}
 		}
 	});
 
-	const allSubtaskCounts = validResults.map((r) => r.subtasksGenerated);
-	const allMatch = allSubtaskCounts.every(
-		(count) => count === allSubtaskCounts[0]
+	const allExpandCounts = validResults.map((r) => r.expandedCount);
+	const allMatch = allExpandCounts.every(
+		(count) => count === allExpandCounts[0]
 	);
 
 	console.log(
 		chalk.green(
-			`\n✅ All methods generated same subtask count: ${allMatch ? 'YES' : 'NO'}`
+			`\n✅ All methods expanded same task count: ${allMatch ? 'YES' : 'NO'}`
 		)
 	);
 }
@@ -507,11 +581,11 @@ function compareResults(results) {
 async function main() {
 	const args = process.argv.slice(2);
 	const testType = args[0] || 'mcp-streaming';
-	const numSubtasks = parseInt(args[1]) || 5;
+	const numSubtasks = parseInt(args[1]) || 3;
 
-	console.log(chalk.bold.cyan('🚀 Task Master Expand Task Tests\n'));
+	console.log(chalk.bold.cyan('🚀 Task Master Expand All Tasks Tests\n'));
 	console.log(chalk.blue(`Test type: ${testType}`));
-	console.log(chalk.blue(`Number of subtasks: ${numSubtasks}\n`));
+	console.log(chalk.blue(`Number of subtasks per task: ${numSubtasks}\n`));
 
 	try {
 		const results = [];
