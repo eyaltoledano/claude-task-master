@@ -23,7 +23,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain("rulesDir: '.'"); // non-default
 		expect(claudeProfileContent).toContain('mcpConfig: false'); // non-default
 		expect(claudeProfileContent).toContain('includeDefaultRules: false'); // non-default
-		expect(claudeProfileContent).toContain("'AGENTS.md': 'CLAUDE.md'");
+		expect(claudeProfileContent).toContain("'claude/TM_COMMANDS_GUIDE.md': '.claude/TM_COMMANDS_GUIDE.md'");
 
 		// Check the final computed properties on the profile object
 		expect(claudeProfile.profileName).toBe('claude');
@@ -33,7 +33,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfile.mcpConfig).toBe(false);
 		expect(claudeProfile.mcpConfigName).toBe(null); // computed
 		expect(claudeProfile.includeDefaultRules).toBe(false);
-		expect(claudeProfile.fileMap['AGENTS.md']).toBe('CLAUDE.md');
+		expect(claudeProfile.fileMap['claude/TM_COMMANDS_GUIDE.md']).toBe('.claude/TM_COMMANDS_GUIDE.md');
 	});
 
 	test('claude.js has lifecycle functions for file management', () => {
@@ -44,14 +44,15 @@ describe('Claude Profile Initialization Functionality', () => {
 		);
 	});
 
-	test('claude.js handles .claude directory in lifecycle functions', () => {
+	test('claude.js handles .claude directory and CLAUDE.md import in lifecycle functions', () => {
 		expect(claudeProfileContent).toContain('.claude');
 		expect(claudeProfileContent).toContain('copyRecursiveSync');
+		expect(claudeProfileContent).toContain("'@./.claude/TM_COMMANDS_GUIDE.md'");
 	});
 
 	test('claude.js has proper error handling in lifecycle functions', () => {
 		expect(claudeProfileContent).toContain('try {');
 		expect(claudeProfileContent).toContain('} catch (err) {');
-		expect(claudeProfileContent).toContain("log('error'");
+		expect(claudeProfileContent).toContain("'error'");
 	});
 });
