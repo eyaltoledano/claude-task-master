@@ -15,6 +15,14 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 		this.name = 'Claude Code';
 	}
 
+	getRequiredApiKeyName() {
+		return 'CLAUDE_CODE_API_KEY';
+	}
+
+	isRequiredApiKey() {
+		return false;
+	}
+
 	/**
 	 * Override validateAuth to skip API key validation for Claude Code
 	 * @param {object} params - Parameters to validate

@@ -199,97 +199,130 @@ export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
  * Convert all Cursor rules to profile rules for a specific profile
  */
 export function convertAllRulesToProfileRules(projectRoot, profile) {
-	// Handle simple profiles (Claude, Codex) that just copy files to root
-	const isSimpleProfile = Object.keys(profile.fileMap).length === 0;
-	if (isSimpleProfile) {
-		// For simple profiles, just call their post-processing hook and return
-		const __filename = fileURLToPath(import.meta.url);
-		const __dirname = path.dirname(__filename);
-		const assetsDir = path.join(__dirname, '..', '..', 'assets');
-
-		if (typeof profile.onPostConvertRulesProfile === 'function') {
-			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
-		}
-		return { success: 1, failed: 0 };
-	}
-
 	const __filename = fileURLToPath(import.meta.url);
 	const __dirname = path.dirname(__filename);
 	const sourceDir = path.join(__dirname, '..', '..', 'assets', 'rules');
 	const targetDir = path.join(projectRoot, profile.rulesDir);
-
-	// Ensure target directory exists
-	if (!fs.existsSync(targetDir)) {
-		fs.mkdirSync(targetDir, { recursive: true });
-	}
-
-	// Setup MCP configuration if enabled
-	if (profile.mcpConfig !== false) {
-		setupMCPConfiguration(projectRoot, profile.mcpConfigPath);
-	}
+	const assetsDir = path.join(__dirname, '..', '..', 'assets');
 
 	let success = 0;
 	let failed = 0;
 
-	// Use fileMap to determine which files to copy
-	const sourceFiles = Object.keys(profile.fileMap);
-
-	for (const sourceFile of sourceFiles) {
+	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
+	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
-			const sourcePath = path.join(sourceDir, sourceFile);
-
-			// Check if source file exists
-			if (!fs.existsSync(sourcePath)) {
-				log(
-					'warn',
-					`[Rule Transformer] Source file not found: ${sourceFile}, skipping`
-				);
-				continue;
-			}
-
-			const targetFilename = profile.fileMap[sourceFile];
-			const targetPath = path.join(targetDir, targetFilename);
-
-			// Ensure target subdirectory exists (for rules like taskmaster/dev_workflow.md)
-			const targetFileDir = path.dirname(targetPath);
-			if (!fs.existsSync(targetFileDir)) {
-				fs.mkdirSync(targetFileDir, { recursive: true });
-			}
-
-			// Read source content
-			let content = fs.readFileSync(sourcePath, 'utf8');
-
-			// Apply transformations
-			content = transformRuleContent(
-				content,
-				profile.conversionConfig,
-				profile.globalReplacements
-			);
-
-			// Write to target
-			fs.writeFileSync(targetPath, content, 'utf8');
-			success++;
-
+			profile.onAddRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
-				`[Rule Transformer] Converted ${sourceFile} -> ${targetFilename} for ${profile.profileName}`
+				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
 			);
 		} catch (error) {
-			failed++;
 			log(
 				'error',
-				`[Rule Transformer] Failed to convert ${sourceFile} for ${profile.profileName}: ${error.message}`
+				`[Rule Transformer] onAddRulesProfile failed for ${profile.profileName}: ${error.message}`
+			);
+			failed++;
+		}
+	}
+
+	// 2. Handle fileMap-based rule conversion (if any)
+	const sourceFiles = Object.keys(profile.fileMap);
+	if (sourceFiles.length > 0) {
+		// Only create rules directory if we have files to copy
+		if (!fs.existsSync(targetDir)) {
+			fs.mkdirSync(targetDir, { recursive: true });
+		}
+
+		for (const sourceFile of sourceFiles) {
+			// Determine if this is an asset file (not a rule file)
+			const isAssetFile = !sourceFile.startsWith('rules/');
+
+			try {
+				// Use explicit path from fileMap - assets/ is the base directory
+				const sourcePath = path.join(assetsDir, sourceFile);
+
+				// Check if source file exists
+				if (!fs.existsSync(sourcePath)) {
+					log(
+						'warn',
+						`[Rule Transformer] Source file not found: ${sourcePath}, skipping`
+					);
+					continue;
+				}
+
+				const targetFilename = profile.fileMap[sourceFile];
+				const targetPath = path.join(targetDir, targetFilename);
+
+				// Ensure target subdirectory exists (for rules like taskmaster/dev_workflow.md)
+				const targetFileDir = path.dirname(targetPath);
+				if (!fs.existsSync(targetFileDir)) {
+					fs.mkdirSync(targetFileDir, { recursive: true });
+				}
+
+				// Read source content
+				let content = fs.readFileSync(sourcePath, 'utf8');
+
+				// Apply transformations (only if this is a rule file, not an asset file)
+				if (!isAssetFile) {
+					content = transformRuleContent(
+						content,
+						profile.conversionConfig,
+						profile.globalReplacements
+					);
+				}
+
+				// Write to target
+				fs.writeFileSync(targetPath, content, 'utf8');
+				success++;
+
+				log(
+					'debug',
+					`[Rule Transformer] ${isAssetFile ? 'Copied' : 'Converted'} ${sourceFile} -> ${targetFilename} for ${profile.profileName}`
+				);
+			} catch (error) {
+				failed++;
+				log(
+					'error',
+					`[Rule Transformer] Failed to ${isAssetFile ? 'copy' : 'convert'} ${sourceFile} for ${profile.profileName}: ${error.message}`
+				);
+			}
+		}
+	}
+
+	// 3. Setup MCP configuration (if enabled)
+	if (profile.mcpConfig !== false) {
+		try {
+			setupMCPConfiguration(projectRoot, profile.mcpConfigPath);
+			log(
+				'debug',
+				`[Rule Transformer] Setup MCP configuration for ${profile.profileName}`
+			);
+		} catch (error) {
+			log(
+				'error',
+				`[Rule Transformer] MCP setup failed for ${profile.profileName}: ${error.message}`
 			);
 		}
 	}
 
-	// Call post-processing hook if defined (e.g., for Roo's rules-*mode* folders)
+	// 4. Call post-conversion hook (for finalization)
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
-		const assetsDir = path.join(__dirname, '..', '..', 'assets');
-		profile.onPostConvertRulesProfile(projectRoot, assetsDir);
+		try {
+			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			log(
+				'debug',
+				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
+			);
+		} catch (error) {
+			log(
+				'error',
+				`[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`
+			);
+		}
 	}
 
-	return { success, failed };
+	// Ensure we return at least 1 success for profiles that only use lifecycle functions
+	return { success: Math.max(success, 1), failed };
 }
 
 /**
@@ -314,176 +347,147 @@ export function removeProfileRules(projectRoot, profile) {
 	};
 
 	try {
-		// Handle simple profiles (Claude, Codex) that just copy files to root
-		const isSimpleProfile = Object.keys(profile.fileMap).length === 0;
-
-		if (isSimpleProfile) {
-			// For simple profiles, just call their removal hook and return
-			if (typeof profile.onRemoveRulesProfile === 'function') {
+		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
+		if (typeof profile.onRemoveRulesProfile === 'function') {
+			try {
 				profile.onRemoveRulesProfile(projectRoot);
+				log(
+					'debug',
+					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
+				);
+			} catch (error) {
+				log(
+					'error',
+					`[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`
+				);
 			}
-			result.success = true;
-			log(
-				'debug',
-				`[Rule Transformer] Successfully removed ${profile.profileName} files from ${projectRoot}`
-			);
-			return result;
 		}
 
-		// Check if profile directory exists at all (for full profiles)
-		if (!fs.existsSync(profileDir)) {
-			result.success = true;
-			result.skipped = true;
-			log(
-				'debug',
-				`[Rule Transformer] Profile directory does not exist: ${profileDir}`
-			);
-			return result;
-		}
+		// 2. Remove fileMap-based files (if any)
+		const sourceFiles = Object.keys(profile.fileMap);
+		if (sourceFiles.length > 0) {
+			// Check if profile directory exists at all (for full profiles)
+			if (!fs.existsSync(profileDir)) {
+				result.success = true;
+				result.skipped = true;
+				log(
+					'debug',
+					`[Rule Transformer] Profile directory does not exist: ${profileDir}`
+				);
+				return result;
+			}
 
-		// 1. Remove only Task Master specific files from the rules directory
-		let hasOtherRulesFiles = false;
-		if (fs.existsSync(targetDir)) {
-			const taskmasterFiles = Object.values(profile.fileMap);
-			const removedFiles = [];
+			let hasOtherRulesFiles = false;
 
-			// Helper function to recursively check and remove Task Master files
-			function processDirectory(dirPath, relativePath = '') {
-				const items = fs.readdirSync(dirPath);
+			if (fs.existsSync(targetDir)) {
+				// Get list of files we're responsible for
+				const taskMasterFiles = sourceFiles.map(
+					(sourceFile) => profile.fileMap[sourceFile]
+				);
 
-				for (const item of items) {
-					const itemPath = path.join(dirPath, item);
-					const relativeItemPath = relativePath
-						? path.join(relativePath, item)
-						: item;
-					const stat = fs.statSync(itemPath);
+				// Get all files in the rules directory
+				const allFiles = fs.readdirSync(targetDir, { recursive: true });
+				const allFilePaths = allFiles
+					.filter((file) => {
+						const fullPath = path.join(targetDir, file);
+						return fs.statSync(fullPath).isFile();
+					})
+					.map((file) => file.toString()); // Ensure it's a string
 
-					if (stat.isDirectory()) {
-						// Recursively process subdirectory
-						processDirectory(itemPath, relativeItemPath);
-
-						// Check if directory is empty after processing and remove if so
+				// Remove only Task Master files
+				for (const taskMasterFile of taskMasterFiles) {
+					const filePath = path.join(targetDir, taskMasterFile);
+					if (fs.existsSync(filePath)) {
 						try {
-							const remainingItems = fs.readdirSync(itemPath);
-							if (remainingItems.length === 0) {
-								fs.rmSync(itemPath, { recursive: true, force: true });
-								log(
-									'debug',
-									`[Rule Transformer] Removed empty directory: ${relativeItemPath}`
-								);
-							}
-						} catch (error) {
-							// Directory might have been removed already, ignore
-						}
-					} else if (stat.isFile()) {
-						if (taskmasterFiles.includes(relativeItemPath)) {
-							// This is a Task Master file, remove it
-							fs.rmSync(itemPath, { force: true });
-							removedFiles.push(relativeItemPath);
+							fs.rmSync(filePath, { force: true });
+							result.filesRemoved.push(taskMasterFile);
 							log(
 								'debug',
-								`[Rule Transformer] Removed Task Master file: ${relativeItemPath}`
+								`[Rule Transformer] Removed Task Master file: ${taskMasterFile}`
 							);
-						} else {
-							// This is not a Task Master file, leave it
-							hasOtherRulesFiles = true;
+						} catch (error) {
 							log(
-								'debug',
-								`[Rule Transformer] Preserved existing file: ${relativeItemPath}`
+								'error',
+								`[Rule Transformer] Failed to remove ${taskMasterFile}: ${error.message}`
 							);
 						}
 					}
 				}
-			}
 
-			// Process the rules directory recursively
-			processDirectory(targetDir);
-
-			result.filesRemoved = removedFiles;
-
-			// Only remove the rules directory if it's empty after removing Task Master files
-			const remainingFiles = fs.readdirSync(targetDir);
-			if (remainingFiles.length === 0) {
-				fs.rmSync(targetDir, { recursive: true, force: true });
-				log(
-					'debug',
-					`[Rule Transformer] Removed empty rules directory: ${targetDir}`
+				// Check for other (non-Task Master) files
+				const remainingFiles = allFilePaths.filter(
+					(file) => !taskMasterFiles.includes(file)
 				);
-			} else if (hasOtherRulesFiles) {
-				result.notice = `Preserved ${remainingFiles.length} existing rule files in ${profile.rulesDir}`;
-				log('info', `[Rule Transformer] ${result.notice}`);
-			}
-		}
 
-		// 2. Handle MCP configuration - only remove Task Master, preserve other servers
-		if (profile.mcpConfig !== false) {
-			result.mcpResult = removeTaskMasterMCPConfiguration(
-				projectRoot,
-				profile.mcpConfigPath
-			);
-			if (result.mcpResult.hasOtherServers) {
-				if (!result.notice) {
-					result.notice = 'Preserved other MCP server configurations';
-				} else {
-					result.notice += '; preserved other MCP server configurations';
+				hasOtherRulesFiles = remainingFiles.length > 0;
+
+				// Remove empty directories or note preserved files
+				if (remainingFiles.length === 0) {
+					fs.rmSync(targetDir, { recursive: true, force: true });
+					log(
+						'debug',
+						`[Rule Transformer] Removed empty rules directory: ${targetDir}`
+					);
+				} else if (hasOtherRulesFiles) {
+					result.notice = `Preserved ${remainingFiles.length} existing rule files in ${profile.rulesDir}`;
+					log('info', `[Rule Transformer] ${result.notice}`);
 				}
 			}
 		}
 
-		// 3. Call removal hook if defined (e.g., Roo's custom cleanup)
-		if (typeof profile.onRemoveRulesProfile === 'function') {
-			profile.onRemoveRulesProfile(projectRoot);
-		}
-
-		// 4. Only remove profile directory if:
-		//    - It's completely empty after all operations, AND
-		//    - All rules removed were Task Master rules (no existing rules preserved), AND
-		//    - MCP config was completely deleted (not just Task Master removed), AND
-		//    - No other files or folders exist in the profile directory
-		if (fs.existsSync(profileDir)) {
-			const remaining = fs.readdirSync(profileDir);
-			const allRulesWereTaskMaster = !hasOtherRulesFiles;
-			const mcpConfigCompletelyDeleted = result.mcpResult?.deleted === true;
-
-			// Check if there are any other files or folders beyond what we expect
-			const hasOtherFilesOrFolders = remaining.length > 0;
-
-			if (
-				remaining.length === 0 &&
-				allRulesWereTaskMaster &&
-				(profile.mcpConfig === false || mcpConfigCompletelyDeleted) &&
-				!hasOtherFilesOrFolders
-			) {
-				fs.rmSync(profileDir, { recursive: true, force: true });
-				result.profileDirRemoved = true;
+		// 3. Handle MCP configuration - only remove Task Master, preserve other servers
+		if (profile.mcpConfig !== false) {
+			try {
+				result.mcpResult = removeTaskMasterMCPConfiguration(
+					projectRoot,
+					profile.mcpConfigPath
+				);
+				if (result.mcpResult.hasOtherServers) {
+					if (!result.notice) {
+						result.notice = 'Preserved other MCP server configurations';
+					} else {
+						result.notice += '; preserved other MCP server configurations';
+					}
+				}
 				log(
 					'debug',
-					`[Rule Transformer] Removed profile directory: ${profileDir} (completely empty, all rules were Task Master rules, and MCP config was completely removed)`
+					`[Rule Transformer] Processed MCP configuration for ${profile.profileName}`
 				);
-			} else {
-				// Determine what was preserved and why
-				const preservationReasons = [];
-				if (hasOtherFilesOrFolders) {
-					preservationReasons.push(
-						`${remaining.length} existing files/folders`
+			} catch (error) {
+				log(
+					'error',
+					`[Rule Transformer] MCP cleanup failed for ${profile.profileName}: ${error.message}`
+				);
+			}
+		}
+
+		// 4. Check if we should remove the entire profile directory
+		if (fs.existsSync(profileDir)) {
+			const remainingContents = fs.readdirSync(profileDir);
+			if (remainingContents.length === 0 && profile.profileDir !== '.') {
+				// Only remove profile directory if it's empty and not root directory
+				try {
+					fs.rmSync(profileDir, { recursive: true, force: true });
+					result.profileDirRemoved = true;
+					log(
+						'debug',
+						`[Rule Transformer] Removed empty profile directory: ${profileDir}`
+					);
+				} catch (error) {
+					log(
+						'error',
+						`[Rule Transformer] Failed to remove profile directory ${profileDir}: ${error.message}`
 					);
 				}
-				if (hasOtherRulesFiles) {
-					preservationReasons.push('existing rule files');
-				}
-				if (result.mcpResult?.hasOtherServers) {
-					preservationReasons.push('other MCP server configurations');
-				}
-
-				const preservationMessage = `Preserved ${preservationReasons.join(', ')} in ${profile.profileDir}`;
-
+			} else if (remainingContents.length > 0) {
+				// Profile directory has remaining files/folders, add notice
+				const preservedNotice = `Preserved ${remainingContents.length} existing files/folders in ${profile.profileDir}`;
 				if (!result.notice) {
-					result.notice = preservationMessage;
-				} else if (!result.notice.includes('Preserved')) {
-					result.notice += `; ${preservationMessage.toLowerCase()}`;
+					result.notice = preservedNotice;
+				} else {
+					result.notice += `; ${preservedNotice.toLowerCase()}`;
 				}
-
-				log('info', `[Rule Transformer] ${preservationMessage}`);
+				log('info', `[Rule Transformer] ${preservedNotice}`);
 			}
 		}
 

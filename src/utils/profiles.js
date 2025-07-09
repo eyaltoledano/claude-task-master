@@ -16,24 +16,48 @@ import { RULE_PROFILES } from '../constants/profiles.js';
 // =============================================================================
 
 /**
- * Detect which profiles are currently installed in the project
- * @param {string} projectRoot - Project root directory
- * @returns {string[]} Array of installed profile names
+ * Get the display name for a profile
+ * @param {string} profileName - The profile name
+ * @returns {string} - The display name
+ */
+export function getProfileDisplayName(profileName) {
+	try {
+		const profile = getRulesProfile(profileName);
+		return profile.displayName || profileName;
+	} catch (error) {
+		return profileName;
+	}
+}
+
+/**
+ * Get installed profiles in the project directory
+ * @param {string} projectRoot - Project directory path
+ * @returns {string[]} - Array of installed profile names
  */
 export function getInstalledProfiles(projectRoot) {
 	const installedProfiles = [];
 
 	for (const profileName of RULE_PROFILES) {
-		const profileConfig = getRulesProfile(profileName);
-		if (!profileConfig) continue;
+		try {
+			const profile = getRulesProfile(profileName);
+			const profileDir = path.join(projectRoot, profile.profileDir);
 
-		// Check if the profile directory exists
-		const profileDir = path.join(projectRoot, profileConfig.profileDir);
-		const rulesDir = path.join(projectRoot, profileConfig.rulesDir);
-
-		// A profile is considered installed if either the profile dir or rules dir exists
-		if (fs.existsSync(profileDir) || fs.existsSync(rulesDir)) {
-			installedProfiles.push(profileName);
+			// Check if profile directory exists (skip root directory check)
+			if (profile.profileDir === '.' || fs.existsSync(profileDir)) {
+				// Check if any files from the profile's fileMap exist
+				const rulesDir = path.join(projectRoot, profile.rulesDir);
+				if (fs.existsSync(rulesDir)) {
+					const ruleFiles = Object.values(profile.fileMap);
+					const hasRuleFiles = ruleFiles.some((ruleFile) =>
+						fs.existsSync(path.join(rulesDir, ruleFile))
+					);
+					if (hasRuleFiles) {
+						installedProfiles.push(profileName);
+					}
+				}
+			}
+		} catch (error) {
+			// Skip profiles that can't be loaded
 		}
 	}
 
@@ -41,31 +65,28 @@ export function getInstalledProfiles(projectRoot) {
 }
 
 /**
- * Check if removing the specified profiles would result in no profiles remaining
+ * Check if removing specified profiles would leave no profiles installed
  * @param {string} projectRoot - Project root directory
  * @param {string[]} profilesToRemove - Array of profile names to remove
- * @returns {boolean} True if removal would result in no profiles remaining
+ * @returns {boolean} - True if removal would leave no profiles
  */
 export function wouldRemovalLeaveNoProfiles(projectRoot, profilesToRemove) {
 	const installedProfiles = getInstalledProfiles(projectRoot);
+
+	// If no profiles are currently installed, removal cannot leave no profiles
+	if (installedProfiles.length === 0) {
+		return false;
+	}
+
 	const remainingProfiles = installedProfiles.filter(
 		(profile) => !profilesToRemove.includes(profile)
 	);
-
-	return remainingProfiles.length === 0 && installedProfiles.length > 0;
+	return remainingProfiles.length === 0;
 }
 
 // =============================================================================
 // PROFILE SETUP
 // =============================================================================
-
-/**
- * Get the display name for a profile
- */
-function getProfileDisplayName(name) {
-	const profile = getRulesProfile(name);
-	return profile?.displayName || name.charAt(0).toUpperCase() + name.slice(1);
-}
 
 // Note: Profile choices are now generated dynamically within runInteractiveProfilesSetup()
 // to ensure proper alphabetical sorting and pagination configuration
@@ -86,26 +107,32 @@ export async function runInteractiveProfilesSetup() {
 		const displayName = getProfileDisplayName(profileName);
 		const profile = getRulesProfile(profileName);
 
-		// Determine description based on profile type
+		// Determine description based on profile capabilities
 		let description;
-		if (Object.keys(profile.fileMap).length === 0) {
-			// Simple profiles (Claude, Codex) - specify the target file
-			const targetFileName =
-				profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-			description = `Integration guide (${targetFileName})`;
-		} else {
-			// Full profiles with rules - check if they have MCP config
-			const hasMcpConfig = profile.mcpConfig === true;
-			if (hasMcpConfig) {
-				// Special case for Roo to mention agent modes
-				if (profileName === 'roo') {
-					description = 'Rule profile, MCP config, and agent modes';
-				} else {
-					description = 'Rule profile and MCP config';
-				}
+		const hasRules = Object.keys(profile.fileMap).length > 0;
+		const hasMcpConfig = profile.mcpConfig === true;
+
+		if (!profile.includeDefaultRules) {
+			// Integration guide profiles (claude, codex, gemini) - don't include standard coding rules
+			if (profileName === 'claude') {
+				description = 'Integration guide with Task Master slash commands';
+			} else if (profileName === 'codex') {
+				description = 'Comprehensive Task Master integration guide';
+			} else if (profileName === 'gemini') {
+				description = 'Integration guide and MCP config';
 			} else {
-				description = 'Rule profile';
+				description = 'Integration guide';
 			}
+		} else if (hasRules && hasMcpConfig) {
+			// Full rule profiles with MCP config
+			if (profileName === 'roo') {
+				description = 'Rule profile, MCP config, and agent modes';
+			} else {
+				description = 'Rule profile and MCP config';
+			}
+		} else if (hasRules) {
+			// Rule profiles without MCP config
+			description = 'Rule profile';
 		}
 
 		return {
@@ -170,14 +197,13 @@ export async function runInteractiveProfilesSetup() {
  */
 export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
-	const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
 
-	if (isSimpleProfile) {
-		// Simple profiles like Claude and Codex only copy AGENTS.md
-		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-		return `Summary for ${profileName}: Integration guide copied to ${targetFileName}`;
+	if (!profileConfig.includeDefaultRules) {
+		// Integration guide profiles (claude, codex, gemini)
+		return `Summary for ${profileName}: Integration guide installed.`;
 	} else {
-		return `Summary for ${profileName}: ${addResult.success} rules added, ${addResult.failed} failed.`;
+		// Rule profiles with coding guidelines
+		return `Summary for ${profileName}: ${addResult.success} files processed, ${addResult.failed} failed.`;
 	}
 }
 
@@ -188,9 +214,6 @@ export function generateProfileSummary(profileName, addResult) {
  * @returns {string} Formatted summary message
  */
 export function generateProfileRemovalSummary(profileName, removeResult) {
-	const profileConfig = getRulesProfile(profileName);
-	const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
-
 	if (removeResult.skipped) {
 		return `Summary for ${profileName}: Skipped (default or protected files)`;
 	}
@@ -199,13 +222,18 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 		return `Summary for ${profileName}: Failed to remove - ${removeResult.error}`;
 	}
 
-	if (isSimpleProfile) {
-		// Simple profiles like Claude and Codex only have an integration guide
-		const targetFileName = profileName === 'claude' ? 'CLAUDE.md' : 'AGENTS.md';
-		return `Summary for ${profileName}: Integration guide (${targetFileName}) removed`;
+	const profileConfig = getRulesProfile(profileName);
+
+	if (!profileConfig.includeDefaultRules) {
+		// Integration guide profiles (claude, codex, gemini)
+		const baseMessage = `Summary for ${profileName}: Integration guide removed`;
+		if (removeResult.notice) {
+			return `${baseMessage} (${removeResult.notice})`;
+		}
+		return baseMessage;
 	} else {
-		// Full profiles have rules directories and potentially MCP configs
-		const baseMessage = `Summary for ${profileName}: Rules directory removed`;
+		// Rule profiles with coding guidelines
+		const baseMessage = `Summary for ${profileName}: Rule profile removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;
 		}
@@ -220,7 +248,6 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
  */
 export function categorizeProfileResults(addResults) {
 	const successfulProfiles = [];
-	const simpleProfiles = [];
 	let totalSuccess = 0;
 	let totalFailed = 0;
 
@@ -228,22 +255,15 @@ export function categorizeProfileResults(addResults) {
 		totalSuccess += r.success;
 		totalFailed += r.failed;
 
-		const profileConfig = getRulesProfile(r.profileName);
-		const isSimpleProfile = Object.keys(profileConfig.fileMap).length === 0;
-
-		if (isSimpleProfile) {
-			// Simple profiles are successful if they completed without error
-			simpleProfiles.push(r.profileName);
-		} else if (r.success > 0) {
-			// Full profiles are successful if they added rules
+		// All profiles are considered successful if they completed without major errors
+		if (r.success > 0 || r.failed === 0) {
 			successfulProfiles.push(r.profileName);
 		}
 	});
 
 	return {
 		successfulProfiles,
-		simpleProfiles,
-		allSuccessfulProfiles: [...successfulProfiles, ...simpleProfiles],
+		allSuccessfulProfiles: successfulProfiles,
 		totalSuccess,
 		totalFailed
 	};
