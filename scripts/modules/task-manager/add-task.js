@@ -29,6 +29,12 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	TASK_PRIORITY_OPTIONS,
+	DEFAULT_TASK_PRIORITY,
+	isValidTaskPriority,
+	normalizeTaskPriority
+} from '../../../src/constants/task-priority.js';
 
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
@@ -115,7 +121,25 @@ async function addTask(
 				success: (...args) => consoleLog('success', ...args)
 			};
 
-	const effectivePriority = priority || getDefaultPriority(projectRoot);
+	// Validate priority - only accept high, medium, or low
+	let effectivePriority =
+		priority || getDefaultPriority(projectRoot) || DEFAULT_TASK_PRIORITY;
+
+	// If priority is provided, validate and normalize it
+	if (priority) {
+		const normalizedPriority = normalizeTaskPriority(priority);
+		if (normalizedPriority) {
+			effectivePriority = normalizedPriority;
+		} else {
+			if (outputFormat === 'text') {
+				consoleLog(
+					'warn',
+					`Invalid priority "${priority}". Using default priority "${DEFAULT_TASK_PRIORITY}".`
+				);
+			}
+			effectivePriority = DEFAULT_TASK_PRIORITY;
+		}
+	}
 
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
