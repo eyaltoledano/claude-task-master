@@ -1,6 +1,8 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
+import { rooProfile } from '../../../src/profiles/roo.js';
+import { COMMON_TOOL_MAPPINGS } from '../../../src/profiles/base-profile.js';
 
 describe('Roo Profile Initialization Functionality', () => {
 	let rooProfileContent;
@@ -9,6 +11,33 @@ describe('Roo Profile Initialization Functionality', () => {
 		// Read the roo.js profile file content once for all tests
 		const rooJsPath = path.join(process.cwd(), 'src', 'profiles', 'roo.js');
 		rooProfileContent = fs.readFileSync(rooJsPath, 'utf8');
+	});
+
+	test('roo.js uses factory pattern with correct configuration', () => {
+		// Check for explicit, non-default values in the source file
+		expect(rooProfileContent).toContain("name: 'roo'");
+		expect(rooProfileContent).toContain("displayName: 'Roo Code'");
+		expect(rooProfileContent).toContain(
+			'toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE'
+		);
+
+		// Check the final computed properties on the profile object
+		expect(rooProfile.profileName).toBe('roo');
+		expect(rooProfile.displayName).toBe('Roo Code');
+		expect(rooProfile.profileDir).toBe('.roo'); // default
+		expect(rooProfile.rulesDir).toBe('.roo/rules'); // default
+		expect(rooProfile.mcpConfig).toBe(true); // default
+	});
+
+	test('roo.js uses custom ROO_STYLE tool mappings', () => {
+		// Check that the profile uses the correct, non-standard tool mappings
+		expect(rooProfileContent).toContain(
+			'toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE'
+		);
+
+		// Verify the result: roo uses custom tool names
+		expect(rooProfile.conversionConfig.toolNames.edit_file).toBe('apply_diff');
+		expect(rooProfile.conversionConfig.toolNames.search).toBe('search_files');
 	});
 
 	test('roo.js profile ensures Roo directory structure via onAddRulesProfile', () => {

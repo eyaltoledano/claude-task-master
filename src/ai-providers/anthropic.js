@@ -24,6 +24,14 @@ export class AnthropicAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the Anthropic API key
+	 */
+	getRequiredApiKeyName() {
+		return 'ANTHROPIC_API_KEY';
+	}
+
+	/**
 	 * Creates and returns an Anthropic client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Anthropic API key

@@ -1,5 +1,5 @@
 import { generateObject, generateText, streamText } from 'ai';
-import { log } from '../../scripts/modules/index.js';
+import { log } from '../../scripts/modules/utils.js';
 
 /**
  * Base class for all AI providers
@@ -94,6 +94,24 @@ export class BaseAIProvider {
 	 */
 	getClient(params) {
 		throw new Error('getClient must be implemented by provider');
+	}
+
+	/**
+	 * Returns if the API key is required
+	 * @abstract
+	 * @returns {boolean} if the API key is required, defaults to true
+	 */
+	isRequiredApiKey() {
+		return true;
+	}
+
+	/**
+	 * Returns the required API key environment variable name
+	 * @abstract
+	 * @returns {string|null} The environment variable name, or null if no API key is required
+	 */
+	getRequiredApiKeyName() {
+		throw new Error('getRequiredApiKeyName must be implemented by provider');
 	}
 
 	/**

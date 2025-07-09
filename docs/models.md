@@ -1,4 +1,4 @@
-# Available Models as of July 8, 2025
+# Available Models as of July 9, 2025
 
 ## Main Models
 
@@ -83,6 +83,7 @@
 | groq        | whisper-large-v3                               | —         | 0.11       | 0           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 
@@ -113,6 +114,7 @@
 | groq        | deepseek-r1-distill-llama-70b                | 0.52      | 0.75       | 0.99        |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
 
@@ -186,5 +188,6 @@
 | groq        | gemma2-9b-it                                   | 0.3       | 0.2        | 0.2         |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
