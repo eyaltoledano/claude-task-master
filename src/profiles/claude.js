@@ -4,6 +4,38 @@ import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 
+// Helper function to recursively copy directory (adopted from Roo profile)
+function copyRecursiveSync(src, dest) {
+	const exists = fs.existsSync(src);
+	const stats = exists && fs.statSync(src);
+	const isDirectory = exists && stats.isDirectory();
+	if (isDirectory) {
+		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+		fs.readdirSync(src).forEach((childItemName) => {
+			copyRecursiveSync(
+				path.join(src, childItemName),
+				path.join(dest, childItemName)
+			);
+		});
+	} else {
+		fs.copyFileSync(src, dest);
+	}
+}
+
+// Helper function to recursively remove directory
+function removeDirectoryRecursive(dirPath) {
+	if (fs.existsSync(dirPath)) {
+		try {
+			fs.rmSync(dirPath, { recursive: true, force: true });
+			return true;
+		} catch (err) {
+			log('error', `Failed to remove directory ${dirPath}: ${err.message}`);
+			return false;
+		}
+	}
+	return true;
+}
+
 // Lifecycle functions for Claude Code profile
 function onAddRulesProfile(targetDir, assetsDir) {
 	// Use the provided assets directory to find the source file
