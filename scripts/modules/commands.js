@@ -970,6 +970,8 @@ function registerCommands(programInstance) {
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
+			const tasksPath = taskMaster.getTasksPath();
+
 			// Resolve tag using standard pattern
 			const tag =
 				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
@@ -1063,6 +1065,7 @@ function registerCommands(programInstance) {
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
 				const tag =
@@ -1160,7 +1163,7 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateTaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					taskId,
 					prompt,
 					useResearch,
@@ -1234,6 +1237,7 @@ function registerCommands(programInstance) {
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
 				const tag =
@@ -1333,7 +1337,7 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateSubtaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					subtaskId,
 					prompt,
 					useResearch,
@@ -1571,7 +1575,7 @@ function registerCommands(programInstance) {
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.num, // Pass num
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
@@ -1598,7 +1602,7 @@ function registerCommands(programInstance) {
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.id,
 						options.num,
 						options.research,
@@ -2091,7 +2095,6 @@ ${result.result}
 		.option('--all', 'Clear subtasks from all tasks')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIds = options.id;
 			const all = options.all;
 			const tag = options.tag;
@@ -2249,7 +2252,7 @@ ${result.result}
 
 			try {
 				const { newTaskId, telemetryData } = await addTask(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					options.prompt,
 					dependenciesArray,
 					options.priority,
@@ -2288,8 +2291,6 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
 			const tag = options.tag;
 
 			// Initialize TaskMaster
@@ -4236,6 +4237,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4305,7 +4307,7 @@ Examples:
 					};
 
 					await createTagFromBranch(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						currentBranch,
 						branchOptions,
 						context,
@@ -4375,6 +4377,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4429,6 +4432,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4478,6 +4482,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4523,6 +4528,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4574,6 +4580,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4594,7 +4601,7 @@ Examples:
 				};
 
 				await copyTag(
-					taskMaster.getTasksPath(),
+					tasksPath,
 					sourceName,
 					targetName,
 					copyOptions,
