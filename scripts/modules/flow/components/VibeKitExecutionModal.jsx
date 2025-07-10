@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import path from 'path';
-import { VibeKitService } from '../services/vibekit.service.js';
+import fs from 'fs';
+import { VibeKit } from '@vibe-kit/sdk';
 import LoadingSpinner from './ui/LoadingSpinner.jsx';
 import AnimatedButton from './ui/AnimatedButton.jsx';
 import ProgressBar from './ui/ProgressBar.jsx';
@@ -18,57 +19,88 @@ export function VibeKitExecutionModal({
   const { backend } = useAppContext();
   const [step, setStep] = useState('config'); // config, executing, results
   const [config, setConfig] = useState({
-    agent: 'claude',
-    sandbox: 'e2b',
+    agent: null, // Will be set to first enabled agent
+    sandbox: null, // Will be set to first enabled sandbox
     mode: 'code',
     createPR: true,
-    runTests: true,
-    cleanupSandbox: false,
+    runTests: false,
+    cleanupSandbox: true,
     branch: `subtask-${subtask?.id || task?.id}`
   });
-  const [vibeKitService, setVibeKitService] = useState(null);
-  const [configStatus, setConfigStatus] = useState(null);
   const [selectedOption, setSelectedOption] = useState(0);
   const [progress, setProgress] = useState({ phase: 'idle', progress: 0, message: '' });
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [enabledAgents, setEnabledAgents] = useState([]);
+  const [enabledSandboxes, setEnabledSandboxes] = useState([]);
   
-  // Initialize VibeKit service and check configuration
+  // Load enabled agents and sandboxes from config files
   useEffect(() => {
-    if (isVisible && backend) {
+    const loadConfigurations = async () => {
       try {
-        const service = new VibeKitService({
-          projectRoot: backend.projectRoot,
-          strictValidation: false,
-          agent: { type: config.agent },
-          environments: {
-            e2b: { apiKey: process.env.E2B_API_KEY },
-            northflank: { apiKey: process.env.NORTHFLANK_API_KEY },
-            daytona: { apiKey: process.env.DAYTONA_API_KEY }
-          }
-        });
+        const projectRoot = backend?.projectRoot || process.cwd();
+        const taskMasterRoot = process.cwd(); // Where Task Master is running from
         
-        setVibeKitService(service);
-        setConfigStatus(service.getConfigurationStatus());
+        // Helper function to try loading from project root first, then fallback to Task Master root
+        const loadConfigFile = (filename) => {
+          const projectPath = path.join(projectRoot, 'scripts/modules/flow/config', filename);
+          const fallbackPath = path.join(taskMasterRoot, 'scripts/modules/flow/config', filename);
+          
+          try {
+            // Try project root first
+            if (fs.existsSync(projectPath)) {
+              return JSON.parse(fs.readFileSync(projectPath, 'utf8'));
+            }
+            // Fallback to Task Master root
+            if (fs.existsSync(fallbackPath)) {
+              return JSON.parse(fs.readFileSync(fallbackPath, 'utf8'));
+            }
+            throw new Error(`Config file ${filename} not found in either ${projectPath} or ${fallbackPath}`);
+          } catch (err) {
+            throw new Error(`Failed to load ${filename}: ${err.message}`);
+          }
+        };
+        
+        // Load agents configuration
+        const agentsConfig = loadConfigFile('agents.json');
+        const agents = Object.entries(agentsConfig.agents)
+          .filter(([_, agentConfig]) => agentConfig.enabled)
+          .map(([name, _]) => name);
+        
+        // Load sandboxes configuration
+        const sandboxesConfig = loadConfigFile('sandboxes.json');
+        const sandboxes = Object.entries(sandboxesConfig.sandboxes)
+          .filter(([_, sandboxConfig]) => sandboxConfig.active)
+          .sort(([_, a], [__, b]) => a.rank - b.rank)
+          .map(([name, _]) => name);
+        
+        setEnabledAgents(agents);
+        setEnabledSandboxes(sandboxes);
+        
+        // Set default selections to first enabled options
+        if (agents.length > 0 && sandboxes.length > 0) {
+          setConfig(prev => ({
+            ...prev,
+            agent: agents[0],
+            sandbox: sandboxes[0]
+          }));
+        }
       } catch (err) {
-        setError(`VibeKit initialization failed: ${err.message}`);
+        console.error('Failed to load configurations:', err);
+        setError(`Failed to load agent/sandbox configurations: ${err.message}`);
       }
+    };
+
+    if (isVisible && backend) {
+      loadConfigurations();
     }
-  }, [isVisible, backend, config.agent]);
+  }, [isVisible, backend]);
 
   const configOptions = [
     { key: 'agent', label: 'AI Agent', value: config.agent },
     { key: 'sandbox', label: 'Sandbox Environment', value: config.sandbox },
-    { key: 'mode', label: 'Execution Mode', value: config.mode },
-    { key: 'createPR', label: 'Create Pull Request', value: config.createPR ? 'Yes' : 'No' },
-    { key: 'runTests', label: 'Run Tests', value: config.runTests ? 'Yes' : 'No' },
-    { key: 'cleanupSandbox', label: 'Cleanup Sandbox', value: config.cleanupSandbox ? 'Yes' : 'No' },
-    { key: 'execute', label: '🚀 Execute with VibeKit', value: null }
+    { key: 'execute', label: '🚀 Launch Agent!', value: null }
   ];
-
-  	const agentOptions = ['claude', 'codex', 'gemini', 'opencode'];
-  const sandboxOptions = ['e2b', 'northflank', 'daytona', 'local'];
-  const modeOptions = ['code', 'ask'];
 
   useInput((input, key) => {
     if (!isVisible) return;
@@ -101,37 +133,20 @@ export function VibeKitExecutionModal({
     
     switch (selected.key) {
       case 'agent': {
-        const currentAgentIndex = agentOptions.indexOf(config.agent);
-        const nextAgentIndex = (currentAgentIndex + 1) % agentOptions.length;
-        setConfig(prev => ({ ...prev, agent: agentOptions[nextAgentIndex] }));
+        if (enabledAgents.length === 0) return;
+        const currentAgentIndex = enabledAgents.indexOf(config.agent);
+        const nextAgentIndex = (currentAgentIndex + 1) % enabledAgents.length;
+        setConfig(prev => ({ ...prev, agent: enabledAgents[nextAgentIndex] }));
         break;
       }
         
       case 'sandbox': {
-        const currentSandboxIndex = sandboxOptions.indexOf(config.sandbox);
-        const nextSandboxIndex = (currentSandboxIndex + 1) % sandboxOptions.length;
-        setConfig(prev => ({ ...prev, sandbox: sandboxOptions[nextSandboxIndex] }));
+        if (enabledSandboxes.length === 0) return;
+        const currentSandboxIndex = enabledSandboxes.indexOf(config.sandbox);
+        const nextSandboxIndex = (currentSandboxIndex + 1) % enabledSandboxes.length;
+        setConfig(prev => ({ ...prev, sandbox: enabledSandboxes[nextSandboxIndex] }));
         break;
       }
-        
-      case 'mode': {
-        const currentModeIndex = modeOptions.indexOf(config.mode);
-        const nextModeIndex = (currentModeIndex + 1) % modeOptions.length;
-        setConfig(prev => ({ ...prev, mode: modeOptions[nextModeIndex] }));
-        break;
-      }
-        
-      case 'createPR':
-        setConfig(prev => ({ ...prev, createPR: !prev.createPR }));
-        break;
-        
-      case 'runTests':
-        setConfig(prev => ({ ...prev, runTests: !prev.runTests }));
-        break;
-        
-      case 'cleanupSandbox':
-        setConfig(prev => ({ ...prev, cleanupSandbox: !prev.cleanupSandbox }));
-        break;
         
       case 'execute':
         executeWithVibeKit();
@@ -139,24 +154,86 @@ export function VibeKitExecutionModal({
     }
   };
 
-  const executeWithVibeKit = async () => {
-    if (!vibeKitService) {
-      setError('VibeKit service not initialized');
-      return;
+  // Helper functions from the test file
+  const getApiKeyForAgent = (agentType) => {
+    const keyMapping = {
+      'claude': process.env.ANTHROPIC_API_KEY,
+      'codex': process.env.OPENAI_API_KEY,
+      'gemini': process.env.GOOGLE_API_KEY,
+      'opencode': process.env.OPENAI_API_KEY
+    };
+    
+    return keyMapping[agentType] || process.env.ANTHROPIC_API_KEY;
+  };
+
+  const getModelForAgent = (agentType) => {
+    const modelMap = {
+      'claude': 'claude-3-5-sonnet-20241022',
+      'codex': 'gpt-4-turbo-preview',
+      'gemini': 'gemini-1.5-pro',
+      'opencode': 'deepseek-coder-v2'
+    };
+    
+    return modelMap[agentType] || 'claude-3-5-sonnet-20241022';
+  };
+
+  const getProviderForAgent = (agentType) => {
+    const providerMap = {
+      'claude': 'anthropic',
+      'codex': 'openai',
+      'gemini': 'gemini',
+      'opencode': 'opencode'
+    };
+    
+    return providerMap[agentType] || 'anthropic';
+  };
+
+  // Create VibeKit configuration following the test pattern
+  const createVibeKitConfig = (agentType) => {
+    const baseConfig = {
+      agent: {
+        type: agentType,
+        model: {
+          apiKey: getApiKeyForAgent(agentType),
+          name: getModelForAgent(agentType),
+          provider: getProviderForAgent(agentType),
+          maxTokens: 4000,
+          temperature: 0.7
+        },
+      },
+      environment: {
+        e2b: {
+          apiKey: process.env.E2B_API_KEY,
+          templateId: process.env.E2B_TEMPLATE_ID
+        }
+      }
+    };
+
+    // Add GitHub configuration if available
+    if (process.env.GITHUB_TOKEN || process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
+      baseConfig.github = {
+        token: process.env.GITHUB_TOKEN || process.env.GITHUB_PERSONAL_ACCESS_TOKEN,
+        repository: 'your-repo/name' // This should be configurable
+      };
     }
 
-    if (!backend) {
-      setError('Backend not available');
+    return baseConfig;
+  };
+
+  const executeWithVibeKit = async () => {
+    if (!config.agent || !config.sandbox) {
+      setError('Please select both an agent and sandbox environment');
       return;
     }
 
     setStep('executing');
     setError(null);
     
+    let vibeKit = null;
+    
     try {
       // Update Task Master status
       const targetId = subtask?.id ? `${task.id}.${subtask.id}` : task?.id;
-      const targetType = subtask ? 'subtask' : 'task';
       
       if (subtask) {
         await backend.updateSubtask(targetId, {
@@ -166,61 +243,134 @@ export function VibeKitExecutionModal({
         await backend.setTaskStatus(targetId, 'in-progress');
       }
 
-      // Execute the task/subtask with VibeKit
+      setProgress({
+        phase: 'initializing',
+        progress: 10,
+        message: 'Creating VibeKit instance...'
+      });
+
+      // Create VibeKit configuration
+      const vibeKitConfig = createVibeKitConfig(config.agent);
+      vibeKit = new VibeKit(vibeKitConfig);
+
+      setProgress({
+        phase: 'code-generation',
+        progress: 20,
+        message: 'Starting code generation...'
+      });
+
+      // Create the prompt from task/subtask data
       const executionTarget = subtask || task;
-      const parentTask = subtask ? task : null;
-      const result = await vibeKitService.executeCompleteWorkflow(executionTarget, {
-        generateCode: true,
-        mode: config.mode,
-        agent: config.agent,
-        environment: config.sandbox,
-        branch: config.branch,
-        createPullRequest: config.createPR,
-        runTests: config.runTests,
-        cleanupSandbox: config.cleanupSandbox,
-        
-        onProgress: (progressUpdate) => {
-          setProgress(progressUpdate);
-          
-          // Log significant progress to Task Master
-          if (progressUpdate.phase === 'completed' || 
-              progressUpdate.phase === 'pull-request-created' ||
-              progressUpdate.progress === 100) {
-            if (subtask) {
-              backend.updateSubtask(targetId, {
-                prompt: `VibeKit ${progressUpdate.phase}: ${progressUpdate.message}`
-              });
-            }
+      const prompt = `Implement: ${executionTarget.title}
+
+Description: ${executionTarget.description || 'No description provided'}
+
+Details: ${executionTarget.details || 'No additional details provided'}
+
+Requirements:
+- Create clean, well-documented code
+- Follow best practices for the technology stack
+- Include error handling where appropriate
+- Add comments explaining key functionality`;
+
+      // Generate code with streaming (following test pattern)
+      const streamingUpdates = [];
+      let hasStreamingError = false;
+      
+      const codeResult = await vibeKit.generateCode({
+        prompt: prompt,
+        mode: "code",
+        callbacks: {
+          onUpdate: (message) => {
+            streamingUpdates.push(message);
+            const preview = message.length > 100 ? message.substring(0, 100) + '...' : message;
+            setProgress({
+              phase: 'code-generation',
+              progress: Math.min(40 + (streamingUpdates.length * 2), 70),
+              message: `Generating code: ${preview}`
+            });
+          },
+          onError: (error) => {
+            hasStreamingError = true;
+            console.error('Streaming error:', error);
           }
         }
-      }, parentTask);
+      });
 
-      setResults(result);
+      if (hasStreamingError) {
+        throw new Error('Code generation streaming encountered errors');
+      }
+
+      if (streamingUpdates.length === 0) {
+        throw new Error('No streaming updates received during code generation');
+      }
+
+      setProgress({
+        phase: 'pull-request',
+        progress: 80,
+        message: 'Creating pull request...'
+      });
+
+      // Create pull request if GitHub is configured
+      let pullRequest = null;
+      if (vibeKitConfig.github) {
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          const uniqueBranchPrefix = `${config.agent}-${timestamp}`;
+          
+          pullRequest = await vibeKit.createPullRequest(
+            {
+              name: "taskmaster-agent",
+              color: "0e8a16",
+              description: `Code generated by ${config.agent} agent for ${subtask ? 'subtask' : 'task'} ${targetId}`
+            },
+            uniqueBranchPrefix
+          );
+        } catch (prError) {
+          console.warn('PR creation failed:', prError.message);
+          // Don't fail the entire execution for PR issues
+        }
+      }
+
+      setProgress({
+        phase: 'completed',
+        progress: 100,
+        message: 'Execution completed successfully!'
+      });
+
+      // Update final Task Master status
+      if (subtask) {
+        await backend.updateSubtask(targetId, {
+          prompt: `VibeKit execution completed successfully. Generated ${streamingUpdates.length} code updates.${pullRequest ? ` PR: ${pullRequest.html_url}` : ''}`
+        });
+        await backend.setTaskStatus(targetId, 'done');
+      } else {
+        await backend.setTaskStatus(targetId, 'done');
+      }
+
+      setResults({
+        success: true,
+        steps: {
+          codeGeneration: { streamingUpdates: streamingUpdates.length },
+          pullRequestCreation: pullRequest ? { number: pullRequest.number, url: pullRequest.html_url } : null,
+          sandboxCleanup: config.cleanupSandbox
+        },
+        agent: config.agent,
+        environment: config.sandbox
+      });
+
       setStep('results');
       
-      // Update final Task Master status
-      if (result.success) {
-        if (subtask) {
-          await backend.updateSubtask(targetId, {
-            prompt: `VibeKit execution completed successfully`
-          });
-          await backend.setTaskStatus(targetId, 'done');
-        } else {
-          await backend.setTaskStatus(targetId, 'done');
-        }
-        
-        if (onComplete) {
-          onComplete(result);
-        }
-      } else {
-        if (subtask) {
-          await backend.updateSubtask(targetId, {
-            prompt: `VibeKit execution failed: ${result.error}`
-          });
-        }
+      if (onComplete) {
+        onComplete({
+          success: true,
+          streamingUpdates: streamingUpdates.length,
+          pullRequest: pullRequest
+        });
       }
       
     } catch (err) {
+      console.error('VibeKit execution failed:', err);
       setError(err.message);
       setStep('config');
       
@@ -231,26 +381,35 @@ export function VibeKitExecutionModal({
           prompt: `VibeKit execution failed: ${err.message}`
         });
       }
+
+      setResults({
+        success: false,
+        error: err.message
+      });
+    } finally {
+      // Always cleanup sandbox
+      if (vibeKit && config.cleanupSandbox) {
+        try {
+          setProgress({
+            phase: 'cleanup',
+            progress: 95,
+            message: 'Cleaning up sandbox...'
+          });
+          await vibeKit.kill();
+        } catch (cleanupError) {
+          console.warn('Sandbox cleanup failed:', cleanupError.message);
+        }
+      }
     }
   };
 
   if (!isVisible) return null;
 
-  const getAgentStatus = (agentType) => {
-    if (!configStatus) return '❓';
-    return configStatus.agent.type === agentType && configStatus.agent.configured ? '✅' : '❌';
-  };
-
-  const getSandboxStatus = (sandboxType) => {
-    if (!configStatus) return '❓';
-    return configStatus.environments.available.includes(sandboxType) ? '✅' : '❌';
-  };
-
   return (
     <Box flexDirection="column" padding={1} borderStyle="round" borderColor="blue">
       <Box justifyContent="center" marginBottom={1}>
         <Text bold color="blue">
-          🤖 VibeKit Execution - {subtask ? `Subtask ${subtask.id}` : `Task ${task?.id}`}
+          🤖 Agent Execution - {subtask ? `Subtask ${task.id}.${subtask.id}` : `Task ${task?.id}`}
         </Text>
       </Box>
       
@@ -264,42 +423,34 @@ export function VibeKitExecutionModal({
         <>
           <Box marginBottom={1}>
             <Text color="gray">
-              Target: {subtask ? subtask.title : task?.title}
+              {subtask ? 'Subtask:' : 'Task:'} {subtask ? subtask.title : task?.title}
             </Text>
           </Box>
           
-          <Box flexDirection="column" marginBottom={1}>
-            {configOptions.map((option, index) => (
-              <Box key={`config-${option.key}`}>
-                <Text 
-                  color={index === selectedOption ? 'blue' : 'white'}
-                  bold={index === selectedOption}
-                >
-                  {index === selectedOption ? '▶ ' : '  '}
-                  {option.label}: {option.value || ''}
-                  {option.key === 'agent' && ` ${getAgentStatus(config.agent)}`}
-                  {option.key === 'sandbox' && ` ${getSandboxStatus(config.sandbox)}`}
-                </Text>
-              </Box>
-            ))}
-          </Box>
-          
-          {configStatus && (
-            <Box flexDirection="column" marginBottom={1} paddingX={1} borderStyle="single" borderColor="gray">
-              <Text bold color="yellow">Configuration Status:</Text>
-              <Text>Agent: {configStatus.agent.type} {configStatus.agent.configured ? '✅' : '❌'}</Text>
-              <Text>Environments: {configStatus.environments.count} available</Text>
-              <Text>GitHub: {configStatus.github.configured ? '✅' : '❌'}</Text>
-              
-                             {configStatus.validation.warnings.length > 0 && (
-                 <Box flexDirection="column" marginTop={1}>
-                   <Text color="yellow">⚠️  Warnings:</Text>
-                   {configStatus.validation.warnings.map((warning, idx) => (
-                     <Text key={`warning-${idx}-${warning.slice(0, 10)}`} color="yellow">  • {warning}</Text>
-                   ))}
-                 </Box>
-               )}
+          {enabledAgents.length === 0 || enabledSandboxes.length === 0 ? (
+            <Box marginBottom={1}>
+              <Text color="red">
+                {enabledAgents.length === 0 && '❌ No enabled agents found in agents.json'}
+                {enabledSandboxes.length === 0 && '❌ No active sandboxes found in sandboxes.json'}
+              </Text>
             </Box>
+          ) : (
+            <>
+              <Box flexDirection="column" marginBottom={1}>
+                {configOptions.map((option, index) => (
+                  <Box key={`config-${option.key}`}>
+                    <Text 
+                      color={index === selectedOption ? 'blue' : 'white'}
+                      bold={index === selectedOption}
+                    >
+                      {index === selectedOption ? '▶ ' : '  '}
+                      {option.label}: {option.value || ''}
+                    </Text>
+                  </Box>
+                ))}
+              </Box>
+              
+            </>
           )}
           
           <Text color="gray" marginTop={1}>
@@ -327,20 +478,6 @@ export function VibeKitExecutionModal({
             <Text color="gray">{progress.message}</Text>
           </Box>
           
-          {progress.data && (
-            <Box flexDirection="column" marginBottom={1}>
-              {progress.data.agent && (
-                <Text color="gray">Agent: {progress.data.agent}</Text>
-              )}
-              {progress.data.sandbox && (
-                <Text color="gray">Sandbox: {progress.data.sandbox}</Text>
-              )}
-              {progress.data.pullRequestNumber && (
-                <Text color="green">PR Created: #{progress.data.pullRequestNumber}</Text>
-              )}
-            </Box>
-          )}
-          
           <Text color="gray" marginTop={1}>
             Press Esc to cancel
           </Text>
@@ -359,19 +496,10 @@ export function VibeKitExecutionModal({
             <Box flexDirection="column" marginBottom={1}>
               <Text color="green">Workflow Summary:</Text>
               {results.steps.codeGeneration && (
-                <Text>  ✅ Code generated</Text>
-              )}
-              {results.steps.commandExecution && (
-                <Text>  ✅ Commands executed ({results.steps.commandExecution.length})</Text>
-              )}
-              {results.steps.testExecution && (
-                <Text>  {results.steps.testExecution.exitCode === 0 ? '✅' : '❌'} Tests {results.steps.testExecution.exitCode === 0 ? 'passed' : 'failed'}</Text>
+                <Text>  ✅ Code generated ({results.steps.codeGeneration.streamingUpdates} updates)</Text>
               )}
               {results.steps.pullRequestCreation && (
                 <Text color="blue">  🔗 PR Created: #{results.steps.pullRequestCreation.number}</Text>
-              )}
-              {results.steps.branchPush && (
-                <Text>  📤 Pushed to branch: {results.steps.branchPush.branch}</Text>
               )}
               {results.steps.sandboxCleanup && (
                 <Text>  🧹 Sandbox cleaned up</Text>
