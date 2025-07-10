@@ -126,6 +126,8 @@ export function registerFlowCommand(programInstance) {
     .option('--set <path> <value>', 'Set configuration value (config only)')
     .option('--force', 'Force overwrite existing config (config only)')
     .option('--branch <name>', 'Git branch to use for execution context')
+    .option('--no-browser', 'Disable automatic browser opening (github only)')
+    .option('--yes', 'Skip confirmation prompts (github only)')
     .addHelpText('after', `
 Examples:
   $ task-master flow                                 # Launch interactive TUI
@@ -141,6 +143,9 @@ Examples:
   $ task-master flow config --show                 # Show current configuration
   $ task-master flow config --validate             # Check configuration
   $ task-master flow monitor                       # Launch monitoring dashboard
+  $ task-master flow github                        # Check GitHub authentication status
+  $ task-master flow github login                  # Authenticate with GitHub OAuth
+  $ task-master flow github logout --force         # Remove GitHub authentication
   
 Agent Types:
   claude         Anthropic Claude for coding (default)
@@ -155,6 +160,7 @@ Subcommands:
   batch <taskIds...>      Execute multiple tasks in sequence
   config                  Manage VibeKit configuration
   monitor                 Launch real-time monitoring dashboard
+  github [action]         GitHub OAuth authentication (status, login, logout, test)
 
 For more details: task-master flow <subcommand> --help
     `)
@@ -486,11 +492,31 @@ For more details: task-master flow <subcommand> --help
             break;
           }
 
+          case 'github': {
+            const { githubCommand } = await import('./commands/github-auth.command.js');
+            
+            // Extract github subcommand from taskIdOrPrompt
+            const githubSubcommand = taskIdOrPrompt || 'status';
+            
+            // Add GitHub-specific options
+            const githubOptions = {
+              ...options,
+              // Map flow options to github command options
+              force: options.force,
+              test: options.check || options.validate, // --check or --validate enables testing
+              noBrowser: options.noBrowser,
+              yes: options.yes
+            };
+            
+            await githubCommand(githubSubcommand, githubOptions);
+            break;
+          }
+
           default:
             throw {
               code: 'VALIDATION_ERROR',
               message: `Unknown subcommand: "${subcommand}"`,
-              suggestion: 'Available subcommands: execute, generate, agents, batch, config, monitor, test-config'
+              suggestion: 'Available subcommands: execute, generate, agents, batch, config, monitor, github, test-config'
             };
         }
       } catch (error) {
