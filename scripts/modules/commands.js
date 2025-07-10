@@ -3455,7 +3455,7 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || false
 			});
 			// Validate flags: cannot use multiple provider flags simultaneously
 			const providerFlags = [
@@ -3485,7 +3485,7 @@ Examples:
 				// Action 1: Run Interactive Setup
 				console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
 				try {
-					await runInteractiveSetup(projectRoot);
+					await runInteractiveSetup(taskMaster.getProjectRoot());
 					// runInteractiveSetup logs its own completion/error messages
 				} catch (setupError) {
 					console.error(
