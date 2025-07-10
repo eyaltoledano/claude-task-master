@@ -86,8 +86,10 @@ jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule('../../scripts/modules/prompt-manager.js', () => ({
 	getPromptManager: jest.fn().mockReturnValue({
 		loadPrompt: jest.fn().mockResolvedValue({
-			systemPrompt: 'You are an AI assistant that generates tasks from PRD content.',
-			userPrompt: 'Generate tasks from the following PRD content: [PRD content here]'
+			systemPrompt:
+				'You are an AI assistant that generates tasks from PRD content.',
+			userPrompt:
+				'Generate tasks from the following PRD content: [PRD content here]'
 		})
 	})
 }));
