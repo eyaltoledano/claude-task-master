@@ -66,7 +66,8 @@ jest.unstable_mockModule(
 			provider: 'anthropic',
 			modelId: 'claude-3-5-sonnet'
 		})),
-		getDefaultNumTasks: jest.fn(() => 10)
+		getDefaultNumTasks: jest.fn(() => 10),
+		getDefaultPriority: jest.fn(() => 'medium')
 	})
 );
 
@@ -88,12 +89,29 @@ jest.unstable_mockModule(
 	})
 );
 
-// jest.unstable_mockModule(
-// 	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-// 	() => ({
-// 		default: jest.fn().mockResolvedValue()
-// 	})
-// );
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockImplementation((templateName, params) => {
+				// Create dynamic mock prompts based on the parameters
+				const { numTasks } = params || {};
+				let numTasksText = '';
+
+				if (numTasks > 0) {
+					numTasksText = `approximately ${numTasks}`;
+				} else {
+					numTasksText = 'an appropriate number of';
+				}
+
+				return Promise.resolve({
+					systemPrompt: 'Mocked system prompt for parse-prd',
+					userPrompt: `Generate ${numTasksText} top-level development tasks from the PRD content.`
+				});
+			})
+		})
+	})
+);
 
 // Mock fs module
 jest.unstable_mockModule('fs', () => ({
@@ -491,33 +509,23 @@ describe('parsePRD', () => {
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
 	});
 
-	test('should call process.exit when tasks in tag exist without force flag in CLI mode', async () => {
+	test('should throw error when tasks in tag exist without force flag in CLI mode', async () => {
 		// Setup mocks to simulate tasks.json already exists with tasks in the target tag
 		fs.default.existsSync.mockReturnValue(true);
 		fs.default.readFileSync.mockReturnValueOnce(
 			JSON.stringify(existingTasksData)
 		);
 
-		// Mock process.exit for this specific test
-		const mockProcessExit = jest
-			.spyOn(process, 'exit')
-			.mockImplementation((code) => {
-				throw new Error(`process.exit: ${code}`);
-			});
-
-		// Call the function without mcpLog (CLI mode) and expect it to throw due to mocked process.exit
+		// Call the function without mcpLog (CLI mode) and expect it to throw an error
+		// In test environment, process.exit is prevented and error is thrown instead
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3)
-		).rejects.toThrow('process.exit: 1');
-
-		// Verify process.exit was called with code 1
-		expect(mockProcessExit).toHaveBeenCalledWith(1);
+		).rejects.toThrow(
+			"Tag 'master' already contains 2 tasks. Use --force to overwrite or --append to add to existing tasks."
+		);
 
 		// Verify the file was NOT written
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
-
-		// Restore the mock
-		mockProcessExit.mockRestore();
 	});
 
 	test('should append new tasks when append option is true', async () => {

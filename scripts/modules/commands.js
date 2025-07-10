@@ -962,6 +962,8 @@ function registerCommands(programInstance) {
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
+			const tasksPath = taskMaster.getTasksPath();
+
 			// Resolve tag using standard pattern
 			const tag =
 				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
@@ -1055,6 +1057,7 @@ function registerCommands(programInstance) {
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
 				const tag =
@@ -1152,7 +1155,7 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateTaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					taskId,
 					prompt,
 					useResearch,
@@ -1226,6 +1229,7 @@ function registerCommands(programInstance) {
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
 				const tag =
@@ -1325,7 +1329,7 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateSubtaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					subtaskId,
 					prompt,
 					useResearch,
@@ -2074,7 +2078,6 @@ ${result.result}
 		.option('--all', 'Clear subtasks from all tasks')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIds = options.id;
 			const all = options.all;
 			const tag = options.tag;
@@ -2232,7 +2235,7 @@ ${result.result}
 
 			try {
 				const { newTaskId, telemetryData } = await addTask(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					options.prompt,
 					dependenciesArray,
 					options.priority,
@@ -2271,8 +2274,6 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
 			const tag = options.tag;
 
 			// Initialize TaskMaster
@@ -3437,7 +3438,7 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || false
 			});
 			// Validate flags: cannot use multiple provider flags simultaneously
 			const providerFlags = [
@@ -3467,7 +3468,7 @@ Examples:
 				// Action 1: Run Interactive Setup
 				console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
 				try {
-					await runInteractiveSetup(projectRoot);
+					await runInteractiveSetup(taskMaster.getProjectRoot());
 					// runInteractiveSetup logs its own completion/error messages
 				} catch (setupError) {
 					console.error(
@@ -4004,10 +4005,6 @@ Examples:
 						projectRoot,
 						profileConfig
 					);
-					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						const assetsDir = path.join(projectRoot, 'assets');
-						profileConfig.onAddRulesProfile(projectRoot, assetsDir);
-					}
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)
 					);
@@ -4037,37 +4034,27 @@ Examples:
 
 			// Print summary for additions
 			if (action === RULES_ACTIONS.ADD && addResults.length > 0) {
-				const {
-					allSuccessfulProfiles,
-					totalSuccess,
-					totalFailed,
-					simpleProfiles
-				} = categorizeProfileResults(addResults);
+				const { allSuccessfulProfiles, totalSuccess, totalFailed } =
+					categorizeProfileResults(addResults);
 
 				if (allSuccessfulProfiles.length > 0) {
 					console.log(
 						chalk.green(
-							`\nSuccessfully added rules for: ${allSuccessfulProfiles.join(', ')}`
+							`\nSuccessfully processed profiles: ${allSuccessfulProfiles.join(', ')}`
 						)
 					);
 
-					// Create a more descriptive summary
-					if (totalSuccess > 0 && simpleProfiles.length > 0) {
+					// Create a descriptive summary
+					if (totalSuccess > 0) {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${totalSuccess} files processed, ${totalFailed} failed.`
 							)
 						);
-					} else if (totalSuccess > 0) {
+					} else {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
-							)
-						);
-					} else if (simpleProfiles.length > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${allSuccessfulProfiles.length} profile(s) set up successfully.`
 							)
 						);
 					}
@@ -4233,6 +4220,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4302,7 +4290,7 @@ Examples:
 					};
 
 					await createTagFromBranch(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						currentBranch,
 						branchOptions,
 						context,
@@ -4372,6 +4360,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4426,6 +4415,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4475,6 +4465,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4520,6 +4511,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4571,6 +4563,7 @@ Examples:
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true
 				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4591,7 +4584,7 @@ Examples:
 				};
 
 				await copyTag(
-					taskMaster.getTasksPath(),
+					tasksPath,
 					sourceName,
 					targetName,
 					copyOptions,

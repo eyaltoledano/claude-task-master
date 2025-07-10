@@ -7,11 +7,5 @@ export const traeProfile = createProfile({
 	displayName: 'Trae',
 	url: 'trae.ai',
 	docsUrl: 'docs.trae.ai',
-	profileDir: '.trae',
-	rulesDir: '.trae/rules',
-	mcpConfig: false,
-	mcpConfigName: 'trae_mcp_settings.json',
-	fileExtension: '.mdc',
-	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD // Trae uses standard tool names
+	mcpConfig: false
 });
