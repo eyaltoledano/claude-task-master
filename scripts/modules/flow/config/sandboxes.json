@@ -7,7 +7,7 @@
       "apiKeyEnv": "E2B_API_KEY"
     },
     "daytona": {
-      "active": false,
+      "active": true,
       "rank": 2,
       "apiKeyEnv": "DAYTONA_API_KEY"
     },

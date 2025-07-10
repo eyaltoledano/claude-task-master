@@ -11,7 +11,7 @@
       "apiKeyEnv": "ANTHROPIC_API_KEY"
     },
     "codex": {
-      "enabled": true,
+      "enabled": false,
       "model": "gpt-4-turbo-preview",
       "maxTokens": 4000,
       "temperature": 0.7,
@@ -20,7 +20,7 @@
       "apiKeyEnv": "OPENAI_API_KEY"
     },
     "gemini": {
-      "enabled": true,
+      "enabled": false,
       "model": "gemini-1.5-pro",
       "maxTokens": 4000,
       "temperature": 0.7,
@@ -29,7 +29,7 @@
       "apiKeyEnv": "GOOGLE_API_KEY"
     },
     "opencode": {
-      "enabled": true,
+      "enabled": false,
       "model": "deepseek-coder-v2",
       "maxTokens": 4000,
       "temperature": 0.7,
