@@ -83,8 +83,40 @@ function FlowApp({ backend, options = {} }) {
 	const [currentBranch, setCurrentBranch] = useState(null);
 	const [repositoryName, setRepositoryName] = useState(null);
 	const [branchInfo, setBranchInfo] = useState(null);
+	const [remoteInfo, setRemoteInfo] = useState(null); // Add remote info state
 
 	const { exit } = useApp();
+
+	// Helper function to format remote URL for display
+	const formatRemoteUrl = (remoteInfo) => {
+		if (!remoteInfo || !remoteInfo.hasRemote || !remoteInfo.url) {
+			return null;
+		}
+
+		let url = remoteInfo.url;
+		
+		// Remove .git suffix if present
+		if (url.endsWith('.git')) {
+			url = url.slice(0, -4);
+		}
+
+		// Handle different URL formats
+		if (url.startsWith('git@')) {
+			// git@github.com:user/repo -> github.com/user/repo
+			url = url.replace('git@', '').replace(':', '/');
+		} else if (url.startsWith('https://')) {
+			// https://github.com/user/repo -> github.com/user/repo
+			// https://username@github.com/user/repo -> github.com/user/repo
+			url = url.replace('https://', '');
+			
+			// Remove username@ if present
+			if (url.includes('@')) {
+				url = url.split('@')[1];
+			}
+		}
+
+		return url;
+	};
 
 	// Handle navigation from other screens
 	const handleNavigateToTask = (task) => {
@@ -226,15 +258,24 @@ function FlowApp({ backend, options = {} }) {
 
 				// Wait for branch manager to fully initialize before getting summary
 				await new Promise((resolve) => {
-					branchMgr.on('initialized', (event) => {
+					branchMgr.on('initialized', async (event) => {
 						setCurrentBranch(event.currentBranch);
 						setRepositoryName(event.repositoryName);
+						
+						// Get remote repository information
+						try {
+							const remoteData = await branchMgr.detectRemoteRepository();
+							setRemoteInfo(remoteData);
+						} catch (error) {
+							console.debug('Failed to get remote info:', error.message);
+						}
+						
 						resolve();
 					});
 
 					// In case initialization fails or is already complete,
 					// fallback to getting summary after a short delay
-					setTimeout(() => {
+					setTimeout(async () => {
 						const summary = branchMgr.getBranchSummary();
 						if (summary.currentBranch) {
 							setCurrentBranch(summary.currentBranch);
@@ -242,6 +283,15 @@ function FlowApp({ backend, options = {} }) {
 						if (summary.repositoryName) {
 							setRepositoryName(summary.repositoryName);
 						}
+						
+						// Get remote repository information
+						try {
+							const remoteData = await branchMgr.detectRemoteRepository();
+							setRemoteInfo(remoteData);
+						} catch (error) {
+							console.debug('Failed to get remote info:', error.message);
+						}
+						
 						resolve();
 					}, 100);
 				});
@@ -1057,6 +1107,13 @@ function FlowApp({ backend, options = {} }) {
 													<Text color={theme.text}>{currentBranch}</Text>
 												</>
 											)}
+											<>
+												<Text color={theme.textDim}> • </Text>
+												<Text color={theme.accent}>[remote]</Text>{' '}
+												<Text color={theme.text}>
+													{remoteInfo && formatRemoteUrl(remoteInfo) ? formatRemoteUrl(remoteInfo) : 'None'}
+												</Text>
+											</>
 										</Text>
 									</Box>
 									<Text color={theme.accent}>Task Master AI</Text>
