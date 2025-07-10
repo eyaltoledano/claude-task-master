@@ -6,8 +6,11 @@
 import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 import chalk from 'chalk';
-import { findProjectRoot } from '../../utils.js';
+import path from 'path';
+import fs from 'fs';
+import { findProjectRoot, readJSON } from '../../utils.js';
 import { launchFallbackMonitor } from './monitor-fallback.js';
+import { listTasks, findNextTask } from '../../task-manager.js';
 
 /**
  * Launch the monitoring dashboard
@@ -46,10 +49,10 @@ export async function launchMonitor(options = {}) {
 
     // Create dashboard pages with error handling
     const pages = [
-      createOverviewPage,
-      createTaskProgressPage,
-      createAgentActivityPage,
-      createSystemStatsPage
+      (screen) => createTasksDashboardPage(screen, projectRoot),
+      (screen) => createTaskProgressPage(screen),
+      (screen) => createAgentActivityPage(screen),
+      (screen) => createSystemStatsPage(screen)
     ];
 
     // Set up exit handlers
@@ -59,12 +62,12 @@ export async function launchMonitor(options = {}) {
       process.exit(0);
     });
 
-    // Create carousel with auto-rotation and keyboard controls
+    // Create carousel with manual navigation only (no auto-rotation)
     const carousel = new contrib.carousel(
       pages,
       {
         screen: screen,
-        interval: 10000, // Switch every 10 seconds
+        interval: 0, // Disable auto-rotation
         controlKeys: true // Enable left/right arrow key navigation
       }
     );
@@ -74,8 +77,10 @@ export async function launchMonitor(options = {}) {
     console.log(chalk.gray('━'.repeat(50)));
     console.log(chalk.yellow('⌨️  Navigation:'));
     console.log(chalk.gray('   • ←/→ arrows: Switch between dashboards'));
+    console.log(chalk.gray('   • ↑/↓ arrows or J/K: Scroll through tasks table'));
+    console.log(chalk.gray('   • PgUp/PgDn: Fast scroll | Home/End: Top/Bottom'));
+    console.log(chalk.gray('   • F key: Filter tasks by status (Tasks dashboard)'));
     console.log(chalk.gray('   • q/ESC/Ctrl+C: Exit'));
-    console.log(chalk.gray('   • Auto-rotation: Every 10 seconds'));
     console.log('');
 
     // Start the carousel
@@ -92,18 +97,26 @@ export async function launchMonitor(options = {}) {
 }
 
 /**
- * Create Overview Dashboard Page
+ * Create Tasks Dashboard Page (Main view)
  */
-function createOverviewPage(screen) {
+function createTasksDashboardPage(screen, projectRoot) {
   // Clear screen for this page
   screen.children.forEach(child => child.destroy());
 
+  // Get real task data
+  const taskData = loadTaskData(projectRoot);
+  
   // Create grid layout
   const grid = new contrib.grid({ rows: 12, cols: 12, screen: screen });
 
-  // Title
+  // Status filter state
+  let currentStatusFilter = 'all';
+  const statusFilters = ['all', 'pending', 'in-progress', 'done', 'blocked', 'deferred'];
+  let currentFilterIndex = 0;
+
+  // Title with current filter
   const title = grid.set(0, 0, 1, 12, blessed.box, {
-    content: '{center}📊 TASK MASTER FLOW - OVERVIEW DASHBOARD{/center}',
+    content: `{center}📊 TASK MASTER - TASKS DASHBOARD (Filter: ${currentStatusFilter.toUpperCase()}){/center}`,
     style: {
       fg: 'white',
       bg: 'blue',
@@ -112,137 +125,502 @@ function createOverviewPage(screen) {
     tags: true
   });
 
-  // Task Status Bar Chart (safer than donut for terminal compatibility)
-  const taskStatusBar = grid.set(1, 0, 4, 4, contrib.bar, {
+  // Project Dashboard (Left side)
+  const projectDashboard = grid.set(1, 0, 4, 6, blessed.box, {
+    label: 'Project Dashboard',
+    content: generateProjectDashboardContent(taskData),
+    border: { type: 'line', fg: 'blue' },
+    style: { fg: 'white' },
+    tags: true,
+    scrollable: true
+  });
+
+  // Dependency Status & Next Task (Right side)
+  const dependencyStatus = grid.set(1, 6, 4, 6, blessed.box, {
+    label: 'Dependency Status & Next Task',
+    content: generateDependencyStatusContent(taskData),
+    border: { type: 'line', fg: 'magenta' },
+    style: { fg: 'white' },
+    tags: true,
+    scrollable: true
+  });
+
+  // Create task status bar chart (simplified, avoiding potential stackedBar issues)
+  const taskStatusChart = grid.set(5, 0, 2, 12, contrib.bar, {
     label: 'Task Status Distribution',
-    barWidth: 4,
-    barSpacing: 6,
+    barWidth: 6,
+    barSpacing: 8,
     xOffset: 0,
     maxHeight: 9
   });
 
-  taskStatusBar.setData({
-    titles: ['Done', 'In Progress', 'Pending', 'Blocked'],
-    data: [45, 25, 20, 10]
-  });
+  // Update bar chart with real data
+  try {
+    taskStatusChart.setData({
+      titles: ['Done', 'Progress', 'Pending', 'Blocked', 'Deferred'],
+      data: [
+        taskData.stats?.completed || 0, 
+        taskData.stats?.inProgress || 0, 
+        taskData.stats?.pending || 0, 
+        taskData.stats?.blocked || 0, 
+        taskData.stats?.deferred || 0
+      ]
+    });
+  } catch (error) {
+    console.error('Error setting chart data:', error.message);
+  }
 
-  // Agent Performance Line Chart
-  const agentPerformance = grid.set(1, 4, 4, 8, contrib.line, {
-    style: {
-      line: 'yellow',
-      text: 'green',
-      baseline: 'black'
-    },
-    xLabelPadding: 3,
-    xPadding: 5,
-    label: 'Agent Performance Over Time',
-    showNthLabel: 5
-  });
+  // Create filterable task table
+  const taskTable = createFilterableTaskTable(grid, taskData, currentStatusFilter);
 
-  const lineData = [
-    {
-      title: 'Claude',
-      x: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-      y: [85, 92, 88, 95, 91, 89, 94],
-      style: { line: 'red' }
-    },
-    {
-      title: 'Gemini',
-      x: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-      y: [78, 85, 82, 88, 86, 90, 87],
-      style: { line: 'blue' }
-    },
-    {
-      title: 'GPT-4',
-      x: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'],
-      y: [80, 87, 85, 90, 88, 91, 89],
-      style: { line: 'green' }
+  // Add keyboard controls for table navigation and filtering
+  // Use table's built-in key handling instead of screen-level handlers
+  taskTable.key(['up', 'k'], () => {
+    try {
+      taskTable.up();
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
     }
-  ];
-  agentPerformance.setData(lineData);
+  });
 
-  // Active Tasks Table
-  const activeTasks = grid.set(5, 0, 4, 6, contrib.table, {
+  taskTable.key(['down', 'j'], () => {
+    try {
+      taskTable.down();
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
+    }
+  });
+
+  taskTable.key(['pageup'], () => {
+    try {
+      taskTable.scroll(-5);
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
+    }
+  });
+
+  taskTable.key(['pagedown'], () => {
+    try {
+      taskTable.scroll(5);
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
+    }
+  });
+
+  taskTable.key(['home'], () => {
+    try {
+      taskTable.scrollTo(0);
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
+    }
+  });
+
+  taskTable.key(['end'], () => {
+    try {
+      const tableData = taskTable.data || [];
+      if (tableData.length > 0) {
+        taskTable.scrollTo(tableData.length - 1);
+      }
+      screen.render();
+    } catch (error) {
+      // Silently handle errors to prevent spam
+    }
+  });
+
+  // Add keyboard controls for status filtering
+  screen.key(['f', 'F'], () => {
+    try {
+      // Cycle through status filters
+      currentFilterIndex = (currentFilterIndex + 1) % statusFilters.length;
+      currentStatusFilter = statusFilters[currentFilterIndex];
+      
+      // Update title
+      title.setContent(`{center}📊 TASK MASTER - TASKS DASHBOARD (Filter: ${currentStatusFilter.toUpperCase()}){/center}`);
+      
+      // Update task table
+      updateTaskTable(taskTable, taskData, currentStatusFilter);
+      
+      screen.render();
+    } catch (error) {
+      console.error('Error in filter toggle:', error.message);
+    }
+  });
+
+  // Add help text with timestamp
+  const timestamp = new Date().toLocaleTimeString();
+  const helpBox = grid.set(11, 0, 1, 12, blessed.box, {
+    content: `{center}↑/↓/J/K: Scroll tasks | PgUp/PgDn: Fast scroll | Home/End: Top/Bottom | F: Filter | ←/→: Pages | Q/ESC: Exit | Updated: ${timestamp}{/center}`,
+    style: { fg: 'gray' },
+    tags: true
+  });
+
+  screen.render();
+
+  // Set up auto-refresh for real-time monitoring
+  const refreshInterval = setInterval(() => {
+    try {
+      const newTaskData = loadTaskData(projectRoot);
+      projectDashboard.setContent(generateProjectDashboardContent(newTaskData));
+      dependencyStatus.setContent(generateDependencyStatusContent(newTaskData));
+      updateTaskTable(taskTable, newTaskData, currentStatusFilter);
+      
+      // Update bar chart
+      try {
+        taskStatusChart.setData({
+          titles: ['Done', 'Progress', 'Pending', 'Blocked', 'Deferred'],
+          data: [
+            newTaskData.stats?.completed || 0, 
+            newTaskData.stats?.inProgress || 0, 
+            newTaskData.stats?.pending || 0, 
+            newTaskData.stats?.blocked || 0, 
+            newTaskData.stats?.deferred || 0
+          ]
+        });
+      } catch (error) {
+        console.error('Error updating chart:', error.message);
+      }
+      
+      // Update timestamp
+      const newTimestamp = new Date().toLocaleTimeString();
+      helpBox.setContent(`{center}↑/↓/J/K: Scroll tasks | PgUp/PgDn: Fast scroll | Home/End: Top/Bottom | F: Filter | ←/→: Pages | Q/ESC: Exit | Updated: ${newTimestamp}{/center}`);
+      
+      screen.render();
+    } catch (error) {
+      // Silently handle refresh errors
+      console.error('Refresh error:', error.message);
+    }
+  }, 5000); // Refresh every 5 seconds
+
+  // Cleanup interval when screen is destroyed or when page changes
+  const cleanup = () => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+  };
+  
+  screen.on('destroy', cleanup);
+  screen.on('detach', cleanup);
+
+  // Return references for updates
+  return {
+    projectDashboard,
+    dependencyStatus,
+    taskTable,
+    taskStatusChart,
+    title,
+    helpBox,
+    refreshInterval,
+    refreshData: () => {
+      const newTaskData = loadTaskData(projectRoot);
+      projectDashboard.setContent(generateProjectDashboardContent(newTaskData));
+      dependencyStatus.setContent(generateDependencyStatusContent(newTaskData));
+      updateTaskTable(taskTable, newTaskData, currentStatusFilter);
+      
+      // Update bar chart
+      try {
+        taskStatusChart.setData({
+          titles: ['Done', 'Progress', 'Pending', 'Blocked', 'Deferred'],
+          data: [
+            newTaskData.stats?.completed || 0, 
+            newTaskData.stats?.inProgress || 0, 
+            newTaskData.stats?.pending || 0, 
+            newTaskData.stats?.blocked || 0, 
+            newTaskData.stats?.deferred || 0
+          ]
+        });
+      } catch (error) {
+        console.error('Error updating chart in refreshData:', error.message);
+      }
+      
+      screen.render();
+    }
+  };
+}
+
+/**
+ * Load real task data from Task Master
+ */
+function loadTaskData(projectRoot) {
+  try {
+    // Find tasks.json file
+    const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+    
+    // Check if file exists first
+    if (!fs.existsSync(tasksPath)) {
+      console.log('No tasks.json found, using mock data');
+      return getMockTaskData();
+    }
+    
+    // Use listTasks to get comprehensive task data with statistics
+    const result = listTasks(tasksPath, null, null, true, 'json', null, { projectRoot });
+    
+    // Ensure result has the expected structure
+    if (!result || typeof result !== 'object') {
+      console.log('Invalid task data structure, using mock data');
+      return getMockTaskData();
+    }
+    
+    return result;
+  } catch (error) {
+    // Return mock data if real data unavailable
+    console.log('Failed to load task data:', error.message, '- using mock data');
+    return getMockTaskData();
+  }
+}
+
+/**
+ * Generate mock task data for testing/demo
+ */
+function getMockTaskData() {
+  return {
+    tasks: [
+      {
+        id: 1,
+        title: 'Setup project structure',
+        status: 'done',
+        priority: 'high',
+        dependencies: [],
+        complexityScore: 3
+      },
+      {
+        id: 2,
+        title: 'Implement authentication',
+        status: 'in-progress',
+        priority: 'high',
+        dependencies: [1],
+        complexityScore: 8
+      },
+      {
+        id: 3,
+        title: 'Create dashboard UI',
+        status: 'pending',
+        priority: 'medium',
+        dependencies: [1, 2],
+        complexityScore: 6
+      },
+      {
+        id: 4,
+        title: 'Add monitoring features',
+        status: 'pending',
+        priority: 'low',
+        dependencies: [3],
+        complexityScore: 7
+      }
+    ],
+    stats: {
+      total: 4,
+      completed: 1,
+      inProgress: 1,
+      pending: 2,
+      blocked: 0,
+      deferred: 0,
+      cancelled: 0,
+      completionPercentage: 25,
+      subtasks: {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        pending: 0,
+        blocked: 0,
+        deferred: 0,
+        cancelled: 0,
+        completionPercentage: 0
+      }
+    }
+  };
+}
+
+/**
+ * Generate project dashboard content matching the screenshot
+ */
+function generateProjectDashboardContent(taskData) {
+  const stats = taskData.stats;
+  
+  // Create progress bar for tasks
+  const taskProgress = Math.round(stats.completionPercentage);
+  const taskProgressBar = '█'.repeat(Math.floor(taskProgress / 3)) + '▓'.repeat(Math.floor((100 - taskProgress) / 6));
+  
+  // Create progress bar for subtasks
+  const subtaskProgress = Math.round(stats.subtasks?.completionPercentage || 0);
+  const subtaskProgressBar = '█'.repeat(Math.floor(subtaskProgress / 3)) + '▓'.repeat(Math.floor((100 - subtaskProgress) / 6));
+  
+  return `Tasks Progress: ${taskProgressBar} ${taskProgress}% ${taskProgress}%
+Done: ${stats.completed}  In Progress: ${stats.inProgress}  Pending: ${stats.pending}  Blocked: ${stats.blocked}
+Deferred: ${stats.deferred}  Cancelled: ${stats.cancelled || 0}
+
+Subtasks Progress: ${subtaskProgressBar} ${subtaskProgress}% ${subtaskProgress}%
+Completed: ${stats.subtasks?.completed || 0}/${stats.subtasks?.total || 0}  In Progress: ${stats.subtasks?.inProgress || 0}  Pending: ${stats.subtasks?.pending || 0}  Blocked: ${stats.subtasks?.blocked || 0}  Deferred: ${stats.subtasks?.deferred || 0}  Cancelled: ${stats.subtasks?.cancelled || 0}
+
+Priority Breakdown:
+• High priority: ${taskData.tasks?.filter(t => t.priority === 'high').length || 0}
+• Medium priority: ${taskData.tasks?.filter(t => t.priority === 'medium').length || 0}
+• Low priority: ${taskData.tasks?.filter(t => t.priority === 'low').length || 0}`;
+}
+
+/**
+ * Generate dependency status content
+ */
+function generateDependencyStatusContent(taskData) {
+  if (!taskData.tasks || taskData.tasks.length === 0) {
+    return `Dependency Metrics:
+• No tasks available
+• Load your Task Master project to see real data
+
+Next Task to Work On:
+• Initialize project with 'task-master init'
+• Add tasks with 'task-master add-task'`;
+  }
+
+  // Calculate dependency metrics
+  const completedTaskIds = new Set(
+    taskData.tasks.filter(t => t.status === 'done' || t.status === 'completed').map(t => t.id)
+  );
+
+  const tasksWithNoDeps = taskData.tasks.filter(t => 
+    t.status !== 'done' && t.status !== 'completed' && 
+    (!t.dependencies || t.dependencies.length === 0)
+  ).length;
+
+  const tasksReadyToWork = taskData.tasks.filter(t => 
+    t.status !== 'done' && t.status !== 'completed' && 
+    (!t.dependencies || t.dependencies.length === 0 || 
+     t.dependencies.every(depId => completedTaskIds.has(depId)))
+  ).length;
+
+  const tasksBlocked = taskData.tasks.filter(t => 
+    t.status !== 'done' && t.status !== 'completed' && 
+    t.dependencies && t.dependencies.length > 0 && 
+    !t.dependencies.every(depId => completedTaskIds.has(depId))
+  ).length;
+
+  // Calculate most depended-on task
+  const dependencyCount = {};
+  taskData.tasks.forEach(task => {
+    if (task.dependencies && task.dependencies.length > 0) {
+      task.dependencies.forEach(depId => {
+        dependencyCount[depId] = (dependencyCount[depId] || 0) + 1;
+      });
+    }
+  });
+
+  let mostDependedOnTaskId = null;
+  let maxDependents = 0;
+  for (const [taskId, count] of Object.entries(dependencyCount)) {
+    if (count > maxDependents) {
+      maxDependents = count;
+      mostDependedOnTaskId = parseInt(taskId);
+    }
+  }
+
+  // Calculate average dependencies per task
+  const totalDependencies = taskData.tasks.reduce(
+    (sum, task) => sum + (task.dependencies ? task.dependencies.length : 0),
+    0
+  );
+  const avgDependenciesPerTask = totalDependencies / taskData.tasks.length;
+
+  // Use real findNextTask function
+  const nextTaskItem = findNextTask(taskData.tasks);
+
+  return `Dependency Metrics:
+• Tasks with no dependencies: ${tasksWithNoDeps}
+• Tasks ready to work on: ${tasksReadyToWork}
+• Tasks blocked by dependencies: ${tasksBlocked}
+• Most depended-on task: ${mostDependedOnTaskId ? `#${mostDependedOnTaskId} (${maxDependents} dependents)` : 'None'}
+• Avg dependencies per task: ${avgDependenciesPerTask.toFixed(1)}
+
+Next Task to Work On:
+ID: ${nextTaskItem?.id || 'N/A'} - ${nextTaskItem?.title ? truncateText(nextTaskItem.title, 40) : 'No task available'}
+Priority: ${nextTaskItem?.priority || 'N/A'}  Dependencies: ${nextTaskItem?.dependencies?.join(', ') || 'None'}
+Complexity: ${nextTaskItem?.complexityScore ? `● ${nextTaskItem.complexityScore}` : 'N/A'}`;
+}
+
+/**
+ * Create filterable task table
+ */
+function createFilterableTaskTable(grid, taskData, statusFilter) {
+  const taskTable = grid.set(7, 0, 4, 12, contrib.table, {
     keys: true,
     fg: 'white',
     selectedFg: 'white',
     selectedBg: 'blue',
-    interactive: false,
-    label: 'Active Tasks',
-    width: '50%',
-    height: '30%',
+    interactive: true,
+    label: `All Tasks (${statusFilter === 'all' ? taskData.tasks?.length || 0 : taskData.tasks?.filter(t => t.status === statusFilter).length || 0} shown)`,
     border: { type: 'line', fg: 'cyan' },
-    columnSpacing: 2,
-    columnWidth: [8, 20, 12, 10]
+    columnSpacing: 1,
+    columnWidth: [6, 30, 12, 10, 8, 8, 12],
+    // Simple scrolling configuration
+    scrollable: true
   });
 
-  activeTasks.setData({
-    headers: ['ID', 'Description', 'Agent', 'Status'],
-    data: [
-      ['5.1', 'Setup API routes', 'Claude', 'Running'],
-      ['5.2', 'Add validation', 'Gemini', 'Queued'],
-      ['7', 'Database migration', 'GPT-4', 'Running'],
-      ['12.3', 'UI components', 'Claude', 'Queued'],
-      ['15', 'Testing suite', 'Gemini', 'Pending']
-    ]
+  updateTaskTable(taskTable, taskData, statusFilter);
+  
+  return taskTable;
+}
+
+/**
+ * Update task table with filtered data
+ */
+function updateTaskTable(taskTable, taskData, statusFilter) {
+  let filteredTasks = taskData.tasks || [];
+  
+  if (statusFilter !== 'all') {
+    filteredTasks = filteredTasks.filter(task => task.status === statusFilter);
+  }
+
+  // Include subtasks in the display
+  const tableData = [];
+  
+  filteredTasks.forEach(task => {
+    // Add main task
+    tableData.push([
+      task.id.toString(),
+      truncateText(task.title || 'Untitled', 28),
+      task.status || 'pending',
+      task.priority || 'medium',
+      task.dependencies?.length || 0,
+      task.complexityScore || 'N/A',
+      'N/A' // ETA placeholder
+    ]);
+
+    // Add subtasks if they exist and match filter
+    if (task.subtasks && task.subtasks.length > 0) {
+      task.subtasks.forEach(subtask => {
+        if (statusFilter === 'all' || subtask.status === statusFilter) {
+          tableData.push([
+            `${task.id}.${subtask.id}`,
+            `  └ ${truncateText(subtask.title || 'Untitled', 25)}`,
+            subtask.status || 'pending',
+            subtask.priority || task.priority || 'medium',
+            subtask.dependencies?.length || 0,
+            subtask.complexityScore || 'N/A',
+            'N/A'
+          ]);
+        }
+      });
+    }
   });
 
-  // System Health Status Boxes (safer than gauges)
-  const cpuStatus = grid.set(5, 6, 2, 3, blessed.box, {
-    label: 'CPU Usage',
-    content: '{center}65%{/center}\n{center}🟢 Normal{/center}',
-    border: { type: 'line', fg: 'green' },
-    style: { fg: 'green', bold: true },
-    tags: true
+  taskTable.setData({
+    headers: ['ID', 'Task Description', 'Status', 'Priority', 'Deps', 'Complex', 'ETA'],
+    data: tableData
   });
 
-  const memoryStatus = grid.set(7, 6, 2, 3, blessed.box, {
-    label: 'Memory Usage',
-    content: '{center}42%{/center}\n{center}🟢 Good{/center}',
-    border: { type: 'line', fg: 'blue' },
-    style: { fg: 'blue', bold: true },
-    tags: true
-  });
+  // Update label with count
+  taskTable.setLabel(`All Tasks (${tableData.length} shown)`);
+}
 
-  const networkStatus = grid.set(5, 9, 2, 3, blessed.box, {
-    label: 'Network I/O',
-    content: '{center}78%{/center}\n{center}🟡 High{/center}',
-    border: { type: 'line', fg: 'yellow' },
-    style: { fg: 'yellow', bold: true },
-    tags: true
-  });
-
-  const diskStatus = grid.set(7, 9, 2, 3, blessed.box, {
-    label: 'Disk Usage',
-    content: '{center}34%{/center}\n{center}🟢 Good{/center}',
-    border: { type: 'line', fg: 'green' },
-    style: { fg: 'green', bold: true },
-    tags: true
-  });
-
-  // Recent Activity Log
-  const activityLog = grid.set(9, 0, 3, 12, contrib.log, {
-    fg: 'green',
-    selectedFg: 'green',
-    label: 'Recent Activity'
-  });
-
-  // Add some sample log entries
-  const logEntries = [
-    '15:32:15 - Task 5.1 completed successfully (Claude)',
-    '15:31:42 - Task 7 started execution (GPT-4)',
-    '15:30:18 - Code generated for task 12.3 (Claude)',
-    '15:29:55 - Subtask 5.2 queued for execution',
-    '15:28:33 - Agent Claude: Performance improved +5%',
-    '15:27:12 - Network optimization completed',
-    '15:26:48 - Memory usage optimized (-12MB)',
-    '15:25:21 - New task batch started (3 tasks)',
-    '15:24:07 - Agent Gemini: Connected and ready'
-  ];
-
-  logEntries.forEach(entry => activityLog.log(entry));
-
-  screen.render();
+/**
+ * Helper function to truncate text
+ */
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + '...';
 }
 
 /**
