@@ -81,15 +81,39 @@ export class ContextManager {
 	 * @returns {Object} Updated context
 	 */
 	async updateContext(contextId, updates) {
-		const context = await this.getContext(contextId);
+		// Search for existing context in cache by iterating through entries
+		let existingContext = null;
+		let existingCacheKey = null;
 
-		// Apply updates to context
-		Object.assign(context.metadata, updates);
+		for (const [key, value] of this.cache.entries()) {
+			if (value.id === contextId) {
+				existingContext = value;
+				existingCacheKey = key;
+				break;
+			}
+		}
 
-		// Update cache
-		const cacheKey = this._getCacheKey(contextId, context.metadata);
-		this.cache.set(cacheKey, context);
+		if (existingContext) {
+			// Apply updates to existing context
+			Object.assign(existingContext.metadata, updates);
 
+			// Update cache with new metadata in the cache key
+			const newCacheKey = this._getCacheKey(
+				contextId,
+				existingContext.metadata
+			);
+
+			// Remove old cache entry and add new one if cache key changed
+			if (existingCacheKey !== newCacheKey) {
+				this.cache.delete(existingCacheKey);
+				this.cache.set(newCacheKey, existingContext);
+			}
+
+			return existingContext;
+		}
+
+		// If no existing context found, create a new one
+		const context = await this.getContext(contextId, updates);
 		return context;
 	}
 
