@@ -34,10 +34,10 @@ export async function launchFlow(options = {}) {
 		// Ensure terminal is interactive
 		env.FORCE_COLOR = '1';
 
-		// Use npx tsx directly with proper TTY settings
-		const args = ['tsx', flowAppPath];
+		// Use shell command string instead of pre-split arguments
+		const command = `npx tsx "${flowAppPath}"`;
 
-		const proc = spawn('npx', args, {
+		const proc = spawn(command, {
 			stdio: 'inherit',
 			env,
 			cwd: process.cwd(),

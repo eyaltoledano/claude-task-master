@@ -543,8 +543,8 @@ export class CodeQualityAnalyzer {
 
 	async executeCommand(command, cwd) {
 		return new Promise((resolve, reject) => {
-			const [cmd, ...args] = command.split(' ');
-			const child = spawn(cmd, args, { cwd, shell: true });
+			// Use shell: true with the full command string (safer than splitting)
+			const child = spawn(command, { cwd, shell: true, stdio: ['pipe', 'pipe', 'pipe'] });
 
 			let stdout = '';
 			let stderr = '';
