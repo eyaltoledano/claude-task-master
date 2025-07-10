@@ -864,30 +864,35 @@ function generateMarkdownOutput(data, filteredTasks, stats) {
 		return '█'.repeat(filled) + '░'.repeat(empty);
 	};
 
-  const taskProgressBar = createMarkdownProgressBar(completionPercentage, 20);
-  const subtaskProgressBar = createMarkdownProgressBar(subtaskCompletionPercentage, 20);
+	const taskProgressBar = createMarkdownProgressBar(completionPercentage, 20);
+	const subtaskProgressBar = createMarkdownProgressBar(
+		subtaskCompletionPercentage,
+		20
+	);
 
 	// Dashboard section
 	// markdown += '```\n';
-  markdown += "| Project Dashboard |  |\n";
-  markdown += "| :-                |:-|\n";
-  markdown += `| Task Progress     | ${taskProgressBar} ${Math.round(completionPercentage)}% |\n`;
-  markdown += `| Done | ${doneCount} |\n`;
-  markdown += `| In Progress | ${inProgressCount} |\n`;
-  markdown += `| Pending | ${pendingCount} |\n`;
-  markdown += `| Deferred | ${deferredCount} |\n`;
-  markdown += `| Cancelled | ${cancelledCount} |\n`;
-  markdown += `|-|-|\n`;
-  markdown += `| Subtask Progress | ${subtaskProgressBar} ${Math.round(subtaskCompletionPercentage)}% |\n`;
-  markdown += `| Completed | ${completedSubtasks} |\n`;
-  markdown += `| In Progress | ${inProgressSubtasks} |\n`;
-  markdown += `| Pending | ${pendingSubtasks} |\n`;
+	markdown += '| Project Dashboard |  |\n';
+	markdown += '| :-                |:-|\n';
+	markdown += `| Task Progress     | ${taskProgressBar} ${Math.round(completionPercentage)}% |\n`;
+	markdown += `| Done | ${doneCount} |\n`;
+	markdown += `| In Progress | ${inProgressCount} |\n`;
+	markdown += `| Pending | ${pendingCount} |\n`;
+	markdown += `| Deferred | ${deferredCount} |\n`;
+	markdown += `| Cancelled | ${cancelledCount} |\n`;
+	markdown += `|-|-|\n`;
+	markdown += `| Subtask Progress | ${subtaskProgressBar} ${Math.round(subtaskCompletionPercentage)}% |\n`;
+	markdown += `| Completed | ${completedSubtasks} |\n`;
+	markdown += `| In Progress | ${inProgressSubtasks} |\n`;
+	markdown += `| Pending | ${pendingSubtasks} |\n`;
 
-  markdown += "\n\n";
+	markdown += '\n\n';
 
-  // Tasks table
-  markdown += "| ID | Title | Status | Priority | Dependencies | Complexity |\n"
-  markdown += "| :- | :-    | :-     | :-       | :-           | :-         |\n"
+	// Tasks table
+	markdown +=
+		'| ID | Title | Status | Priority | Dependencies | Complexity |\n';
+	markdown +=
+		'| :- | :-    | :-     | :-       | :-           | :-         |\n';
 
 	// Helper function to format status with symbols
 	const getStatusSymbol = (status) => {
