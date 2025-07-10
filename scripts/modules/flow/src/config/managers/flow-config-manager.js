@@ -360,14 +360,9 @@ export class FlowConfigManager {
    * Note: API keys are not saved to file, they come from environment variables
    */
   async saveConfig(config = this.config) {
-    console.warn('⚠️ Configuration is now managed through flow.json and environment variables.');
-    console.warn('   To modify settings, edit: scripts/modules/flow/config/flow.json');
-    console.warn('   API keys should be set as environment variables (see apiKeyEnv fields)');
-    
-    // For now, just validate the current config but don't save to file
+    // validate the current config
     if (config) {
       FlowConfigSchema.parse(config);
-      console.log('✅ Current configuration is valid');
     }
     
     return config;
