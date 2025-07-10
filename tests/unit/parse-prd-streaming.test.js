@@ -51,7 +51,9 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 		modelId: 'claude-3-5-sonnet',
 		maxTokens: 4000,
 		temperature: 0.7
-	}))
+	})),
+	getDefaultNumTasks: jest.fn(() => 10),
+	getDefaultPriority: jest.fn(() => 'medium')
 }));
 
 // Mock the utils module
@@ -78,6 +80,16 @@ jest.unstable_mockModule(
 // Mock the ui module
 jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
 	displayAiUsageSummary: mockDisplayAiUsageSummary
+}));
+
+// Mock the prompt-manager module
+jest.unstable_mockModule('../../scripts/modules/prompt-manager.js', () => ({
+	getPromptManager: jest.fn().mockReturnValue({
+		loadPrompt: jest.fn().mockResolvedValue({
+			systemPrompt: 'You are an AI assistant that generates tasks from PRD content.',
+			userPrompt: 'Generate tasks from the following PRD content: [PRD content here]'
+		})
+	})
 }));
 
 // Mock fs module
