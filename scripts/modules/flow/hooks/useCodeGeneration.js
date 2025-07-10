@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { AgentsConfigService } from '../config/agents-config.service.js';
+import { AgentsConfigManager } from '../src/config/managers/agents-config-manager.js';
 
 export const useCodeGeneration = () => {
   const [isCodeGenerationActive, setIsCodeGenerationActive] = useState(false);
@@ -7,7 +7,7 @@ export const useCodeGeneration = () => {
   const [availableAgents, setAvailableAgents] = useState([]);
   const [isAgentsLoaded, setIsAgentsLoaded] = useState(false);
 
-  const configService = useMemo(() => new AgentsConfigService(), []);
+  const configService = useMemo(() => new AgentsConfigManager(), []);
 
   const initializeCodeGeneration = useCallback(async () => {
     try {

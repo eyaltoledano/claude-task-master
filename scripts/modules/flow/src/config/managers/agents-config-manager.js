@@ -5,9 +5,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class AgentsConfigService {
+export class AgentsConfigManager {
   constructor() {
-    this.configPath = path.join(__dirname, 'agents.json');
+    this.configPath = path.join(__dirname, '../../..', 'config', 'agents.json');
     this.ensureConfigExists();
   }
 

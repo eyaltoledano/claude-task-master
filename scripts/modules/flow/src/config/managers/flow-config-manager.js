@@ -7,7 +7,7 @@ import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import { FlowConfigSchema } from '../schemas/flow-config-schema.js';
-import { loadFlowConfig } from '../flow-config.js';
+import { loadFlowConfig, loadMainFlowConfig } from '../flow-config.js';
 import { applyEnvironmentOverrides } from '../utils/env-overrides.js';
 
 /**
@@ -22,14 +22,17 @@ export class FlowConfigManager {
   }
 
   /**
-   * Get default configuration from JSON files
+   * Get default configuration from flow.json (simplified structure)
    */
   getDefaultConfig() {
-    const result = loadFlowConfig();
-    if (result.success) {
-      return result.config;
-    } else {
-      console.warn('Failed to load default Flow config, using fallback');
+    try {
+      // Load the consolidated flow.json directly
+      const flowConfig = loadMainFlowConfig();
+      
+      // Transform the simple flow.json structure into the expected format
+      return this.transformFlowConfig(flowConfig);
+    } catch (error) {
+      console.warn('Failed to load Flow config, using fallback:', error.message);
       return {
         nodeEnv: 'development',
         vibekit: {
@@ -37,10 +40,14 @@ export class FlowConfigManager {
           defaultAgent: 'claude',
           streamingEnabled: true,
           githubIntegration: true,
-          agents: {},
-          environments: {}
+          agents: {
+            claude: { enabled: true, provider: 'anthropic', apiKeyEnv: 'ANTHROPIC_API_KEY' }
+          },
+          environments: {
+            e2b: { enabled: true, provider: 'e2b', apiKeyEnv: 'E2B_API_KEY' }
+          }
         },
-        github: { enabled: true },
+        github: { enabled: true, apiKeyEnv: 'GITHUB_API_KEY' },
         execution: { timeout: 300000 },
         logging: { level: 'info' }
       };
@@ -48,27 +55,267 @@ export class FlowConfigManager {
   }
 
   /**
-   * Load configuration with precedence: env vars > config file > defaults
+   * Transform the simple flow.json structure into the expected configuration format
+   */
+  transformFlowConfig(flowConfig) {
+    return {
+      nodeEnv: process.env.NODE_ENV || 'development',
+      vibekit: {
+        enabled: true,
+        defaultAgent: flowConfig.defaultAgent || 'claude',
+        streamingEnabled: flowConfig.features?.streamingEnabled ?? true,
+        githubIntegration: flowConfig.features?.githubIntegration ?? true,
+        autoCreatePR: flowConfig.features?.autoCreatePR ?? false,
+        agents: this.transformAgents(flowConfig.agents || {}),
+        environments: this.transformSandboxes(flowConfig.sandboxes || {}),
+        defaultEnvironment: flowConfig.defaultSandbox || 'e2b',
+        sessionManagement: {
+          enabled: flowConfig.session?.persistSessions ?? true,
+          persistSessions: flowConfig.session?.persistSessions ?? true,
+          sessionDir: flowConfig.session?.sessionDir || '.taskmaster/flow/sessions',
+          maxSessionAge: flowConfig.session?.maxSessionAge || 604800000,
+          cleanupInterval: flowConfig.session?.cleanupInterval || 86400000,
+          autoResume: flowConfig.session?.autoResume ?? true
+        },
+        telemetry: {
+          enabled: flowConfig.features?.telemetryEnabled ?? false,
+          samplingRate: 0.1,
+          batchSize: 100,
+          flushInterval: 30000,
+          serviceName: 'taskmaster-flow',
+          serviceVersion: '1.0.0'
+        },
+        secrets: {
+          enabled: flowConfig.features?.secretsManagement ?? true,
+          provider: 'env'
+        },
+        askMode: {
+          enabled: true,
+          defaultMode: 'interactive',
+          timeout: 60000,
+          maxQuestions: 10
+        },
+        streaming: {
+          enabled: flowConfig.features?.streamingOutput ?? true,
+          bufferSize: 1000,
+          flushInterval: 500,
+          compression: false
+        }
+      },
+      github: {
+        enabled: flowConfig.github?.enabled ?? true,
+        autoDetectRepo: flowConfig.github?.autoDetectRepo ?? true,
+        defaultBranch: flowConfig.github?.defaultBranch || 'main',
+        apiKeyEnv: flowConfig.github?.apiKeyEnv || 'GITHUB_API_KEY',
+        autoSync: flowConfig.github?.autoSync ?? false,
+        branchPrefix: flowConfig.github?.branchPrefix || 'taskmaster/',
+        integration: {
+          enabled: true,
+          autoCreatePR: flowConfig.github?.autoCreatePR ?? false,
+          autoMerge: flowConfig.github?.autoMerge ?? false,
+          requireReviews: flowConfig.github?.requireReviews ?? true,
+          deleteSourceBranch: flowConfig.github?.deleteSourceBranch ?? false
+        },
+        pullRequest: {
+          assignToCreator: true,
+          addLabels: ['taskmaster', 'automated'],
+          requestReviewers: [],
+          draft: false
+        },
+        commit: {
+          messageTemplate: '[TaskMaster] {task_title}',
+          signCommits: false,
+          author: {}
+        }
+      },
+      execution: {
+        timeout: flowConfig.limits?.timeout || 300000,
+        maxRetries: flowConfig.limits?.maxRetries || 2,
+        streamOutput: flowConfig.features?.streamingOutput ?? true,
+        parallelTasks: flowConfig.limits?.parallelTasks || 3
+      },
+      logging: {
+        level: flowConfig.logging?.level || 'info',
+        enableTelemetry: flowConfig.logging?.enableTelemetry ?? false,
+        maxLogSize: flowConfig.logging?.maxLogSize || 10485760,
+        console: {
+          enabled: flowConfig.logging?.console?.enabled ?? true,
+          colorize: flowConfig.logging?.console?.colorize ?? true,
+          timestamp: flowConfig.logging?.console?.timestamp ?? true,
+          format: 'simple'
+        },
+        file: {
+          enabled: flowConfig.logging?.file?.enabled ?? false,
+          path: flowConfig.logging?.file?.path || '.taskmaster/logs/flow.log',
+          maxSize: flowConfig.logging?.file?.maxSize || '10MB',
+          maxFiles: flowConfig.logging?.file?.maxFiles || 5,
+          rotateDaily: true
+        }
+      },
+      ast: {
+        enabled: false
+      }
+    };
+  }
+
+  /**
+   * Transform agents from flow.json format to expected format
+   */
+  transformAgents(agents) {
+    const transformed = {};
+    for (const [name, config] of Object.entries(agents)) {
+      transformed[name] = {
+        name: name,
+        displayName: this.getAgentDisplayName(name),
+        enabled: config.enabled ?? true,
+        maxTokens: config.maxTokens || 4000,
+        temperature: config.temperature || 0.1,
+        modelName: config.modelName,
+        provider: config.provider,
+        apiKey: null, // Will be populated from environment
+        apiKeyEnv: config.apiKeyEnv,
+        description: this.getAgentDescription(name),
+        capabilities: this.getAgentCapabilities(name),
+        limits: {
+          maxTokens: config.maxTokens || 4000,
+          contextWindow: this.getAgentContextWindow(name),
+          rateLimitRpm: 1000,
+          rateLimitTpm: 40000
+        },
+        features: {
+          streaming: true,
+          functionCalling: name !== 'opencode',
+          codeExecution: name === 'opencode',
+          imageAnalysis: ['claude', 'gemini'].includes(name),
+          multimodal: ['claude', 'gemini'].includes(name)
+        },
+        pricing: {
+          inputCostPer1kTokens: this.getAgentInputCost(name),
+          outputCostPer1kTokens: this.getAgentOutputCost(name),
+          currency: 'USD'
+        }
+      };
+    }
+    return transformed;
+  }
+
+  /**
+   * Transform sandboxes from simplified sandboxes.json format to expected format
+   */
+  transformSandboxes(sandboxes) {
+    const transformed = {};
+    for (const [name, config] of Object.entries(sandboxes)) {
+      transformed[name] = {
+        name: name,
+        displayName: this.getSandboxDisplayName(name),
+        enabled: config.active ?? false,
+        rank: config.rank || 999,
+        apiKey: null, // Will be populated from environment
+        apiKeyEnv: config.apiKeyEnv,
+        description: this.getSandboxDescription(name),
+        capabilities: ['code-execution', 'file-system', 'network-access'],
+        features: {
+          persistence: true,
+          networking: true,
+          customImages: name === 'e2b',
+          prebuiltTemplates: name === 'e2b'
+        }
+      };
+    }
+    return transformed;
+  }
+
+  // Helper methods for agent metadata
+  getAgentDisplayName(name) {
+    const names = {
+      claude: 'Claude Code',
+      codex: 'OpenAI Codex',
+      gemini: 'Google Gemini',
+      opencode: 'OpenCode'
+    };
+    return names[name] || name;
+  }
+
+  getAgentDescription(name) {
+    const descriptions = {
+      claude: 'Claude 3 Opus optimized for code generation and analysis',
+      codex: 'OpenAI\'s GPT-4 Turbo optimized for code generation',
+      gemini: 'Google\'s Gemini 1.5 Pro for advanced code generation',
+      opencode: 'DeepSeek Coder v2 optimized for code generation and analysis'
+    };
+    return descriptions[name] || `${name} agent for code generation`;
+  }
+
+  getAgentCapabilities(name) {
+    const base = ['code-generation', 'code-analysis', 'debugging', 'refactoring', 'documentation'];
+    if (['gemini', 'codex'].includes(name)) {
+      base.push('explanation');
+    }
+    if (name === 'gemini') {
+      base.push('multimodal');
+    }
+    return base;
+  }
+
+  getAgentContextWindow(name) {
+    const windows = {
+      claude: 200000,
+      codex: 128000,
+      gemini: 1000000,
+      opencode: 32000
+    };
+    return windows[name] || 128000;
+  }
+
+  getAgentInputCost(name) {
+    const costs = {
+      claude: 0.015,
+      codex: 0.01,
+      gemini: 0.0035,
+      opencode: 0.0014
+    };
+    return costs[name] || 0.01;
+  }
+
+  getAgentOutputCost(name) {
+    const costs = {
+      claude: 0.075,
+      codex: 0.03,
+      gemini: 0.0105,
+      opencode: 0.0028
+    };
+    return costs[name] || 0.03;
+  }
+
+  // Helper methods for sandbox metadata
+  getSandboxDisplayName(name) {
+    const names = {
+      e2b: 'E2B',
+      northflank: 'Northflank',
+      daytona: 'Daytona'
+    };
+    return names[name] || name;
+  }
+
+  getSandboxDescription(name) {
+    const descriptions = {
+      e2b: 'E2B cloud sandbox environment for secure code execution',
+      northflank: 'Northflank cloud platform for application deployment',
+      daytona: 'Daytona development environment platform'
+    };
+    return descriptions[name] || `${name} sandbox environment`;
+  }
+
+  /**
+   * Load configuration with precedence: env vars > flow.json defaults
+   * Simplified to use flow.json as the primary source instead of complex saved config
    */
   async loadConfig() {
     try {
-      // Start with defaults from JSON files
+      // Start with defaults from flow.json (simplified structure)
       let configData = this.getDefaultConfig();
 
-      // Load from config file if it exists
-      if (fs.existsSync(this.configFile)) {
-        try {
-          const fileContent = fs.readFileSync(this.configFile, 'utf8');
-          const fileConfig = JSON.parse(fileContent);
-          
-          // Deep merge file config with defaults
-          configData = this.deepMerge(configData, fileConfig);
-        } catch (error) {
-          console.warn(`⚠️ Invalid config file ${this.configFile}, using defaults:`, error.message);
-        }
-      }
-
-      // Apply environment variable overrides
+      // Apply environment variable overrides (this populates API keys)
       configData = applyEnvironmentOverrides(configData);
 
       // Validate and parse with schema
@@ -109,27 +356,21 @@ export class FlowConfigManager {
   }
 
   /**
-   * Save configuration to file
+   * Save configuration to flow.json (simplified structure)
+   * Note: API keys are not saved to file, they come from environment variables
    */
   async saveConfig(config = this.config) {
-    if (!config) {
-      throw new Error('No configuration to save');
-    }
-
-    // Ensure directory exists
-    const configDir = path.dirname(this.configFile);
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-
-    // Validate before saving
-    const validatedConfig = FlowConfigSchema.parse(config);
-
-    // Write to file
-    fs.writeFileSync(this.configFile, JSON.stringify(validatedConfig, null, 2));
+    console.warn('⚠️ Configuration is now managed through flow.json and environment variables.');
+    console.warn('   To modify settings, edit: scripts/modules/flow/config/flow.json');
+    console.warn('   API keys should be set as environment variables (see apiKeyEnv fields)');
     
-    this.config = validatedConfig;
-    return validatedConfig;
+    // For now, just validate the current config but don't save to file
+    if (config) {
+      FlowConfigSchema.parse(config);
+      console.log('✅ Current configuration is valid');
+    }
+    
+    return config;
   }
 
   /**

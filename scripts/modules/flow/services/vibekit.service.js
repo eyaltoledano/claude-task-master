@@ -10,13 +10,13 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { FlowConfig } from '../src/config/flow-config.js';
 import { GitHubAuthService } from './github-auth.service.js';
-import { AgentsConfigService } from '../config/agents-config.service.js';
+import { AgentsConfigManager } from '../src/config/managers/agents-config-manager.js';
 
 export class VibeKitService {
   constructor(config = {}) {
     this.config = config;
     this.projectRoot = config.projectRoot || process.cwd();
-    this.configService = new AgentsConfigService();
+    		this.configService = new AgentsConfigManager();
     this.activeInstances = new Map();
   }
 
@@ -82,8 +82,8 @@ export class VibeKitService {
       
       // Step 5: Update subtask with PR link
       await this.updateSubtaskWithPR(subtask.id, pr.html_url);
-      
-      return {
+    
+    return {
         codeResult,
         pr,
         streamingUpdates: streamingUpdates.length,
@@ -277,11 +277,11 @@ export class VibeKitService {
     } = options;
 
     const steps = {
-      codeGeneration: null,
-      commandExecution: null,
-      testExecution: null,
-      pullRequestCreation: null,
-      branchPush: null,
+        codeGeneration: null,
+        commandExecution: null,
+        testExecution: null,
+        pullRequestCreation: null,
+        branchPush: null,
       sandboxCleanup: null
     };
 
@@ -375,7 +375,7 @@ export class VibeKitService {
       if (onProgress) {
         onProgress({
           phase: 'failed',
-          progress: 0,
+            progress: 0,
           message: `Execution failed: ${error.message}`
         });
       }
@@ -418,17 +418,17 @@ export class VibeKitService {
 
       // Check GitHub configuration
       const githubConfigured = !!(process.env.GITHUB_TOKEN || process.env.GITHUB_PERSONAL_ACCESS_TOKEN);
-
-      return {
-        agent: {
+    
+    return {
+      agent: {
           type: 'claude', // Default agent
           configured: true // For now, assume agents are configured
         },
         environments: {
           available: availableEnvs,
           count: availableEnvs.length
-        },
-        github: {
+      },
+      github: {
           configured: githubConfigured
         },
         validation: {

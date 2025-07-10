@@ -1,8 +1,8 @@
-import { AgentsConfigService } from '../config/agents-config.service.js';
+import { AgentsConfigManager } from '../src/config/managers/agents-config-manager.js';
 
 export class SandboxCleaner {
   constructor() {
-    this.configService = new AgentsConfigService();
+    this.configService = new AgentsConfigManager();
     this.cleanupTimer = null;
     this.checkInterval = 30 * 60 * 1000; // 30 minutes
     this.isRunning = false;

@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
  */
 export function loadASTConfig() {
   try {
-    const astConfigPath = path.join(__dirname, '..', '..', 'config', 'core', 'ast.json');
+    const astConfigPath = path.join(__dirname, '..', '..', 'config', 'ast.json');
     const astConfig = JSON.parse(fs.readFileSync(astConfigPath, 'utf-8'));
     
     return {

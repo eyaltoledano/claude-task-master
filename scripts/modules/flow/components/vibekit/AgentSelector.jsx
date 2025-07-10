@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { AgentsConfigService } from '../../config/agents-config.service.js';
+import { AgentsConfigManager } from '../../src/config/managers/agents-config-manager.js';
 
 const AgentSelector = ({ agents, subtask, onSelect, onCancel }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [agentDetails, setAgentDetails] = useState({});
   const [taskType, setTaskType] = useState('execution');
 
-  const configService = new AgentsConfigService();
+  const configService = new AgentsConfigManager();
 
   useEffect(() => {
     loadAgentDetails();

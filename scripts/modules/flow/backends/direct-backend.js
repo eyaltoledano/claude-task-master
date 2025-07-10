@@ -1477,7 +1477,11 @@ export class DirectBackend extends FlowBackend {
 		try {
 			const indexPath = path.join(
 				this.projectRoot,
-				'.taskmaster',
+				'scripts',
+				'modules',
+				'flow',
+				'config',
+				'state',
 				'claude-sessions.json'
 			);
 
@@ -1529,12 +1533,16 @@ export class DirectBackend extends FlowBackend {
 	// Get detailed Claude session data
 	async getClaudeSessionDetails(sessionId) {
 		try {
-			// First get the session info from index
-			const indexPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions.json'
-			);
+					// First get the session info from index
+		const indexPath = path.join(
+			this.projectRoot,
+			'scripts',
+			'modules',
+			'flow',
+			'config',
+			'state',
+			'claude-sessions.json'
+		);
 
 			let sessionInfo = null;
 			try {
@@ -1590,11 +1598,15 @@ export class DirectBackend extends FlowBackend {
 	// Save Claude Code session
 	async saveClaudeCodeSession(sessionData) {
 		try {
-			const sessionsPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions.json'
-			);
+					const sessionsPath = path.join(
+			this.projectRoot,
+			'scripts',
+			'modules',
+			'flow',
+			'config',
+			'state',
+			'claude-sessions.json'
+		);
 			let sessions = [];
 
 			try {
@@ -2424,7 +2436,11 @@ ${prompt}
 		try {
 			const indexPath = path.join(
 				this.projectRoot,
-				'.taskmaster',
+				'scripts',
+				'modules',
+				'flow',
+				'config',
+				'state',
 				'claude-sessions.json'
 			);
 
@@ -2607,12 +2623,16 @@ ${prompt}
 	// Update Claude session with PR information
 	async updateClaudeSessionPR(sessionId, prInfo) {
 		try {
-			// Update the index
-			const indexPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'claude-sessions.json'
-			);
+					// Update the index
+		const indexPath = path.join(
+			this.projectRoot,
+			'scripts',
+			'modules',
+			'flow',
+			'config',
+			'state',
+			'claude-sessions.json'
+		);
 
 			let index = [];
 			try {

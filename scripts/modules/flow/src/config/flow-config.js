@@ -20,11 +20,7 @@ export function loadMainFlowConfig() {
   } catch (error) {
     console.warn('Error loading main flow config:', error.message);
     return {
-      defaultAgent: 'claude',
-      defaultSandbox: 'e2b',
-              enabledAgents: ['claude'],
-      enabledSandboxes: ['e2b'],
-      ui: { showAgentSelector: true, showSandboxSelector: true },
+      ui: { autoStartWithDefaults: false },
       features: { githubIntegration: true, streamingOutput: true }
     };
   }
@@ -34,22 +30,10 @@ export function loadMainFlowConfig() {
  * Load all agent configurations
  */
 export function loadAgentConfigs() {
-  const agentsDir = path.join(__dirname, '..', '..', 'config', 'agents');
-  const agentConfigs = {};
-  
   try {
-    const files = fs.readdirSync(agentsDir);
-    
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const agentName = path.basename(file, '.json');
-        const configPath = path.join(agentsDir, file);
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        agentConfigs[config.name || agentName] = config;
-      }
-    }
-    
-    return agentConfigs;
+    const agentsConfigPath = path.join(__dirname, '..', '..', 'config', 'agents.json');
+    const agentsData = JSON.parse(fs.readFileSync(agentsConfigPath, 'utf-8'));
+    return agentsData.agents || {};
   } catch (error) {
     console.warn('Error loading agent configs:', error.message);
     return {};
@@ -60,22 +44,10 @@ export function loadAgentConfigs() {
  * Load all sandbox configurations
  */
 export function loadSandboxConfigs() {
-  const sandboxesDir = path.join(__dirname, '..', '..', 'config', 'sandboxes');
-  const sandboxConfigs = {};
-  
   try {
-    const files = fs.readdirSync(sandboxesDir);
-    
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const sandboxName = path.basename(file, '.json');
-        const configPath = path.join(sandboxesDir, file);
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        sandboxConfigs[config.name || sandboxName] = config;
-      }
-    }
-    
-    return sandboxConfigs;
+    const sandboxesConfigPath = path.join(__dirname, '..', '..', 'config', 'sandboxes.json');
+    const sandboxesData = JSON.parse(fs.readFileSync(sandboxesConfigPath, 'utf-8'));
+    return sandboxesData.sandboxes || {};
   } catch (error) {
     console.warn('Error loading sandbox configs:', error.message);
     return {};
@@ -96,14 +68,14 @@ export function loadCoreConfig(configName) {
 }
 
 /**
- * Filter enabled agents and sandboxes based on main flow config
+ * Filter enabled agents and sandboxes based on enabled/active flags
  */
-function filterEnabledConfigs(allConfigs, enabledList) {
+function filterEnabledConfigs(allConfigs) {
   const filtered = {};
-  for (const name of enabledList) {
-    if (allConfigs[name]) {
+  for (const [name, config] of Object.entries(allConfigs)) {
+    if (config.enabled || config.active) {
       filtered[name] = {
-        ...allConfigs[name],
+        ...config,
         enabled: true // Ensure enabled is set to true
       };
     }
@@ -119,20 +91,17 @@ export function loadFlowConfig() {
     // Load main flow configuration first
     const mainFlowConfig = loadMainFlowConfig();
     
-    // Load core configurations
-    const vibekit = loadCoreConfig('vibekit');
-    const github = loadCoreConfig('github');
-    const execution = loadCoreConfig('execution');
-    const logging = loadCoreConfig('logging');
-    const ast = loadCoreConfig('ast');
-    
     // Load ALL agent and sandbox configs
     const allAgents = loadAgentConfigs();
     const allSandboxes = loadSandboxConfigs();
     
-    // Filter to only enabled agents and sandboxes based on main flow config
-    const enabledAgents = filterEnabledConfigs(allAgents, mainFlowConfig.enabledAgents);
-    const enabledSandboxes = filterEnabledConfigs(allSandboxes, mainFlowConfig.enabledSandboxes);
+    // Filter to only enabled agents and sandboxes based on their individual enabled/active flags
+    const enabledAgents = filterEnabledConfigs(allAgents);
+    const enabledSandboxes = filterEnabledConfigs(allSandboxes);
+    
+    // Get default agent and sandbox (highest rank among enabled)
+    const defaultAgent = getDefaultAgent(enabledAgents);
+    const defaultSandbox = getDefaultSandbox(enabledSandboxes);
     
     // Combine into full configuration
     const fullConfig = {
@@ -142,17 +111,16 @@ export function loadFlowConfig() {
       flow: mainFlowConfig,
       
       vibekit: {
-        ...vibekit,
-        defaultAgent: mainFlowConfig.defaultAgent,
+        defaultAgent,
         agents: enabledAgents,
         environments: enabledSandboxes,
-        defaultEnvironment: mainFlowConfig.defaultSandbox
+        defaultEnvironment: defaultSandbox
       },
       
-      github,
-      execution,
-      logging,
-      ast
+      github: mainFlowConfig.github || {},
+      execution: {},
+      logging: mainFlowConfig.logging || {},
+      ast: {}
     };
     
     return {
@@ -167,6 +135,34 @@ export function loadFlowConfig() {
       config: null
     };
   }
+}
+
+/**
+ * Get default agent (highest rank among enabled agents)
+ */
+function getDefaultAgent(enabledAgents) {
+  const agentRankings = {
+    claude: 1,
+    codex: 2,
+    gemini: 3,
+    opencode: 4
+  };
+  
+  const sortedAgents = Object.keys(enabledAgents).sort((a, b) => 
+    (agentRankings[a] || 999) - (agentRankings[b] || 999)
+  );
+  
+  return sortedAgents[0] || 'claude';
+}
+
+/**
+ * Get default sandbox (lowest rank number among active sandboxes)
+ */
+function getDefaultSandbox(enabledSandboxes) {
+  const sortedSandboxes = Object.entries(enabledSandboxes)
+    .sort((a, b) => (a[1].rank || 999) - (b[1].rank || 999));
+  
+  return sortedSandboxes[0]?.[0] || 'e2b';
 }
 
 /**
@@ -186,19 +182,19 @@ export function getAllAvailableSandboxes() {
 }
 
 /**
- * Get enabled agent names based on main flow config
+ * Get enabled agent names based on agent configs
  */
 export function getEnabledAgents() {
-  const mainConfig = loadMainFlowConfig();
-  return mainConfig.enabledAgents;
+  const allAgents = loadAgentConfigs();
+  return Object.keys(filterEnabledConfigs(allAgents));
 }
 
 /**
- * Get enabled sandbox names based on main flow config
+ * Get enabled sandbox names based on sandbox configs  
  */
 export function getEnabledSandboxes() {
-  const mainConfig = loadMainFlowConfig();
-  return mainConfig.enabledSandboxes;
+  const allSandboxes = loadSandboxConfigs();
+  return Object.keys(filterEnabledConfigs(allSandboxes));
 }
 
 /**
