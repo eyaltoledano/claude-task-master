@@ -8,12 +8,7 @@ import { query as claudeQuery } from '@anthropic-ai/claude-code';
 import { FlowBackend } from '../backend-interface.js';
 import { directFunctions } from '../../../../mcp-server/src/core/task-master-core.js';
 import { flowConfig } from '../src/config/flow-config.js';
-import {
-	PersonaPromptBuilder,
-	detectPersona,
-	detectMultiPersonaWorkflow,
-	getAllPersonaIds
-} from '../personas/index.js';
+
 import { findProjectRoot } from '../../utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
@@ -1504,7 +1499,6 @@ export class DirectBackend extends FlowBackend {
 						worktree: session.worktree,
 						branch: session.branch,
 						statistics: session.statistics,
-						persona: session.persona,
 						prInfo: session.prInfo,
 						finished: true
 					}
@@ -1807,16 +1801,8 @@ export class DirectBackend extends FlowBackend {
 				console.warn('Could not read CLAUDE.md:', err.message);
 			}
 
-			// Detect persona if not provided
-			let persona = options.persona || contextInfo.persona;
-			if (!persona && tasks.length > 0) {
-				const detectedPersonas = await detectPersona(tasks[0], worktree);
-				persona = detectedPersonas[0]?.persona || 'architect';
-			}
-
 			// Build comprehensive prompt
-			const promptBuilder = new PersonaPromptBuilder(persona);
-			let fullPrompt;
+			let fullPrompt = '';
 
 			// Combine CLAUDE.md content with user instructions
 			let combinedContext = '';
@@ -1842,14 +1828,40 @@ ${prompt}
 `;
 			}
 
+			// Build basic task prompt without persona
 			if (tasks.length === 1) {
-				fullPrompt = promptBuilder.buildTaskPrompt(tasks[0], {
-					additionalContext: combinedContext || null
-				});
+				const task = tasks[0];
+				fullPrompt = `# Task Implementation
+
+## Task Context
+**Task ID**: ${task.id}
+**Title**: ${task.title}
+**Description**: ${task.description || 'No description provided'}
+
+${task.details ? `**Implementation Details**:\n${task.details}\n\n` : ''}
+${task.testStrategy ? `**Test Strategy**:\n${task.testStrategy}\n\n` : ''}
+${task.dependencies?.length > 0 ? `**Dependencies**: Tasks ${task.dependencies.join(', ')} must be completed first\n\n` : ''}
+
+${combinedContext}
+
+Please implement this task following best practices and ensuring high quality code.`;
 			} else {
-				fullPrompt = promptBuilder.buildBatchPrompt(tasks, {
-					additionalContext: combinedContext || null
-				});
+				fullPrompt = `# Batch Task Implementation
+
+## Tasks to Complete
+
+${tasks.map((task, index) => `
+### Task ${index + 1}: ${task.title} (ID: ${task.id})
+**Description**: ${task.description || 'No description'}
+**Status**: ${task.status || 'pending'}
+${task.details ? `**Details**: ${task.details}` : ''}
+${task.testStrategy ? `**Test Strategy**: ${task.testStrategy}` : ''}
+${task.dependencies?.length ? `**Dependencies**: ${task.dependencies.join(', ')}` : ''}
+`).join('\n')}
+
+${combinedContext}
+
+Please implement all tasks following best practices and ensuring high quality code. Complete each task fully before moving to the next.`;
 			}
 
 			// Use Claude Code SDK
@@ -1978,7 +1990,6 @@ ${prompt}
 
 				return {
 					success: true,
-					persona,
 					tasksProcessed: tasks.length,
 					process: claudeProcess
 				};
@@ -1997,7 +2008,7 @@ ${prompt}
 			const sessions = [];
 
 			for (const group of taskGroups) {
-				const { tasks, persona, prompt } = group;
+				const { tasks, prompt } = group;
 
 				const sessionResult = await this.launchClaudeHeadless(
 					worktree,
@@ -2005,14 +2016,12 @@ ${prompt}
 					prompt,
 					{
 						...options,
-						persona,
 						captureOutput: true
 					}
 				);
 
 				sessions.push({
 					tasks: tasks.map((t) => t.id),
-					persona,
 					result: sessionResult
 				});
 			}
@@ -2029,32 +2038,7 @@ ${prompt}
 		}
 	}
 
-	// Get available personas
-	async getAvailablePersonas() {
-		return getAllPersonaIds();
-	}
 
-	// Detect personas for tasks
-	async detectPersonasForTasks(tasks, worktree) {
-		const detectionResults = [];
-
-		for (const task of tasks) {
-			const personas = await detectPersona(task, worktree);
-			detectionResults.push({
-				taskId: task.id,
-				taskTitle: task.title,
-				suggestedPersonas: personas
-			});
-		}
-
-		// Check for multi-persona workflow
-		const multiPersona = detectMultiPersonaWorkflow(tasks);
-
-		return {
-			taskPersonas: detectionResults,
-			multiPersonaWorkflow: multiPersona
-		};
-	}
 
 	/**
 	 * Check if a task has research in its details
@@ -2695,7 +2679,7 @@ ${prompt}
 		description += `- File Changes: ${stats.fileChanges || 0}\n`;
 		description += `- Duration: ${stats.durationSeconds || 0}s\n`;
 		description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
-		description += `- Persona: ${session.summary.persona}\n`;
+
 
 		if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
 			description += `\n**Tools Used:**\n`;
