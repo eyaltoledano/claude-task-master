@@ -1,7 +1,13 @@
 #!/usr/bin/env node
+
+// Ensure environment variables are loaded
+import dotenv from 'dotenv';
+dotenv.config();
+
 import React, {
 	useState,
 	useEffect,
+	useCallback,
 	createContext,
 	useContext,
 	useRef
@@ -131,7 +137,7 @@ function FlowApp({ backend, options = {} }) {
 	};
 
 	// Define available commands based on whether tasks.json exists
-	const getAvailableCommands = () => {
+	const getAvailableCommands = useCallback(() => {
 		const baseCommands = [
 			{ name: '/init', description: 'Initialize a new Task Master project' },
 			{ name: '/parse', description: 'Parse PRD to generate tasks' },
@@ -162,7 +168,7 @@ function FlowApp({ backend, options = {} }) {
 		}
 
 		return baseCommands;
-	};
+	}, [hasTasksFile]);
 
 	// Initialize theme on mount
 	useEffect(() => {
@@ -186,7 +192,7 @@ function FlowApp({ backend, options = {} }) {
 		} else {
 			setSuggestions([]);
 		}
-	}, [inputValue, hasTasksFile]);
+	}, [inputValue, getAvailableCommands]);
 
 	// Check for completion message from restart
 	useEffect(() => {
