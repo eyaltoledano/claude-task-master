@@ -394,6 +394,17 @@
 			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 131072
+		},
+		{
+			"id": "grok-4",
+			"name": "Grok 4",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 3,
+				"output": 15
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072
 		}
 	],
 	"ollama": [
