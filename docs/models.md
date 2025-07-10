@@ -40,6 +40,7 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
+| xai         | grok-4                                         | —         | 3          | 15          |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -107,6 +108,7 @@
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
 | xai         | grok-3                                       | —         | 3          | 15          |
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
+| xai         | grok-4                                       | —         | 3          | 15          |
 | groq        | llama-3.3-70b-versatile                      | 0.55      | 0.59       | 0.79        |
 | groq        | llama-4-scout                                | 0.45      | 0.11       | 0.34        |
 | groq        | llama-4-maverick                             | 0.52      | 0.5        | 0.77        |
@@ -149,6 +151,7 @@
 | perplexity  | sonar-reasoning                                | 0.211     | 1          | 5           |
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
+| xai         | grok-4                                         | —         | 3          | 15          |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
