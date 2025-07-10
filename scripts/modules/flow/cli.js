@@ -140,6 +140,7 @@ Examples:
   $ task-master flow batch 1 2 3 --parallel 2      # Run 2 tasks concurrently
   $ task-master flow config --show                 # Show current configuration
   $ task-master flow config --validate             # Check configuration
+  $ task-master flow monitor                       # Launch monitoring dashboard
   
 Agent Types:
   claude         Anthropic Claude for coding (default)
@@ -153,6 +154,7 @@ Subcommands:
   agents                  List available agents and their status
   batch <taskIds...>      Execute multiple tasks in sequence
   config                  Manage VibeKit configuration
+  monitor                 Launch real-time monitoring dashboard
 
 For more details: task-master flow <subcommand> --help
     `)
@@ -378,6 +380,12 @@ For more details: task-master flow <subcommand> --help
             break;
           }
 
+          case 'monitor': {
+            const { launchMonitor } = await import('./commands/monitor.command.js');
+            await launchMonitor(options);
+            break;
+          }
+
           case 'test-config': {
             // Import and run the test directly
             const { FlowConfigManager } = await import('./src/config/managers/flow-config-manager.js');
@@ -482,7 +490,7 @@ For more details: task-master flow <subcommand> --help
             throw {
               code: 'VALIDATION_ERROR',
               message: `Unknown subcommand: "${subcommand}"`,
-              suggestion: 'Available subcommands: execute, generate, agents, batch, config, test-config'
+              suggestion: 'Available subcommands: execute, generate, agents, batch, config, monitor, test-config'
             };
         }
       } catch (error) {
