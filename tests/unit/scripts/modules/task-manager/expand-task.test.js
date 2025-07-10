@@ -131,7 +131,19 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/utils/contextGatherer.js',
 	() => ({
 		ContextGatherer: jest.fn().mockImplementation(() => ({
-			gather: jest.fn().mockResolvedValue('Mock project context from files')
+			gather: jest.fn().mockResolvedValue({
+				context: 'Mock project context from files'
+			})
+		}))
+	})
+);
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js',
+	() => ({
+		FuzzyTaskSearch: jest.fn().mockImplementation(() => ({
+			findRelevantTasks: jest.fn().mockReturnValue([]),
+			getTaskIds: jest.fn().mockReturnValue([])
 		}))
 	})
 );
