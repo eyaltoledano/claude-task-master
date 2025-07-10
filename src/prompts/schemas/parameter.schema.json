@@ -1,0 +1,48 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/eyaltoledano/claude-task-master/blob/main/src/prompts/schemas/parameter.schema.json",
+	"version": "1.0.0",
+	"title": "Task Master Prompt Parameter",
+	"description": "Schema for individual prompt template parameters",
+	"type": "object",
+	"required": ["type", "description"],
+	"properties": {
+		"type": {
+			"type": "string",
+			"enum": ["string", "number", "boolean", "array", "object"],
+			"description": "The expected data type for this parameter"
+		},
+		"description": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Human-readable description of the parameter"
+		},
+		"required": {
+			"type": "boolean",
+			"default": false,
+			"description": "Whether this parameter is required"
+		},
+		"default": {
+			"description": "Default value for optional parameters"
+		},
+		"enum": {
+			"type": "array",
+			"description": "Valid values for string parameters",
+			"items": {
+				"type": "string"
+			}
+		},
+		"pattern": {
+			"type": "string",
+			"description": "Regular expression pattern for string validation"
+		},
+		"minimum": {
+			"type": "number",
+			"description": "Minimum value for number parameters"
+		},
+		"maximum": {
+			"type": "number",
+			"description": "Maximum value for number parameters"
+		}
+	}
+}

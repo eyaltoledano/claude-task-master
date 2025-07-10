@@ -54,6 +54,8 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"ai": "^4.3.10",
+		"ajv": "^8.17.1",
+		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"cli-highlight": "^2.1.11",

@@ -1,0 +1,136 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/eyaltoledano/claude-task-master/blob/main/src/prompts/schemas/prompt-template.schema.json",
+	"version": "1.0.0",
+	"title": "Task Master Prompt Template",
+	"description": "Schema for Task Master AI prompt template files",
+	"type": "object",
+	"required": ["id", "version", "description", "prompts"],
+	"properties": {
+		"id": {
+			"type": "string",
+			"pattern": "^[a-z0-9-]+$",
+			"description": "Unique identifier for the prompt template"
+		},
+		"version": {
+			"type": "string",
+			"pattern": "^\\d+\\.\\d+\\.\\d+$",
+			"description": "Semantic version of the prompt template"
+		},
+		"description": {
+			"type": "string",
+			"minLength": 1,
+			"description": "Brief description of what this prompt does"
+		},
+		"metadata": {
+			"$ref": "#/definitions/metadata"
+		},
+		"parameters": {
+			"type": "object",
+			"additionalProperties": {
+				"$ref": "#/definitions/parameter"
+			}
+		},
+		"prompts": {
+			"type": "object",
+			"properties": {
+				"default": {
+					"$ref": "#/definitions/promptVariant"
+				}
+			},
+			"additionalProperties": {
+				"$ref": "#/definitions/conditionalPromptVariant"
+			}
+		}
+	},
+	"definitions": {
+		"parameter": {
+			"type": "object",
+			"required": ["type", "description"],
+			"properties": {
+				"type": {
+					"type": "string",
+					"enum": ["string", "number", "boolean", "array", "object"]
+				},
+				"description": {
+					"type": "string",
+					"minLength": 1
+				},
+				"required": {
+					"type": "boolean",
+					"default": false
+				},
+				"default": {
+					"description": "Default value for optional parameters"
+				},
+				"enum": {
+					"type": "array",
+					"description": "Valid values for string parameters"
+				},
+				"pattern": {
+					"type": "string",
+					"description": "Regular expression pattern for string validation"
+				},
+				"minimum": {
+					"type": "number",
+					"description": "Minimum value for number parameters"
+				},
+				"maximum": {
+					"type": "number",
+					"description": "Maximum value for number parameters"
+				}
+			}
+		},
+		"promptVariant": {
+			"type": "object",
+			"required": ["system", "user"],
+			"properties": {
+				"system": {
+					"type": "string",
+					"minLength": 1
+				},
+				"user": {
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		},
+		"conditionalPromptVariant": {
+			"allOf": [
+				{ "$ref": "#/definitions/promptVariant" },
+				{
+					"type": "object",
+					"properties": {
+						"condition": {
+							"type": "string",
+							"description": "JavaScript expression for variant selection"
+						}
+					}
+				}
+			]
+		},
+		"metadata": {
+			"type": "object",
+			"properties": {
+				"author": { "type": "string" },
+				"created": { "type": "string", "format": "date-time" },
+				"updated": { "type": "string", "format": "date-time" },
+				"tags": {
+					"type": "array",
+					"items": { "type": "string" }
+				},
+				"category": {
+					"type": "string",
+					"enum": [
+						"task",
+						"analysis",
+						"research",
+						"parsing",
+						"update",
+						"expansion"
+					]
+				}
+			}
+		}
+	}
+}
