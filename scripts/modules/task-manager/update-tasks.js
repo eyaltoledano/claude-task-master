@@ -300,7 +300,7 @@ async function updateTasks(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult; // contextResult is a string
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			logFn(

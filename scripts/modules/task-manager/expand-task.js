@@ -369,7 +369,7 @@ async function expandTask(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			logger.warn(`Could not gather context: ${contextError.message}`);

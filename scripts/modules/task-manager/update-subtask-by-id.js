@@ -161,7 +161,7 @@ async function updateSubtaskById(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			report('warn', `Could not gather context: ${contextError.message}`);
