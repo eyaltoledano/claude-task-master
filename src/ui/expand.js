@@ -106,7 +106,7 @@ function displayExpandStart({
 		if (hasComplexityAnalysis) {
 			content += chalk.blue(`${subtaskText}: Based on complexity analysis\n`);
 		} else {
-		content += chalk.blue(`${subtaskText}: Appropriate number\n`);
+			content += chalk.blue(`${subtaskText}: Appropriate number\n`);
 		}
 	}
 

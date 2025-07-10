@@ -19,7 +19,7 @@ const __dirname = path.dirname(__filename);
 
 import parsePRD from '../../../scripts/modules/task-manager/parse-prd.js';
 
-// Use the same project root as the main test file  
+// Use the same project root as the main test file
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 /**
