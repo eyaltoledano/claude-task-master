@@ -60,6 +60,7 @@
 		"@types/react": "^19.1.8",
 		"@vibe-kit/sdk": "^0.0.41",
 		"ai": "^4.3.10",
+		"arctic": "^3.7.0",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"cheerio": "^1.1.0",
@@ -81,11 +82,12 @@
 		"ink-spinner": "^5.0.0",
 		"ink-syntax-highlight": "^2.0.2",
 		"ink-text-input": "^6.0.0",
-		"inquirer": "^12.5.0",
+		"inquirer": "^12.7.0",
 		"jsonc-parser": "^3.3.1",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
+		"open": "^10.1.2",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
 		"postcss": "^8.5.6",
@@ -95,7 +97,7 @@
 		"zod": "^3.23.8"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.25",
+		"@anthropic-ai/claude-code": "^1.0.44",
 		"ai-sdk-provider-gemini-cli": "^0.0.3"
 	},
 	"engines": {
