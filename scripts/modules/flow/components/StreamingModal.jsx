@@ -80,7 +80,7 @@ export function StreamingModal({ isOpen, onClose }) {
 
 	// Cycle through thinking messages
 	useEffect(() => {
-		if (state.state !== 'processing' || !state.context.operationType) return;
+		if (state.state !== 'processing' || !state.context?.operationType) return;
 
 		const config = streamingStateManager.getOperationConfig(
 			state.context.operationType
@@ -92,7 +92,7 @@ export function StreamingModal({ isOpen, onClose }) {
 		}, 3000);
 
 		return () => clearInterval(interval);
-	}, [state.state, state.context.operationType]);
+	}, [state.state, state.context?.operationType]);
 
 	const handleCancel = () => {
 		if (state.canCancel) {
@@ -142,7 +142,7 @@ export function StreamingModal({ isOpen, onClose }) {
 	};
 
 	const getCurrentThinkingMessage = () => {
-		if (state.state !== 'processing' || !state.context.operationType) return '';
+		if (state.state !== 'processing' || !state.context?.operationType) return '';
 
 		const config = streamingStateManager.getOperationConfig(
 			state.context.operationType
@@ -221,7 +221,7 @@ export function StreamingModal({ isOpen, onClose }) {
 				{isComplete && (
 					<Box flexDirection="column" marginBottom={2}>
 						<Text color={theme.text}>{effectiveMessage}</Text>
-						{effectiveState === 'error' && state.context.error && (
+						{effectiveState === 'error' && state.context?.error && (
 							<Text color={theme.textDim}>
 								Details: {state.context.error.message || 'Unknown error'}
 							</Text>

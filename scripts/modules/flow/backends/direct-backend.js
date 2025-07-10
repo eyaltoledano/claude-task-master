@@ -390,16 +390,17 @@ export class DirectBackend extends FlowBackend {
 	 */
 	async updateSubtask(subtaskId, options = {}) {
 		try {
-			const { updateSubtask } = await import(
-				'../../../mcp-server/src/core/task-master-core.js'
+			const { updateSubtaskByIdDirect } = await import(
+				'../../../../mcp-server/src/core/task-master-core.js'
 			);
 
-			const result = await updateSubtask(
+			const result = await updateSubtaskByIdDirect(
 				{
 					id: subtaskId,
 					prompt: options.prompt || 'Progress update',
 					research: options.research || false,
-					projectRoot: this.projectRoot
+					projectRoot: this.projectRoot,
+					tasksJsonPath: this.tasksJsonPath
 				},
 				this.createLogWrapper(),
 				{ session: this.session }
@@ -433,15 +434,16 @@ export class DirectBackend extends FlowBackend {
 	 */
 	async setSubtaskStatus(subtaskId, status) {
 		try {
-			const { setTaskStatus } = await import(
-				'../../../mcp-server/src/core/task-master-core.js'
+			const { setTaskStatusDirect } = await import(
+				'../../../../mcp-server/src/core/task-master-core.js'
 			);
 
-			const result = await setTaskStatus(
+			const result = await setTaskStatusDirect(
 				{
 					id: subtaskId,
 					status: status,
-					projectRoot: this.projectRoot
+					projectRoot: this.projectRoot,
+					tasksJsonPath: this.tasksJsonPath
 				},
 				this.createLogWrapper(),
 				{ session: this.session }

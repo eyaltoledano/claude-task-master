@@ -20,9 +20,9 @@ export function loadMainFlowConfig() {
   } catch (error) {
     console.warn('Error loading main flow config:', error.message);
     return {
-      defaultAgent: 'claude-code',
+      defaultAgent: 'claude',
       defaultSandbox: 'e2b',
-      enabledAgents: ['claude-code'],
+              enabledAgents: ['claude'],
       enabledSandboxes: ['e2b'],
       ui: { showAgentSelector: true, showSandboxSelector: true },
       features: { githubIntegration: true, streamingOutput: true }

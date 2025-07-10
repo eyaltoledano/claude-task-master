@@ -20,7 +20,7 @@ const ProviderConfigSchema = z.object({
   providers: z.object({
     vibekit: z.object({
       enabled: z.boolean().default(true),
-      defaultAgent: z.enum(['claude-code', 'codex', 'gemini-cli', 'opencode']).default('claude-code'),
+      defaultAgent: z.enum(['claude', 'codex', 'gemini', 'opencode']).default('claude'),
       streamingEnabled: z.boolean().default(true),
       githubIntegration: z.boolean().default(true),
       autoCreatePR: z.boolean().default(false),
@@ -29,7 +29,7 @@ const ProviderConfigSchema = z.object({
       
       // Agent-specific configurations (Updated to VibeKit spec)
       agentConfigs: z.object({
-        'claude-code': z.object({
+        'claude': z.object({
           enabled: z.boolean().default(true),
           maxTokens: z.number().default(4000),
           temperature: z.number().min(0).max(1).default(0.1)
@@ -41,7 +41,7 @@ const ProviderConfigSchema = z.object({
           temperature: z.number().min(0).max(1).default(0.1)
         }).default({}),
         
-        'gemini-cli': z.object({
+                  'gemini': z.object({
           enabled: z.boolean().default(false),
           maxTokens: z.number().default(3000),
           temperature: z.number().min(0).max(1).default(0.1)

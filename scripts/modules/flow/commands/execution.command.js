@@ -23,10 +23,10 @@ export async function executeTask(taskId, options = {}) {
     // Get VibeKit provider
     const provider = await globalRegistry.getProvider('vibekit', {
       repository: options.repository,
-      defaultAgent: options.agent || 'claude-code'
+      defaultAgent: options.agent || 'claude'
     });
 
-    console.log(`🤖 Using agent: ${options.agent || 'claude-code'}`);
+    console.log(`🤖 Using agent: ${options.agent || 'claude'}`);
 
     // Execute task with streaming
     const result = await provider.executeTask(task, {
@@ -84,10 +84,10 @@ export async function executeTask(taskId, options = {}) {
  */
 export async function generateCode(prompt, options = {}) {
   try {
-    console.log(`🤖 Generating code with ${options.agent || 'claude-code'}...`);
+    console.log(`🤖 Generating code with ${options.agent || 'claude'}...`);
     
     const provider = await globalRegistry.getProvider('vibekit', {
-      defaultAgent: options.agent || 'claude-code'
+      defaultAgent: options.agent || 'claude'
     });
 
     const result = await provider.generateCode(prompt, {
@@ -198,9 +198,9 @@ export async function listAgents(options = {}) {
  */
 function getRequiredApiKey(agent) {
   switch (agent) {
-    case 'claude-code': return 'ANTHROPIC_API_KEY';
+    case 'claude': return 'ANTHROPIC_API_KEY';
     case 'codex': return 'OPENAI_API_KEY';
-    case 'gemini-cli': return 'GOOGLE_API_KEY';
+    case 'gemini': return 'GOOGLE_API_KEY';
     case 'opencode': return 'OPENCODE_API_KEY';
     default: return 'ANTHROPIC_API_KEY';
   }

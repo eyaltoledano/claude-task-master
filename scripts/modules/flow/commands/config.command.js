@@ -3,7 +3,7 @@
  * Simplified commands for managing VibeKit Flow configuration
  */
 
-import { FlowConfigManager, loadFlowConfig } from '../src/config/flow-config.js';
+import { FlowConfigManager } from '../src/config/managers/flow-config-manager.js';
 import chalk from 'chalk';
 import fs from 'fs';
 
@@ -14,7 +14,8 @@ export async function showConfig(options = {}) {
   try {
     const { json = false, projectRoot = process.cwd() } = options;
     
-    const configManager = await loadFlowConfig(projectRoot);
+    const configManager = new FlowConfigManager({ projectRoot });
+    await configManager.loadConfig();
     const config = configManager.getConfig();
     
     if (json) {
@@ -87,7 +88,8 @@ export async function validateConfig(options = {}) {
     
     console.log('🔍 Validating Flow configuration...');
     
-    const configManager = await loadFlowConfig(projectRoot);
+    const configManager = new FlowConfigManager({ projectRoot });
+    await configManager.loadConfig();
     
     // Validate configuration structure
     const validation = configManager.validateConfig();
@@ -136,7 +138,8 @@ export async function setConfigValue(path, value, options = {}) {
   try {
     const { projectRoot = process.cwd() } = options;
     
-    const configManager = await loadFlowConfig(projectRoot);
+    const configManager = new FlowConfigManager({ projectRoot });
+    await configManager.loadConfig();
     
     // Set the value
     configManager.setValue(path, value);

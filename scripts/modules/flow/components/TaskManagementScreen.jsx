@@ -71,6 +71,11 @@ export function TaskManagementScreen() {
 	
 	// VibeKit modals state
 	const [showVibeKitModal, setShowVibeKitModal] = useState(false);
+	
+	// Debug state changes
+	useEffect(() => {
+		console.log('[DEBUG] showVibeKitModal state changed to:', showVibeKitModal);
+	}, [showVibeKitModal]);
 	const [showVibeKitSettings, setShowVibeKitSettings] = useState(false);
 	const [showSandboxControl, setShowSandboxControl] = useState(false);
 	const [vibeKitService, setVibeKitService] = useState(null);
@@ -204,6 +209,8 @@ export function TaskManagementScreen() {
 
 	// Unified keypress handler
 	useInput((input, key) => {
+		console.log('[DEBUG] Key pressed:', input, 'in viewMode:', viewMode);
+		
 		// If any modal is open, let it handle the input, except for global ESC
 		if (key.escape) {
 			if (showResearchModal) return setShowResearchModal(false);
@@ -226,8 +233,18 @@ export function TaskManagementScreen() {
 		}
 
 		// Don't process other keys if a modal is active
-		if (showResearchModal || showExpandOptions || isSearching || 
-			showVibeKitModal || showVibeKitSettings || showSandboxControl) {
+		const modalsActive = {
+			showResearchModal,
+			showExpandOptions,
+			isSearching,
+			showVibeKitModal,
+			showVibeKitSettings,
+			showSandboxControl
+		};
+		const hasActiveModal = Object.values(modalsActive).some(modal => modal);
+		
+		if (hasActiveModal) {
+			console.log('[DEBUG] Modal is active, blocking input. Active modals:', modalsActive);
 			return;
 		}
 
@@ -282,6 +299,7 @@ export function TaskManagementScreen() {
 				break;
 
 			case 'subtask-detail':
+				console.log('[DEBUG] In subtask-detail case, input:', input);
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
 				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
 				else if (input === 't') {
@@ -295,7 +313,13 @@ export function TaskManagementScreen() {
 				} else if (input === 'r') setShowResearchModal(true);
 				else if (input === 'a') {
 					// Launch VibeKit agent execution
+					console.log('[DEBUG] A key pressed!');
+					console.log('[DEBUG] viewMode:', viewMode);
+					console.log('[DEBUG] selectedTask:', selectedTask?.id, selectedTask?.title);
+					console.log('[DEBUG] selectedSubtask:', selectedSubtask?.id, selectedSubtask?.title);
+					console.log('[DEBUG] Setting showVibeKitModal to true...');
 					setShowVibeKitModal(true);
+					console.log('[DEBUG] showVibeKitModal state should now be true');
 				}
 				break;
 		}
@@ -939,7 +963,16 @@ export function TaskManagementScreen() {
 					/>
 				)}
 
-				
+				{/* VibeKit Execution Modal */}
+				{showVibeKitModal && (
+					<VibeKitExecutionModal
+						task={selectedTask}
+						subtask={selectedSubtask}
+						isVisible={showVibeKitModal}
+						onClose={() => setShowVibeKitModal(false)}
+						onComplete={handleVibeKitComplete}
+					/>
+				)}
 			</Box>
 		);
 	}
@@ -1054,6 +1087,17 @@ export function TaskManagementScreen() {
 						message={toast.message}
 						type={toast.type}
 						onDismiss={() => setToast(null)}
+					/>
+				)}
+
+				{/* VibeKit Execution Modal */}
+				{showVibeKitModal && (
+					<VibeKitExecutionModal
+						task={selectedTask}
+						subtask={selectedSubtask}
+						isVisible={showVibeKitModal}
+						onClose={() => setShowVibeKitModal(false)}
+						onComplete={handleVibeKitComplete}
 					/>
 				)}
 			</Box>
@@ -1270,6 +1314,17 @@ export function TaskManagementScreen() {
 						message={toast.message}
 						type={toast.type}
 						onDismiss={() => setToast(null)}
+					/>
+				)}
+
+				{/* VibeKit Execution Modal */}
+				{showVibeKitModal && (
+					<VibeKitExecutionModal
+						task={selectedTask}
+						subtask={selectedSubtask}
+						isVisible={showVibeKitModal}
+						onClose={() => setShowVibeKitModal(false)}
+						onComplete={handleVibeKitComplete}
 					/>
 				)}
 			</Box>
@@ -1506,14 +1561,13 @@ export function TaskManagementScreen() {
 			<OverflowIndicator position="bottom-right" showCount={true} symbol="⋯" />
 
 			{/* VibeKit Execution Modal */}
-			{showVibeKitModal && selectedTask && selectedSubtask && (
+			{showVibeKitModal && (
 				<VibeKitExecutionModal
 					task={selectedTask}
 					subtask={selectedSubtask}
 					isVisible={showVibeKitModal}
 					onClose={() => setShowVibeKitModal(false)}
 					onComplete={handleVibeKitComplete}
-					projectRoot={backend?.projectRoot}
 				/>
 			)}
 

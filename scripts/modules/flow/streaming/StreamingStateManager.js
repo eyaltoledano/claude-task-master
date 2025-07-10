@@ -160,11 +160,83 @@ class StreamingStateManager {
     return Array.from(this.operations.values());
   }
   
+  getCurrentState() {
+    const activeOperations = this.getActiveOperations();
+    const currentOperation = activeOperations.find(op => 
+      op.status === 'running' || op.status === 'completed' || op.status === 'failed' || op.status === 'cancelled'
+    );
+    
+    if (!currentOperation) {
+      return {
+        state: 'idle',
+        operation: null,
+        message: '',
+        context: {},
+        elapsedTime: 0,
+        formattedElapsedTime: '0s',
+        currentPhase: '',
+        phases: [],
+        thinkingMessage: '',
+        canCancel: false
+      };
+    }
+    
+    const elapsedTime = (currentOperation.endTime || Date.now()) - currentOperation.startTime;
+    const formattedElapsedTime = this.formatElapsedTime(elapsedTime);
+    const config = this.getOperationConfig(currentOperation.type);
+    
+    // Map internal status to modal state
+    const stateMap = {
+      'running': 'processing',
+      'completed': 'completed',
+      'failed': 'error',
+      'cancelled': 'cancelled'
+    };
+    
+    const state = stateMap[currentOperation.status] || 'processing';
+    
+    // Get appropriate message based on state
+    let message = '';
+    if (state === 'completed') {
+      message = `${config.title} completed successfully`;
+    } else if (state === 'error') {
+      message = `${config.title} failed: ${currentOperation.error || 'Unknown error'}`;
+    } else if (state === 'cancelled') {
+      message = `${config.title} was cancelled`;
+    } else {
+      message = currentOperation.thinkingMessage || config.description;
+    }
+    
+    return {
+      state,
+      operation: currentOperation.type,
+      message,
+      context: {
+        operationType: currentOperation.type,
+        error: currentOperation.error ? { message: currentOperation.error } : null
+      },
+      elapsedTime,
+      formattedElapsedTime,
+      currentPhase: state === 'processing' ? 'processing' : 'completed',
+      phases: [currentOperation.type],
+      thinkingMessage: currentOperation.thinkingMessage || '',
+      canCancel: currentOperation.status === 'running'
+    };
+  }
+  
+  formatElapsedTime(elapsedMs) {
+    const seconds = Math.floor(elapsedMs / 1000);
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+  
   notifyStateChange() {
     if (this.onStateChange) {
-      this.onStateChange({
-        operations: this.getActiveOperations()
-      });
+      this.onStateChange(this.getCurrentState());
     }
   }
 }

@@ -1,7 +1,6 @@
 {
   "level": "info",
   "enableTelemetry": true,
-  "logFile": null,
   "maxLogSize": 10485760,
   "console": {
     "enabled": true,

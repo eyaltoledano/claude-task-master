@@ -106,7 +106,7 @@ export function registerFlowCommand(programInstance) {
   programInstance
     .command('flow [subcommand] [taskIdOrPrompt] [additionalArgs...]')
     .description('🤖 VibeKit-powered task execution and code generation')
-    .option('--agent <type>', 'Agent type: claude-code, codex, gemini-cli, opencode', 'claude-code')
+    .option('--agent <type>', 'Agent type: claude, codex, gemini, opencode', 'claude')
     .option('--mode <mode>', 'Execution mode: code or ask', 'code')
     .option('--no-stream', 'Disable streaming output')
     .option('--project-root <path>', 'Project root directory')
@@ -130,7 +130,7 @@ export function registerFlowCommand(programInstance) {
 Examples:
   $ task-master flow                                 # Launch interactive TUI
   $ task-master flow execute 5                      # Execute task 5 with default agent
-  $ task-master flow execute 5.2 --agent gemini-cli # Execute subtask with specific agent
+  $ task-master flow execute 5.2 --agent gemini     # Execute subtask with specific agent
   $ task-master flow execute 8 --dry-run            # Preview execution plan
   $ task-master flow generate "Hello world"         # Generate code from prompt
   $ task-master flow generate "Add validation" --context 5  # With task context
@@ -142,9 +142,9 @@ Examples:
   $ task-master flow config --validate             # Check configuration
   
 Agent Types:
-  claude-code    Anthropic Claude for coding (default)
+  claude         Anthropic Claude for coding (default)
   codex          OpenAI Codex for code completion  
-  gemini-cli     Google Gemini for CLI development
+  gemini         Google Gemini for CLI development
   opencode       Full-stack development agent
 
 Subcommands:
@@ -354,7 +354,7 @@ For more details: task-master flow <subcommand> --help
                 throw {
                   code: 'VALIDATION_ERROR',
                   message: 'Invalid --set format',
-                  suggestion: 'Use: --set "path value" (e.g., --set "vibekit.defaultAgent claude-code")'
+                  suggestion: 'Use: --set "path value" (e.g., --set "vibekit.defaultAgent claude")'
                 };
               }
               const { setConfigValue } = await import('./commands/config.command.js');
@@ -371,9 +371,109 @@ For more details: task-master flow <subcommand> --help
               console.log('  task-master flow config --show');
               console.log('  task-master flow config --validate');
               console.log('  task-master flow config --init');
-              console.log('  task-master flow config --set vibekit.defaultAgent claude-code');
+              console.log('  task-master flow config --set vibekit.defaultAgent claude');
               console.log('');
               console.log(chalk.gray('💡 Use --help for detailed information'));
+            }
+            break;
+          }
+
+          case 'test-config': {
+            // Import and run the test directly
+            const { FlowConfigManager } = await import('./src/config/managers/flow-config-manager.js');
+            const { loadFlowConfig } = await import('./src/config/flow-config.js');
+            
+            try {
+              console.log('🧪 Testing Flow Configuration...\n');
+              
+              // Test 1: Load raw configuration
+              console.log('1. Testing raw configuration loading...');
+              const rawConfig = loadFlowConfig();
+              if (rawConfig.success) {
+                console.log('✅ Raw configuration loaded successfully');
+                if (options.verbose) {
+                  console.log('Raw config keys:', Object.keys(rawConfig.config));
+                }
+              } else {
+                console.error('❌ Raw configuration failed:', rawConfig.error);
+                throw new Error('Raw configuration failed');
+              }
+              
+              // Test 2: Load with FlowConfigManager
+              console.log('\n2. Testing FlowConfigManager...');
+              const configManager = new FlowConfigManager({ projectRoot: options.projectRoot });
+              
+              const config = await configManager.loadConfig();
+              console.log('✅ FlowConfigManager loaded successfully');
+              
+              if (options.verbose) {
+                console.log('Config structure:');
+                console.log('- nodeEnv:', config.nodeEnv);
+                console.log('- vibekit.enabled:', config.vibekit?.enabled);
+                console.log('- vibekit.defaultAgent:', config.vibekit?.defaultAgent);
+                console.log('- vibekit.agents:', Object.keys(config.vibekit?.agents || {}));
+                console.log('- vibekit.environments:', Object.keys(config.vibekit?.environments || {}));
+                console.log('- github.enabled:', config.github?.enabled);
+                console.log('- execution.timeout:', config.execution?.timeout);
+                console.log('- logging.level:', config.logging?.level);
+              }
+              
+              // Test 3: Validate configuration
+              console.log('\n3. Testing configuration validation...');
+              const validation = configManager.validateConfig(config);
+              if (validation.valid) {
+                console.log('✅ Configuration validation passed');
+              } else {
+                console.error('❌ Configuration validation failed:');
+                validation.errors.forEach(error => {
+                  console.error(`   - ${error}`);
+                });
+                throw new Error('Configuration validation failed');
+              }
+              
+              // Test 4: Environment validation
+              console.log('\n4. Testing environment validation...');
+              const envValidation = configManager.validateEnvironment();
+              if (envValidation.valid) {
+                console.log('✅ Environment validation passed');
+              } else {
+                console.log('⚠️  Environment validation issues:');
+                envValidation.issues.forEach(issue => {
+                  console.log(`   - ${issue}`);
+                });
+              }
+              
+              if (envValidation.warnings.length > 0) {
+                console.log('\n⚠️  Environment warnings:');
+                envValidation.warnings.forEach(warning => {
+                  console.log(`   - ${warning}`);
+                });
+              }
+              
+              // Test 5: Available agents and environments
+              console.log('\n5. Testing available agents and environments...');
+              const availableAgents = configManager.getAvailableAgents();
+              console.log('Available agents:', availableAgents);
+              
+              console.log('\n🎉 All configuration tests passed!');
+              
+              // Summary
+              console.log('\n📋 Configuration Summary:');
+              console.log(`- Node Environment: ${config.nodeEnv}`);
+              console.log(`- VibeKit Enabled: ${config.vibekit?.enabled}`);
+              console.log(`- Default Agent: ${config.vibekit?.defaultAgent}`);
+              console.log(`- GitHub Integration: ${config.github?.enabled}`);
+              console.log(`- Streaming Enabled: ${config.vibekit?.streamingEnabled}`);
+              console.log(`- Telemetry Enabled: ${config.vibekit?.telemetry?.enabled}`);
+              console.log(`- Session Management: ${config.vibekit?.sessionManagement?.enabled}`);
+              console.log(`- Secrets Provider: ${config.vibekit?.secrets?.provider}`);
+              
+            } catch (error) {
+              throw {
+                code: 'VALIDATION_ERROR',
+                message: `Configuration test failed: ${error.message}`,
+                suggestion: 'Check your configuration files and try again'
+              };
             }
             break;
           }
@@ -382,7 +482,7 @@ For more details: task-master flow <subcommand> --help
             throw {
               code: 'VALIDATION_ERROR',
               message: `Unknown subcommand: "${subcommand}"`,
-              suggestion: 'Available subcommands: execute, generate, agents, batch, config'
+              suggestion: 'Available subcommands: execute, generate, agents, batch, config, test-config'
             };
         }
       } catch (error) {

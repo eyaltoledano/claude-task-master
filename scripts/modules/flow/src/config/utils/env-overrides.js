@@ -166,11 +166,11 @@ export function applyEnvironmentOverrides(configData) {
   // Agent API key overrides (reusing existing Task Master keys)
   if (!configData.vibekit.agents) configData.vibekit.agents = {};
   
-  // Claude Code agent
-  if (!configData.vibekit.agents['claude-code']) configData.vibekit.agents['claude-code'] = {};
+  // Claude agent
+  if (!configData.vibekit.agents.claude) configData.vibekit.agents.claude = {};
   if (env.ANTHROPIC_API_KEY) {
-    configData.vibekit.agents['claude-code'].apiKey = env.ANTHROPIC_API_KEY;
-    configData.vibekit.agents['claude-code'].enabled = true;
+    configData.vibekit.agents.claude.apiKey = env.ANTHROPIC_API_KEY;
+    configData.vibekit.agents.claude.enabled = true;
   }
   
   // Codex agent
@@ -179,10 +179,10 @@ export function applyEnvironmentOverrides(configData) {
     configData.vibekit.agents.codex.apiKey = env.OPENAI_API_KEY;
   }
   
-  // Gemini CLI agent
-  if (!configData.vibekit.agents['gemini-cli']) configData.vibekit.agents['gemini-cli'] = {};
+  // Gemini agent
+  if (!configData.vibekit.agents.gemini) configData.vibekit.agents.gemini = {};
   if (env.GOOGLE_API_KEY) {
-    configData.vibekit.agents['gemini-cli'].apiKey = env.GOOGLE_API_KEY;
+    configData.vibekit.agents.gemini.apiKey = env.GOOGLE_API_KEY;
   }
   
   // OpenCode agent (custom)

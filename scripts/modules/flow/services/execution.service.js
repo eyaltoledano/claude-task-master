@@ -26,7 +26,7 @@ class ExecutionService {
 				status: 'completed',
 				progress: 1.0,
 				provider: 'vibekit',
-				agent: 'gemini-cli',
+				    agent: 'gemini',
 				startTime: new Date(Date.now() - 600000).toISOString(),
 				endTime: new Date(Date.now() - 120000).toISOString(),
 				logs: [

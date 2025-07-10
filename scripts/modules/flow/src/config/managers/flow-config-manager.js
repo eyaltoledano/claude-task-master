@@ -34,7 +34,7 @@ export class FlowConfigManager {
         nodeEnv: 'development',
         vibekit: {
           enabled: true,
-          defaultAgent: 'claude-code',
+          defaultAgent: 'claude',
           streamingEnabled: true,
           githubIntegration: true,
           agents: {},
@@ -212,7 +212,7 @@ export class FlowConfigManager {
    * Get available agent names for validation
    */
   getAvailableAgents() {
-    return ['claude-code', 'codex', 'gemini-cli', 'opencode'];
+    return ['claude', 'codex', 'gemini', 'opencode'];
   }
 
   /**
@@ -225,9 +225,9 @@ export class FlowConfigManager {
 
     // Check API keys for enabled agents (reusing Task Master .env keys)
     const agentKeyMap = {
-      'claude-code': 'ANTHROPIC_API_KEY',
-      'codex': 'OPENAI_API_KEY', 
-      'gemini-cli': 'GOOGLE_API_KEY',
+            'claude': 'ANTHROPIC_API_KEY',
+      'codex': 'OPENAI_API_KEY',
+      'gemini': 'GOOGLE_API_KEY',
       'opencode': 'OPENCODE_API_KEY'
     };
 

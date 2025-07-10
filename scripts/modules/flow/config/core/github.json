@@ -2,9 +2,6 @@
   "enabled": true,
   "autoDetectRepo": true,
   "defaultBranch": "main",
-  "prTemplate": null,
-  "token": null,
-  "webhookSecret": null,
   "autoSync": false,
   "branchPrefix": "taskmaster/",
   "integration": {
@@ -15,7 +12,6 @@
     "deleteSourceBranch": false
   },
   "pullRequest": {
-    "template": null,
     "assignToCreator": true,
     "addLabels": ["taskmaster", "automated"],
     "requestReviewers": [],
@@ -24,14 +20,10 @@
   "commit": {
     "messageTemplate": "[TaskMaster] {task_title}",
     "signCommits": false,
-    "author": {
-      "name": null,
-      "email": null
-    }
+    "author": {}
   },
   "webhooks": {
     "enabled": false,
-    "secret": null,
     "events": ["push", "pull_request"]
   }
 } 

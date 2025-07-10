@@ -4,17 +4,13 @@
   "streamingEnabled": true,
   "githubIntegration": true,
   "autoCreatePR": false,
-  "workingDirectory": null,
   "sdk": {
     "version": "latest",
     "timeout": 120000,
-    "retryAttempts": 3,
-    "baseUrl": null
+    "retryAttempts": 3
   },
   "telemetry": {
     "enabled": false,
-    "endpoint": null,
-    "apiKey": null,
     "samplingRate": 0.1,
     "batchSize": 100,
     "flushInterval": 30000,
@@ -31,10 +27,7 @@
   },
   "secrets": {
     "enabled": true,
-    "provider": "env",
-    "encryptionKey": null,
-    "vaultUrl": null,
-    "awsRegion": null
+    "provider": "env"
   },
   "askMode": {
     "enabled": true,

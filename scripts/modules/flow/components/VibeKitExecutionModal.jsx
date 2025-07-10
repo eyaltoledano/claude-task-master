@@ -5,20 +5,20 @@ import { VibeKitService } from '../services/vibekit.service.js';
 import LoadingSpinner from './ui/LoadingSpinner.jsx';
 import AnimatedButton from './ui/AnimatedButton.jsx';
 import ProgressBar from './ui/ProgressBar.jsx';
-import { updateSubtaskById as updateSubtask, setTaskStatus } from '../../task-manager.js';
+import { useAppContext } from '../index.jsx';
 
 export function VibeKitExecutionModal({ 
   task, 
   subtask, 
   isVisible, 
   onClose, 
-  onComplete,
-  projectRoot 
+  onComplete 
 }) {
   const { exit } = useApp();
+  const { backend } = useAppContext();
   const [step, setStep] = useState('config'); // config, executing, results
   const [config, setConfig] = useState({
-    agent: 'claude-code',
+    agent: 'claude',
     sandbox: 'e2b',
     mode: 'code',
     createPR: true,
@@ -35,10 +35,10 @@ export function VibeKitExecutionModal({
   
   // Initialize VibeKit service and check configuration
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && backend) {
       try {
         const service = new VibeKitService({
-          projectRoot,
+          projectRoot: backend.projectRoot,
           strictValidation: false,
           agent: { type: config.agent },
           environments: {
@@ -54,7 +54,7 @@ export function VibeKitExecutionModal({
         setError(`VibeKit initialization failed: ${err.message}`);
       }
     }
-  }, [isVisible, projectRoot, config.agent]);
+  }, [isVisible, backend, config.agent]);
 
   const configOptions = [
     { key: 'agent', label: 'AI Agent', value: config.agent },
@@ -145,8 +145,8 @@ export function VibeKitExecutionModal({
       return;
     }
 
-    if (!projectRoot) {
-      setError('Project root not provided');
+    if (!backend) {
+      setError('Backend not available');
       return;
     }
 
@@ -158,16 +158,17 @@ export function VibeKitExecutionModal({
       const targetId = subtask?.id ? `${task.id}.${subtask.id}` : task?.id;
       const targetType = subtask ? 'subtask' : 'task';
       
-      const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-      
       if (subtask) {
-        await updateSubtask(tasksPath, targetId, `Starting VibeKit execution with ${config.agent} agent`);
+        await backend.updateSubtask(targetId, {
+          prompt: `Starting VibeKit execution with ${config.agent} agent`
+        });
       } else {
-        await setTaskStatus(tasksPath, targetId, 'in-progress');
+        await backend.setTaskStatus(targetId, 'in-progress');
       }
 
       // Execute the task/subtask with VibeKit
       const executionTarget = subtask || task;
+      const parentTask = subtask ? task : null;
       const result = await vibeKitService.executeCompleteWorkflow(executionTarget, {
         generateCode: true,
         mode: config.mode,
@@ -186,24 +187,26 @@ export function VibeKitExecutionModal({
               progressUpdate.phase === 'pull-request-created' ||
               progressUpdate.progress === 100) {
             if (subtask) {
-              const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-              updateSubtask(tasksPath, targetId, `VibeKit ${progressUpdate.phase}: ${progressUpdate.message}`);
+              backend.updateSubtask(targetId, {
+                prompt: `VibeKit ${progressUpdate.phase}: ${progressUpdate.message}`
+              });
             }
           }
         }
-      });
+      }, parentTask);
 
       setResults(result);
       setStep('results');
       
       // Update final Task Master status
       if (result.success) {
-        const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
         if (subtask) {
-          await updateSubtask(tasksPath, targetId, `VibeKit execution completed successfully`);
-          await setTaskStatus(tasksPath, targetId, 'done');
+          await backend.updateSubtask(targetId, {
+            prompt: `VibeKit execution completed successfully`
+          });
+          await backend.setTaskStatus(targetId, 'done');
         } else {
-          await setTaskStatus(tasksPath, targetId, 'done');
+          await backend.setTaskStatus(targetId, 'done');
         }
         
         if (onComplete) {
@@ -211,8 +214,9 @@ export function VibeKitExecutionModal({
         }
       } else {
         if (subtask) {
-          const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-          await updateSubtask(tasksPath, targetId, `VibeKit execution failed: ${result.error}`);
+          await backend.updateSubtask(targetId, {
+            prompt: `VibeKit execution failed: ${result.error}`
+          });
         }
       }
       
@@ -223,8 +227,9 @@ export function VibeKitExecutionModal({
       // Log error to Task Master
       const targetId = subtask?.id ? `${task.id}.${subtask.id}` : task?.id;
       if (subtask) {
-        const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-        await updateSubtask(tasksPath, targetId, `VibeKit execution failed: ${err.message}`);
+        await backend.updateSubtask(targetId, {
+          prompt: `VibeKit execution failed: ${err.message}`
+        });
       }
     }
   };
