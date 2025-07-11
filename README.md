@@ -288,3 +288,44 @@ Task Master is licensed under the MIT License with Commons Clause. This means yo
 - Create competing products based on Task Master
 
 See the [LICENSE](LICENSE) file for the complete license text and [licensing details](docs/licensing.md) for more information.
+
+## MCP Server Management
+
+Task Master Flow includes built-in MCP (Model Context Protocol) server management capabilities:
+
+### Adding MCP Servers
+
+There are two ways to add MCP servers:
+
+1. **Manual Entry**: Press `a` in the MCP management screen to manually enter server details
+2. **Paste Configuration**: Press `p` to paste JSON configurations directly
+
+### Paste Configuration Format
+
+You can paste MCP server configurations in the standard format used by most MCP providers:
+
+```json
+{
+  "mcpServers": {
+    "weather": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/adhikasp/mcp-weather.git", "mcp-weather"],
+      "env": {
+        "ACCUWEATHER_API_KEY": "your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+The paste feature supports:
+- Multiple servers in a single paste
+- Automatic transport type detection (stdio, sse, http)
+- Environment variables and headers
+- Both wrapped (`mcpServers`) and unwrapped formats
+
+To use the paste feature:
+1. Navigate to MCP management (`/mcp` or `Ctrl+X V`)
+2. Press `p` to enter paste mode
+3. Paste your JSON configuration
+4. Press `Ctrl+Enter` to submit

@@ -143,6 +143,7 @@ import {
 	generateProfileRemovalSummary,
 	categorizeRemovalResults
 } from '../../src/utils/profiles.js';
+import { registerFlowCommand } from './flow/cli.js';
 
 /**
  * Runs the interactive setup process for model configuration.
@@ -4621,6 +4622,9 @@ Examples:
 			process.exit(1);
 		});
 
+	// Register Flow command (from flow module)
+	registerFlowCommand(programInstance);
+
 	return programInstance;
 }
 
@@ -4796,8 +4800,11 @@ function displayUpgradeNotification(currentVersion, latestVersion) {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
-		if (process.stdout.isTTY) {
+		// Check if running the flow command
+		const isFlowCommand = argv.length > 2 && argv[2] === 'flow';
+
+		// Display banner if not in a pipe and not running flow command
+		if (process.stdout.isTTY && !isFlowCommand) {
 			displayBanner();
 		}
 
