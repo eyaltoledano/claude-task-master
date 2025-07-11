@@ -14,6 +14,7 @@ import {
 	findTasksPath,
 	findComplexityReportPath
 } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -67,7 +68,8 @@ export function registerShowTaskTool(server) {
 				.string()
 				.describe(
 					'Absolute path to the project root directory (Optional, usually from session)'
-				)
+				),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const { id, file, status, projectRoot } = args;
@@ -76,6 +78,10 @@ export function registerShowTaskTool(server) {
 				log.info(
 					`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${projectRoot}`
 				);
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
 				// Resolve the path to tasks.json using the NORMALIZED projectRoot from args
 				let tasksJsonPath;
@@ -99,7 +105,8 @@ export function registerShowTaskTool(server) {
 					complexityReportPath = findComplexityReportPath(
 						{
 							projectRoot: projectRoot,
-							complexityReport: args.complexityReport
+							complexityReport: args.complexityReport,
+							tag: resolvedTag
 						},
 						log
 					);
@@ -113,7 +120,8 @@ export function registerShowTaskTool(server) {
 						// Pass other relevant args
 						id: id,
 						status: status,
-						projectRoot: projectRoot
+						projectRoot: projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

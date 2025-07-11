@@ -18,6 +18,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.prompt] - Additional context to guide subtask generation
  * @param {boolean} [args.force] - Force regeneration of subtasks for tasks that already have them
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object from FastMCP
  * @param {Object} context - Context object containing session
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
@@ -25,7 +26,8 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function expandAllTasksDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, num, research, prompt, force, projectRoot } = args;
+	const { tasksJsonPath, num, research, prompt, force, projectRoot, tag } =
+		args;
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
@@ -44,7 +46,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 	enableSilentMode(); // Enable silent mode for the core function call
 	try {
 		log.info(
-			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, projectRoot })}`
+			`Calling core expandAllTasks with args: ${JSON.stringify({ num, research, prompt, force, projectRoot, tag })}`
 		);
 
 		// Parse parameters (ensure correct types)
@@ -60,7 +62,7 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot },
+			{ session, mcpLog, projectRoot, tag },
 			'json'
 		);
 

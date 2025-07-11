@@ -14,6 +14,11 @@ import { nextTaskDirect } from './next-task.js';
  * Direct function wrapper for setTaskStatus with error handling.
  *
  * @param {Object} args - Command arguments containing id, status, tasksJsonPath, and projectRoot.
+ * @param {string} args.id - The ID of the task to update.
+ * @param {string} args.status - The new status to set for the task.
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -70,17 +75,12 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
-			await setTaskStatus(
-				tasksPath,
-				taskId,
-				newStatus,
-				{
-					mcpLog: log,
-					projectRoot,
-					session
-				},
+			await setTaskStatus(tasksPath, taskId, newStatus, {
+				mcpLog: log,
+				projectRoot,
+				session,
 				tag
-			);
+			});
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
 
@@ -103,7 +103,8 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 						{
 							tasksJsonPath: tasksJsonPath,
 							reportPath: complexityReportPath,
-							projectRoot: projectRoot
+							projectRoot: projectRoot,
+							tag
 						},
 						log,
 						{ session }

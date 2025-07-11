@@ -22,6 +22,7 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @param {number} [args.from] - Starting task ID in a range to analyze
  * @param {number} [args.to] - Ending task ID in a range to analyze
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @param {Object} [context={}] - Context object containing session data
  * @param {Object} [context.session] - MCP session object
@@ -37,7 +38,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 		projectRoot,
 		ids,
 		from,
-		to
+		to,
+		tag
 	} = args;
 
 	const logWrapper = createLogWrapper(log);
@@ -91,7 +93,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			projectRoot: projectRoot, // Pass projectRoot here
 			id: ids, // Pass the ids parameter to the core function as 'id'
 			from: from, // Pass from parameter
-			to: to // Pass to parameter
+			to: to, // Pass to parameter
+			tag // forward tag
 		};
 		// --- End Initial Checks ---
 
@@ -112,7 +115,9 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 				session,
 				mcpLog: logWrapper,
 				commandName: 'analyze-complexity',
-				outputType: 'mcp'
+				outputType: 'mcp',
+				projectRoot,
+				tag
 			});
 			report = coreResult.report;
 		} catch (error) {

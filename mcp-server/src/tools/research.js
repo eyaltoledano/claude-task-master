@@ -10,6 +10,7 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { researchDirect } from '../core/task-master-core.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the research tool with the MCP server
@@ -19,6 +20,7 @@ export function registerResearchTool(server) {
 	server.addTool({
 		name: 'research',
 		description: 'Perform AI-powered research queries with project context',
+
 		parameters: z.object({
 			query: z.string().describe('Research query/prompt (required)'),
 			taskIds: z
@@ -61,10 +63,15 @@ export function registerResearchTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(
 					`Starting research with query: "${args.query.substring(0, 100)}${args.query.length > 100 ? '...' : ''}"`
 				);
@@ -80,7 +87,8 @@ export function registerResearchTool(server) {
 						detailLevel: args.detailLevel || 'medium',
 						saveTo: args.saveTo,
 						saveToFile: args.saveToFile || false,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

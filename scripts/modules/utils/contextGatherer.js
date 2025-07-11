@@ -21,7 +21,7 @@ const { encode } = pkg;
  * Context Gatherer class for collecting and formatting context from various sources
  */
 export class ContextGatherer {
-	constructor(projectRoot) {
+	constructor(projectRoot, tag) {
 		this.projectRoot = projectRoot;
 		this.tasksPath = path.join(
 			projectRoot,
@@ -29,12 +29,13 @@ export class ContextGatherer {
 			'tasks',
 			'tasks.json'
 		);
+		this.tag = tag;
 		this.allTasks = this._loadAllTasks();
 	}
 
 	_loadAllTasks() {
 		try {
-			const data = readJSON(this.tasksPath, this.projectRoot);
+			const data = readJSON(this.tasksPath, this.projectRoot, this.tag);
 			const tasks = data?.tasks || [];
 			return tasks;
 		} catch (error) {
@@ -958,10 +959,15 @@ export class ContextGatherer {
 /**
  * Factory function to create a context gatherer instance
  * @param {string} projectRoot - Project root directory
+ * @param {string} tag - Tag for the task
  * @returns {ContextGatherer} Context gatherer instance
+ * @throws {Error} If tag is not provided
  */
-export function createContextGatherer(projectRoot) {
-	return new ContextGatherer(projectRoot);
+export function createContextGatherer(projectRoot, tag) {
+	if (!tag) {
+		throw new Error('Tag is required');
+	}
+	return new ContextGatherer(projectRoot, tag);
 }
 
 export default ContextGatherer;

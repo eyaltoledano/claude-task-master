@@ -71,6 +71,7 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {string|number} [options.threshold] - Complexity threshold
  * @param {boolean} [options.research] - Use research role
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
+ * @param {string} [options.tag] - Tag for the task
  * @param {string} [options.id] - Comma-separated list of task IDs to analyze specifically
  * @param {number} [options.from] - Starting task ID in a range to analyze
  * @param {number} [options.to] - Ending task ID in a range to analyze
@@ -220,7 +221,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		let gatheredContext = '';
 		if (originalData && originalData.tasks.length > 0) {
 			try {
-				const contextGatherer = new ContextGatherer(projectRoot);
+				const contextGatherer = new ContextGatherer(projectRoot, tag);
 				const allTasksFlat = flattenTasksWithSubtasks(originalData.tasks);
 				const fuzzySearch = new FuzzyTaskSearch(
 					allTasksFlat,

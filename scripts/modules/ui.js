@@ -1197,18 +1197,18 @@ async function displayNextTask(
  * @param {string|number} taskId - The ID of the task to display
  * @param {string} complexityReportPath - Path to the complexity report file
  * @param {string} [statusFilter] - Optional status to filter subtasks by
- * @param {string} tag - Optional tag to override current tag resolution
+ * @param {object} context - Context object containing projectRoot and tag
+ * @param {string} context.projectRoot - Project root path
+ * @param {string} context.tag - Tag for the task
  */
 async function displayTaskById(
 	tasksPath,
 	taskId,
 	complexityReportPath = null,
 	statusFilter = null,
-	tag = null,
 	context = {}
 ) {
-	// Extract projectRoot from context
-	const projectRoot = context.projectRoot || null;
+	const { projectRoot, tag } = context;
 
 	// Read the tasks file with proper projectRoot for tag resolution
 	const data = readJSON(tasksPath, projectRoot, tag);
@@ -2251,7 +2251,9 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
  * @param {Array<string>} taskIds - Array of task IDs to display
  * @param {string} complexityReportPath - Path to complexity report
  * @param {string} statusFilter - Optional status filter for subtasks
- * @param {Object} context - Optional context object containing projectRoot and tag
+ * @param {Object} context - Context object containing projectRoot and tag
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  */
 async function displayMultipleTasksSummary(
 	tasksPath,
@@ -2602,7 +2604,6 @@ async function displayMultipleTasksSummary(
 				choice.trim(),
 				complexityReportPath,
 				statusFilter,
-				tag,
 				context
 			);
 		}

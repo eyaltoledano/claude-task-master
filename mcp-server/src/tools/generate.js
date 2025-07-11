@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import path from 'path';
 
 /**
@@ -30,12 +31,17 @@ export function registerGenerateTool(server) {
 				.describe('Output directory (default: same directory as tasks file)'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -58,7 +64,8 @@ export function registerGenerateTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						outputDir: outputDir,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

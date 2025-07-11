@@ -18,6 +18,7 @@ import path from 'path';
  * @param {string} [args.id] - Task IDs (comma-separated) to clear subtasks from
  * @param {boolean} [args.all] - Clear subtasks from all tasks
  * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag)
+ * @param {string} [args.projectRoot] - Project root path (for MCP/env fallback)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
@@ -80,7 +81,7 @@ export async function clearSubtasksDirect(args, log) {
 			};
 		}
 
-		const currentTag = data.tag || 'master';
+		const currentTag = data.tag || tag;
 		const tasks = data.tasks;
 
 		// If all is specified, get all task IDs

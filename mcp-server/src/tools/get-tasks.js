@@ -15,6 +15,8 @@ import {
 	resolveComplexityReportPath
 } from '../core/utils/path-utils.js';
 
+import { resolveTag } from '../../../scripts/modules/utils.js';
+
 /**
  * Register the getTasks tool with the MCP server
  * @param {Object} server - FastMCP server instance
@@ -51,12 +53,17 @@ export function registerListTasksTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
 				try {
@@ -84,7 +91,8 @@ export function registerListTasksTool(server) {
 						status: args.status,
 						withSubtasks: args.withSubtasks,
 						reportPath: complexityReportPath,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

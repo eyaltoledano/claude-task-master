@@ -1190,6 +1190,7 @@ function aggregateTelemetry(telemetryArray, overallCommandName) {
 }
 
 /**
+ * @deprecated Use TaskMaster.getCurrentTag() instead
  * Gets the current tag from state.json or falls back to defaultTag from config
  * @param {string} projectRoot - The project root directory (required)
  * @returns {string} The current tag name

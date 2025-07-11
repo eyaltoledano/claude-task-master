@@ -15,6 +15,7 @@ import {
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the parse_prd tool
@@ -24,6 +25,7 @@ export function registerParsePRDTool(server) {
 	server.addTool({
 		name: 'parse_prd',
 		description: `Parse a Product Requirements Document (PRD) text file to automatically generate initial tasks. Reinitializing the project is not necessary to run this tool. It is recommended to run parse-prd after initializing the project and creating/importing a prd.txt file in the project root's ${TASKMASTER_DOCS_DIR} directory.`,
+
 		parameters: z.object({
 			input: z
 				.string()
@@ -33,6 +35,7 @@ export function registerParsePRDTool(server) {
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on'),
 			output: z
 				.string()
 				.optional()
@@ -63,7 +66,18 @@ export function registerParsePRDTool(server) {
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				const result = await parsePRDDirect(args, log, { session });
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+				const result = await parsePRDDirect(
+					{
+						...args,
+						tag: resolvedTag
+					},
+					log,
+					{ session }
+				);
 				return handleApiResult(
 					result,
 					log,

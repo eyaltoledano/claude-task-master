@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { validateDependenciesDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the validateDependencies tool with the MCP server
@@ -25,10 +26,15 @@ export function registerValidateDependenciesTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(`Validating dependencies with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
@@ -47,7 +53,9 @@ export function registerValidateDependenciesTool(server) {
 
 				const result = await validateDependenciesDirect(
 					{
-						tasksJsonPath: tasksJsonPath
+						tasksJsonPath: tasksJsonPath,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log
 				);

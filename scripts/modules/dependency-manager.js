@@ -27,6 +27,8 @@ import { generateTaskFiles } from './task-manager.js';
  * @param {number|string} taskId - ID of the task to add dependency to
  * @param {number|string} dependencyId - ID of the task to add as dependency
  * @param {Object} context - Context object containing projectRoot and tag information
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  */
 async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 	log('info', `Adding dependency ${dependencyId} to task ${taskId}...`);
@@ -214,6 +216,8 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
  * @param {number|string} taskId - ID of the task to remove dependency from
  * @param {number|string} dependencyId - ID of the task to remove as dependency
  * @param {Object} context - Context object containing projectRoot and tag information
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  */
 async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 	log('info', `Removing dependency ${dependencyId} from task ${taskId}...`);

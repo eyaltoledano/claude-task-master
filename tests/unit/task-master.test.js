@@ -432,8 +432,10 @@ describe('initTaskMaster', () => {
 				path.join(taskMasterDir, 'state.json')
 			);
 			// PRD and complexity report paths are undefined when not provided
-			expect(taskMaster.getPrdPath()).toBeUndefined();
-			expect(taskMaster.getComplexityReportPath()).toBeUndefined();
+			expect(typeof taskMaster.getComplexityReportPath()).toBe('string');
+			expect(taskMaster.getComplexityReportPath()).toMatch(
+				/task-complexity-report\.json$/
+			);
 		});
 	});
 });

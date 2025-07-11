@@ -16,12 +16,14 @@ import {
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string|number} args.id - Task ID to add dependency to
  * @param {string|number} args.dependsOn - Task ID that will become a dependency
+ * @param {string} args.tag - Tag for the task (optional)
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
 export async function addDependencyDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id, dependsOn } = args;
+	const { tasksJsonPath, id, dependsOn, tag, projectRoot } = args;
 	try {
 		log.info(`Adding dependency with args: ${JSON.stringify(args)}`);
 
@@ -76,8 +78,11 @@ export async function addDependencyDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
+		// Create context object
+		const context = { projectRoot, tag };
+
 		// Call the core function using the provided path
-		await addDependency(tasksPath, taskId, dependencyId);
+		await addDependency(tasksPath, taskId, dependencyId, context);
 
 		// Restore normal logging
 		disableSilentMode();

@@ -12,16 +12,20 @@ import { getDebugFlag } from '../config-manager.js';
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} outputDir - Output directory for task files
  * @param {Object} options - Additional options (mcpLog for MCP mode, projectRoot, tag)
+ * @param {string} [options.projectRoot] - Project root path
+ * @param {string} [options.tag] - Tag for the task
+ * @param {Object} [options.mcpLog] - MCP logger object
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
 function generateTaskFiles(tasksPath, outputDir, options = {}) {
 	try {
 		const isMcpMode = !!options?.mcpLog;
+		const { projectRoot, tag } = options;
 
 		// 1. Read the raw data structure, ensuring we have all tags.
 		// We call readJSON without a specific tag to get the resolved default view,
 		// which correctly contains the full structure in `_rawTaggedData`.
-		const resolvedData = readJSON(tasksPath, options.projectRoot);
+		const resolvedData = readJSON(tasksPath, projectRoot, tag);
 		if (!resolvedData) {
 			throw new Error(`Could not read or parse tasks file: ${tasksPath}`);
 		}
@@ -29,13 +33,10 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		const rawData = resolvedData._rawTaggedData || resolvedData;
 
 		// 2. Determine the target tag we need to generate files for.
-		const targetTag = options.tag || resolvedData.tag || 'master';
-		const tagData = rawData[targetTag];
+		const tagData = rawData[tag];
 
 		if (!tagData || !tagData.tasks) {
-			throw new Error(
-				`Tag '${targetTag}' not found or has no tasks in the data.`
-			);
+			throw new Error(`Tag '${tag}' not found or has no tasks in the data.`);
 		}
 		const tasksForGeneration = tagData.tasks;
 
@@ -46,15 +47,15 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 		log(
 			'info',
-			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${targetTag}'`
+			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${tag}'`
 		);
 
 		// 3. Validate dependencies using the FULL, raw data structure to prevent data loss.
 		validateAndFixDependencies(
 			rawData, // Pass the entire object with all tags
 			tasksPath,
-			options.projectRoot,
-			targetTag // Provide the current tag context for the operation
+			projectRoot,
+			tag // Provide the current tag context for the operation
 		);
 
 		const allTasksInTag = tagData.tasks;
@@ -66,14 +67,14 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const masterFilePattern = /^task_(\d+)\.txt$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${targetTag}\\.txt$`);
+			const taggedFilePattern = new RegExp(`^task_(\\d+)_${tag}\\.txt$`);
 
 			const orphanedFiles = files.filter((file) => {
 				let match = null;
 				let fileTaskId = null;
 
 				// Check if file belongs to current tag
-				if (targetTag === 'master') {
+				if (tag === 'master') {
 					match = file.match(masterFilePattern);
 					if (match) {
 						fileTaskId = parseInt(match[1], 10);
@@ -94,7 +95,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			if (orphanedFiles.length > 0) {
 				log(
 					'info',
-					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${targetTag}'`
+					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${tag}'`
 				);
 				orphanedFiles.forEach((file) => {
 					const filePath = path.join(outputDir, file);
@@ -108,13 +109,13 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		}
 
 		// Generate task files for the target tag
-		log('info', `Generating individual task files for tag '${targetTag}'...`);
+		log('info', `Generating individual task files for tag '${tag}'...`);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
-				targetTag === 'master'
+				tag === 'master'
 					? `task_${task.id.toString().padStart(3, '0')}.txt`
-					: `task_${task.id.toString().padStart(3, '0')}_${targetTag}.txt`;
+					: `task_${task.id.toString().padStart(3, '0')}_${tag}.txt`;
 
 			const taskPath = path.join(outputDir, taskFileName);
 
@@ -174,7 +175,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 		log(
 			'success',
-			`All ${tasksForGeneration.length} tasks for tag '${targetTag}' have been generated into '${outputDir}'.`
+			`All ${tasksForGeneration.length} tasks for tag '${tag}' have been generated into '${outputDir}'.`
 		);
 
 		if (isMcpMode) {

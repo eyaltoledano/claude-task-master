@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { removeSubtaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the removeSubtask tool with the MCP server
@@ -44,10 +45,15 @@ export function registerRemoveSubtaskTool(server) {
 				.describe('Skip regenerating task files'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
@@ -70,7 +76,8 @@ export function registerRemoveSubtaskTool(server) {
 						id: args.id,
 						convert: args.convert,
 						skipGenerate: args.skipGenerate,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

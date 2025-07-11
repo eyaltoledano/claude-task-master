@@ -9,6 +9,8 @@ import taskExists from './task-exists.js';
  * @param {string} tasksPath - Path to the tasks file
  * @param {string} taskIds - Comma-separated string of task/subtask IDs to remove (e.g., '5,6.1,7')
  * @param {Object} context - Context object containing projectRoot and tag information
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @returns {Object} Result object with success status, messages, and removed task info
  */
 async function removeTask(tasksPath, taskIds, context = {}) {
@@ -32,7 +34,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 
 	try {
 		// Read the tasks file ONCE before the loop, preserving the full tagged structure
-		const rawData = readJSON(tasksPath, projectRoot); // Read raw data
+		const rawData = readJSON(tasksPath, projectRoot, tag); // Read raw data
 		if (!rawData) {
 			throw new Error(`Could not read tasks file at ${tasksPath}`);
 		}
@@ -40,19 +42,18 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 		// Use the full tagged data if available, otherwise use the data as is
 		const fullTaggedData = rawData._rawTaggedData || rawData;
 
-		const currentTag = tag || rawData.tag || 'master';
-		if (!fullTaggedData[currentTag] || !fullTaggedData[currentTag].tasks) {
-			throw new Error(`Tag '${currentTag}' not found or has no tasks.`);
+		if (!fullTaggedData[tag] || !fullTaggedData[tag].tasks) {
+			throw new Error(`Tag '${tag}' not found or has no tasks.`);
 		}
 
-		const tasks = fullTaggedData[currentTag].tasks; // Work with tasks from the correct tag
+		const tasks = fullTaggedData[tag].tasks; // Work with tasks from the correct tag
 
 		const tasksToDeleteFiles = []; // Collect IDs of main tasks whose files should be deleted
 
 		for (const taskId of taskIdsToRemove) {
 			// Check if the task ID exists *before* attempting removal
 			if (!taskExists(tasks, taskId)) {
-				const errorMsg = `Task with ID ${taskId} in tag '${currentTag}' not found or already removed.`;
+				const errorMsg = `Task with ID ${taskId} in tag '${tag}' not found or already removed.`;
 				results.errors.push(errorMsg);
 				results.success = false; // Mark overall success as false if any error occurs
 				continue; // Skip to the next ID
@@ -94,7 +95,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 					parentTask.subtasks.splice(subtaskIndex, 1);
 
 					results.messages.push(
-						`Successfully removed subtask ${taskId} from tag '${currentTag}'`
+						`Successfully removed subtask ${taskId} from tag '${tag}'`
 					);
 				}
 				// Handle main task removal
@@ -102,9 +103,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 					const taskIdNum = parseInt(taskId, 10);
 					const taskIndex = tasks.findIndex((t) => t.id === taskIdNum);
 					if (taskIndex === -1) {
-						throw new Error(
-							`Task with ID ${taskId} not found in tag '${currentTag}'`
-						);
+						throw new Error(`Task with ID ${taskId} not found in tag '${tag}'`);
 					}
 
 					// Store the task info before removal
@@ -116,7 +115,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 					tasks.splice(taskIndex, 1);
 
 					results.messages.push(
-						`Successfully removed task ${taskId} from tag '${currentTag}'`
+						`Successfully removed task ${taskId} from tag '${tag}'`
 					);
 				}
 			} catch (innerError) {
@@ -139,7 +138,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 			);
 
 			// Update the tasks in the current tag of the full data structure
-			fullTaggedData[currentTag].tasks = tasks;
+			fullTaggedData[tag].tasks = tasks;
 
 			// Remove dependencies from all tags
 			for (const tagName in fullTaggedData) {
@@ -171,7 +170,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 			}
 
 			// Save the updated raw data structure
-			writeJSON(tasksPath, fullTaggedData, projectRoot, currentTag);
+			writeJSON(tasksPath, fullTaggedData, projectRoot, tag);
 
 			// Delete task files AFTER saving tasks.json
 			for (const taskIdNum of tasksToDeleteFiles) {
@@ -196,7 +195,7 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 			try {
 				await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
 					projectRoot,
-					tag: currentTag
+					tag
 				});
 				results.messages.push('Task files regenerated successfully.');
 			} catch (genError) {

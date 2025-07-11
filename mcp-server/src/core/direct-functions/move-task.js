@@ -17,12 +17,14 @@ import {
  * @param {string} args.destinationId - ID of the destination (e.g., '7' or '7.3' or '7,8,9')
  * @param {string} args.file - Alternative path to the tasks.json file
  * @param {string} args.projectRoot - Project root directory
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {boolean} args.generateFiles - Whether to regenerate task files after moving (default: true)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: Object}>}
  */
 export async function moveTaskDirect(args, log, context = {}) {
 	const { session } = context;
+	const { projectRoot, tag } = args;
 
 	// Validate required parameters
 	if (!args.sourceId) {
@@ -73,8 +75,8 @@ export async function moveTaskDirect(args, log, context = {}) {
 			args.destinationId,
 			generateFiles,
 			{
-				projectRoot: args.projectRoot,
-				tag: args.tag
+				projectRoot,
+				tag
 			}
 		);
 

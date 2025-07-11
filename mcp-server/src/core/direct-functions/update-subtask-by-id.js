@@ -20,6 +20,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} args.prompt - Information to append to the subtask.
  * @param {boolean} [args.research] - Whether to use research role.
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -27,7 +28,7 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+	const { tasksJsonPath, id, prompt, research, projectRoot, tag } = args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -112,6 +113,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					mcpLog: logWrapper,
 					session,
 					projectRoot,
+					tag,
 					commandName: 'update-subtask',
 					outputType: 'mcp'
 				},

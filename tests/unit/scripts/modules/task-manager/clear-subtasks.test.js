@@ -103,6 +103,9 @@ describe('clearSubtasks', () => {
 		jest.clearAllMocks();
 		mockExit.mockClear();
 		readJSON.mockImplementation((tasksPath, projectRoot, tag) => {
+			// Ensure tag contract is honoured
+			expect(tag).toBeDefined();
+			expect(tag).toBe('master');
 			// Create a deep copy to avoid mutation issues between tests
 			const sampleTasksCopy = JSON.parse(JSON.stringify(sampleTasks));
 			// Return the data for the 'master' tag, which is what the tests use
@@ -121,12 +124,13 @@ describe('clearSubtasks', () => {
 		// Arrange
 		const taskId = '3';
 		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskId);
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
 			tasksPath,
 			expect.objectContaining({
@@ -142,7 +146,7 @@ describe('clearSubtasks', () => {
 				})
 			}),
 			undefined,
-			undefined
+			'master'
 		);
 	});
 
@@ -150,12 +154,13 @@ describe('clearSubtasks', () => {
 		// Arrange
 		const taskIds = '3,4';
 		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskIds);
+		clearSubtasks(tasksPath, taskIds, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
 			tasksPath,
 			expect.objectContaining({
@@ -169,7 +174,7 @@ describe('clearSubtasks', () => {
 				})
 			}),
 			undefined,
-			undefined
+			'master'
 		);
 	});
 
@@ -177,12 +182,13 @@ describe('clearSubtasks', () => {
 		// Arrange
 		const taskId = '1'; // Task 1 already has no subtasks
 		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskId);
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
 		expect(generateTaskFiles).not.toHaveBeenCalled();
@@ -192,12 +198,13 @@ describe('clearSubtasks', () => {
 		// Arrange
 		const taskId = '99'; // Non-existent task
 		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskId);
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(log).toHaveBeenCalledWith('error', 'Task 99 not found');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
@@ -208,12 +215,13 @@ describe('clearSubtasks', () => {
 		// Arrange
 		const taskIds = '3,99'; // Mix of valid and invalid IDs
 		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
 
 		// Act
-		clearSubtasks(tasksPath, taskIds);
+		clearSubtasks(tasksPath, taskIds, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(log).toHaveBeenCalledWith('error', 'Task 99 not found');
 		// Since task 3 has subtasks that should be cleared, writeJSON should be called
 		expect(writeJSON).toHaveBeenCalledWith(
@@ -232,7 +240,7 @@ describe('clearSubtasks', () => {
 				})
 			}),
 			undefined,
-			undefined
+			'master'
 		);
 	});
 
@@ -244,7 +252,7 @@ describe('clearSubtasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('File read failed');
 	});
 
@@ -254,7 +262,7 @@ describe('clearSubtasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('process.exit called');
 
 		expect(log).toHaveBeenCalledWith('error', 'No valid tasks found.');
@@ -283,7 +291,7 @@ describe('clearSubtasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('File write failed');
 	});
 });
