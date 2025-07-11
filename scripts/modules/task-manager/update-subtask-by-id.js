@@ -161,7 +161,7 @@ async function updateSubtaskById(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			report('warn', `Could not gather context: ${contextError.message}`);
@@ -214,7 +214,7 @@ async function updateSubtaskById(
 							title: parentTask.subtasks[subtaskIndex - 1].title,
 							status: parentTask.subtasks[subtaskIndex - 1].status
 						}
-					: null;
+					: undefined;
 			const nextSubtask =
 				subtaskIndex < parentTask.subtasks.length - 1
 					? {
@@ -222,7 +222,7 @@ async function updateSubtaskById(
 							title: parentTask.subtasks[subtaskIndex + 1].title,
 							status: parentTask.subtasks[subtaskIndex + 1].status
 						}
-					: null;
+					: undefined;
 
 			// Build prompts using PromptManager
 			const promptManager = getPromptManager();

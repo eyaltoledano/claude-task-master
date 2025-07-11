@@ -395,7 +395,7 @@ async function expandTask(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			logger.warn(`Could not gather context: ${contextError.message}`);
@@ -495,7 +495,7 @@ async function expandTask(
 			complexityReasoningContext: complexityReasoningContext,
 			gatheredContext: gatheredContext,
 			useResearch: useResearch,
-			expansionPrompt: taskAnalysis?.expansionPrompt || null
+			expansionPrompt: taskAnalysis?.expansionPrompt || undefined
 		};
 
 		let variantKey = 'default';

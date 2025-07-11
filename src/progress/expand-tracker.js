@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
 import { BaseProgressTracker } from './base-progress-tracker.js';
-import { createProgressHeader, createProgressRow, createBorder } from './tracker-ui.js';
+import {
+	createProgressHeader,
+	createProgressRow,
+	createBorder
+} from './tracker-ui.js';
 import { getPriorityIndicator } from '../ui/indicators.js';
 
 /**
@@ -16,7 +20,7 @@ class ExpandTracker extends BaseProgressTracker {
 			unitName: options.expandType === 'single' ? 'subtask' : 'task',
 			...options
 		});
-		
+
 		// ExpandTracker-specific properties
 		this.expandType = options.expandType || 'single';
 		this.numTasks = options.numTasks || 1; // Keep original property name for compatibility
@@ -26,27 +30,27 @@ class ExpandTracker extends BaseProgressTracker {
 		this.subtasksCreated = 0;
 		this.tasksSkipped = 0;
 		this.tasksWithErrors = 0;
-		
+
 		// Additional UI components beyond base
 		this.currentTaskBar = null;
 		this.subtaskProgressBar = null;
-		
+
 		// Current task tracking
 		this.currentTaskId = null;
 		this.currentTaskTitle = null;
 		this.currentTaskSubtaskCount = 0;
 		this.currentTaskSubtaskProgress = 0;
-		
+
 		// Results tracking
 		this.expansionResults = [];
 		this.errors = [];
 		this.headerShown = false;
-		
+
 		// For single task expansion, track subtask generation
 		this.generatedSubtasks = 0;
 		this.lastSubtaskGenerationTime = null;
 		this.avgTimePerSubtask = null;
-		
+
 		// Timing - keep original properties for complex estimation logic
 		this.completedExpansions = 0; // Keep alongside base completedUnits for compatibility
 		this.lastExpansionTime = null;
@@ -67,7 +71,10 @@ class ExpandTracker extends BaseProgressTracker {
 	}
 
 	_getCustomTimeTokensPayload() {
-		const subtaskCount = this.expandType === 'single' ? this.generatedSubtasks : this.subtasksCreated;
+		const subtaskCount =
+			this.expandType === 'single'
+				? this.generatedSubtasks
+				: this.subtasksCreated;
 		const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
 		return { subtasks: subtaskCount, tokensLabel };
 	}
@@ -79,7 +86,8 @@ class ExpandTracker extends BaseProgressTracker {
 		} else {
 			let fraction = this.completedExpansions;
 			if (this.currentTaskSubtaskCount > 0) {
-				fraction += this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+				fraction +=
+					this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
 			}
 			return fraction / this.numTasks;
 		}
@@ -97,19 +105,31 @@ class ExpandTracker extends BaseProgressTracker {
 			if (remainingSubtasks <= 0) return 'Complete!';
 
 			const now = Date.now();
-			const estimatedSeconds = Math.ceil(remainingSubtasks * this.avgTimePerSubtask);
+			const estimatedSeconds = Math.ceil(
+				remainingSubtasks * this.avgTimePerSubtask
+			);
 
 			// Use stabilization logic
 			if (this.lastEstimateTime && this.lastEstimateSeconds >= 0) {
-				const elapsedSinceEstimate = Math.floor((now - this.lastEstimateTime) / 1000);
-				const countdownSeconds = Math.max(0, this.lastEstimateSeconds - elapsedSinceEstimate);
+				const elapsedSinceEstimate = Math.floor(
+					(now - this.lastEstimateTime) / 1000
+				);
+				const countdownSeconds = Math.max(
+					0,
+					this.lastEstimateSeconds - elapsedSinceEstimate
+				);
 
 				if (countdownSeconds === 0) return 'Complete!';
 
 				const timeSinceLastEstimate = now - this.lastEstimateTime;
-				const significantlyLower = estimatedSeconds < this.lastEstimateSeconds * 0.8;
+				const significantlyLower =
+					estimatedSeconds < this.lastEstimateSeconds * 0.8;
 
-				if (timeSinceLastEstimate < 5000 && !significantlyLower && countdownSeconds > 0) {
+				if (
+					timeSinceLastEstimate < 5000 &&
+					!significantlyLower &&
+					countdownSeconds > 0
+				) {
 					return `Est: ~${this._formatDuration(countdownSeconds)}`;
 				}
 
@@ -127,14 +147,19 @@ class ExpandTracker extends BaseProgressTracker {
 		// For expand-all, use original complex fractional logic
 		let fractionalProgress = this.completedExpansions;
 		if (this.currentTaskSubtaskCount > 0) {
-			fractionalProgress += this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+			fractionalProgress +=
+				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
 		}
 
 		if (fractionalProgress < 0.05) {
 			return 'Est: ~calculating...';
 		}
 
-		if (!this.bestAvgTimePerExpansion && fractionalProgress > 0 && this.startTime) {
+		if (
+			!this.bestAvgTimePerExpansion &&
+			fractionalProgress > 0 &&
+			this.startTime
+		) {
 			const elapsed = (Date.now() - this.startTime) / 1000;
 			const avgTimePerTask = elapsed / fractionalProgress;
 			const remainingProgress = this.numTasks - fractionalProgress;
@@ -150,19 +175,31 @@ class ExpandTracker extends BaseProgressTracker {
 		if (remainingProgress <= 0) return 'Complete!';
 
 		const now = Date.now();
-		const estimatedSeconds = Math.ceil(remainingProgress * this.bestAvgTimePerExpansion);
+		const estimatedSeconds = Math.ceil(
+			remainingProgress * this.bestAvgTimePerExpansion
+		);
 
 		// Stabilization logic
 		if (this.lastEstimateTime && this.lastEstimateSeconds >= 0) {
-			const elapsedSinceEstimate = Math.floor((now - this.lastEstimateTime) / 1000);
-			const countdownSeconds = Math.max(0, this.lastEstimateSeconds - elapsedSinceEstimate);
+			const elapsedSinceEstimate = Math.floor(
+				(now - this.lastEstimateTime) / 1000
+			);
+			const countdownSeconds = Math.max(
+				0,
+				this.lastEstimateSeconds - elapsedSinceEstimate
+			);
 
 			if (countdownSeconds === 0) return 'Complete!';
 
 			const timeSinceLastEstimate = now - this.lastEstimateTime;
-			const significantlyLower = estimatedSeconds < this.lastEstimateSeconds * 0.8;
+			const significantlyLower =
+				estimatedSeconds < this.lastEstimateSeconds * 0.8;
 
-			if (timeSinceLastEstimate < 5000 && !significantlyLower && countdownSeconds > 0) {
+			if (
+				timeSinceLastEstimate < 5000 &&
+				!significantlyLower &&
+				countdownSeconds > 0
+			) {
 				return `Est: ~${this._formatDuration(countdownSeconds)}`;
 			}
 
@@ -182,32 +219,50 @@ class ExpandTracker extends BaseProgressTracker {
 		// Task info bar for single task expansion
 		if (this.expandType === 'single' && this.taskId && this.taskTitle) {
 			const priorityDots = getPriorityIndicator(this.taskPriority, false);
-			const displayTitle = this.taskTitle.length > 60 ? `${this.taskTitle.substring(0, 57)}...` : this.taskTitle;
+			const displayTitle =
+				this.taskTitle.length > 60
+					? `${this.taskTitle.substring(0, 57)}...`
+					: this.taskTitle;
 
-			const taskInfoBar = this.multibar.create(1, 1, {}, {
-				format: `Expanding Task ${this.taskId}: ${priorityDots} ${displayTitle}`,
-				barsize: 1,
-				hideCursor: true,
-				clearOnComplete: false
-			});
+			const taskInfoBar = this.multibar.create(
+				1,
+				1,
+				{},
+				{
+					format: `Expanding Task ${this.taskId}: ${priorityDots} ${displayTitle}`,
+					barsize: 1,
+					hideCursor: true,
+					clearOnComplete: false
+				}
+			);
 			taskInfoBar.update(1);
 		}
 
 		// Current task info bar and subtask progress bar for expand-all
 		if (this.expandType === 'all') {
-			this.currentTaskBar = this.multibar.create(1, 0, {}, {
-				format: '{taskInfo}',
-				barsize: 1,
-				hideCursor: true,
-				clearOnComplete: false
-			});
+			this.currentTaskBar = this.multibar.create(
+				1,
+				0,
+				{},
+				{
+					format: '{taskInfo}',
+					barsize: 1,
+					hideCursor: true,
+					clearOnComplete: false
+				}
+			);
 			this._updateCurrentTaskBar();
 
-			this.subtaskProgressBar = this.multibar.create(1, 0, {}, {
-				format: 'Subtask {subtasks} |{bar}| {percentage}%',
-				barCompleteChar: '\u2588',
-				barIncompleteChar: '\u2591'
-			});
+			this.subtaskProgressBar = this.multibar.create(
+				1,
+				0,
+				{},
+				{
+					format: 'Subtask {subtasks} |{bar}| {percentage}%',
+					barCompleteChar: '\u2588',
+					barIncompleteChar: '\u2591'
+				}
+			);
 		}
 	}
 
@@ -223,7 +278,9 @@ class ExpandTracker extends BaseProgressTracker {
 			// Update the main progress bar to include partial progress of current task
 			if (this.progressBar && this.currentTaskSubtaskCount > 0) {
 				// Calculate fractional progress: completed tasks + (current subtask progress / total subtasks for current task)
-				const fractionalProgress = this.completedExpansions + subtaskNumber / this.currentTaskSubtaskCount;
+				const fractionalProgress =
+					this.completedExpansions +
+					subtaskNumber / this.currentTaskSubtaskCount;
 
 				// Update progress bar with fractional value
 				this.progressBar.update(fractionalProgress);
@@ -264,7 +321,14 @@ class ExpandTracker extends BaseProgressTracker {
 		}
 	}
 
-	addExpansionLine(taskId, title, subtasksGenerated = 0, status = 'success', telemetryData = null, complexityScore = null) {
+	addExpansionLine(
+		taskId,
+		title,
+		subtasksGenerated = 0,
+		status = 'success',
+		telemetryData = null,
+		complexityScore = null
+	) {
 		if (!this.multibar || this.isFinished) return;
 
 		// Show header on first task for expand-all using UI utility
@@ -303,7 +367,8 @@ class ExpandTracker extends BaseProgressTracker {
 			if (this.bestAvgTimePerExpansion === null) {
 				this.bestAvgTimePerExpansion = currentAvgTimePerExpansion;
 			} else {
-				this.bestAvgTimePerExpansion = 0.7 * currentAvgTimePerExpansion + 0.3 * this.bestAvgTimePerExpansion;
+				this.bestAvgTimePerExpansion =
+					0.7 * currentAvgTimePerExpansion + 0.3 * this.bestAvgTimePerExpansion;
 			}
 		}
 		this.lastExpansionTime = now;
@@ -316,10 +381,16 @@ class ExpandTracker extends BaseProgressTracker {
 
 		// Create individual task display for expand-all
 		if (this.expandType === 'all') {
-			const displayTitle = title && title.length > 60 ? `${title.substring(0, 57)}...` : title || `Task ${taskId}`;
+			const displayTitle =
+				title && title.length > 60
+					? `${title.substring(0, 57)}...`
+					: title || `Task ${taskId}`;
 			const statusIndicator = this._getStatusIndicator(status);
 			const subtasksDisplay = subtasksGenerated.toString();
-			const scoreDisplay = complexityScore !== null && complexityScore !== undefined ? complexityScore.toString() : 'N/A';
+			const scoreDisplay =
+				complexityScore !== null && complexityScore !== undefined
+					? complexityScore.toString()
+					: 'N/A';
 			const tokensIn = telemetryData?.inputTokens || 0;
 			const tokensOut = telemetryData?.outputTokens || 0;
 			const cost = telemetryData?.totalCost || 0;
@@ -361,13 +432,19 @@ class ExpandTracker extends BaseProgressTracker {
 				{ title: displayTitle }
 			);
 
-			createBorder(this.multibar, '------+-----+-------+-----+-----+--------+----------------------------------------------------------------');
+			createBorder(
+				this.multibar,
+				'------+-----+-------+-----+-----+--------+----------------------------------------------------------------'
+			);
 		} else {
 			// For single task expansion, just store the result
 			this.expansionResults.push({
 				id: taskId.toString(),
 				subtasks: subtasksGenerated.toString(),
-				complexityScore: complexityScore !== null && complexityScore !== undefined ? complexityScore.toString() : 'N/A',
+				complexityScore:
+					complexityScore !== null && complexityScore !== undefined
+						? complexityScore.toString()
+						: 'N/A',
 				title: title,
 				status: status,
 				tokensIn: telemetryData?.inputTokens || 0,
@@ -381,7 +458,8 @@ class ExpandTracker extends BaseProgressTracker {
 
 	// Add subtask line using UI utility
 	addSubtaskLine(subtaskId, title) {
-		if (!this.multibar || this.isFinished || this.expandType !== 'single') return;
+		if (!this.multibar || this.isFinished || this.expandType !== 'single')
+			return;
 
 		// Show header on first subtask using UI utility
 		if (!this.headerShown) {
@@ -394,17 +472,21 @@ class ExpandTracker extends BaseProgressTracker {
 		}
 
 		// Format subtask display
-		const displayTitle = title && title.length > 66 ? `${title.substring(0, 63)}...` : title || `Subtask ${subtaskId}`;
+		const displayTitle =
+			title && title.length > 66
+				? `${title.substring(0, 63)}...`
+				: title || `Subtask ${subtaskId}`;
 		const subtaskNumber = `${this.generatedSubtasks}/${this.numTasks}`;
 		const subtaskNumberPadded = subtaskNumber.padStart(3, ' ');
 
-		createProgressRow(
-			this.multibar,
-			` ${subtaskNumberPadded} | {title}`,
-			{ title: displayTitle }
-		);
+		createProgressRow(this.multibar, ` ${subtaskNumberPadded} | {title}`, {
+			title: displayTitle
+		});
 
-		createBorder(this.multibar, '-----+------------------------------------------------------------------');
+		createBorder(
+			this.multibar,
+			'-----+------------------------------------------------------------------'
+		);
 	}
 
 	// Keep all other original methods unchanged
@@ -415,10 +497,14 @@ class ExpandTracker extends BaseProgressTracker {
 
 	_getStatusIndicator(status) {
 		switch (status) {
-			case 'success': return chalk.green('✓');
-			case 'skipped': return chalk.yellow('○');
-			case 'error': return chalk.red('✗');
-			default: return chalk.gray('?');
+			case 'success':
+				return chalk.green('✓');
+			case 'skipped':
+				return chalk.yellow('○');
+			case 'error':
+				return chalk.red('✗');
+			default:
+				return chalk.gray('?');
 		}
 	}
 
@@ -449,7 +535,8 @@ class ExpandTracker extends BaseProgressTracker {
 		// Calculate fractional progress including current task
 		let fractionalProgress = this.completedExpansions;
 		if (this.currentTaskSubtaskCount > 0) {
-			fractionalProgress += this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
+			fractionalProgress +=
+				this.currentTaskSubtaskProgress / this.currentTaskSubtaskCount;
 		}
 
 		// Only update if we have meaningful progress
@@ -460,7 +547,8 @@ class ExpandTracker extends BaseProgressTracker {
 			if (this.bestAvgTimePerExpansion === null) {
 				this.bestAvgTimePerExpansion = avgTimePerTask;
 			} else {
-				this.bestAvgTimePerExpansion = 0.8 * avgTimePerTask + 0.2 * this.bestAvgTimePerExpansion;
+				this.bestAvgTimePerExpansion =
+					0.8 * avgTimePerTask + 0.2 * this.bestAvgTimePerExpansion;
 			}
 		}
 
@@ -498,7 +586,8 @@ class ExpandTracker extends BaseProgressTracker {
 			if (this.avgTimePerSubtask === null) {
 				this.avgTimePerSubtask = currentAvg;
 			} else {
-				this.avgTimePerSubtask = 0.7 * currentAvg + 0.3 * this.avgTimePerSubtask;
+				this.avgTimePerSubtask =
+					0.7 * currentAvg + 0.3 * this.avgTimePerSubtask;
 			}
 		}
 
@@ -562,7 +651,8 @@ class ExpandTracker extends BaseProgressTracker {
 				subtasks: this.subtasksCreated,
 				in: this.tokensIn,
 				out: this.tokensOut,
-				remaining: stage === 'completed' ? 'Done!' : this._estimateRemainingTime(),
+				remaining:
+					stage === 'completed' ? 'Done!' : this._estimateRemainingTime(),
 				tokensLabel
 			});
 		}
@@ -573,7 +663,10 @@ class ExpandTracker extends BaseProgressTracker {
 		this.numUnits = totalTasks; // Keep base in sync
 		if (this.progressBar) {
 			this.progressBar.setTotal(totalTasks);
-			const displayTaskNumber = Math.min(this.completedExpansions, this.numTasks);
+			const displayTaskNumber = Math.min(
+				this.completedExpansions,
+				this.numTasks
+			);
 			this.progressBar.update(this.completedExpansions, {
 				tasks: `${displayTaskNumber}/${this.numTasks}`
 			});
@@ -581,7 +674,8 @@ class ExpandTracker extends BaseProgressTracker {
 	}
 
 	getSummary() {
-		const successfulExpansions = this.completedExpansions - this.tasksSkipped - this.tasksWithErrors;
+		const successfulExpansions =
+			this.completedExpansions - this.tasksSkipped - this.tasksWithErrors;
 		return {
 			expandType: this.expandType,
 			taskId: this.taskId,

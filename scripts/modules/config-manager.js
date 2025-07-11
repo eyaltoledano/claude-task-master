@@ -4,7 +4,10 @@ import chalk from 'chalk';
 import { z } from 'zod';
 import { fileURLToPath } from 'url';
 import { log, findProjectRoot, resolveEnvVariable, isEmpty } from './utils.js';
-import { LEGACY_CONFIG_FILE } from '../../src/constants/paths.js';
+import {
+	LEGACY_CONFIG_FILE,
+	TASKMASTER_DIR
+} from '../../src/constants/paths.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import {
 	VALIDATED_PROVIDERS,
@@ -99,16 +102,29 @@ function _loadAndValidateConfig(explicitRoot = null) {
 		if (rootToUse) {
 			configSource = `found root (${rootToUse})`;
 		} else {
-			// No root found, return defaults immediately
-			return defaults;
+			// No root found, use current working directory as fallback
+			// This prevents infinite loops during initialization
+			rootToUse = process.cwd();
+			configSource = `current directory (${rootToUse}) - no project markers found`;
 		}
 	}
 	// ---> End find project root logic <---
 
-	// --- Find configuration file using centralized path utility ---
-	const configPath = findConfigPath(null, { projectRoot: rootToUse });
+	// --- Find configuration file ---
+	let configPath = null;
 	let config = { ...defaults }; // Start with a deep copy of defaults
 	let configExists = false;
+
+	// During initialization (no project markers), skip config file search entirely
+	const hasProjectMarkers =
+		fs.existsSync(path.join(rootToUse, TASKMASTER_DIR)) ||
+		fs.existsSync(path.join(rootToUse, LEGACY_CONFIG_FILE));
+
+	if (hasProjectMarkers) {
+		// Only try to find config if we have project markers
+		// This prevents the repeated warnings during init
+		configPath = findConfigPath(null, { projectRoot: rootToUse });
+	}
 
 	if (configPath) {
 		configExists = true;
@@ -199,11 +215,22 @@ function _loadAndValidateConfig(explicitRoot = null) {
 				)
 			);
 		} else {
-			console.warn(
-				chalk.yellow(
-					`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
-				)
+			// Don't warn about missing config during initialization
+			// Only warn if this looks like an existing project (has .taskmaster dir or legacy config marker)
+			const hasTaskmasterDir = fs.existsSync(
+				path.join(rootToUse, TASKMASTER_DIR)
 			);
+			const hasLegacyMarker = fs.existsSync(
+				path.join(rootToUse, LEGACY_CONFIG_FILE)
+			);
+
+			if (hasTaskmasterDir || hasLegacyMarker) {
+				console.warn(
+					chalk.yellow(
+						`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
+					)
+				);
+			}
 		}
 		// Keep config as defaults
 		config = { ...defaults };

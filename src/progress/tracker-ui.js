@@ -8,21 +8,40 @@ import chalk from 'chalk';
  * @returns {void}
  */
 export function createProgressHeader(multibar, headerFormat, borderFormat) {
-  if (!multibar || typeof headerFormat !== 'string' || typeof borderFormat !== 'string') {
-    throw new Error('Invalid parameters for createProgressHeader');
-  }
+	if (
+		!multibar ||
+		typeof headerFormat !== 'string' ||
+		typeof borderFormat !== 'string'
+	) {
+		throw new Error('Invalid parameters for createProgressHeader');
+	}
 
-  // Top border
-  const topBorderBar = multibar.create(1, 1, {}, { format: borderFormat, barsize: 1 });
-  topBorderBar.update(1);
+	// Top border
+	const topBorderBar = multibar.create(
+		1,
+		1,
+		{},
+		{ format: borderFormat, barsize: 1 }
+	);
+	topBorderBar.update(1);
 
-  // Header row
-  const headerBar = multibar.create(1, 1, {}, { format: headerFormat, barsize: 1 });
-  headerBar.update(1);
+	// Header row
+	const headerBar = multibar.create(
+		1,
+		1,
+		{},
+		{ format: headerFormat, barsize: 1 }
+	);
+	headerBar.update(1);
 
-  // Bottom border
-  const bottomBorderBar = multibar.create(1, 1, {}, { format: borderFormat, barsize: 1 });
-  bottomBorderBar.update(1);
+	// Bottom border
+	const bottomBorderBar = multibar.create(
+		1,
+		1,
+		{},
+		{ format: borderFormat, barsize: 1 }
+	);
+	bottomBorderBar.update(1);
 }
 
 /**
@@ -33,12 +52,16 @@ export function createProgressHeader(multibar, headerFormat, borderFormat) {
  * @returns {void}
  */
 export function createProgressRow(multibar, rowFormat, payload) {
-  if (!multibar || typeof rowFormat !== 'string' || typeof payload !== 'object') {
-    throw new Error('Invalid parameters for createProgressRow');
-  }
+	if (
+		!multibar ||
+		typeof rowFormat !== 'string' ||
+		typeof payload !== 'object'
+	) {
+		throw new Error('Invalid parameters for createProgressRow');
+	}
 
-  const rowBar = multibar.create(1, 1, {}, { format: rowFormat, barsize: 1 });
-  rowBar.update(1, payload);
+	const rowBar = multibar.create(1, 1, {}, { format: rowFormat, barsize: 1 });
+	rowBar.update(1, payload);
 }
 
 /**
@@ -48,10 +71,15 @@ export function createProgressRow(multibar, rowFormat, payload) {
  * @returns {void}
  */
 export function createBorder(multibar, borderFormat) {
-  if (!multibar || typeof borderFormat !== 'string') {
-    throw new Error('Invalid parameters for createBorder');
-  }
+	if (!multibar || typeof borderFormat !== 'string') {
+		throw new Error('Invalid parameters for createBorder');
+	}
 
-  const borderBar = multibar.create(1, 1, {}, { format: borderFormat, barsize: 1 });
-  borderBar.update(1);
-} 
+	const borderBar = multibar.create(
+		1,
+		1,
+		{},
+		{ format: borderFormat, barsize: 1 }
+	);
+	borderBar.update(1);
+}

@@ -205,12 +205,10 @@ async function performResearch(
 			}
 		};
 
-		// Select variant based on detail level
-		const variantKey = detailLevel; // 'low', 'medium', or 'high'
+		// Load prompts - the research template handles detail level internally
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'research',
-			promptParams,
-			variantKey
+			promptParams
 		);
 
 		// Count tokens for system and user prompts

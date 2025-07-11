@@ -805,7 +805,7 @@ function registerCommands(programInstance) {
 			'-i, --input <file>',
 			'Path to the PRD file (alternative to positional argument)'
 		)
-		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
+		.option('-o, --output <file>', 'Output file path')
 		.option(
 			'-n, --num-tasks <number>',
 			'Number of tasks to generate',
@@ -825,14 +825,18 @@ function registerCommands(programInstance) {
 			// Initialize TaskMaster
 			let taskMaster;
 			try {
-				taskMaster = initTaskMaster({
-					prdPath: file || options.input || true,
-					tasksPath: options.output || true
-				});
+				const initOptions = {
+					prdPath: file || options.input || true
+				};
+				// Only include tasksPath if output is explicitly specified
+				if (options.output) {
+					initOptions.tasksPath = options.output;
+				}
+				taskMaster = initTaskMaster(initOptions);
 			} catch (error) {
 				console.log(
 					boxen(
-						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
+						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
 						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 					)
 				);
@@ -909,18 +913,16 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				await parsePRD(
-					taskMaster.getPrdPath(),
-					taskMaster.getTasksPath(),
-					numTasks,
-					{
-						append: useAppend,
-						force: useForce,
-						research: research,
-						projectRoot: taskMaster.getProjectRoot(),
-						tag: tag
-					}
-				);
+				const outputPath =
+					taskMaster.getTasksPath() ||
+					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
+				await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
+					append: useAppend,
+					force: useForce,
+					research: research,
+					projectRoot: taskMaster.getProjectRoot(),
+					tag: tag
+				});
 			} catch (error) {
 				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
@@ -1489,10 +1491,16 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				complexityReportPath: options.report || false
-			});
+			const initOptions = {
+				tasksPath: options.file || true
+			};
+
+			// Only pass complexityReportPath if user provided a custom path
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
+			}
+
+			const taskMaster = initTaskMaster(initOptions);
 
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
@@ -1621,11 +1629,7 @@ function registerCommands(programInstance) {
 		.description(
 			`Analyze tasks and generate expansion recommendations${chalk.reset('')}`
 		)
-		.option(
-			'-o, --output <file>',
-			'Output file path for the report',
-			COMPLEXITY_REPORT_FILE
-		)
+		.option('-o, --output <file>', 'Output file path for the report')
 		.option(
 			'-m, --model <model>',
 			'LLM model to use for analysis (defaults to configured model)'
@@ -1653,10 +1657,14 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				complexityReportPath: options.output || true
-			});
+			const initOptions = {
+				tasksPath: options.file || true // Tasks file is required to analyze
+			};
+			// Only include complexityReportPath if output is explicitly specified
+			if (options.output) {
+				initOptions.complexityReportPath = options.output;
+			}
+			const taskMaster = initTaskMaster(initOptions);
 
 			const tag = options.tag;
 			const modelOverride = options.model;
@@ -1671,11 +1679,13 @@ function registerCommands(programInstance) {
 			displayCurrentTagIndicator(targetTag);
 
 			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const baseOutputPath = taskMaster.getComplexityReportPath();
+			const baseOutputPath =
+				taskMaster.getComplexityReportPath() ||
+				path.join(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
 			const outputPath =
 				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
 					? baseOutputPath.replace('.json', `_${targetTag}.json`)
-					: baseOutputPath;
+					: options.output || baseOutputPath;
 
 			if (options.id) {
 				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));
@@ -1748,6 +1758,11 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true
+			});
+
 			// Parameter validation
 			if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
 				console.error(
@@ -2188,6 +2203,8 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
+
+			const projectRoot = taskMaster.getProjectRoot();
 
 			// Show current tag context
 			displayCurrentTagIndicator(
@@ -3440,6 +3457,9 @@ Examples:
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || false
 			});
+
+			const projectRoot = taskMaster.getProjectRoot();
+
 			// Validate flags: cannot use multiple provider flags simultaneously
 			const providerFlags = [
 				options.openrouter,

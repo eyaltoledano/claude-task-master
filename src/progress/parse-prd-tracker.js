@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
 import { BaseProgressTracker } from './base-progress-tracker.js';
-import { createProgressHeader, createProgressRow, createBorder } from './tracker-ui.js';
+import {
+	createProgressHeader,
+	createProgressRow,
+	createBorder
+} from './tracker-ui.js';
 import {
 	getCliPriorityIndicators,
 	getPriorityIndicator,
@@ -55,7 +59,9 @@ class ParsePrdTracker extends BaseProgressTracker {
 		}
 
 		// Normalize priority
-		const normalizedPriority = ['high', 'medium', 'low'].includes(priority) ? priority : 'medium';
+		const normalizedPriority = ['high', 'medium', 'low'].includes(priority)
+			? priority
+			: 'medium';
 
 		// Update counters
 		this.taskPriorities[normalizedPriority]++;
@@ -67,9 +73,18 @@ class ParsePrdTracker extends BaseProgressTracker {
 		});
 
 		// Create individual task display
-		const displayTitle = title && title.length > 57 ? title.substring(0, 54) + '...' : title || `Task ${taskNumber}`;
-		const priorityDisplay = getPriorityIndicator(normalizedPriority, false).padEnd(3, ' ');
-		const taskIdCentered = taskNumber.toString().padStart(3, ' ').padEnd(4, ' ');
+		const displayTitle =
+			title && title.length > 57
+				? title.substring(0, 54) + '...'
+				: title || `Task ${taskNumber}`;
+		const priorityDisplay = getPriorityIndicator(
+			normalizedPriority,
+			false
+		).padEnd(3, ' ');
+		const taskIdCentered = taskNumber
+			.toString()
+			.padStart(3, ' ')
+			.padEnd(4, ' ');
 
 		createProgressRow(
 			this.multibar,
@@ -78,7 +93,10 @@ class ParsePrdTracker extends BaseProgressTracker {
 		);
 
 		// Add border line after each task using UI utility
-		createBorder(this.multibar, '------+-----+----------------------------------------------------------------');
+		createBorder(
+			this.multibar,
+			'------+-----+----------------------------------------------------------------'
+		);
 
 		this._updateTimeTokensBar();
 	}

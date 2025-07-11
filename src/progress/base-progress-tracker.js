@@ -5,233 +5,245 @@ import { newMultiBar } from './cli-progress-factory.js';
  * Base class for progress trackers, handling common logic for time, tokens, estimation, and multibar management.
  */
 export class BaseProgressTracker {
-  constructor(options = {}) {
-    this.numUnits = options.numUnits || 1;
-    this.unitName = options.unitName || 'unit'; // e.g., 'task', 'analysis'
-    this.startTime = null;
-    this.completedUnits = 0;
-    this.tokensIn = 0;
-    this.tokensOut = 0;
-    this.isEstimate = true; // For token display
+	constructor(options = {}) {
+		this.numUnits = options.numUnits || 1;
+		this.unitName = options.unitName || 'unit'; // e.g., 'task', 'analysis'
+		this.startTime = null;
+		this.completedUnits = 0;
+		this.tokensIn = 0;
+		this.tokensOut = 0;
+		this.isEstimate = true; // For token display
 
-    // Time estimation properties
-    this.bestAvgTimePerUnit = null;
-    this.lastEstimateTime = null;
-    this.lastEstimateSeconds = 0;
+		// Time estimation properties
+		this.bestAvgTimePerUnit = null;
+		this.lastEstimateTime = null;
+		this.lastEstimateSeconds = 0;
 
-    // UI components
-    this.multibar = null;
-    this.timeTokensBar = null;
-    this.progressBar = null;
-    this._timerInterval = null;
+		// UI components
+		this.multibar = null;
+		this.timeTokensBar = null;
+		this.progressBar = null;
+		this._timerInterval = null;
 
-    // State flags
-    this.isStarted = false;
-    this.isFinished = false;
+		// State flags
+		this.isStarted = false;
+		this.isFinished = false;
 
-    // Allow subclasses to define custom properties
-    this._initializeCustomProperties(options);
-  }
+		// Allow subclasses to define custom properties
+		this._initializeCustomProperties(options);
+	}
 
-  /**
-   * Protected method for subclasses to initialize custom properties.
-   * @protected
-   */
-  _initializeCustomProperties(options) {
-    // Subclasses can override this
-  }
+	/**
+	 * Protected method for subclasses to initialize custom properties.
+	 * @protected
+	 */
+	_initializeCustomProperties(options) {
+		// Subclasses can override this
+	}
 
-  start() {
-    if (this.isStarted || this.isFinished) return;
+	start() {
+		if (this.isStarted || this.isFinished) return;
 
-    this.isStarted = true;
-    this.startTime = Date.now();
+		this.isStarted = true;
+		this.startTime = Date.now();
 
-    this.multibar = newMultiBar();
+		this.multibar = newMultiBar();
 
-    // Create time/tokens bar using subclass-provided format
-    this.timeTokensBar = this.multibar.create(
-      1,
-      0,
-      {},
-      {
-        format: this._getTimeTokensBarFormat(),
-        barsize: 1,
-        hideCursor: true,
-        clearOnComplete: false
-      }
-    );
+		// Create time/tokens bar using subclass-provided format
+		this.timeTokensBar = this.multibar.create(
+			1,
+			0,
+			{},
+			{
+				format: this._getTimeTokensBarFormat(),
+				barsize: 1,
+				hideCursor: true,
+				clearOnComplete: false
+			}
+		);
 
-    // Create main progress bar using subclass-provided format
-    this.progressBar = this.multibar.create(
-      this.numUnits,
-      0,
-      {},
-      {
-        format: this._getProgressBarFormat(),
-        barCompleteChar: '\u2588',
-        barIncompleteChar: '\u2591'
-      }
-    );
+		// Create main progress bar using subclass-provided format
+		this.progressBar = this.multibar.create(
+			this.numUnits,
+			0,
+			{},
+			{
+				format: this._getProgressBarFormat(),
+				barCompleteChar: '\u2588',
+				barIncompleteChar: '\u2591'
+			}
+		);
 
-    this._updateTimeTokensBar();
-    this.progressBar.update(0, { [this.unitName + 's']: `0/${this.numUnits}` });
+		this._updateTimeTokensBar();
+		this.progressBar.update(0, { [this.unitName + 's']: `0/${this.numUnits}` });
 
-    // Start timer
-    this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
+		// Start timer
+		this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
 
-    // Allow subclasses to add custom bars or setup
-    this._setupCustomUI();
-  }
+		// Allow subclasses to add custom bars or setup
+		this._setupCustomUI();
+	}
 
-  /**
-   * Protected method for subclasses to add custom UI elements after start.
-   * @protected
-   */
-  _setupCustomUI() {
-    // Subclasses can override this
-  }
+	/**
+	 * Protected method for subclasses to add custom UI elements after start.
+	 * @protected
+	 */
+	_setupCustomUI() {
+		// Subclasses can override this
+	}
 
-  /**
-   * Protected method to get the format for the time/tokens bar.
-   * @protected
-   * @returns {string} Format string for the time/tokens bar.
-   */
-  _getTimeTokensBarFormat() {
-    return `{clock} {elapsed} | Tokens (I/O): {in}/{out} | Est: {remaining}`;
-  }
+	/**
+	 * Protected method to get the format for the time/tokens bar.
+	 * @protected
+	 * @returns {string} Format string for the time/tokens bar.
+	 */
+	_getTimeTokensBarFormat() {
+		return `{clock} {elapsed} | Tokens (I/O): {in}/{out} | Est: {remaining}`;
+	}
 
-  /**
-   * Protected method to get the format for the main progress bar.
-   * @protected
-   * @returns {string} Format string for the progress bar.
-   */
-  _getProgressBarFormat() {
-    return `${this.unitName.charAt(0).toUpperCase() + this.unitName.slice(1)}s {${this.unitName}s} |{bar}| {percentage}%`;
-  }
+	/**
+	 * Protected method to get the format for the main progress bar.
+	 * @protected
+	 * @returns {string} Format string for the progress bar.
+	 */
+	_getProgressBarFormat() {
+		return `${this.unitName.charAt(0).toUpperCase() + this.unitName.slice(1)}s {${this.unitName}s} |{bar}| {percentage}%`;
+	}
 
-  updateTokens(tokensIn, tokensOut, isEstimate = false) {
-    this.tokensIn = tokensIn || 0;
-    this.tokensOut = tokensOut || 0;
-    this.isEstimate = isEstimate;
-    this._updateTimeTokensBar();
-  }
+	updateTokens(tokensIn, tokensOut, isEstimate = false) {
+		this.tokensIn = tokensIn || 0;
+		this.tokensOut = tokensOut || 0;
+		this.isEstimate = isEstimate;
+		this._updateTimeTokensBar();
+	}
 
-  _updateTimeTokensBar() {
-    if (!this.timeTokensBar || this.isFinished) return;
+	_updateTimeTokensBar() {
+		if (!this.timeTokensBar || this.isFinished) return;
 
-    const elapsed = this._formatElapsedTime();
-    const remaining = this._estimateRemainingTime();
-    const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
+		const elapsed = this._formatElapsedTime();
+		const remaining = this._estimateRemainingTime();
+		const tokensLabel = this.isEstimate ? '~ Tokens (I/O)' : 'Tokens (I/O)';
 
-    this.timeTokensBar.update(1, {
-      clock: '⏱️',
-      elapsed,
-      in: this.tokensIn,
-      out: this.tokensOut,
-      remaining,
-      tokensLabel,
-      // Subclasses can add more payload here via override
-      ...this._getCustomTimeTokensPayload()
-    });
-  }
+		this.timeTokensBar.update(1, {
+			clock: '⏱️',
+			elapsed,
+			in: this.tokensIn,
+			out: this.tokensOut,
+			remaining,
+			tokensLabel,
+			// Subclasses can add more payload here via override
+			...this._getCustomTimeTokensPayload()
+		});
+	}
 
-  /**
-   * Protected method for subclasses to provide custom payload for time/tokens bar.
-   * @protected
-   * @returns {Object} Custom payload object.
-   */
-  _getCustomTimeTokensPayload() {
-    return {};
-  }
+	/**
+	 * Protected method for subclasses to provide custom payload for time/tokens bar.
+	 * @protected
+	 * @returns {Object} Custom payload object.
+	 */
+	_getCustomTimeTokensPayload() {
+		return {};
+	}
 
-  _formatElapsedTime() {
-    if (!this.startTime) return '0m 00s';
-    const seconds = Math.floor((Date.now() - this.startTime) / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
-  }
+	_formatElapsedTime() {
+		if (!this.startTime) return '0m 00s';
+		const seconds = Math.floor((Date.now() - this.startTime) / 1000);
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
+	}
 
-  _estimateRemainingTime() {
-    const progress = this._getProgressFraction();
-    if (progress >= 1) return '~0s';
+	_estimateRemainingTime() {
+		const progress = this._getProgressFraction();
+		if (progress >= 1) return '~0s';
 
-    const now = Date.now();
-    const elapsed = (now - this.startTime) / 1000;
+		const now = Date.now();
+		const elapsed = (now - this.startTime) / 1000;
 
-    if (progress === 0) return '~calculating...';
+		if (progress === 0) return '~calculating...';
 
-    const avgTimePerUnit = elapsed / progress;
+		const avgTimePerUnit = elapsed / progress;
 
-    if (this.bestAvgTimePerUnit === null || avgTimePerUnit < this.bestAvgTimePerUnit) {
-      this.bestAvgTimePerUnit = avgTimePerUnit;
-    }
+		if (
+			this.bestAvgTimePerUnit === null ||
+			avgTimePerUnit < this.bestAvgTimePerUnit
+		) {
+			this.bestAvgTimePerUnit = avgTimePerUnit;
+		}
 
-    const remainingProgress = this.numUnits - progress;
-    let estimatedSeconds = Math.ceil(remainingProgress * this.bestAvgTimePerUnit);
+		const remainingProgress = this.numUnits - progress;
+		let estimatedSeconds = Math.ceil(
+			remainingProgress * this.bestAvgTimePerUnit
+		);
 
-    // Stabilization logic
-    if (this.lastEstimateTime) {
-      const elapsedSinceEstimate = Math.floor((now - this.lastEstimateTime) / 1000);
-      const countdownSeconds = Math.max(0, this.lastEstimateSeconds - elapsedSinceEstimate);
-      if (countdownSeconds === 0) return '~0s';
-      estimatedSeconds = Math.min(estimatedSeconds, countdownSeconds);
-    }
+		// Stabilization logic
+		if (this.lastEstimateTime) {
+			const elapsedSinceEstimate = Math.floor(
+				(now - this.lastEstimateTime) / 1000
+			);
+			const countdownSeconds = Math.max(
+				0,
+				this.lastEstimateSeconds - elapsedSinceEstimate
+			);
+			if (countdownSeconds === 0) return '~0s';
+			estimatedSeconds = Math.min(estimatedSeconds, countdownSeconds);
+		}
 
-    this.lastEstimateTime = now;
-    this.lastEstimateSeconds = estimatedSeconds;
+		this.lastEstimateTime = now;
+		this.lastEstimateSeconds = estimatedSeconds;
 
-    return `~${this._formatDuration(estimatedSeconds)}`;
-  }
+		return `~${this._formatDuration(estimatedSeconds)}`;
+	}
 
-  /**
-   * Protected method for subclasses to calculate current progress fraction (0-1).
-   * Defaults to simple completedUnits / numUnits.
-   * @protected
-   * @returns {number} Progress fraction (can be fractional for subtasks).
-   */
-  _getProgressFraction() {
-    return this.completedUnits / this.numUnits;
-  }
+	/**
+	 * Protected method for subclasses to calculate current progress fraction (0-1).
+	 * Defaults to simple completedUnits / numUnits.
+	 * @protected
+	 * @returns {number} Progress fraction (can be fractional for subtasks).
+	 */
+	_getProgressFraction() {
+		return this.completedUnits / this.numUnits;
+	}
 
-  _formatDuration(seconds) {
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes < 60) {
-      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
-  }
+	_formatDuration(seconds) {
+		if (seconds < 60) return `${seconds}s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		if (minutes < 60) {
+			return remainingSeconds > 0
+				? `${minutes}m ${remainingSeconds}s`
+				: `${minutes}m`;
+		}
+		const hours = Math.floor(minutes / 60);
+		const remainingMinutes = minutes % 60;
+		return `${hours}h ${remainingMinutes}m`;
+	}
 
-  getElapsedTime() {
-    return this.startTime ? Date.now() - this.startTime : 0;
-  }
+	getElapsedTime() {
+		return this.startTime ? Date.now() - this.startTime : 0;
+	}
 
-  stop() {
-    if (this.isFinished) return;
+	stop() {
+		if (this.isFinished) return;
 
-    this.isFinished = true;
+		this.isFinished = true;
 
-    if (this._timerInterval) {
-      clearInterval(this._timerInterval);
-      this._timerInterval = null;
-    }
+		if (this._timerInterval) {
+			clearInterval(this._timerInterval);
+			this._timerInterval = null;
+		}
 
-    if (this.multibar) {
-      this._updateTimeTokensBar();
-      this.multibar.stop();
-    }
-  }
+		if (this.multibar) {
+			this._updateTimeTokensBar();
+			this.multibar.stop();
+		}
+	}
 
-  getSummary() {
-    return {
-      completedUnits: this.completedUnits,
-      elapsedTime: this.getElapsedTime()
-      // Subclasses should extend this
-    };
-  }
-} 
+	getSummary() {
+		return {
+			completedUnits: this.completedUnits,
+			elapsedTime: this.getElapsedTime()
+			// Subclasses should extend this
+		};
+	}
+}

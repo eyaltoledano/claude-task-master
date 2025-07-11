@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
 import { BaseProgressTracker } from './base-progress-tracker.js';
-import { createProgressHeader, createProgressRow, createBorder } from './tracker-ui.js';
+import {
+	createProgressHeader,
+	createProgressRow,
+	createBorder
+} from './tracker-ui.js';
 import {
 	getCliComplexityIndicators,
 	getStatusBarComplexityIndicators,
@@ -41,7 +45,12 @@ class AnalyzeComplexityTracker extends BaseProgressTracker {
 		};
 	}
 
-	addAnalysisLine(taskId, title, complexityScore = 5, recommendedSubtasks = null) {
+	addAnalysisLine(
+		taskId,
+		title,
+		complexityScore = 5,
+		recommendedSubtasks = null
+	) {
 		if (!this.multibar || this.isFinished) return;
 
 		// Show header on first task using UI utility
@@ -69,9 +78,15 @@ class AnalyzeComplexityTracker extends BaseProgressTracker {
 		});
 
 		// Create individual task display
-		const displayTitle = title && title.length > 50 ? `${title.substring(0, 47)}...` : title || `Task ${taskId}`;
+		const displayTitle =
+			title && title.length > 50
+				? `${title.substring(0, 47)}...`
+				: title || `Task ${taskId}`;
 		const complexityIndicator = this._getComplexityIndicator(complexityScore);
-		const subtasksDisplay = recommendedSubtasks !== null && recommendedSubtasks !== undefined ? recommendedSubtasks.toString() : 'N/A';
+		const subtasksDisplay =
+			recommendedSubtasks !== null && recommendedSubtasks !== undefined
+				? recommendedSubtasks.toString()
+				: 'N/A';
 
 		// Store for final summary
 		this.analysisResults.push({
@@ -94,7 +109,10 @@ class AnalyzeComplexityTracker extends BaseProgressTracker {
 		);
 
 		// Add border
-		createBorder(this.multibar, '------+-------+-----+--------------------------------------------------');
+		createBorder(
+			this.multibar,
+			'------+-------+-----+--------------------------------------------------'
+		);
 
 		this._updateTimeTokensBar();
 	}
