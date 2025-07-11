@@ -1500,10 +1500,16 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				complexityReportPath: options.report || false
-			});
+			const initOptions = {
+				tasksPath: options.file || true
+			};
+
+			// Only pass complexityReportPath if user provided a custom path
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
+			}
+
+			const taskMaster = initTaskMaster(initOptions);
 
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
@@ -1690,7 +1696,7 @@ function registerCommands(programInstance) {
 			const outputPath =
 				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
 					? baseOutputPath.replace('.json', `_${targetTag}.json`)
-					: baseOutputPath;
+					: options.output || baseOutputPath;
 
 			console.log(
 				chalk.blue(
@@ -1770,6 +1776,11 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true
+			});
+
 			// Parameter validation
 			if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
 				console.error(
@@ -2210,6 +2221,8 @@ ${result.result}
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
+
+			const projectRoot = taskMaster.getProjectRoot();
 
 			// Show current tag context
 			displayCurrentTagIndicator(
@@ -3462,6 +3475,9 @@ Examples:
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || false
 			});
+
+			const projectRoot = taskMaster.getProjectRoot();
+
 			// Validate flags: cannot use multiple provider flags simultaneously
 			const providerFlags = [
 				options.openrouter,

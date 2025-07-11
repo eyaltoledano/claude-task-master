@@ -469,7 +469,7 @@ async function expandTask(
 			complexityReasoningContext: complexityReasoningContext,
 			gatheredContext: gatheredContext,
 			useResearch: useResearch,
-			expansionPrompt: taskAnalysis?.expansionPrompt || null
+			expansionPrompt: taskAnalysis?.expansionPrompt || undefined
 		};
 
 		let variantKey = 'default';

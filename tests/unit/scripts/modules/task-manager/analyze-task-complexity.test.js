@@ -184,7 +184,7 @@ jest.unstable_mockModule(
 );
 
 // Import the mocked modules
-const { readJSON, writeJSON, log, CONFIG } = await import(
+const { readJSON, writeJSON, log, CONFIG, findTaskById } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
@@ -265,6 +265,13 @@ describe('analyzeTaskComplexity', () => {
 				_rawTaggedData: sampleTasks
 			};
 		});
+
+		// Mock findTaskById to return the expected structure
+		findTaskById.mockImplementation((tasks, taskId) => {
+			const task = tasks?.find((t) => t.id === parseInt(taskId));
+			return { task: task || null, originalSubtaskCount: null };
+		});
+
 		generateTextService.mockResolvedValue(sampleApiResponse);
 	});
 

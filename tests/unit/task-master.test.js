@@ -248,7 +248,7 @@ describe('initTaskMaster', () => {
 			expect(taskMaster.getTasksPath()).toBeNull();
 		});
 
-		test('should return null when optional files not specified in overrides', () => {
+		test('should return default paths when optional files not specified in overrides', () => {
 			// Arrange - Remove all optional files
 			fs.unlinkSync(tasksPath);
 			fs.unlinkSync(configPath);
@@ -257,10 +257,16 @@ describe('initTaskMaster', () => {
 			// Act - Don't specify any optional paths
 			const taskMaster = initTaskMaster({});
 
-			// Assert
-			expect(taskMaster.getTasksPath()).toBeUndefined();
-			expect(taskMaster.getConfigPath()).toBeUndefined();
-			expect(taskMaster.getStatePath()).toBeUndefined();
+			// Assert - Should return absolute paths with default locations
+			expect(taskMaster.getTasksPath()).toBe(
+				path.join(tempDir, TASKMASTER_TASKS_FILE)
+			);
+			expect(taskMaster.getConfigPath()).toBe(
+				path.join(tempDir, TASKMASTER_CONFIG_FILE)
+			);
+			expect(taskMaster.getStatePath()).toBe(
+				path.join(tempDir, TASKMASTER_DIR, 'state.json')
+			);
 		});
 	});
 
@@ -415,11 +421,19 @@ describe('initTaskMaster', () => {
 			// Assert
 			expect(taskMaster.getProjectRoot()).toBe(tempDir);
 			expect(taskMaster.getTaskMasterDir()).toBe(taskMasterDir);
-			expect(taskMaster.getTasksPath()).toBeUndefined();
+			// Default paths are always set for tasks, config, and state
+			expect(taskMaster.getTasksPath()).toBe(
+				path.join(tempDir, TASKMASTER_TASKS_FILE)
+			);
+			expect(taskMaster.getConfigPath()).toBe(
+				path.join(tempDir, TASKMASTER_CONFIG_FILE)
+			);
+			expect(taskMaster.getStatePath()).toBe(
+				path.join(taskMasterDir, 'state.json')
+			);
+			// PRD and complexity report paths are undefined when not provided
 			expect(taskMaster.getPrdPath()).toBeUndefined();
 			expect(taskMaster.getComplexityReportPath()).toBeUndefined();
-			expect(taskMaster.getConfigPath()).toBeUndefined();
-			expect(taskMaster.getStatePath()).toBeUndefined();
 		});
 	});
 });
