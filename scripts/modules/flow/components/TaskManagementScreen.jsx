@@ -259,7 +259,10 @@ export function TaskManagementScreen() {
 
 			case 'detail':
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
-				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
+				else if (key.downArrow) {
+					const maxOffset = getMaxScrollOffset(selectedTask, false);
+					setDetailScrollOffset((p) => Math.min(maxOffset, p + 1));
+				}
 				else if (input === 'e') setShowExpandOptions(true);
 				else if (input === 's' && selectedTask?.subtasks?.length > 0)
 					setViewMode('subtasks');
@@ -295,11 +298,11 @@ export function TaskManagementScreen() {
 
 			case 'subtask-detail':
 				if (key.upArrow) setDetailScrollOffset((p) => Math.max(0, p - 1));
-				else if (key.downArrow) setDetailScrollOffset((p) => p + 1);
+				else if (key.downArrow) {
+					const maxOffset = getMaxScrollOffset(selectedSubtask, true);
+					setDetailScrollOffset((p) => Math.min(maxOffset, p + 1));
+				}
 				else if (input === 't') {
-					console.log(
-						'[TaskManagementScreen] Calling cycleTaskStatus from subtask-detail view'
-					);
 					cycleTaskStatus({
 						...selectedSubtask,
 						id: `${selectedTask.id}.${selectedSubtask.id}`
@@ -524,6 +527,61 @@ export function TaskManagementScreen() {
 	const formatDependencies = (dependencies) => {
 		if (!dependencies || dependencies.length === 0) return '-';
 		return dependencies.join(', ');
+	};
+
+	// Helper function to calculate content lines for scroll bounds checking
+	const calculateContentLines = (task, isSubtask = false) => {
+		if (!task) return [];
+		
+		const contentLines = [];
+
+		// Add basic field lines
+		contentLines.push({ type: 'field', label: 'Status:' });
+		contentLines.push({ type: 'field', label: 'Priority:' });
+		contentLines.push({ type: 'field', label: 'Dependencies:' });
+
+		if (task.complexity) {
+			contentLines.push({ type: 'field', label: 'Complexity:' });
+		}
+
+		contentLines.push({ type: 'field', label: 'Description:' });
+
+		if (task.details) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: 'Implementation Details:' });
+			const detailLines = task.details.split('\n');
+			detailLines.forEach((line) => {
+				contentLines.push({ type: 'text', text: line });
+			});
+		}
+
+		if (task.testStrategy) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: 'Test Strategy:' });
+			const testLines = task.testStrategy.split('\n');
+			testLines.forEach((line) => {
+				contentLines.push({ type: 'text', text: line });
+			});
+		}
+
+		if (!isSubtask && task.subtasks && task.subtasks.length > 0) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'header', text: `Subtasks (${task.subtasks.length}):` });
+			task.subtasks.forEach((subtask) => {
+				contentLines.push({ type: 'subtask', text: `${getStatusSymbol(subtask.status)} ${subtask.id}: ${subtask.title}` });
+			});
+		} else if (!isSubtask) {
+			contentLines.push({ type: 'spacer' });
+			contentLines.push({ type: 'info', text: "No subtasks yet. Press 'e' to break down this task." });
+		}
+
+		return contentLines;
+	};
+
+	// Calculate max scroll offset for bounds checking
+	const getMaxScrollOffset = (task, isSubtask = false) => {
+		const contentLines = calculateContentLines(task, isSubtask);
+		return Math.max(0, contentLines.length - DETAIL_VISIBLE_ROWS);
 	};
 
 
