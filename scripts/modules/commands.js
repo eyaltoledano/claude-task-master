@@ -897,8 +897,6 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			let spinner;
-
 			try {
 				if (!(await confirmOverwriteIfNeeded())) return;
 
@@ -915,8 +913,6 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...\n').start();
-				// Handle case where getTasksPath() returns null
 				const outputPath =
 					taskMaster.getTasksPath() ||
 					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
@@ -927,13 +923,8 @@ function registerCommands(programInstance) {
 					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
-				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error parsing PRD: ${error.message}`);
-				} else {
-					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
-				}
+				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
 			}
 		});
@@ -1580,7 +1571,6 @@ function registerCommands(programInstance) {
 
 			if (options.all) {
 				// --- Handle expand --all ---
-				console.log(chalk.blue('Expanding all pending tasks...'));
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
@@ -1607,7 +1597,6 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				console.log(chalk.blue(`Expanding task ${options.id}...`));
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
@@ -1697,13 +1686,6 @@ function registerCommands(programInstance) {
 				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
 					? baseOutputPath.replace('.json', `_${targetTag}.json`)
 					: options.output || baseOutputPath;
-
-			console.log(
-				chalk.blue(
-					`Analyzing task complexity from: ${taskMaster.getTasksPath()}`
-				)
-			);
-			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
 
 			if (options.id) {
 				console.log(chalk.blue(`Analyzing specific task IDs: ${options.id}`));

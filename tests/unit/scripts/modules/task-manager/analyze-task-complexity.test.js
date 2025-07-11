@@ -78,9 +78,59 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
-		})
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '[]';
+					}
+				}
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
+		logAiUsage: jest.fn().mockResolvedValue({})
 	})
 );
+
+// Mock the stream parser for streaming tests
+jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
+	parseStream: jest.fn().mockResolvedValue({
+		items: [],
+		metadata: { totalItems: 0 }
+	})
+}));
+
+// Mock the progress tracker
+jest.unstable_mockModule(
+	'../../../../../src/progress/analyze-complexity-tracker.js',
+	() => ({
+		createAnalyzeComplexityTracker: jest.fn(() => ({
+			start: jest.fn(),
+			stop: jest.fn(),
+			getElapsedTime: jest.fn(() => 1000),
+			updateTokens: jest.fn(),
+			addAnalysisLine: jest.fn()
+		}))
+	})
+);
+
+// Mock the UI modules
+jest.unstable_mockModule('../../../../../src/ui/analyze-complexity.js', () => ({
+	displayAnalyzeComplexityStart: jest.fn(),
+	displayAnalyzeComplexitySummary: jest.fn()
+}));
 
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
@@ -458,5 +508,206 @@ describe('analyzeTaskComplexity', () => {
 		expect(mockMcpLog.error).toHaveBeenCalledWith(
 			expect.stringContaining('API Error')
 		);
+	});
+
+	describe('Streaming vs Non-Streaming Modes', () => {
+		test('should use streaming when reportProgress function is provided', async () => {
+			// Arrange
+			const options = {
+				file: 'tasks/tasks.json',
+				output: 'scripts/task-complexity-report.json',
+				threshold: '5',
+				research: false
+			};
+
+			// Mock progress reporting function
+			const mockReportProgress = jest.fn(() => Promise.resolve());
+
+			// Mock streamTextService for streaming path
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					textStream: {
+						[Symbol.asyncIterator]: async function* () {
+							yield { textDelta: '[]' };
+						}
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'analyze-complexity',
+					totalCost: 0.05
+				}
+			});
+
+			// Act
+			await analyzeTaskComplexity(options, {
+				reportProgress: mockReportProgress,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Assert - Should use streaming path
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'analyze-complexity'
+				})
+			);
+			expect(generateTextService).not.toHaveBeenCalled();
+		});
+
+		test('should use streaming for CLI text mode', async () => {
+			// Arrange
+			const options = {
+				file: 'tasks/tasks.json',
+				output: 'scripts/task-complexity-report.json',
+				threshold: '5',
+				research: false
+			};
+
+			// Mock streamTextService for CLI streaming
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					textStream: {
+						[Symbol.asyncIterator]: async function* () {
+							yield { textDelta: '[]' };
+						}
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'analyze-complexity',
+					totalCost: 0.05
+				}
+			});
+
+			// Act - No mcpLog provided (CLI mode)
+			await analyzeTaskComplexity(options, {});
+
+			// Assert - Should use streaming path for CLI
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'analyze-complexity',
+					outputType: 'cli'
+				})
+			);
+			expect(generateTextService).not.toHaveBeenCalled();
+		});
+
+		test('should use non-streaming when mcpLog is provided without reportProgress', async () => {
+			// Arrange
+			const options = {
+				file: 'tasks/tasks.json',
+				output: 'scripts/task-complexity-report.json',
+				threshold: '5',
+				research: false
+			};
+
+			// Act
+			await analyzeTaskComplexity(options, {
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Assert - Should use non-streaming path
+			expect(generateTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'analyze-complexity',
+					outputType: 'mcp'
+				})
+			);
+		});
+
+		test('should handle research flag with streaming', async () => {
+			// Arrange
+			const options = {
+				file: 'tasks/tasks.json',
+				output: 'scripts/task-complexity-report.json',
+				threshold: '5',
+				research: true
+			};
+
+			// Mock streamTextService for research streaming
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					textStream: {
+						[Symbol.asyncIterator]: async function* () {
+							yield { textDelta: '[]' };
+						}
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'analyze-complexity',
+					totalCost: 0.08
+				}
+			});
+
+			// Act - CLI mode with research
+			await analyzeTaskComplexity(options, {});
+
+			// Assert - Should use streaming path with research role
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'research',
+					commandName: 'analyze-complexity',
+					outputType: 'cli'
+				})
+			);
+		});
+
+		test('should handle research flag with non-streaming', async () => {
+			// Arrange
+			const options = {
+				file: 'tasks/tasks.json',
+				output: 'scripts/task-complexity-report.json',
+				threshold: '5',
+				research: true
+			};
+
+			// Act
+			await analyzeTaskComplexity(options, {
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Assert - Should use non-streaming path with research role
+			expect(generateTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'research',
+					commandName: 'analyze-complexity',
+					outputType: 'mcp'
+				})
+			);
+		});
 	});
 });

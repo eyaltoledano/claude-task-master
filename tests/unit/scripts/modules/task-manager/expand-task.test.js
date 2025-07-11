@@ -59,7 +59,26 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	warnLoadingIndicator: jest.fn(),
 	infoLoadingIndicator: jest.fn(),
 	displayAiUsageSummary: jest.fn(),
-	displayContextAnalysis: jest.fn()
+	displayContextAnalysis: jest.fn(),
+	displayExpandStart: jest.fn(),
+	displayExpandSummary: jest.fn(),
+	createExpandTracker: jest.fn(() => ({
+		start: jest.fn(),
+		stop: jest.fn(),
+		progressBar: {
+			update: jest.fn()
+		},
+		updateSubtaskGeneration: jest.fn(),
+		updateTokens: jest.fn(),
+		addSubtaskLine: jest.fn(),
+		subtasksCreated: 0,
+		completedExpansions: 0,
+		addTelemetryData: jest.fn(),
+		getSummary: jest.fn(() => ({
+			elapsedTime: '1.5s',
+			totalCost: 0.05
+		}))
+	}))
 }));
 
 jest.unstable_mockModule(
@@ -114,16 +133,109 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				[Symbol.asyncIterator]: async function* () {
+					yield { textDelta: '{"subtasks": [' };
+					yield {
+						textDelta:
+							'{"id": 1, "title": "Test subtask 1", "description": "Test desc 1", "dependencies": [], "details": "Test details 1", "status": "pending", "testStrategy": "Test strategy 1"},'
+					};
+					yield {
+						textDelta:
+							'{"id": 2, "title": "Test subtask 2", "description": "Test desc 2", "dependencies": [1], "details": "Test details 2", "status": "pending", "testStrategy": "Test strategy 2"}'
+					};
+					yield { textDelta: ']}' };
+				}
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'expand-task',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
 		})
 	})
 );
+
+// Mock the stream parser for streaming tests
+jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
+	parseStream: jest.fn().mockResolvedValue({
+		items: [
+			{
+				id: 1,
+				title: 'Set up project structure',
+				description:
+					'Create the basic project directory structure and configuration files',
+				dependencies: [],
+				details:
+					'Initialize package.json, create src/ and test/ directories, set up linting configuration',
+				status: 'pending',
+				testStrategy: 'Verify all expected files and directories are created'
+			},
+			{
+				id: 2,
+				title: 'Implement core functionality',
+				description: 'Develop the main application logic and core features',
+				dependencies: [1],
+				details:
+					'Create main classes, implement business logic, set up data models',
+				status: 'pending',
+				testStrategy: 'Unit tests for all core functions and classes'
+			},
+			{
+				id: 3,
+				title: 'Add user interface',
+				description: 'Create the user interface components and layouts',
+				dependencies: [2],
+				details:
+					'Design UI components, implement responsive layouts, add user interactions',
+				status: 'pending',
+				testStrategy: 'UI tests and visual regression testing'
+			}
+		],
+		usedFallback: false
+	})
+}));
 
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDefaultSubtasks: jest.fn(() => 3),
 		getDebugFlag: jest.fn(() => false),
-		getDefaultNumTasks: jest.fn(() => 10)
+		getDefaultNumTasks: jest.fn(() => 10),
+		getMainProvider: jest.fn(() => 'anthropic'),
+		getMainModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getResearchProvider: jest.fn(() => 'perplexity'),
+		getResearchModelId: jest.fn(() => 'sonar-pro'),
+		getFallbackProvider: jest.fn(() => 'anthropic'),
+		getFallbackModelId: jest.fn(() => 'claude-3-5-sonnet'),
+		getParametersForRole: jest.fn(() => ({
+			maxTokens: 4000,
+			temperature: 0.7
+		})),
+		getUserId: jest.fn(() => '1234567890'),
+		MODEL_MAP: {},
+		getBaseUrlForRole: jest.fn(() => null),
+		isApiKeySet: jest.fn(() => true),
+		getOllamaBaseURL: jest.fn(() => 'http://localhost:11434'),
+		getAzureBaseURL: jest.fn(() => null),
+		getBedrockBaseURL: jest.fn(() => null),
+		getVertexProjectId: jest.fn(() => null),
+		getVertexLocation: jest.fn(() => 'us-central1'),
+		getMainTemperature: jest.fn(() => 0.7),
+		getResearchTemperature: jest.fn(() => 0.1),
+		getFallbackTemperature: jest.fn(() => 0.7),
+		getMainMaxTokens: jest.fn(() => 4000),
+		getResearchMaxTokens: jest.fn(() => 8700),
+		getFallbackMaxTokens: jest.fn(() => 4000)
 	})
 );
 
@@ -168,20 +280,60 @@ jest.unstable_mockModule(
 );
 
 // Mock external UI libraries
-jest.unstable_mockModule('chalk', () => ({
-	default: {
-		white: { bold: jest.fn((text) => text) },
-		cyan: Object.assign(
-			jest.fn((text) => text),
-			{
-				bold: jest.fn((text) => text)
+jest.unstable_mockModule('chalk', () => {
+	// Create a mock function that returns the text unchanged
+	const colorFn = jest.fn((text) => text);
+
+	// Create a chainable mock where each color method returns another chainable object
+	const createChainableMock = () => {
+		const mock = Object.assign(colorFn, {
+			bold: jest.fn((text) => text),
+			dim: jest.fn((text) => text),
+			italic: jest.fn((text) => text),
+			underline: jest.fn((text) => text),
+			inverse: jest.fn((text) => text),
+			strikethrough: jest.fn((text) => text),
+			// Colors
+			black: createChainableMock,
+			red: createChainableMock,
+			green: createChainableMock,
+			yellow: createChainableMock,
+			blue: createChainableMock,
+			magenta: createChainableMock,
+			cyan: createChainableMock,
+			white: createChainableMock,
+			gray: createChainableMock,
+			grey: createChainableMock,
+			// Special methods
+			hex: jest.fn(() => colorFn),
+			rgb: jest.fn(() => colorFn),
+			bgHex: jest.fn(() => colorFn),
+			bgRgb: jest.fn(() => colorFn)
+		});
+		// Make each property also callable
+		Object.keys(mock).forEach((key) => {
+			if (
+				typeof mock[key] === 'function' &&
+				key !== 'hex' &&
+				key !== 'rgb' &&
+				key !== 'bgHex' &&
+				key !== 'bgRgb'
+			) {
+				mock[key] = Object.assign(
+					jest.fn((text) => text),
+					mock
+				);
 			}
-		),
-		green: jest.fn((text) => text),
-		yellow: jest.fn((text) => text),
-		bold: jest.fn((text) => text)
-	}
-}));
+		});
+		return mock;
+	};
+
+	const chalk = createChainableMock();
+
+	return {
+		default: chalk
+	};
+});
 
 jest.unstable_mockModule('boxen', () => ({
 	default: jest.fn((text) => text)
@@ -611,6 +763,206 @@ describe('expandTask', () => {
 		});
 	});
 
+	describe('Streaming vs Non-Streaming Modes', () => {
+		test('should use streaming when reportProgress function is provided', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				mcpLog: createMcpLogMock(),
+				projectRoot: '/mock/project/root',
+				reportProgress: jest.fn(() => Promise.resolve())
+			};
+
+			// Import modules
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+			const { parseStream } = await import(
+				'../../../../../src/utils/stream-parser.js'
+			);
+
+			// Set up mocks for this test
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
+						yield { textDelta: ']}' };
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'expand-task',
+					totalCost: 0.05
+				}
+			});
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should use streaming path
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'expand-task',
+					outputType: 'mcp'
+				})
+			);
+			expect(generateTextService).not.toHaveBeenCalled();
+		});
+
+		test('should use streaming for CLI text mode', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				projectRoot: '/mock/project/root'
+				// No mcpLog provided (CLI mode)
+			};
+
+			// Import modules
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			// Set up mocks for this test
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
+						yield { textDelta: ']}' };
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'expand-task',
+					totalCost: 0.05
+				}
+			});
+
+			// Act - No mcpLog provided (CLI mode)
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should use streaming path for CLI
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'expand-task',
+					outputType: 'cli'
+				})
+			);
+			expect(generateTextService).not.toHaveBeenCalled();
+		});
+
+		test('should use non-streaming when mcpLog is provided without reportProgress', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				mcpLog: createMcpLogMock(),
+				projectRoot: '/mock/project/root'
+				// No reportProgress provided
+			};
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should use non-streaming path
+			expect(generateTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'expand-task',
+					outputType: 'json'
+				})
+			);
+		});
+
+		test('should handle research flag with streaming', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				projectRoot: '/mock/project/root'
+				// No mcpLog provided (CLI mode)
+			};
+
+			// Import modules
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			// Set up mocks for this test
+			streamTextService.mockResolvedValueOnce({
+				mainResult: {
+					[Symbol.asyncIterator]: async function* () {
+						yield { textDelta: '{"subtasks": [' };
+						yield {
+							textDelta:
+								'{"id": 1, "title": "Test subtask", "description": "Test desc", "dependencies": [], "details": "Test details", "status": "pending", "testStrategy": "Test strategy"}'
+						};
+						yield { textDelta: ']}' };
+					}
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'expand-task',
+					totalCost: 0.08
+				}
+			});
+
+			// Act - CLI mode with research
+			await expandTask(tasksPath, taskId, 3, true, '', context, false);
+
+			// Assert - Should use streaming path with research role
+			expect(streamTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'research',
+					commandName: 'expand-task',
+					outputType: 'cli'
+				})
+			);
+		});
+
+		test('should fallback to non-streaming when streaming fails', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				projectRoot: '/mock/project/root'
+				// No mcpLog provided (CLI mode)
+			};
+
+			// Import modules
+			const { streamTextService } = await import(
+				'../../../../../scripts/modules/ai-services-unified.js'
+			);
+
+			// Mock streamTextService to fail with streaming-specific error
+			streamTextService.mockRejectedValueOnce(new Error('not async iterable'));
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should fallback to non-streaming
+			expect(streamTextService).toHaveBeenCalled();
+			expect(generateTextService).toHaveBeenCalledWith(
+				expect.objectContaining({
+					role: 'main',
+					commandName: 'expand-task',
+					outputType: 'text'
+				})
+			);
+		});
+	});
+
 	describe('Force Flag Handling', () => {
 		test('should replace existing subtasks when force=true', async () => {
 			// Arrange
@@ -1025,7 +1377,11 @@ describe('expandTask', () => {
 	describe('Dynamic Subtask Generation', () => {
 		const tasksPath = 'tasks/tasks.json';
 		const taskId = 1;
-		const context = { session: null, mcpLog: null };
+		const context = {
+			session: null,
+			mcpLog: createMcpLogMock(), // Force non-streaming mode
+			projectRoot: '/mock/project/root'
+		};
 
 		beforeEach(() => {
 			// Reset all mocks
