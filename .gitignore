@@ -22,10 +22,16 @@ lerna-debug.log*
 
 # Coverage directory used by tools like istanbul
 coverage/
+coverage-e2e/
 *.lcov
 
 # Jest cache
 .jest/
+
+# Test results and reports
+test-results/
+jest-results.json
+jest-stare/
 
 # Test temporary files and directories
 tests/temp/
@@ -87,3 +93,9 @@ dev-debug.log
 *.njsproj
 *.sln
 *.sw?
+
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

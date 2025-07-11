@@ -14,8 +14,20 @@
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
 		"test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
-		"test:e2e": "./tests/e2e/run_e2e.sh",
-		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
+		"test:e2e:bash": "./tests/e2e/run_e2e.sh",
+		"test:e2e:bash:analyze": "./tests/e2e/run_e2e.sh --analyze-log",
+		"test:e2e": "node tests/e2e/run-e2e-tests.js",
+		"test:e2e:parallel": "node tests/e2e/run-e2e-tests.js --parallel",
+		"test:e2e:sequential": "node tests/e2e/run-e2e-tests.js --sequential",
+		"test:e2e:analyze": "node tests/e2e/run-e2e-tests.js --analyze-log",
+		"test:e2e:setup": "node tests/e2e/run-e2e-tests.js --groups setup",
+		"test:e2e:core": "node tests/e2e/run-e2e-tests.js --groups core",
+		"test:e2e:providers": "node tests/e2e/run-e2e-tests.js --groups providers",
+		"test:e2e:advanced": "node tests/e2e/run-e2e-tests.js --groups advanced",
+		"test:e2e:jest": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.config.js",
+		"test:e2e:jest:watch": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.config.js --watch",
+		"test:e2e:jest:command": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.config.js --testNamePattern",
+		"test:e2e:jest:report": "open test-results/index.html",
 		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
@@ -83,8 +95,8 @@
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
-		"ai-sdk-provider-gemini-cli": "^0.0.4",
-		"@biomejs/cli-linux-x64": "^1.9.4"
+		"@biomejs/cli-linux-x64": "^1.9.4",
+		"ai-sdk-provider-gemini-cli": "^0.0.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
@@ -120,6 +132,8 @@
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
+		"jest-html-reporters": "^3.1.7",
+		"mcp-jest": "^1.0.10",
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"react": "^18.3.1",
