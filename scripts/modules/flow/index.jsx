@@ -49,6 +49,7 @@ import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
 import { initializePRMonitoringService } from './services/PRMonitoringService.js';
+import { AgentExecutionScreen } from './components/AgentExecutionScreen.jsx';
 
 
 // Create context for backend and app state
@@ -1019,6 +1020,13 @@ function FlowApp({ backend, options = {} }) {
 					) : currentScreen === 'executions' ? (
 						<ExecutionManagementScreen
 							onBack={() => setCurrentScreen('welcome')}
+						/>
+					) : currentScreen === 'agent-execution' ? (
+						<AgentExecutionScreen
+							backend={currentBackend}
+							initialAgent={navigationData?.initialAgent || 'claude'}
+							taskId={navigationData?.taskId}
+							mode={navigationData?.mode || 'list'}
 						/>
 					) : (
 						<>
