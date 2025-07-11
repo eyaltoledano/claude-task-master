@@ -80,7 +80,7 @@ export async function modelsDirect(args, log, context = {}) {
 			error: {
 				code: 'INVALID_ARGS',
 				message:
-					'Cannot use multiple custom provider flags simultaneously. Choose only one: openrouter, ollama, bedrock, azure, or vertex.'
+					'Cannot use multiple custom provider flags simultaneously. Choose only one: openrouter, ollama, bedrock, azure, requesty or vertex.'
 			}
 		};
 	}

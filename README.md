@@ -72,23 +72,24 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 ```json
 {
-  "mcpServers": {
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
-      }
-    }
-  }
+	"mcpServers": {
+		"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE",
+				"REQUESTY_API_KEY": "YOUR_REQUESTY_KEY_HERE"
+			}
+		}
+	}
 }
 ```
 
@@ -100,23 +101,24 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 ```json
 {
-  "servers": {
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-      },
-      "type": "stdio"
-    }
-  }
+	"servers": {
+		"taskmaster-ai": {
+			"command": "npx",
+			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"env": {
+				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+				"REQUESTY_API_KEY": "YOUR_REQUESTY_KEY_HERE"
+			},
+			"type": "stdio"
+		}
+	}
 }
 ```
 

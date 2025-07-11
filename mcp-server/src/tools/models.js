@@ -52,6 +52,10 @@ export function registerModelsTool(server) {
 				.boolean()
 				.optional()
 				.describe('Indicates the set model ID is a custom OpenRouter model.'),
+			requesty: z
+				.boolean()
+				.optional()
+				.describe('Indicates the set model ID is a custom Requesty model.'),
 			ollama: z
 				.boolean()
 				.optional()

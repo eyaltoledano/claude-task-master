@@ -643,7 +643,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		xai: 'XAI_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
+		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+		requesty: 'REQUESTY_API_KEY'
 		// Add other providers as needed
 	};
 
@@ -738,6 +739,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
 				break;
+			case 'requesty':
+				apiKeyToCheck = mcpEnv.REQUESTY_API_KEY;
+				placeholderValue = 'YOUR_REQUESTY_API_KEY_HERE';
+				break;
 			case 'vertex':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
 				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
@@ -745,6 +750,9 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'bedrock':
 				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
 				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
+			case 'requesty':
+				apiKeyToCheck = mcpEnv.REQUESTY_API_KEY;
+				placeholderValue = 'YOUR_REQUESTY_API_KEY_HERE';
 				break;
 			default:
 				return false; // Unknown provider

@@ -217,6 +217,49 @@ async function runInteractiveSetup(projectRoot) {
 		});
 	}
 
+	// Helper function to fetch Requesty models (duplicated for CLI context)
+	function fetchRequestyModelsCLI() {
+		return new Promise((resolve) => {
+			const options = {
+				hostname: 'router.requesty.ai',
+				path: '/v1/models',
+				method: 'GET',
+				headers: {
+					Accept: 'application/json'
+				}
+			};
+
+			const req = https.request(options, (res) => {
+				let data = '';
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				res.on('end', () => {
+					if (res.statusCode === 200) {
+						try {
+							const parsedData = JSON.parse(data);
+							resolve(parsedData.data || []); // Return the array of models
+						} catch (e) {
+							console.error('Error parsing Requesty response:', e);
+							resolve(null); // Indicate failure
+						}
+					} else {
+						console.error(
+							`Requesty API request failed with status code: ${res.statusCode}`
+						);
+						resolve(null); // Indicate failure
+					}
+				});
+			});
+
+			req.on('error', (e) => {
+				console.error('Error fetching Requesty models:', e);
+				resolve(null); // Indicate failure
+			});
+			req.end();
+		});
+	}
+
 	// Helper function to fetch Ollama models (duplicated for CLI context)
 	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
 		return new Promise((resolve) => {
@@ -305,6 +348,16 @@ async function runInteractiveSetup(projectRoot) {
 			{ name: '* Custom Azure model', value: '__CUSTOM_AZURE__' },
 			{ name: '* Custom Vertex model', value: '__CUSTOM_VERTEX__' }
 		];
+
+		const customBedrockOption = {
+			name: '* Custom Bedrock model', // Add Bedrock custom option
+			value: '__CUSTOM_BEDROCK__'
+		};
+
+		const customRequestyOption = {
+			name: '* Custom Requesty model',
+			value: '__CUSTOM_REQUESTY__'
+		};
 
 		let choices = [];
 		let defaultIndex = 0; // Default to 'Cancel'
@@ -659,6 +712,36 @@ async function runInteractiveSetup(projectRoot) {
 					`Custom Vertex AI model "${modelIdToSet}" will be used. No validation performed.`
 				)
 			);
+		} else if (selectedValue === '__CUSTOM_REQUESTY__') {
+			isCustomSelection = true;
+			const { customId } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'customId',
+					message: `Enter the custom Requesty Model ID for the ${role} role (e.g., vertex/anthropic/claude-4-sonnet):`
+				}
+			]);
+			if (!customId) {
+				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
+				return true;
+			}
+			modelIdToSet = customId;
+			providerHint = CUSTOM_PROVIDERS.REQUESTY;
+
+			// Validate against live Requesty list
+			const requestyModels = await fetchRequestyModelsCLI();
+			if (
+				!requestyModels ||
+				!requestyModels.some((m) => m.id === modelIdToSet)
+			) {
+				console.error(
+					chalk.red(
+						`Error: Model ID "${modelIdToSet}" not found in the live Requesty model list. Please check the ID.`
+					)
+				);
+				setupSuccess = false;
+				return true; // Continue setup, but mark as failed
+			}
 		} else if (
 			selectedValue &&
 			typeof selectedValue === 'object' &&
@@ -3453,6 +3536,7 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option('--requesty', 'Allow setting a custom Requesty model ID (use with --set-*) ')
 		.addHelpText(
 			'after',
 			`
@@ -3468,6 +3552,7 @@ Examples:
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
+  $ task-master models --set-main requesty-model --requesty # Set custom Requesty model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3484,12 +3569,13 @@ Examples:
 				options.ollama,
 				options.bedrock,
 				options.claudeCode,
-				options.geminiCli
+				options.geminiCli,
+				options.requesty
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --requesty) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3535,7 +3621,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.requesty
+											? 'requesty'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3561,7 +3649,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.requesty
+											? 'requesty'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3589,7 +3679,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.requesty
+											? 'requesty'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

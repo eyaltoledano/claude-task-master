@@ -48,7 +48,8 @@ import {
 	AzureProvider,
 	VertexAIProvider,
 	ClaudeCodeProvider,
-	GeminiCliProvider
+	GeminiCliProvider,
+	RequestyAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -67,7 +68,8 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
-	'gemini-cli': new GeminiCliProvider()
+	'gemini-cli': new GeminiCliProvider(),
+	requesty: new RequestyAIProvider()
 };
 
 function _getProvider(providerName) {
@@ -504,6 +506,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Get AI parameters for the current role
 			roleParams = getParametersForRole(currentRole, effectiveProjectRoot);
+			baseURL = getBaseUrlForRole(currentRole, effectiveProjectRoot);
 			apiKey = _resolveApiKey(
 				providerName?.toLowerCase(),
 				session,
