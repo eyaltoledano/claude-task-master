@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  taskmaster-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: taskmaster-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Express API服务器
+      - "3001:3001"  # MCP HTTP服务器
+      - "9229:9229"  # Node.js调试端口
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MCP_PORT=3001
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./projects:/app/projects
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - taskmaster-dev-network
+    command: npm run dev:all
+
+networks:
+  taskmaster-dev-network:
+    driver: bridge

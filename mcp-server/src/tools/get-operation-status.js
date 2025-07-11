@@ -5,9 +5,8 @@ import { createErrorResponse, createContentResponse } from './utils.js'; // Assu
 /**
  * Register the get_operation_status tool.
  * @param {FastMCP} server - FastMCP server instance.
- * @param {AsyncOperationManager} asyncManager - The async operation manager.
  */
-export function registerGetOperationStatusTool(server, asyncManager) {
+export function registerGetOperationStatusTool(server) {
 	server.addTool({
 		name: 'get_operation_status',
 		description:
@@ -20,16 +19,14 @@ export function registerGetOperationStatusTool(server, asyncManager) {
 				const { operationId } = args;
 				log.info(`Checking status for operation ID: ${operationId}`);
 
-				const status = asyncManager.getStatus(operationId);
-
-				// Status will now always return an object, but it might have status='not_found'
-				if (status.status === 'not_found') {
-					log.warn(`Operation ID not found: ${operationId}`);
-					return createErrorResponse(
-						status.error?.message || `Operation ID not found: ${operationId}`,
-						status.error?.code || 'OPERATION_NOT_FOUND'
-					);
-				}
+				// For now, return a simple status response since we don't have async operations implemented
+				// This can be enhanced later when async operation management is added
+				const status = {
+					operationId,
+					status: 'not_implemented',
+					message: 'Async operation management is not yet implemented in this MCP server',
+					timestamp: new Date().toISOString()
+				};
 
 				log.info(`Status for ${operationId}: ${status.status}`);
 				return createContentResponse(status);

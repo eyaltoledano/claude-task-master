@@ -1,0 +1,41 @@
+{
+  "defaults": {
+    "task": {
+      "priority": "medium",
+      "status": "pending",
+      "autoGenerate": true
+    },
+    "prd": {
+      "maxTasks": 20,
+      "includeDetails": true,
+      "includeTestStrategy": true
+    },
+    "reports": {
+      "format": "markdown",
+      "includeStats": true,
+      "includeProgress": true
+    }
+  },
+  "system": {
+    "logLevel": "info",
+    "maxRetries": 3,
+    "timeout": 30000,
+    "concurrency": {
+      "maxConcurrentTasks": 5,
+      "maxConcurrentProjects": 10
+    }
+  },
+  "api": {
+    "rateLimit": {
+      "windowMs": 900000,
+      "max": 100
+    },
+    "cors": {
+      "origin": "*",
+      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+      "allowedHeaders": ["Content-Type", "Authorization", "X-Project-ID"]
+    }
+  },
+  "version": "1.0.0",
+  "lastUpdated": "2025-06-30T09:00:00.000Z"
+}

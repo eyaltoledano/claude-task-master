@@ -120,6 +120,14 @@ function findProjectRoot(
 	startDir = process.cwd(),
 	markers = ['package.json', 'pyproject.toml', '.git', LEGACY_CONFIG_FILE]
 ) {
+	// 优先使用 TASK_MASTER_PROJECT_ROOT 环境变量
+	if (process.env.TASK_MASTER_PROJECT_ROOT) {
+		const envRoot = path.resolve(process.env.TASK_MASTER_PROJECT_ROOT);
+		if (fs.existsSync(envRoot)) {
+			return envRoot;
+		}
+	}
+
 	let currentPath = path.resolve(startDir);
 	const rootPath = path.parse(currentPath).root;
 

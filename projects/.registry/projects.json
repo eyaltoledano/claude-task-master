@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "projects": {
+    "test-final": {
+      "name": "最终测试",
+      "description": "测试项目是否在正确位置创建",
+      "template": "default",
+      "createdAt": "2025-07-11T07:42:22.067Z",
+      "lastAccessed": "2025-07-11T07:42:22.067Z",
+      "status": "active"
+    },
+    "prd-001": {
+      "name": "需求助手001",
+      "description": "帮助澄清需求编写文档",
+      "template": "default",
+      "createdAt": "2025-07-11T08:07:07.788Z",
+      "lastAccessed": "2025-07-11T08:07:07.788Z",
+      "status": "active"
+    },
+    "test-fix": {
+      "name": "测试修复",
+      "description": "测试PRD路径修复",
+      "template": "default",
+      "createdAt": "2025-07-11T08:05:27.221Z",
+      "lastAccessed": "2025-07-11T08:05:27.221Z",
+      "status": "active"
+    },
+    "prd-002": {
+      "name": "prd-002",
+      "description": "",
+      "template": "default",
+      "createdAt": "2025-07-11T10:00:27.662Z",
+      "lastAccessed": "2025-07-11T10:00:27.662Z",
+      "status": "active"
+    }
+  },
+  "lastUpdated": "2025-07-11T10:00:27.662Z"
+}

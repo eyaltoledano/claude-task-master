@@ -1,0 +1,24 @@
+{
+  "mcp": {
+    "servers": {
+      "claude-task-master": {
+        "command": "npx",
+        "args": [
+          "mcp-remote",
+          "http://localhost:3000/mcp"
+        ],
+        "headers": {
+          "X-PROJECT": "my-project"
+        }
+      }
+    }
+  },
+  "rules": [
+    "When working with tasks, always use the Claude Task Master MCP tools",
+    "Use get_tasks to see current tasks before making changes",
+    "Use add_task to create new tasks with proper descriptions",
+    "Use set_task_status to update task progress",
+    "Use sync_readme to update project documentation"
+  ],
+  "customInstructions": "You are working with Claude Task Master, an AI-powered task management system. Use the available MCP tools to help manage project tasks efficiently. Always check the current task status before making changes and keep the project documentation up to date."
+}

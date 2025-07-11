@@ -49,8 +49,8 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
-		// Pass the manager instance to the tool registration function
-		registerTaskMasterTools(this.server, this.asyncManager);
+		// Register Task Master tools
+		registerTaskMasterTools(this.server);
 
 		this.initialized = true;
 

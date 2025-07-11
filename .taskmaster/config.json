@@ -1,36 +1,42 @@
 {
-	"models": {
-		"main": {
-			"provider": "vertex",
-			"modelId": "gemini-1.5-pro-002",
-			"maxTokens": 50000,
-			"temperature": 0.2
-		},
-		"research": {
-			"provider": "perplexity",
-			"modelId": "sonar",
-			"maxTokens": 8700,
-			"temperature": 0.1
-		},
-		"fallback": {
-			"provider": "anthropic",
-			"modelId": "claude-3-7-sonnet-20250219",
-			"maxTokens": 128000,
-			"temperature": 0.2
-		}
-	},
-	"global": {
-		"logLevel": "info",
-		"debug": false,
-		"defaultSubtasks": 5,
-		"defaultPriority": "medium",
-		"projectName": "Taskmaster",
-		"ollamaBaseURL": "http://localhost:11434/api",
-		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
-		"userId": "1234567890",
-		"azureBaseURL": "https://your-endpoint.azure.com/",
-		"defaultTag": "master",
-		"responseLanguage": "English"
-	},
-	"claudeCode": {}
+  "models": {
+    "main": {
+      "provider": "openai-compatible",
+      "modelId": "deepseek-r1-0528",
+      "maxTokens": 8000,
+      "temperature": 0.2,
+      "model": "deepseek-r1-0528",
+      "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    },
+    "research": {
+      "provider": "openai-compatible",
+      "modelId": "deepseek-r1-0528",
+      "maxTokens": 8700,
+      "temperature": 0.1,
+      "model": "deepseek-r1-0528",
+      "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    },
+    "fallback": {
+      "provider": "openai-compatible",
+      "modelId": "deepseek-r1-0528",
+      "maxTokens": 8000,
+      "temperature": 0.2,
+      "model": "deepseek-r1-0528",
+      "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "debug": false,
+    "defaultNumTasks": 10,
+    "defaultSubtasks": 5,
+    "defaultPriority": "medium",
+    "projectName": "Task Master",
+    "ollamaBaseURL": "http://localhost:11434/api",
+    "bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
+    "responseLanguage": "English",
+    "userId": "1234567890",
+    "defaultTag": "master"
+  },
+  "claudeCode": {}
 }

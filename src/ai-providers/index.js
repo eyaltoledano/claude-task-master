@@ -7,6 +7,7 @@ export { AnthropicAIProvider } from './anthropic.js';
 export { PerplexityAIProvider } from './perplexity.js';
 export { GoogleAIProvider } from './google.js';
 export { OpenAIProvider } from './openai.js';
+export { OpenAICompatibleProvider } from './openai-compatible.js';
 export { XAIProvider } from './xai.js';
 export { OpenRouterAIProvider } from './openrouter.js';
 export { OllamaAIProvider } from './ollama.js';

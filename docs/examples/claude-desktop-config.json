@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "claude-task-master": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:3000/mcp"
+      ],
+      "headers": {
+        "X-PROJECT": "my-project",
+        "X-USERNAME": "developer"
+      }
+    },
+    "claude-task-master-project-a": {
+      "command": "npx", 
+      "args": [
+        "mcp-remote",
+        "http://localhost:3000/mcp"
+      ],
+      "headers": {
+        "X-PROJECT": "project-a",
+        "X-USERNAME": "team-lead"
+      }
+    },
+    "claude-task-master-project-b": {
+      "command": "npx",
+      "args": [
+        "mcp-remote", 
+        "http://localhost:3000/mcp"
+      ],
+      "headers": {
+        "X-PROJECT": "project-b",
+        "X-USERNAME": "developer"
+      }
+    }
+  }
+}

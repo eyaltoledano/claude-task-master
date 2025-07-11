@@ -21,7 +21,8 @@ export const CUSTOM_PROVIDERS = {
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
 	CLAUDE_CODE: 'claude-code',
-	GEMINI_CLI: 'gemini-cli'
+	GEMINI_CLI: 'gemini-cli',
+	OPENAI_COMPATIBLE: 'openai-compatible'
 };
 
 // Custom providers array (for backward compatibility and iteration)

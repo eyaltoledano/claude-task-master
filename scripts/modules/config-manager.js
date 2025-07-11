@@ -606,6 +606,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
+		'openai-compatible': 'OPENAI_API_KEY', // OpenAI-compatible APIs use the same key format
 		anthropic: 'ANTHROPIC_API_KEY',
 		google: 'GOOGLE_API_KEY',
 		perplexity: 'PERPLEXITY_API_KEY',
@@ -681,6 +682,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'openai':
 				apiKeyToCheck = mcpEnv.OPENAI_API_KEY;
 				placeholderValue = 'YOUR_OPENAI_API_KEY_HERE'; // Assuming placeholder matches OPENAI
+				break;
+			case 'openai-compatible':
+				apiKeyToCheck = mcpEnv.OPENAI_API_KEY; // OpenAI-compatible APIs use the same key
+				placeholderValue = 'YOUR_OPENAI_API_KEY_HERE';
 				break;
 			case 'openrouter':
 				apiKeyToCheck = mcpEnv.OPENROUTER_API_KEY;

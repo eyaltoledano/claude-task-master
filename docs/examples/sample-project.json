@@ -1,0 +1,275 @@
+{
+  "project": {
+    "id": "e-commerce-platform",
+    "name": "E-Commerce Platform",
+    "description": "A modern e-commerce platform with React frontend and Node.js backend",
+    "version": "1.0.0",
+    "created": "2024-01-01T00:00:00.000Z"
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "项目初始化和环境搭建",
+      "description": "设置开发环境，配置构建工具和依赖管理",
+      "status": "done",
+      "priority": "high",
+      "tags": ["setup", "infrastructure"],
+      "estimatedHours": 8,
+      "actualHours": 6,
+      "assignee": "developer",
+      "createdAt": "2024-01-01T09:00:00.000Z",
+      "completedAt": "2024-01-01T15:00:00.000Z",
+      "subtasks": [
+        {
+          "id": "subtask-001-1",
+          "title": "初始化 React 项目",
+          "status": "done",
+          "description": "使用 Create React App 创建前端项目"
+        },
+        {
+          "id": "subtask-001-2", 
+          "title": "设置 Node.js 后端",
+          "status": "done",
+          "description": "创建 Express.js 服务器和基础路由"
+        },
+        {
+          "id": "subtask-001-3",
+          "title": "配置数据库连接",
+          "status": "done", 
+          "description": "设置 MongoDB 连接和基础配置"
+        }
+      ]
+    },
+    {
+      "id": "task-002",
+      "title": "用户认证系统",
+      "description": "实现用户注册、登录、密码重置等认证功能",
+      "status": "in-progress",
+      "priority": "high",
+      "tags": ["backend", "security", "auth"],
+      "estimatedHours": 16,
+      "actualHours": 8,
+      "assignee": "backend-dev",
+      "createdAt": "2024-01-02T09:00:00.000Z",
+      "dependencies": ["task-001"],
+      "subtasks": [
+        {
+          "id": "subtask-002-1",
+          "title": "设计用户数据模型",
+          "status": "done",
+          "description": "定义用户表结构和字段"
+        },
+        {
+          "id": "subtask-002-2",
+          "title": "实现注册 API",
+          "status": "done",
+          "description": "创建用户注册端点和验证逻辑"
+        },
+        {
+          "id": "subtask-002-3",
+          "title": "实现登录 API",
+          "status": "in-progress",
+          "description": "创建用户登录端点和 JWT 认证"
+        },
+        {
+          "id": "subtask-002-4",
+          "title": "密码重置功能",
+          "status": "pending",
+          "description": "实现邮件验证的密码重置流程"
+        }
+      ]
+    },
+    {
+      "id": "task-003",
+      "title": "商品管理系统",
+      "description": "实现商品的增删改查、分类管理、库存管理",
+      "status": "pending",
+      "priority": "high",
+      "tags": ["backend", "api", "products"],
+      "estimatedHours": 24,
+      "assignee": "backend-dev",
+      "createdAt": "2024-01-03T09:00:00.000Z",
+      "dependencies": ["task-002"],
+      "subtasks": [
+        {
+          "id": "subtask-003-1",
+          "title": "设计商品数据模型",
+          "status": "pending",
+          "description": "定义商品、分类、库存等数据结构"
+        },
+        {
+          "id": "subtask-003-2",
+          "title": "商品 CRUD API",
+          "status": "pending",
+          "description": "实现商品的创建、读取、更新、删除接口"
+        },
+        {
+          "id": "subtask-003-3",
+          "title": "分类管理 API",
+          "status": "pending",
+          "description": "实现商品分类的管理接口"
+        },
+        {
+          "id": "subtask-003-4",
+          "title": "库存管理系统",
+          "status": "pending",
+          "description": "实现库存跟踪和预警功能"
+        }
+      ]
+    },
+    {
+      "id": "task-004",
+      "title": "购物车和订单系统",
+      "description": "实现购物车功能和订单处理流程",
+      "status": "pending",
+      "priority": "medium",
+      "tags": ["backend", "api", "orders"],
+      "estimatedHours": 20,
+      "assignee": "backend-dev",
+      "createdAt": "2024-01-04T09:00:00.000Z",
+      "dependencies": ["task-003"],
+      "subtasks": [
+        {
+          "id": "subtask-004-1",
+          "title": "购物车数据模型",
+          "status": "pending",
+          "description": "设计购物车和订单的数据结构"
+        },
+        {
+          "id": "subtask-004-2",
+          "title": "购物车 API",
+          "status": "pending",
+          "description": "实现添加、删除、修改购物车商品的接口"
+        },
+        {
+          "id": "subtask-004-3",
+          "title": "订单处理 API",
+          "status": "pending",
+          "description": "实现订单创建、支付、状态更新等接口"
+        }
+      ]
+    },
+    {
+      "id": "task-005",
+      "title": "前端用户界面",
+      "description": "开发响应式的用户界面，包括商品展示、购物车、用户中心等",
+      "status": "pending",
+      "priority": "medium",
+      "tags": ["frontend", "ui", "react"],
+      "estimatedHours": 32,
+      "assignee": "frontend-dev",
+      "createdAt": "2024-01-05T09:00:00.000Z",
+      "dependencies": ["task-002", "task-003"],
+      "subtasks": [
+        {
+          "id": "subtask-005-1",
+          "title": "设计系统和组件库",
+          "status": "pending",
+          "description": "创建可复用的 UI 组件和设计规范"
+        },
+        {
+          "id": "subtask-005-2",
+          "title": "用户认证界面",
+          "status": "pending",
+          "description": "实现登录、注册、密码重置页面"
+        },
+        {
+          "id": "subtask-005-3",
+          "title": "商品展示页面",
+          "status": "pending",
+          "description": "实现商品列表、详情、搜索等页面"
+        },
+        {
+          "id": "subtask-005-4",
+          "title": "购物车和结算页面",
+          "status": "pending",
+          "description": "实现购物车管理和订单结算流程"
+        }
+      ]
+    },
+    {
+      "id": "task-006",
+      "title": "支付集成",
+      "description": "集成第三方支付服务，支持多种支付方式",
+      "status": "pending",
+      "priority": "high",
+      "tags": ["backend", "payment", "integration"],
+      "estimatedHours": 12,
+      "assignee": "backend-dev",
+      "createdAt": "2024-01-06T09:00:00.000Z",
+      "dependencies": ["task-004"],
+      "subtasks": [
+        {
+          "id": "subtask-006-1",
+          "title": "选择支付服务提供商",
+          "status": "pending",
+          "description": "评估和选择合适的支付服务（如 Stripe、PayPal）"
+        },
+        {
+          "id": "subtask-006-2",
+          "title": "支付 API 集成",
+          "status": "pending",
+          "description": "实现支付接口和回调处理"
+        },
+        {
+          "id": "subtask-006-3",
+          "title": "支付安全和验证",
+          "status": "pending",
+          "description": "实现支付安全验证和防欺诈措施"
+        }
+      ]
+    },
+    {
+      "id": "task-007",
+      "title": "测试和部署",
+      "description": "编写测试用例，配置 CI/CD 流程，部署到生产环境",
+      "status": "pending",
+      "priority": "medium",
+      "tags": ["testing", "deployment", "devops"],
+      "estimatedHours": 16,
+      "assignee": "devops",
+      "createdAt": "2024-01-07T09:00:00.000Z",
+      "dependencies": ["task-005", "task-006"],
+      "subtasks": [
+        {
+          "id": "subtask-007-1",
+          "title": "单元测试",
+          "status": "pending",
+          "description": "为后端 API 编写单元测试"
+        },
+        {
+          "id": "subtask-007-2",
+          "title": "集成测试",
+          "status": "pending",
+          "description": "编写端到端的集成测试"
+        },
+        {
+          "id": "subtask-007-3",
+          "title": "CI/CD 配置",
+          "status": "pending",
+          "description": "配置自动化构建和部署流程"
+        },
+        {
+          "id": "subtask-007-4",
+          "title": "生产环境部署",
+          "status": "pending",
+          "description": "部署到云服务器并配置监控"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "totalTasks": 7,
+    "completedTasks": 1,
+    "inProgressTasks": 1,
+    "pendingTasks": 5,
+    "totalEstimatedHours": 128,
+    "totalActualHours": 14,
+    "tags": [
+      "setup", "infrastructure", "backend", "security", "auth", 
+      "api", "products", "orders", "frontend", "ui", "react", 
+      "payment", "integration", "testing", "deployment", "devops"
+    ],
+    "lastUpdated": "2024-01-02T12:00:00.000Z"
+  }
+}

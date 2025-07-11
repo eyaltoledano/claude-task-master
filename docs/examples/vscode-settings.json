@@ -1,0 +1,29 @@
+{
+  "cline.mcpServers": {
+    "claude-task-master": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://localhost:3000/mcp"
+      ],
+      "headers": {
+        "X-PROJECT": "${workspaceFolderBasename}"
+      }
+    }
+  },
+  "cline.customInstructions": "You are working with Claude Task Master MCP tools. Use these tools to manage project tasks:\n\n- get_tasks: View current tasks\n- add_task: Create new tasks\n- update_task: Modify existing tasks\n- set_task_status: Update task progress\n- parse_prd: Generate tasks from requirements\n- sync_readme: Update documentation\n- help: Get tool information\n\nAlways check current tasks before making changes and keep documentation updated.",
+  "files.associations": {
+    "tasks.json": "json",
+    "*.taskmaster": "json"
+  },
+  "json.schemas": [
+    {
+      "fileMatch": ["**/projects/*/tasks.json"],
+      "url": "./schemas/tasks-schema.json"
+    }
+  ],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
+}

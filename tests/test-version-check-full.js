@@ -2,7 +2,7 @@ import {
 	checkForUpdate,
 	displayUpgradeNotification,
 	compareVersions
-} from './scripts/modules/commands.js';
+} from '../scripts/modules/commands.js';
 import fs from 'fs';
 import path from 'path';
 

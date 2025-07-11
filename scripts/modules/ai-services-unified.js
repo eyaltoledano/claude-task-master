@@ -34,6 +34,7 @@ import {
 	resolveEnvVariable,
 	getCurrentTag
 } from './utils.js';
+import fs from 'fs';
 
 // Import provider classes
 import {
@@ -41,6 +42,7 @@ import {
 	PerplexityAIProvider,
 	GoogleAIProvider,
 	OpenAIProvider,
+	OpenAICompatibleProvider,
 	XAIProvider,
 	OpenRouterAIProvider,
 	OllamaAIProvider,
@@ -57,6 +59,7 @@ const PROVIDERS = {
 	perplexity: new PerplexityAIProvider(),
 	google: new GoogleAIProvider(),
 	openai: new OpenAIProvider(),
+	'openai-compatible': new OpenAICompatibleProvider(),
 	xai: new XAIProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
@@ -244,6 +247,7 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
+		'openai-compatible': 'OPENAI_API_KEY', // OpenAI-compatible APIs use the same key format
 		anthropic: 'ANTHROPIC_API_KEY',
 		google: 'GOOGLE_API_KEY',
 		perplexity: 'PERPLEXITY_API_KEY',
@@ -387,7 +391,15 @@ async function _unifiedServiceRunner(serviceType, params) {
 		});
 	}
 
-	const effectiveProjectRoot = projectRoot || findProjectRoot();
+	// 优先使用环境变量，然后使用传入的 projectRoot，最后使用 findProjectRoot()
+	let effectiveProjectRoot;
+	if (process.env.TASK_MASTER_PROJECT_ROOT && fs.existsSync(process.env.TASK_MASTER_PROJECT_ROOT)) {
+		effectiveProjectRoot = process.env.TASK_MASTER_PROJECT_ROOT;
+	} else if (projectRoot) {
+		effectiveProjectRoot = projectRoot;
+	} else {
+		effectiveProjectRoot = findProjectRoot();
+	}
 	const userId = getUserId(effectiveProjectRoot);
 
 	let sequence;
@@ -422,9 +434,14 @@ async function _unifiedServiceRunner(serviceType, params) {
 		try {
 			log('info', `New AI service call with role: ${currentRole}`);
 
+			// 调试信息
+			console.log('[DEBUG] AI Service - Project root:', effectiveProjectRoot);
+			console.log('[DEBUG] AI Service - TASK_MASTER_PROJECT_ROOT:', process.env.TASK_MASTER_PROJECT_ROOT);
+
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
 				modelId = getMainModelId(effectiveProjectRoot);
+				console.log('[DEBUG] AI Service - Main provider:', providerName, 'Model:', modelId);
 			} else if (currentRole === 'research') {
 				providerName = getResearchProvider(effectiveProjectRoot);
 				modelId = getResearchModelId(effectiveProjectRoot);

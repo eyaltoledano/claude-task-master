@@ -8,7 +8,7 @@ try {
 	console.log('Importing config-manager');
 	// Use dynamic import for ESM
 	const configManagerModule = await import(
-		'./scripts/modules/config-manager.js'
+		'../scripts/modules/config-manager.js'
 	);
 	const configManager = configManagerModule.default || configManagerModule;
 	console.log('Config manager loaded successfully');

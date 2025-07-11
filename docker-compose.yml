@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  taskmaster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskmaster-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Express API服务器
+      - "3001:3001"  # MCP HTTP服务器
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MCP_PORT=3001
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - LOG_LEVEL=info
+    volumes:
+      - ./projects:/app/projects
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - taskmaster-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx反向代理（可选）
+  nginx:
+    image: nginx:alpine
+    container_name: taskmaster-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - taskmaster
+    networks:
+      - taskmaster-network
+    profiles:
+      - with-nginx
+
+networks:
+  taskmaster-network:
+    driver: bridge
+
+volumes:
+  taskmaster-data:
+    driver: local
+  taskmaster-logs:
+    driver: local

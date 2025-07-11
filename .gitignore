@@ -87,3 +87,12 @@ dev-debug.log
 *.njsproj
 *.sln
 *.sw?
+
+projects/
+projects/*
+
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 

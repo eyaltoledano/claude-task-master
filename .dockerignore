@@ -1,0 +1,94 @@
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志
+logs
+*.log
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率目录
+coverage
+.nyc_output
+
+# 依赖目录
+.npm
+.eslintcache
+
+# 可选的npm缓存目录
+.npm
+
+# 可选的REPL历史
+.node_repl_history
+
+# 输出的二进制文件
+dist
+build
+
+# 依赖锁定文件（在Docker中重新生成）
+package-lock.json
+yarn.lock
+
+# IDE文件
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 测试文件
+test
+tests
+__tests__
+*.test.js
+*.spec.js
+test-*.js
+
+# 文档
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# 临时文件
+tmp
+temp
+
+# 项目特定
+projects/*
+data/*
+logs/*
+!projects/.gitkeep
+!data/.gitkeep
+!logs/.gitkeep
+
+# 部署脚本
+deployment/
+nginx/ssl/*

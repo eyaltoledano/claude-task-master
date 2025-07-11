@@ -1,290 +1,240 @@
-# Task Master [![GitHub stars](https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social)](https://github.com/eyaltoledano/claude-task-master/stargazers)
+# Claude Task Master
 
-[![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
+一个基于 Node.js 的 AI 驱动任务管理系统，采用 MCP (Model Context Protocol) 架构，支持多种 AI 提供商和 IDE 集成。从单机版本演进为支持多项目、多用户的远程服务系统。
 
-[![NPM Downloads](https://img.shields.io/npm/d18m/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dm/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai) [![NPM Downloads](https://img.shields.io/npm/dw/task-master-ai?style=flat)](https://www.npmjs.com/package/task-master-ai)
+## ✨ 特性
 
-## By [@eyaltoledano](https://x.com/eyaltoledano), [@RalphEcom](https://x.com/RalphEcom) & [@jasonzhou1993](https://x.com/jasonzhou1993)
+- 🤖 **AI 驱动**: 支持 10+ 种 AI 提供商（OpenRouter、Anthropic、OpenAI 等）
+- 🔧 **MCP 架构**: 提供标准化的 AI 工具接口，42 个专业工具
+- 🌐 **远程服务**: 支持多用户、多项目并发访问
+- 🎯 **IDE 集成**: 支持 Cursor、VS Code、Claude 等多种 IDE
+- 📝 **PRD 解析**: 自动从产品需求文档生成结构化任务
+- 🔄 **任务管理**: 完整的 CRUD 操作和状态管理
+- 📁 **IDE 配置同步**: 一键同步 IDE 配置文件到客户端
+- 🎨 **Web 界面**: 现代化的 Web 管理界面
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom)](https://x.com/RalphEcom)
-[![Twitter Follow](https://img.shields.io/twitter/follow/jasonzhou1993)](https://x.com/jasonzhou1993)
+## 🏗️ 架构概览
 
-A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
-
-## Documentation
-
-For more detailed information, check out the documentation in the `docs` directory:
-
-- [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
-- [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
-- [Command Reference](docs/command-reference.md) - Complete list of all available commands
-- [Task Structure](docs/task-structure.md) - Understanding the task format and features
-- [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
-- [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
-
-#### Quick Install for Cursor 1.0+ (One-Click)
-
-📋 Click the copy button (top-right of code block) then paste into your browser:
-
-```text
-cursor://anysphere.cursor-deeplink/mcp/install?name=taskmaster-ai&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIi0tcGFja2FnZT10YXNrLW1hc3Rlci1haSIsInRhc2stbWFzdGVyLWFpIl0sImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQo=
+### 三层服务架构
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Cursor IDE    │    │   VS Code IDE   │    │   Web Browser   │
+│  MCP Client     │    │  MCP Client     │    │  Web Frontend   │
+└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
+          │ MCP Protocol         │ MCP Protocol         │ HTTP
+          └──────────┬───────────┘                      │
+                     │                                  │
+┌────────────────────▼────────────────────┐            │
+│         MCP HTTP Server                 │            │
+│         (Port 3001)                     │            │
+│  • 42 MCP Tools                        │            │
+│  • Project Management                  │            │
+│  • IDE Config Management               │            │
+└────────────────────┬────────────────────┘            │
+                     │ Internal API                     │
+┌────────────────────▼────────────────────┐            │
+│         Express API Server              │◄───────────┘
+│         (Port 3000)                     │
+│  • RESTful APIs                        │
+│  • Project CRUD                        │
+│  • Task Management                     │
+│  • PRD Processing                      │
+└─────────────────────────────────────────┘
 ```
 
-> **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
+### 核心服务
+- **Express API** (Port 3000): RESTful API 服务，核心业务逻辑
+- **MCP HTTP** (Port 3001): MCP 协议服务，42 个专业工具
+- **Web Frontend** (Port 3002): Web 界面服务，项目管理界面
 
-## Requirements
+## 🚀 快速开始
 
-Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
+### 环境要求
+- **Node.js**: v18.0.0 或更高版本
+- **npm**: v8.0.0 或更高版本
+- **操作系统**: macOS, Linux, Windows
+- **内存**: 最少 2GB RAM
 
-You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider API key must be present in either mcp.json or .env.
+### 安装步骤
 
-At least one (1) of the following is required:
+```bash
+# 1. 克隆项目
+git clone https://github.com/mrhaoqi/claude-task-master.git
+cd claude-task-master
 
-- Anthropic API key (Claude API)
-- OpenAI API key
-- Google Gemini API key
-- Perplexity API key (for research model)
-- xAI API Key (for research or main model)
-- OpenRouter API Key (for research or main model)
-- Claude Code (no API key required - requires Claude Code CLI)
+# 2. 安装依赖
+npm install
 
-Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
+# 3. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，添加 AI 服务 API 密钥
 
-## Quick Start
+# 4. 启动服务
+npm run dev
+```
 
-### Option 1: MCP (Recommended)
+### 环境配置
 
-MCP (Model Control Protocol) lets you run Task Master directly from your editor.
+创建 `.env` 文件：
 
-#### 1. Add your MCP config at the following path depending on your editor
+```bash
+# AI 服务配置（至少配置一个）
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 
-| Editor       | Scope   | Linux/macOS Path                      | Windows Path                                      | Key          |
-| ------------ | ------- | ------------------------------------- | ------------------------------------------------- | ------------ |
-| **Cursor**   | Global  | `~/.cursor/mcp.json`                  | `%USERPROFILE%\.cursor\mcp.json`                  | `mcpServers` |
-|              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
-| **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
-| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
+# 服务端口配置
+EXPRESS_API_PORT=3000
+MCP_HTTP_PORT=3001
+WEB_FRONTEND_PORT=3002
+```
 
-##### Manual Configuration
+### 验证部署
 
-###### Cursor & Windsurf (`mcpServers`)
+```bash
+# 检查服务状态
+curl http://localhost:3000/health  # Express API
+curl http://localhost:3001/health  # MCP HTTP
+curl http://localhost:3002/        # Web Frontend
+
+# 访问 Web 界面
+open http://localhost:3002
+```
+
+## 💻 使用方法
+
+### 1. Web 界面管理
+
+访问 `http://localhost:3002` 使用现代化的 Web 界面：
+
+- **项目管理**: 创建、查看、删除项目
+- **任务管理**: 可视化任务看板
+- **PRD 上传**: 拖拽上传 PRD 文档，自动生成任务
+- **IDE 配置下载**: 一键下载 IDE 配置文件
+
+### 2. IDE 集成（推荐）
+
+#### Cursor IDE 配置
+在项目根目录创建 `.cursor/mcp.json`：
 
 ```json
 {
   "mcpServers": {
-    "taskmaster-ai": {
+    "claude-task-master": {
       "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "args": ["mcp-remote", "http://localhost:3001/mcp"],
       "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+        "X-PROJECT": "your-project-id",
+        "X-USERNAME": "your-username",
+        "X-PASSWORD": "your-password"
       }
     }
   }
 }
 ```
 
-> 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
+#### 可用的 MCP 工具（42 个）
+- **基础任务操作**: get-tasks, add-task, update-task, delete-task 等
+- **高级任务管理**: search-tasks, bulk-update-tasks, move-task 等
+- **项目配置**: get-project-info, update-config 等
+- **IDE 配置管理**: get_ide_config_content（获取 IDE 配置）
+- **PRD 范围管理**: validate_prd_scope, track_scope_changes 等
 
-> **Note**: If you see `0 tools enabled` in the MCP settings, try removing the `--package=task-master-ai` flag from `args`.
-
-###### VS Code (`servers` + `type`)
+#### IDE 配置同步
+使用 `get_ide_config_content` 工具：
 
 ```json
 {
-  "servers": {
-    "taskmaster-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "env": {
-        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-      },
-      "type": "stdio"
-    }
+  "name": "get_ide_config_content",
+  "arguments": {
+    "ideType": "cursor",
+    "format": "script"
   }
 }
 ```
 
-> 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
+生成的脚本可以一键在客户端创建所有 IDE 配置文件。
 
-#### 2. (Cursor-only) Enable Taskmaster MCP
-
-Open Cursor Settings (Ctrl+Shift+J) ➡ Click on MCP tab on the left ➡ Enable task-master-ai with the toggle
-
-#### 3. (Optional) Configure the models you want to use
-
-In your editor's AI chat pane, say:
-
-```txt
-Change the main, research and fallback models to <model_name>, <model_name> and <model_name> respectively.
-```
-
-For example, to use Claude Code (no API key required):
-```txt
-Change the main model to claude-code/sonnet
-```
-
-[Table of available models](docs/models.md) | [Claude Code setup](docs/examples/claude-code-usage.md)
-
-#### 4. Initialize Task Master
-
-In your editor's AI chat pane, say:
-
-```txt
-Initialize taskmaster-ai in my project
-```
-
-#### 5. Make sure you have a PRD (Recommended)
-
-For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`  
-For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
-
-An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
-
-> [!NOTE]
-> While a PRD is recommended for complex projects, you can always create individual tasks by asking "Can you help me implement [description of what you want to do]?" in chat.
-
-**Always start with a detailed PRD.**
-
-The more detailed your PRD, the better the generated tasks will be.
-
-#### 6. Common Commands
-
-Use your AI assistant to:
-
-- Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
-- Plan next step: `What's the next task I should work on?`
-- Implement a task: `Can you help me implement task 3?`
-- View multiple tasks: `Can you show me tasks 1, 3, and 5?`
-- Expand a task: `Can you help me expand task 4?`
-- **Research fresh information**: `Research the latest best practices for implementing JWT authentication with Node.js`
-- **Research with context**: `Research React Query v5 migration strategies for our current API implementation in src/api.js`
-
-[More examples on how to use Task Master in chat](docs/examples.md)
-
-### Option 2: Using Command Line
-
-#### Installation
+### 3. API 调用
 
 ```bash
-# Install globally
-npm install -g task-master-ai
+# 获取项目列表
+curl -H "X-PROJECT: my-project" \
+     -H "X-USERNAME: user" \
+     -H "X-PASSWORD: pass" \
+     http://localhost:3000/api/projects
 
-# OR install locally within your project
-npm install task-master-ai
+# 创建新项目
+curl -X POST http://localhost:3000/api/projects \
+  -H "Content-Type: application/json" \
+  -H "X-PROJECT: my-project" \
+  -d '{"id":"new-project","name":"New Project"}'
+
+# 从 PRD 生成任务
+curl -X POST http://localhost:3000/api/projects/my-project/tasks/generate-from-prd \
+  -H "Content-Type: application/json" \
+  -d '{"prdContent":"产品需求文档内容...","numTasks":10}'
 ```
 
-#### Initialize a new project
+## 📚 文档
+
+- [📖 开发文档](docs/DEVELOPMENT.md) - 详细的架构设计和开发指南
+- [📡 API 文档](docs/API.md) - 完整的 API 接口文档
+- [🚀 部署指南](docs/DEPLOYMENT.md) - 生产环境部署指南
+
+## 🔧 开发
+
+### 开发脚本
 
 ```bash
-# If installed globally
-task-master init
+# 开发模式（推荐）
+npm run dev                 # 启动所有服务
 
-# If installed locally
-npx task-master init
+# 单独启动服务
+npm run server:dev          # Express API 开发模式
+npm run mcp-http           # MCP HTTP 服务
+npm run web-frontend       # Web 前端服务
 
-# Initialize project with specific rules
-task-master init --rules cursor,windsurf,vscode
+# 代码质量
+npm run lint               # ESLint 检查
+npm run test               # 运行测试
 ```
 
-This will prompt you for project details and set up a new project with the necessary files and structure.
+### 项目结构
 
-#### Common Commands
-
-```bash
-# Initialize a new project
-task-master init
-
-# Parse a PRD and generate tasks
-task-master parse-prd your-prd.txt
-
-# List all tasks
-task-master list
-
-# Show the next task to work on
-task-master next
-
-# Show specific task(s) - supports comma-separated IDs
-task-master show 1,3,5
-
-# Research fresh information with project context
-task-master research "What are the latest best practices for JWT authentication?"
-
-# Generate task files
-task-master generate
-
-# Add rules after initialization
-task-master rules add windsurf,roo,vscode
+```
+claude-task-master/
+├── docs/                  # 📚 文档
+├── express-api/           # 🌐 Express API 服务
+├── mcp-http/             # 🔧 MCP HTTP 服务
+├── web-frontend/         # 🎨 Web 前端服务
+├── scripts/              # 📜 原始 TaskMaster 脚本
+├── projects/             # 📂 项目数据目录
+├── .cursor/              # 🎯 Cursor IDE 配置
+├── .vscode/              # 💻 VS Code 配置
+└── package.json          # 📦 项目配置
 ```
 
-## Claude Code Support
+## 🤝 贡献
 
-Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
+欢迎贡献代码！请遵循以下流程：
 
-- **Models**: `claude-code/opus` and `claude-code/sonnet`
-- **Requirements**: Claude Code CLI installed
-- **Benefits**: No API key needed, uses your local Claude instance
+1. Fork 项目仓库
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交变更 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
 
-[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+## 📄 许可证
 
-## Troubleshooting
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
-### If `task-master init` doesn't respond
+## 📞 联系方式
 
-Try running it with Node directly:
+- **项目负责人**: 好奇 (mrhaoqi@163.com)
+- **项目地址**: https://github.com/mrhaoqi/claude-task-master
+- **问题反馈**: [GitHub Issues](https://github.com/mrhaoqi/claude-task-master/issues)
 
-```bash
-node node_modules/claude-task-master/scripts/init.js
-```
+---
 
-Or clone the repository and run:
-
-```bash
-git clone https://github.com/eyaltoledano/claude-task-master.git
-cd claude-task-master
-node scripts/init.js
-```
-
-## Contributors
-
-<a href="https://github.com/eyaltoledano/claude-task-master/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=eyaltoledano/claude-task-master" alt="Task Master project contributors" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=eyaltoledano/claude-task-master&type=Timeline)](https://www.star-history.com/#eyaltoledano/claude-task-master&Timeline)
-
-## Licensing
-
-Task Master is licensed under the MIT License with Commons Clause. This means you can:
-
-✅ **Allowed**:
-
-- Use Task Master for any purpose (personal, commercial, academic)
-- Modify the code
-- Distribute copies
-- Create and sell products built using Task Master
-
-❌ **Not Allowed**:
-
-- Sell Task Master itself
-- Offer Task Master as a hosted service
-- Create competing products based on Task Master
-
-See the [LICENSE](LICENSE) file for the complete license text and [licensing details](docs/licensing.md) for more information.
+*最后更新时间: 2025-07-09*
