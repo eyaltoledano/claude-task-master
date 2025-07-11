@@ -49,7 +49,7 @@ import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
 import { initializePRMonitoringService } from './services/PRMonitoringService.js';
-import { ConfigScreen } from './components/ConfigScreen.jsx';
+
 
 // Create context for backend and app state
 const AppContext = createContext();
@@ -145,7 +145,7 @@ function FlowApp({ backend, options = {} }) {
 			{ name: '/next', description: 'Show next task to work on' },
 			{ name: '/exec', description: 'Manage task executions' },
 			{ name: '/mcp', description: 'Manage MCP servers' },
-			{ name: '/config', description: 'Configure agents and sandboxes' },
+
 			{ name: '/chat', description: 'Chat with AI assistant' },
 			// worktree functionality removed in Phase 2: VibeKit Integration
 			{ name: '/status', description: 'View project status details' },
@@ -526,10 +526,7 @@ function FlowApp({ backend, options = {} }) {
 				case 'executions':
 					setCurrentScreen('executions');
 					break;
-				case 'agents':
-				case 'config':
-					setCurrentScreen('config');
-					break;
+
 				case 'settings':
 					setShowSettings(true);
 					break;
@@ -648,9 +645,7 @@ function FlowApp({ backend, options = {} }) {
 					case 'c':
 						setCurrentScreen('chat');
 						break;
-					case 'j':
-						setCurrentScreen('config');
-						break;
+
 					// worktree functionality removed in Phase 2: VibeKit Integration
 					case 'v':
 						setCurrentScreen('mcp-management');
@@ -1021,8 +1016,6 @@ function FlowApp({ backend, options = {} }) {
 								});
 							}}
 						/>
-					) : currentScreen === 'config' ? (
-						<ConfigScreen />
 					) : currentScreen === 'executions' ? (
 						<ExecutionManagementScreen
 							onBack={() => setCurrentScreen('welcome')}

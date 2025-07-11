@@ -140,15 +140,7 @@ export function WelcomeScreen() {
 							</Box>
 							<Text color={theme.textDim}>ctrl+x c</Text>
 						</Box>
-						<Box flexDirection="row">
-							<Box width={12}>
-								<Text color={theme.accent}>/config</Text>
-							</Box>
-							<Box width={34}>
-								<Text>Configure agents and sandboxes</Text>
-							</Box>
-							<Text color={theme.textDim}>ctrl+x j</Text>
-						</Box>
+
 						<Box flexDirection="row">
 							<Box width={12}>
 								<Text color={theme.accent}>/status</Text>
