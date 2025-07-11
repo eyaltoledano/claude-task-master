@@ -240,7 +240,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 						tasks: relevantTaskIds,
 						format: 'research'
 					});
-					gatheredContext = contextResult;
+					gatheredContext = contextResult.context || '';
 				}
 			} catch (contextError) {
 				reportLog(
@@ -406,11 +406,10 @@ async function analyzeTaskComplexity(options, context = {}) {
 			useResearch: useResearch
 		};
 
-		const variantKey = useResearch ? 'research' : 'default';
 		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
 			'analyze-complexity',
 			promptParams,
-			variantKey
+			'default'
 		);
 
 		let loadingIndicator = null;
