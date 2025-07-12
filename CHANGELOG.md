@@ -1,5 +1,30 @@
 # task-master-ai
 
+## 0.20.0
+
+### Minor Changes
+
+- [#950](https://github.com/eyaltoledano/claude-task-master/pull/950) [`699e9ee`](https://github.com/eyaltoledano/claude-task-master/commit/699e9eefb5d687b256e9402d686bdd5e3a358b4a) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Add support for xAI Grok 4 model
+  - Add grok-4 model to xAI provider with $3/$15 per 1M token pricing
+  - Enable main, fallback, and research roles for grok-4
+  - Max tokens set to 131,072 (matching other xAI models)
+
+- [#946](https://github.com/eyaltoledano/claude-task-master/pull/946) [`5f009a5`](https://github.com/eyaltoledano/claude-task-master/commit/5f009a5e1fc10e37be26f5135df4b7f44a9c5320) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add stricter validation and clearer feedback for task priority when adding new tasks
+  - if a task priority is invalid, it will default to medium
+  - made taks priority case-insensitive, essentially making HIGH and high the same value
+
+- [#863](https://github.com/eyaltoledano/claude-task-master/pull/863) [`b530657`](https://github.com/eyaltoledano/claude-task-master/commit/b53065713c8da0ae6f18eb2655397aa975004923) Thanks [@OrenMe](https://github.com/OrenMe)! - Add support for MCP Sampling as AI provider, requires no API key, uses the client LLM provider
+
+- [#930](https://github.com/eyaltoledano/claude-task-master/pull/930) [`98d1c97`](https://github.com/eyaltoledano/claude-task-master/commit/98d1c974361a56ddbeb772b1272986b9d3913459) Thanks [@OmarElKadri](https://github.com/OmarElKadri)! - Added Groq provider support
+
+### Patch Changes
+
+- [#958](https://github.com/eyaltoledano/claude-task-master/pull/958) [`6c88a4a`](https://github.com/eyaltoledano/claude-task-master/commit/6c88a4a749083e3bd2d073a9240799771774495a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Recover from `@anthropic-ai/claude-code` JSON truncation bug that caused Task Master to crash when handling large (>8 kB) structured responses. The CLI/SDK still truncates, but Task Master now detects the error, preserves buffered text, and returns a usable response instead of throwing.
+
+- [#958](https://github.com/eyaltoledano/claude-task-master/pull/958) [`3334e40`](https://github.com/eyaltoledano/claude-task-master/commit/3334e409ae659d5223bb136ae23fd22c5e219073) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Updating dependency ai-sdk-provider-gemini-cli to 0.0.4 to address breaking change Google made to Gemini CLI and add better 'api-key' in addition to 'gemini-api-key' AI-SDK compatibility.
+
+- [#853](https://github.com/eyaltoledano/claude-task-master/pull/853) [`95c299d`](https://github.com/eyaltoledano/claude-task-master/commit/95c299df642bd8e6d75f8fa5110ac705bcc72edf) Thanks [@joedanz](https://github.com/joedanz)! - Unify and streamline profile system architecture for improved maintainability
+
 ## 0.20.0-rc.0
 
 ### Minor Changes
