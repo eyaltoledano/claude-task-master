@@ -22,6 +22,7 @@ import {
 	getBaseUrlForRole,
 	isApiKeySet,
 	getOllamaBaseURL,
+	getOpenAIBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getVertexProjectId,
@@ -492,6 +493,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 			if (providerName?.toLowerCase() === 'azure' && !baseURL) {
 				baseURL = getAzureBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Azure base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'openai' && !baseURL) {
+				// For OpenAI, use the global OpenAI base URL if role-specific URL is not configured
+				baseURL = getOpenAIBaseURL(effectiveProjectRoot);
+				log('debug', `Using global OpenAI base URL: ${baseURL}`);
 			} else if (providerName?.toLowerCase() === 'ollama' && !baseURL) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);
@@ -509,6 +514,15 @@ async function _unifiedServiceRunner(serviceType, params) {
 				session,
 				effectiveProjectRoot
 			);
+
+			// Special handling for OpenAI base URL from environment
+			if (providerName?.toLowerCase() === 'openai' && !baseURL) {
+				const envBaseURL = resolveEnvVariable('OPENAI_API_BASE', session, effectiveProjectRoot);
+				if (envBaseURL) {
+					baseURL = envBaseURL;
+					log('debug', `Using OpenAI base URL from environment variable: ${baseURL}`);
+				}
+			}
 
 			// Prepare provider-specific configuration
 			let providerSpecificParams = {};
