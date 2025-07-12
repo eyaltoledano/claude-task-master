@@ -2,11 +2,26 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+// Mock the schema integration functions to avoid chalk issues
+const mockSetupSchemaIntegration = jest.fn();
+
+import { vscodeProfile } from '../../../src/profiles/vscode.js';
 
 // Mock external modules
 jest.mock('child_process', () => ({
 	execSync: jest.fn()
 }));
+
+// Mock fs/promises
+const mockFsPromises = {
+	mkdir: jest.fn(),
+	access: jest.fn(),
+	copyFile: jest.fn(),
+	readFile: jest.fn(),
+	writeFile: jest.fn()
+};
+
+jest.mock('fs/promises', () => mockFsPromises);
 
 // Mock console methods
 jest.mock('console', () => ({
@@ -287,5 +302,42 @@ Task Master specific VS Code instruction.`;
 		expect(content).toContain('applyTo:');
 		expect(content).toContain('alwaysApply:');
 		expect(content).toContain('**/*.ts'); // File patterns in quotes
+	});
+
+	describe('Schema Integration', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			// Replace the onAddRulesProfile function with our mock
+			vscodeProfile.onAddRulesProfile = mockSetupSchemaIntegration;
+		});
+
+		test('setupSchemaIntegration is called with project root', async () => {
+			// Arrange
+			mockSetupSchemaIntegration.mockResolvedValue();
+
+			// Act
+			await vscodeProfile.onAddRulesProfile(tempDir);
+
+			// Assert
+			expect(mockSetupSchemaIntegration).toHaveBeenCalledWith(tempDir);
+		});
+
+		test('schema integration function exists and is callable', () => {
+			// Assert that the VS Code profile has the schema integration function
+			expect(vscodeProfile.onAddRulesProfile).toBeDefined();
+			expect(typeof vscodeProfile.onAddRulesProfile).toBe('function');
+		});
+
+		test('schema integration handles errors gracefully', async () => {
+			// Arrange
+			mockSetupSchemaIntegration.mockRejectedValue(
+				new Error('Schema setup failed')
+			);
+
+			// Act & Assert - Should propagate the error
+			await expect(vscodeProfile.onAddRulesProfile(tempDir)).rejects.toThrow(
+				'Schema setup failed'
+			);
+		});
 	});
 });

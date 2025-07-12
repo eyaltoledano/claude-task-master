@@ -136,8 +136,8 @@ describe('Selective Rules Removal', () => {
 			expect(result.filesRemoved).toEqual([
 				'cursor_rules.mdc',
 				'taskmaster/dev_workflow.mdc',
-				'taskmaster/taskmaster.mdc',
-				'self_improve.mdc'
+				'self_improve.mdc',
+				'taskmaster/taskmaster.mdc'
 			]);
 			expect(result.notice).toContain('Preserved 2 existing rule files');
 
@@ -226,8 +226,8 @@ describe('Selective Rules Removal', () => {
 			expect(result.filesRemoved).toEqual([
 				'cursor_rules.mdc',
 				'taskmaster/dev_workflow.mdc',
-				'taskmaster/taskmaster.mdc',
-				'self_improve.mdc'
+				'self_improve.mdc',
+				'taskmaster/taskmaster.mdc'
 			]);
 
 			// The function may fail due to directory reading issues in the test environment,
@@ -354,8 +354,8 @@ describe('Selective Rules Removal', () => {
 			// Mock sequence: only Task Master rules, rules dir removed, but profile dir not empty due to MCP
 			mockReaddirSync
 				.mockReturnValueOnce(['cursor_rules.mdc']) // Only Task Master files
-				.mockReturnValueOnce([]) // rules dir empty after removal
-				.mockReturnValueOnce(['mcp.json']); // Profile dir has MCP config remaining
+				.mockReturnValueOnce(['my_custom_rule.mdc']) // rules dir has other files remaining
+				.mockReturnValueOnce(['rules', 'mcp.json']); // Profile dir has rules and MCP config remaining
 
 			// Mock MCP config with multiple servers (Task Master will be removed, others preserved)
 			const mockMcpConfig = {
@@ -400,8 +400,9 @@ describe('Selective Rules Removal', () => {
 
 			// Mock sequence: only Task Master rules, rules dir removed, but profile dir has other files/folders
 			mockReaddirSync
-				.mockReturnValueOnce(['cursor_rules.mdc']) // Only Task Master files
-				.mockReturnValueOnce([]) // rules dir empty after removal
+				.mockReturnValueOnce(['cursor_rules.mdc']) // Only Task Master files (initial check)
+				.mockReturnValueOnce(['cursor_rules.mdc']) // Task Master files list for filtering
+				.mockReturnValueOnce([]) // Rules dir empty after removal (not used since no remaining files)
 				.mockReturnValueOnce(['workflows', 'custom-config.json']); // Profile dir has other files/folders
 
 			// Mock MCP config with only Task Master (will be completely deleted)
@@ -420,7 +421,7 @@ describe('Selective Rules Removal', () => {
 			expect(result.success).toBe(true);
 			expect(result.profileDirRemoved).toBe(false);
 			expect(result.mcpResult.deleted).toBe(true);
-			expect(result.notice).toContain('Preserved 2 existing files/folders');
+			expect(result.notice).toContain('existing files/folders in .cursor');
 
 			// Verify profile directory was NOT removed (other files/folders exist)
 			expect(mockRmSync).not.toHaveBeenCalledWith(
@@ -587,8 +588,30 @@ describe('Selective Rules Removal', () => {
 
 			// Mock mixed scenario: some Task Master files, some existing files, other MCP servers
 			mockExistsSync.mockImplementation((filePath) => {
-				if (filePath.includes('.cursor')) return true;
-				if (filePath.includes('mcp.json')) return true;
+				// Only .cursor directories exist
+				if (filePath === path.join(projectRoot, '.cursor')) return true;
+				if (filePath === path.join(projectRoot, '.cursor/rules')) return true;
+				if (filePath === path.join(projectRoot, '.cursor/mcp.json'))
+					return true;
+				// Only cursor_rules.mdc exists, not the other taskmaster files
+				if (
+					filePath === path.join(projectRoot, '.cursor/rules/cursor_rules.mdc')
+				)
+					return true;
+				if (
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/dev_workflow.mdc')
+				)
+					return false;
+				if (
+					filePath === path.join(projectRoot, '.cursor/rules/self_improve.mdc')
+				)
+					return false;
+				if (
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc')
+				)
+					return false;
 				return false;
 			});
 

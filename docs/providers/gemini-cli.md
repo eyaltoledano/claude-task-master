@@ -4,11 +4,11 @@ The Gemini CLI provider allows you to use Google's Gemini models through the Gem
 
 ## Why Use Gemini CLI?
 
-The primary benefit of using the `gemini-cli` provider is to leverage your existing Gemini Pro subscription or OAuth authentication configured through the Gemini CLI. This is ideal for users who:
+The primary benefit of using the `gemini-cli` provider is to leverage your existing Personal Gemini Code Assist license/usage Google offers for free, or Gemini Code Assist Standard/Enterprise subscription you may already have, via OAuth configured through the Gemini CLI. This is ideal for users who:
 
-- Have an active Gemini subscription
+- Have an active Gemini Code Assist license (including those using the free tier offere by Google)
 - Want to use OAuth authentication instead of managing API keys
-- Have already configured authentication via `gemini auth login`
+- Have already configured authentication via `gemini` OAuth login
 
 ## Installation
 
@@ -26,11 +26,11 @@ npm install -g @google/gemini-cli
 The Gemini CLI provider is designed to use your pre-configured OAuth authentication:
 
 ```bash
-# Authenticate with your Google account
-gemini auth login
+# Launch Gemini CLI and go through the authentication procedure
+gemini
 ```
 
-This will open a browser window for OAuth authentication. Once authenticated, Task Master will automatically use these credentials when you select the `gemini-cli` provider.
+For OAuth use, select `Login with Google` - This will open a browser window for OAuth authentication. Once authenticated, Task Master will automatically use these credentials when you select the `gemini-cli` provider and models.
 
 ### Alternative Method: API Key
 
@@ -42,7 +42,17 @@ export GEMINI_API_KEY="your-gemini-api-key"
 
 **Note:** If you want to use API keys, consider using the standard `google` provider instead, as `gemini-cli` is specifically designed for OAuth/subscription users.
 
+More details on authentication steps and options can be found in the [gemini-cli GitHub README](https://github.com/google-gemini/gemini-cli).
+
 ## Configuration
+
+Use the `task-master init` command to run through the guided initialization:
+
+```bash
+task-master init
+```
+
+**OR**
 
 Configure `gemini-cli` as a provider using the Task Master models command:
 
@@ -54,14 +64,44 @@ task-master models --set-main gemini-2.5-pro --gemini-cli
 task-master models --set-main gemini-2.5-flash --gemini-cli
 ```
 
-You can also manually edit your `.taskmaster/config/providers.json`:
+You can also manually edit your `.taskmaster/config.json`:
 
 ```json
 {
-  "main": {
-    "provider": "gemini-cli",
-    "model": "gemini-2.5-flash"
-  }
+  "models": {
+    "main": {
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-pro",
+      "maxTokens": 65536,
+      "temperature": 0.2
+    },
+    "research": {
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-pro",
+      "maxTokens": 65536,
+      "temperature": 0.1
+    },
+    "fallback": {
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-flash",
+      "maxTokens": 65536,
+      "temperature": 0.2
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "debug": false,
+    "defaultNumTasks": 10,
+    "defaultSubtasks": 5,
+    "defaultPriority": "medium",
+    "projectName": "Taskmaster",
+    "ollamaBaseURL": "http://localhost:11434/api",
+    "bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
+    "responseLanguage": "English",
+    "defaultTag": "master",
+    "azureOpenaiBaseURL": "https://your-endpoint.openai.azure.com/"
+  },
+  "claudeCode": {}
 }
 ```
 
@@ -75,45 +115,11 @@ The gemini-cli provider supports only two models:
 
 ### Basic Usage
 
-Once authenticated with `gemini auth login` and configured, simply use Task Master as normal:
+Once gemini-cli is installed and authenticated, and Task Master  simply use Task Master as normal:
 
 ```bash
 # The provider will automatically use your OAuth credentials
-task-master new "Create a hello world function"
-```
-
-### With Specific Parameters
-
-Configure model parameters in your providers.json:
-
-```json
-{
-  "main": {
-    "provider": "gemini-cli",
-    "model": "gemini-2.5-pro",
-    "parameters": {
-      "maxTokens": 65536,
-      "temperature": 0.7
-    }
-  }
-}
-```
-
-### As Fallback Provider
-
-Use gemini-cli as a fallback when your primary provider is unavailable:
-
-```json
-{
-  "main": {
-    "provider": "anthropic",
-    "model": "claude-3-5-sonnet-latest"
-  },
-  "fallback": {
-    "provider": "gemini-cli",
-    "model": "gemini-2.5-flash"
-  }
-}
+task-master parse-prd my-prd.txt
 ```
 
 ## Troubleshooting
@@ -122,9 +128,9 @@ Use gemini-cli as a fallback when your primary provider is unavailable:
 
 If you get an authentication error:
 
-1. **Primary solution**: Run `gemini auth login` to authenticate with your Google account
-2. **Check authentication status**: Run `gemini auth status` to verify you're logged in
-3. **If using API key** (not recommended): Ensure `GEMINI_API_KEY` is set correctly
+1. **Primary solution**: Run `gemini` to authenticate with your Google account - use `/auth` slash command in **gemini-cli** to change authentication method if desired.
+2. **Check authentication status**: Run `gemini` and use `/about` to verify your Auth Method and GCP Project if applicable.
+3. **If using API key** (not recommended): Ensure `GEMINI_API_KEY` env variable is set correctly, see the gemini-cli README.md for more info.
 
 ### "Model not found" Error
 
@@ -146,23 +152,9 @@ npm install -g @google/gemini-cli
 gemini --version
 ```
 
-### Custom Endpoints
-
-Custom endpoints can be configured if needed:
-
-```json
-{
-  "main": {
-    "provider": "gemini-cli",
-    "model": "gemini-2.5-pro",
-    "baseURL": "https://custom-endpoint.example.com"
-  }
-}
-```
-
 ## Important Notes
 
-- **OAuth vs API Key**: This provider is specifically designed for users who want to use OAuth authentication via `gemini auth login`. If you prefer using API keys, consider using the standard `google` provider instead.
+- **OAuth vs API Key**: This provider is specifically designed for users who want to use OAuth authentication via gemini-cli. If you prefer using API keys, consider using the standard `google` provider instead.
 - **Limited Model Support**: Only `gemini-2.5-pro` and `gemini-2.5-flash` are available through gemini-cli.
 - **Subscription Benefits**: Using OAuth authentication allows you to leverage any subscription benefits associated with your Google account.
 - The provider uses the `ai-sdk-provider-gemini-cli` npm package internally.

@@ -56,6 +56,18 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
+jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager/models.js',
 	() => ({
 		getModelConfiguration: jest.fn(() => ({

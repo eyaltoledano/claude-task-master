@@ -1,0 +1,39 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://github.com/eyaltoledano/claude-task-master/blob/main/src/prompts/schemas/variant.schema.json",
+	"version": "1.0.0",
+	"title": "Task Master Prompt Variant",
+	"description": "Schema for prompt template variants",
+	"type": "object",
+	"required": ["system", "user"],
+	"properties": {
+		"system": {
+			"type": "string",
+			"minLength": 1,
+			"description": "System prompt template with variable placeholders"
+		},
+		"user": {
+			"type": "string",
+			"minLength": 1,
+			"description": "User prompt template with variable placeholders"
+		},
+		"condition": {
+			"type": "string",
+			"description": "JavaScript expression for variant selection (optional, only for non-default variants)"
+		},
+		"metadata": {
+			"type": "object",
+			"properties": {
+				"description": {
+					"type": "string",
+					"description": "Description of when this variant should be used"
+				},
+				"tags": {
+					"type": "array",
+					"items": { "type": "string" },
+					"description": "Tags for categorizing this variant"
+				}
+			}
+		}
+	}
+}

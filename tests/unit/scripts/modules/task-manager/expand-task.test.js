@@ -132,10 +132,18 @@ jest.unstable_mockModule(
 	() => ({
 		ContextGatherer: jest.fn().mockImplementation(() => ({
 			gather: jest.fn().mockResolvedValue({
-				contextSummary: 'Mock context summary',
-				allRelatedTaskIds: [],
-				graphVisualization: 'Mock graph'
+				context: 'Mock project context from files'
 			})
+		}))
+	})
+);
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js',
+	() => ({
+		FuzzyTaskSearch: jest.fn().mockImplementation(() => ({
+			findRelevantTasks: jest.fn().mockReturnValue([]),
+			getTaskIds: jest.fn().mockReturnValue([])
 		}))
 	})
 );
@@ -144,6 +152,18 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager/generate-task-files.js',
 	() => ({
 		default: jest.fn().mockResolvedValue()
+	})
+);
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
 	})
 );
 
@@ -663,6 +683,18 @@ describe('expandTask', () => {
 	describe('Complexity Report Integration (Tag-Specific)', () => {
 		test('should use tag-specific complexity report when available', async () => {
 			// Arrange
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt: 'Generate exactly 5 subtasks for complexity report',
+				userPrompt:
+					'Please break this task into 5 parts\n\nUser provided context'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			const tasksPath = 'tasks/tasks.json';
 			const taskId = '1'; // Task in feature-branch
 			const context = {
@@ -709,6 +741,16 @@ describe('expandTask', () => {
 			// Assert - generateTextService called with systemPrompt for 5 subtasks
 			const callArg = generateTextService.mock.calls[0][0];
 			expect(callArg.systemPrompt).toContain('Generate exactly 5 subtasks');
+
+			// Assert - Should use complexity-report variant with expansion prompt
+			expect(mockLoadPrompt).toHaveBeenCalledWith(
+				'expand-task',
+				expect.objectContaining({
+					subtaskCount: 5,
+					expansionPrompt: 'Please break this task into 5 parts'
+				}),
+				'complexity-report'
+			);
 
 			// Clean up stub
 			existsSpy.mockRestore();
@@ -903,6 +945,17 @@ describe('expandTask', () => {
 
 		test('should handle additional context correctly', async () => {
 			// Arrange
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt with context'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			const tasksPath = 'tasks/tasks.json';
 			const taskId = '2';
 			const additionalContext = 'Use React hooks and TypeScript';
@@ -922,11 +975,28 @@ describe('expandTask', () => {
 				false
 			);
 
-			// Assert - Should include additional context in prompt
-			expect(generateTextService).toHaveBeenCalledWith(
+			// Assert - Should pass separate context parameters to prompt manager
+			expect(mockLoadPrompt).toHaveBeenCalledWith(
+				'expand-task',
 				expect.objectContaining({
-					prompt: expect.stringContaining('Use React hooks and TypeScript')
-				})
+					additionalContext: expect.stringContaining(
+						'Use React hooks and TypeScript'
+					),
+					gatheredContext: expect.stringContaining(
+						'Mock project context from files'
+					)
+				}),
+				expect.any(String)
+			);
+
+			// Additional assertion to verify the context parameters are passed separately
+			const call = mockLoadPrompt.mock.calls[0];
+			const parameters = call[1];
+			expect(parameters.additionalContext).toContain(
+				'Use React hooks and TypeScript'
+			);
+			expect(parameters.gatheredContext).toContain(
+				'Mock project context from files'
 			);
 		});
 
@@ -1003,6 +1073,20 @@ describe('expandTask', () => {
 		});
 
 		test('should use dynamic prompting when numSubtasks is 0', async () => {
+			// Mock getPromptManager to return realistic prompt with dynamic content
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt:
+					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into an appropriate number of specific subtasks that can be implemented one by one.',
+				userPrompt:
+					'Break down this task into an appropriate number of specific subtasks'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			// Act
 			await expandTask(tasksPath, taskId, 0, false, '', context, false);
 
@@ -1017,6 +1101,19 @@ describe('expandTask', () => {
 		});
 
 		test('should use specific count prompting when numSubtasks is positive', async () => {
+			// Mock getPromptManager to return realistic prompt with specific count
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt:
+					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 5 specific subtasks that can be implemented one by one.',
+				userPrompt: 'Break down this task into exactly 5 specific subtasks'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			// Act
 			await expandTask(tasksPath, taskId, 5, false, '', context, false);
 
@@ -1032,6 +1129,19 @@ describe('expandTask', () => {
 			// Mock getDefaultSubtasks to return a specific value
 			getDefaultSubtasks.mockReturnValue(4);
 
+			// Mock getPromptManager to return realistic prompt with default count
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt:
+					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 4 specific subtasks that can be implemented one by one.',
+				userPrompt: 'Break down this task into exactly 4 specific subtasks'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			// Act
 			await expandTask(tasksPath, taskId, -3, false, '', context, false);
 
@@ -1045,6 +1155,19 @@ describe('expandTask', () => {
 			// Mock getDefaultSubtasks to return a specific value
 			getDefaultSubtasks.mockReturnValue(6);
 
+			// Mock getPromptManager to return realistic prompt with default count
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt:
+					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 6 specific subtasks that can be implemented one by one.',
+				userPrompt: 'Break down this task into exactly 6 specific subtasks'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
+
 			// Act - Call without specifying numSubtasks (undefined)
 			await expandTask(tasksPath, taskId, undefined, false, '', context, false);
 
@@ -1057,6 +1180,19 @@ describe('expandTask', () => {
 		test('should use getDefaultSubtasks when numSubtasks is null', async () => {
 			// Mock getDefaultSubtasks to return a specific value
 			getDefaultSubtasks.mockReturnValue(7);
+
+			// Mock getPromptManager to return realistic prompt with default count
+			const { getPromptManager } = await import(
+				'../../../../../scripts/modules/prompt-manager.js'
+			);
+			const mockLoadPrompt = jest.fn().mockResolvedValue({
+				systemPrompt:
+					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 7 specific subtasks that can be implemented one by one.',
+				userPrompt: 'Break down this task into exactly 7 specific subtasks'
+			});
+			getPromptManager.mockReturnValue({
+				loadPrompt: mockLoadPrompt
+			});
 
 			// Act - Call with null numSubtasks
 			await expandTask(tasksPath, taskId, null, false, '', context, false);

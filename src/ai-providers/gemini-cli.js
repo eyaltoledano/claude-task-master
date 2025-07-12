@@ -8,7 +8,7 @@
 import { generateObject, generateText, streamText } from 'ai';
 import { parse } from 'jsonc-parser';
 import { BaseAIProvider } from './base-provider.js';
-import { log } from '../../scripts/modules/index.js';
+import { log } from '../../scripts/modules/utils.js';
 
 let createGeminiProvider;
 
@@ -67,8 +67,7 @@ export class GeminiCliProvider extends BaseAIProvider {
 					apiKey: params.apiKey
 				};
 			} else {
-				// Expected case: Use gemini CLI authentication
-				// Requires: gemini auth login (pre-configured)
+				// Expected case: Use gemini CLI authentication via OAuth
 				authOptions = {
 					authType: 'oauth-personal'
 				};
@@ -652,5 +651,13 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 			// For non-parsing errors, just re-throw
 			throw error;
 		}
+	}
+
+	getRequiredApiKeyName() {
+		return 'GEMINI_API_KEY';
+	}
+
+	isRequiredApiKey() {
+		return false;
 	}
 }

@@ -205,32 +205,57 @@ export class ClaudeCodeLanguageModel {
 				}
 			}
 		} catch (error) {
-			if (error instanceof AbortError) {
-				throw options.abortSignal?.aborted ? options.abortSignal.reason : error;
-			}
+			// -------------------------------------------------------------
+			// Work-around for Claude-Code CLI/SDK JSON truncation bug (#913)
+			// -------------------------------------------------------------
+			// If the SDK throws a JSON SyntaxError *but* we already hold some
+			// buffered text, assume the response was truncated by the CLI.
+			// We keep the accumulated text, mark the finish reason, push a
+			// provider-warning and *skip* the normal error handling so Task
+			// Master can continue processing.
+			const isJsonTruncation =
+				error instanceof SyntaxError &&
+				/JSON/i.test(error.message || '') &&
+				(error.message.includes('position') ||
+					error.message.includes('Unexpected end'));
+			if (isJsonTruncation && text && text.length > 0) {
+				warnings.push({
+					type: 'provider-warning',
+					details:
+						'Claude Code SDK emitted a JSON parse error but Task Master recovered buffered text (possible CLI truncation).'
+				});
+				finishReason = 'truncated';
+				// Skip re-throwing: fall through so the caller receives usable data
+			} else {
+				if (error instanceof AbortError) {
+					throw options.abortSignal?.aborted
+						? options.abortSignal.reason
+						: error;
+				}
 
-			// Check for authentication errors
-			if (
-				error.message?.includes('not logged in') ||
-				error.message?.includes('authentication') ||
-				error.exitCode === 401
-			) {
-				throw createAuthenticationError({
-					message:
-						error.message ||
-						'Authentication failed. Please ensure Claude Code CLI is properly authenticated.'
+				// Check for authentication errors
+				if (
+					error.message?.includes('not logged in') ||
+					error.message?.includes('authentication') ||
+					error.exitCode === 401
+				) {
+					throw createAuthenticationError({
+						message:
+							error.message ||
+							'Authentication failed. Please ensure Claude Code CLI is properly authenticated.'
+					});
+				}
+
+				// Wrap other errors with API call error
+				throw createAPICallError({
+					message: error.message || 'Claude Code CLI error',
+					code: error.code,
+					exitCode: error.exitCode,
+					stderr: error.stderr,
+					promptExcerpt: messagesPrompt.substring(0, 200),
+					isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED'
 				});
 			}
-
-			// Wrap other errors with API call error
-			throw createAPICallError({
-				message: error.message || 'Claude Code CLI error',
-				code: error.code,
-				exitCode: error.exitCode,
-				stderr: error.stderr,
-				promptExcerpt: messagesPrompt.substring(0, 200),
-				isRetryable: error.code === 'ENOENT' || error.code === 'ECONNREFUSED'
-			});
 		}
 
 		// Extract JSON if in object-json mode
@@ -400,6 +425,53 @@ export class ClaudeCodeLanguageModel {
 								modelId: this.modelId
 							});
 						}
+					}
+
+					// -------------------------------------------------------------
+					// Work-around for Claude-Code CLI/SDK JSON truncation bug (#913)
+					// -------------------------------------------------------------
+					// If we hit the SDK JSON SyntaxError but have buffered text, finalize
+					// the stream gracefully instead of emitting an error.
+					const isJsonTruncation =
+						error instanceof SyntaxError &&
+						/JSON/i.test(error.message || '') &&
+						(error.message.includes('position') ||
+							error.message.includes('Unexpected end'));
+
+					if (
+						isJsonTruncation &&
+						accumulatedText &&
+						accumulatedText.length > 0
+					) {
+						// Prepare final text payload
+						const finalText =
+							options.mode?.type === 'object-json'
+								? extractJson(accumulatedText)
+								: accumulatedText;
+
+						// Emit any remaining text
+						controller.enqueue({
+							type: 'text-delta',
+							textDelta: finalText
+						});
+
+						// Emit finish with truncated reason and warning
+						controller.enqueue({
+							type: 'finish',
+							finishReason: 'truncated',
+							usage,
+							providerMetadata: { 'claude-code': { truncated: true } },
+							warnings: [
+								{
+									type: 'provider-warning',
+									details:
+										'Claude Code SDK JSON truncation detected; stream recovered.'
+								}
+							]
+						});
+
+						controller.close();
+						return; // Skip normal error path
 					}
 
 					controller.close();

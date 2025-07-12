@@ -39,4 +39,16 @@ export class OllamaAIProvider extends BaseAIProvider {
 			this.handleError('client initialization', error);
 		}
 	}
+
+	isRequiredApiKey() {
+		return false;
+	}
+
+	/**
+	 * Returns the required API key environment variable name for Ollama.
+	 * @returns {string} The environment variable name
+	 */
+	getRequiredApiKeyName() {
+		return 'OLLAMA_API_KEY';
+	}
 }
