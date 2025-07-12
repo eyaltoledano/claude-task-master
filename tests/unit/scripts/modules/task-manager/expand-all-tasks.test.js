@@ -34,13 +34,23 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 
 jest.unstable_mockModule('chalk', () => ({
 	default: {
+		// Keep default for compatibility if it's used elsewhere or by ESM default import
 		white: { bold: jest.fn((text) => text) },
 		cyan: jest.fn((text) => text),
 		green: jest.fn((text) => text),
+		blue: jest.fn((text) => text), // Added blue
 		gray: jest.fn((text) => text),
 		red: jest.fn((text) => text),
 		bold: jest.fn((text) => text)
-	}
+	},
+	// Also provide them directly for named import usage
+	white: { bold: jest.fn((text) => text) },
+	cyan: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	blue: jest.fn((text) => text), // Added blue
+	gray: jest.fn((text) => text),
+	red: jest.fn((text) => text),
+	bold: jest.fn((text) => text)
 }));
 
 jest.unstable_mockModule('boxen', () => ({
@@ -122,16 +132,38 @@ describe('expandAllTasks', () => {
 	describe('successful expansion', () => {
 		test('should expand all eligible pending tasks', async () => {
 			// Arrange
-			const mockTelemetryData = {
+			const mockTelemetryData1 = {
 				timestamp: '2024-01-01T00:00:00.000Z',
 				commandName: 'expand-task',
 				totalCost: 0.05,
 				totalTokens: 1000
 			};
+			const mockTelemetryData2 = {
+				timestamp: '2024-01-01T00:00:00.000Z',
+				commandName: 'expand-task',
+				totalCost: 0.06,
+				totalTokens: 1200
+			};
 
-			mockExpandTask.mockResolvedValue({
-				telemetryData: mockTelemetryData
-			});
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData: mockTelemetryData1
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData: mockTelemetryData2
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -184,9 +216,35 @@ describe('expandAllTasks', () => {
 
 		test('should handle force flag to expand tasks with existing subtasks', async () => {
 			// Arrange
-			mockExpandTask.mockResolvedValue({
-				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
-			});
+			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 4,
+						title: 'Task with Subtasks',
+						status: 'pending',
+						subtasks: [{ id: '4.1', title: 'Existing subtask' }]
+					},
+					telemetryData
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -210,9 +268,26 @@ describe('expandAllTasks', () => {
 
 		test('should handle research flag', async () => {
 			// Arrange
-			mockExpandTask.mockResolvedValue({
-				telemetryData: { commandName: 'expand-task', totalCost: 0.08 }
-			});
+			const telemetryData = { commandName: 'expand-task', totalCost: 0.08 };
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -287,7 +362,15 @@ describe('expandAllTasks', () => {
 		test('should handle expandTask failures gracefully', async () => {
 			// Arrange
 			mockExpandTask
-				.mockResolvedValueOnce({ telemetryData: { totalCost: 0.05 } }) // First task succeeds
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData: { totalCost: 0.05 }
+				}) // First task succeeds
 				.mockRejectedValueOnce(new Error('AI service error')); // Second task fails
 
 			// Act
@@ -371,8 +454,24 @@ describe('expandAllTasks', () => {
 			};
 
 			mockExpandTask
-				.mockResolvedValueOnce({ telemetryData: telemetryData1 })
-				.mockResolvedValueOnce({ telemetryData: telemetryData2 });
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData: telemetryData1
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData: telemetryData2
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -400,7 +499,24 @@ describe('expandAllTasks', () => {
 
 		test('should handle missing telemetry data gracefully', async () => {
 			// Arrange
-			mockExpandTask.mockResolvedValue({}); // No telemetryData
+			// No telemetryData, but task object should still be present for count
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					}
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					}
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -429,9 +545,26 @@ describe('expandAllTasks', () => {
 	describe('output format handling', () => {
 		test('should use text output format for CLI calls', async () => {
 			// Arrange
-			mockExpandTask.mockResolvedValue({
-				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
-			});
+			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData
+				});
 
 			// Act
 			const result = await expandAllTasks(
@@ -460,9 +593,26 @@ describe('expandAllTasks', () => {
 				tag: 'feature-branch'
 			};
 			mockReadJSON.mockReturnValue(taggedTasksData);
-			mockExpandTask.mockResolvedValue({
-				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
-			});
+			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
+			mockExpandTask
+				.mockResolvedValueOnce({
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
+					telemetryData
+				})
+				.mockResolvedValueOnce({
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
+					telemetryData
+				});
 
 			// Act
 			const result = await expandAllTasks(

@@ -86,6 +86,38 @@ export function registerResearchTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						'research tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure.'
+					);
+
+					const pendingInteractionDetailsForAgent = result.pendingInteraction;
+
+					return {
+						content: [
+							{
+								type: 'resource',
+								resource: {
+									uri: 'agent-llm://pending-interaction',
+									mimeType: 'application/json',
+									text: JSON.stringify({
+										isAgentLLMPendingInteraction: true,
+										details: pendingInteractionDetailsForAgent
+									})
+								}
+							}
+						],
+						isError: false
+					};
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
+				// If not delegating, proceed with existing result handling
 				return handleApiResult(
 					result,
 					log,

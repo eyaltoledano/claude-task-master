@@ -48,12 +48,13 @@ export async function researchDirect(args, log, context = {}) {
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
+	const wasSilentInitially = enableSilentMode(); // Capture initial state
 
 	try {
 		// Check required parameters
 		if (!query || typeof query !== 'string' || query.trim().length === 0) {
 			log.error('Missing or invalid required parameter: query');
-			disableSilentMode();
+			// disableSilentMode(); // Handled by finally
 			return {
 				success: false,
 				error: {
@@ -131,8 +132,19 @@ export async function researchDirect(args, log, context = {}) {
 			false // allowFollowUp - disable for MCP calls
 		);
 
-		// Auto-save to task/subtask if requested
-		if (saveTo) {
+		// === BEGIN AGENT_LLM DELEGATION PROPAGATION ===
+		if (result && result.needsAgentDelegation === true) {
+			mcpLog.debug(
+				'researchDirect: Propagating agent_llm_delegation signal from performResearch.'
+			);
+			// disableSilentMode(); // Handled by finally
+			return result; // Return the whole { needsAgentDelegation: true, pendingInteraction: ... } object
+		}
+		// === END AGENT_LLM DELEGATION PROPAGATION ===
+
+		// Auto-save to task/subtask if requested (ONLY IF NOT DELEGATING and result is not null)
+		if (saveTo && result && result.result != null) {
+			// Check result.result for null explicitly
 			try {
 				const isSubtask = saveTo.includes('.');
 
@@ -213,8 +225,22 @@ ${result.result}`;
 			}
 		}
 
-		// Restore normal logging
-		disableSilentMode();
+		// Restore normal logging -- Handled by finally
+
+		// This part is reached only if not delegating and no errors from performResearch
+		if (!result || typeof result.result === 'undefined') {
+			// Check if result or result.result is problematic
+			log.error(
+				'performResearch returned an invalid result structure for successful non-delegation.'
+			);
+			return {
+				success: false,
+				error: {
+					code: 'INVALID_CORE_RESPONSE',
+					message: 'Core research function returned invalid data.'
+				}
+			};
+		}
 
 		return {
 			success: true,
@@ -234,9 +260,7 @@ ${result.result}`;
 			}
 		};
 	} catch (error) {
-		// Make sure to restore normal logging even if there's an error
-		disableSilentMode();
-
+		// Make sure to restore normal logging even if there's an error -- Handled by finally
 		log.error(`Error in researchDirect: ${error.message}`);
 		return {
 			success: false,
@@ -245,5 +269,10 @@ ${result.result}`;
 				message: error.message
 			}
 		};
+	} finally {
+		if (wasSilentInitially === false) {
+			// Only disable if it wasn't silent when we entered
+			disableSilentMode();
+		}
 	}
 }

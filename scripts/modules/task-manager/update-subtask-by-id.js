@@ -258,6 +258,46 @@ async function updateSubtaskById(
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				report(
+					'debug',
+					`updateSubtaskById (core): Detected agent_llm_delegation signal for subtask ID ${subtaskId}.`
+				);
+				if (outputFormat === 'text' && loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator); // Stop CLI loader if active
+					loadingIndicator = null; // Prevent further operations on it
+				}
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm', // Standard type for server processing
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							originalCommand: context.commandName || 'update_subtask',
+							role: role, // 'role' is defined based on useResearch flag
+							serviceType: 'generateText',
+							requestParameters: {
+								// These are the details from the agent_llm_delegation signal's 'details' field
+								...aiServiceResponse.mainResult.details,
+								// Add specific context useful for the agent to update a subtask
+								subtaskId: subtaskId, // The ID of the subtask being updated (e.g., "1.2")
+								originalUserPrompt: prompt // The user's high-level request string
+								// The system and user prompts sent to the AI (and thus to the agent)
+								// already contain detailed context about parent task, siblings, and existing details.
+								// So, no need to add them explicitly here again unless the agent workflow requires it differently.
+							}
+						}
+					}
+					// No 'updatedSubtask' or 'telemetryData' here as the operation is pending.
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (
 				aiServiceResponse &&
 				aiServiceResponse.mainResult &&

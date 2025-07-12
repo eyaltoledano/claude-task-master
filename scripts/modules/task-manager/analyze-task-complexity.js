@@ -435,6 +435,40 @@ async function analyzeTaskComplexity(options, context = {}) {
 				outputType: mcpLog ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				reportLog(
+					'analyzeTaskComplexity (core): Detected agent_llm_delegation signal.',
+					'debug'
+				);
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm',
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
+							originalCommand:
+								context.commandName || 'analyze_project_complexity',
+							role: useResearch ? 'research' : 'main',
+							serviceType: 'generateText', // Agent expected to return JSON string
+							requestParameters: {
+								...aiServiceResponse.mainResult.details // Includes prompt, systemPrompt, modelId, etc.
+								// Add any other parameters the agent might need or the saver utility might need later
+								// For complexity analysis, the main payload is the tasksData used in the prompt,
+								// which is already part of details.prompt.
+							}
+						}
+					}
+					// No 'report' or 'telemetryData' here as the operation is pending.
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (loadingIndicator) {
 				stopLoadingIndicator(loadingIndicator);
 				loadingIndicator = null;

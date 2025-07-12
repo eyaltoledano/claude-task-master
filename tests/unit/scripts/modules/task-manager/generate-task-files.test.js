@@ -196,7 +196,8 @@ describe('generateTaskFiles', () => {
 			sampleTasksData,
 			tasksPath,
 			undefined,
-			'master'
+			'master',
+			{ mcpLog: { info: expect.any(Function) } }
 		);
 
 		// Verify files were written for each task in the master tag
@@ -296,7 +297,8 @@ describe('generateTaskFiles', () => {
 			sampleTasksData,
 			'tasks/tasks.json',
 			undefined,
-			'master'
+			'master',
+			{ mcpLog: { info: expect.any(Function) } }
 		);
 	});
 });

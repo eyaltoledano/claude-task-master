@@ -67,6 +67,37 @@ export function registerUpdateSubtaskTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`update_subtask tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+
+					const pendingInteractionDetailsForAgent = result.pendingInteraction; // Matching var name from other tools
+
+					return {
+						content: [
+							{
+								type: 'resource',
+								resource: {
+									uri: 'agent-llm://pending-interaction', // Standard URI
+									mimeType: 'application/json',
+									text: JSON.stringify({
+										isAgentLLMPendingInteraction: true, // Flag for the client
+										details: pendingInteractionDetailsForAgent // The propagated pendingInteraction object
+									})
+								}
+							}
+						],
+						isError: false // This is not an error, but a signal
+					};
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
 				if (result.success) {
 					log.info(`Successfully updated subtask with ID ${args.id}`);
 				} else {

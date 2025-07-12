@@ -304,22 +304,31 @@ async function expandTask(
 	force = false
 ) {
 	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
-	const outputFormat = mcpLog ? 'json' : 'text';
+
+	// Determine if this is an MCP context or CLI context for AI service calls
+	const isMCPCall = !!mcpLog;
+	const determinedOutputType = isMCPCall ? 'mcp' : 'cli';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
 
-	// Use mcpLog if available, otherwise use the default console log wrapper
+	// Use mcpLog if available for logging, otherwise use the default console log wrapper
 	const logger = mcpLog || {
 		info: (msg) => !isSilentMode() && log('info', msg),
 		warn: (msg) => !isSilentMode() && log('warn', msg),
 		error: (msg) => !isSilentMode() && log('error', msg),
 		debug: (msg) =>
-			!isSilentMode() && getDebugFlag(session) && log('debug', msg) // Use getDebugFlag
+			!isSilentMode() && getDebugFlag(session) && log('debug', msg)
 	};
 
 	if (mcpLog) {
-		logger.info(`expandTask called with context: session=${!!session}`);
+		logger.info(
+			`expandTask called with context: session=${!!session}, resolved outputType for AI: ${determinedOutputType}`
+		);
+	} else {
+		logger.debug(
+			`expandTask called in CLI mode, resolved outputType for AI: ${determinedOutputType}`
+		);
 	}
 
 	try {
@@ -517,7 +526,8 @@ async function expandTask(
 		// --- AI Subtask Generation using generateTextService ---
 		let generatedSubtasks = [];
 		let loadingIndicator = null;
-		if (outputFormat === 'text') {
+		if (!isMCPCall) {
+			// Replaced outputFormat === 'text' with !isMCPCall
 			loadingIndicator = startLoadingIndicator(
 				`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 			);
@@ -537,10 +547,44 @@ async function expandTask(
 				session,
 				projectRoot,
 				commandName: 'expand-task',
-				outputType: outputFormat
+				outputType: determinedOutputType
 			});
-			responseText = aiServiceResponse.mainResult;
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				logger.debug(
+					'expandTask (core): Detected agent_llm_delegation signal.'
+				);
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm',
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							originalCommand: context.commandName || 'expand-task', // context.commandName is from options
+							role: useResearch ? 'research' : 'main',
+							// If we change to generateObjectService for agents, this would be 'generateObject'
+							// and requestParameters.schema would be subtaskWrapperSchema.
+							// For now, assuming agent handles generateText and returns parseable JSON string.
+							serviceType: 'generateText',
+							requestParameters: {
+								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
+								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
+								numSubtasksForAgent: finalSubtaskCount // Add finalSubtaskCount (as numSubtasksForAgent)
+							}
+						}
+					}
+					// No 'task' or 'telemetryData' fields here as the operation is pending.
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
+			// Existing logic follows if no delegation:
+			responseText = aiServiceResponse.mainResult;
 			// Parse Subtasks
 			generatedSubtasks = parseSubtasksFromText(
 				responseText,
@@ -585,7 +629,7 @@ async function expandTask(
 
 		// Display AI Usage Summary for CLI
 		if (
-			outputFormat === 'text' &&
+			!isMCPCall && // Replaced outputFormat === 'text' with !isMCPCall
 			aiServiceResponse &&
 			aiServiceResponse.telemetryData
 		) {
@@ -601,11 +645,15 @@ async function expandTask(
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
-		if (outputFormat === 'text' && getDebugFlag(session)) {
+		if (!isMCPCall && getDebugFlag(session)) {
+			// Replaced outputFormat === 'text' with !isMCPCall
 			console.error(error); // Log full stack in debug CLI mode
 		}
 		throw error; // Re-throw for the caller
 	}
 }
 
-export default expandTask;
+// Replace the single default export (if it exists)
+// export default expandTask;
+// With:
+export { expandTask as default, parseSubtasksFromText };

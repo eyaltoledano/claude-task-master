@@ -22,6 +22,7 @@ export const CUSTOM_PROVIDERS = {
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
 	CLAUDE_CODE: 'claude-code',
+	AGENTLLM: 'agentllm',
 	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli'
 };

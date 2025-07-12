@@ -116,13 +116,24 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					mcpLog: logWrapper,
 					session,
 					projectRoot,
-					commandName: 'update-task',
+					commandName: 'update_task', // Corrected name
 					outputType: 'mcp'
 				},
 				'json',
 				append || false
 			);
 
+			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
+			if (coreResult && coreResult.needsAgentDelegation === true) {
+				logWrapper.debug(
+					'updateTaskByIdDirect: Propagating agent_llm_delegation signal from core updateTaskById.'
+				);
+				// The 'finally' block will handle disabling silent mode.
+				return coreResult; // Propagate the signal object
+			}
+			// === END AGENT_LLM_DELEGATION PROPAGATION ===
+
+			// Existing logic for handling direct success (if no delegation) follows:
 			// Check if the core function returned null or an object without success
 			if (!coreResult || coreResult.updatedTask === null) {
 				// Core function logs the reason, just return success with info

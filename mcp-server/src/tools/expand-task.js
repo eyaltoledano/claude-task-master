@@ -81,6 +81,46 @@ export function registerExpandTaskTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						'expand-task tool: Agent delegation signaled by expandTaskDirect. Returning EmbeddedResource structure.'
+					);
+
+					// Extract the details needed for agent_llm tool from pendingInteraction.
+					// The structure of pendingInteraction from expandTask (core) is:
+					// {
+					//     type: "agent_llm",
+					//     interactionId: ...,
+					//     delegatedCallDetails: { originalCommand, role, serviceType, requestParameters }
+					// }
+					// The 'details' for isAgentLLMPendingInteraction should be this pendingInteraction object itself.
+					const pendingInteractionDetailsForAgent = result.pendingInteraction;
+
+					return {
+						content: [
+							{
+								type: 'resource',
+								resource: {
+									uri: 'agent-llm://pending-interaction',
+									mimeType: 'application/json',
+									text: JSON.stringify({
+										isAgentLLMPendingInteraction: true,
+										details: pendingInteractionDetailsForAgent
+									})
+								}
+							}
+						],
+						isError: false
+					};
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
+				// If not delegating, proceed with existing result handling (likely handleApiResult)
 				return handleApiResult(
 					result,
 					log,

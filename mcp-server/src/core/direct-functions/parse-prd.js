@@ -5,6 +5,9 @@
 
 import path from 'path';
 import fs from 'fs';
+// Add these if not already present, adjust paths as necessary
+import { writeJSON } from '../../../../scripts/modules/utils.js';
+import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
@@ -161,8 +164,53 @@ export async function parsePRDDirect(args, log, context = {}) {
 			'json'
 		);
 
-		// Adjust check for the new return structure
-		if (result && result.success) {
+		logWrapper.info(
+			`parsePRDDirect: Resumed from await parsePRD. Result type: ${typeof result}`
+		);
+		if (result && typeof result === 'object') {
+			logWrapper.info(
+				`parsePRDDirect: Result keys: ${Object.keys(result).join(', ')}`
+			);
+			logWrapper.info(
+				`parsePRDDirect: result.tasks is array: ${Array.isArray(result.tasks)}`
+			);
+			logWrapper.info(
+				`parsePRDDirect: result.metadata is object: ${typeof result.metadata === 'object' && result.metadata !== null}`
+			);
+			logWrapper.info(
+				`parsePRDDirect: result.needsAgentDelegation value: ${result.needsAgentDelegation}`
+			);
+			logWrapper.info(
+				`parsePRDDirect: result.success value: ${result.success}`
+			);
+			// Optionally, log a snippet of the result if the above isn't detailed enough for diagnosis
+			// logWrapper.info(`parsePRDDirect: Resumed result (snippet): ${JSON.stringify(result, null, 2)?.substring(0, 500)}`);
+		} else {
+			logWrapper.info(
+				`parsePRDDirect: Resumed result is not an object or is null: ${JSON.stringify(result)}`
+			);
+		}
+
+		// === NEW MODIFICATION START ===
+		// The block for handling resumed agent data has been removed from here,
+		// as this responsibility is now in mcp-server/src/index.js.
+
+		// Existing logic follows, adjusted from 'else if' to 'if' where appropriate.
+
+		logWrapper.info(
+			'parsePRDDirect: Evaluating condition for needsAgentDelegation...'
+		);
+		if (result && result.needsAgentDelegation === true) {
+			logWrapper.debug(
+				'parsePRDDirect: Condition for needsAgentDelegation MET. Propagating agent_llm_delegation signal.'
+			); // Combined/moved log
+			return result;
+		}
+		// IMPORTANT: Only whitespace or comments are allowed between the above '}' and the 'else if' below.
+		else if (result && result.success === true) {
+			logWrapper.info(
+				'parsePRDDirect: Evaluating condition for direct success... Condition MET.'
+			); // Log moved inside
 			const successMsg = `Successfully parsed PRD and generated tasks in ${result.tasksPath}`;
 			logWrapper.success(successMsg);
 			return {
@@ -174,18 +222,24 @@ export async function parsePRDDirect(args, log, context = {}) {
 					tagInfo: result.tagInfo
 				}
 			};
-		} else {
-			// Handle case where core function didn't return expected success structure
+		}
+		// IMPORTANT: Only whitespace or comments are allowed between the above '}' and the 'else' below.
+		else {
+			logWrapper.info(
+				'parsePRDDirect: None of the primary conditions met, evaluating final else (error) block... Condition MET.'
+			); // Log moved inside
+			const errorMsgDetail =
+				result?.message ||
+				'Core function failed to parse PRD or returned unexpected result.';
+			// The log line below was updated in a previous subtask report, ensure it's the more detailed one.
 			logWrapper.error(
-				'Core parsePRD function did not return a successful structure.'
+				`Core parsePRD function did not return a successful structure (not agent delegation, not direct success). Details: ${errorMsgDetail}`
 			);
 			return {
 				success: false,
 				error: {
 					code: 'CORE_FUNCTION_ERROR',
-					message:
-						result?.message ||
-						'Core function failed to parse PRD or returned unexpected result.'
+					message: errorMsgDetail
 				}
 			};
 		}

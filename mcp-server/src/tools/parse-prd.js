@@ -63,14 +63,41 @@ export function registerParsePRDTool(server) {
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				const result = await parsePRDDirect(args, log, { session });
-				return handleApiResult(
-					result,
-					log,
-					'Error parsing PRD',
-					undefined,
-					args.projectRoot
-				);
+				// Call the direct function and store its result
+				const resultFromDirectCall = await parsePRDDirect(args, log, {
+					session
+				});
+
+				// Check if agent delegation is needed
+				if (
+					resultFromDirectCall &&
+					resultFromDirectCall.needsAgentDelegation === true
+				) {
+					log.info(
+						'parse_prd tool: Agent delegation signaled. Returning EmbeddedResource structure.'
+					);
+					// Return the new EmbeddedResource structure
+					return {
+						content: [
+							{
+								type: 'resource', // Standard MCP content type
+								resource: {
+									uri: 'agent-llm://pending-interaction', // Conventional URI
+									mimeType: 'application/json', // Specifies that 'text' contains JSON
+									text: JSON.stringify({
+										// Stringify the actual payload
+										isAgentLLMPendingInteraction: true, // Flag for easy identification
+										details: resultFromDirectCall.pendingInteraction // Core pendingInteraction data
+									})
+								}
+							}
+						],
+						isError: false // Standard part of CallToolResult
+					};
+				} else {
+					// If no delegation, process the result as usual
+					return handleApiResult(resultFromDirectCall, log);
+				}
 			} catch (error) {
 				log.error(`Error in parse_prd: ${error.message}`);
 				return createErrorResponse(`Failed to parse PRD: ${error.message}`);

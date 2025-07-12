@@ -3,6 +3,10 @@ import {
 	getRulesProfile
 } from '../../../src/utils/rule-transformer.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
+import path from 'path';
+
+// Helper function to normalize path separators to forward slashes for comparison
+const normalizePath = (p) => (p ? p.replace(/\\/g, '/') : p);
 
 describe('Rule Transformer - General', () => {
 	describe('Profile Configuration Validation', () => {
@@ -107,7 +111,8 @@ describe('Rule Transformer - General', () => {
 				'cursor_rules.mdc',
 				'dev_workflow.mdc',
 				'self_improve.mdc',
-				'taskmaster.mdc'
+				'taskmaster.mdc',
+        'agentllm.mdc',
 			];
 
 			RULE_PROFILES.forEach((profile) => {
@@ -184,53 +189,74 @@ describe('Rule Transformer - General', () => {
 		});
 
 		it('should have correct MCP configuration for each profile', () => {
-			const expectedConfigs = {
+			const baseExpectedConfigs = {
 				claude: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					expectedPath: null
+					// expectedPath: null // Will remain null
+					profileDir: '.' // Dummy for path.join, won't be used if mcpConfigName is null
 				},
 				cline: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					expectedPath: null
+					//expectedPath: null
 				},
 				codex: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					expectedPath: null
+					// expectedPath: null
+					profileDir: '.'
 				},
 				cursor: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.cursor/mcp.json'
+					profileDir: '.cursor'
+					// expectedPath: '.cursor/mcp.json'
 				},
 				gemini: {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
+					profileDir: '.gemini',
 					expectedPath: '.gemini/settings.json'
 				},
 				roo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.roo/mcp.json'
+					profileDir: '.roo'
+					// expectedPath: '.roo/mcp.json'
 				},
 				trae: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					expectedPath: null
+					//expectedPath: null,
+					profileDir: '.trae'
 				},
 				vscode: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.vscode/mcp.json'
+					profileDir: '.vscode'
+					// expectedPath: '.vscode/mcp.json'
 				},
 				windsurf: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.windsurf/mcp.json'
+					profileDir: '.windsurf'
+					// expectedPath: '.windsurf/mcp.json'
 				}
 			};
+
+			const expectedConfigs = Object.entries(baseExpectedConfigs).reduce(
+				(acc, [profileName, config]) => {
+					acc[profileName] = {
+						...config,
+						expectedPath: config.mcpConfigName
+							? path.join(config.profileDir, config.mcpConfigName)
+							: null
+					};
+					return acc;
+				},
+				{}
+			);
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
@@ -238,7 +264,7 @@ describe('Rule Transformer - General', () => {
 
 				expect(profileConfig.mcpConfig).toBe(expected.mcpConfig);
 				expect(profileConfig.mcpConfigName).toBe(expected.mcpConfigName);
-				expect(profileConfig.mcpConfigPath).toBe(expected.expectedPath);
+				expect(normalizePath(profileConfig.mcpConfigPath)).toBe(normalizePath(expected.expectedPath));
 			});
 		});
 
@@ -251,19 +277,15 @@ describe('Rule Transformer - General', () => {
 					expect(profileConfig.mcpConfigPath).toBe(null);
 				} else {
 					// Profiles with MCP configuration should have valid paths
+					// Normalize paths for comparison
+					const normalizedMcpConfigPath = normalizePath(profileConfig.mcpConfigPath);
+					const normalizedProfileDir = normalizePath(profileConfig.profileDir);
+					const normalizedMcpConfigName = normalizePath(profileConfig.mcpConfigName);
 					// The mcpConfigPath should start with the profileDir
-					expect(profileConfig.mcpConfigPath).toMatch(
-						new RegExp(
-							`^${profileConfig.profileDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`
-						)
-					);
+					expect(normalizedMcpConfigPath.startsWith(normalizedProfileDir + '/')).toBe(true);
 
 					// The mcpConfigPath should end with the mcpConfigName
-					expect(profileConfig.mcpConfigPath).toMatch(
-						new RegExp(
-							`${profileConfig.mcpConfigName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`
-						)
-					);
+					expect(normalizedMcpConfigPath.endsWith('/' + normalizedMcpConfigName)).toBe(true);
 				}
 			});
 		});

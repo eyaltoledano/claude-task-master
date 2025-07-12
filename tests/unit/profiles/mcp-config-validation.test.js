@@ -2,9 +2,13 @@ import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 import path from 'path';
 
+// Helper function to normalize path separators to forward slashes for comparison
+const normalizePath = (p) => (p ? p.replace(/\\/g, '/') : p);
+
 describe('MCP Configuration Validation', () => {
 	describe('Profile MCP Configuration Properties', () => {
-		const expectedMcpConfigurations = {
+		// Define base configurations
+		const baseMcpConfigurations = {
 			cline: {
 				shouldHaveMcp: false,
 				expectedDir: '.clinerules',
@@ -14,8 +18,7 @@ describe('MCP Configuration Validation', () => {
 			cursor: {
 				shouldHaveMcp: true,
 				expectedDir: '.cursor',
-				expectedConfigName: 'mcp.json',
-				expectedPath: '.cursor/mcp.json'
+				expectedConfigName: 'mcp.json'
 			},
 			gemini: {
 				shouldHaveMcp: true,
@@ -26,8 +29,7 @@ describe('MCP Configuration Validation', () => {
 			roo: {
 				shouldHaveMcp: true,
 				expectedDir: '.roo',
-				expectedConfigName: 'mcp.json',
-				expectedPath: '.roo/mcp.json'
+				expectedConfigName: 'mcp.json'
 			},
 			trae: {
 				shouldHaveMcp: false,
@@ -38,16 +40,27 @@ describe('MCP Configuration Validation', () => {
 			vscode: {
 				shouldHaveMcp: true,
 				expectedDir: '.vscode',
-				expectedConfigName: 'mcp.json',
-				expectedPath: '.vscode/mcp.json'
+				expectedConfigName: 'mcp.json'
 			},
 			windsurf: {
 				shouldHaveMcp: true,
 				expectedDir: '.windsurf',
-				expectedConfigName: 'mcp.json',
-				expectedPath: '.windsurf/mcp.json'
+				expectedConfigName: 'mcp.json'
 			}
 		};
+
+		// Generate expectedPath for each configuration using path.join
+		const expectedMcpConfigurations = Object.entries(
+			baseMcpConfigurations
+		).reduce((acc, [profileName, config]) => {
+			acc[profileName] = {
+				...config,
+				expectedPath:config.expectedConfigName
+					? path.join(config.expectedDir, config.expectedConfigName)
+					: null
+			};
+			return acc;
+		}, {});
 
 		Object.entries(expectedMcpConfigurations).forEach(
 			([profileName, expected]) => {
@@ -57,7 +70,7 @@ describe('MCP Configuration Validation', () => {
 					expect(profile.mcpConfig).toBe(expected.shouldHaveMcp);
 					expect(profile.profileDir).toBe(expected.expectedDir);
 					expect(profile.mcpConfigName).toBe(expected.expectedConfigName);
-					expect(profile.mcpConfigPath).toBe(expected.expectedPath);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expected.expectedPath));
 				});
 			}
 		);
@@ -72,7 +85,7 @@ describe('MCP Configuration Validation', () => {
 						profile.profileDir,
 						profile.mcpConfigName
 					);
-					expect(profile.mcpConfigPath).toBe(expectedPath);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedPath));
 				}
 			});
 		});
@@ -81,7 +94,8 @@ describe('MCP Configuration Validation', () => {
 			const mcpPaths = new Set();
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
-				if (profile.mcpConfig !== false) {
+				// Only consider profiles that actually have an MCP config path
+				if (profile.mcpConfigPath) {
 					expect(mcpPaths.has(profile.mcpConfigPath)).toBe(false);
 					mcpPaths.add(profile.mcpConfigPath);
 				}
@@ -92,7 +106,21 @@ describe('MCP Configuration Validation', () => {
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
-					expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+					// Check 1: profileDir starts with a dot (unless it's the root dir for simple profiles)
+					if (profile.profileDir !== '.') {
+						expect(profile.profileDir.startsWith('.')).toBe(true);
+					}
+					// Check 2: mcpConfigName is a non-empty string and looks like a filename
+					expect(typeof profile.mcpConfigName).toBe('string');
+					expect(profile.mcpConfigName.length).toBeGreaterThan(0);
+					expect(profile.mcpConfigName).toMatch(/^[\w_.-]+$/); // Basic filename check
+
+					// Check 3: mcpConfigPath is correctly formed from profileDir and mcpConfigName
+					const expectedConfigPath = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedConfigPath));
 				}
 			});
 		});
@@ -221,12 +249,16 @@ describe('MCP Configuration Validation', () => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
 					// Verify the path is properly formatted for path.join usage
-					expect(profile.mcpConfigPath.startsWith('/')).toBe(false);
-					expect(profile.mcpConfigPath).toContain('/');
+					expect(normalizePath(profile.mcpConfigPath).startsWith('/')).toBe(false); // It's a relative path (after normalization)
+					// Check if it contains a forward slash, as paths are normalized
+					expect(normalizePath(profile.mcpConfigPath)).toMatch(/\//);
 
 					// Verify it matches the expected pattern: profileDir/configName
-					const expectedPath = `${profile.profileDir}/${profile.mcpConfigName}`;
-					expect(profile.mcpConfigPath).toBe(expectedPath);
+					const expectedPath = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedPath));
 				}
 			});
 		});
@@ -236,13 +268,22 @@ describe('MCP Configuration Validation', () => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
 					// Test that path.join works correctly with the mcpConfigPath
-					const testProjectRoot = '/test/project';
+					// Use an OS-neutral root for testing purposes if possible, or accept that results vary.
+					// For this test, we're verifying that path.join(root, relativePath) works as expected.
+					const testProjectRoot = 'test_project_root_dir'; // A simple relative root
+					// Since profile.mcpConfigPath is always using '/', path.join will handle it correctly.
 					const fullPath = path.join(testProjectRoot, profile.mcpConfigPath);
+					const expectedFullPath = path.join(
+						testProjectRoot,
+						profile.profileDir,
+						profile.mcpConfigName
+					);
 
-					// Should result in a proper absolute path
-					expect(fullPath).toBe(`${testProjectRoot}/${profile.mcpConfigPath}`);
-					expect(fullPath).toContain(profile.profileDir);
-					expect(fullPath).toContain(profile.mcpConfigName);
+					// Should result in a proper path
+					expect(normalizePath(fullPath)).toBe(normalizePath(expectedFullPath));
+					// These assertions are implicitly covered by the above if profile.mcpConfigPath is correct
+					// expect(fullPath).toContain(profile.profileDir);
+					// expect(fullPath).toContain(profile.mcpConfigName);
 				}
 			});
 		});
@@ -260,10 +301,12 @@ describe('MCP Configuration Validation', () => {
 					expect(typeof profile.mcpConfigPath).toBe('string');
 
 					// Verify the path structure is correct for the new function signature
-					const parts = profile.mcpConfigPath.split('/');
-					expect(parts).toHaveLength(2); // Should be profileDir/configName
-					expect(parts[0]).toBe(profile.profileDir);
-					expect(parts[1]).toBe(profile.mcpConfigName);
+					// It should be equivalent to path.join(profileDir, mcpConfigName)
+					const expectedStructure = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedStructure));
 				}
 			});
 		});
