@@ -13,6 +13,14 @@ export class AzureProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the Azure OpenAI API key
+	 */
+	getRequiredApiKeyName() {
+		return 'AZURE_OPENAI_API_KEY';
+	}
+
+	/**
 	 * Validates Azure-specific authentication parameters
 	 * @param {object} params - Parameters to validate
 	 * @throws {Error} If required parameters are missing

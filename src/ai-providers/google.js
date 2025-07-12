@@ -13,6 +13,14 @@ export class GoogleAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the Google API key
+	 */
+	getRequiredApiKeyName() {
+		return 'GOOGLE_API_KEY';
+	}
+
+	/**
 	 * Creates and returns a Google AI client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Google API key

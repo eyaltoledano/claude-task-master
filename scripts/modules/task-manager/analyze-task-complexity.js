@@ -14,6 +14,7 @@ import {
 import { generateTextService } from '../ai-services-unified.js';
 
 import { getDebugFlag, getProjectName } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
@@ -239,7 +240,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 						tasks: relevantTaskIds,
 						format: 'research'
 					});
-					gatheredContext = contextResult;
+					gatheredContext = contextResult.context || '';
 				}
 			} catch (contextError) {
 				reportLog(
@@ -396,12 +397,20 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		// Continue with regular analysis path
-		const prompt = generateInternalComplexityAnalysisPrompt(
-			tasksData,
-			gatheredContext
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
+
+		const promptParams = {
+			tasks: tasksData.tasks,
+			gatheredContext: gatheredContext || '',
+			useResearch: useResearch
+		};
+
+		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
+			'analyze-complexity',
+			promptParams,
+			'default'
 		);
-		const systemPrompt =
-			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { traeProfile } from '../../../src/profiles/trae.js';
 
 describe('Trae Profile Initialization Functionality', () => {
 	let traeProfileContent;
@@ -10,32 +11,36 @@ describe('Trae Profile Initialization Functionality', () => {
 	});
 
 	test('trae.js uses factory pattern with correct configuration', () => {
+		// Check for explicit, non-default values in the source file
 		expect(traeProfileContent).toContain("name: 'trae'");
 		expect(traeProfileContent).toContain("displayName: 'Trae'");
-		expect(traeProfileContent).toContain("rulesDir: '.trae/rules'");
-		expect(traeProfileContent).toContain("profileDir: '.trae'");
+		expect(traeProfileContent).toContain("url: 'trae.ai'");
+		expect(traeProfileContent).toContain("docsUrl: 'docs.trae.ai'");
+		expect(traeProfileContent).toContain('mcpConfig: false');
+
+		// Check the final computed properties on the profile object
+		expect(traeProfile.profileName).toBe('trae');
+		expect(traeProfile.displayName).toBe('Trae');
+		expect(traeProfile.profileDir).toBe('.trae'); // default
+		expect(traeProfile.rulesDir).toBe('.trae/rules'); // default
+		expect(traeProfile.mcpConfig).toBe(false); // non-default
+		expect(traeProfile.mcpConfigName).toBe(null); // computed from mcpConfig
 	});
 
 	test('trae.js configures .mdc to .md extension mapping', () => {
-		expect(traeProfileContent).toContain("fileExtension: '.mdc'");
-		expect(traeProfileContent).toContain("targetExtension: '.md'");
+		// Check that the profile object has the correct file mapping behavior (trae converts to .md)
+		expect(traeProfile.fileMap['rules/cursor_rules.mdc']).toBe('trae_rules.md');
 	});
 
 	test('trae.js uses standard tool mappings', () => {
-		expect(traeProfileContent).toContain('COMMON_TOOL_MAPPINGS.STANDARD');
-		// Should contain comment about standard tool names
-		expect(traeProfileContent).toContain('standard tool names');
-	});
+		// Check that the profile uses default tool mappings (equivalent to COMMON_TOOL_MAPPINGS.STANDARD)
+		// This verifies the architectural pattern: no custom toolMappings = standard tool names
+		expect(traeProfileContent).not.toContain('toolMappings:');
+		expect(traeProfileContent).not.toContain('apply_diff');
+		expect(traeProfileContent).not.toContain('search_files');
 
-	test('trae.js contains correct URL configuration', () => {
-		expect(traeProfileContent).toContain("url: 'trae.ai'");
-		expect(traeProfileContent).toContain("docsUrl: 'docs.trae.ai'");
-	});
-
-	test('trae.js has MCP configuration disabled', () => {
-		expect(traeProfileContent).toContain('mcpConfig: false');
-		expect(traeProfileContent).toContain(
-			"mcpConfigName: 'trae_mcp_settings.json'"
-		);
+		// Verify the result: default mappings means tools keep their original names
+		expect(traeProfile.conversionConfig.toolNames.edit_file).toBe('edit_file');
+		expect(traeProfile.conversionConfig.toolNames.search).toBe('search');
 	});
 });
