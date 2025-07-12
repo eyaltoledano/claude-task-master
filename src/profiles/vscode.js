@@ -8,17 +8,17 @@ export const vscodeProfile = createProfile({
 	url: 'code.visualstudio.com',
 	docsUrl: 'code.visualstudio.com/docs',
 	rulesDir: '.github/instructions', // VS Code instructions location
-  customFileMap: {
+  	fileMap: {
 		//As per https://code.visualstudio.com/docs/copilot/copilot-customization
 		//custom rules need to have *.instructions.md extension
-		'agentllm.mdc': 'agentllm.instructions.md'
+		'rules/agentllm.mdc': 'agentllm.instructions.md'
 	},
 	customReplacements: [
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },
 		{ from: /\.cursor\/mcp\.json/g, to: '.vscode/mcp.json' },
 
-		// Fix any remaining vscode/rules references that might be created during transformation
+		// Fix any remaining vscode/rules referenc	es that might be created during transformation
 		{ from: /\.vscode\/rules/g, to: '.github/instructions' },
 
 		// VS Code custom instructions format - use applyTo with quoted patterns instead of globs
