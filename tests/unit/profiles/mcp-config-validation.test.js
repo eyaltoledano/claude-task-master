@@ -26,6 +26,12 @@ describe('MCP Configuration Validation', () => {
 				expectedConfigName: 'settings.json',
 				expectedPath: '.gemini/settings.json'
 			},
+			gemini: {
+				shouldHaveMcp: true,
+				expectedDir: '.gemini',
+				expectedConfigName: 'settings.json',
+				expectedPath: '.gemini/settings.json'
+			},
 			roo: {
 				shouldHaveMcp: true,
 				expectedDir: '.roo',

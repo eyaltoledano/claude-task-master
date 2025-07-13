@@ -470,19 +470,44 @@ async function expandTask(
 				`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
 		}
 
+		// Ensure expansionPrompt is a string (handle both string and object formats)
+		let expansionPromptText = undefined;
+		if (taskAnalysis?.expansionPrompt) {
+			if (typeof taskAnalysis.expansionPrompt === 'string') {
+				expansionPromptText = taskAnalysis.expansionPrompt;
+			} else if (
+				typeof taskAnalysis.expansionPrompt === 'object' &&
+				taskAnalysis.expansionPrompt.text
+			) {
+				expansionPromptText = taskAnalysis.expansionPrompt.text;
+			}
+		}
+
+		// Ensure gatheredContext is a string (handle both string and object formats)
+		let gatheredContextText = gatheredContext;
+		if (typeof gatheredContext === 'object' && gatheredContext !== null) {
+			if (gatheredContext.data) {
+				gatheredContextText = gatheredContext.data;
+			} else if (gatheredContext.text) {
+				gatheredContextText = gatheredContext.text;
+			} else {
+				gatheredContextText = JSON.stringify(gatheredContext);
+			}
+		}
+
 		const promptParams = {
 			task: task,
 			subtaskCount: finalSubtaskCount,
 			nextSubtaskId: nextSubtaskId,
 			additionalContext: additionalContext,
 			complexityReasoningContext: complexityReasoningContext,
-			gatheredContext: gatheredContext,
+			gatheredContext: gatheredContextText || '',
 			useResearch: useResearch,
-			expansionPrompt: taskAnalysis?.expansionPrompt || null
+			expansionPrompt: expansionPromptText || undefined
 		};
 
 		let variantKey = 'default';
-		if (taskAnalysis?.expansionPrompt) {
+		if (expansionPromptText) {
 			variantKey = 'complexity-report';
 			logger.info(
 				`Using expansion prompt from complexity report for task ${task.id}.`

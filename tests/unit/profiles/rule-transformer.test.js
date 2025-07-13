@@ -219,6 +219,11 @@ describe('Rule Transformer - General', () => {
 					profileDir: '.gemini',
 					expectedPath: '.gemini/settings.json'
 				},
+				gemini: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.gemini/settings.json'
+				},
 				roo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
