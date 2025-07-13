@@ -1137,21 +1137,30 @@ function validateAndFixDependencies(
 	options = {}
 ) {
 	const logger = {
-		debug: (...args) => options.mcpLog ? options.mcpLog.debug(...args) : (() => {}),
+		debug: (...args) =>
+			options.mcpLog ? options.mcpLog.debug(...args) : () => {},
 		error: (...args) => {
 			if (options.mcpLog) {
 				options.mcpLog.error(...args);
 			} else {
-				const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+				const message = args
+					.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg))
+					.join(' ');
 				throw new Error(message);
 			}
 		},
-		info: (...args) => options.mcpLog ? options.mcpLog.info(...args) : (() => {}),
-		success: (...args) => options.mcpLog ? options.mcpLog.success(...args) : (() => {}),
+		info: (...args) =>
+			options.mcpLog ? options.mcpLog.info(...args) : () => {},
+		success: (...args) =>
+			options.mcpLog ? options.mcpLog.success(...args) : () => {}
 	};
 
 	// Validate the overall tasksData (root object) and the specific tag
-	if (!tasksData || typeof tasksData !== 'object' || Object.keys(tasksData).length === 0) {
+	if (
+		!tasksData ||
+		typeof tasksData !== 'object' ||
+		Object.keys(tasksData).length === 0
+	) {
 		logger.error('Invalid tasks data');
 		return false;
 	}
@@ -1159,11 +1168,15 @@ function validateAndFixDependencies(
 	const targetTag = tag || 'master'; // Default to 'master' if no tag is specified
 	const currentTagData = tasksData[targetTag];
 
-	if (!currentTagData || !currentTagData.tasks || !Array.isArray(currentTagData.tasks)) {
+	if (
+		!currentTagData ||
+		!currentTagData.tasks ||
+		!Array.isArray(currentTagData.tasks)
+	) {
 		logger.error('Invalid tasks data');
 		return false;
 	}
-	
+
 	const tasksToProcess = currentTagData.tasks;
 
 	logger.debug(`Validating and fixing dependencies for tag '${targetTag}'...`);
@@ -1217,7 +1230,7 @@ function validateAndFixDependencies(
 						if (typeof depId === 'number' && depId < 100) {
 							const fullSubtaskId = `${task.id}.${depId}`;
 							// Check if this subtask exists within its parent
-							return task.subtasks.some(st => st.id === depId);
+							return task.subtasks.some((st) => st.id === depId);
 						}
 						// Handle full task/subtask references (check within the current tag's tasks)
 						return taskExists(tasksToProcess, depId);
@@ -1242,14 +1255,14 @@ function validateAndFixDependencies(
 			}
 		}
 	});
-	
+
 	// Update the tasksData object with the processed tasks for the current tag
 	tasksData[targetTag].tasks = processedTasks;
 
-
 	// Check if any changes were made by comparing with original data for the specific tag
 	const changesDetected =
-		JSON.stringify(tasksData[targetTag]) !== JSON.stringify(originalTagDataCopy);
+		JSON.stringify(tasksData[targetTag]) !==
+		JSON.stringify(originalTagDataCopy);
 
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
@@ -1257,7 +1270,10 @@ function validateAndFixDependencies(
 			writeJSON(tasksPath, tasksData, projectRoot, tag);
 			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {
-			logger.error('Failed to save dependency fixes to tasks.json', error.message); // Use error.message
+			logger.error(
+				'Failed to save dependency fixes to tasks.json',
+				error.message
+			); // Use error.message
 		}
 	}
 

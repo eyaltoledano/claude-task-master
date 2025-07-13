@@ -2,67 +2,99 @@ import { BaseAIProvider } from './base-provider.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class AgentLLMProvider extends BaseAIProvider {
-  constructor() {
-    super();
-    this.name = 'AgentLLM';
-  }
+	constructor() {
+		super();
+		this.name = 'AgentLLM';
+	}
 
-  validateAuth(params) {
-    // AgentLLM does not use traditional API keys
-    return true;
-  }
+	validateAuth(params) {
+		// AgentLLM does not use traditional API keys
+		return true;
+	}
 
-  getClient(params) {
-    // Return this, as we are not calling a traditional LLM client directly
-    return this;
-  }
+	getClient(params) {
+		// Return this, as we are not calling a traditional LLM client directly
+		return this;
+	}
 
-  generateText(params) {
-    const { modelId, messages, maxTokens, temperature, ...restApiParams } = params;
-    const interactionId = uuidv4();
-    const packagedParams = {
-      apiKey: null,
-      modelId,
-      messages,
-      maxTokens,
-      temperature,
-      baseURL: params.baseURL, // Though likely not used by agent-llm directly
-      ...restApiParams,
-    };
-    return { type: 'agent_llm_delegation', interactionId, details: packagedParams };
-  }
+	isRequiredApiKey() {
+		// AgentLLM does not use traditional API keys
+		return false;
+	}
 
-  streamText(params) {
-    const { modelId, messages, maxTokens, temperature, ...restApiParams } = params;
-    const interactionId = uuidv4();
-    const packagedParams = {
-      apiKey: null,
-      modelId,
-      messages,
-      maxTokens,
-      temperature,
-      baseURL: params.baseURL, // Though likely not used by agent-llm directly
-      ...restApiParams,
-    };
-    return { type: 'agent_llm_delegation', interactionId, details: packagedParams };
-  }
+	getRequiredApiKeyName() {
+		// AgentLLM does not use traditional API keys
+		return null;
+	}
 
-  generateObject(params) {
-    const { modelId, messages, maxTokens, temperature, schema, objectName, ...restApiParams } = params;
-    const interactionId = uuidv4();
-    const packagedParams = {
-      apiKey: null,
-      modelId,
-      messages,
-      maxTokens,
-      temperature,
-      schema,
-      objectName,
-      baseURL: params.baseURL, // Though likely not used by agent-llm directly
-      ...restApiParams,
-    };
-    return { type: 'agent_llm_delegation', interactionId, details: packagedParams };
-  }
+	generateText(params) {
+		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+			params;
+		const interactionId = uuidv4();
+		const packagedParams = {
+			apiKey: null,
+			modelId,
+			messages,
+			maxTokens,
+			temperature,
+			baseURL: params.baseURL, // Though likely not used by agent-llm directly
+			...restApiParams
+		};
+		return {
+			type: 'agent_llm_delegation',
+			interactionId,
+			details: packagedParams
+		};
+	}
+
+	streamText(params) {
+		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+			params;
+		const interactionId = uuidv4();
+		const packagedParams = {
+			apiKey: null,
+			modelId,
+			messages,
+			maxTokens,
+			temperature,
+			baseURL: params.baseURL, // Though likely not used by agent-llm directly
+			...restApiParams
+		};
+		return {
+			type: 'agent_llm_delegation',
+			interactionId,
+			details: packagedParams
+		};
+	}
+
+	generateObject(params) {
+		const {
+			modelId,
+			messages,
+			maxTokens,
+			temperature,
+			schema,
+			objectName,
+			...restApiParams
+		} = params;
+		const interactionId = uuidv4();
+		const packagedParams = {
+			apiKey: null,
+			modelId,
+			messages,
+			maxTokens,
+			temperature,
+			schema,
+			objectName,
+			baseURL: params.baseURL, // Though likely not used by agent-llm directly
+			...restApiParams
+		};
+		return {
+			type: 'agent_llm_delegation',
+			interactionId,
+			details: packagedParams
+		};
+	}
 }
 
 export { AgentLLMProvider };

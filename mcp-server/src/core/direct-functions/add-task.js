@@ -133,7 +133,8 @@ export async function addTaskDirect(args, log, context = {}) {
 			tagInfo = result.tagInfo;
 		} else {
 			// AI-driven task creation
-			log.info( // Use log from direct function args for direct function's own logging
+			log.info(
+				// Use log from direct function args for direct function's own logging
 				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${taskPriority}, research: ${research}`
 			);
 
@@ -157,7 +158,9 @@ export async function addTaskDirect(args, log, context = {}) {
 
 			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
 			if (result && result.needsAgentDelegation === true) {
-				log.debug("addTaskDirect: Propagating agent_llm_delegation signal from core addTask.");
+				log.debug(
+					'addTaskDirect: Propagating agent_llm_delegation signal from core addTask.'
+				);
 				disableSilentMode(); // Ensure silent mode is disabled before returning
 				return result; // Propagate the signal object
 			}

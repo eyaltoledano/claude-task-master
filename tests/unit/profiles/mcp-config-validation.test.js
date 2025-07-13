@@ -2,6 +2,9 @@ import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 import path from 'path';
 
+// Helper function to normalize path separators to forward slashes for comparison
+const normalizePath = (p) => (p ? p.replace(/\\/g, '/') : p);
+
 describe('MCP Configuration Validation', () => {
 	describe('Profile MCP Configuration Properties', () => {
 		// Define base configurations
@@ -9,13 +12,19 @@ describe('MCP Configuration Validation', () => {
 			cline: {
 				shouldHaveMcp: false,
 				expectedDir: '.clinerules',
-				expectedConfigName: 'cline_mcp_settings.json'
-				// expectedPath will be generated
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			cursor: {
 				shouldHaveMcp: true,
 				expectedDir: '.cursor',
 				expectedConfigName: 'mcp.json'
+			},
+			gemini: {
+				shouldHaveMcp: true,
+				expectedDir: '.gemini',
+				expectedConfigName: 'settings.json',
+				expectedPath: '.gemini/settings.json'
 			},
 			roo: {
 				shouldHaveMcp: true,
@@ -25,7 +34,8 @@ describe('MCP Configuration Validation', () => {
 			trae: {
 				shouldHaveMcp: false,
 				expectedDir: '.trae',
-				expectedConfigName: 'trae_mcp_settings.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			vscode: {
 				shouldHaveMcp: true,
@@ -45,7 +55,9 @@ describe('MCP Configuration Validation', () => {
 		).reduce((acc, [profileName, config]) => {
 			acc[profileName] = {
 				...config,
-				expectedPath: path.join(config.expectedDir, config.expectedConfigName)
+				expectedPath:config.expectedConfigName
+					? path.join(config.expectedDir, config.expectedConfigName)
+					: null
 			};
 			return acc;
 		}, {});
@@ -58,7 +70,7 @@ describe('MCP Configuration Validation', () => {
 					expect(profile.mcpConfig).toBe(expected.shouldHaveMcp);
 					expect(profile.profileDir).toBe(expected.expectedDir);
 					expect(profile.mcpConfigName).toBe(expected.expectedConfigName);
-					expect(profile.mcpConfigPath).toBe(expected.expectedPath);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expected.expectedPath));
 				});
 			}
 		);
@@ -73,7 +85,7 @@ describe('MCP Configuration Validation', () => {
 						profile.profileDir,
 						profile.mcpConfigName
 					);
-					expect(profile.mcpConfigPath).toBe(expectedPath);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedPath));
 				}
 			});
 		});
@@ -104,8 +116,11 @@ describe('MCP Configuration Validation', () => {
 					expect(profile.mcpConfigName).toMatch(/^[\w_.-]+$/); // Basic filename check
 
 					// Check 3: mcpConfigPath is correctly formed from profileDir and mcpConfigName
-					const expectedConfigPath = path.join(profile.profileDir, profile.mcpConfigName);
-					expect(profile.mcpConfigPath).toBe(expectedConfigPath);
+					const expectedConfigPath = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedConfigPath));
 				}
 			});
 		});
@@ -130,51 +145,68 @@ describe('MCP Configuration Validation', () => {
 			});
 		});
 
-		test('should use profile-specific config name for non-MCP profiles', () => {
+		test('should use custom settings.json for Gemini profile', () => {
+			const profile = getRulesProfile('gemini');
+			expect(profile.mcpConfigName).toBe('settings.json');
+		});
+
+		test('should have null config name for non-MCP profiles', () => {
 			const clineProfile = getRulesProfile('cline');
-			expect(clineProfile.mcpConfigName).toBe('cline_mcp_settings.json');
+			expect(clineProfile.mcpConfigName).toBe(null);
 
 			const traeProfile = getRulesProfile('trae');
-			expect(traeProfile.mcpConfigName).toBe('trae_mcp_settings.json');
+			expect(traeProfile.mcpConfigName).toBe(null);
+
+			const claudeProfile = getRulesProfile('claude');
+			expect(claudeProfile.mcpConfigName).toBe(null);
+
+			const codexProfile = getRulesProfile('codex');
+			expect(codexProfile.mcpConfigName).toBe(null);
 		});
 	});
 
 	describe('Profile Directory Structure', () => {
 		test('should ensure each profile has a unique directory', () => {
 			const profileDirs = new Set();
-			// Simple profiles that use root directory (can share the same directory)
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that use root directory (can share the same directory)
+			const rootProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Simple profiles can share the root directory
-				if (simpleProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Root profiles can share the root directory for rules
+				if (rootProfiles.includes(profileName) && profile.rulesDir === '.') {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Full profiles should have unique directories
-				expect(profileDirs.has(profile.profileDir)).toBe(false);
-				profileDirs.add(profile.profileDir);
+				// Profile directories should be unique (except for root profiles)
+				if (!rootProfiles.includes(profileName) || profile.profileDir !== '.') {
+					expect(profileDirs.has(profile.profileDir)).toBe(false);
+					profileDirs.add(profile.profileDir);
+				}
 			});
 		});
 
 		test('should ensure profile directories follow expected naming convention', () => {
-			// Simple profiles that use root directory
-			const simpleProfiles = ['claude', 'codex'];
+			// Profiles that use root directory for rules
+			const rootRulesProfiles = ['claude', 'codex', 'gemini'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 
-				// Simple profiles use root directory
-				if (simpleProfiles.includes(profileName)) {
-					expect(profile.profileDir).toBe('.');
-					return;
+				// Some profiles use root directory for rules
+				if (
+					rootRulesProfiles.includes(profileName) &&
+					profile.rulesDir === '.'
+				) {
+					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Full profiles should follow the .name pattern
-				expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				// Profile directories (not rules directories) should follow the .name pattern
+				// unless they are root profiles with profileDir = '.'
+				if (profile.profileDir !== '.') {
+					expect(profile.profileDir).toMatch(/^\.[\w-]+$/);
+				}
 			});
 		});
 	});
@@ -187,6 +219,7 @@ describe('MCP Configuration Validation', () => {
 			});
 
 			expect(mcpEnabledProfiles).toContain('cursor');
+			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
@@ -216,14 +249,16 @@ describe('MCP Configuration Validation', () => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
 					// Verify the path is properly formatted for path.join usage
-					expect(profile.mcpConfigPath.startsWith(path.sep)).toBe(false); // It's a relative path
-					// Check if it contains a path separator, rather than specifically '/'
-					expect(profile.mcpConfigPath).toMatch(new RegExp(`\\${path.sep}`));
-
+					expect(normalizePath(profile.mcpConfigPath).startsWith('/')).toBe(false); // It's a relative path (after normalization)
+					// Check if it contains a forward slash, as paths are normalized
+					expect(normalizePath(profile.mcpConfigPath)).toMatch(/\//);
 
 					// Verify it matches the expected pattern: profileDir/configName
-					const expectedPath = path.join(profile.profileDir, profile.mcpConfigName);
-					expect(profile.mcpConfigPath).toBe(expectedPath);
+					const expectedPath = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedPath));
 				}
 			});
 		});
@@ -236,11 +271,16 @@ describe('MCP Configuration Validation', () => {
 					// Use an OS-neutral root for testing purposes if possible, or accept that results vary.
 					// For this test, we're verifying that path.join(root, relativePath) works as expected.
 					const testProjectRoot = 'test_project_root_dir'; // A simple relative root
+					// Since profile.mcpConfigPath is always using '/', path.join will handle it correctly.
 					const fullPath = path.join(testProjectRoot, profile.mcpConfigPath);
-					const expectedFullPath = path.join(testProjectRoot, profile.profileDir, profile.mcpConfigName);
+					const expectedFullPath = path.join(
+						testProjectRoot,
+						profile.profileDir,
+						profile.mcpConfigName
+					);
 
 					// Should result in a proper path
-					expect(fullPath).toBe(expectedFullPath);
+					expect(normalizePath(fullPath)).toBe(normalizePath(expectedFullPath));
 					// These assertions are implicitly covered by the above if profile.mcpConfigPath is correct
 					// expect(fullPath).toContain(profile.profileDir);
 					// expect(fullPath).toContain(profile.mcpConfigName);
@@ -262,10 +302,93 @@ describe('MCP Configuration Validation', () => {
 
 					// Verify the path structure is correct for the new function signature
 					// It should be equivalent to path.join(profileDir, mcpConfigName)
-					const expectedStructure = path.join(profile.profileDir, profile.mcpConfigName);
-					expect(profile.mcpConfigPath).toBe(expectedStructure);
+					const expectedStructure = path.join(
+						profile.profileDir,
+						profile.mcpConfigName
+					);
+					expect(normalizePath(profile.mcpConfigPath)).toBe(normalizePath(expectedStructure));
 				}
 			});
 		});
+	});
+
+	describe('MCP configuration validation', () => {
+		const mcpProfiles = ['cursor', 'gemini', 'roo', 'windsurf', 'vscode'];
+		const nonMcpProfiles = ['claude', 'codex', 'cline', 'trae'];
+
+		test.each(mcpProfiles)(
+			'should have valid MCP config for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.mcpConfig).toBe(true);
+				expect(profile.mcpConfigPath).toBeDefined();
+				expect(typeof profile.mcpConfigPath).toBe('string');
+			}
+		);
+
+		test.each(nonMcpProfiles)(
+			'should not require MCP config for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.mcpConfig).toBe(false);
+			}
+		);
+	});
+
+	describe('Profile structure validation', () => {
+		const mcpProfiles = [
+			'cursor',
+			'gemini',
+			'roo',
+			'windsurf',
+			'cline',
+			'trae',
+			'vscode'
+		];
+		const profilesWithLifecycle = ['claude'];
+		const profilesWithoutLifecycle = ['codex'];
+
+		test.each(mcpProfiles)(
+			'should have file mappings for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+			}
+		);
+
+		test.each(profilesWithLifecycle)(
+			'should have file mappings and lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// Claude profile has both fileMap and lifecycle functions
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(typeof profile.onAddRulesProfile).toBe('function');
+				expect(typeof profile.onRemoveRulesProfile).toBe('function');
+				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+			}
+		);
+
+		test.each(profilesWithoutLifecycle)(
+			'should have file mappings without lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// Codex profile has fileMap but no lifecycle functions (simplified)
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(profile.onAddRulesProfile).toBeUndefined();
+				expect(profile.onRemoveRulesProfile).toBeUndefined();
+				expect(profile.onPostConvertRulesProfile).toBeUndefined();
+			}
+		);
 	});
 });

@@ -134,14 +134,17 @@ export async function researchDirect(args, log, context = {}) {
 
 		// === BEGIN AGENT_LLM DELEGATION PROPAGATION ===
 		if (result && result.needsAgentDelegation === true) {
-			mcpLog.debug("researchDirect: Propagating agent_llm_delegation signal from performResearch.");
+			mcpLog.debug(
+				'researchDirect: Propagating agent_llm_delegation signal from performResearch.'
+			);
 			// disableSilentMode(); // Handled by finally
 			return result; // Return the whole { needsAgentDelegation: true, pendingInteraction: ... } object
 		}
 		// === END AGENT_LLM DELEGATION PROPAGATION ===
 
 		// Auto-save to task/subtask if requested (ONLY IF NOT DELEGATING and result is not null)
-		if (saveTo && result && result.result != null) { // Check result.result for null explicitly
+		if (saveTo && result && result.result != null) {
+			// Check result.result for null explicitly
 			try {
 				const isSubtask = saveTo.includes('.');
 
@@ -225,11 +228,17 @@ ${result.result}`;
 		// Restore normal logging -- Handled by finally
 
 		// This part is reached only if not delegating and no errors from performResearch
-		if (!result || typeof result.result === 'undefined') { // Check if result or result.result is problematic
-			log.error('performResearch returned an invalid result structure for successful non-delegation.');
+		if (!result || typeof result.result === 'undefined') {
+			// Check if result or result.result is problematic
+			log.error(
+				'performResearch returned an invalid result structure for successful non-delegation.'
+			);
 			return {
 				success: false,
-				error: { code: 'INVALID_CORE_RESPONSE', message: 'Core research function returned invalid data.'}
+				error: {
+					code: 'INVALID_CORE_RESPONSE',
+					message: 'Core research function returned invalid data.'
+				}
 			};
 		}
 
@@ -261,7 +270,8 @@ ${result.result}`;
 			}
 		};
 	} finally {
-		if (wasSilentInitially === false) { // Only disable if it wasn't silent when we entered
+		if (wasSilentInitially === false) {
+			// Only disable if it wasn't silent when we entered
 			disableSilentMode();
 		}
 	}

@@ -592,8 +592,9 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	const providersWithoutApiKeys = [
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
-		CUSTOM_PROVIDERS.GEMINI_CLI,
-		CUSTOM_PROVIDERS.AGENTLLM
+		CUSTOM_PROVIDERS.AGENTLLM,
+		CUSTOM_PROVIDERS.MCP,
+		CUSTOM_PROVIDERS.GEMINI_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -617,7 +618,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
 		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
-		agentllm: 'AGENTLLM_API_KEY' 
+		agentllm: 'AGENTLLM_API_KEY'
 		// Add other providers as needed
 	};
 
@@ -895,7 +896,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
-	CUSTOM_PROVIDERS.AGENTLLM
+	CUSTOM_PROVIDERS.AGENTLLM,
+	CUSTOM_PROVIDERS.MCP
 ];
 
 export {

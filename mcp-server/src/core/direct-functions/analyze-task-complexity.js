@@ -119,7 +119,9 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			});
 
 			if (coreResult && coreResult.needsAgentDelegation === true) {
-				logWrapper.debug("analyzeTaskComplexityDirect: Propagating agent_llm_delegation signal.");
+				logWrapper.debug(
+					'analyzeTaskComplexityDirect: Propagating agent_llm_delegation signal.'
+				);
 				// The finally block will handle disabling silent mode.
 				return coreResult;
 			}
@@ -129,7 +131,8 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			report = coreResult.report; // This line might be adjusted if coreResult structure changes for success
 			// For now, assume 'report' is still the primary data part of coreResult on success
 		} catch (error) {
-			logWrapper.error( // Use logWrapper
+			logWrapper.error(
+				// Use logWrapper
 				`Error in analyzeTaskComplexity core function: ${error.message}`
 			);
 			// The finally block handles disabling silent mode.

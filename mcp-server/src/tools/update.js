@@ -80,28 +80,35 @@ export function registerUpdateTool(server) {
 				);
 
 				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
-				if (result && result.needsAgentDelegation === true && result.pendingInteraction) {
-					log.info(`update tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure. Interaction ID: ${result.pendingInteraction.interactionId}`);
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`update tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
 
 					const pendingInteractionDetailsForAgent = result.pendingInteraction;
 
 					return {
-						content: [{
-							type: "resource",
-							resource: {
-								uri: "agent-llm://pending-interaction", // Standard URI
-								mimeType: "application/json",
-								text: JSON.stringify({
-									isAgentLLMPendingInteraction: true, // Flag for the client
-									details: pendingInteractionDetailsForAgent // The propagated pendingInteraction object
-								})
+						content: [
+							{
+								type: 'resource',
+								resource: {
+									uri: 'agent-llm://pending-interaction', // Standard URI
+									mimeType: 'application/json',
+									text: JSON.stringify({
+										isAgentLLMPendingInteraction: true, // Flag for the client
+										details: pendingInteractionDetailsForAgent // The propagated pendingInteraction object
+									})
+								}
 							}
-						}],
+						],
 						isError: false // This is not an error, but a signal
 					};
 				}
 				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
-
 
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`

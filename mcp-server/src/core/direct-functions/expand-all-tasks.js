@@ -71,7 +71,9 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			`Skipped: ${result.skippedCount}`
 		];
 		if (result.delegationSignaledCount > 0) {
-			messageParts.push(`Delegations Signaled: ${result.delegationSignaledCount}`);
+			messageParts.push(
+				`Delegations Signaled: ${result.delegationSignaledCount}`
+			);
 		}
 		const message = `Expand all operation completed. ${messageParts.join(', ')}.`;
 

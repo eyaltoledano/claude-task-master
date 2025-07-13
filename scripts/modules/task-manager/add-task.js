@@ -27,8 +27,15 @@ import {
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	TASK_PRIORITY_OPTIONS,
+	DEFAULT_TASK_PRIORITY,
+	isValidTaskPriority,
+	normalizeTaskPriority
+} from '../../../src/constants/task-priority.js';
 
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
@@ -115,7 +122,25 @@ async function addTask(
 				success: (...args) => consoleLog('success', ...args)
 			};
 
-	const effectivePriority = priority || getDefaultPriority(projectRoot);
+	// Validate priority - only accept high, medium, or low
+	let effectivePriority =
+		priority || getDefaultPriority(projectRoot) || DEFAULT_TASK_PRIORITY;
+
+	// If priority is provided, validate and normalize it
+	if (priority) {
+		const normalizedPriority = normalizeTaskPriority(priority);
+		if (normalizedPriority) {
+			effectivePriority = normalizedPriority;
+		} else {
+			if (outputFormat === 'text') {
+				consoleLog(
+					'warn',
+					`Invalid priority "${priority}". Using default priority "${DEFAULT_TASK_PRIORITY}".`
+				);
+			}
+			effectivePriority = DEFAULT_TASK_PRIORITY;
+		}
+	}
 
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
@@ -129,53 +154,57 @@ async function addTask(
 
 	// Create custom reporter that checks for MCP log
 	const report = (message, level = 'info') => {
-        // message is already a pre-formatted string
-        if (mcpLog) {
-            switch (level) {
-                case 'info':
-                    // Check if the method exists before calling, with a fallback to console for safety
-                    if (mcpLog.info) mcpLog.info(message);
-                    else console.log(`[INFO] ${message}`);
-                    break;
-                case 'warn':
-                    if (mcpLog.warn) mcpLog.warn(message);
-                    else console.log(`[WARN] ${message}`);
-                    break;
-                case 'error':
-                    if (mcpLog.error) mcpLog.error(message);
-                    else console.log(`[ERROR] ${message}`);
-                    break;
-                case 'debug':
-                    // createLogWrapper provides .debug, which maps to server log.debug
-                    if (mcpLog.debug) {
-                        mcpLog.debug(message);
-                    } else if (mcpLog.info) { // Fallback for debug if .debug is not on mcpLog for some reason
-                        mcpLog.info(`[DEBUG] ${message}`);
-                    } else { // Absolute fallback
-                        console.log(`[DEBUG] ${message}`);
-                    }
-                    break;
-                case 'success':
-                    // createLogWrapper provides .success, which maps to server log.info
-                    if (mcpLog.success) {
-                        mcpLog.success(message);
-                    } else if (mcpLog.info) { // Fallback for success if .success is not on mcpLog
-                        mcpLog.info(`[SUCCESS] ${message}`);
-                    } else { // Absolute fallback
-                        console.log(`[SUCCESS] ${message}`);
-                    }
-                    break;
-                default:
-                    // For any other level string, default to info with a prefix
-                    if (mcpLog.info) mcpLog.info(`[${level.toUpperCase()}] ${message}`);
-                    else console.log(`[${level.toUpperCase()}] ${message}`);
-                    break;
-            }
-        } else if (outputFormat === 'text') {
-            // Fallback to consoleLog (from utils.js) for CLI mode
-            consoleLog(level, message);
-        }
-    };
+		// message is already a pre-formatted string
+		if (mcpLog) {
+			switch (level) {
+				case 'info':
+					// Check if the method exists before calling, with a fallback to console for safety
+					if (mcpLog.info) mcpLog.info(message);
+					else console.log(`[INFO] ${message}`);
+					break;
+				case 'warn':
+					if (mcpLog.warn) mcpLog.warn(message);
+					else console.log(`[WARN] ${message}`);
+					break;
+				case 'error':
+					if (mcpLog.error) mcpLog.error(message);
+					else console.log(`[ERROR] ${message}`);
+					break;
+				case 'debug':
+					// createLogWrapper provides .debug, which maps to server log.debug
+					if (mcpLog.debug) {
+						mcpLog.debug(message);
+					} else if (mcpLog.info) {
+						// Fallback for debug if .debug is not on mcpLog for some reason
+						mcpLog.info(`[DEBUG] ${message}`);
+					} else {
+						// Absolute fallback
+						console.log(`[DEBUG] ${message}`);
+					}
+					break;
+				case 'success':
+					// createLogWrapper provides .success, which maps to server log.info
+					if (mcpLog.success) {
+						mcpLog.success(message);
+					} else if (mcpLog.info) {
+						// Fallback for success if .success is not on mcpLog
+						mcpLog.info(`[SUCCESS] ${message}`);
+					} else {
+						// Absolute fallback
+						console.log(`[SUCCESS] ${message}`);
+					}
+					break;
+				default:
+					// For any other level string, default to info with a prefix
+					if (mcpLog.info) mcpLog.info(`[${level.toUpperCase()}] ${message}`);
+					else console.log(`[${level.toUpperCase()}] ${message}`);
+					break;
+			}
+		} else if (outputFormat === 'text') {
+			// Fallback to consoleLog (from utils.js) for CLI mode
+			consoleLog(level, message);
+		}
+	};
 
 	/**
 	 * Recursively builds a dependency graph for a given task
@@ -420,30 +449,6 @@ async function addTask(
 				displayContextAnalysis(analysisData, prompt, gatheredContext.length);
 			}
 
-			// System Prompt - Enhanced for dependency awareness
-			const systemPrompt =
-				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema. Pay special attention to dependencies between tasks, ensuring the new task correctly references any tasks it depends on.\n\n" +
-				'When determining dependencies for a new task, follow these principles:\n' +
-				'1. Select dependencies based on logical requirements - what must be completed before this task can begin.\n' +
-				'2. Prioritize task dependencies that are semantically related to the functionality being built.\n' +
-				'3. Consider both direct dependencies (immediately prerequisite) and indirect dependencies.\n' +
-				'4. Avoid adding unnecessary dependencies - only include tasks that are genuinely prerequisite.\n' +
-				'5. Consider the current status of tasks - prefer completed tasks as dependencies when possible.\n' +
-				"6. Pay special attention to foundation tasks (1-5) but don't automatically include them without reason.\n" +
-				'7. Recent tasks (higher ID numbers) may be more relevant for newer functionality.\n\n' +
-				'The dependencies array should contain task IDs (numbers) of prerequisite tasks.\n';
-
-			// Task Structure Description (for user prompt)
-			const taskStructureDesc = `
-      {
-        "title": "Task title goes here",
-        "description": "A concise one or two sentence description of what the task involves",
-    "details": "Detailed implementation steps, considerations, code examples, or technical approach",
-    "testStrategy": "Specific steps to verify correct implementation and functionality",
-    "dependencies": [1, 3] // Example: IDs of tasks that must be completed before this task
-  }
-`;
-
 			// Add any manually provided details to the prompt for context
 			let contextFromArgs = '';
 			if (manualTaskData?.title)
@@ -455,18 +460,21 @@ async function addTask(
 			if (manualTaskData?.testStrategy)
 				contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
 
-			// User Prompt
-			const userPrompt = `You are generating the details for Task #${newTaskId}. Based on the user's request: "${prompt}", create a comprehensive new task for a software development project.
-      
-      ${gatheredContext}
-      
-      Based on the information about existing tasks provided above, include appropriate dependencies in the "dependencies" array. Only include task IDs that this new task directly depends on.
-      
-      Return your answer as a single JSON object matching the schema precisely:
-      ${taskStructureDesc}
-      
-      Make sure the details and test strategy are comprehensive and specific. DO NOT include the task ID in the title.
-      `;
+			// Load prompts using PromptManager
+			const promptManager = getPromptManager();
+			const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+				'add-task',
+				{
+					prompt,
+					newTaskId,
+					existingTasks: allTasks,
+					gatheredContext,
+					contextFromArgs,
+					useResearch,
+					priority: effectivePriority,
+					dependencies: numericDependencies
+				}
+			);
 
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
@@ -494,25 +502,32 @@ async function addTask(
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
 
 				// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-				if (aiServiceResponse && aiServiceResponse.mainResult && aiServiceResponse.mainResult.type === 'agent_llm_delegation') {
-					report('debug', "addTask (core): Detected agent_llm_delegation signal for AI-driven task creation.");
+				if (
+					aiServiceResponse &&
+					aiServiceResponse.mainResult &&
+					aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+				) {
+					report(
+						'debug',
+						'addTask (core): Detected agent_llm_delegation signal for AI-driven task creation.'
+					);
 					if (loadingIndicator) stopLoadingIndicator(loadingIndicator); // Stop CLI loading indicator
 
 					return {
 						needsAgentDelegation: true,
 						pendingInteraction: {
-							type: "agent_llm",
+							type: 'agent_llm',
 							interactionId: aiServiceResponse.mainResult.interactionId,
 							delegatedCallDetails: {
-								originalCommand: context.commandName || "add_task",
+								originalCommand: context.commandName || 'add_task',
 								role: serviceRole, // serviceRole is already defined in this scope
-								serviceType: "generateObject",
+								serviceType: 'generateObject',
 								requestParameters: {
 									...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, schema, modelId etc.
 									// Pass additional context/args the agent or saver might need:
 									newTaskId: newTaskId, // The ID determined for the new task
 									userDependencies: numericDependencies, // User-specified dependencies
-									userPriority: effectivePriority,     // User-specified or default priority
+									userPriority: effectivePriority // User-specified or default priority
 									// researchFlag: useResearch, // research flag is already in details.role or similar
 								}
 							}

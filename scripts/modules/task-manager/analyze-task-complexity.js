@@ -14,6 +14,7 @@ import {
 import { generateTextService } from '../ai-services-unified.js';
 
 import { getDebugFlag, getProjectName } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
@@ -239,7 +240,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 						tasks: relevantTaskIds,
 						format: 'research'
 					});
-					gatheredContext = contextResult;
+					gatheredContext = contextResult.context || '';
 				}
 			} catch (contextError) {
 				reportLog(
@@ -396,12 +397,20 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		// Continue with regular analysis path
-		const prompt = generateInternalComplexityAnalysisPrompt(
-			tasksData,
-			gatheredContext
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
+
+		const promptParams = {
+			tasks: tasksData.tasks,
+			gatheredContext: gatheredContext || '',
+			useResearch: useResearch
+		};
+
+		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
+			'analyze-complexity',
+			promptParams,
+			'default'
 		);
-		const systemPrompt =
-			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
 
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
@@ -427,20 +436,28 @@ async function analyzeTaskComplexity(options, context = {}) {
 			});
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (aiServiceResponse && aiServiceResponse.mainResult && aiServiceResponse.mainResult.type === 'agent_llm_delegation') {
-				reportLog("analyzeTaskComplexity (core): Detected agent_llm_delegation signal.", 'debug');
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				reportLog(
+					'analyzeTaskComplexity (core): Detected agent_llm_delegation signal.',
+					'debug'
+				);
 				return {
 					needsAgentDelegation: true,
 					pendingInteraction: {
-						type: "agent_llm",
+						type: 'agent_llm',
 						interactionId: aiServiceResponse.mainResult.interactionId,
 						delegatedCallDetails: {
 							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
-							originalCommand: context.commandName || "analyze_project_complexity",
+							originalCommand:
+								context.commandName || 'analyze_project_complexity',
 							role: useResearch ? 'research' : 'main',
-							serviceType: "generateText", // Agent expected to return JSON string
+							serviceType: 'generateText', // Agent expected to return JSON string
 							requestParameters: {
-								...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, modelId, etc.
+								...aiServiceResponse.mainResult.details // Includes prompt, systemPrompt, modelId, etc.
 								// Add any other parameters the agent might need or the saver utility might need later
 								// For complexity analysis, the main payload is the tasksData used in the prompt,
 								// which is already part of details.prompt.

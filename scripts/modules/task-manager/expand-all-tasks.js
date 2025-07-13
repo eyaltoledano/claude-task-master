@@ -145,28 +145,43 @@ async function expandAllTasks(
 					delegationSignaledCount++;
 					delegatedTaskIds.push(task.id); // REVERTED and ADDED: Collect task ID for delegation
 					if (taskIndicator) {
-						stopLoadingIndicator(taskIndicator, `Task ${task.id} signaled for agent delegation.`);
+						stopLoadingIndicator(
+							taskIndicator,
+							`Task ${task.id} signaled for agent delegation.`
+						);
 					}
-					logger.info(`Agent delegation signaled for task ${task.id}. Local expansion skipped.`);
+					logger.info(
+						`Agent delegation signaled for task ${task.id}. Local expansion skipped.`
+					);
 					// Do not attempt to use result.telemetryData or result.task here
-				} else if (result && result.task && result.task.id === task.id) { // Check for a valid task object with matching ID
+				} else if (result && result.task && result.task.id === task.id) {
+					// Check for a valid task object with matching ID
 					expandedCount++;
-					if (result.telemetryData) { // Ensure telemetryData exists before pushing
+					if (result.telemetryData) {
+						// Ensure telemetryData exists before pushing
 						allTelemetryData.push(result.telemetryData);
 					}
 					if (taskIndicator) {
-						stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded locally.`);
+						stopLoadingIndicator(
+							taskIndicator,
+							`Task ${task.id} expanded locally.`
+						);
 					}
 					logger.info(`Successfully expanded task ${task.id} locally.`);
 				} else {
 					failedCount++;
 					if (taskIndicator) {
-						stopLoadingIndicator(taskIndicator, `Expansion failed or returned unexpected data for task ${task.id}.`, false);
+						stopLoadingIndicator(
+							taskIndicator,
+							`Expansion failed or returned unexpected data for task ${task.id}.`,
+							false
+						);
 					}
 					// Log the actual result for better debugging if it's unexpected
-					logger.error(`Expansion failed or returned unexpected data for task ${task.id}. Result: ${result ? JSON.stringify(result) : 'undefined'}`);
+					logger.error(
+						`Expansion failed or returned unexpected data for task ${task.id}. Result: ${result ? JSON.stringify(result) : 'undefined'}`
+					);
 				}
-
 			} catch (error) {
 				failedCount++;
 				if (taskIndicator) {
@@ -176,7 +191,9 @@ async function expandAllTasks(
 						false
 					);
 				}
-				logger.error(`Error during expandTask call for task ${task.id}: ${error.message}`);
+				logger.error(
+					`Error during expandTask call for task ${task.id}: ${error.message}`
+				);
 				// Continue to the next task
 			}
 		}

@@ -82,8 +82,14 @@ export function registerExpandTaskTool(server) {
 				);
 
 				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
-				if (result && result.needsAgentDelegation === true && result.pendingInteraction) {
-					log.info("expand-task tool: Agent delegation signaled by expandTaskDirect. Returning EmbeddedResource structure.");
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						'expand-task tool: Agent delegation signaled by expandTaskDirect. Returning EmbeddedResource structure.'
+					);
 
 					// Extract the details needed for agent_llm tool from pendingInteraction.
 					// The structure of pendingInteraction from expandTask (core) is:
@@ -96,17 +102,19 @@ export function registerExpandTaskTool(server) {
 					const pendingInteractionDetailsForAgent = result.pendingInteraction;
 
 					return {
-						content: [{
-							type: "resource",
-							resource: {
-								uri: "agent-llm://pending-interaction",
-								mimeType: "application/json",
-								text: JSON.stringify({
-									isAgentLLMPendingInteraction: true,
-									details: pendingInteractionDetailsForAgent
-								})
+						content: [
+							{
+								type: 'resource',
+								resource: {
+									uri: 'agent-llm://pending-interaction',
+									mimeType: 'application/json',
+									text: JSON.stringify({
+										isAgentLLMPendingInteraction: true,
+										details: pendingInteractionDetailsForAgent
+									})
+								}
 							}
-						}],
+						],
 						isError: false
 					};
 				}

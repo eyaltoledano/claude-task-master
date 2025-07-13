@@ -393,12 +393,17 @@ describe('Utils Module', () => {
 			// Mock fs.existsSync specifically for this test's logic if needed,
 			// otherwise rely on clearAllMocks from beforeEach and top-level fs mock.
 			// For this test, we need path.join to return a specific value for the report path.
-			pathJoinSpy = jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
+			pathJoinSpy = jest
+				.spyOn(path, 'join')
+				.mockReturnValue('/path/to/report.json');
 			// We also need fs.existsSync to return true for this path, and fs.readFileSync to return content.
 			// The top-level fs.existsSync mock defaults to false. So we need to override it here.
-			const fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation(p => p === '/path/to/report.json');
-			const fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(testReport));
-
+			const fsExistsSyncSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockImplementation((p) => p === '/path/to/report.json');
+			const fsReadFileSyncSpy = jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue(JSON.stringify(testReport));
 
 			const result = readComplexityReport();
 
@@ -408,7 +413,7 @@ describe('Utils Module', () => {
 				'utf8'
 			);
 			expect(result).toEqual(testReport);
-			
+
 			fsExistsSyncSpy.mockRestore();
 			fsReadFileSyncSpy.mockRestore();
 			// pathJoinSpy is restored in afterEach
@@ -418,11 +423,14 @@ describe('Utils Module', () => {
 			// path.join will be called to determine potential paths.
 			// Let's say it first checks a new path, then a legacy path.
 			// We need fs.existsSync to return false for these.
-			pathJoinSpy = jest.spyOn(path, 'join')
+			pathJoinSpy = jest
+				.spyOn(path, 'join')
 				.mockReturnValueOnce('/new/path/report.json') // For newPath check
 				.mockReturnValueOnce('/legacy/path/report.json'); // For legacyPath check
-			
-			const fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+			const fsExistsSyncSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockReturnValue(false);
 			const fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync'); // Just to check it's not called
 
 			const result = readComplexityReport();
@@ -727,7 +735,11 @@ test('slugifyTagForFilePath should create filesystem-safe tag names', () => {
 // The [DIAGNOSTIC] test is also removed as it served its purpose.
 
 test('getTagAwareFilePath should use slugified tags in file paths', () => {
-	const relativeBasePath = path.join('.taskmaster', 'reports', 'complexity-report.json'); // Use path.join for basePath components
+	const relativeBasePath = path.join(
+		'.taskmaster',
+		'reports',
+		'complexity-report.json'
+	); // Use path.join for basePath components
 	const projectRootAbs = path.resolve('/test/project'); // Make projectRoot an OS-valid absolute path for consistency in test
 
 	// Master tag should not be slugified
@@ -744,14 +756,22 @@ test('getTagAwareFilePath should use slugified tags in file paths', () => {
 	let slug = slugifyTagForFilePath('feature-branch');
 	let expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
 	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
-	result = getTagAwareFilePath(relativeBasePath, 'feature-branch', projectRootAbs);
+	result = getTagAwareFilePath(
+		relativeBasePath,
+		'feature-branch',
+		projectRootAbs
+	);
 	expect(result).toBe(expected);
 
 	// Tag with special characters should be slugified (feature/user-auth)
 	slug = slugifyTagForFilePath('feature/user-auth');
 	expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
 	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
-	result = getTagAwareFilePath(relativeBasePath, 'feature/user-auth', projectRootAbs);
+	result = getTagAwareFilePath(
+		relativeBasePath,
+		'feature/user-auth',
+		projectRootAbs
+	);
 	expect(result).toBe(expected);
 
 	// Tag with spaces and special characters
@@ -760,6 +780,5 @@ test('getTagAwareFilePath should use slugified tags in file paths', () => {
 	expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
 	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
 	result = getTagAwareFilePath(relativeBasePath, specialTag, projectRootAbs);
-	expect(result).toBe(expected
-	);
+	expect(result).toBe(expected);
 });

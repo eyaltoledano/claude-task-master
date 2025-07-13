@@ -13,6 +13,14 @@ export class OpenAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the OpenAI API key
+	 */
+	getRequiredApiKeyName() {
+		return 'OPENAI_API_KEY';
+	}
+
+	/**
 	 * Creates and returns an OpenAI client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - OpenAI API key

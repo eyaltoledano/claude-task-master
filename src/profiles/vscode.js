@@ -7,16 +7,11 @@ export const vscodeProfile = createProfile({
 	displayName: 'VS Code',
 	url: 'code.visualstudio.com',
 	docsUrl: 'code.visualstudio.com/docs',
-	profileDir: '.vscode', // MCP config location
 	rulesDir: '.github/instructions', // VS Code instructions location
-	mcpConfig: true,
-	mcpConfigName: 'mcp.json',
-	fileExtension: '.mdc',
-	targetExtension: '.md',
-	toolMappings: COMMON_TOOL_MAPPINGS.STANDARD, // VS Code uses standard tool names
-	customFileMap: {
-		'cursor_rules.mdc': 'vscode_rules.md', // Rename cursor_rules to vscode_rules
-		'agent_llm.mdc': 'agent_llm.instructions.md'
+  	fileMap: {
+		//As per https://code.visualstudio.com/docs/copilot/copilot-customization
+		//custom rules need to have *.instructions.md extension
+		'rules/agentllm.mdc': 'agentllm.instructions.md'
 	},
 	customReplacements: [
 		// Core VS Code directory structure changes

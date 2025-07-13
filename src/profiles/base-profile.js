@@ -16,8 +16,9 @@ import path from 'path';
  * @param {string} [editorConfig.targetExtension='.md'] - Target file extension
  * @param {Object} [editorConfig.toolMappings={}] - Tool name mappings
  * @param {Array} [editorConfig.customReplacements=[]] - Custom text replacements
- * @param {Object} [editorConfig.customFileMap={}] - Custom file name mappings
+ * @param {Object} [editorConfig.fileMap={}] - Custom file name mappings
  * @param {boolean} [editorConfig.supportsRulesSubdirectories=false] - Whether to use taskmaster/ subdirectory for taskmaster-specific rules (only Cursor uses this by default)
+ * @param {boolean} [editorConfig.includeDefaultRules=true] - Whether to include default rule files
  * @param {Function} [editorConfig.onAdd] - Lifecycle hook for profile addition
  * @param {Function} [editorConfig.onRemove] - Lifecycle hook for profile removal
  * @param {Function} [editorConfig.onPostConvert] - Lifecycle hook for post-conversion
@@ -29,35 +30,39 @@ export function createProfile(editorConfig) {
 		displayName = name,
 		url,
 		docsUrl,
-		profileDir,
-		rulesDir = path.join(profileDir, 'rules'),
+		profileDir = `.${name.toLowerCase()}`,
+		rulesDir = `${profileDir}/rules`,
 		mcpConfig = true,
-		mcpConfigName = 'mcp.json',
+		mcpConfigName = mcpConfig ? 'mcp.json' : null,
 		fileExtension = '.mdc',
 		targetExtension = '.md',
 		toolMappings = {},
 		customReplacements = [],
-		customFileMap = {},
+		fileMap = {},
 		supportsRulesSubdirectories = false,
+		includeDefaultRules = true,
 		onAdd,
 		onRemove,
 		onPostConvert
 	} = editorConfig;
 
-	const mcpConfigPath = path.join(profileDir, mcpConfigName);
+	const mcpConfigPath = mcpConfigName ? `${profileDir}/${mcpConfigName}` : null;
 
 	// Standard file mapping with custom overrides
 	// Use taskmaster subdirectory only if profile supports it
 	const taskmasterPrefix = supportsRulesSubdirectories ? 'taskmaster/' : '';
-	const defaultFileMap = {
-		'cursor_rules.mdc': `${name.toLowerCase()}_rules${targetExtension}`,
-		'dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
-		'self_improve.mdc': `self_improve${targetExtension}`,
-		'taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`,
-		'agent_llm.mdc': `${taskmasterPrefix}agent_llm${targetExtension}`
+  const defaultFileMap = {
+		'rules/cursor_rules.mdc': `${name.toLowerCase()}_rules${targetExtension}`,
+		'rules/dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
+		'rules/self_improve.mdc': `self_improve${targetExtension}`,
+		'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`,
+		'rules/agentllm.mdc': `${taskmasterPrefix}agentllm${targetExtension}`
 	};
 
-	const fileMap = { ...defaultFileMap, ...customFileMap };
+	// Build final fileMap - merge defaults with custom entries when includeDefaultRules is true
+	const finalFileMap = includeDefaultRules
+		? { ...defaultFileMap, ...fileMap }
+		: fileMap;
 
 	// Base global replacements that work for all editors
 	const baseGlobalReplacements = [
@@ -188,7 +193,8 @@ export function createProfile(editorConfig) {
 			replacement: (match, text, filePath) => {
 				const baseName = path.basename(filePath, '.mdc');
 				const newFileName =
-					fileMap[`${baseName}.mdc`] || `${baseName}${targetExtension}`;
+					finalFileMap[`rules/${baseName}.mdc`] ||
+					`${baseName}${targetExtension}`;
 				// Update the link text to match the new filename (strip directory path for display)
 				const newLinkText = path.basename(newFileName);
 
@@ -207,8 +213,8 @@ export function createProfile(editorConfig) {
 	};
 
 	function getTargetRuleFilename(sourceFilename) {
-		if (fileMap[sourceFilename]) {
-			return fileMap[sourceFilename];
+		if (finalFileMap[sourceFilename]) {
+			return finalFileMap[sourceFilename];
 		}
 		return targetExtension !== fileExtension
 			? sourceFilename.replace(
@@ -227,7 +233,8 @@ export function createProfile(editorConfig) {
 		mcpConfigName,
 		mcpConfigPath,
 		supportsRulesSubdirectories,
-		fileMap,
+		includeDefaultRules,
+		fileMap: finalFileMap,
 		globalReplacements: baseGlobalReplacements,
 		conversionConfig,
 		getTargetRuleFilename,

@@ -171,6 +171,18 @@ jest.unstable_mockModule('fs', () => ({
 	writeFileSync: mockWriteFileSync
 }));
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
 // Import the mocked modules
 const { readJSON, writeJSON, log, CONFIG } = await import(
 	'../../../../../scripts/modules/utils.js'
@@ -262,11 +274,13 @@ describe('analyzeTaskComplexity', () => {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
 			threshold: '5',
-			research: false
+			research: false,
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -279,7 +293,7 @@ describe('analyzeTaskComplexity', () => {
 		// Assert
 		expect(readJSON).toHaveBeenCalledWith(
 			'tasks/tasks.json',
-			undefined,
+			'/mock/project/root',
 			undefined
 		);
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
@@ -296,11 +310,13 @@ describe('analyzeTaskComplexity', () => {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
 			threshold: '5',
-			research: true
+			research: true,
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(researchOptions, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -323,10 +339,12 @@ describe('analyzeTaskComplexity', () => {
 		let options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '7'
+			threshold: '7',
+			projectRoot: '/mock/project/root'
 		};
 
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -349,10 +367,12 @@ describe('analyzeTaskComplexity', () => {
 		options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: 8
+			threshold: 8,
+			projectRoot: '/mock/project/root'
 		};
 
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -374,11 +394,13 @@ describe('analyzeTaskComplexity', () => {
 		const options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '5'
+			threshold: '5',
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -402,7 +424,8 @@ describe('analyzeTaskComplexity', () => {
 		const options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '5'
+			threshold: '5',
+			projectRoot: '/mock/project/root'
 		};
 
 		// Force API error
@@ -419,6 +442,7 @@ describe('analyzeTaskComplexity', () => {
 		// Act & Assert
 		await expect(
 			analyzeTaskComplexity(options, {
+				projectRoot: '/mock/project/root',
 				mcpLog: mockMcpLog
 			})
 		).rejects.toThrow('API Error');

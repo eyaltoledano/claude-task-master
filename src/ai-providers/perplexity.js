@@ -13,6 +13,14 @@ export class PerplexityAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the Perplexity API key
+	 */
+	getRequiredApiKeyName() {
+		return 'PERPLEXITY_API_KEY';
+	}
+
+	/**
 	 * Creates and returns a Perplexity client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Perplexity API key

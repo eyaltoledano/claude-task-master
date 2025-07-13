@@ -41,6 +41,14 @@ export class VertexAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the required API key environment variable name for Google Vertex AI.
+	 * @returns {string} The environment variable name
+	 */
+	getRequiredApiKeyName() {
+		return 'GOOGLE_API_KEY';
+	}
+
+	/**
 	 * Validates Vertex AI-specific authentication parameters
 	 * @param {object} params - Parameters to validate
 	 * @throws {Error} If required parameters are missing

@@ -22,6 +22,7 @@ import {
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
@@ -160,7 +161,7 @@ async function updateSubtaskById(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			report('warn', `Could not gather context: ${contextError.message}`);
@@ -223,30 +224,25 @@ async function updateSubtaskById(
 						}
 					: null;
 
-			const contextString = `
-Parent Task: ${JSON.stringify(parentContext)}
-${prevSubtask ? `Previous Subtask: ${JSON.stringify(prevSubtask)}` : ''}
-${nextSubtask ? `Next Subtask: ${JSON.stringify(nextSubtask)}` : ''}
-Current Subtask Details (for context only):\n${subtask.details || '(No existing details)'}
-`;
+			// Build prompts using PromptManager
+			const promptManager = getPromptManager();
 
-			const systemPrompt = `You are an AI assistant helping to update a subtask. You will be provided with the subtask's existing details, context about its parent and sibling tasks, and a user request string.
+			const promptParams = {
+				parentTask: parentContext,
+				prevSubtask: prevSubtask,
+				nextSubtask: nextSubtask,
+				currentDetails: subtask.details || '(No existing details)',
+				updatePrompt: prompt,
+				useResearch: useResearch,
+				gatheredContext: gatheredContext || ''
+			};
 
-Your Goal: Based *only* on the user's request and all the provided context (including existing details if relevant to the request), GENERATE the new text content that should be added to the subtask's details.
-Focus *only* on generating the substance of the update.
-
-Output Requirements:
-1. Return *only* the newly generated text content as a plain string. Do NOT return a JSON object or any other structured data.
-2. Your string response should NOT include any of the subtask's original details, unless the user's request explicitly asks to rephrase, summarize, or directly modify existing text.
-3. Do NOT include any timestamps, XML-like tags, markdown, or any other special formatting in your string response.
-4. Ensure the generated text is concise yet complete for the update based on the user request. Avoid conversational fillers or explanations about what you are doing (e.g., do not start with "Okay, here's the update...").`;
-
-			// Pass the existing subtask.details in the user prompt for the AI's context.
-			let userPrompt = `Task Context:\n${contextString}\n\nUser Request: "${prompt}"\n\nBased on the User Request and all the Task Context (including current subtask details provided above), what is the new information or text that should be appended to this subtask's details? Return ONLY this new text as a plain string.`;
-
-			if (gatheredContext) {
-				userPrompt += `\n\n# Additional Project Context\n\n${gatheredContext}`;
-			}
+			const variantKey = useResearch ? 'research' : 'default';
+			const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+				'update-subtask',
+				promptParams,
+				variantKey
+			);
 
 			const role = useResearch ? 'research' : 'main';
 			report('info', `Using AI text service with role: ${role}`);
@@ -263,8 +259,15 @@ Output Requirements:
 			});
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (aiServiceResponse && aiServiceResponse.mainResult && aiServiceResponse.mainResult.type === 'agent_llm_delegation') {
-				report('debug', `updateSubtaskById (core): Detected agent_llm_delegation signal for subtask ID ${subtaskId}.`);
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				report(
+					'debug',
+					`updateSubtaskById (core): Detected agent_llm_delegation signal for subtask ID ${subtaskId}.`
+				);
 				if (outputFormat === 'text' && loadingIndicator) {
 					stopLoadingIndicator(loadingIndicator); // Stop CLI loader if active
 					loadingIndicator = null; // Prevent further operations on it
@@ -272,18 +275,18 @@ Output Requirements:
 				return {
 					needsAgentDelegation: true,
 					pendingInteraction: {
-						type: "agent_llm", // Standard type for server processing
+						type: 'agent_llm', // Standard type for server processing
 						interactionId: aiServiceResponse.mainResult.interactionId,
 						delegatedCallDetails: {
-							originalCommand: context.commandName || "update_subtask",
+							originalCommand: context.commandName || 'update_subtask',
 							role: role, // 'role' is defined based on useResearch flag
-							serviceType: "generateText", 
+							serviceType: 'generateText',
 							requestParameters: {
 								// These are the details from the agent_llm_delegation signal's 'details' field
-								...aiServiceResponse.mainResult.details, 
+								...aiServiceResponse.mainResult.details,
 								// Add specific context useful for the agent to update a subtask
 								subtaskId: subtaskId, // The ID of the subtask being updated (e.g., "1.2")
-								originalUserPrompt: prompt, // The user's high-level request string
+								originalUserPrompt: prompt // The user's high-level request string
 								// The system and user prompts sent to the AI (and thus to the agent)
 								// already contain detailed context about parent task, siblings, and existing details.
 								// So, no need to add them explicitly here again unless the agent workflow requires it differently.

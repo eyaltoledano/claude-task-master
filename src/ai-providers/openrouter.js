@@ -13,6 +13,14 @@ export class OpenRouterAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the OpenRouter API key
+	 */
+	getRequiredApiKeyName() {
+		return 'OPENROUTER_API_KEY';
+	}
+
+	/**
 	 * Creates and returns an OpenRouter client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - OpenRouter API key

@@ -204,7 +204,9 @@ export async function expandTaskDirect(args, log, context = {}) {
 
 			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
 			if (coreResult && coreResult.needsAgentDelegation === true) {
-				log.debug("expandTaskDirect: Propagating agent_llm_delegation signal from core expandTask.");
+				log.debug(
+					'expandTaskDirect: Propagating agent_llm_delegation signal from core expandTask.'
+				);
 				if (!wasSilent && isSilentMode()) disableSilentMode(); // Ensure silent mode is handled
 				return coreResult;
 			}
@@ -213,7 +215,8 @@ export async function expandTaskDirect(args, log, context = {}) {
 			// If not delegating, coreResult is { task (updated parent), telemetryData }
 			if (!wasSilent && isSilentMode()) disableSilentMode(); // Ensure silent mode is handled
 
-			if (coreResult && coreResult.task) { // Indicates successful non-delegated expansion
+			if (coreResult && coreResult.task) {
+				// Indicates successful non-delegated expansion
 				const subtasksAdded = coreResult.task.subtasks
 					? coreResult.task.subtasks.length - subtasksCountBefore
 					: 0 - subtasksCountBefore; // If subtasks became undefined (unlikely)
@@ -233,12 +236,15 @@ export async function expandTaskDirect(args, log, context = {}) {
 				};
 			} else {
 				// Handle unexpected coreResult structure for non-delegation
-				log.error(`expandTaskDirect: Core expandTask function returned an unexpected result for non-delegated execution: ${JSON.stringify(coreResult)}`);
+				log.error(
+					`expandTaskDirect: Core expandTask function returned an unexpected result for non-delegated execution: ${JSON.stringify(coreResult)}`
+				);
 				return {
 					success: false,
 					error: {
 						code: 'CORE_FUNCTION_UNEXPECTED_RESULT',
-						message: 'Core expandTask function returned an unexpected result after execution.'
+						message:
+							'Core expandTask function returned an unexpected result after execution.'
 					}
 				};
 			}

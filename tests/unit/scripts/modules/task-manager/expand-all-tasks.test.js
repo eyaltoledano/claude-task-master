@@ -33,14 +33,15 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 }));
 
 jest.unstable_mockModule('chalk', () => ({
-	default: { // Keep default for compatibility if it's used elsewhere or by ESM default import
+	default: {
+		// Keep default for compatibility if it's used elsewhere or by ESM default import
 		white: { bold: jest.fn((text) => text) },
 		cyan: jest.fn((text) => text),
 		green: jest.fn((text) => text),
 		blue: jest.fn((text) => text), // Added blue
 		gray: jest.fn((text) => text),
 		red: jest.fn((text) => text),
-		bold: jest.fn((text) => text),
+		bold: jest.fn((text) => text)
 	},
 	// Also provide them directly for named import usage
 	white: { bold: jest.fn((text) => text) },
@@ -49,7 +50,7 @@ jest.unstable_mockModule('chalk', () => ({
 	blue: jest.fn((text) => text), // Added blue
 	gray: jest.fn((text) => text),
 	red: jest.fn((text) => text),
-	bold: jest.fn((text) => text),
+	bold: jest.fn((text) => text)
 }));
 
 jest.unstable_mockModule('boxen', () => ({
@@ -146,11 +147,21 @@ describe('expandAllTasks', () => {
 
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData: mockTelemetryData1
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData: mockTelemetryData2
 				});
 
@@ -208,15 +219,30 @@ describe('expandAllTasks', () => {
 			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData
 				})
 				.mockResolvedValueOnce({
-					task: { id: 4, title: 'Task with Subtasks', status: 'pending', subtasks: [{ id: '4.1', title: 'Existing subtask' }] },
+					task: {
+						id: 4,
+						title: 'Task with Subtasks',
+						status: 'pending',
+						subtasks: [{ id: '4.1', title: 'Existing subtask' }]
+					},
 					telemetryData
 				});
 
@@ -245,11 +271,21 @@ describe('expandAllTasks', () => {
 			const telemetryData = { commandName: 'expand-task', totalCost: 0.08 };
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData
 				});
 
@@ -327,7 +363,12 @@ describe('expandAllTasks', () => {
 			// Arrange
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData: { totalCost: 0.05 }
 				}) // First task succeeds
 				.mockRejectedValueOnce(new Error('AI service error')); // Second task fails
@@ -414,11 +455,21 @@ describe('expandAllTasks', () => {
 
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData: telemetryData1
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData: telemetryData2
 				});
 
@@ -451,10 +502,20 @@ describe('expandAllTasks', () => {
 			// No telemetryData, but task object should still be present for count
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] }
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					}
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] }
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					}
 				});
 
 			// Act
@@ -487,11 +548,21 @@ describe('expandAllTasks', () => {
 			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData
 				});
 
@@ -525,11 +596,21 @@ describe('expandAllTasks', () => {
 			const telemetryData = { commandName: 'expand-task', totalCost: 0.05 };
 			mockExpandTask
 				.mockResolvedValueOnce({
-					task: { id: 1, title: 'Pending Task 1', status: 'pending', subtasks: [] },
+					task: {
+						id: 1,
+						title: 'Pending Task 1',
+						status: 'pending',
+						subtasks: []
+					},
 					telemetryData
 				})
 				.mockResolvedValueOnce({
-					task: { id: 2, title: 'In Progress Task', status: 'in-progress', subtasks: [] },
+					task: {
+						id: 2,
+						title: 'In Progress Task',
+						status: 'in-progress',
+						subtasks: []
+					},
 					telemetryData
 				});
 

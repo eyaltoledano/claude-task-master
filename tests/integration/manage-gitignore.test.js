@@ -389,13 +389,18 @@ tasks/ `;
 		// So, we mock the fs methods to simulate errors directly for these tests.
 
 		test('should handle permission errors gracefully', () => {
-			const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation((filePath, data) => {
-				if (filePath.endsWith('.gitignore')) {
-					throw new Error('Simulated EACCES error for writeFileSync');
-				}
-			});
+			const writeSpy = jest
+				.spyOn(fs, 'writeFileSync')
+				.mockImplementation((filePath, data) => {
+					if (filePath.endsWith('.gitignore')) {
+						throw new Error('Simulated EACCES error for writeFileSync');
+					}
+				});
 
-			const gitignorePathInErrorTest = path.join(tempDir, 'test-error.gitignore');
+			const gitignorePathInErrorTest = path.join(
+				tempDir,
+				'test-error.gitignore'
+			);
 			const templateContent = `# Test
 test.txt
 
@@ -418,7 +423,9 @@ tasks/ `;
 			// Verify error was logged
 			expect(logs).toContainEqual({
 				level: 'error',
-				message: expect.stringContaining(`Failed to create ${gitignorePathInErrorTest}: Simulated EACCES error for writeFileSync`)
+				message: expect.stringContaining(
+					`Failed to create ${gitignorePathInErrorTest}: Simulated EACCES error for writeFileSync`
+				)
 			});
 			writeSpy.mockRestore(); // Restore only this spy
 		});
@@ -427,16 +434,18 @@ tasks/ `;
 			// First, create a file normally that we will then pretend we can't read.
 			fs.writeFileSync(testGitignorePath, 'existing content');
 
-			const readSpy = jest.spyOn(fs, 'readFileSync').mockImplementation((filePath, options) => {
-				if (filePath === testGitignorePath) {
-					throw new Error('Simulated EACCES error for readFileSync');
-				}
-				// For other reads (if any during test setup/teardown), use original behavior
-				// This part might not be strictly necessary if no other reads happen but good practice.
-				// However, jest.spyOn by default calls the original if not further mocked.
-				// So, this explicit call to original is redundant if that's the only goal.
-				// The main point is throwing for testGitignorePath.
-			});
+			const readSpy = jest
+				.spyOn(fs, 'readFileSync')
+				.mockImplementation((filePath, options) => {
+					if (filePath === testGitignorePath) {
+						throw new Error('Simulated EACCES error for readFileSync');
+					}
+					// For other reads (if any during test setup/teardown), use original behavior
+					// This part might not be strictly necessary if no other reads happen but good practice.
+					// However, jest.spyOn by default calls the original if not further mocked.
+					// So, this explicit call to original is redundant if that's the only goal.
+					// The main point is throwing for testGitignorePath.
+				});
 
 			const templateContent = `# Test
 test.txt
@@ -455,7 +464,9 @@ tasks/ `;
 			// Verify error was logged
 			expect(logs).toContainEqual({
 				level: 'error',
-				message: expect.stringContaining(`Failed to merge content with ${testGitignorePath}: Simulated EACCES error for readFileSync`)
+				message: expect.stringContaining(
+					`Failed to merge content with ${testGitignorePath}: Simulated EACCES error for readFileSync`
+				)
 			});
 			readSpy.mockRestore(); // Restore only this spy
 		});

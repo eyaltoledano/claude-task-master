@@ -8,28 +8,30 @@ import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
 
 function dispatchLog(level, options, ...args) {
-    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
-    if (options && options.mcpLog) {
-        const mcpLogger = options.mcpLog;
-        if (typeof mcpLogger[level] === 'function') {
-            mcpLogger[level](message);
-        } else if (level === 'success' && typeof mcpLogger.info === 'function') {
-            // Map 'success' to 'info' if mcpLog.success doesn't exist but info does
-            mcpLogger.info(message);
-        } else if (typeof mcpLogger.info === 'function') {
-            // Default to info if specific level method not found on mcpLogger
-            mcpLogger.info(`[${level.toUpperCase()}] ${message}`);
-        } else {
-            // Fallback if mcpLogger is very basic or unrecognised
-            cliLog('info', `[MCP FALLBACK - ${level.toUpperCase()}] ${message}`);
-        }
-    } else {
-        // Fallback to original CLI logging if mcpLog is not provided
-        // cliLog(level, ...args); // Spread original args here for cliLog's formatting
-        // When mcpLog is not present, we assume taskmaster-ai is calling and expecting JSON.
-        // Text logs would break this. True CLI calls might need a different mechanism
-        // or a dedicated flag if text output is desired. For now, silence it.
-    }
+	const message = args
+		.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg))
+		.join(' ');
+	if (options && options.mcpLog) {
+		const mcpLogger = options.mcpLog;
+		if (typeof mcpLogger[level] === 'function') {
+			mcpLogger[level](message);
+		} else if (level === 'success' && typeof mcpLogger.info === 'function') {
+			// Map 'success' to 'info' if mcpLog.success doesn't exist but info does
+			mcpLogger.info(message);
+		} else if (typeof mcpLogger.info === 'function') {
+			// Default to info if specific level method not found on mcpLogger
+			mcpLogger.info(`[${level.toUpperCase()}] ${message}`);
+		} else {
+			// Fallback if mcpLogger is very basic or unrecognised
+			cliLog('info', `[MCP FALLBACK - ${level.toUpperCase()}] ${message}`);
+		}
+	} else {
+		// Fallback to original CLI logging if mcpLog is not provided
+		// cliLog(level, ...args); // Spread original args here for cliLog's formatting
+		// When mcpLog is not present, we assume taskmaster-ai is calling and expecting JSON.
+		// Text logs would break this. True CLI calls might need a different mechanism
+		// or a dedicated flag if text output is desired. For now, silence it.
+	}
 }
 
 /**
@@ -88,7 +90,11 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		const validTaskIds = allTasksInTag.map((task) => task.id);
 
 		// Cleanup orphaned task files
-		dispatchLog('info', options, 'Checking for orphaned task files to clean up...');
+		dispatchLog(
+			'info',
+			options,
+			'Checking for orphaned task files to clean up...'
+		);
 		try {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
@@ -131,11 +137,19 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 				dispatchLog('info', options, 'No orphaned task files found.');
 			}
 		} catch (err) {
-			dispatchLog('warn', options, `Error cleaning up orphaned task files: ${err.message}`);
+			dispatchLog(
+				'warn',
+				options,
+				`Error cleaning up orphaned task files: ${err.message}`
+			);
 		}
 
 		// Generate task files for the target tag
-		dispatchLog('info', options, `Generating individual task files for tag '${targetTag}'...`);
+		dispatchLog(
+			'info',
+			options,
+			`Generating individual task files for tag '${targetTag}'...`
+		);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
@@ -198,7 +212,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 			fs.writeFileSync(taskPath, content);
 		});
-		
+
 		dispatchLog(
 			'success',
 			`All ${tasksForGeneration.length} tasks for tag '${targetTag}' have been generated into '${outputDir}'.`
@@ -212,7 +226,11 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			};
 		}
 	} catch (error) {
-		dispatchLog('error', options, `Error generating task files: ${error.message}`);
+		dispatchLog(
+			'error',
+			options,
+			`Error generating task files: ${error.message}`
+		);
 		if (!options?.mcpLog) {
 			// If not in MCP mode (i.e., mcpLog is not provided),
 			// taskmaster-ai might be the caller and expecting JSON errors.

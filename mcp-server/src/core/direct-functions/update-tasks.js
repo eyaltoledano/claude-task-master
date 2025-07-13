@@ -83,7 +83,9 @@ export async function updateTasksDirect(args, log, context = {}) {
 
 		// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
 		if (result && result.needsAgentDelegation === true) {
-			logWrapper.debug("updateTasksDirect: Propagating agent_llm_delegation signal from core updateTasks.");
+			logWrapper.debug(
+				'updateTasksDirect: Propagating agent_llm_delegation signal from core updateTasks.'
+			);
 			// The 'finally' block will handle disabling silent mode if it was enabled.
 			return result; // Propagate the signal object
 		}
