@@ -21,7 +21,7 @@ describe('AgentLLMProvider', () => {
 		expect(provider.getClient({})).toBe(provider);
 	});
 
-		test('isRequiredApiKey should return false', () => {
+	test('isRequiredApiKey should return false', () => {
 		expect(provider.isRequiredApiKey()).toBe(false);
 	});
 

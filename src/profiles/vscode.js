@@ -8,7 +8,7 @@ export const vscodeProfile = createProfile({
 	url: 'code.visualstudio.com',
 	docsUrl: 'code.visualstudio.com/docs',
 	rulesDir: '.github/instructions', // VS Code instructions location
-  	fileMap: {
+	fileMap: {
 		//As per https://code.visualstudio.com/docs/copilot/copilot-customization
 		//custom rules need to have *.instructions.md extension
 		'rules/agentllm.mdc': 'agentllm.instructions.md'

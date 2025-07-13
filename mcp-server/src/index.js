@@ -337,26 +337,28 @@ class TaskMasterMCPServer {
 						});
 				}); // End of new Promise for internal tracking
 
-                // --- BEGIN WORKAROUND MODIFICATION FOR CURSOR (JSON-in-text) ---
-                if (
-                    toolResult &&
-                    toolResult.content &&
-                    Array.isArray(toolResult.content) &&
-                    toolResult.content.length > 0 &&
-                    toolResult.content[0] &&
-                    toolResult.content[0].type === 'resource' &&
-                    toolResult.content[0].resource &&
-                    toolResult.content[0].resource.uri === 'agent-llm://pending-interaction' &&
-                    typeof toolResult.content[0].resource.text === 'string'
-                ) {
-                    const originalInteractionJSONText = toolResult.content[0].resource.text;
+				// --- BEGIN WORKAROUND MODIFICATION FOR CURSOR (JSON-in-text) ---
+				if (
+					toolResult &&
+					toolResult.content &&
+					Array.isArray(toolResult.content) &&
+					toolResult.content.length > 0 &&
+					toolResult.content[0] &&
+					toolResult.content[0].type === 'resource' &&
+					toolResult.content[0].resource &&
+					toolResult.content[0].resource.uri ===
+						'agent-llm://pending-interaction' &&
+					typeof toolResult.content[0].resource.text === 'string'
+				) {
+					const originalInteractionJSONText =
+						toolResult.content[0].resource.text;
 
-                    toolResult.content[0] = {
-                        type: 'text',
-                        text: originalInteractionJSONText
-                    };
-                }
-                // --- END WORKAROUND MODIFICATION FOR CURSOR (JSON-in-text) ---
+					toolResult.content[0] = {
+						type: 'text',
+						text: originalInteractionJSONText
+					};
+				}
+				// --- END WORKAROUND MODIFICATION FOR CURSOR (JSON-in-text) ---
 
 				// Return the original tool's result immediately.
 				// This result contains the pendingInteraction signal for the client.
@@ -879,22 +881,22 @@ class TaskMasterMCPServer {
 						// ^^^ END 'research' POST-PROCESSING BLOCK ^^^
 					}
 					this.pendingAgentLLMInteractions.delete(interactionId);
-                    
-                    // Construct the payload for the JSON-in-text workaround
-                    const agentAckPayloadForText = {
-                           status: 'agent_response_processed_by_taskmaster',
-                           interactionId: interactionId 
-                    };
-                    
-                    return { 
-                        content: [
-                            {
-                                type: 'text', // Changed from 'resource' to 'text'
-                                text: JSON.stringify(agentAckPayloadForText, null, 2) // Stringify the new payload, pretty-printed
-                            }
-                        ],
-                        isError: false
-                    };
+
+					// Construct the payload for the JSON-in-text workaround
+					const agentAckPayloadForText = {
+						status: 'agent_response_processed_by_taskmaster',
+						interactionId: interactionId
+					};
+
+					return {
+						content: [
+							{
+								type: 'text', // Changed from 'resource' to 'text'
+								text: JSON.stringify(agentAckPayloadForText, null, 2) // Stringify the new payload, pretty-printed
+							}
+						],
+						isError: false
+					};
 				} else {
 					// Ensure interactionId is part of this log, it was already included.
 					log.warn(

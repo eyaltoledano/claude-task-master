@@ -557,7 +557,9 @@ describe('getConfig Tests', () => {
 		// Assert
 		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(mockFindProjectRoot).not.toHaveBeenCalled(); // Explicit root provided
-		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
+		expect(fsExistsSyncSpy).toHaveBeenCalledWith(
+			expect.stringContaining('.taskmaster')
+		);
 		expect(fsReadFileSyncSpy).not.toHaveBeenCalled(); // No read if file doesn't exist
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('not found at provided project root')

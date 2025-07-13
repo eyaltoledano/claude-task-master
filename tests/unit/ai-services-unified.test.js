@@ -221,13 +221,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
-  AgentLLMProvider: jest.fn(() => ({
+	AgentLLMProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
-    getRequiredApiKeyName: jest.fn(() => 'AGENTLLM_API_KEY'),
+		getRequiredApiKeyName: jest.fn(() => 'AGENTLLM_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
-  }))
+	}))
 }));
 
 // Mock utils logger, API key resolver, AND findProjectRoot
