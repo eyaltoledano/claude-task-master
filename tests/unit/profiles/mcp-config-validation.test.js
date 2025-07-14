@@ -46,6 +46,12 @@ describe('MCP Configuration Validation', () => {
 				expectedDir: '.windsurf',
 				expectedConfigName: 'mcp.json',
 				expectedPath: '.windsurf/mcp.json'
+			},
+			zed: {
+				shouldHaveMcp: true,
+				expectedDir: '.zed',
+				expectedConfigName: 'settings.json',
+				expectedPath: '.zed/settings.json'
 			}
 		};
 
