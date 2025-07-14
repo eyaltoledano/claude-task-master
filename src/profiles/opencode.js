@@ -44,10 +44,8 @@ function transformToOpenCodeFormat(mcpConfig) {
 				transformedServer.environment = serverConfig.env;
 			}
 
-			// Use the same server name (task-master-ai becomes taskmaster-ai in OpenCode)
-			const openCodeServerName =
-				serverName === 'task-master-ai' ? 'taskmaster-ai' : serverName;
-			openCodeConfig.mcp[openCodeServerName] = transformedServer;
+			// update with transformed config
+			openCodeConfig.mcp[serverName] = transformedServer;
 		}
 	}
 
