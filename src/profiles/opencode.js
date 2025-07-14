@@ -166,8 +166,8 @@ function onRemoveRulesProfile(targetDir) {
 export const opencodeProfile = createProfile({
 	name: 'opencode',
 	displayName: 'OpenCode',
-	url: 'https://opencode.ai',
-	docsUrl: 'https://opencode.ai/docs/',
+	url: 'opencode.ai',
+	docsUrl: 'opencode.ai/docs/',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // Root directory for AGENTS.md
 	mcpConfigName: 'opencode.json', // Override default 'mcp.json'
