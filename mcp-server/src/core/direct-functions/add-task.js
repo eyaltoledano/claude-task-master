@@ -125,8 +125,7 @@ export async function addTaskDirect(args, log, context = {}) {
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
-				false, // research flag is false for manual creation
-				projectRoot // Pass projectRoot
+				false // research flag is false for manual creation
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;

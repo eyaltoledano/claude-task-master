@@ -1,0 +1,41 @@
+{
+	"id": "analyze-complexity",
+	"version": "1.0.0",
+	"description": "Analyze task complexity and generate expansion recommendations",
+	"metadata": {
+		"author": "system",
+		"created": "2024-01-01T00:00:00Z",
+		"updated": "2024-01-01T00:00:00Z",
+		"tags": ["analysis", "complexity", "expansion", "recommendations"]
+	},
+	"parameters": {
+		"tasks": {
+			"type": "array",
+			"required": true,
+			"description": "Array of tasks to analyze"
+		},
+		"gatheredContext": {
+			"type": "string",
+			"default": "",
+			"description": "Additional project context"
+		},
+		"threshold": {
+			"type": "number",
+			"default": 5,
+			"min": 1,
+			"max": 10,
+			"description": "Complexity threshold for expansion recommendation"
+		},
+		"useResearch": {
+			"type": "boolean",
+			"default": false,
+			"description": "Use research mode for deeper analysis"
+		}
+	},
+	"prompts": {
+		"default": {
+			"system": "You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.",
+			"user": "Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.{{#if useResearch}} Consider current best practices, common implementation patterns, and industry standards in your analysis.{{/if}}\n\nTasks:\n{{{json tasks}}}\n{{#if gatheredContext}}\n\n# Project Context\n\n{{gatheredContext}}\n{{/if}}\n\nRespond ONLY with a valid JSON array matching the schema:\n[\n  {\n    \"taskId\": <number>,\n    \"taskTitle\": \"<string>\",\n    \"complexityScore\": <number 1-10>,\n    \"recommendedSubtasks\": <number>,\n    \"expansionPrompt\": \"<string>\",\n    \"reasoning\": \"<string>\"\n  },\n  ...\n]\n\nDo not include any explanatory text, markdown formatting, or code block markers before or after the JSON array."
+		}
+	}
+}

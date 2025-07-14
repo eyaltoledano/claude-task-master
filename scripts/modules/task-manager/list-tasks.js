@@ -864,64 +864,54 @@ function generateMarkdownOutput(data, filteredTasks, stats) {
 		return '█'.repeat(filled) + '░'.repeat(empty);
 	};
 
+	const taskProgressBar = createMarkdownProgressBar(completionPercentage, 20);
+	const subtaskProgressBar = createMarkdownProgressBar(
+		subtaskCompletionPercentage,
+		20
+	);
+
 	// Dashboard section
-	markdown += '```\n';
-	markdown +=
-		'╭─────────────────────────────────────────────────────────╮╭─────────────────────────────────────────────────────────╮\n';
-	markdown +=
-		'│                                                         ││                                                         │\n';
-	markdown +=
-		'│   Project Dashboard                                     ││   Dependency Status & Next Task                         │\n';
-	markdown += `│   Tasks Progress: ${createMarkdownProgressBar(completionPercentage, 20)} ${Math.round(completionPercentage)}%    ││   Dependency Metrics:                                   │\n`;
-	markdown += `│   ${Math.round(completionPercentage)}%                                                   ││   • Tasks with no dependencies: ${tasksWithNoDeps}                      │\n`;
-	markdown += `│   Done: ${doneCount}  In Progress: ${inProgressCount}  Pending: ${pendingCount}  Blocked: ${blockedCount}     ││   • Tasks ready to work on: ${tasksReadyToWork}                          │\n`;
-	markdown += `│   Deferred: ${deferredCount}  Cancelled: ${cancelledCount}                             ││   • Tasks blocked by dependencies: ${tasksWithUnsatisfiedDeps}                    │\n`;
-	markdown += `│                                                         ││   • Most depended-on task: #${mostDependedOnTaskId} (${maxDependents} dependents)           │\n`;
-	markdown += `│   Subtasks Progress: ${createMarkdownProgressBar(subtaskCompletionPercentage, 20)}     ││   • Avg dependencies per task: ${avgDependenciesPerTask.toFixed(1)}                      │\n`;
-	markdown += `│   ${Math.round(subtaskCompletionPercentage)}% ${Math.round(subtaskCompletionPercentage)}%                                               ││                                                         │\n`;
-	markdown += `│   Completed: ${completedSubtasks}/${totalSubtasks}  In Progress: ${inProgressSubtasks}  Pending: ${pendingSubtasks}      ││   Next Task to Work On:                                 │\n`;
+	// markdown += '```\n';
+	markdown += '| Project Dashboard |  |\n';
+	markdown += '| :-                |:-|\n';
+	markdown += `| Task Progress     | ${taskProgressBar} ${Math.round(completionPercentage)}% |\n`;
+	markdown += `| Done | ${doneCount} |\n`;
+	markdown += `| In Progress | ${inProgressCount} |\n`;
+	markdown += `| Pending | ${pendingCount} |\n`;
+	markdown += `| Deferred | ${deferredCount} |\n`;
+	markdown += `| Cancelled | ${cancelledCount} |\n`;
+	markdown += `|-|-|\n`;
+	markdown += `| Subtask Progress | ${subtaskProgressBar} ${Math.round(subtaskCompletionPercentage)}% |\n`;
+	markdown += `| Completed | ${completedSubtasks} |\n`;
+	markdown += `| In Progress | ${inProgressSubtasks} |\n`;
+	markdown += `| Pending | ${pendingSubtasks} |\n`;
 
-	const nextTaskTitle = nextItem
-		? nextItem.title.length > 40
-			? nextItem.title.substring(0, 37) + '...'
-			: nextItem.title
-		: 'No task available';
-
-	markdown += `│   Blocked: ${blockedSubtasks}  Deferred: ${deferredSubtasks}  Cancelled: ${cancelledSubtasks}                 ││   ID: ${nextItem ? nextItem.id : 'N/A'} - ${nextTaskTitle}     │\n`;
-	markdown += `│                                                         ││   Priority: ${nextItem ? nextItem.priority || 'medium' : ''}  Dependencies: ${nextItem && nextItem.dependencies && nextItem.dependencies.length > 0 ? 'Some' : 'None'}                    │\n`;
-	markdown += `│   Priority Breakdown:                                   ││   Complexity: ${nextItem && nextItem.complexityScore ? '● ' + nextItem.complexityScore : 'N/A'}                                       │\n`;
-	markdown += `│   • High priority: ${data.tasks.filter((t) => t.priority === 'high').length}                                   │╰─────────────────────────────────────────────────────────╯\n`;
-	markdown += `│   • Medium priority: ${data.tasks.filter((t) => t.priority === 'medium').length}                                 │\n`;
-	markdown += `│   • Low priority: ${data.tasks.filter((t) => t.priority === 'low').length}                                     │\n`;
-	markdown += '│                                                         │\n';
-	markdown += '╰─────────────────────────────────────────────────────────╯\n';
+	markdown += '\n\n';
 
 	// Tasks table
 	markdown +=
-		'┌───────────┬──────────────────────────────────────┬─────────────────┬──────────────┬───────────────────────┬───────────┐\n';
+		'| ID | Title | Status | Priority | Dependencies | Complexity |\n';
 	markdown +=
-		'│ ID        │ Title                                │ Status          │ Priority     │ Dependencies          │ Complexi… │\n';
-	markdown +=
-		'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
+		'| :- | :-    | :-     | :-       | :-           | :-         |\n';
 
 	// Helper function to format status with symbols
 	const getStatusSymbol = (status) => {
 		switch (status) {
 			case 'done':
 			case 'completed':
-				return '✓ done';
+				return '✓&nbsp;done';
 			case 'in-progress':
-				return '► in-progress';
+				return '►&nbsp;in-progress';
 			case 'pending':
-				return '○ pending';
+				return '○&nbsp;pending';
 			case 'blocked':
-				return '⭕ blocked';
+				return '⭕&nbsp;blocked';
 			case 'deferred':
-				return 'x deferred';
+				return 'x&nbsp;deferred';
 			case 'cancelled':
-				return 'x cancelled';
+				return 'x&nbsp;cancelled';
 			case 'review':
-				return '? review';
+				return '?&nbsp;review';
 			default:
 				return status || 'pending';
 		}
@@ -948,12 +938,12 @@ function generateMarkdownOutput(data, filteredTasks, stats) {
 			? `● ${task.complexityScore}`
 			: 'N/A';
 
-		markdown += `│ ${task.id.toString().padEnd(9)} │ ${taskTitle.substring(0, 36).padEnd(36)} │ ${statusSymbol.padEnd(15)} │ ${priority.padEnd(12)} │ ${deps.substring(0, 21).padEnd(21)} │ ${complexity.padEnd(9)} │\n`;
+		markdown += `| ${task.id} | ${taskTitle} | ${statusSymbol} | ${priority} | ${deps} | ${complexity} |\n`;
 
 		// Add subtasks if requested
 		if (withSubtasks && task.subtasks && task.subtasks.length > 0) {
 			task.subtasks.forEach((subtask) => {
-				const subtaskTitle = `└─ ${subtask.title}`; // No truncation
+				const subtaskTitle = `${subtask.title}`; // No truncation
 				const subtaskStatus = getStatusSymbol(subtask.status);
 				const subtaskDeps = formatDependenciesForMarkdown(
 					subtask.dependencies,
@@ -963,84 +953,10 @@ function generateMarkdownOutput(data, filteredTasks, stats) {
 					? subtask.complexityScore.toString()
 					: 'N/A';
 
-				markdown +=
-					'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
-				markdown += `│ ${task.id}.${subtask.id}${' '.padEnd(6)} │ ${subtaskTitle.substring(0, 36).padEnd(36)} │ ${subtaskStatus.padEnd(15)} │ -            │ ${subtaskDeps.substring(0, 21).padEnd(21)} │ ${subtaskComplexity.padEnd(9)} │\n`;
+				markdown += `| ${task.id}.${subtask.id} | ${subtaskTitle} | ${subtaskStatus} | -            | ${subtaskDeps} | ${subtaskComplexity} |\n`;
 			});
 		}
-
-		markdown +=
-			'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n';
 	});
-
-	// Close the table
-	markdown = markdown.slice(
-		0,
-		-1 *
-			'├───────────┼──────────────────────────────────────┼─────────────────┼──────────────┼───────────────────────┼───────────┤\n'
-				.length
-	);
-	markdown +=
-		'└───────────┴──────────────────────────────────────┴─────────────────┴──────────────┴───────────────────────┴───────────┘\n';
-	markdown += '```\n\n';
-
-	// Next task recommendation
-	if (nextItem) {
-		markdown +=
-			'╭────────────────────────────────────────────── ⚡ RECOMMENDED NEXT TASK ⚡ ──────────────────────────────────────────────╮\n';
-		markdown +=
-			'│                                                                                                                         │\n';
-		markdown += `│  🔥 Next Task to Work On: #${nextItem.id} - ${nextItem.title}                                  │\n`;
-		markdown +=
-			'│                                                                                                                         │\n';
-		markdown += `│  Priority: ${nextItem.priority || 'medium'}   Status: ${getStatusSymbol(nextItem.status)}                                                                                     │\n`;
-		markdown += `│  Dependencies: ${nextItem.dependencies && nextItem.dependencies.length > 0 ? formatDependenciesForMarkdown(nextItem.dependencies, data.tasks) : 'None'}                                                                                                     │\n`;
-		markdown +=
-			'│                                                                                                                         │\n';
-		markdown += `│  Description: ${getWorkItemDescription(nextItem, data.tasks)}     │\n`;
-		markdown +=
-			'│                                                                                                                         │\n';
-
-		// Add subtasks if they exist
-		const parentTask = data.tasks.find((t) => t.id === nextItem.id);
-		if (parentTask && parentTask.subtasks && parentTask.subtasks.length > 0) {
-			markdown +=
-				'│  Subtasks:                                                                                              │\n';
-			parentTask.subtasks.forEach((subtask) => {
-				markdown += `│  ${nextItem.id}.${subtask.id} [${subtask.status || 'pending'}] ${subtask.title}                                         │\n`;
-			});
-			markdown +=
-				'│                                                                                                                         │\n';
-		}
-
-		markdown += `│  Start working: task-master set-status --id=${nextItem.id} --status=in-progress                                                     │\n`;
-		markdown += `│  View details: task-master show ${nextItem.id}                                                                      │\n`;
-		markdown +=
-			'│                                                                                                                         │\n';
-		markdown +=
-			'╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n\n';
-	}
-
-	// Suggested next steps
-	markdown += '\n';
-	markdown +=
-		'╭──────────────────────────────────────────────────────────────────────────────────────╮\n';
-	markdown +=
-		'│                                                                                      │\n';
-	markdown +=
-		'│   Suggested Next Steps:                                                              │\n';
-	markdown +=
-		'│                                                                                      │\n';
-	markdown +=
-		'│   1. Run task-master next to see what to work on next                                │\n';
-	markdown +=
-		'│   2. Run task-master expand --id=<id> to break down a task into subtasks             │\n';
-	markdown +=
-		'│   3. Run task-master set-status --id=<id> --status=done to mark a task as complete   │\n';
-	markdown +=
-		'│                                                                                      │\n';
-	markdown +=
-		'╰──────────────────────────────────────────────────────────────────────────────────────╯\n';
 
 	return markdown;
 }

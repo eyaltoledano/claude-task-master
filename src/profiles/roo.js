@@ -110,16 +110,7 @@ export const rooProfile = createProfile({
 	displayName: 'Roo Code',
 	url: 'roocode.com',
 	docsUrl: 'docs.roocode.com',
-	profileDir: '.roo',
-	rulesDir: '.roo/rules',
-	mcpConfig: true,
-	mcpConfigName: 'mcp.json',
-	fileExtension: '.mdc',
-	targetExtension: '.md',
 	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
-	customFileMap: {
-		'cursor_rules.mdc': 'roo_rules.md'
-	},
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile

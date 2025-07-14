@@ -1,0 +1,59 @@
+{
+	"id": "update-task",
+	"version": "1.0.0",
+	"description": "Update a single task with new information, supporting full updates and append mode",
+	"metadata": {
+		"author": "system",
+		"created": "2024-01-01T00:00:00Z",
+		"updated": "2024-01-01T00:00:00Z",
+		"tags": ["update", "single-task", "modification", "append"]
+	},
+	"parameters": {
+		"task": {
+			"type": "object",
+			"required": true,
+			"description": "The task to update"
+		},
+		"taskJson": {
+			"type": "string",
+			"required": true,
+			"description": "JSON string representation of the task"
+		},
+		"updatePrompt": {
+			"type": "string",
+			"required": true,
+			"description": "Description of changes to apply"
+		},
+		"appendMode": {
+			"type": "boolean",
+			"default": false,
+			"description": "Whether to append to details or do full update"
+		},
+		"useResearch": {
+			"type": "boolean",
+			"default": false,
+			"description": "Use research mode"
+		},
+		"currentDetails": {
+			"type": "string",
+			"default": "(No existing details)",
+			"description": "Current task details for context"
+		},
+		"gatheredContext": {
+			"type": "string",
+			"default": "",
+			"description": "Additional project context"
+		}
+	},
+	"prompts": {
+		"default": {
+			"system": "You are an AI assistant helping to update a software development task based on new context.{{#if useResearch}} You have access to current best practices and latest technical information to provide research-backed updates.{{/if}}\nYou will be given a task and a prompt describing changes or new implementation details.\nYour job is to update the task to reflect these changes, while preserving its basic structure.\n\nGuidelines:\n1. VERY IMPORTANT: NEVER change the title of the task - keep it exactly as is\n2. Maintain the same ID, status, and dependencies unless specifically mentioned in the prompt{{#if useResearch}}\n3. Research and update the description, details, and test strategy with current best practices\n4. Include specific versions, libraries, and approaches that are current and well-tested{{/if}}{{#if (not useResearch)}}\n3. Update the description, details, and test strategy to reflect the new information\n4. Do not change anything unnecessarily - just adapt what needs to change based on the prompt{{/if}}\n5. Return a complete valid JSON object representing the updated task\n6. VERY IMPORTANT: Preserve all subtasks marked as \"done\" or \"completed\" - do not modify their content\n7. For tasks with completed subtasks, build upon what has already been done rather than rewriting everything\n8. If an existing completed subtask needs to be changed/undone based on the new context, DO NOT modify it directly\n9. Instead, add a new subtask that clearly indicates what needs to be changed or replaced\n10. Use the existence of completed subtasks as an opportunity to make new subtasks more specific and targeted\n11. Ensure any new subtasks have unique IDs that don't conflict with existing ones\n12. CRITICAL: For subtask IDs, use ONLY numeric values (1, 2, 3, etc.) NOT strings (\"1\", \"2\", \"3\")\n13. CRITICAL: Subtask IDs should start from 1 and increment sequentially (1, 2, 3...) - do NOT use parent task ID as prefix{{#if useResearch}}\n14. Include links to documentation or resources where helpful\n15. Focus on practical, implementable solutions using current technologies{{/if}}\n\nThe changes described in the prompt should be thoughtfully applied to make the task more accurate and actionable.",
+			"user": "Here is the task to update{{#if useResearch}} with research-backed information{{/if}}:\n{{{taskJson}}}\n\nPlease {{#if useResearch}}research and {{/if}}update this task based on the following {{#if useResearch}}context:\n{{updatePrompt}}\n\nIncorporate current best practices, latest stable versions, and proven approaches.{{/if}}{{#if (not useResearch)}}new context:\n{{updatePrompt}}{{/if}}\n\nIMPORTANT: {{#if useResearch}}Preserve any subtasks marked as \"done\" or \"completed\".{{/if}}{{#if (not useResearch)}}In the task JSON above, any subtasks with \"status\": \"done\" or \"status\": \"completed\" should be preserved exactly as is. Build your changes around these completed items.{{/if}}\n{{#if gatheredContext}}\n\n# Project Context\n\n{{gatheredContext}}\n{{/if}}\n\nReturn only the updated task as a valid JSON object{{#if useResearch}} with research-backed improvements{{/if}}."
+		},
+		"append": {
+			"condition": "appendMode === true",
+			"system": "You are an AI assistant helping to append additional information to a software development task. You will be provided with the task's existing details, context, and a user request string.\n\nYour Goal: Based *only* on the user's request and all the provided context (including existing details if relevant to the request), GENERATE the new text content that should be added to the task's details.\nFocus *only* on generating the substance of the update.\n\nOutput Requirements:\n1. Return *only* the newly generated text content as a plain string. Do NOT return a JSON object or any other structured data.\n2. Your string response should NOT include any of the task's original details, unless the user's request explicitly asks to rephrase, summarize, or directly modify existing text.\n3. Do NOT include any timestamps, XML-like tags, markdown, or any other special formatting in your string response.\n4. Ensure the generated text is concise yet complete for the update based on the user request. Avoid conversational fillers or explanations about what you are doing (e.g., do not start with \"Okay, here's the update...\").",
+			"user": "Task Context:\n\nTask: {{{json task}}}\nCurrent Task Details (for context only):\n{{currentDetails}}\n\nUser Request: \"{{updatePrompt}}\"\n\nBased on the User Request and all the Task Context (including current task details provided above), what is the new information or text that should be appended to this task's details? Return ONLY this new text as a plain string.\n{{#if gatheredContext}}\n\n# Additional Project Context\n\n{{gatheredContext}}\n{{/if}}"
+		}
+	}
+}
