@@ -3,7 +3,7 @@ import path from 'path';
 import { log } from '../../scripts/modules/utils.js';
 
 // Return JSON with existing mcp.json formatting style
-export function formatJSONWithTabs(obj) {
+function formatJSONWithTabs(obj) {
 	let json = JSON.stringify(obj, null, '\t');
 
 	json = json.replace(
@@ -144,7 +144,7 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
  * @param {string} mcpConfigPath - Relative path to MCP config file (e.g., '.cursor/mcp.json')
  * @returns {Object} Result object with success status and details
  */
-function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
+export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 	// Handle null mcpConfigPath (e.g., for Claude/Codex profiles)
 	if (!mcpConfigPath) {
 		return {
