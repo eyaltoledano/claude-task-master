@@ -3,7 +3,7 @@ import path from 'path';
 import { log } from '../../scripts/modules/utils.js';
 
 // Return JSON with existing mcp.json formatting style
-function formatJSONWithTabs(obj) {
+export function formatJSONWithTabs(obj) {
 	let json = JSON.stringify(obj, null, '\t');
 
 	json = json.replace(
