@@ -9,7 +9,8 @@ import fs from 'fs'; // Import fs for directory check/creation
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -80,6 +81,11 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 					);
 
+					const progressCapability = checkProgressCapability(
+						reportProgress,
+						log
+					);
+
 					let tasksJsonPath;
 					try {
 						tasksJsonPath = findTasksPath(
@@ -131,7 +137,10 @@ export function registerAnalyzeProjectComplexityTool(server) {
 							to: args.to
 						},
 						log,
-						{ session, reportProgress }
+						{
+							session,
+							reportProgress: progressCapability.reportProgress
+						}
 					);
 
 					// 4. Handle Result

@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -66,12 +67,10 @@ export function registerExpandAllTool(server) {
 						`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 					);
 
-					// Validate that reportProgress is available for long-running operations
-					if (typeof reportProgress !== 'function') {
-						log.warn(
-							'reportProgress not available - operation will run without progress updates'
-						);
-					}
+					const progressCapability = checkProgressCapability(
+						reportProgress,
+						log
+					);
 
 					let tasksJsonPath;
 					try {
@@ -99,10 +98,7 @@ export function registerExpandAllTool(server) {
 						log,
 						{
 							session,
-							reportProgress:
-								typeof reportProgress === 'function'
-									? reportProgress
-									: undefined
+							reportProgress: progressCapability.reportProgress
 						}
 					);
 

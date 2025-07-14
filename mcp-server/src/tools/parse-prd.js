@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot,
-	createErrorResponse
+	createErrorResponse,
+	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -64,17 +65,14 @@ export function registerParsePRDTool(server) {
 		execute: withNormalizedProjectRoot(
 			async (args, { log, session, reportProgress }) => {
 				try {
-					// Validate that reportProgress is available for long-running operations
-					if (typeof reportProgress !== 'function') {
-						log.warn(
-							'reportProgress not available - operation will run without progress updates'
-						);
-					}
+					const progressCapability = checkProgressCapability(
+						reportProgress,
+						log
+					);
 
 					const result = await parsePRDDirect(args, log, {
 						session,
-						reportProgress:
-							typeof reportProgress === 'function' ? reportProgress : undefined
+						reportProgress: progressCapability.reportProgress
 					});
 					return handleApiResult(
 						result,

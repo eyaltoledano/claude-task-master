@@ -778,6 +778,46 @@ function withNormalizedProjectRoot(executeFn) {
 	};
 }
 
+/**
+ * Checks progress reporting capability and prepares context for long-running operations.
+ *
+ * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
+ *
+ * 1. Import checkProgressCapability from './utils.js'
+ * 2. Call checkProgressCapability early in execute function
+ * 3. Pass progressContext.reportProgress to direct functions
+ *
+ * @example
+ * ```javascript
+ * import { checkProgressCapability } from './utils.js';
+ *
+ * // In execute function:
+ * const progressCapability = checkProgressCapability(reportProgress, log);
+ *
+ * const result = await someDirectFunction(args, log, {
+ *   session,
+ *   reportProgress: progressCapability.reportProgress
+ * });
+ * ```
+ *
+ * @param {Function|undefined} reportProgress - The reportProgress function from context
+ * @param {Object} log - Logger instance
+ * @returns {Object} Context object with validated reportProgress
+ */
+function checkProgressCapability(reportProgress, log) {
+	// Validate that reportProgress is available for long-running operations
+	if (typeof reportProgress !== 'function') {
+		log.debug(
+			'reportProgress not available - operation will run without progress updates'
+		);
+	}
+
+	return {
+		reportProgress:
+			typeof reportProgress === 'function' ? reportProgress : undefined
+	};
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
@@ -792,5 +832,6 @@ export {
 	createLogWrapper,
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 };
