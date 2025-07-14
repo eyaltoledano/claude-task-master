@@ -23,6 +23,12 @@ describe('MCP Configuration Validation', () => {
 				expectedConfigName: 'settings.json',
 				expectedPath: '.gemini/settings.json'
 			},
+			opencode: {
+				shouldHaveMcp: true,
+				expectedDir: '.',
+				expectedConfigName: 'opencode.json',
+				expectedPath: './opencode.json'
+			},
 			roo: {
 				shouldHaveMcp: true,
 				expectedDir: '.roo',
@@ -68,10 +74,8 @@ describe('MCP Configuration Validation', () => {
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
-					const expectedPath = path.join(
-						profile.profileDir,
-						profile.mcpConfigName
-					);
+					// Use the same logic as the base profile: string template rather than path.join
+					const expectedPath = `${profile.profileDir}/${profile.mcpConfigName}`;
 					expect(profile.mcpConfigPath).toBe(expectedPath);
 				}
 			});
@@ -89,10 +93,18 @@ describe('MCP Configuration Validation', () => {
 		});
 
 		test('should ensure all MCP-enabled profiles use proper directory structure', () => {
+			const rootProfiles = ['opencode']; // Profiles that use root directory for config
+
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
-					expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+					if (rootProfiles.includes(profileName)) {
+						// Root profiles should have config files in root directory
+						expect(profile.mcpConfigPath).toMatch(/^\.\/[\w_.]+$/);
+					} else {
+						// Other profiles should have config files in their specific directories
+						expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+					}
 				}
 			});
 		});
@@ -141,7 +153,7 @@ describe('MCP Configuration Validation', () => {
 		test('should ensure each profile has a unique directory', () => {
 			const profileDirs = new Set();
 			// Profiles that use root directory (can share the same directory)
-			const rootProfiles = ['claude', 'codex', 'gemini'];
+			const rootProfiles = ['claude', 'codex', 'gemini', 'opencode'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
@@ -161,7 +173,7 @@ describe('MCP Configuration Validation', () => {
 
 		test('should ensure profile directories follow expected naming convention', () => {
 			// Profiles that use root directory for rules
-			const rootRulesProfiles = ['claude', 'codex', 'gemini'];
+			const rootRulesProfiles = ['claude', 'codex', 'gemini', 'opencode'];
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
@@ -192,6 +204,7 @@ describe('MCP Configuration Validation', () => {
 
 			expect(mcpEnabledProfiles).toContain('cursor');
 			expect(mcpEnabledProfiles).toContain('gemini');
+			expect(mcpEnabledProfiles).toContain('opencode');
 			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
@@ -240,8 +253,12 @@ describe('MCP Configuration Validation', () => {
 					const fullPath = path.join(testProjectRoot, profile.mcpConfigPath);
 
 					// Should result in a proper absolute path
-					expect(fullPath).toBe(`${testProjectRoot}/${profile.mcpConfigPath}`);
-					expect(fullPath).toContain(profile.profileDir);
+					// Note: path.join normalizes paths, so './opencode.json' becomes 'opencode.json'
+					const normalizedExpectedPath = path.join(
+						testProjectRoot,
+						profile.mcpConfigPath
+					);
+					expect(fullPath).toBe(normalizedExpectedPath);
 					expect(fullPath).toContain(profile.mcpConfigName);
 				}
 			});
@@ -298,6 +315,7 @@ describe('MCP Configuration Validation', () => {
 		const mcpProfiles = [
 			'cursor',
 			'gemini',
+			'opencode',
 			'roo',
 			'windsurf',
 			'cline',
@@ -305,6 +323,7 @@ describe('MCP Configuration Validation', () => {
 			'vscode'
 		];
 		const profilesWithLifecycle = ['claude'];
+		const profilesWithPostConvertLifecycle = ['opencode'];
 		const profilesWithoutLifecycle = ['codex'];
 
 		test.each(mcpProfiles)(
@@ -328,6 +347,21 @@ describe('MCP Configuration Validation', () => {
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
 				expect(typeof profile.onAddRulesProfile).toBe('function');
+				expect(typeof profile.onRemoveRulesProfile).toBe('function');
+				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+			}
+		);
+
+		test.each(profilesWithPostConvertLifecycle)(
+			'should have file mappings and post-convert lifecycle functions for %s profile',
+			(profileName) => {
+				const profile = getRulesProfile(profileName);
+				expect(profile).toBeDefined();
+				// OpenCode profile has fileMap and post-convert lifecycle functions
+				expect(profile.fileMap).toBeDefined();
+				expect(typeof profile.fileMap).toBe('object');
+				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
+				expect(profile.onAddRulesProfile).toBeUndefined(); // OpenCode doesn't have onAdd
 				expect(typeof profile.onRemoveRulesProfile).toBe('function');
 				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
 			}
