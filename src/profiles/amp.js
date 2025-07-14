@@ -4,7 +4,6 @@ import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 
-
 /**
  * Transform standard MCP config format to Amp format
  * @param {Object} mcpConfig - Standard MCP configuration object
@@ -196,7 +195,10 @@ function onRemoveRulesProfile(targetDir) {
 				}
 			} else {
 				// Write back the modified config
-				fs.writeFileSync(mcpConfigPath, JSON.stringify(config, null, '\t') + '\n');
+				fs.writeFileSync(
+					mcpConfigPath,
+					JSON.stringify(config, null, '\t') + '\n'
+				);
 				log(
 					'info',
 					'[Amp] Removed TaskMaster from settings.json, preserved other configurations'
@@ -240,7 +242,10 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 		const ampConfig = transformToAmpFormat(mcpConfig);
 
 		// Write back the transformed config with proper formatting
-		fs.writeFileSync(mcpConfigPath, JSON.stringify(ampConfig, null, '\t') + '\n');
+		fs.writeFileSync(
+			mcpConfigPath,
+			JSON.stringify(ampConfig, null, '\t') + '\n'
+		);
 
 		log('info', '[Amp] Transformed settings.json to Amp format');
 		log('debug', '[Amp] Renamed mcpServers to amp.mcpServers');
