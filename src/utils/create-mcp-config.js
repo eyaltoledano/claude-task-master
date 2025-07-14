@@ -144,7 +144,7 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
  * @param {string} mcpConfigPath - Relative path to MCP config file (e.g., '.cursor/mcp.json')
  * @returns {Object} Result object with success status and details
  */
-export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
+function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 	// Handle null mcpConfigPath (e.g., for Claude/Codex profiles)
 	if (!mcpConfigPath) {
 		return {
