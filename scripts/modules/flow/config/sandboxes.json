@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "sandboxes": {
+    "e2b": {
+      "active": true,
+      "rank": 1,
+      "apiKeyEnv": "E2B_API_KEY"
+    },
+    "daytona": {
+      "active": true,
+      "rank": 2,
+      "apiKeyEnv": "DAYTONA_API_KEY"
+    },
+    "northflank": {
+      "active": false,
+      "rank": 3,
+      "apiKeyEnv": "NORTHFLANK_API_KEY"
+    }
+  }
+} 
