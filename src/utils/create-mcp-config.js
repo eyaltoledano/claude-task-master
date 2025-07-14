@@ -43,7 +43,7 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 
 	// New MCP config to be added - references the installed package
 	const newMCPServer = {
-		'task-master-ai': {
+		'taskmaster-ai': {
 			command: 'npx',
 			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
 			env: {
