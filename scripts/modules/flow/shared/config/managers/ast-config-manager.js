@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { loadASTConfig } from '../ast-config.js';
 import { ConfigValidator } from '../schemas/ast-config-schema.js';
-import { mergeConfigurations, parseConfigValue } from '../../../shared/utils/config-utils.js';
+import { mergeConfigurations, parseConfigValue } from '../../utils/config-utils.js';
 
 /**
  * Advanced AST Configuration Manager

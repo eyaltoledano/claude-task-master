@@ -10,4 +10,7 @@ export { default as BackgroundOperationsManager } from './BackgroundOperationsMa
 export { default as SandboxCleanerService } from './sandbox-cleaner.service.js';
 
 // Context generation services
-export * from './context-generation/index.js'; 
+export * from './context-generation/index.js';
+
+// Service interfaces and validation
+export * from './interfaces.js'; 

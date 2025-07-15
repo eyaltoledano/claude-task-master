@@ -34,8 +34,7 @@ import { ProvidersScreen } from '../components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from '../components/ExecutionManagementScreen.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
 import { OverflowProvider } from '../shared/contexts/OverflowContext.jsx';
-import { getHookManager } from '../shared/hooks/index.js';
-import { BranchAwarenessManager } from '../shared/services/BranchAwarenessManager.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { initializeHookIntegration } from '../features/hooks/services/HookIntegrationService.js';
 import { initializeNextTaskService } from '../features/tasks/services/NextTaskService.js';
 import { getTaskMasterVersion } from '../../../../src/utils/getVersion.js';
@@ -50,7 +49,11 @@ const AppContext = createContext();
  * Main Flow application component
  * Manages state, screen navigation, and user interactions
  */
-export function FlowApp({ backend, options = {} }) {
+export function FlowApp({ options = {} }) {
+	// Get services from context
+	const services = useServices();
+	const { backend, logger, branchManager, hookManager } = services;
+
 	const [currentScreen, setCurrentScreen] = useState('welcome');
 	const [inputValue, setInputValue] = useState('');
 	const [tasks, setTasks] = useState([]);
@@ -77,8 +80,6 @@ export function FlowApp({ backend, options = {} }) {
 	const [nextTask, setNextTask] = useState(null);
 	const [showNextTaskModal, setShowNextTaskModal] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
-	const [hookManager, setHookManager] = useState(null);
-	const [branchManager, setBranchManager] = useState(null);
 	const [currentBranch, setCurrentBranch] = useState(null);
 	const [repositoryName, setRepositoryName] = useState(null);
 	const [branchInfo, setBranchInfo] = useState(null);
@@ -120,35 +121,27 @@ export function FlowApp({ backend, options = {} }) {
 		return url;
 	};
 
-	// Initialize managers and services
+	// Initialize services and get initial data
 	useEffect(() => {
-		const initializeServices = async () => {
+		const initializeApp = async () => {
 			try {
 				// Get package version
 				const pkgVersion = await getTaskMasterVersion();
 				setVersion(pkgVersion);
 
-				// Initialize hook manager
-				const manager = await getHookManager();
-				setHookManager(manager);
-
-				// Initialize branch awareness manager
-				const branchMgr = new BranchAwarenessManager(options.projectRoot, { backend });
-				setBranchManager(branchMgr);
-
 				// Initialize hook integration
-				await initializeHookIntegration(manager);
+				await initializeHookIntegration(hookManager);
 
 				// Initialize next task service
 				await initializeNextTaskService(backend);
 
 				// Get initial branch info
-				const info = await branchMgr.getCurrentBranchInfo();
+				const info = await branchManager.getCurrentBranchInfo();
 				if (info) {
 					setCurrentBranch(info.name);
-					setRepositoryName(branchMgr.repositoryName);
+					setRepositoryName(branchManager.repositoryName);
 					setBranchInfo(info);
-					const remoteInfo = await branchMgr.getRemoteInfo();
+					const remoteInfo = await branchManager.getRemoteInfo();
 					setRemoteInfo(remoteInfo);
 				}
 
@@ -166,8 +159,8 @@ export function FlowApp({ backend, options = {} }) {
 			}
 		};
 
-		initializeServices();
-	}, [backend, options.projectRoot]);
+		initializeApp();
+	}, [backend, branchManager, hookManager]);
 
 	// Load tasks when screen or backend changes
 	useEffect(() => {

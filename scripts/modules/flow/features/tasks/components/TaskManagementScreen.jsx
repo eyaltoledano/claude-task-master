@@ -3,6 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { flushSync } from 'react-dom';
 import { useAppContext } from '../../../app/index-root.jsx';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 import { getTheme } from '../../../shared/theme/theme.js';
 import { Toast } from '../../../shared/components/ui/Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
@@ -19,8 +20,10 @@ import { VibeKitSettingsModal } from '../../../components/VibeKitSettingsModal.j
 import { SandboxControlPanel } from '../../../components/SandboxControlPanel.jsx';
 
 export function TaskManagementScreen() {
+	// Get services from context
+	const { backend, logger } = useServices();
+	
 	const {
-		backend,
 		tasks,
 		reloadTasks,
 		setCurrentScreen,

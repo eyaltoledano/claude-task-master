@@ -11,6 +11,7 @@ import { DirectBackend } from '../infra/backends/direct-backend.js';
 import { CliBackend } from '../infra/backends/cli-backend.js';
 import { MCPClientBackend } from '../infra/backends/mcp-client-backend.js';
 import { createInkUITheme } from '../features/ui/theme/ink-ui-theme.js';
+import { ServiceProvider } from '../shared/contexts/ServiceContext.jsx';
 import { FlowApp } from './FlowApp.jsx';
 
 /**
@@ -84,10 +85,12 @@ export async function run(options = {}) {
 	// Create Ink UI theme
 	const inkUITheme = extendTheme(defaultTheme, createInkUITheme());
 
-	// Create app instance with ThemeProvider
+	// Create app instance with ThemeProvider and ServiceProvider
 	const app = render(
 		<ThemeProvider theme={inkUITheme}>
-			<FlowApp backend={backend} options={options} />
+			<ServiceProvider backend={backend} projectRoot={options.projectRoot || process.cwd()}>
+				<FlowApp backend={backend} options={options} />
+			</ServiceProvider>
 		</ThemeProvider>
 	);
 
