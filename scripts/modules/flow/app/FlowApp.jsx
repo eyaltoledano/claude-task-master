@@ -395,7 +395,7 @@ export function FlowApp({ options = {} }) {
 				setCurrentScreen('tags');
 				break;
 			case 'mcp':
-				setCurrentScreen('mcp-management');
+				setCurrentScreen('mcp');
 				break;
 			case 'status':
 				setCurrentScreen('status');

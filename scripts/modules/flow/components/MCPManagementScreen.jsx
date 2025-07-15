@@ -120,7 +120,7 @@ export function MCPManagementScreen() {
 
 	// Handle keyboard input
 	useInput((input, key) => {
-		if (currentScreen !== 'mcp-management') return;
+		if (currentScreen !== 'mcp') return;
 
 		if (showAddForm) {
 			handleFormInput(input, key);
