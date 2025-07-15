@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Box, Text } from 'ink';
 import {
 	useComponentTheme,
 	useTerminalSize,
 	useStateAndRef
 } from '../../../shared/hooks/index.js';
+import { useRenderTracking } from '../../../shared/hooks/usePerformance.js';
+import { OptimizedList, ListItem } from '../../../shared/components/optimized/index.js';
 
-export function TaskList({
+export const TaskList = memo(({
 	tasks,
 	selectedIndex,
 	onSelectTask,
@@ -15,7 +17,11 @@ export function TaskList({
 	scrollOffset,
 	visibleRows = 15,
 	compact = false
-}) {
+}) => {
+	// Performance tracking
+	const trackRender = useRenderTracking('TaskList');
+	trackRender({ tasks: tasks.length, selectedIndex });
+
 	// Component-specific theming
 	const { theme, getThemedProps } = useComponentTheme('taskList');
 	const { maxContentWidth, isNarrow } = useTerminalSize();
@@ -139,7 +145,9 @@ export function TaskList({
 			})}
 		</Box>
 	);
-}
+});
+
+TaskList.displayName = 'TaskList';
 
 function getStatusSymbol(status) {
 	const symbols = {

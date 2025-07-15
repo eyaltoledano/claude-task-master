@@ -49,6 +49,10 @@ import {
   ServiceErrorBoundary
 } from '../shared/components/error-boundaries/index.js';
 
+// Import performance utilities
+import { useRenderTracking, usePerformanceTiming } from '../shared/hooks/usePerformance.js';
+import { globalMemoryMonitor } from '../shared/utils/performance.js';
+
 // Create context for backend and app state
 const AppContext = createContext();
 
@@ -57,6 +61,10 @@ const AppContext = createContext();
  * Manages state, screen navigation, and user interactions
  */
 export function FlowApp({ options = {} }) {
+	// Performance tracking
+	const trackRender = useRenderTracking('FlowApp');
+	const { measureAsync } = usePerformanceTiming('FlowApp');
+
 	// Get services from context
 	const services = useServices();
 	const { backend, logger, branchManager, hookManager } = services;
@@ -132,6 +140,9 @@ export function FlowApp({ options = {} }) {
 	useEffect(() => {
 		const initializeApp = async () => {
 			try {
+				// Take initial memory snapshot
+				globalMemoryMonitor.snapshot('app-start');
+
 				// Get package version
 				const pkgVersion = await getTaskMasterVersion();
 				setVersion(pkgVersion);
