@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { FlowConfigSchema } from '../schemas/flow-config-schema.js';
 import { loadFlowConfig, loadMainFlowConfig } from '../flow-config.js';
-import { applyEnvironmentOverrides } from '../utils/env-overrides.js';
+import { applyEnvironmentOverrides } from '../../../shared/utils/env-overrides.js';
 
 /**
  * Simple Flow Configuration Manager

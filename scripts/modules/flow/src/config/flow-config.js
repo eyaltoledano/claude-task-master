@@ -208,4 +208,4 @@ export async function getDefaultFlowConfig() {
 // Re-export from other modules for backward compatibility
 export { FlowConfigSchema } from './schemas/flow-config-schema.js';
 export { FlowConfigManager, flowConfig, FlowConfig } from './managers/flow-config-manager.js';
-export { applyEnvironmentOverrides } from './utils/env-overrides.js';
+export { applyEnvironmentOverrides } from '../../shared/utils/env-overrides.js';

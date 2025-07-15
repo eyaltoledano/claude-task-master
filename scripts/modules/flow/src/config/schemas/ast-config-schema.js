@@ -3,7 +3,7 @@
  * Contains validation rules and the ConfigValidator class for AST configuration
  */
 
-import { parseSize } from '../utils/config-utils.js';
+import { parseSize } from '../../shared/utils/config-utils.js';
 
 /**
  * Configuration Validator with built-in rules

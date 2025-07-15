@@ -41,6 +41,6 @@ export async function getDefaultASTConfig() {
 }
 
 // Re-export from other modules for backward compatibility
-export { validateASTConfig, parseCacheDuration, parseCacheSize, isLanguageSupported, getSupportedExtensions } from './utils/config-utils.js';
+export { validateASTConfig, parseCacheDuration, parseCacheSize, isLanguageSupported, getSupportedExtensions } from '../../shared/utils/config-utils.js';
 export { ASTConfigManager } from './managers/ast-config-manager.js';
 export { ConfigValidator } from './schemas/ast-config-schema.js';
