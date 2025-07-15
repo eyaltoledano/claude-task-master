@@ -3,7 +3,7 @@
  * Simplified commands focusing on VibeKit SDK capabilities with better streaming and error handling
  */
 
-import { globalRegistry } from '../providers/registry.js';
+import { globalRegistry } from '../../providers/registry.js';
 
 /**
  * Execute a task using VibeKit SDK
@@ -13,7 +13,7 @@ export async function executeTask(taskId, options = {}) {
     console.log(`🚀 Executing task ${taskId} with VibeKit...`);
     
     // Get task details
-    const { getTask } = await import('../../task-manager/get-task.js');
+    const { getTask } = await import('../../../task-manager/get-task.js');
     const task = await getTask({ id: taskId }, { projectRoot: options.projectRoot });
     
     if (!task) {

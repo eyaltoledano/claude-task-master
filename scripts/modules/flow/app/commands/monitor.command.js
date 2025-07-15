@@ -8,9 +8,9 @@ import contrib from 'blessed-contrib';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
-import { findProjectRoot, readJSON } from '../../utils.js';
+import { findProjectRoot, readJSON } from '../../../utils.js';
 import { launchFallbackMonitor } from './monitor-fallback.js';
-import { listTasks, findNextTask } from '../../task-manager.js';
+import { listTasks, findNextTask } from '../../../task-manager.js';
 import TaskMasterMonitor from './monitor/index.js';
 
 /**

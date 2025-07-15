@@ -9,8 +9,8 @@ import {
 	agentRegistry,
 	initializeAgentRegistry,
 	SELECTION_STRATEGIES
-} from '../agents/registry.js';
-import { AGENT_CAPABILITIES } from '../agents/agent.interface.js';
+} from '../../agents/registry.js';
+import { AGENT_CAPABILITIES } from '../../agents/agent.interface.js';
 
 /**
  * Colors for console output

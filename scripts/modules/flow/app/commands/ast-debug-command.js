@@ -14,13 +14,13 @@
  * @version 4.3.0
  */
 
-import { createASTDebugTools } from '../ast/error-handling/debug-tools.js';
-import { createASTValidator } from '../ast/error-handling/validation.js';
-import { createErrorRecovery } from '../ast/error-handling/error-recovery.js';
-import { createParserFallbacks } from '../ast/error-handling/parser-fallbacks.js';
-import { JavaScriptParser } from '../ast/parsers/javascript-parser.js';
-import { PythonParser } from '../ast/parsers/python-parser.js';
-import { GoParser } from '../ast/parsers/go-parser.js';
+import { createASTDebugTools } from '../../ast/error-handling/debug-tools.js';
+import { createASTValidator } from '../../ast/error-handling/validation.js';
+import { createErrorRecovery } from '../../ast/error-handling/error-recovery.js';
+import { createParserFallbacks } from '../../ast/error-handling/parser-fallbacks.js';
+import { JavaScriptParser } from '../../ast/parsers/javascript-parser.js';
+import { PythonParser } from '../../ast/parsers/python-parser.js';
+import { GoParser } from '../../ast/parsers/go-parser.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

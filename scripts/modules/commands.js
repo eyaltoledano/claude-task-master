@@ -143,7 +143,7 @@ import {
 	generateProfileRemovalSummary,
 	categorizeRemovalResults
 } from '../../src/utils/profiles.js';
-import { registerFlowCommand } from './flow/cli.js';
+import { registerFlowCommand } from './flow/app/cli.js';
 
 /**
  * Runs the interactive setup process for model configuration.

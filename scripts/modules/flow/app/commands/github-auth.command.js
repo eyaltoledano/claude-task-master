@@ -7,7 +7,7 @@
  * Integrates with the Flow CLI system for seamless VibeKit integration
  */
 
-import { GitHubAuthService } from '../services/github-auth.service.js';
+import { GitHubAuthService } from '../../services/github-auth.service.js';
 import chalk from 'chalk';
 import ora from 'ora';
 

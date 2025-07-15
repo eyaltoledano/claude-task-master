@@ -3,7 +3,7 @@
  * CLI interface for advanced AST analysis features
  */
 
-import { AdvancedAnalysisEngine } from '../ast/advanced/index.js';
+import { AdvancedAnalysisEngine } from '../../ast/advanced/index.js';
 
 /**
  * Register advanced analysis commands

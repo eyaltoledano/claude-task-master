@@ -3,7 +3,7 @@
  * Simplified commands for managing VibeKit Flow configuration
  */
 
-import { FlowConfigManager } from '../src/config/managers/flow-config-manager.js';
+import { FlowConfigManager } from '../../src/config/managers/flow-config-manager.js';
 import chalk from 'chalk';
 import fs from 'fs';
 
