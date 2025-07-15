@@ -108,6 +108,7 @@ export function registerFlowCommand(programInstance) {
     .description('🤖 VibeKit-powered task execution and code generation')
     .option('--agent <type>', 'Agent type: claude, codex, gemini, opencode', 'claude')
     .option('--mode <mode>', 'Execution mode: code or ask', 'code')
+    .option('--stream', 'Enable streaming output')
     .option('--no-stream', 'Disable streaming output')
     .option('--project-root <path>', 'Project root directory')
     .option('--verbose', 'Enable verbose output for debugging')
