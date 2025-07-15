@@ -3,8 +3,8 @@
  * Handles AI interactions, streaming responses, and MCP tool execution
  */
 
-import { streamTextService } from '../../ai-services-unified.js';
-import { log } from '../../utils.js';
+import { streamTextService } from '../../../ai-services-unified.js';
+import { log } from '../../../utils.js';
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';

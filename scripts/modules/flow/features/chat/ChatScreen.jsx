@@ -9,7 +9,7 @@ import { Box, Text, useInput, useStdout } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { ChatSession } from '../../shared/session/chat-session.js';
-import { AIMessageHandler } from '../../ai/message-handler.js';
+import { AIMessageHandler } from '../../shared/ai/message-handler.js';
 import { getCurrentTheme } from '../../theme.js';
 import { OverflowableText } from '../ui/components/OverflowableText.jsx';
 import { Markdown } from '../ui/components/Markdown.jsx';
