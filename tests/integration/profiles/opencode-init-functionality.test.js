@@ -20,9 +20,7 @@ describe('OpenCode Profile Initialization Functionality', () => {
 		expect(opencodeProfileContent).toContain("name: 'opencode'");
 		expect(opencodeProfileContent).toContain("displayName: 'OpenCode'");
 		expect(opencodeProfileContent).toContain("url: 'opencode.ai'");
-		expect(opencodeProfileContent).toContain(
-			"docsUrl: 'opencode.ai/docs/'"
-		);
+		expect(opencodeProfileContent).toContain("docsUrl: 'opencode.ai/docs/'");
 		expect(opencodeProfileContent).toContain("profileDir: '.'"); // non-default
 		expect(opencodeProfileContent).toContain("rulesDir: '.'"); // non-default
 		expect(opencodeProfileContent).toContain("mcpConfigName: 'opencode.json'"); // non-default
