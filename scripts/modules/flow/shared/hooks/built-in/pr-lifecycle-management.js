@@ -235,7 +235,7 @@ export default class PRLifecycleManagementHook {
 		});
 
 		// In a real implementation, this would call the NotificationProvider
-		// const { useNotification } = await import('../../ui/NotificationProvider.jsx');
+		// const { useNotification } = await import('../../shared/components/ui/NotificationProvider.jsx');
 		// const { addNotification } = useNotification();
 		// addNotification(formattedMessage.message, options);
 	}
