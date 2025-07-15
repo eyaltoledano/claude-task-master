@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { useBaseModal } from '../shared/hooks/modals/useBaseModal.js';
+import { useBaseModal } from '../../../shared/hooks/modals/useBaseModal.js';
 
 /**
  * BaseModal component providing standardized modal layout and behavior

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { BaseModal } from './BaseModal.jsx';
+import { BaseModal } from '../features/ui';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
 

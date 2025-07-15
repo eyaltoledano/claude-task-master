@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { style, getComponentTheme } from '../theme.js';
-import { useAppContext } from '../index.jsx';
+import { style, getComponentTheme } from '../../../theme.js';
+import { useAppContext } from '../../../index.jsx';
 
 export const CommandPalette = ({
 	input,

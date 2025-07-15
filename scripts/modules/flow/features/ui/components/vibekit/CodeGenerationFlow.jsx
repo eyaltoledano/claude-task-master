@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, Spinner } from 'ink';
-import { VibeKitService } from '../../services/vibekit.service.js';
-import { ContextGathererService } from '../../services/context-gatherer.service.js';
+import { Box, Text } from 'ink';
+import Spinner from 'ink-spinner';
+import { VibeKitService } from '../../../../services/vibekit.service.js';
+import { ContextGathererService } from '../../../../services/context-gatherer.service.js';
 import { AgentSelector } from './AgentSelector.jsx';
 import { ProgressIndicator } from './ProgressIndicator.jsx';
 import { StreamingDisplay } from './StreamingDisplay.jsx';

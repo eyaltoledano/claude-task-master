@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { AgentsConfigManager } from '../../src/config/managers/agents-config-manager.js';
+import { AgentsConfigManager } from '../../../../src/config/managers/agents-config-manager.js';
 
 const AgentSelector = ({ agents, subtask, onSelect, onCancel }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);

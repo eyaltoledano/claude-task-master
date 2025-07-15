@@ -5,7 +5,7 @@ import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../../../index.jsx';
 import { theme } from '../../../theme.js';
 import { SimpleTable } from '../../ui';
-import { useCLI } from '../../../hooks/useCLI.js';
+
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 
 export function TagManagementScreen() {

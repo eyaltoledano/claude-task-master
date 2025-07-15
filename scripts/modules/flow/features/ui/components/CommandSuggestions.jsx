@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { theme } from '../theme.js';
+import { theme } from '../../../theme.js';
 
 export function CommandSuggestions({ suggestions, selectedIndex }) {
 	if (suggestions.length === 0) {

@@ -4,12 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useAgentSession } from '../shared/hooks/useAgentSession.js';
 import { UnifiedAgentService } from '../services/UnifiedAgentService.js';
-import { SimpleTable } from './SimpleTable.jsx';
-import { Toast } from '../shared/components/ui/Toast.jsx';
-import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
+import { SimpleTable, Toast, LoadingSpinner, OverflowableText, OverflowIndicator } from '../features/ui';
 import { useAppContext } from '../index.jsx';
-import { OverflowableText } from './OverflowableText.jsx';
-import { OverflowIndicator } from './OverflowIndicator.jsx';
 
 export function AgentExecutionScreen({
   backend,

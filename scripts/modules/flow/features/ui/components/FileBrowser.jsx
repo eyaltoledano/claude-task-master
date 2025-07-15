@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { theme } from '../theme.js';
+import { theme } from '../../../theme.js';
 import fs from 'fs';
 import path from 'path';
 

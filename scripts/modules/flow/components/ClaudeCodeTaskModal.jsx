@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
-import { BaseModal } from './BaseModal.jsx';
+import { BaseModal, Toast } from '../features/ui';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
-import { Toast } from '../shared/components/ui/Toast.jsx';
 import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
 import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 

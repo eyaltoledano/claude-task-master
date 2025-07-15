@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { BaseModal } from '../features/ui';
 import { Box, Text } from 'ink';
-import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';

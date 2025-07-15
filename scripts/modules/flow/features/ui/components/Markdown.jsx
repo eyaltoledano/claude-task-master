@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import SyntaxHighlight from 'ink-syntax-highlight';
-import { getCurrentTheme } from '../theme.js';
+import { getCurrentTheme } from '../../../theme.js';
 
 /**
  * Simple but robust markdown renderer for Ink

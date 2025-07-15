@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Text, Spinner } from 'ink';
+import { Box, Text } from 'ink';
+import Spinner from 'ink-spinner';
 
 const ProgressIndicator = ({ state, progress, agent }) => {
   const getProgressEmoji = (currentState) => {

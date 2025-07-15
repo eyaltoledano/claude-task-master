@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useComponentTheme } from '../shared/hooks/index.js';
+import { useComponentTheme } from '../../../shared/hooks/index.js';
 
 /**
  * ShowMore - Interactive indicator for expanding/collapsing content

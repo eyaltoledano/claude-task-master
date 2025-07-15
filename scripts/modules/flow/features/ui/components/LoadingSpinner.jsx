@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text } from 'ink';
-import { theme } from '../theme.js';
+import { theme } from '../../../theme.js';
 
 export const LoadingSpinner = ({ message = 'Loading...' }) => {
 	const [frame, setFrame] = useState(0);

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { SimpleTable } from './SimpleTable.jsx';
+import { SimpleTable } from '../features/ui';
 import { useComponentTheme, useStateAndRef } from '../shared/hooks/index.js';
 import { formatDistanceToNow } from 'date-fns';
 
