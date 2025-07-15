@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { Text, Box, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
-import { theme, setTheme, getTheme } from '../theme.js';
+import { theme, setTheme, getTheme } from '../shared/theme/theme.js';
 
 // Import screens
 import { WelcomeScreen } from '../components/WelcomeScreen.jsx';
@@ -33,7 +33,7 @@ import { WorktreePromptModal } from '../components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from '../components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from '../components/ExecutionManagementScreen.jsx';
 import SettingsModal from '../components/SettingsModal.jsx';
-import { OverflowProvider } from '../contexts/OverflowContext.jsx';
+import { OverflowProvider } from '../shared/contexts/OverflowContext.jsx';
 import { getHookManager } from '../shared/hooks/index.js';
 import { BranchAwarenessManager } from '../shared/services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from '../features/hooks/services/HookIntegrationService.js';

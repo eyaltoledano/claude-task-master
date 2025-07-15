@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../../../app/index-root.jsx';
-import { theme } from '../../../theme.js';
+import { theme } from '../../../shared/theme/theme.js';
 import { SimpleTable } from '../../ui';
 
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';

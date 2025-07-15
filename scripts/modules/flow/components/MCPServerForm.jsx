@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 
 export function MCPServerForm({ server = null, onSave, onCancel }) {
 	const isEditMode = !!server;

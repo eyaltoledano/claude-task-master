@@ -4,7 +4,7 @@ import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
 import { MCPToolViewer } from './MCPToolViewer.jsx';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 
 export function MCPServerDetails({ server, onBack, onEdit, onUse, log }) {
 	const [tools, setTools] = useState([]);

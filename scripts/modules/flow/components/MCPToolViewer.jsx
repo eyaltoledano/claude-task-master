@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 
 export function MCPToolViewer({ tool, serverId, onBack, log }) {
 	const [testMode, setTestMode] = useState(false);

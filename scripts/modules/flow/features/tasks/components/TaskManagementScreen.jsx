@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { flushSync } from 'react-dom';
 import { useAppContext } from '../../../app/index-root.jsx';
-import { getTheme } from '../../../theme.js';
+import { getTheme } from '../../../shared/theme/theme.js';
 import { Toast } from '../../../shared/components/ui/Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
 import { OverflowIndicator, SimpleTable } from '../../ui';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { themeManager, gradient, style, getComponentTheme } from '../theme.js';
+import { themeManager, gradient, style, getComponentTheme } from '../shared/theme/theme.js';
 
 /**
  * Demo component showcasing the advanced theme system

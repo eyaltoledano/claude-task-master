@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { OverflowableText } from '../features/ui';
 import { useAppContext } from '../app/index-root.jsx';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 import {
 	loadServers,
 	saveServers,

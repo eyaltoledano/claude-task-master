@@ -12,7 +12,7 @@ import {
 	setTheme,
 	getColor,
 	getComponentTheme
-} from '../theme.js';
+} from '../theme/theme.js';
 
 /**
  * Theme Context for providing theme data throughout the app

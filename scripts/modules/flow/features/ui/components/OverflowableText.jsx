@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text } from 'ink';
-import { useOverflow } from '../../../contexts/OverflowContext.jsx';
+import { useOverflow } from '../../../shared/contexts/OverflowContext.jsx';
 import { ShowMore } from './ShowMore.jsx';
 
 /**

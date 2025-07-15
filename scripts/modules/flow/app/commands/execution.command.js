@@ -3,7 +3,7 @@
  * Simplified commands focusing on VibeKit SDK capabilities with better streaming and error handling
  */
 
-import { globalRegistry } from '../../providers/registry.js';
+import { globalRegistry } from '../../shared/providers/registry.js';
 
 /**
  * Execute a task using VibeKit SDK

@@ -12,7 +12,7 @@ import {
 	removeServer
 } from '../infra/mcp/servers.js';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 
 export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 	const [servers, setServers] = useState([]);

@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../app/index-root.jsx';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';

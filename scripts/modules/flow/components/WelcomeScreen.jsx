@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { useAppContext } from '../app/index-root.jsx';
-import { theme } from '../theme.js';
+import { theme } from '../shared/theme/theme.js';
 
 export function WelcomeScreen() {
 	const { messages, hasTasksFile } = useAppContext();

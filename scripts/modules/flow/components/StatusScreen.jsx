@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 
-import { style, gradient, getComponentTheme, getColor } from '../theme.js';
+import { style, gradient, getComponentTheme, getColor } from '../shared/theme/theme.js';
 import { useAppContext } from '../app/index-root.jsx';
 import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 

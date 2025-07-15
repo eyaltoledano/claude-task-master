@@ -1,5 +1,5 @@
 import { extendTheme } from '@inkjs/ui';
-import { getTheme } from '../../../theme.js';
+import { getTheme } from '../../../shared/theme/theme.js';
 
 export function createInkUITheme() {
 	const currentTheme = getTheme();
