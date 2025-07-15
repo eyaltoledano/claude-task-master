@@ -1,9 +1,9 @@
 import { spawn } from 'child_process';
-import { FlowBackend } from '../backend-interface.js';
-import { findProjectRoot } from '../../utils.js';
+import { FlowBackend } from './backend-interface.js';
+import { findProjectRoot } from '../../../utils.js';
 import path from 'path';
 import fs from 'fs';
-import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../../src/constants/paths.js';
 
 /**
  * CLI Backend - executes task-master commands as child processes

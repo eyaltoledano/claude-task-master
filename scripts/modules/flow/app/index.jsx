@@ -7,9 +7,9 @@ dotenv.config();
 import React from 'react';
 import { render } from 'ink';
 import { ThemeProvider, defaultTheme, extendTheme } from '@inkjs/ui';
-import { DirectBackend } from '../backends/direct-backend.js';
-import { CliBackend } from '../backends/cli-backend.js';
-import { MCPClientBackend } from '../backends/mcp-client-backend.js';
+import { DirectBackend } from '../infra/backends/direct-backend.js';
+import { CliBackend } from '../infra/backends/cli-backend.js';
+import { MCPClientBackend } from '../infra/backends/mcp-client-backend.js';
 import { createInkUITheme } from '../features/ui/theme/ink-ui-theme.js';
 import { FlowApp } from '../FlowApp.jsx';
 

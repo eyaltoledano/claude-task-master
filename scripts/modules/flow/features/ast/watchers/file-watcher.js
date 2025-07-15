@@ -19,7 +19,7 @@ import chokidar from 'chokidar';
 import path from 'path';
 import fs from 'fs-extra';
 import { EventEmitter } from 'events';
-import { execAsync } from '../../utils.js';
+import { execAsync } from '../../../../utils.js';
 import { loadASTConfig } from '../src/config/ast-config.js';
 
 /**

@@ -9,7 +9,7 @@
  */
 
 import { log } from '../../utils.js';
-import { DirectBackend } from '../backends/direct-backend.js';
+import { DirectBackend } from '../infra/backends/direct-backend.js';
 import { execSync } from 'child_process';
 import path from 'path';
 

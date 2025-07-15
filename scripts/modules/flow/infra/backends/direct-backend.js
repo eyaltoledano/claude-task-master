@@ -5,33 +5,33 @@ import os from 'os';
 import { exec, execSync, spawn } from 'child_process';
 import { promisify } from 'util';
 import { query as claudeQuery } from '@anthropic-ai/claude-code';
-import { FlowBackend } from '../backend-interface.js';
-import { directFunctions } from '../../../../mcp-server/src/core/task-master-core.js';
-import { flowConfig } from '../src/config/flow-config.js';
+import { FlowBackend } from './backend-interface.js';
+import { directFunctions } from '../../../../../mcp-server/src/core/task-master-core.js';
+import { flowConfig } from '../../src/config/flow-config.js';
 
-import { findProjectRoot } from '../../utils.js';
-import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+import { findProjectRoot } from '../../../utils.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../../src/constants/paths.js';
 
 
 // Import direct functions
-import { listTasksDirect } from '../../../../mcp-server/src/core/direct-functions/list-tasks.js';
-import { nextTaskDirect } from '../../../../mcp-server/src/core/direct-functions/next-task.js';
-import { showTaskDirect } from '../../../../mcp-server/src/core/direct-functions/show-task.js';
-import { setTaskStatusDirect } from '../../../../mcp-server/src/core/direct-functions/set-task-status.js';
-import { expandTaskDirect } from '../../../../mcp-server/src/core/direct-functions/expand-task.js';
-import { addTaskDirect } from '../../../../mcp-server/src/core/direct-functions/add-task.js';
-import { researchDirect } from '../../../../mcp-server/src/core/direct-functions/research.js';
-import { listTagsDirect } from '../../../../mcp-server/src/core/direct-functions/list-tags.js';
-import { useTagDirect } from '../../../../mcp-server/src/core/direct-functions/use-tag.js';
-import { addTagDirect } from '../../../../mcp-server/src/core/direct-functions/add-tag.js';
-import { deleteTagDirect } from '../../../../mcp-server/src/core/direct-functions/delete-tag.js';
-import { renameTagDirect } from '../../../../mcp-server/src/core/direct-functions/rename-tag.js';
-import { parsePRDDirect } from '../../../../mcp-server/src/core/direct-functions/parse-prd.js';
-import { analyzeTaskComplexityDirect } from '../../../../mcp-server/src/core/direct-functions/analyze-task-complexity.js';
-import { expandAllTasksDirect } from '../../../../mcp-server/src/core/direct-functions/expand-all-tasks.js';
-import { modelsDirect } from '../../../../mcp-server/src/core/direct-functions/models.js';
-import { updateTaskByIdDirect } from '../../../../mcp-server/src/core/direct-functions/update-task-by-id.js';
-import { updateSubtaskByIdDirect } from '../../../../mcp-server/src/core/direct-functions/update-subtask-by-id.js';
+import { listTasksDirect } from '../../../../../mcp-server/src/core/direct-functions/list-tasks.js';
+import { nextTaskDirect } from '../../../../../mcp-server/src/core/direct-functions/next-task.js';
+import { showTaskDirect } from '../../../../../mcp-server/src/core/direct-functions/show-task.js';
+import { setTaskStatusDirect } from '../../../../../mcp-server/src/core/direct-functions/set-task-status.js';
+import { expandTaskDirect } from '../../../../../mcp-server/src/core/direct-functions/expand-task.js';
+import { addTaskDirect } from '../../../../../mcp-server/src/core/direct-functions/add-task.js';
+import { researchDirect } from '../../../../../mcp-server/src/core/direct-functions/research.js';
+import { listTagsDirect } from '../../../../../mcp-server/src/core/direct-functions/list-tags.js';
+import { useTagDirect } from '../../../../../mcp-server/src/core/direct-functions/use-tag.js';
+import { addTagDirect } from '../../../../../mcp-server/src/core/direct-functions/add-tag.js';
+import { deleteTagDirect } from '../../../../../mcp-server/src/core/direct-functions/delete-tag.js';
+import { renameTagDirect } from '../../../../../mcp-server/src/core/direct-functions/rename-tag.js';
+import { parsePRDDirect } from '../../../../../mcp-server/src/core/direct-functions/parse-prd.js';
+import { analyzeTaskComplexityDirect } from '../../../../../mcp-server/src/core/direct-functions/analyze-task-complexity.js';
+import { expandAllTasksDirect } from '../../../../../mcp-server/src/core/direct-functions/expand-all-tasks.js';
+import { modelsDirect } from '../../../../../mcp-server/src/core/direct-functions/models.js';
+import { updateTaskByIdDirect } from '../../../../../mcp-server/src/core/direct-functions/update-task-by-id.js';
+import { updateSubtaskByIdDirect } from '../../../../../mcp-server/src/core/direct-functions/update-subtask-by-id.js';
 
 // Map MCP tool names to direct functions
 const TOOL_FUNCTION_MAP = {
@@ -384,10 +384,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Update result
 	 */
 	async updateSubtask(subtaskId, options = {}) {
-		try {
-			const { updateSubtaskByIdDirect } = await import(
-				'../../../../mcp-server/src/core/task-master-core.js'
-			);
+		                try {
+                        const { updateSubtaskByIdDirect } = await import(
+                                '../../../../../mcp-server/src/core/task-master-core.js'
+                        );
 
 			const result = await updateSubtaskByIdDirect(
 				{
@@ -428,10 +428,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Status update result
 	 */
 	async setSubtaskStatus(subtaskId, status) {
-		try {
-			const { setTaskStatusDirect } = await import(
-				'../../../../mcp-server/src/core/task-master-core.js'
-			);
+		                try {
+                        const { setTaskStatusDirect } = await import(
+                                '../../../../../mcp-server/src/core/task-master-core.js'
+                        );
 
 			const result = await setTaskStatusDirect(
 				{
@@ -470,10 +470,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Subtask progress data
 	 */
 	async getSubtaskProgress(subtaskId) {
-		try {
-			const { getTask } = await import(
-				'../../../mcp-server/src/core/task-master-core.js'
-			);
+		                try {
+                        const { getTask } = await import(
+                                '../../../../../mcp-server/src/core/task-master-core.js'
+                        );
 
 			const result = await getTask(
 				{

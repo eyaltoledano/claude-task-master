@@ -10,7 +10,7 @@
  */
 
 import { flowLogger } from '../../../logging/flow-logger.js';
-import { DirectBackend } from '../../../backends/direct-backend.js';
+import { DirectBackend } from '../../../infra/backends/direct-backend.js';
 
 const logger = {
 	info: (msg) => flowLogger.log('info', msg),
