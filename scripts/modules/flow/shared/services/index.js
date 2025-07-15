@@ -13,4 +13,10 @@ export { default as SandboxCleanerService } from './sandbox-cleaner.service.js';
 export * from './context-generation/index.js';
 
 // Service interfaces and validation
-export * from './interfaces.js'; 
+export * from './interfaces.js';
+
+// Type guards and runtime validation
+export * from './type-guards.js';
+
+// Service factory
+export * from './service-factory.js'; 
