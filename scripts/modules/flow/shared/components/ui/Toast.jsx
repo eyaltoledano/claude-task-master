@@ -7,7 +7,7 @@ import {
 	animations,
 	utils,
 	icons
-} from '../../../styles/DesignSystem.js';
+} from '../../theme/DesignSystem.js';
 
 // Toast context for managing global toasts
 const ToastContext = createContext();

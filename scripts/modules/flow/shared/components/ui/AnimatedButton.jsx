@@ -6,7 +6,7 @@ import {
 	animations,
 	variants,
 	utils
-} from '../../../styles/DesignSystem.js';
+} from '../../theme/DesignSystem.js';
 
 const AnimatedButton = ({
 	children,

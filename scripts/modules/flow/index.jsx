@@ -20,7 +20,7 @@ import { DirectBackend } from './backends/direct-backend.js';
 import { CliBackend } from './backends/cli-backend.js';
 import { theme, setTheme, getTheme } from './theme.js';
 import { MCPClientBackend } from './backends/mcp-client-backend.js';
-import { createInkUITheme } from './theme/ink-ui-theme.js';
+import { createInkUITheme } from './shared/theme/ink-ui-theme.js';
 
 // Import screens
 import { WelcomeScreen } from './components/WelcomeScreen.jsx';
