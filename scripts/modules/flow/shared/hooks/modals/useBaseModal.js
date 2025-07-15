@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useTerminalSize } from '../useTerminalSize.js';
 import { useComponentTheme } from '../useTheme.js';
 import { useKeypress } from '../useKeypress.js';
-import { getColor } from '../../theme.js';
+import { getColor } from '../../../theme.js';
 
 /**
  * Base modal hook providing common modal functionality

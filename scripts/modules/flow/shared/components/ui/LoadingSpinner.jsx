@@ -92,4 +92,5 @@ export const LoadingOverlay = ({
 	);
 };
 
+export { LoadingSpinner };
 export default LoadingSpinner;

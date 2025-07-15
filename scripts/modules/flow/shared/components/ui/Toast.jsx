@@ -7,7 +7,7 @@ import {
 	animations,
 	utils,
 	icons
-} from '../../styles/DesignSystem.js';
+} from '../../../styles/DesignSystem.js';
 
 // Toast context for managing global toasts
 const ToastContext = createContext();
@@ -369,4 +369,5 @@ export const SimpleToast = ({
 	);
 };
 
+export { Toast };
 export default Toast;

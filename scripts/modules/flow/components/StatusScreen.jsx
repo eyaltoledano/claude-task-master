@@ -3,7 +3,7 @@ import { Box, Text, useInput, useStdout } from 'ink';
 
 import { style, gradient, getComponentTheme, getColor } from '../theme.js';
 import { useAppContext } from '../index.jsx';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 
 
 export const StatusScreen = () => {

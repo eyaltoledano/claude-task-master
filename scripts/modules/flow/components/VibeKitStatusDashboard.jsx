@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 import { VibeKitAgentStatusGrid } from './VibeKitAgentSelector.jsx';
 
 export function VibeKitStatusDashboard({ onBack, onExecuteTask, onGenerateCode, onManageAgents }) {

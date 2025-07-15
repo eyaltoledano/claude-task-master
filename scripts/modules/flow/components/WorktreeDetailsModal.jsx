@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 import { Select, Alert, Spinner, ConfirmInput } from '@inkjs/ui';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import { BaseModal } from './BaseModal.jsx';

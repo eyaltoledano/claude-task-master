@@ -5,7 +5,7 @@ import Spinner from 'ink-spinner';
 import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
-import { Toast } from './Toast.jsx';
+import { Toast } from '../shared/components/ui/Toast.jsx';
 import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
 import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 

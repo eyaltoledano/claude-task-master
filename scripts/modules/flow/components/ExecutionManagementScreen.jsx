@@ -6,8 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { Toast } from './Toast.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
+import { Toast } from '../shared/components/ui/Toast.jsx';
 import { BaseModal } from './BaseModal.jsx';
 import { useAppContext } from '../index.jsx';
 

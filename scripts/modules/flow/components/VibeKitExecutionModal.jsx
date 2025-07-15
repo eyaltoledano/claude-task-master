@@ -3,9 +3,9 @@ import { Box, Text, useInput, useApp } from 'ink';
 import path from 'path';
 import fs from 'fs';
 import { VibeKit } from '@vibe-kit/sdk';
-import LoadingSpinner from './ui/LoadingSpinner.jsx';
-import AnimatedButton from './ui/AnimatedButton.jsx';
-import ProgressBar from './ui/ProgressBar.jsx';
+import LoadingSpinner from '../shared/components/ui/LoadingSpinner.jsx';
+import AnimatedButton from '../shared/components/ui/AnimatedButton.jsx';
+import ProgressBar from '../shared/components/ui/ProgressBar.jsx';
 import { useAppContext } from '../index.jsx';
 
 export function VibeKitExecutionModal({ 

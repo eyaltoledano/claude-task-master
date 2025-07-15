@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';

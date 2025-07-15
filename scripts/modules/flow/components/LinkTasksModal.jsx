@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
-import { Toast } from './Toast.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
+import { Toast } from '../shared/components/ui/Toast.jsx';
 import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';

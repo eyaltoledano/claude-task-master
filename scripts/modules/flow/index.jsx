@@ -31,7 +31,7 @@ import { ParsePRDScreen } from './components/ParsePRDScreen.jsx';
 import { AnalyzeComplexityScreen } from './components/AnalyzeComplexityScreen.jsx';
 import { DependencyVisualizerScreen } from './components/DependencyVisualizerScreen.jsx';
 import { SessionsScreen } from './components/SessionsScreen.jsx';
-import { Toast } from './components/Toast.jsx';
+import { Toast } from './shared/components/ui/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
 import { CommandPalette } from './components/CommandPalette.jsx';
 import { MCPServerManager } from './components/MCPServerManager.jsx';

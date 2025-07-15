@@ -8,7 +8,7 @@ import {
 	useKeypress,
 	usePhraseCycler
 } from '../shared/hooks/index.js';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 
 export function ClaudeActiveSession({
 	activeSession,

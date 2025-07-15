@@ -3,7 +3,7 @@ import { Box, Text, useInput } from 'ink';
 import { ConfirmInput } from '@inkjs/ui';
 import { style, gradient } from '../theme.js';
 import { useAppContext } from '../index.jsx';
-import { LoadingSpinner } from './LoadingSpinner.jsx';
+import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
 import { OverflowableText } from './OverflowableText.jsx';
 import { OverflowIndicator } from './OverflowIndicator.jsx';

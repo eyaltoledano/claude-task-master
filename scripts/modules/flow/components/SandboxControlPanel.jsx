@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { VibeKitService } from '../services/vibekit.service.js';
-import LoadingSpinner from './ui/LoadingSpinner.jsx';
+import LoadingSpinner from '../shared/components/ui/LoadingSpinner.jsx';
 
 export function SandboxControlPanel({ 
   isVisible, 
