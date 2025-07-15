@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { loadASTConfig } from '../../src/config/ast-config.js';
+import { loadASTConfig } from '../../../shared/config/ast-config.js';
 import { CacheKeyGenerator } from './cache-key-generator.js';
 
 /**

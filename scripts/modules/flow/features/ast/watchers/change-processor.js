@@ -20,7 +20,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
-import { loadASTConfig } from '../src/config/ast-config.js';
+import { loadASTConfig } from '../../../shared/config/ast-config.js';
 
 /**
  * Change types classification

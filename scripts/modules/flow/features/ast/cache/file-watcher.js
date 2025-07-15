@@ -2,7 +2,7 @@ import { watch } from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { detectLanguage } from '../language-detector.js';
-import { loadASTConfig } from '../../src/config/ast-config.js';
+import { loadASTConfig } from '../../../shared/config/ast-config.js';
 
 /**
  * AST File Watcher

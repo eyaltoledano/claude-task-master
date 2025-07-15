@@ -11,7 +11,7 @@
  * - task-master flow --config-validate
  */
 
-import ASTConfigManager, { ConfigValidator } from '../../src/config/ast-config.js';
+import ASTConfigManager, { ConfigValidator } from '../../shared/config/ast-config.js';
 
 /**
  * Configuration Command Handler

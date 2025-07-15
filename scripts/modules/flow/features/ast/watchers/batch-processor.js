@@ -18,7 +18,7 @@
 
 import { EventEmitter } from 'events';
 import path from 'path';
-import { loadASTConfig } from '../src/config/ast-config.js';
+import { loadASTConfig } from '../../../shared/config/ast-config.js';
 import { ChangeTypes, ChangePriority } from './change-processor.js';
 
 /**

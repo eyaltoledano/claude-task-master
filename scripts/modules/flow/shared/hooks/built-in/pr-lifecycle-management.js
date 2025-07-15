@@ -3,7 +3,7 @@
  * Handles the complete lifecycle of PRs from creation to merge and cleanup
  */
 
-import { flowConfig } from '../../../src/config/flow-config.js';
+import { flowConfig } from '../../config/flow-config.js';
 
 export default class PRLifecycleManagementHook {
 	constructor() {

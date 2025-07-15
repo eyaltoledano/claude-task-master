@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { AgentsConfigManager } from '../src/config/managers/agents-config-manager.js';
+import { AgentsConfigManager } from '../config/managers/agents-config-manager.js';
 
 export const useCodeGeneration = () => {
   const [isCodeGenerationActive, setIsCodeGenerationActive] = useState(false);

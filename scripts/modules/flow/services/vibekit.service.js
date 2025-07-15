@@ -8,9 +8,9 @@
 import { VibeKit } from '@vibe-kit/sdk';
 import path from 'node:path';
 import fs from 'node:fs';
-import { FlowConfig } from '../src/config/flow-config.js';
+import { FlowConfig } from '../shared/config/flow-config.js';
 import { GitHubAuthService } from './github-auth.service.js';
-import { AgentsConfigManager } from '../src/config/managers/agents-config-manager.js';
+import { AgentsConfigManager } from '../shared/config/managers/agents-config-manager.js';
 
 export class VibeKitService {
   constructor(config = {}) {

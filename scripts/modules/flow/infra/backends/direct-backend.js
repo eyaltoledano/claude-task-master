@@ -7,7 +7,7 @@ import { promisify } from 'util';
 import { query as claudeQuery } from '@anthropic-ai/claude-code';
 import { FlowBackend } from './backend-interface.js';
 import { directFunctions } from '../../../../../mcp-server/src/core/task-master-core.js';
-import { flowConfig } from '../../src/config/flow-config.js';
+import { flowConfig } from '../../shared/config/flow-config.js';
 
 import { findProjectRoot } from '../../../utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../../src/constants/paths.js';
