@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { ConfirmInput } from '@inkjs/ui';
-import { style, gradient } from '../theme.js';
-import { useAppContext } from '../index.jsx';
-import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
-import { StreamingModal } from './StreamingModal.jsx';
-import { OverflowableText } from './OverflowableText.jsx';
-import { OverflowIndicator } from './OverflowIndicator.jsx';
-import { streamingStateManager } from '../streaming/StreamingStateManager.js';
+import { style, gradient } from '../../../theme.js';
+import { useAppContext } from '../../../index.jsx';
+import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
+import { StreamingModal } from '../../../components/StreamingModal.jsx';
+import { OverflowableText } from '../../../components/OverflowableText.jsx';
+import { OverflowIndicator } from '../../../components/OverflowIndicator.jsx';
+import { streamingStateManager } from '../../../streaming/StreamingStateManager.js';
 
 export function AnalyzeComplexityScreen() {
 	const { backend, setCurrentScreen, showToast, currentScreen } =

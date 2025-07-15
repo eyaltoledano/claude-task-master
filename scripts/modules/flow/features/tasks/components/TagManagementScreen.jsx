@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
-import { useAppContext } from '../index.jsx';
-import { theme } from '../theme.js';
-import { SimpleTable } from './SimpleTable.jsx';
+import { useAppContext } from '../../../index.jsx';
+import { theme } from '../../../theme.js';
+import { SimpleTable } from '../../../components/SimpleTable.jsx';
 
 export function TagManagementScreen() {
 	const { backend, currentTag, setCurrentTag, setCurrentScreen, showToast } =

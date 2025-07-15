@@ -9,14 +9,14 @@
  * - Merge completion (ensure status is done)
  */
 
-import { log } from '../../utils.js';
-import { DirectBackend } from '../backends/direct-backend.js';
+import { flowLogger } from '../../../logging/flow-logger.js';
+import { DirectBackend } from '../../../backends/direct-backend.js';
 
 const logger = {
-	info: (msg) => log('info', msg),
-	error: (msg) => log('error', msg),
-	debug: (msg) => log('debug', msg),
-	success: (msg) => log('success', msg)
+	info: (msg) => flowLogger.log('info', msg),
+	error: (msg) => flowLogger.log('error', msg),
+	debug: (msg) => flowLogger.log('debug', msg),
+	success: (msg) => flowLogger.log('info', msg) // success maps to info
 };
 
 export class TaskStatusManager {

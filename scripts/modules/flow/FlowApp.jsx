@@ -12,12 +12,14 @@ import { theme, setTheme, getTheme } from './theme.js';
 
 // Import screens
 import { WelcomeScreen } from './components/WelcomeScreen.jsx';
-import { TaskManagementScreen } from './components/TaskManagementScreen.jsx';
-import { TagManagementScreen } from './components/TagManagementScreen.jsx';
+import { 
+  TaskManagementScreen,
+  TagManagementScreen,
+  AnalyzeComplexityScreen,
+  DependencyVisualizerScreen
+} from './features/tasks/index.js';
 import { StatusScreen } from './components/StatusScreen.jsx';
 import { ParsePRDScreen } from './components/ParsePRDScreen.jsx';
-import { AnalyzeComplexityScreen } from './components/AnalyzeComplexityScreen.jsx';
-import { DependencyVisualizerScreen } from './components/DependencyVisualizerScreen.jsx';
 import { SessionsScreen } from './components/SessionsScreen.jsx';
 import { Toast } from './shared/components/ui/Toast.jsx';
 import { CommandSuggestions } from './components/CommandSuggestions.jsx';
@@ -25,7 +27,7 @@ import { CommandPalette } from './components/CommandPalette.jsx';
 import { MCPServerManager } from './components/MCPServerManager.jsx';
 import { ChatScreen } from './components/ChatScreen.jsx';
 import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
-import { NextTaskModal } from './components/NextTaskModal.jsx';
+import { NextTaskModal } from './features/tasks/index.js';
 import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from './components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
@@ -34,7 +36,7 @@ import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './shared/hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
-import { initializeNextTaskService } from './services/NextTaskService.js';
+import { initializeNextTaskService } from './features/tasks/services/NextTaskService.js';
 import { getTaskMasterVersion } from '../../../src/utils/getVersion.js';
 
 // Import VibeKit components

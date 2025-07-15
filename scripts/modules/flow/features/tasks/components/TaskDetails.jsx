@@ -6,8 +6,8 @@ import {
 	usePhraseCycler,
 	PhraseCollections,
 	useKeypress
-} from '../shared/hooks/index.js';
-import { OverflowableText } from './OverflowableText.jsx';
+} from '../../../shared/hooks/index.js';
+import { OverflowableText } from '../../../components/OverflowableText.jsx';
 
 export function TaskDetails({
 	task,

@@ -2,22 +2,22 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { flushSync } from 'react-dom';
-import { useAppContext } from '../index.jsx';
-import { getTheme } from '../theme.js';
-import { Toast } from '../shared/components/ui/Toast.jsx';
+import { useAppContext } from '../../../index.jsx';
+import { getTheme } from '../../../theme.js';
+import { Toast } from '../../../shared/components/ui/Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';
-import { OverflowIndicator } from './OverflowIndicator.jsx';
-import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
-import { SimpleTable } from './SimpleTable.jsx';
+import { OverflowIndicator } from '../../../components/OverflowIndicator.jsx';
+import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
+import { SimpleTable } from '../../../components/SimpleTable.jsx';
 import TextInput from 'ink-text-input';
-import { StreamingModal } from './StreamingModal.jsx';
-import { streamingStateManager } from '../streaming/StreamingStateManager.js';
-import { useTerminalSize } from '../shared/hooks/useTerminalSize.js';
-import { ResearchInputModal } from './ResearchInputModal.jsx';
+import { StreamingModal } from '../../../components/StreamingModal.jsx';
+import { streamingStateManager } from '../../../streaming/StreamingStateManager.js';
+import { useTerminalSize } from '../../../shared/hooks/useTerminalSize.js';
+import { ResearchInputModal } from '../../../components/ResearchInputModal.jsx';
 
-import { VibeKitExecutionModal } from './VibeKitExecutionModal.jsx';
-import { VibeKitSettingsModal } from './VibeKitSettingsModal.jsx';
-import { SandboxControlPanel } from './SandboxControlPanel.jsx';
+import { VibeKitExecutionModal } from '../../../components/VibeKitExecutionModal.jsx';
+import { VibeKitSettingsModal } from '../../../components/VibeKitSettingsModal.jsx';
+import { SandboxControlPanel } from '../../../components/SandboxControlPanel.jsx';
 
 export function TaskManagementScreen() {
 	const {

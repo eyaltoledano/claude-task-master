@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
-import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
-import { Toast } from '../shared/components/ui/Toast.jsx';
-import { BaseModal } from './BaseModal.jsx';
-import { useKeypress } from '../shared/hooks/useKeypress.js';
-import { useComponentTheme } from '../shared/hooks/useTheme.js';
+import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
+import { Toast } from '../../../shared/components/ui/Toast.jsx';
+import { BaseModal } from '../../../components/BaseModal.jsx';
+import { useKeypress } from '../../../shared/hooks/useKeypress.js';
+import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 
 // Memoized task row component to prevent unnecessary re-renders
 const TaskRow = React.memo(
@@ -536,4 +536,4 @@ function LinkTasksModal({ worktree, backend, onClose }) {
 	);
 }
 
-export default LinkTasksModal;
+export { LinkTasksModal };

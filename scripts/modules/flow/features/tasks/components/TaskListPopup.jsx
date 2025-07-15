@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { theme } from '../theme.js';
+import { theme } from '../../../theme.js';
 
 // Helper functions
 const getStatusSymbol = (status) => {
