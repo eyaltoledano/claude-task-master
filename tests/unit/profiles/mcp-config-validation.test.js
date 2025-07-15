@@ -280,7 +280,9 @@ describe('MCP Configuration Validation', () => {
 
 	describe('MCP configuration validation', () => {
 		const mcpProfiles = ['cursor', 'gemini', 'roo', 'windsurf', 'vscode'];
-		const nonMcpProfiles = ['claude', 'codex', 'cline', 'trae'];
+		const nonMcpProfiles = ['codex', 'cline', 'trae'];
+		const profilesWithLifecycle = ['claude'];
+		const profilesWithoutLifecycle = ['codex'];
 
 		test.each(mcpProfiles)(
 			'should have valid MCP config for %s profile',
@@ -293,7 +295,7 @@ describe('MCP Configuration Validation', () => {
 			}
 		);
 
-		test.each(['codex', 'cline', 'trae'])(
+		test.each(nonMcpProfiles)(
 			'should not require MCP config for %s profile',
 			(profileName) => {
 				const profile = getRulesProfile(profileName);
