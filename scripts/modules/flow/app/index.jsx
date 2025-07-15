@@ -45,7 +45,7 @@ export async function run(options = {}) {
 	} else if (backendType === 'mcp') {
 		// For MCP backend, we need to load server configuration
 		const { loadServers, getDefaultServer, findServerById } = await import(
-			'../mcp/servers.js'
+			'../infra/mcp/servers.js'
 		);
 		const servers = await loadServers();
 

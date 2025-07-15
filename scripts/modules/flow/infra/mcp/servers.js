@@ -1,12 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { findProjectRoot } from '../../utils.js';
+import { findProjectRoot } from '../../../utils.js';
 
 const SERVERS_FILE = 'servers.json';
 
 export async function getServersPath() {
 	const projectRoot = findProjectRoot() || process.cwd();
-	const mcpDir = path.join(projectRoot, 'scripts', 'modules', 'flow', 'mcp');
+	const mcpDir = path.join(projectRoot, 'scripts', 'modules', 'flow', 'infra', 'mcp');
 	await fs.mkdir(mcpDir, { recursive: true });
 	return path.join(mcpDir, SERVERS_FILE);
 }

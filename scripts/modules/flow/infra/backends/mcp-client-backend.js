@@ -1,5 +1,5 @@
 import { FlowBackend } from './backend-interface.js';
-import { connectionPool } from '../../mcp/connection-pool.js';
+import { connectionPool } from '../mcp/connection-pool.js';
 
 export class MCPClientBackend extends FlowBackend {
 	constructor(options = {}) {

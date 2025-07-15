@@ -10,7 +10,7 @@ import { OverflowIndicator, SimpleTable } from '../../ui';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
 import TextInput from 'ink-text-input';
 import { StreamingModal } from '../../../components/StreamingModal.jsx';
-import { streamingStateManager } from '../../../streaming/StreamingStateManager.js';
+import { streamingStateManager } from '../../../infra/streaming/StreamingStateManager.js';
 import { useTerminalSize } from '../../../shared/hooks/useTerminalSize.js';
 import { ResearchInputModal } from '../../../components/ResearchInputModal.jsx';
 

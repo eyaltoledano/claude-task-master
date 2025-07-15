@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
-import { connectionPool } from '../mcp/connection-pool.js';
+import { connectionPool } from '../infra/mcp/connection-pool.js';
 import { MCPToolViewer } from './MCPToolViewer.jsx';
 import { theme } from '../theme.js';
 

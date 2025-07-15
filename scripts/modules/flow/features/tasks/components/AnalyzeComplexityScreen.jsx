@@ -6,7 +6,7 @@ import { useAppContext } from '../../../index.jsx';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
 import { StreamingModal } from '../../../components/StreamingModal.jsx';
 import { OverflowableText, OverflowIndicator } from '../../ui';
-import { streamingStateManager } from '../../../streaming/StreamingStateManager.js';
+import { streamingStateManager } from '../../../infra/streaming/StreamingStateManager.js';
 
 export function AnalyzeComplexityScreen() {
 	const { backend, setCurrentScreen, showToast, currentScreen } =

@@ -6,7 +6,7 @@ import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
 import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
-import { streamingStateManager } from '../streaming/StreamingStateManager.js';
+import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
 
 export function ParsePRDScreen() {
 	const { backend, currentTag, setCurrentScreen, showToast, reloadTasks } =

@@ -9,8 +9,8 @@ import {
 	addServer,
 	updateServer,
 	removeServer
-} from '../mcp/servers.js';
-import { connectionPool } from '../mcp/connection-pool.js';
+} from '../infra/mcp/servers.js';
+import { connectionPool } from '../infra/mcp/connection-pool.js';
 
 export function MCPManagementScreen() {
 	const {

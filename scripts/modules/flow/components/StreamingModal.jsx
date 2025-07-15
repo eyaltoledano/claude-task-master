@@ -3,7 +3,7 @@ import { BaseModal } from '../features/ui';
 import { Box, Text } from 'ink';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
-import { streamingStateManager } from '../streaming/StreamingStateManager.js';
+import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
 
 export function StreamingModal({ isOpen, onClose }) {
 	const [state, setState] = useState({

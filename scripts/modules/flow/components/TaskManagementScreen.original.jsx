@@ -12,7 +12,7 @@ import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import TextInput from 'ink-text-input';
 import { WorktreeBranchConflictModal } from './WorktreeBranchConflictModal.jsx';
 import { StreamingModal } from './StreamingModal.jsx';
-import { streamingStateManager } from '../streaming/StreamingStateManager.js';
+import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
 
 export function TaskManagementScreen() {
 	const {
