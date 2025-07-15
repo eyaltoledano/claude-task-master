@@ -6,7 +6,7 @@ import { EventEmitter } from 'events';
 import {
 	getNextTaskService,
 	isNextTaskServiceInitialized
-} from './NextTaskService.js';
+} from '../../tasks/services/NextTaskService.js';
 
 export class PRMonitoringService extends EventEmitter {
 	constructor(backend, options = {}) {

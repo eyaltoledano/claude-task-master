@@ -1,4 +1,4 @@
-import { getHookManager, HOOK_EVENTS } from '../shared/hooks/index.js';
+import { getHookManager, HOOK_EVENTS } from '../../../shared/hooks/index.js';
 
 /**
  * Hook Integration Service - Clean interface between Flow components and hooks

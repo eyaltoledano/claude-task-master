@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { useAgentSession } from '../shared/hooks/useAgentSession.js';
-import { UnifiedAgentService } from '../services/UnifiedAgentService.js';
+import { UnifiedAgentService } from '../shared/services/UnifiedAgentService.js';
 import { SimpleTable, Toast, LoadingSpinner, OverflowableText, OverflowIndicator } from '../features/ui';
 import { useAppContext } from '../index.jsx';
 

@@ -1,6 +1,6 @@
 // UnifiedAgentService.js - Abstracts VibeKit for unified agent handling
 
-import { VibeKitService } from './vibekit.service.js';
+import { VibeKitService } from '../../features/agents/services/vibekit.service.js';
 
 export class UnifiedAgentService {
   constructor(backend) {

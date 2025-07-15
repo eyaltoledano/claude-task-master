@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { fileURLToPath } from 'url';
-import { flowConfig } from '../shared/config/flow-config.js';
+import { flowConfig } from '../config/flow-config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

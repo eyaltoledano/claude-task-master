@@ -35,8 +35,8 @@ import { ExecutionManagementScreen } from './components/ExecutionManagementScree
 import SettingsModal from './components/SettingsModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
 import { getHookManager } from './shared/hooks/index.js';
-import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
-import { initializeHookIntegration } from './services/HookIntegrationService.js';
+import { BranchAwarenessManager } from './shared/services/BranchAwarenessManager.js';
+import { initializeHookIntegration } from './features/hooks/services/HookIntegrationService.js';
 import { initializeNextTaskService } from './features/tasks/services/NextTaskService.js';
 import { getTaskMasterVersion } from '../../../src/utils/getVersion.js';
 

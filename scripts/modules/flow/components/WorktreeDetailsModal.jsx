@@ -7,7 +7,7 @@ import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import { BaseModal } from './BaseModal.jsx';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
-import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
+import { backgroundOperations } from '../shared/services/BackgroundOperationsManager.js';
 
 export default function WorktreeDetailsModal({
 	worktree,

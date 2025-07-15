@@ -1,4 +1,4 @@
-import { AgentsConfigManager } from '../shared/config/managers/agents-config-manager.js';
+import { AgentsConfigManager } from '../config/managers/agents-config-manager.js';
 
 export class SandboxCleaner {
   constructor() {

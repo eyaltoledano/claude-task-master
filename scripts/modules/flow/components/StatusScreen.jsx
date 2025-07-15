@@ -60,7 +60,7 @@ export const StatusScreen = () => {
 
 				// Try to use new TaskContextGenerator for enhanced project status
 				try {
-					const { TaskContextGenerator } = await import('../services/context-generation/index.js');
+					const { TaskContextGenerator } = await import('../shared/services/context-generation/index.js');
 					
 					const contextGenerator = new TaskContextGenerator({
 						backend: backend,

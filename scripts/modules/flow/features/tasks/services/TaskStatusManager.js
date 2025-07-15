@@ -9,7 +9,7 @@
  * - Merge completion (ensure status is done)
  */
 
-import { flowLogger } from '../../../logging/flow-logger.js';
+import { flowLogger } from '../../../shared/logging/flow-logger.js';
 import { DirectBackend } from '../../../infra/backends/direct-backend.js';
 
 const logger = {

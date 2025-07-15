@@ -4,7 +4,7 @@
  */
 
 import { VibeKitService } from './vibekit.service.js';
-import { backgroundOperations } from './BackgroundOperationsManager.js';
+import { backgroundOperations } from '../../../shared/services/BackgroundOperationsManager.js';
 
 export class BackgroundClaudeCode {
   constructor(backend) {

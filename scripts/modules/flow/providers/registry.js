@@ -2,7 +2,7 @@
  * Simplified Provider Registry using VibeKit SDK
  */
 
-import { VibeKitService } from '../services/vibekit.service.js';
+import { VibeKitService } from '../features/agents/services/vibekit.service.js';
 
 export const availableProviders = {
   vibekit: {

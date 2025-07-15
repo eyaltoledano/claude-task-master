@@ -7,11 +7,11 @@ import path from 'path';
 import {
 	getNextTaskService,
 	isNextTaskServiceInitialized
-} from '../../../services/NextTaskService.js';
+} from '../../../features/tasks/services/NextTaskService.js';
 import {
 	getPRMonitoringService,
 	isPRMonitoringServiceInitialized
-} from '../../../services/PRMonitoringService.js';
+} from '../../../features/github/services/PRMonitoringService.js';
 
 export default class ClaudeCodeStopHook {
 	constructor() {

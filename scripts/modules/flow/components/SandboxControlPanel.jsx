@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { VibeKitService } from '../services/vibekit.service.js';
+import { VibeKitService } from '../features/agents/services/vibekit.service.js';
 import LoadingSpinner from '../shared/components/ui/LoadingSpinner.jsx';
 
 export function SandboxControlPanel({ 

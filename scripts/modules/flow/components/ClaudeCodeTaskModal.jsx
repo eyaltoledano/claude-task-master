@@ -5,8 +5,8 @@ import Spinner from 'ink-spinner';
 import { BaseModal, Toast } from '../features/ui';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
-import { BackgroundClaudeCode } from '../services/BackgroundClaudeCode.js';
-import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
+import { BackgroundClaudeCode } from '../features/agents/services/BackgroundClaudeCode.js';
+import { backgroundOperations } from '../shared/services/BackgroundOperationsManager.js';
 
 function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
 	const [prompt, setPrompt] = useState('');

@@ -1,7 +1,7 @@
 // useAgentSession.js - Shared hook for managing agent sessions
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { UnifiedAgentService } from '../../services/UnifiedAgentService.js';
+import { UnifiedAgentService } from '../services/UnifiedAgentService.js';
 
 export function useAgentSession(backend, taskId = null, initialAgent = 'claude') {
   const [sessions, setSessions] = useState([]);
