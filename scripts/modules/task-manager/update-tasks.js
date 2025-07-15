@@ -1,33 +1,37 @@
 import path from 'path';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 import { z } from 'zod'; // Keep Zod for post-parsing validation
 
 import {
 	log as consoleLog,
-	readJSON,
-	writeJSON,
-	truncate,
+	getCurrentTag,
 	isSilentMode,
-	getCurrentTag
+	readJSON,
+	truncate,
+	writeJSON
 } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
-import { getDebugFlag } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
-import { getModelConfiguration } from './models.js';
+import {
+	getDebugFlag,
+	getMainProvider,
+	getResearchProvider
+} from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
+import generateTaskFiles from './generate-task-files.js';
+import { getModelConfiguration } from './models.js';
 
 // Zod schema for validating the structure of tasks AFTER parsing
 const updatedTaskSchema = z
@@ -54,7 +58,13 @@ const updatedTaskArraySchema = z.array(updatedTaskSchema);
  * @returns {Array} Parsed and validated tasks array.
  * @throws {Error} If parsing or validation fails.
  */
-function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
+function parseUpdatedTasksFromText(
+	text,
+	expectedCount,
+	logFn,
+	isMCP,
+	promptVariant = 'default'
+) {
 	const report = (level, ...args) => {
 		if (isMCP) {
 			if (typeof logFn[level] === 'function') logFn[level](...args);
@@ -155,7 +165,14 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 	// --- Step 4: Attempt final parse ---
 	let parsedTasks;
 	try {
-		parsedTasks = JSON.parse(cleanedResponse);
+		const parsedResponse = JSON.parse(cleanedResponse);
+
+		// Handle gemini-cli variant
+		if (promptVariant === 'gemini-cli' && parsedResponse.tasks) {
+			parsedTasks = parsedResponse.tasks;
+		} else {
+			parsedTasks = parsedResponse;
+		}
 	} catch (parseError) {
 		report('error', `Failed to parse JSON array: ${parseError.message}`);
 		report(
@@ -372,6 +389,16 @@ async function updateTasks(
 		// --- Build Prompts (Using PromptManager) ---
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
+
+		// Determine which provider we're using
+		const provider = useResearch
+			? getResearchProvider(session)
+			: getMainProvider(session);
+		const isGeminiCli = provider && provider.name === 'gemini-cli';
+
+		// Use gemini-cli variant for Gemini CLI
+		const promptVariant = isGeminiCli ? 'gemini-cli' : 'default';
+
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'update-tasks',
 			{
@@ -379,7 +406,8 @@ async function updateTasks(
 				updatePrompt: prompt,
 				useResearch,
 				projectContext: gatheredContext
-			}
+			},
+			promptVariant
 		);
 		// --- End Build Prompts ---
 
@@ -414,7 +442,8 @@ async function updateTasks(
 				aiServiceResponse.mainResult,
 				tasksToUpdate.length,
 				logFn,
-				isMCP
+				isMCP,
+				promptVariant // Pass the promptVariant to handle gemini-cli
 			);
 
 			// --- Update Tasks Data (Updated writeJSON call) ---

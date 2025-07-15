@@ -44,7 +44,9 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		getMainProvider: jest.fn(() => ({ name: 'test-provider' })),
+		getResearchProvider: jest.fn(() => ({ name: 'test-research-provider' }))
 	})
 );
 

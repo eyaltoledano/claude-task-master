@@ -1,27 +1,32 @@
-import chalk from 'chalk';
-import boxen from 'boxen';
-import readline from 'readline';
 import fs from 'fs';
+import readline from 'readline';
+import boxen from 'boxen';
+import chalk from 'chalk';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { isSilentMode, log, readJSON, writeJSON } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import {
+	getDebugFlag,
+	getMainProvider,
+	getProjectName,
+	getResearchProvider
+} from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import { flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { flattenTasksWithSubtasks } from '../utils.js';
 
 /**
  * Generates the prompt for complexity analysis.
@@ -406,10 +411,19 @@ async function analyzeTaskComplexity(options, context = {}) {
 			useResearch: useResearch
 		};
 
+		// Determine which provider we're using
+		const provider = useResearch
+			? getResearchProvider(session)
+			: getMainProvider(session);
+		const isGeminiCli = provider && provider.name === 'gemini-cli';
+
+		// Use gemini-cli variant for Gemini CLI
+		const promptVariant = isGeminiCli ? 'gemini-cli' : 'default';
+
 		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
 			'analyze-complexity',
 			promptParams,
-			'default'
+			promptVariant
 		);
 
 		let loadingIndicator = null;
@@ -458,18 +472,31 @@ async function analyzeTaskComplexity(options, context = {}) {
 				if (codeBlockMatch) {
 					cleanedResponse = codeBlockMatch[1].trim();
 				} else {
-					const firstBracket = cleanedResponse.indexOf('[');
-					const lastBracket = cleanedResponse.lastIndexOf(']');
-					if (firstBracket !== -1 && lastBracket > firstBracket) {
-						cleanedResponse = cleanedResponse.substring(
-							firstBracket,
-							lastBracket + 1
-						);
+					// For gemini-cli variant, look for the first '{' and last '}'
+					if (promptVariant === 'gemini-cli') {
+						const firstBrace = cleanedResponse.indexOf('{');
+						const lastBrace = cleanedResponse.lastIndexOf('}');
+						if (firstBrace !== -1 && lastBrace > firstBrace) {
+							cleanedResponse = cleanedResponse.substring(
+								firstBrace,
+								lastBrace + 1
+							);
+						}
 					} else {
-						reportLog(
-							'Warning: Response does not appear to be a JSON array.',
-							'warn'
-						);
+						// For default variant, look for array brackets
+						const firstBracket = cleanedResponse.indexOf('[');
+						const lastBracket = cleanedResponse.lastIndexOf(']');
+						if (firstBracket !== -1 && lastBracket > firstBracket) {
+							cleanedResponse = cleanedResponse.substring(
+								firstBracket,
+								lastBracket + 1
+							);
+						} else {
+							reportLog(
+								'Warning: Response does not appear to be a JSON array.',
+								'warn'
+							);
+						}
 					}
 				}
 
@@ -483,7 +510,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 					);
 				}
 
-				complexityAnalysis = JSON.parse(cleanedResponse);
+				const parsedResponse = JSON.parse(cleanedResponse);
+
+				// Extract the analysis array based on variant
+				if (promptVariant === 'gemini-cli' && parsedResponse.analysis) {
+					complexityAnalysis = parsedResponse.analysis;
+				} else {
+					complexityAnalysis = parsedResponse;
+				}
 			} catch (parseError) {
 				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 				reportLog(

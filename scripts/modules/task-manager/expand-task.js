@@ -18,7 +18,12 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
+import {
+	getDefaultSubtasks,
+	getDebugFlag,
+	getMainProvider,
+	getResearchProvider
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
@@ -450,6 +455,12 @@ async function expandTask(
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Determine which provider we're using
+		const provider = useResearch
+			? getResearchProvider(session)
+			: getMainProvider(session);
+		const isGeminiCli = provider && provider.name === 'gemini-cli';
+
 		// Combine all context sources into a single additionalContext parameter
 		let combinedAdditionalContext = '';
 		if (additionalContext || complexityReasoningContext) {
@@ -497,21 +508,33 @@ async function expandTask(
 			expansionPrompt: expansionPromptText || undefined
 		};
 
-		let variantKey = 'default';
-		if (expansionPromptText) {
-			variantKey = 'complexity-report';
+		let promptVariant = 'default';
+		if (expansionPromptText && isGeminiCli) {
+			promptVariant = 'gemini-cli-complexity';
+			logger.info(
+				`Using gemini-cli complexity report variant for task ${task.id}.`
+			);
+		} else if (expansionPromptText) {
+			promptVariant = 'complexity-report';
 			logger.info(
 				`Using expansion prompt from complexity report for task ${task.id}.`
 			);
 		} else if (useResearch) {
-			variantKey = 'research';
+			promptVariant = 'research';
 			logger.info(`Using research variant for task ${task.id}.`);
+		} else if (isGeminiCli) {
+			promptVariant = 'gemini-cli';
+			logger.info(`Using gemini-cli variant for task ${task.id}.`);
 		} else {
 			logger.info(`Using standard prompt generation for task ${task.id}.`);
 		}
 
 		const { systemPrompt, userPrompt: promptContent } =
-			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
+			await promptManager.loadPrompt(
+				'expand-task',
+				promptParams,
+				promptVariant
+			);
 		// --- End Complexity Report / Prompt Logic ---
 
 		// --- AI Subtask Generation using generateTextService ---
