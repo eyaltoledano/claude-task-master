@@ -226,7 +226,7 @@ export class ProjectStructureAnalyzer {
 
     try {
       // Try to import AST analyzer if available
-      const { ASTContextBuilder } = await import('../../ast/context/ast-context-builder.js');
+      const { ASTContextBuilder } = await import('../context/ast-context-builder.js');
       this.astAnalyzer = new ASTContextBuilder(this.projectRoot);
       
       // Get basic AST context

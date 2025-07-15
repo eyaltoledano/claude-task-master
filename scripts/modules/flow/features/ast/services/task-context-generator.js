@@ -5,11 +5,11 @@
  * comprehensive context for Claude Code or VibeKit agents.
  */
 
-import { ProjectDetector } from './project-detector.js';
-import { TaskEnhancer } from './task-enhancer.js';
-import { GitContextGenerator } from './git-context-generator.js';
+import { ProjectDetector } from '../../../services/context-generation/project-detector.js';
+import { TaskEnhancer } from '../../../services/context-generation/task-enhancer.js';
+import { GitContextGenerator } from '../../../services/context-generation/git-context-generator.js';
 import { ProjectStructureAnalyzer } from './project-structure-analyzer.js';
-import { MarkdownFormatter } from './markdown-formatter.js';
+import { MarkdownFormatter } from '../../../services/context-generation/markdown-formatter.js';
 
 export class TaskContextGenerator {
   constructor(options = {}) {
