@@ -2,4 +2,4 @@
 "task-master-ai": patch
 ---
 
-Add MCP configuration support to Claude profile
+Add MCP configuration support to Claude Code rules
