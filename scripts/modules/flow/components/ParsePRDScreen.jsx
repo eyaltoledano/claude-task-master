@@ -8,6 +8,7 @@ import { theme } from '../shared/theme/theme.js';
 import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
+import { AsyncErrorBoundary, FileOperationErrorBoundary } from '../shared/components/error-boundaries/index.js';
 
 export function ParsePRDScreen() {
 	// Get backend from dependency injection, other things from app context
@@ -372,16 +373,19 @@ export function ParsePRDScreen() {
 
 	if (step === 'file-browser') {
 		return (
-			<FileBrowser
-				title="Select PRD File"
-				fileFilter={prdFileFilter}
-				onSelect={handleFileSelect}
-				onCancel={() => setCurrentScreen('welcome')}
-			/>
+			<FileOperationErrorBoundary operation="browse PRD files">
+				<FileBrowser
+					title="Select PRD File"
+					fileFilter={prdFileFilter}
+					onSelect={handleFileSelect}
+					onCancel={() => setCurrentScreen('welcome')}
+				/>
+			</FileOperationErrorBoundary>
 		);
 	}
 
 	return (
+		<AsyncErrorBoundary onRetry={() => setStep('file-browser')}>
 		<Box flexDirection="column" height="100%">
 			{/* Header */}
 			<Box
@@ -559,5 +563,6 @@ export function ParsePRDScreen() {
 				onClose={() => setShowStreamingModal(false)}
 			/>
 		</Box>
+		</AsyncErrorBoundary>
 	);
 }

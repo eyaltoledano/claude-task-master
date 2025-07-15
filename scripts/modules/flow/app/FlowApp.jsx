@@ -42,6 +42,13 @@ import { getTaskMasterVersion } from '../../../../src/utils/getVersion.js';
 // Import VibeKit components
 import { AgentExecutionScreen } from '../components/AgentExecutionScreen.jsx';
 
+// Import error boundaries
+import { 
+  GlobalErrorHandler,
+  NavigationErrorBoundary,
+  ServiceErrorBoundary
+} from '../shared/components/error-boundaries/index.js';
+
 // Create context for backend and app state
 const AppContext = createContext();
 
@@ -431,6 +438,8 @@ export function FlowApp({ options = {} }) {
 
 	return (
 		<AppContext.Provider value={contextValue}>
+			<GlobalErrorHandler>
+			<ServiceErrorBoundary serviceName="FlowApp">
 			<OverflowProvider>
 				<Box flexDirection="column" height="100%">
 				{/* Command Palette */}
@@ -568,8 +577,10 @@ export function FlowApp({ options = {} }) {
 						{/* Main content area */}
 						<Box flexGrow={1} flexDirection="column">
 							{/* Dynamic screen rendering */}
+							<NavigationErrorBoundary>
 							{currentScreen === 'welcome' && <WelcomeScreen />}
 							{currentScreen === 'sessions' && <SessionsScreen />}
+							</NavigationErrorBoundary>
 
 							{/* Notification toast */}
 							{notification && (
@@ -666,6 +677,8 @@ export function FlowApp({ options = {} }) {
 				)}
 			</Box>
 		</OverflowProvider>
+		</ServiceErrorBoundary>
+		</GlobalErrorHandler>
 		</AppContext.Provider>
 	);
 }
