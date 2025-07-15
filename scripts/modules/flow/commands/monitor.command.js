@@ -373,6 +373,8 @@ function loadTaskData(projectRoot) {
   }
 }
 
+export { loadTaskData }; // Add this export at the end
+
 /**
  * Generate mock task data for testing/demo
  */
