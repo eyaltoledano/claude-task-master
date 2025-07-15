@@ -45,6 +45,14 @@ export class CliBackend extends FlowBackend {
 	}
 
 	/**
+	 * Get the project root directory
+	 * @returns {string}
+	 */
+	getProjectRoot() {
+		return this.projectRoot;
+	}
+
+	/**
 	 * Run a task-master command and return parsed JSON output
 	 */
 	async runCommand(args, options = {}) {

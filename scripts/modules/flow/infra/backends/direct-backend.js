@@ -106,6 +106,14 @@ export class DirectBackend extends FlowBackend {
 	}
 
 	/**
+	 * Get the project root directory
+	 * @returns {string} - The project root path
+	 */
+	getProjectRoot() {
+		return this.projectRoot;
+	}
+
+	/**
 	 * Generic tool calling method for AI integration
 	 * @param {string} toolName - Name of the MCP tool to call
 	 * @param {object} args - Arguments for the tool
@@ -839,26 +847,11 @@ export class DirectBackend extends FlowBackend {
 
 	async getTasks(tag = null) {
 		try {
-			const { listTasks } = await import('../../task-manager.js');
-			const tasksPath = path.join(
-				this.projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
-			const result = listTasks(
-				tasksPath,
-				null, // statusFilter
-				null, // reportPath
-				false, // withSubtasks
-				'json', // outputFormat
-				tag,
-				{ projectRoot: this.projectRoot }
-			);
-			return result.tasks || [];
+			const result = await this.listTasks({ tag });
+			return result;
 		} catch (error) {
 			this.log.error(`Error getting tasks: ${error.message}`);
-			return [];
+			return { tasks: [], tag: tag || 'master' };
 		}
 	}
 

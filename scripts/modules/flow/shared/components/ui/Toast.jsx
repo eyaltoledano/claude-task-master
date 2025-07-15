@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Box, Text } from 'ink';
 import {
 	colors,
 	spacing,
@@ -95,34 +96,26 @@ export const ToastProvider = ({
 			{children}
 
 			{/* Toast container */}
-			<div
-				style={{
-					position: 'fixed',
-					zIndex: 10000,
-					pointerEvents: 'none',
-					...positions[position]
-				}}
+			<Box
+				position="absolute"
+				top={position.includes('top') ? 0 : undefined}
+				bottom={position.includes('bottom') ? 0 : undefined}
+				left={position.includes('center') ? '50%' : 0}
+				right={position.includes('right') ? 0 : undefined}
+				flexDirection={
+					position.includes('bottom') ? 'column-reverse' : 'column'
+				}
+				width={500}
+				gap={1}
 			>
-				<div
-					style={{
-						display: 'flex',
-						flexDirection: position.includes('bottom')
-							? 'column-reverse'
-							: 'column',
-						gap: spacing[2],
-						minWidth: '320px',
-						maxWidth: '500px'
-					}}
-				>
-					{toasts.map((toastData) => (
-						<Toast
-							key={toastData.id}
-							{...toastData}
-							onClose={() => removeToast(toastData.id)}
-						/>
-					))}
-				</div>
-			</div>
+				{toasts.map((toastData) => (
+					<Toast
+						key={toastData.id}
+						{...toastData}
+						onClose={() => removeToast(toastData.id)}
+					/>
+				))}
+			</Box>
 		</ToastContext.Provider>
 	);
 };
@@ -146,35 +139,35 @@ const Toast = ({
 			color: colors.success[600],
 			backgroundColor: colors.success[50],
 			borderColor: colors.success[200],
-			icon: icons.status.success
+			icon: <Text>{icons.status.success}</Text>
 		},
 		error: {
 			color: colors.error[600],
 			backgroundColor: colors.error[50],
 			borderColor: colors.error[200],
-			icon: icons.status.error
+			icon: <Text>{icons.status.error}</Text>
 		},
 		warning: {
 			color: colors.warning[600],
 			backgroundColor: colors.warning[50],
 			borderColor: colors.warning[200],
-			icon: icons.status.warning
+			icon: <Text>{icons.status.warning}</Text>
 		},
 		info: {
 			color: colors.primary[600],
 			backgroundColor: colors.primary[50],
 			borderColor: colors.primary[200],
-			icon: icons.status.info
+			icon: <Text>{icons.status.info}</Text>
 		},
 		loading: {
 			color: colors.neutral[600],
 			backgroundColor: colors.neutral[50],
 			borderColor: colors.neutral[200],
-			icon: icons.status.loading
+			icon: <Text>{icons.status.loading}</Text>
 		}
 	};
 
-	const config = typeConfig[type] || typeConfig.info;
+	const config = typeConfig[type];
 
 	useEffect(() => {
 		// Trigger entrance animation
@@ -213,124 +206,46 @@ const Toast = ({
 	};
 
 	const LoadingIcon = () => (
-		<div
-			style={{
-				width: '16px',
-				height: '16px',
-				border: `2px solid ${config.color}`,
-				borderTop: '2px solid transparent',
-				borderRadius: '50%',
-				animation: `spin ${animations.duration[1000]} linear infinite`,
-				flexShrink: 0,
-				marginTop: '2px'
-			}}
-		/>
+		<Box>
+			<Text>⏳</Text>
+		</Box>
 	);
 
 	return (
-		<div style={toastStyles}>
-			{/* Progress bar for timed toasts */}
-			{duration > 0 && (
-				<div
-					style={{
-						position: 'absolute',
-						bottom: 0,
-						left: 0,
-						height: '3px',
-						backgroundColor: config.color,
-						borderRadius: '0 0 8px 8px',
-						animation: `toast-progress ${duration}ms linear forwards`
-					}}
-				/>
-			)}
-
+		<Box
+			flexDirection="row"
+			alignItems="center"
+			padding={1}
+			borderStyle="round"
+			borderColor={config.borderColor}
+			backgroundColor={config.backgroundColor}
+			width={40}
+		>
 			{/* Icon */}
-			<div
-				style={{
-					color: config.color,
-					fontSize: '16px',
-					flexShrink: 0,
-					marginTop: title ? '0' : '2px'
-				}}
-			>
-				{type === 'loading' ? <LoadingIcon /> : config.icon}
-			</div>
+			<Box marginRight={1}>
+				{type === 'loading' ? <Text>⏳</Text> : config.icon}
+			</Box>
 
 			{/* Content */}
-			<div style={{ flex: 1, minWidth: 0 }}>
+			<Box flexDirection="column" flexGrow={1}>
 				{title && (
-					<div
-						style={{
-							fontSize: '0.875rem',
-							fontWeight: '600',
-							color: colors.neutral[900],
-							marginBottom: spacing[1],
-							lineHeight: 1.4
-						}}
-					>
-						{title}
-					</div>
+					<Box marginBottom={0}>
+						<Text bold color={colors.neutral[900]}>
+							{title}
+						</Text>
+					</Box>
 				)}
-
-				<div
-					style={{
-						fontSize: '0.875rem',
-						color: colors.neutral[700],
-						lineHeight: 1.4,
-						wordBreak: 'break-word'
-					}}
-				>
-					{message}
-				</div>
-
-				{action && <div style={{ marginTop: spacing[2] }}>{action}</div>}
-			</div>
+				<Box>
+					<Text color={colors.neutral[700]}>{message}</Text>
+				</Box>
+				{action && <Box marginTop={1}>{action}</Box>}
+			</Box>
 
 			{/* Close button */}
-			<button
-				type="button"
-				onClick={handleClose}
-				style={{
-					background: 'none',
-					border: 'none',
-					color: colors.neutral[500],
-					cursor: 'pointer',
-					padding: spacing[1],
-					borderRadius: borderRadius.sm,
-					fontSize: '16px',
-					lineHeight: 1,
-					flexShrink: 0,
-					transition: utils.transition(
-						['color', 'background-color'],
-						animations.duration[150]
-					),
-					'&:hover': {
-						color: colors.neutral[700],
-						backgroundColor: colors.neutral[100]
-					}
-				}}
-				aria-label="Close notification"
-			>
-				{icons.actions.close}
-			</button>
-
-			<style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        @keyframes toast-progress {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-
-        button:hover {
-          color: ${colors.neutral[700]} !important;
-          background-color: ${colors.neutral[100]} !important;
-        }
-      `}</style>
-		</div>
+			<Box marginLeft={1}>
+				<Text onPress={handleClose}>✖️</Text>
+			</Box>
+		</Box>
 	);
 };
 
@@ -357,15 +272,43 @@ export const SimpleToast = ({
 
 	if (!visible && !isVisible) return null;
 
+	const typeConfig = {
+		success: {
+			borderColor: colors.success[200],
+			icon: <Text>{icons.status.success}</Text>
+		},
+		error: {
+			borderColor: colors.error[200],
+			icon: <Text>{icons.status.error}</Text>
+		},
+		warning: {
+			borderColor: colors.warning[200],
+			icon: <Text>{icons.status.warning}</Text>
+		},
+		info: {
+			borderColor: colors.primary[200],
+			icon: <Text>{icons.status.info}</Text>
+		}
+	};
+	const config = typeConfig[type];
+
 	return (
-		<Toast
-			type={type}
-			message={message}
-			title={title}
-			onClose={onClose}
-			id="simple-toast"
-			{...props}
-		/>
+		<Box
+			paddingX={2}
+			paddingY={1}
+			borderStyle="round"
+			borderColor={config.borderColor}
+			flexDirection="row"
+			alignItems="center"
+		>
+			<Box marginRight={1}>{config.icon}</Box>
+			{title && (
+				<Box marginRight={1}>
+					<Text bold>{title}</Text>
+				</Box>
+			)}
+			<Text>{message}</Text>
+		</Box>
 	);
 };
 

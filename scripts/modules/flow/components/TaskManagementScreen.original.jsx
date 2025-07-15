@@ -1476,21 +1476,22 @@ Focus on: current industry standards, common pitfalls, security considerations
 						height={DETAIL_VISIBLE_ROWS + 2}
 						overflow="hidden"
 					>
-						{visibleContent.map((line, index) => {
-							if (line.type === 'field') {
-								return (
-									<Box key={index} flexDirection="row" marginBottom={1}>
-										<Box width={20}>
-											<Text color={theme.textDim}>{line.label}</Text>
-										</Box>
-										<Box flexGrow={1}>
-											<Text color={line.color || theme.text}>{line.value}</Text>
-										</Box>
+											{visibleContent.map((line, index) => {
+						const uniqueKey = `${line.type}-${line.label || line.text || index}`;
+						if (line.type === 'field') {
+							return (
+								<Box key={uniqueKey} flexDirection="row" marginBottom={1}>
+									<Box key={`${uniqueKey}-label`} width={20}>
+										<Text color={theme.textDim}>{line.label}</Text>
 									</Box>
-								);
+									<Box key={`${uniqueKey}-value`} flexGrow={1}>
+										<Text color={line.color || theme.text}>{line.value}</Text>
+									</Box>
+								</Box>
+							);
 							} else if (line.type === 'header') {
 								return (
-									<Box key={index} flexDirection="column" marginTop={1}>
+									<Box key={uniqueKey} flexDirection="column" marginTop={1}>
 										<Text color={theme.accent} bold>
 											{line.text}
 										</Text>
@@ -1498,20 +1499,20 @@ Focus on: current industry standards, common pitfalls, security considerations
 								);
 							} else if (line.type === 'text') {
 								return (
-									<Box key={index} marginTop={0.5} paddingLeft={2}>
+									<Box key={uniqueKey} marginTop={0.5} paddingLeft={2}>
 										<Text color={theme.text}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'subtask') {
 								return (
-									<Box key={index} marginTop={1} paddingLeft={2}>
+									<Box key={uniqueKey} marginTop={1} paddingLeft={2}>
 										<Text color={line.color}>{line.text}</Text>
 									</Box>
 								);
 							} else if (line.type === 'warning') {
 								return (
 									<Box
-										key={index}
+										key={uniqueKey}
 										borderStyle="round"
 										borderColor={theme.warning}
 										padding={1}

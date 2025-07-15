@@ -25,6 +25,14 @@ export class FlowBackend {
 	}
 
 	/**
+	 * Get the project root directory
+	 * @returns {string}
+	 */
+	getProjectRoot() {
+		throw new Error('getProjectRoot() must be implemented by subclass');
+	}
+
+	/**
 	 * Get all tasks for the current tag
 	 * @returns {Promise<{tasks: Array, tag: string}>}
 	 */

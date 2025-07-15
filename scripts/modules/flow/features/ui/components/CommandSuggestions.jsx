@@ -18,9 +18,10 @@ export function CommandSuggestions({ suggestions, selectedIndex }) {
 			<Box flexDirection="column">
 				{suggestions.map((cmd, index) => {
 					const isSelected = index === selectedIndex;
+					const uniqueKey = `${cmd.name}-${index}`;
 					return (
-						<Box key={cmd.name} paddingLeft={1} flexDirection="row">
-							<Box width={12}>
+						<Box key={uniqueKey} paddingLeft={1} flexDirection="row">
+							<Box key={`${uniqueKey}-name`} width={12}>
 								<Text
 									color={isSelected ? theme.accent : theme.text}
 									bold={isSelected}
@@ -28,7 +29,7 @@ export function CommandSuggestions({ suggestions, selectedIndex }) {
 									{cmd.name}
 								</Text>
 							</Box>
-							<Text color={theme.textDim}>{cmd.description}</Text>
+							<Text key={`${uniqueKey}-desc`} color={theme.textDim}>{cmd.description}</Text>
 						</Box>
 					);
 				})}

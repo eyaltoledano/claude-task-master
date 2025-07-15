@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { Text, Box, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
+import { spawn } from 'child_process';
 import { theme, setTheme, getTheme } from '../shared/theme/theme.js';
 
 // Import screens
@@ -136,6 +137,26 @@ export function FlowApp({ options = {} }) {
 		return url;
 	};
 
+	// Check for completion message from restart
+	useEffect(() => {
+		if (options.completedSetup) {
+			const message =
+				options.completedSetup === 'models'
+					? '✓ Model configuration complete!'
+					: options.completedSetup === 'rules'
+						? '✓ Rules configuration complete!'
+						: options.completedSetup === 'init'
+							? '✓ Project initialization complete!'
+							: `✓ ${options.completedSetup} complete!`;
+
+			setNotification({
+				message,
+				type: 'success',
+				duration: 3000
+			});
+		}
+	}, [options.completedSetup]);
+
 	// Initialize services and get initial data
 	useEffect(() => {
 		const initializeApp = async () => {
@@ -198,9 +219,92 @@ export function FlowApp({ options = {} }) {
 		loadTasks();
 	}, [currentScreen, currentBackend]);
 
+	// Launch external setup command
+	const launchSetupCommand = (command, args = []) => {
+		// Show a transition message
+		console.clear();
+		console.log('\n\n');
+		console.log(
+			'  ╔════════════════════════════════════════════════════════════════╗'
+		);
+		console.log(
+			`  ║  Launching ${command === 'models' ? 'AI Model Configuration' : command === 'rules' ? 'AI Rules Configuration' : 'Project Initialization'}...                      ║`
+		);
+		console.log(
+			'  ║  You will return to Task Master Flow when complete.           ║'
+		);
+		console.log(
+			'  ╚════════════════════════════════════════════════════════════════╝'
+		);
+		console.log('\n\n');
+
+		// Exit the TUI temporarily to run the interactive setup
+		exit();
+
+		// Small delay for visual effect
+		setTimeout(() => {
+			// Spawn the command
+			const proc = spawn('node', ['scripts/dev.js', command, ...args], {
+				stdio: 'inherit',
+				shell: true
+			});
+
+			proc.on('close', (code) => {
+				// After setup completes, restart the flow interface
+				console.log('\nReturning to Task Master Flow...\n');
+
+				// Small delay to ensure clean terminal state
+				setTimeout(async () => {
+					// Re-run the flow interface with a flag indicating what was completed
+					try {
+						const { run } = await import('./cli.js');
+						await run({ ...options, completedSetup: command });
+					} catch (error) {
+						console.error('Error restarting flow:', error);
+						process.exit(1);
+					}
+				}, 500);
+			});
+		}, 100);
+	};
+
+	// Define available commands based on whether tasks.json exists
+	const getAvailableCommands = useCallback(() => {
+		const baseCommands = [
+			{ name: '/init', description: 'Initialize a new Task Master project' },
+			{ name: '/parse', description: 'Parse PRD to generate tasks' },
+			{ name: '/tags', description: 'Manage task tags' },
+			{ name: '/next', description: 'Show next task to work on' },
+			{ name: '/exec', description: 'Manage task executions' },
+			{ name: '/mcp', description: 'Manage MCP servers' },
+			{ name: '/chat', description: 'Chat with AI assistant' },
+			{ name: '/status', description: 'View project status details' },
+			{ name: '/models', description: 'Configure AI models' },
+			{ name: '/rules', description: 'Configure AI assistant rules' },
+			{ name: '/theme', description: 'Toggle theme (auto/light/dark)' },
+			{ name: '/exit', description: 'Exit Task Master Flow' },
+			{ name: '/quit', description: 'Exit Task Master Flow' }
+		];
+
+		// Only include task-related commands if tasks.json exists
+		if (hasTasksFile) {
+			baseCommands.splice(
+				2,
+				0,
+				{ name: '/analyze', description: 'Analyze task complexity' },
+				{ name: '/deps', description: 'Visualize task dependencies' },
+				{ name: '/tasks', description: 'Interactive task management' }
+			);
+		}
+
+		return baseCommands;
+	}, [hasTasksFile]);
+
 	// Input handling
 	const handleInput = useCallback(
-		async (input) => {
+		async (value) => {
+			const trimmedValue = value.trim();
+			
 			if (showCommandPalette) {
 				setShowCommandPalette(false);
 				setInputValue('');
@@ -215,69 +319,170 @@ export function FlowApp({ options = {} }) {
 				return;
 			}
 
-			if (input.trim() === '') {
+			if (trimmedValue === '') {
 				return;
 			}
 
+			// If we have suggestions and one is selected, use that instead
+			if (
+				suggestions.length > 0 &&
+				suggestionIndex >= 0 &&
+				suggestionIndex < suggestions.length
+			) {
+				value = suggestions[suggestionIndex].name;
+			}
+
 			// Handle different input types
-			if (input.startsWith('/')) {
+			if (value.startsWith('/')) {
 				// Command mode
-				const command = input.slice(1).toLowerCase();
+				const command = value.slice(1).toLowerCase();
 				handleCommand(command);
 			} else {
 				// Regular input handling based on current screen
-				handleScreenInput(input);
+				handleScreenInput(value);
 			}
 
 			setInputValue('');
 			setSuggestions([]);
 			setSuggestionIndex(0);
 		},
-		[showCommandPalette, waitingForShortcut]
+		[showCommandPalette, waitingForShortcut, suggestions, suggestionIndex]
 	);
 
 	const handleCommand = (command) => {
 		switch (command) {
-			case 'tasks':
-				setCurrentScreen('tasks');
-				break;
-			case 'tags':
-				setCurrentScreen('tags');
-				break;
-			case 'status':
-				setCurrentScreen('status');
+			case 'init':
+				// Launch the interactive init command
+				launchSetupCommand('init', []);
 				break;
 			case 'parse':
 				setCurrentScreen('parse');
 				break;
 			case 'analyze':
-				setCurrentScreen('analyze');
+				if (hasTasksFile) {
+					setCurrentScreen('analyze');
+				} else {
+					setNotification({
+						message: 'No tasks.json found. Use /parse to create tasks first.',
+						type: 'warning',
+						duration: 3000
+					});
+				}
 				break;
 			case 'deps':
-				setCurrentScreen('dependencies');
+				if (hasTasksFile) {
+					setCurrentScreen('dependencies');
+				} else {
+					setNotification({
+						message: 'No tasks.json found. Use /parse to create tasks first.',
+						type: 'warning',
+						duration: 3000
+					});
+				}
 				break;
-			case 'sessions':
-				setCurrentScreen('sessions');
+			case 'tasks':
+				if (hasTasksFile) {
+					setCurrentScreen('tasks');
+				} else {
+					setNotification({
+						message: 'No tasks.json found. Use /parse to create tasks first.',
+						type: 'warning',
+						duration: 3000
+					});
+				}
+				break;
+			case 'tags':
+				setCurrentScreen('tags');
+				break;
+			case 'mcp':
+				setCurrentScreen('mcp-management');
+				break;
+			case 'status':
+				setCurrentScreen('status');
+				break;
+			case 'next':
+				if (hasTasksFile) {
+					// Fetch the next task
+					(async () => {
+						try {
+							const nextTaskResult = await currentBackend.nextTask();
+							setNextTask(nextTaskResult.task || null);
+							setShowNextTaskModal(true);
+						} catch (error) {
+							setNotification({
+								message: `Error getting next task: ${error.message}`,
+								type: 'error',
+								duration: 3000
+							});
+						}
+					})();
+				} else {
+					setNotification({
+						message: 'No tasks.json found. Use /parse to create tasks first.',
+						type: 'warning',
+						duration: 3000
+					});
+				}
+				break;
+			case 'theme': {
+				// Cycle through auto -> light -> dark -> auto
+				let newTheme;
+				if (currentTheme === 'auto') {
+					newTheme = 'light';
+				} else if (currentTheme === 'light') {
+					newTheme = 'dark';
+				} else {
+					newTheme = 'auto';
+				}
+
+				setTheme(newTheme);
+				setCurrentTheme(newTheme);
+
+				let themeMessage;
+				if (newTheme === 'auto') {
+					const isDark = theme === getTheme('dark');
+					themeMessage = `Switched to auto theme detection (currently using ${isDark ? 'dark mode' : 'light mode'})`;
+				} else if (newTheme === 'dark') {
+					themeMessage = 'Switched to dark mode (light text on dark background)';
+				} else {
+					themeMessage = 'Switched to light mode (dark text on light background)';
+				}
+
+				setNotification({
+					message: themeMessage,
+					type: 'success',
+					duration: 3000
+				});
+				break;
+			}
+			case 'models':
+				// Launch the interactive models setup
+				launchSetupCommand('models', ['--setup']);
+				break;
+			case 'rules':
+				// Launch the interactive rules setup
+				launchSetupCommand('rules', ['--setup']);
 				break;
 			case 'chat':
 				setCurrentScreen('chat');
 				break;
-			case 'mcp':
-				setCurrentScreen('mcp');
-				break;
-			case 'providers':
-				setCurrentScreen('providers');
-				break;
+			case 'exec':
 			case 'executions':
 				setCurrentScreen('executions');
-				break;
-			case 'welcome':
-			case 'home':
-				setCurrentScreen('welcome');
 				break;
 			case 'exit':
 			case 'quit':
 				exit();
+				break;
+			case 'sessions':
+				setCurrentScreen('sessions');
+				break;
+			case 'providers':
+				setCurrentScreen('providers');
+				break;
+			case 'welcome':
+			case 'home':
+				setCurrentScreen('welcome');
 				break;
 			default:
 				setNotification({
@@ -308,21 +513,46 @@ export function FlowApp({ options = {} }) {
 
 	const handleTextInputChange = useCallback(
 		(value) => {
+			// If we're in shortcut mode, don't update the input
+			if (isWaitingForShortcutRef.current) {
+				return;
+			}
+			
 			setInputValue(value);
 			
 			// Generate suggestions based on input
 			if (value.startsWith('/')) {
-				const command = value.slice(1).toLowerCase();
-				const commands = ['tasks', 'tags', 'status', 'parse', 'analyze', 'deps', 'sessions', 'chat', 'mcp', 'providers', 'executions', 'welcome', 'exit'];
-				const filtered = commands.filter(cmd => cmd.startsWith(command));
-				setSuggestions(filtered.map(cmd => `/${cmd}`));
+				const availableCommands = getAvailableCommands();
+				const filtered = availableCommands.filter((cmd) =>
+					cmd.name.toLowerCase().startsWith(value.toLowerCase())
+				);
+				setSuggestions(filtered);
 				setSuggestionIndex(0);
 			} else {
 				setSuggestions([]);
 			}
 		},
-		[]
+		[getAvailableCommands]
 	);
+
+	// Function to reload tasks
+	const reloadTasks = useCallback(async () => {
+		try {
+			// Check if tasks.json exists first
+			const hasFile = await currentBackend.hasTasksFile();
+			setHasTasksFile(hasFile);
+
+			if (hasFile) {
+				const result = await currentBackend.listTasks();
+				setTasks(result.tasks);
+				setCurrentTag(result.tag);
+			} else {
+				setTasks([]);
+			}
+		} catch (err) {
+			setError(err.message);
+		}
+	}, [currentBackend]);
 
 	// Keyboard shortcuts
 	useInput((input, key) => {
@@ -437,6 +667,9 @@ export function FlowApp({ options = {} }) {
 		setWorktreePromptData,
 		showSettings,
 		setShowSettings,
+		reloadTasks,
+		navigationData,
+		setNavigationData,
 		suggestions,
 		setSuggestions,
 		suggestionIndex,
@@ -531,8 +764,9 @@ export function FlowApp({ options = {} }) {
 					/>
 				) : currentScreen === 'chat' ? (
 					<ChatScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
+						mcpClient={currentBackend}
+						projectRoot={currentBackend?.getProjectRoot()}
+						onExit={() => setCurrentScreen('welcome')}
 						messages={messages}
 						onMessagesChange={setMessages}
 						currentModel={currentModel}
