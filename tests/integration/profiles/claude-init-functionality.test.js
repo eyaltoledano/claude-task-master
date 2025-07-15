@@ -21,7 +21,7 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain("displayName: 'Claude Code'");
 		expect(claudeProfileContent).toContain("profileDir: '.'"); // non-default
 		expect(claudeProfileContent).toContain("rulesDir: '.'"); // non-default
-		expect(claudeProfileContent).toContain('mcpConfig: false'); // non-default
+		expect(claudeProfileContent).toContain("mcpConfigName: '.mcp.json'"); // non-default
 		expect(claudeProfileContent).toContain('includeDefaultRules: false'); // non-default
 		expect(claudeProfileContent).toContain(
 			"'AGENTS.md': '.taskmaster/CLAUDE.md'"
@@ -32,8 +32,9 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfile.displayName).toBe('Claude Code');
 		expect(claudeProfile.profileDir).toBe('.');
 		expect(claudeProfile.rulesDir).toBe('.');
-		expect(claudeProfile.mcpConfig).toBe(false);
-		expect(claudeProfile.mcpConfigName).toBe(null); // computed
+		expect(claudeProfile.mcpConfig).toBe(true); // default from base profile
+		expect(claudeProfile.mcpConfigName).toBe('.mcp.json'); // explicitly set
+		expect(claudeProfile.mcpConfigPath).toBe('.mcp.json'); // computed
 		expect(claudeProfile.includeDefaultRules).toBe(false);
 		expect(claudeProfile.fileMap['AGENTS.md']).toBe('.taskmaster/CLAUDE.md');
 	});
