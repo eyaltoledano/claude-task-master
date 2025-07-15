@@ -18,6 +18,17 @@ import { FlowApp } from '../FlowApp.jsx';
  * Initializes backend, theme, and renders the app
  */
 export async function run(options = {}) {
+	// Augment options with environment variables as a fallback
+	if (process.env.TASKMASTER_PROJECT_ROOT && !options.projectRoot) {
+		options.projectRoot = process.env.TASKMASTER_PROJECT_ROOT;
+	}
+	if (process.env.TASKMASTER_BACKEND && !options.backend) {
+		options.backend = process.env.TASKMASTER_BACKEND;
+	}
+	if (process.env.TASKMASTER_MCP_SERVER_ID && !options.mcpServerId) {
+		options.mcpServerId = process.env.TASKMASTER_MCP_SERVER_ID;
+	}
+
 	// Determine backend
 	const backendType =
 		options.backend || process.env.TASKMASTER_BACKEND || 'direct';

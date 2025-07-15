@@ -2,7 +2,9 @@ import React, {
 	useState,
 	useEffect,
 	useCallback,
-	useRef
+	useRef,
+	createContext,
+	useContext
 } from 'react';
 import { Text, Box, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
@@ -33,9 +35,13 @@ import { getHookManager } from './shared/hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
+import { getTaskMasterVersion } from '../../../src/utils/getVersion.js';
 
 // Import VibeKit components
-import { AgentExecutionScreen } from './components/vibekit/AgentExecutionScreen.jsx';
+import { AgentExecutionScreen } from './components/AgentExecutionScreen.jsx';
+
+// Create context for backend and app state
+const AppContext = createContext();
 
 /**
  * Main Flow application component
@@ -74,6 +80,9 @@ export function FlowApp({ backend, options = {} }) {
 	const [repositoryName, setRepositoryName] = useState(null);
 	const [branchInfo, setBranchInfo] = useState(null);
 	const [remoteInfo, setRemoteInfo] = useState(null);
+	const [showWorktreePrompt, setShowWorktreePrompt] = useState(false);
+	const [worktreePromptData, setWorktreePromptData] = useState(null);
+	const [version, setVersion] = useState('');
 
 	const { exit } = useApp();
 
@@ -112,12 +121,16 @@ export function FlowApp({ backend, options = {} }) {
 	useEffect(() => {
 		const initializeServices = async () => {
 			try {
+				// Get package version
+				const pkgVersion = await getTaskMasterVersion();
+				setVersion(pkgVersion);
+
 				// Initialize hook manager
 				const manager = await getHookManager();
 				setHookManager(manager);
 
 				// Initialize branch awareness manager
-				const branchMgr = new BranchAwarenessManager(backend);
+				const branchMgr = new BranchAwarenessManager(options.projectRoot, { backend });
 				setBranchManager(branchMgr);
 
 				// Initialize hook integration
@@ -127,11 +140,20 @@ export function FlowApp({ backend, options = {} }) {
 				await initializeNextTaskService(backend);
 
 				// Get initial branch info
-				const info = await branchMgr.getBranchInfo();
-				setCurrentBranch(info.currentBranch);
-				setRepositoryName(info.repositoryName);
-				setBranchInfo(info);
-				setRemoteInfo(info.remoteInfo);
+				const info = await branchMgr.getCurrentBranchInfo();
+				if (info) {
+					setCurrentBranch(info.name);
+					setRepositoryName(branchMgr.repositoryName);
+					setBranchInfo(info);
+					const remoteInfo = await branchMgr.getRemoteInfo();
+					setRemoteInfo(remoteInfo);
+				}
+
+				// Check if tasks file exists
+				if (backend.hasTasksFile) {
+					const hasFile = await backend.hasTasksFile();
+					setHasTasksFile(hasFile);
+				}
 
 				setLoading(false);
 			} catch (error) {
@@ -142,7 +164,7 @@ export function FlowApp({ backend, options = {} }) {
 		};
 
 		initializeServices();
-	}, [backend]);
+	}, [backend, options.projectRoot]);
 
 	// Load tasks when screen or backend changes
 	useEffect(() => {
@@ -368,9 +390,53 @@ export function FlowApp({ backend, options = {} }) {
 		);
 	}
 
+	// Create context value
+	const contextValue = {
+		backend,
+		currentScreen,
+		setCurrentScreen,
+		tasks,
+		setTasks,
+		currentTag,
+		setCurrentTag,
+		loading,
+		setLoading,
+		error,
+		setError,
+		inputValue,
+		setInputValue,
+		messages,
+		setMessages,
+		hasTasksFile,
+		setHasTasksFile,
+		notification,
+		setNotification,
+		showCommandPalette,
+		setShowCommandPalette,
+		showNextTaskModal,
+		setShowNextTaskModal,
+		nextTask,
+		setNextTask,
+		showWorktreePrompt,
+		setShowWorktreePrompt,
+		worktreePromptData,
+		setWorktreePromptData,
+		showSettings,
+		setShowSettings,
+		suggestions,
+		setSuggestions,
+		suggestionIndex,
+		setSuggestionIndex,
+		waitingForShortcut,
+		setWaitingForShortcut,
+		inputKey,
+		setInputKey
+	};
+
 	return (
-		<OverflowProvider>
-			<Box flexDirection="column" height="100%">
+		<AppContext.Provider value={contextValue}>
+			<OverflowProvider>
+				<Box flexDirection="column" height="100%">
 				{/* Command Palette */}
 				{showCommandPalette && (
 					<CommandPalette
@@ -568,30 +634,51 @@ export function FlowApp({ backend, options = {} }) {
 							</Box>
 
 							{/* Bottom status bar */}
-							<Box paddingLeft={1} paddingRight={1}>
-								<Box flexGrow={1}>
-									<Text color={theme.text.tertiary}>
-										{currentBranch && repositoryName && (
+							<Box paddingLeft={1} paddingRight={1} flexDirection="row" justifyContent="space-between" width="100%">
+								<Box>
+									<Text>
+										<Text color={theme.text.tertiary}>[tag] </Text>
+										<Text color={theme.text.accent}>{currentTag}</Text>
+										{repositoryName && (
 											<>
-												{repositoryName}
-												{remoteInfo && formatRemoteUrl(remoteInfo) && (
-													<Text color={theme.text.muted}>
-														{' '}({formatRemoteUrl(remoteInfo)})
-													</Text>
-												)}
-												<Text color={theme.text.accent}> @ {currentBranch}</Text>
+												<Text color={theme.text.tertiary}> • [repo] </Text>
+												<Text>{repositoryName}</Text>
+											</>
+										)}
+										{currentBranch && (
+											<>
+												<Text color={theme.text.tertiary}> • [branch] </Text>
+												<Text>{currentBranch}</Text>
+											</>
+										)}
+										{remoteInfo && formatRemoteUrl(remoteInfo) && (
+											<>
+												<Text color={theme.text.tertiary}> • [remote] </Text>
+												<Text>{formatRemoteUrl(remoteInfo)}</Text>
 											</>
 										)}
 									</Text>
 								</Box>
-								<Text color={theme.text.muted}>
-									{currentScreen} • {currentBackend.constructor.name.replace('Backend', '')}
-								</Text>
+								<Box>
+									<Text color={theme.text.muted}>
+										Task Master AI v{version}
+									</Text>
+								</Box>
 							</Box>
 						</Box>
 					</>
 				)}
 			</Box>
 		</OverflowProvider>
+		</AppContext.Provider>
 	);
+}
+
+// Export context hook
+export function useAppContext() {
+	const context = useContext(AppContext);
+	if (!context) {
+		throw new Error('useAppContext must be used within AppContext.Provider');
+	}
+	return context;
 } 
