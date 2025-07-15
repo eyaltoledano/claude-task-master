@@ -328,15 +328,16 @@ export function initTaskMaster(options = {}) {
 		pathType,
 		override,
 		defaultPaths = [],
-		basePath = null
+		basePath = null,
+		validateExistence = true
 	) => {
-		// Handle string paths - resolve and validate existence
+		// Handle string paths - resolve and optionally validate existence
 		if (typeof override === 'string') {
 			const resolvedPath = path.isAbsolute(override)
 				? override
 				: path.resolve(basePath ?? process.cwd(), override);
 
-			if (!fs.existsSync(resolvedPath)) {
+			if (validateExistence && !fs.existsSync(resolvedPath)) {
 				throw new TaskMasterError(
 					`${pathType} override path does not exist: ${resolvedPath}`,
 					'PATH_NOT_FOUND'
@@ -345,13 +346,13 @@ export function initTaskMaster(options = {}) {
 			return resolvedPath;
 		}
 
-		// Handle null - explicitly disabled, return null
-		if (override === null) {
+		// Handle false - explicitly disabled, return null
+		if (override === false) {
 			return null;
 		}
 
-		// Handle undefined - search defaults, return null if not found
-		if (override === undefined) {
+		// Handle null and undefined - search defaults, return first default if not found
+		if (override === null || override === undefined) {
 			for (const defaultPath of defaultPaths) {
 				const fullPath = path.isAbsolute(defaultPath)
 					? defaultPath
@@ -359,6 +360,13 @@ export function initTaskMaster(options = {}) {
 				if (fs.existsSync(fullPath)) {
 					return fullPath;
 				}
+			}
+			// Return the first default path even if it doesn't exist
+			if (defaultPaths.length > 0) {
+				const firstDefault = defaultPaths[0];
+				return path.isAbsolute(firstDefault)
+					? firstDefault
+					: path.join(basePath ?? process.cwd(), firstDefault);
 			}
 			return null;
 		}
@@ -422,8 +430,8 @@ export function initTaskMaster(options = {}) {
 		}
 	}
 
-	// TaskMaster Directory
-	if ('taskMasterDir' in overrides) {
+	// TaskMaster Directory - always provide default path unless explicit override
+	if (overrides.taskMasterDir !== undefined) {
 		paths.taskMasterDir = resolvePath(
 			'taskmaster directory',
 			overrides.taskMasterDir,
@@ -431,17 +439,11 @@ export function initTaskMaster(options = {}) {
 			paths.projectRoot
 		);
 	} else {
-		paths.taskMasterDir = resolvePath(
-			'taskmaster directory',
-			false,
-			[TASKMASTER_DIR],
-			paths.projectRoot
-		);
+		paths.taskMasterDir = path.join(paths.projectRoot, TASKMASTER_DIR);
 	}
 
-	// Initialize paths as null by default - only set when explicitly provided or searched for
+	// Core paths - search for existing files when explicitly requested, otherwise use defaults
 
-	// Handle overrides - only validate/resolve if explicitly provided
 	if ('configPath' in overrides) {
 		paths.configPath = resolvePath(
 			'config file',
@@ -449,15 +451,8 @@ export function initTaskMaster(options = {}) {
 			[TASKMASTER_CONFIG_FILE, LEGACY_CONFIG_FILE],
 			paths.projectRoot
 		);
-	}
-
-	if ('statePath' in overrides) {
-		paths.statePath = resolvePath(
-			'state file',
-			overrides.statePath,
-			['state.json'],
-			paths.taskMasterDir
-		);
+	} else {
+		paths.configPath = path.join(paths.projectRoot, TASKMASTER_CONFIG_FILE);
 	}
 
 	if ('tasksPath' in overrides) {
@@ -466,6 +461,18 @@ export function initTaskMaster(options = {}) {
 			overrides.tasksPath,
 			[TASKMASTER_TASKS_FILE, LEGACY_TASKS_FILE],
 			paths.projectRoot
+		);
+	} else {
+		paths.tasksPath = path.join(paths.projectRoot, TASKMASTER_TASKS_FILE);
+	}
+
+	// Optional paths - only resolve if explicitly requested
+	if ('statePath' in overrides) {
+		paths.statePath = resolvePath(
+			'state file',
+			overrides.statePath,
+			['state.json'],
+			paths.taskMasterDir
 		);
 	}
 
@@ -503,57 +510,67 @@ export function initTaskMaster(options = {}) {
 				'task-complexity-report.json',
 				'complexity-report.json'
 			],
-			paths.projectRoot
+			paths.projectRoot,
+			false // Don't validate existence for output files
 		);
 	}
 
-	// Enforce required paths - check that all required paths were successfully resolved
+	// Enforce required paths - check that all required paths exist
 	required.forEach((requiredPath) => {
-		if (requiredPath in pathOverrides && paths[requiredPath] === null) {
-			// Path was requested but not found - generate specific error with search paths
-			let pathType, searchPaths;
+		const resolvedPath = paths[requiredPath];
 
-			switch (requiredPath) {
-				case 'tasksPath':
-					pathType = 'tasks file';
-					searchPaths = [TASKMASTER_TASKS_FILE, LEGACY_TASKS_FILE];
-					break;
-				case 'configPath':
-					pathType = 'config file';
-					searchPaths = [TASKMASTER_CONFIG_FILE, LEGACY_CONFIG_FILE];
-					break;
-				case 'statePath':
-					pathType = 'state file';
-					searchPaths = ['state.json'];
-					break;
-				case 'prdPath':
-					pathType = 'PRD file';
-					searchPaths = [
-						path.join(TASKMASTER_DOCS_DIR, 'PRD.md'),
-						path.join(TASKMASTER_DOCS_DIR, 'prd.md'),
-						'PRD.md',
-						'prd.md'
-					];
-					break;
-				case 'complexityReportPath':
-					pathType = 'complexity report';
-					searchPaths = [
-						path.join(TASKMASTER_REPORTS_DIR, 'task-complexity-report.json'),
-						'task-complexity-report.json',
-						'complexity-report.json'
-					];
-					break;
-				default:
-					pathType = requiredPath
-						.replace('Path', '')
-						.replace('Dir', ' directory');
-					searchPaths = [];
+		// Check if required path is set and exists
+		if (requiredPath in overrides) {
+			// Path was explicitly requested - validate it exists
+			if (
+				resolvedPath === null ||
+				(typeof resolvedPath === 'string' && !fs.existsSync(resolvedPath))
+			) {
+				// Path was requested but not found - generate specific error with search paths
+				let pathType, searchPaths;
+
+				switch (requiredPath) {
+					case 'tasksPath':
+						pathType = 'tasks file';
+						searchPaths = [TASKMASTER_TASKS_FILE, LEGACY_TASKS_FILE];
+						break;
+					case 'configPath':
+						pathType = 'config file';
+						searchPaths = [TASKMASTER_CONFIG_FILE, LEGACY_CONFIG_FILE];
+						break;
+					case 'statePath':
+						pathType = 'state file';
+						searchPaths = ['state.json'];
+						break;
+					case 'prdPath':
+						pathType = 'PRD file';
+						searchPaths = [
+							path.join(TASKMASTER_DOCS_DIR, 'PRD.md'),
+							path.join(TASKMASTER_DOCS_DIR, 'prd.md'),
+							'PRD.md',
+							'prd.md'
+						];
+						break;
+					case 'complexityReportPath':
+						pathType = 'complexity report';
+						searchPaths = [
+							path.join(TASKMASTER_REPORTS_DIR, 'task-complexity-report.json'),
+							'task-complexity-report.json',
+							'complexity-report.json'
+						];
+						break;
+					default:
+						pathType = requiredPath
+							.replace('Path', '')
+							.replace('Dir', ' directory');
+						searchPaths = [];
+				}
+
+				throw new TaskMasterError(
+					`Required ${pathType} not found. Searched: ${searchPaths.join(', ')}`,
+					'REQUIRED_PATH_NOT_FOUND'
+				);
 			}
-
-			throw new TaskMasterError(
-				`Required ${pathType} not found. Searched: ${searchPaths.join(', ')}`,
-				'REQUIRED_PATH_NOT_FOUND'
-			);
 		}
 	});
 

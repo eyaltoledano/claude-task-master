@@ -866,6 +866,10 @@ function registerCommands(programInstance) {
 					}
 				});
 
+				if (!taskMaster.getTasksPath()) {
+					throw new Error(' WTF ');
+				}
+
 			} catch (error) {
 				console.log(
 					boxen(
@@ -1055,7 +1059,7 @@ function registerCommands(programInstance) {
 					`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`
 				)
 			);
-			console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+			console.log(chalk.blue(`Tasks file: ${taskMaster.getTasksPath()}`));
 
 			if (useResearch) {
 				console.log(
@@ -1160,11 +1164,13 @@ function registerCommands(programInstance) {
 				const useResearch = options.research || false;
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
-					if (tasksPath === TASKMASTER_TASKS_FILE) {
+					if (taskMaster.getTasksPath() === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
 								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
@@ -1173,7 +1179,7 @@ function registerCommands(programInstance) {
 					} else {
 						console.log(
 							chalk.yellow(
-								`Hint: Check if the file path is correct: ${tasksPath}`
+								`Hint: Check if the file path is correct: ${taskMaster.getTasksPath()}`
 							)
 						);
 					}
@@ -1183,7 +1189,7 @@ function registerCommands(programInstance) {
 				console.log(
 					chalk.blue(`Updating task ${taskId} with prompt: "${prompt}"`)
 				);
-				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+				console.log(chalk.blue(`Tasks file: ${taskMaster.getTasksPath()}`));
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
@@ -1338,11 +1344,13 @@ function registerCommands(programInstance) {
 				const useResearch = options.research || false;
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
-					if (tasksPath === TASKMASTER_TASKS_FILE) {
+					if (taskMaster.getTasksPath() === TASKMASTER_TASKS_FILE) {
 						console.log(
 							chalk.yellow(
 								'Hint: Run task-master init or task-master parse-prd to create tasks.json first'
@@ -1351,7 +1359,7 @@ function registerCommands(programInstance) {
 					} else {
 						console.log(
 							chalk.yellow(
-								`Hint: Check if the file path is correct: ${tasksPath}`
+								`Hint: Check if the file path is correct: ${taskMaster.getTasksPath()}`
 							)
 						);
 					}
@@ -1361,7 +1369,7 @@ function registerCommands(programInstance) {
 				console.log(
 					chalk.blue(`Updating subtask ${subtaskId} with prompt: "${prompt}"`)
 				);
-				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+				console.log(chalk.blue(`Tasks file: ${taskMaster.getTasksPath()}`));
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
@@ -1741,8 +1749,9 @@ function registerCommands(programInstance) {
 				path.join(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
 			const outputPath =
 				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
-					? baseOutputPath.replace('.json', `_${targetTag}.json`)
-					: options.output || baseOutputPath;
+					? baseOutputPath?.replace('.json', `_${targetTag}.json`)
+					: baseOutputPath || options.output;
+
 
 			console.log(
 				chalk.blue(
@@ -4351,9 +4360,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					console.log(
 						chalk.yellow(
@@ -4493,9 +4504,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					process.exit(1);
 				}
@@ -4550,9 +4563,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					process.exit(1);
 				}
@@ -4602,9 +4617,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					process.exit(1);
 				}
@@ -4650,9 +4667,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					process.exit(1);
 				}
@@ -4704,9 +4723,11 @@ Examples:
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
+				if (!fs.existsSync(taskMaster.getTasksPath())) {
 					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+						chalk.red(
+							`Error: Tasks file not found at path: ${taskMaster.getTasksPath()}`
+						)
 					);
 					process.exit(1);
 				}
