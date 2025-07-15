@@ -3,13 +3,16 @@ import { Box, Text, useInput } from 'ink';
 import { ConfirmInput } from '@inkjs/ui';
 import { style, gradient } from '../../../shared/theme/theme.js';
 import { useAppContext } from '../../../app/index-root.jsx';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
 import { StreamingModal } from '../../../components/StreamingModal.jsx';
 import { OverflowableText, OverflowIndicator } from '../../ui';
 import { streamingStateManager } from '../../../infra/streaming/StreamingStateManager.js';
 
 export function AnalyzeComplexityScreen() {
-	const { backend, setCurrentScreen, showToast, currentScreen } =
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	const { setCurrentScreen, showToast, currentScreen } =
 		useAppContext();
 	const [state, setState] = useState({
 		status: 'idle', // idle, analyzing, completed, error

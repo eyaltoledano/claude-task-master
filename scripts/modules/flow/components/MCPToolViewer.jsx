@@ -4,8 +4,12 @@ import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
 import { theme } from '../shared/theme/theme.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 
-export function MCPToolViewer({ tool, serverId, onBack, log }) {
+export function MCPToolViewer({ tool, serverId, onBack }) {
+	// Get services from dependency injection
+	const { logger } = useServices();
+	
 	const [testMode, setTestMode] = useState(false);
 	const [testArgs, setTestArgs] = useState('{}');
 	const [testResult, setTestResult] = useState(null);
@@ -19,11 +23,11 @@ export function MCPToolViewer({ tool, serverId, onBack, log }) {
 		if (testResult && showResultActions) {
 			if (input === 'c') {
 				// Copy to clipboard functionality would go here
-				log.info('Result copied to clipboard (feature coming soon)');
+				logger.info('Result copied to clipboard (feature coming soon)');
 				setShowResultActions(false);
 			} else if (input === 's') {
 				// Save to file functionality would go here
-				log.info('Result saved to file (feature coming soon)');
+				logger.info('Result saved to file (feature coming soon)');
 				setShowResultActions(false);
 			} else if (key.escape) {
 				setShowResultActions(false);

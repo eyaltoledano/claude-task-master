@@ -3,13 +3,16 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../../../app/index-root.jsx';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 import { theme } from '../../../shared/theme/theme.js';
 import { SimpleTable } from '../../ui';
 
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 
 export function TagManagementScreen() {
-	const { backend, currentTag, setCurrentTag, setCurrentScreen, showToast } =
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	const { currentTag, setCurrentTag, setCurrentScreen, showToast } =
 		useAppContext();
 	const [tags, setTags] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -153,10 +156,13 @@ export function TagManagementScreen() {
 
 	const switchToTag = async (tagName) => {
 		try {
+			logger.info('Switching to tag', { from: currentTag, to: tagName });
 			await backend.useTag(tagName);
 			setCurrentTag(tagName);
 			showToast(`Switched to tag: ${tagName}`);
+			logger.success('Tag switched', { currentTag: tagName });
 		} catch (err) {
+			logger.error('Failed to switch tag', { error: err.message, tagName });
 			setError(err.message);
 		}
 	};
@@ -176,12 +182,15 @@ export function TagManagementScreen() {
 		}
 
 		try {
+			logger.info('Creating new tag', { tagName: inputValue });
 			await backend.addTag(inputValue);
 			await loadTags();
 			setMode('view');
 			setInputValue('');
 			showToast(`Created tag: ${inputValue}`);
+			logger.success('Tag created', { tagName: inputValue });
 		} catch (err) {
+			logger.error('Failed to create tag', { error: err.message, tagName: inputValue });
 			setError(err.message);
 		}
 	};

@@ -4,14 +4,16 @@ import TextInput from 'ink-text-input';
 import { BaseModal } from '../features/ui';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 
 export function ClaudeWorktreeLauncherModal({
-	backend,
 	worktree,
 	tasks,
 	onClose,
 	onSuccess
 }) {
+	// Get services from dependency injection
+	const { backend, logger } = useServices();
 	const { theme } = useComponentTheme('modal');
 
 	// Always select the task automatically for single task scenarios

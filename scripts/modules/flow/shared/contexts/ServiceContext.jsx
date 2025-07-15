@@ -58,7 +58,7 @@ export function ServiceProvider({ children, backend, projectRoot }) {
         setServices(serviceContainer);
         setLoading(false);
       } catch (err) {
-        console.error('Service initialization failed:', err);
+        logger.error('Service initialization failed:', err);
         setError(err);
         setLoading(false);
       }

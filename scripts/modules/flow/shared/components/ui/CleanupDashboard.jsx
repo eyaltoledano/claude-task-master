@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { Alert, Badge, Select, StatusMessage, Spinner } from '@inkjs/ui';
+import { useServices } from '../../contexts/ServiceContext.jsx';
 
-const CleanupDashboard = ({ backend, onBack }) => {
+const CleanupDashboard = ({ onBack }) => {
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	
 	const [stats, setStats] = useState(null);
 	const [config, setConfig] = useState(null);
 	const [recentCleanups, setRecentCleanups] = useState([]);

@@ -5,8 +5,12 @@ import Spinner from 'ink-spinner';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
 import { MCPToolViewer } from './MCPToolViewer.jsx';
 import { theme } from '../shared/theme/theme.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 
-export function MCPServerDetails({ server, onBack, onEdit, onUse, log }) {
+export function MCPServerDetails({ server, onBack, onEdit, onUse }) {
+	// Get services from dependency injection
+	const { logger } = useServices();
+	
 	const [tools, setTools] = useState([]);
 	const [filteredTools, setFilteredTools] = useState([]);
 	const [selectedToolIndex, setSelectedToolIndex] = useState(0);
@@ -54,7 +58,7 @@ export function MCPServerDetails({ server, onBack, onEdit, onUse, log }) {
 	const handleConnect = async () => {
 		try {
 			setConnectionStatus('connecting');
-			await connectionPool.connect(server, log);
+			await connectionPool.connect(server, logger);
 			setConnectionStatus('active');
 			await loadTools();
 		} catch (err) {
@@ -113,7 +117,7 @@ export function MCPServerDetails({ server, onBack, onEdit, onUse, log }) {
 				tool={filteredTools[selectedToolIndex]}
 				serverId={server.id}
 				onBack={() => setShowToolDetails(false)}
-				log={log}
+				log={logger}
 			/>
 		);
 	}

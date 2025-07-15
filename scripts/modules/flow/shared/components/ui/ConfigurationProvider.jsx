@@ -5,6 +5,7 @@ import React, {
 	useCallback,
 	useEffect
 } from 'react';
+import { useServices } from '../../contexts/ServiceContext.jsx';
 
 const ConfigurationContext = createContext();
 
@@ -18,7 +19,10 @@ export const useConfiguration = () => {
 	return context;
 };
 
-export const ConfigurationProvider = ({ children, backend }) => {
+export const ConfigurationProvider = ({ children }) => {
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	
 	const [config, setConfig] = useState(null);
 	const [originalConfig, setOriginalConfig] = useState(null);
 	const [loading, setLoading] = useState(false);
@@ -30,17 +34,18 @@ export const ConfigurationProvider = ({ children, backend }) => {
 	const loadConfiguration = useCallback(async () => {
 		try {
 			setLoading(true);
+			logger.info('Loading configuration...');
 			const configuration = await backend.getConfiguration();
 			setConfig(configuration);
 			setOriginalConfig(JSON.parse(JSON.stringify(configuration))); // Deep copy
 			setHasChanges(false);
 			setValidationErrors({});
 		} catch (error) {
-			console.error('Failed to load configuration:', error);
+			logger.error('Failed to load configuration:', error);
 		} finally {
 			setLoading(false);
 		}
-	}, [backend]);
+	}, [backend, logger]);
 
 	// Update a specific configuration field
 	const updateConfig = useCallback((path, value) => {
@@ -114,17 +119,18 @@ export const ConfigurationProvider = ({ children, backend }) => {
 
 		try {
 			setSaving(true);
+			logger.info('Saving configuration...');
 			await backend.updateConfiguration(config);
 			setOriginalConfig(JSON.parse(JSON.stringify(config)));
 			setHasChanges(false);
 			return true;
 		} catch (error) {
-			console.error('Failed to save configuration:', error);
+			logger.error('Failed to save configuration:', error);
 			return false;
 		} finally {
 			setSaving(false);
 		}
-	}, [backend, config, validateConfig]);
+	}, [backend, config, validateConfig, logger]);
 
 	// Reset to original configuration
 	const resetConfiguration = useCallback(() => {

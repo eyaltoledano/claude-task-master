@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { OverflowableText } from '../features/ui';
 import { useAppContext } from '../app/index-root.jsx';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { theme } from '../shared/theme/theme.js';
 import {
 	loadServers,
@@ -13,11 +14,12 @@ import {
 import { connectionPool } from '../infra/mcp/connection-pool.js';
 
 export function MCPManagementScreen() {
+	// Get backend and logger from dependency injection
+	const { backend, logger } = useServices();
 	const {
 		setCurrentScreen,
 		currentScreen,
-		showToast,
-		backend: currentBackend
+		showToast
 	} = useAppContext();
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -662,7 +664,7 @@ export function MCPManagementScreen() {
 				await connectionPool.disconnect(server.id);
 				showToast(`Disconnected from: ${server.name}`, 'success');
 			} else {
-				await connectionPool.connect(server, currentBackend.log);
+				await connectionPool.connect(server, logger);
 				showToast(`Connected to: ${server.name}`, 'success');
 			}
 			await loadServerList();
@@ -675,7 +677,7 @@ export function MCPManagementScreen() {
 		try {
 			// Ensure server is connected
 			if (server.status !== 'active') {
-				await connectionPool.connect(server, currentBackend.log);
+				await connectionPool.connect(server, logger);
 			}
 
 			showToast(`Using ${server.name} as backend`, 'success');

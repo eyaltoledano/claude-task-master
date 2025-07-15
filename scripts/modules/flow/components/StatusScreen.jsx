@@ -3,11 +3,14 @@ import { Box, Text, useInput, useStdout } from 'ink';
 
 import { style, gradient, getComponentTheme, getColor } from '../shared/theme/theme.js';
 import { useAppContext } from '../app/index-root.jsx';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 
 
 export const StatusScreen = () => {
-	const { setCurrentScreen, backend, currentTag } = useAppContext();
+	// Get backend from dependency injection, other things from app context
+	const { backend, logger } = useServices();
+	const { setCurrentScreen, currentTag } = useAppContext();
 	const { stdout } = useStdout();
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
@@ -114,6 +117,7 @@ export const StatusScreen = () => {
 
 				// Gather tasks information
 				try {
+					logger.debug('Gathering task information');
 					// First check if tasks file exists
 					let hasTasksFile = false;
 					try {
@@ -345,7 +349,7 @@ export const StatusScreen = () => {
 		};
 
 		gatherStatusData();
-	}, [backend, currentTag]);
+	}, [backend, currentTag, logger]);
 
 	// Helper function to style status values
 	const getStatusStyle = (status) => {

@@ -6,6 +6,7 @@ import { Toast } from '../../../shared/components/ui/Toast.jsx';
 import { BaseModal } from '../../ui';
 import { useKeypress } from '../../../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 
 // Memoized task row component to prevent unnecessary re-renders
 const TaskRow = React.memo(
@@ -37,7 +38,10 @@ const TaskRow = React.memo(
 	}
 );
 
-function LinkTasksModal({ worktree, backend, onClose }) {
+function LinkTasksModal({ worktree, onClose }) {
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	
 	const [loading, setLoading] = useState(true);
 	const [tasks, setTasks] = useState([]);
 	const [taskInput, setTaskInput] = useState('');

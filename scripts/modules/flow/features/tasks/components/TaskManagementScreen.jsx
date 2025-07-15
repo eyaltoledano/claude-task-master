@@ -155,10 +155,13 @@ export function TaskManagementScreen() {
 
 			setLoadingComplexity(true);
 			try {
+				logger.debug('Loading complexity report', { tag: currentTag });
 				const report = await backend.getComplexityReport(currentTag);
 				setComplexityReport(report);
+				logger.debug('Complexity report loaded', { taskCount: report?.tasks?.length });
 			} catch (error) {
 				// Silently fail - complexity report is optional
+				logger.debug('Complexity report not available', { error: error.message });
 				setComplexityReport(null);
 			} finally {
 				setLoadingComplexity(false);
@@ -425,8 +428,14 @@ export function TaskManagementScreen() {
 		const newStatus = statusOrder[nextIndex];
 
 		try {
+			logger.info('Updating task status', { 
+				taskId: task.id, 
+				oldStatus: task.status, 
+				newStatus 
+			});
 			await backend.setTaskStatus(task.id, newStatus);
 			await reloadTasks();
+			logger.success('Task status updated', { taskId: task.id, newStatus });
 
 			// Refresh task/subtask state based on current view mode
 			if (selectedTask) {

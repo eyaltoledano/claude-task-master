@@ -5,10 +5,14 @@ import Spinner from 'ink-spinner';
 import { BaseModal, Toast } from '../features/ui';
 import { useKeypress } from '../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../shared/hooks/useTheme.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { BackgroundClaudeCode } from '../features/agents/services/BackgroundClaudeCode.js';
 import { backgroundOperations } from '../shared/services/BackgroundOperationsManager.js';
 
-function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
+function ClaudeCodeTaskModal({ task, subtask, onClose }) {
+	// Get services from dependency injection
+	const { backend, logger } = useServices();
+	
 	const [prompt, setPrompt] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -28,7 +32,13 @@ function ClaudeCodeTaskModal({ task, subtask, backend, onClose }) {
 		const taskInfo = subtask || task;
 		const contextPrompt = `Help me implement ${taskInfo.title}:\n\n${taskInfo.description}\n\nDetails: ${taskInfo.details || 'None provided'}`;
 		setPrompt(contextPrompt);
-	}, [task, subtask]);
+		
+		// Log modal opening
+		logger.info('ClaudeCodeTaskModal opened', { 
+			taskId: task?.id, 
+			subtaskId: subtask?.id 
+		});
+	}, [task, subtask, logger]);
 
 	// Listen for operation completion
 	useEffect(() => {

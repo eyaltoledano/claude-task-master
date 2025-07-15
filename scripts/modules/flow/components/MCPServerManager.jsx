@@ -13,8 +13,12 @@ import {
 } from '../infra/mcp/servers.js';
 import { connectionPool } from '../infra/mcp/connection-pool.js';
 import { theme } from '../shared/theme/theme.js';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 
-export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
+export function MCPServerManager({ onBack, onUseServer, onOpenChat }) {
+	// Get services from dependency injection
+	const { logger } = useServices();
+	
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [view, setView] = useState('list'); // 'list', 'add', 'edit', 'details'
@@ -120,7 +124,7 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 			if (server.status === 'active') {
 				await connectionPool.disconnect(server.id);
 			} else {
-				await connectionPool.connect(server, log);
+				await connectionPool.connect(server, logger);
 			}
 			// Reload to update tool counts
 			await loadServerList();
@@ -133,7 +137,7 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 		try {
 			// Ensure server is connected
 			if (server.status !== 'active') {
-				await connectionPool.connect(server, log);
+				await connectionPool.connect(server, logger);
 			}
 
 			// Switch backend
@@ -195,7 +199,7 @@ export function MCPServerManager({ onBack, onUseServer, onOpenChat, log }) {
 				}}
 				onEdit={() => setView('edit')}
 				onUse={() => handleUseServer(editingServer)}
-				log={log}
+				log={logger}
 			/>
 		);
 	}

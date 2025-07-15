@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Text, Spacer } from 'ink';
 import { useAppContext } from '../../../app/index-root.jsx';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 import { DependencyAnalysisService } from '../services/DependencyAnalysisService.js';
 
 /**
@@ -8,7 +9,8 @@ import { DependencyAnalysisService } from '../services/DependencyAnalysisService
  * Uses D3.js concepts adapted for terminal UI with Ink
  */
 export function DependencyVisualizerScreen({ onBack, projectRoot }) {
-	const { backend } = useAppContext();
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
 	const [analysisData, setAnalysisData] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);

@@ -3,13 +3,16 @@ import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../app/index-root.jsx';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { theme } from '../shared/theme/theme.js';
 import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
 
 export function ParsePRDScreen() {
-	const { backend, currentTag, setCurrentScreen, showToast, reloadTasks } =
+	// Get backend from dependency injection, other things from app context
+	const { backend, logger } = useServices();
+	const { currentTag, setCurrentScreen, showToast, reloadTasks } =
 		useAppContext();
 	const [step, setStep] = useState('file-browser'); // 'file-browser' | 'research-prompt' | 'num-tasks-prompt' | 'confirm-overwrite' | 'parsing' | 'success' | 'analyze-prompt' | 'analyzing' | 'expand-prompt' | 'expanding' | 'error'
 	const [showStreamingModal, setShowStreamingModal] = useState(false);
@@ -25,6 +28,7 @@ export function ParsePRDScreen() {
 		setSelectedFile(filePath);
 		// First ask about research
 		setStep('research-prompt');
+		logger.info('PRD file selected', { filePath });
 	};
 
 	// Handle research option selection
@@ -70,6 +74,14 @@ export function ParsePRDScreen() {
 		setShowStreamingModal(true);
 		setError(null);
 
+		logger.info('Starting PRD parsing', { 
+			filePath, 
+			force, 
+			useResearch, 
+			taskCount,
+			currentTag 
+		});
+
 		try {
 			// Use streaming state manager for parsing
 			const result = await streamingStateManager.startOperation('parse_prd', {
@@ -105,16 +117,22 @@ export function ParsePRDScreen() {
 			});
 
 			setParseResult(result);
+			logger.success('PRD parsing completed', { 
+				tasksCreated: result?.tasksCreated,
+				tag: currentTag 
+			});
 			await reloadTasks();
 			setShowStreamingModal(false);
 			setStep('success');
 		} catch (err) {
 			setShowStreamingModal(false);
 			if (err.message !== 'Operation cancelled') {
+				logger.error('PRD parsing failed', { error: err.message });
 				setError(err.message);
 				setStep('error');
 			} else {
 				// User cancelled, go back to file selection
+				logger.info('PRD parsing cancelled by user');
 				setStep('file-browser');
 			}
 		}

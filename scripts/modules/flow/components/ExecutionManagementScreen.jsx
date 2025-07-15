@@ -8,9 +8,12 @@ import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { LoadingSpinner, Toast, BaseModal } from '../features/ui';
 import { useAppContext } from '../app/index-root.jsx';
+import { useServices } from '../shared/contexts/ServiceContext.jsx';
 
 export function ExecutionManagementScreen({ onBack }) {
-	const { setNotification, backend } = useAppContext();
+	// Get backend from dependency injection
+	const { backend, logger } = useServices();
+	const { setNotification } = useAppContext();
 	
 	// Core state
 	const [selectedAgent, setSelectedAgent] = useState('claude-code');
