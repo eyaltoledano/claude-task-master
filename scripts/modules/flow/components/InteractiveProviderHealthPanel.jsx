@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { Select, StatusMessage, Badge, Spinner, ProgressBar } from '@inkjs/ui';
-import { useProviders } from '../hooks/useProviders.js';
-import { useOptimizedData } from '../hooks/useOptimizedData.js';
-import { usePerformanceMonitor } from '../hooks/useOptimizedData.js';
-import { useComponentTheme } from '../hooks/useTheme.jsx';
+import { useProviders } from '../shared/hooks/useProviders.js';
+import { useOptimizedData } from '../shared/hooks/useOptimizedData.js';
+import { usePerformanceMonitor } from '../shared/hooks/useOptimizedData.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.jsx';
 
 /**
  * ProviderHealthSummary component showing overall statistics

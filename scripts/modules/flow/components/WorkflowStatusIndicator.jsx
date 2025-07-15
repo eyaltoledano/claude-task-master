@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { useComponentTheme } from '../hooks/useTheme.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.js';
 
 export function WorkflowStatusIndicator({
 	task,

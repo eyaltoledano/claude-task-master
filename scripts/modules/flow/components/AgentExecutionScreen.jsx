@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useAgentSession } from '../hooks/useAgentSession.js';
+import { useAgentSession } from '../shared/hooks/useAgentSession.js';
 import { UnifiedAgentService } from '../services/UnifiedAgentService.js';
 import { SimpleTable } from './SimpleTable.jsx';
 import { Toast } from './Toast.jsx';

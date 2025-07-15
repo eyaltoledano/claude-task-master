@@ -4,8 +4,8 @@ import TextInput from 'ink-text-input';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { Toast } from './Toast.jsx';
 import { BaseModal } from './BaseModal.jsx';
-import { useKeypress } from '../hooks/useKeypress.js';
-import { useComponentTheme } from '../hooks/useTheme.js';
+import { useKeypress } from '../shared/hooks/useKeypress.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.js';
 
 // Memoized task row component to prevent unnecessary re-renders
 const TaskRow = React.memo(

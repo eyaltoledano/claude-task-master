@@ -6,7 +6,7 @@ import {
 	useKeypress,
 	usePhraseCycler,
 	PhraseCollections
-} from '../hooks/index.js';
+} from '../shared/hooks/index.js';
 
 export function TaskActions({
 	selectedTask,

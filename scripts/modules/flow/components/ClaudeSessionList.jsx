@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { SimpleTable } from './SimpleTable.jsx';
-import { useComponentTheme, useStateAndRef } from '../hooks/index.js';
+import { useComponentTheme, useStateAndRef } from '../shared/hooks/index.js';
 import { formatDistanceToNow } from 'date-fns';
 
 export function ClaudeSessionList({

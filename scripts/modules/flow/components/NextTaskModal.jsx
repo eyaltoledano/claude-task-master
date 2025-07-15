@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import { BaseModal } from './BaseModal.jsx';
-import { useKeypress } from '../hooks/useKeypress.js';
-import { useComponentTheme } from '../hooks/useTheme.js';
+import { useKeypress } from '../shared/hooks/useKeypress.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.js';
 
 export function NextTaskModal({ task, onClose }) {
 	const [scrollOffset, setScrollOffset] = useState(0);

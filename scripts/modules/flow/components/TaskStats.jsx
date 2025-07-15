@@ -4,7 +4,7 @@ import {
 	useComponentTheme,
 	useTerminalSize,
 	useGitBranchName
-} from '../hooks/index.js';
+} from '../shared/hooks/index.js';
 
 export function TaskStats({
 	tasks = [],

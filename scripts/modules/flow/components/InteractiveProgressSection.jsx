@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { ProgressBar, StatusMessage, Badge, Spinner } from '@inkjs/ui';
-import { useExecutions } from '../hooks/useExecutions.js';
-import { useStreamingExecution } from '../hooks/useStreamingExecution.js';
-import { useOptimizedData } from '../hooks/useOptimizedData.js';
-import { usePerformanceMonitor } from '../hooks/useOptimizedData.js';
-import { useComponentTheme } from '../hooks/useTheme.jsx';
+import { useExecutions } from '../shared/hooks/useExecutions.js';
+import { useStreamingExecution } from '../shared/hooks/useStreamingExecution.js';
+import { useOptimizedData } from '../shared/hooks/useOptimizedData.js';
+import { usePerformanceMonitor } from '../shared/hooks/useOptimizedData.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.jsx';
 
 /**
  * ExecutionProgressCard component for detailed progress tracking

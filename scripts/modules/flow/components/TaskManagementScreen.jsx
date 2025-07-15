@@ -12,7 +12,7 @@ import { SimpleTable } from './SimpleTable.jsx';
 import TextInput from 'ink-text-input';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
-import { useTerminalSize } from '../hooks/useTerminalSize.js';
+import { useTerminalSize } from '../shared/hooks/useTerminalSize.js';
 import { ResearchInputModal } from './ResearchInputModal.jsx';
 
 import { VibeKitExecutionModal } from './VibeKitExecutionModal.jsx';

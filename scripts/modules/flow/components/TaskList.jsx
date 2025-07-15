@@ -4,7 +4,7 @@ import {
 	useComponentTheme,
 	useTerminalSize,
 	useStateAndRef
-} from '../hooks/index.js';
+} from '../shared/hooks/index.js';
 
 export function TaskList({
 	tasks,

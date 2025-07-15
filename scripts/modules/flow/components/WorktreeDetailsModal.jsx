@@ -5,8 +5,8 @@ import { LoadingSpinner } from './LoadingSpinner.jsx';
 import LinkTasksModal from './LinkTasksModal.jsx';
 import { ClaudeWorktreeLauncherModal } from './ClaudeWorktreeLauncherModal.jsx';
 import { BaseModal } from './BaseModal.jsx';
-import { useKeypress } from '../hooks/useKeypress.js';
-import { useComponentTheme } from '../hooks/useTheme.js';
+import { useKeypress } from '../shared/hooks/useKeypress.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.js';
 import { backgroundOperations } from '../services/BackgroundOperationsManager.js';
 
 export default function WorktreeDetailsModal({

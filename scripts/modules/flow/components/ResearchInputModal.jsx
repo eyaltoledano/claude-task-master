@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
-import { useComponentTheme } from '../hooks/index.js';
+import { useComponentTheme } from '../shared/hooks/index.js';
 
 export function ResearchInputModal({ onResearch, onClose }) {
 	const [query, setQuery] = useState('');

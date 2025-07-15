@@ -7,7 +7,7 @@ import {
 	useStateAndRef,
 	useKeypress,
 	usePhraseCycler
-} from '../hooks/index.js';
+} from '../shared/hooks/index.js';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 
 export function ClaudeActiveSession({

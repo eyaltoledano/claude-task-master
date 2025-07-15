@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { BaseModal } from './BaseModal.jsx';
-import { useBaseModal } from '../hooks/modals/useBaseModal.js';
-import { useComponentTheme } from '../hooks/useComponentTheme.js';
+import { useBaseModal } from '../shared/hooks/modals/useBaseModal.js';
+import { useComponentTheme } from '../shared/hooks/useComponentTheme.js';
 
 export default function ClaudeCodeStopConfigModal({
 	backend,

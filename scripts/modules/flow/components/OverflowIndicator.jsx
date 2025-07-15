@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { useOverflow } from '../contexts/OverflowContext.jsx';
-import { useComponentTheme } from '../hooks/index.js';
+import { useComponentTheme } from '../shared/hooks/index.js';
 
 /**
  * OverflowIndicator - Global indicator showing when content is overflowing

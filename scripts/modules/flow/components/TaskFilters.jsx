@@ -5,7 +5,7 @@ import {
 	useComponentTheme,
 	useTerminalSize,
 	useKeypress
-} from '../hooks/index.js';
+} from '../shared/hooks/index.js';
 
 export function TaskFilters({
 	filter,

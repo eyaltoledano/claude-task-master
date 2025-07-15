@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { LoadingSpinner } from './LoadingSpinner.jsx';
 import { BaseModal } from './BaseModal.jsx';
-import { useKeypress } from '../hooks/useKeypress.js';
-import { useComponentTheme } from '../hooks/useTheme.js';
+import { useKeypress } from '../shared/hooks/useKeypress.js';
+import { useComponentTheme } from '../shared/hooks/useTheme.js';
 
 export function WorkflowDecisionModal({
 	worktree,

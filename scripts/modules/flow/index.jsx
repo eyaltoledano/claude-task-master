@@ -44,7 +44,7 @@ import { ProvidersScreen } from './components/ProvidersScreen.jsx';
 import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import { OverflowProvider } from './contexts/OverflowContext.jsx';
-import { getHookManager } from './hooks/index.js';
+import { getHookManager } from './shared/hooks/index.js';
 import { BranchAwarenessManager } from './services/BranchAwarenessManager.js';
 import { initializeHookIntegration } from './services/HookIntegrationService.js';
 import { initializeNextTaskService } from './services/NextTaskService.js';
