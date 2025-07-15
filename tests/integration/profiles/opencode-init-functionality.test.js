@@ -19,9 +19,9 @@ describe('OpenCode Profile Initialization Functionality', () => {
 		// Check for explicit, non-default values in the source file
 		expect(opencodeProfileContent).toContain("name: 'opencode'");
 		expect(opencodeProfileContent).toContain("displayName: 'OpenCode'");
-		expect(opencodeProfileContent).toContain("url: 'https://opencode.ai'");
+		expect(opencodeProfileContent).toContain("url: 'opencode.ai'");
 		expect(opencodeProfileContent).toContain(
-			"docsUrl: 'https://opencode.ai/docs/'"
+			"docsUrl: 'opencode.ai/docs/'"
 		);
 		expect(opencodeProfileContent).toContain("profileDir: '.'"); // non-default
 		expect(opencodeProfileContent).toContain("rulesDir: '.'"); // non-default
