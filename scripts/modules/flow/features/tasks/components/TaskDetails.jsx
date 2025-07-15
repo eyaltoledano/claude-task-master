@@ -7,7 +7,8 @@ import {
 	PhraseCollections,
 	useKeypress
 } from '../../../shared/hooks/index.js';
-import { OverflowableText } from '../../../components/OverflowableText.jsx';
+import { useTaskViewState } from '../hooks/useTaskViewState.js';
+import { OverflowableText } from '../../ui';
 
 export function TaskDetails({
 	task,

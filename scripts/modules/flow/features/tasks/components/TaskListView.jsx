@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { SimpleTable } from '../../../components/SimpleTable.jsx';
+import { SimpleTable } from '../../ui';
 import {
 	getStatusSymbol,
 	getStatusColor,

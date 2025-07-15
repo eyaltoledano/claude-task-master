@@ -4,10 +4,8 @@ import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
 import { useAppContext } from '../index.jsx';
 import { theme } from '../theme.js';
-import { FileBrowser } from './FileBrowser.jsx';
-import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
+import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
-import { OverflowableText } from './OverflowableText.jsx';
 import { streamingStateManager } from '../streaming/StreamingStateManager.js';
 
 export function ParsePRDScreen() {

@@ -10,7 +10,7 @@ import { ThemeProvider, defaultTheme, extendTheme } from '@inkjs/ui';
 import { DirectBackend } from '../backends/direct-backend.js';
 import { CliBackend } from '../backends/cli-backend.js';
 import { MCPClientBackend } from '../backends/mcp-client-backend.js';
-import { createInkUITheme } from '../shared/theme/ink-ui-theme.js';
+import { createInkUITheme } from '../features/ui/theme/ink-ui-theme.js';
 import { FlowApp } from '../FlowApp.jsx';
 
 /**

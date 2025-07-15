@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
 import { Toast } from '../../../shared/components/ui/Toast.jsx';
-import { BaseModal } from '../../../components/BaseModal.jsx';
+import { BaseModal } from '../../ui';
 import { useKeypress } from '../../../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import SelectInput from 'ink-select-input';
 import TextInput from 'ink-text-input';
-import { BaseModal } from '../../../components/BaseModal.jsx';
+import { BaseModal } from '../../ui';
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 
 export function ExpandModal({

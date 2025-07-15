@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
-import { BaseModal } from '../../../components/BaseModal.jsx';
+import { BaseModal } from '../../ui';
 import { useKeypress } from '../../../shared/hooks/useKeypress.js';
 import { useComponentTheme } from '../../../shared/hooks/useTheme.js';
 
