@@ -4,7 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getCurrentTag } from '../../utils.js';
+import { getCurrentTag } from '../../../utils.js';
 
 export class ChatSession {
 	constructor(sessionId, mcpClient, projectRoot) {

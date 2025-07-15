@@ -8,7 +8,7 @@ import React, {
 import { Box, Text, useInput, useStdout } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
-import { ChatSession } from '../../session/chat-session.js';
+import { ChatSession } from '../../shared/session/chat-session.js';
 import { AIMessageHandler } from '../../ai/message-handler.js';
 import { getCurrentTheme } from '../../theme.js';
 import { OverflowableText } from '../ui/components/OverflowableText.jsx';
