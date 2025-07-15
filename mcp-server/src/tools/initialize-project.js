@@ -51,30 +51,30 @@ export function registerInitializeProjectTool(server) {
 					`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
-		execute: withTaskMaster({
-			required: []
-		})(async (taskMaster, args, { log, session }) => {
-			try {
-				log.info(
-					`Executing initialize_project tool with args: ${JSON.stringify(args)}`
-				);
+		execute: withTaskMaster({ bootstrap: true })(
+			async (taskMaster, args, { log, session }) => {
+				try {
+					log.info(
+						`Executing initialize_project tool with args: ${JSON.stringify(args)}`
+					);
 
-				const result = await initializeProjectDirect(taskMaster, args, log, {
-					session
-				});
+					const result = await initializeProjectDirect(taskMaster, args, log, {
+						session
+					});
 
-				return handleApiResult(
-					result,
-					log,
-					'Initialization failed',
-					undefined,
-					taskMaster.getProjectRoot()
-				);
-			} catch (error) {
-				const errorMessage = `Project initialization tool failed: ${error.message || 'Unknown error'}`;
-				log.error(errorMessage, error);
-				return createErrorResponse(errorMessage, { details: error.stack });
+					return handleApiResult(
+						result,
+						log,
+						'Initialization failed',
+						undefined,
+						taskMaster.getProjectRoot()
+					);
+				} catch (error) {
+					const errorMessage = `Project initialization tool failed: ${error.message || 'Unknown error'}`;
+					log.error(errorMessage, error);
+					return createErrorResponse(errorMessage, { details: error.stack });
+				}
 			}
-		})
+		)
 	});
 }

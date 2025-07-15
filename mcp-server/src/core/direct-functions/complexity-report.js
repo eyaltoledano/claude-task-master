@@ -8,6 +8,8 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import path from 'path';
+import { COMPLEXITY_REPORT_FILE } from '../../../../src/constants/paths.js';
 
 /**
  * Direct function wrapper for displaying the complexity report with error handling and caching.
@@ -21,27 +23,16 @@ export async function complexityReportDirect(taskMaster, args, log) {
 	try {
 		log.info(`Getting complexity report with args: ${JSON.stringify(args)}`);
 
-		// Check if reportPath was resolved
-		if (!taskMaster.getComplexityReportPath()) {
-			log.error(
-				'complexityReportDirect called without valid complexity report path'
-			);
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_PATH',
-					message: 'Complexity report path could not be resolved'
-				}
-			};
-		}
+		// Handle case where complexityReportPath might be null
+		const complexityReportPath =
+			taskMaster.getComplexityReportPath() ||
+			path.resolve(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
 
 		// Use the resolved report path
-		log.info(
-			`Looking for complexity report at: ${taskMaster.getComplexityReportPath()}`
-		);
+		log.info(`Looking for complexity report at: ${complexityReportPath}`);
 
 		// Generate cache key based on report path
-		const cacheKey = `complexityReport:${taskMaster.getComplexityReportPath()}`;
+		const cacheKey = `complexityReport:${complexityReportPath}`;
 
 		// Define the core action function to read the report
 		const coreActionFn = async () => {
@@ -49,22 +40,18 @@ export async function complexityReportDirect(taskMaster, args, log) {
 				// Enable silent mode to prevent console logs from interfering with JSON response
 				enableSilentMode();
 
-				const report = readComplexityReport(
-					taskMaster.getComplexityReportPath()
-				);
+				const report = readComplexityReport(complexityReportPath);
 
 				// Restore normal logging
 				disableSilentMode();
 
 				if (!report) {
-					log.warn(
-						`No complexity report found at ${taskMaster.getComplexityReportPath()}`
-					);
+					log.warn(`No complexity report found at ${complexityReportPath}`);
 					return {
 						success: false,
 						error: {
 							code: 'FILE_NOT_FOUND_ERROR',
-							message: `No complexity report found at ${taskMaster.getComplexityReportPath()}. Run 'analyze-complexity' first.`
+							message: `No complexity report found at ${complexityReportPath}. Run 'analyze-complexity' first.`
 						}
 					};
 				}
@@ -73,7 +60,7 @@ export async function complexityReportDirect(taskMaster, args, log) {
 					success: true,
 					data: {
 						report,
-						reportPath: taskMaster.getComplexityReportPath()
+						reportPath: complexityReportPath
 					}
 				};
 			} catch (error) {

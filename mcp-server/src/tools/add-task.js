@@ -60,8 +60,7 @@ export function registerAddTaskTool(server) {
 				.describe('Whether to use research capabilities for task creation')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
 

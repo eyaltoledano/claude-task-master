@@ -24,8 +24,7 @@ export function registerFixDependenciesTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);

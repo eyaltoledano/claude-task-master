@@ -19,9 +19,7 @@ export function registerResponseLanguageTool(server) {
 					'The new response language to set. like "中文" "English" or "español".'
 				)
 		}),
-		execute: withTaskMaster({
-			required: []
-		})(async (taskMaster, args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Executing response-language tool with args: ${JSON.stringify(args)}`

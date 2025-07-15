@@ -40,9 +40,7 @@ export function registerRulesTool(server) {
 					'DANGEROUS: Force removal even if it would leave no rule profiles. Only use if you are absolutely certain.'
 				)
 		}),
-		execute: withTaskMaster({
-			required: []
-		})(async (taskMaster, args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`[rules tool] Executing action: ${args.action} for profiles: ${args.profiles.join(', ')} in ${taskMaster.getProjectRoot()}`

@@ -27,24 +27,13 @@ export function registerUseTagTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting use-tag with args: ${JSON.stringify(args)}`);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				// Call the direct function
 				const result = await useTagDirect(

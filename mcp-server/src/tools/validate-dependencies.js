@@ -24,8 +24,7 @@ export function registerValidateDependenciesTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Validating dependencies with args: ${JSON.stringify(args)}`);

@@ -43,8 +43,7 @@ export function registerUpdateTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update';
 			const { from, prompt, research, file, projectRoot, tag } = args;
@@ -54,24 +53,15 @@ export function registerUpdateTool(server) {
 					`Executing ${toolName} tool with normalized root: ${projectRoot}`
 				);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath({ projectRoot, file }, log);
-					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json within project root '${projectRoot}': ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`${toolName}: Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				const result = await updateTasksDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						from: from,
 						prompt: prompt,
 						research: research,
-						projectRoot: projectRoot,
 						tag: tag
 					},
 					log,

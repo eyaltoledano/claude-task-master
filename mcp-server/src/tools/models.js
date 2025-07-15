@@ -68,9 +68,7 @@ export function registerModelsTool(server) {
 					'Indicates the set model ID is a custom Google Vertex AI model.'
 				)
 		}),
-		execute: withTaskMaster({
-			required: []
-		})(async (taskMaster, args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting models tool with args: ${JSON.stringify(args)}`);
 

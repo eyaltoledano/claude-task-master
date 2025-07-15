@@ -29,7 +29,7 @@ export function registerComplexityReportTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			complexityReportPath: 'file'
+			paths: { complexityReportPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(

@@ -400,7 +400,7 @@ describe('withTaskMaster', () => {
 			const customReportPath = path.join(tempDir, 'custom-report.json');
 			fs.writeFileSync(customReportPath, '{}');
 
-			const wrappedHandler = withTaskMaster(pathConfig)(mockHandler);
+			const wrappedHandler = withTaskMaster({ paths: pathConfig })(mockHandler);
 
 			// Act
 			await wrappedHandler(
@@ -422,10 +422,12 @@ describe('withTaskMaster', () => {
 		it('should enforce required paths', async () => {
 			// Arrange
 			const pathConfig = {
-				tasksPath: 'file',
-				required: ['tasksPath']
+				tasksPath: 'file'
 			};
-			const wrappedHandler = withTaskMaster(pathConfig)(mockHandler);
+			const wrappedHandler = withTaskMaster({
+				paths: pathConfig,
+				required: ['tasksPath']
+			})(mockHandler);
 
 			// Act
 			await wrappedHandler({}, mockContext);
@@ -444,10 +446,12 @@ describe('withTaskMaster', () => {
 			fs.unlinkSync(tasksPath);
 
 			const pathConfig = {
-				tasksPath: 'file',
-				required: ['tasksPath']
+				tasksPath: 'file'
 			};
-			const wrappedHandler = withTaskMaster(pathConfig)(mockHandler);
+			const wrappedHandler = withTaskMaster({
+				paths: pathConfig,
+				required: ['tasksPath']
+			})(mockHandler);
 
 			// Act & Assert
 			await expect(wrappedHandler({}, mockContext)).rejects.toThrow(
@@ -574,6 +578,232 @@ describe('withTaskMaster', () => {
 			await expect(wrappedHandler({}, mockContext)).rejects.toThrow(
 				'Handler error'
 			);
+		});
+	});
+
+	describe('Bootstrap Mode Tests', () => {
+		it('should succeed without .taskmaster directory when bootstrap=true', async () => {
+			// Arrange - empty directory with no .taskmaster
+			process.chdir(tempDir);
+			const wrappedHandler = withTaskMaster({ bootstrap: true })(mockHandler);
+
+			// Act - should not throw
+			await wrappedHandler({}, mockContext);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					getProjectRoot: expect.any(Function)
+				}),
+				{},
+				mockContext
+			);
+
+			const taskMaster = mockHandler.mock.calls[0][0];
+			expect(taskMaster.getProjectRoot()).toBe(tempDir);
+		});
+
+		it('should handle bootstrap mode with argument passthrough', async () => {
+			// Arrange
+			process.chdir(tempDir);
+			const args = { projectRoot: tempDir, someArg: 'value' };
+			const context = { ...mockContext, extraProperty: 'test' };
+			const wrappedHandler = withTaskMaster({ bootstrap: true })(mockHandler);
+
+			// Act
+			await wrappedHandler(args, context);
+
+			// Assert - verify arguments and context are passed through unchanged
+			expect(mockHandler).toHaveBeenCalledWith(
+				expect.any(Object), // TaskMaster instance
+				args,
+				context
+			);
+		});
+
+		it('should handle session processing with bootstrap mode enabled', async () => {
+			// Arrange
+			process.chdir(tempDir);
+			const sessionWithRoots = {
+				roots: [{ uri: `file://${tempDir}` }]
+			};
+			const contextWithSession = {
+				...mockContext,
+				session: sessionWithRoots
+			};
+			const wrappedHandler = withTaskMaster({ bootstrap: true })(mockHandler);
+
+			// Act
+			await wrappedHandler({}, contextWithSession);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalled();
+			const taskMaster = mockHandler.mock.calls[0][0];
+			expect(taskMaster.getProjectRoot()).toBe(tempDir);
+		});
+	});
+
+	describe('Falsy Argument Handling', () => {
+		it('should treat falsy argument values as provided', async () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+			process.chdir(tempDir);
+
+			const args = {
+				file: '', // empty string - should be treated as provided
+				flag: false, // boolean false - should be treated as provided
+				count: 0 // zero - should be treated as provided
+			};
+
+			const wrappedHandler = withTaskMaster({
+				paths: {
+					tasksPath: 'file',
+					statePath: 'flag',
+					configPath: 'count'
+				}
+			})(mockHandler);
+
+			// Act
+			await wrappedHandler(args, mockContext);
+
+			// Assert - handler should be called successfully
+			expect(mockHandler).toHaveBeenCalled();
+		});
+	});
+
+	describe('Multiple Path Mapping', () => {
+		it('should handle multiple mapped paths in one call', async () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			const tasksDir = path.join(taskMasterDir, 'tasks');
+			const reportsDir = path.join(taskMasterDir, 'reports');
+			fs.mkdirSync(tasksDir, { recursive: true });
+			fs.mkdirSync(reportsDir, { recursive: true });
+
+			const tasksFile = path.join(tasksDir, 'tasks.json');
+			const reportFile = path.join(reportsDir, 'complexity-report.md');
+			fs.writeFileSync(tasksFile, '{"tasks": []}');
+			fs.writeFileSync(reportFile, '# Report');
+
+			process.chdir(tempDir);
+
+			const args = {
+				tasksFile: tasksFile,
+				reportFile: reportFile
+			};
+
+			const wrappedHandler = withTaskMaster({
+				paths: {
+					tasksPath: 'tasksFile',
+					complexityReportPath: 'reportFile'
+				}
+			})(mockHandler);
+
+			// Act
+			await wrappedHandler(args, mockContext);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalled();
+			const taskMaster = mockHandler.mock.calls[0][0];
+			expect(taskMaster.getTasksPath()).toBe(tasksFile);
+			expect(taskMaster.getComplexityReportPath()).toBe(reportFile);
+		});
+
+		it('should handle mixed required/optional path configurations', async () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			const tasksDir = path.join(taskMasterDir, 'tasks');
+			fs.mkdirSync(tasksDir, { recursive: true });
+
+			const tasksFile = path.join(tasksDir, 'tasks.json');
+			fs.writeFileSync(tasksFile, '{"tasks": []}');
+
+			process.chdir(tempDir);
+
+			const args = {
+				tasksFile: tasksFile
+				// Note: no reportFile provided (optional)
+			};
+
+			const wrappedHandler = withTaskMaster({
+				paths: {
+					tasksPath: 'tasksFile',
+					complexityReportPath: 'reportFile' // optional, not provided
+				},
+				required: ['tasksPath'] // only tasksPath is required
+			})(mockHandler);
+
+			// Act
+			await wrappedHandler(args, mockContext);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalled();
+			const taskMaster = mockHandler.mock.calls[0][0];
+			expect(taskMaster.getTasksPath()).toBe(tasksFile);
+			expect(taskMaster.getComplexityReportPath()).toBe(null); // optional, not provided
+		});
+
+		it('should ignore unknown keys in paths configuration', async () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+			process.chdir(tempDir);
+
+			const args = {
+				validArg: 'value',
+				unknownArg: 'should-be-ignored'
+			};
+
+			const wrappedHandler = withTaskMaster({
+				paths: {
+					unknownPath: 'unknownArg' // This path doesn't exist in TaskMaster
+				}
+			})(mockHandler);
+
+			// Act - should not throw
+			await wrappedHandler(args, mockContext);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalled();
+		});
+
+		it('should handle combination test: tasksPath required + complexityReportPath optional, both via args', async () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			const tasksDir = path.join(taskMasterDir, 'tasks');
+			const reportsDir = path.join(taskMasterDir, 'reports');
+			fs.mkdirSync(tasksDir, { recursive: true });
+			fs.mkdirSync(reportsDir, { recursive: true });
+
+			const tasksFile = path.join(tasksDir, 'tasks.json');
+			const reportFile = path.join(reportsDir, 'complexity-report.md');
+			fs.writeFileSync(tasksFile, '{"tasks": []}');
+			fs.writeFileSync(reportFile, '# Report');
+
+			process.chdir(tempDir);
+
+			const args = {
+				tasksArg: tasksFile,
+				reportArg: reportFile
+			};
+
+			const wrappedHandler = withTaskMaster({
+				paths: {
+					tasksPath: 'tasksArg',
+					complexityReportPath: 'reportArg'
+				},
+				required: ['tasksPath'] // only tasksPath required
+			})(mockHandler);
+
+			// Act
+			await wrappedHandler(args, mockContext);
+
+			// Assert
+			expect(mockHandler).toHaveBeenCalled();
+			const taskMaster = mockHandler.mock.calls[0][0];
+			expect(taskMaster.getTasksPath()).toBe(tasksFile);
+			expect(taskMaster.getComplexityReportPath()).toBe(reportFile);
 		});
 	});
 });

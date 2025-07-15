@@ -34,33 +34,21 @@ export function registerUpdateSubtaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update_subtask';
 			try {
 				log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`${toolName}: Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				const result = await updateSubtaskByIdDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						prompt: args.prompt,
-						research: args.research,
-						projectRoot: taskMaster.getProjectRoot()
+						research: args.research
 					},
 					log,
 					{ session }

@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import readline from 'readline';
 import fs from 'fs';
+import path from 'path';
 
 import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
 
@@ -61,6 +62,17 @@ Respond ONLY with a valid JSON array matching the schema:
 
 Do not include any explanatory text, markdown formatting, or code block markers before or after the JSON array.`;
 	return prompt;
+}
+
+/**
+ * Ensures the output directory exists, creating it if necessary
+ * @param {string} outputPath - The full path to the output file
+ */
+function ensureOutputDirectoryExists(outputPath) {
+	const outputDir = path.dirname(outputPath);
+	if (!fs.existsSync(outputDir)) {
+		fs.mkdirSync(outputDir, { recursive: true });
+	}
 }
 
 /**
@@ -339,6 +351,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: existingReport?.complexityAnalysis || []
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			ensureOutputDirectoryExists(outputPath);
 			fs.writeFileSync(
 				outputPath,
 				JSON.stringify(emptyReport, null, '\t'),
@@ -578,6 +591,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: finalComplexityAnalysis
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
+			ensureOutputDirectoryExists(outputPath);
 			fs.writeFileSync(outputPath, JSON.stringify(report, null, '\t'), 'utf8');
 
 			reportLog(

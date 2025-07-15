@@ -18,6 +18,75 @@ import {
 } from './constants/paths.js';
 
 /**
+ * Custom error class for TaskMaster-specific errors
+ */
+export class TaskMasterError extends Error {
+	constructor(message, code = 'TASKMASTER_ERROR') {
+		super(message);
+		this.name = 'TaskMasterError';
+		this.code = code;
+		// Maintain proper stack trace
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, TaskMasterError);
+		}
+	}
+}
+
+/**
+ * Helper function to decode URI components and handle Windows path normalization
+ * @param {string} rawPath - The raw path that may be URI-encoded
+ * @param {Object} log - Logger instance
+ * @returns {string|null} - Normalized path or null on error
+ */
+function decodeAndNormalizePath(rawPath, log) {
+	if (!rawPath) return null;
+
+	try {
+		let pathString = rawPath;
+
+		// 1. Decode URI Encoding
+		try {
+			pathString = decodeURIComponent(pathString);
+		} catch (decodeError) {
+			if (log) {
+				log.warn(
+					`Could not decode URI component for path "${rawPath}": ${decodeError.message}. Proceeding with raw string.`
+				);
+			}
+			// Proceed with the original string if decoding fails
+			pathString = rawPath;
+		}
+
+		// 2. Strip file:// prefix (handle 2 or 3 slashes)
+		if (pathString.startsWith('file:///')) {
+			pathString = pathString.slice(7); // Slice 7 for file:///, keeping the leading slash
+		} else if (pathString.startsWith('file://')) {
+			pathString = pathString.slice(7); // Slice 7 for file://
+		}
+
+		// 3. Handle potential Windows leading slash after stripping prefix (e.g., /C:/...)
+		if (
+			pathString.startsWith('/') &&
+			/[A-Za-z]:/.test(pathString.substring(1, 3))
+		) {
+			pathString = pathString.substring(1); // Remove the leading slash
+		}
+
+		// 4. Normalize backslashes to forward slashes
+		pathString = pathString.replace(/\\/g, '/');
+
+		return pathString;
+	} catch (error) {
+		if (log) {
+			log.error(
+				`Error decoding and normalizing path "${rawPath}": ${error.message}`
+			);
+		}
+		return null;
+	}
+}
+
+/**
  * Resolves and normalizes a project root path from various formats.
  * Handles URI encoding, Windows paths, and file protocols.
  * @param {string | undefined | null} rawPath - The raw project root path.
@@ -30,39 +99,11 @@ function normalizeProjectRoot(rawPath, log) {
 		let pathString = Array.isArray(rawPath) ? rawPath[0] : String(rawPath);
 		if (!pathString) return null;
 
-		// 1. Decode URI Encoding
-		// Use try-catch for decoding as malformed URIs can throw
-		try {
-			pathString = decodeURIComponent(pathString);
-		} catch (decodeError) {
-			if (log)
-				log.warn(
-					`Could not decode URI component for path "${rawPath}": ${decodeError.message}. Proceeding with raw string.`
-				);
-			// Proceed with the original string if decoding fails
-			pathString = Array.isArray(rawPath) ? rawPath[0] : String(rawPath);
-		}
+		// Use helper function for decoding and normalization
+		pathString = decodeAndNormalizePath(pathString, log);
+		if (!pathString) return null;
 
-		// 2. Strip file:// prefix (handle 2 or 3 slashes)
-		if (pathString.startsWith('file:///')) {
-			pathString = pathString.slice(7); // Slice 7 for file:///, may leave leading / on Windows
-		} else if (pathString.startsWith('file://')) {
-			pathString = pathString.slice(7); // Slice 7 for file://
-		}
-
-		// 3. Handle potential Windows leading slash after stripping prefix (e.g., /C:/...)
-		// This checks if it starts with / followed by a drive letter C: D: etc.
-		if (
-			pathString.startsWith('/') &&
-			/[A-Za-z]:/.test(pathString.substring(1, 3))
-		) {
-			pathString = pathString.substring(1); // Remove the leading slash
-		}
-
-		// 4. Normalize backslashes to forward slashes
-		pathString = pathString.replace(/\\/g, '/');
-
-		// 5. Resolve to absolute path using server's OS convention
+		// Resolve to absolute path using server's OS convention
 		const resolvedPath = path.resolve(pathString);
 		return resolvedPath;
 	} catch (error) {
@@ -83,22 +124,12 @@ function normalizeProjectRoot(rawPath, log) {
  */
 function getProjectRootFromSession(session, log) {
 	try {
-		// Add detailed logging of session structure
-		log.info(
-			`Session object: ${JSON.stringify({
-				hasSession: !!session,
-				hasRoots: !!session?.roots,
-				rootsType: typeof session?.roots,
-				isRootsArray: Array.isArray(session?.roots),
-				rootsLength: session?.roots?.length,
-				firstRoot: session?.roots?.[0],
-				hasRootsRoots: !!session?.roots?.roots,
-				rootsRootsType: typeof session?.roots?.roots,
-				isRootsRootsArray: Array.isArray(session?.roots?.roots),
-				rootsRootsLength: session?.roots?.roots?.length,
-				firstRootsRoot: session?.roots?.roots?.[0]
-			})}`
-		);
+		// Debug logging of session structure (reduced verbosity)
+		if (log.debug) {
+			log.debug(
+				`Session roots: primary=${!!session?.roots?.[0]?.uri}, alternate=${!!session?.roots?.roots?.[0]?.uri}`
+			);
+		}
 
 		let rawRootPath = null;
 		let decodedPath = null;
@@ -118,27 +149,17 @@ function getProjectRootFromSession(session, log) {
 		}
 
 		if (rawRootPath) {
-			// Decode URI and strip file:// protocol
-			decodedPath = rawRootPath.startsWith('file://')
-				? decodeURIComponent(rawRootPath.slice(7))
-				: rawRootPath; // Assume non-file URI is already decoded? Or decode anyway? Let's decode.
-			if (!rawRootPath.startsWith('file://')) {
-				decodedPath = decodeURIComponent(rawRootPath); // Decode even if no file://
-			}
-
-			// Handle potential Windows drive prefix after stripping protocol (e.g., /C:/...)
-			if (
-				decodedPath.startsWith('/') &&
-				/[A-Za-z]:/.test(decodedPath.substring(1, 3))
-			) {
-				decodedPath = decodedPath.substring(1); // Remove leading slash if it's like /C:/...
+			// Use helper function for decoding and normalization
+			decodedPath = decodeAndNormalizePath(rawRootPath, log);
+			if (!decodedPath) {
+				log.warn(`Failed to decode path: ${rawRootPath}`);
+				return null;
 			}
 
 			log.info(`Decoded path: ${decodedPath}`);
 
-			// Normalize slashes and resolve
-			const normalizedSlashes = decodedPath.replace(/\\/g, '/');
-			finalPath = path.resolve(normalizedSlashes); // Resolve to absolute path for current OS
+			// Resolve to absolute path for current OS
+			finalPath = path.resolve(decodedPath);
 
 			log.info(`Normalized and resolved session path: ${finalPath}`);
 			return finalPath;
@@ -185,6 +206,10 @@ function getProjectRootFromSession(session, log) {
 }
 
 /**
+ * Export TaskMasterError for error filtering
+ */
+
+/**
  * TaskMaster class manages all the paths for the application.
  * An instance of this class is created by the initTaskMaster function.
  */
@@ -210,42 +235,42 @@ export class TaskMaster {
 	 * @returns {string|null} The absolute path to the .taskmaster directory.
 	 */
 	getTaskMasterDir() {
-		return this.#paths.taskMasterDir;
+		return this.#paths.taskMasterDir ?? null;
 	}
 
 	/**
 	 * @returns {string|null} The absolute path to the tasks.json file.
 	 */
 	getTasksPath() {
-		return this.#paths.tasksPath;
+		return this.#paths.tasksPath ?? null;
 	}
 
 	/**
 	 * @returns {string|null} The absolute path to the PRD file.
 	 */
 	getPrdPath() {
-		return this.#paths.prdPath;
+		return this.#paths.prdPath ?? null;
 	}
 
 	/**
 	 * @returns {string|null} The absolute path to the complexity report.
 	 */
 	getComplexityReportPath() {
-		return this.#paths.complexityReportPath;
+		return this.#paths.complexityReportPath ?? null;
 	}
 
 	/**
 	 * @returns {string|null} The absolute path to the config.json file.
 	 */
 	getConfigPath() {
-		return this.#paths.configPath;
+		return this.#paths.configPath ?? null;
 	}
 
 	/**
 	 * @returns {string|null} The absolute path to the state.json file.
 	 */
 	getStatePath() {
-		return this.#paths.statePath;
+		return this.#paths.statePath ?? null;
 	}
 
 	/**
@@ -260,16 +285,29 @@ export class TaskMaster {
  * Initializes a TaskMaster instance with resolved paths.
  * This function centralizes path resolution logic.
  *
- * @param {object} [overrides={}] - An object with possible path overrides.
- * @param {string} [overrides.projectRoot]
- * @param {string} [overrides.tasksPath]
- * @param {string} [overrides.prdPath]
- * @param {string} [overrides.complexityReportPath]
- * @param {string} [overrides.configPath]
- * @param {string} [overrides.statePath]
+ * @param {object} [options={}] - An object with initialization options.
+ * @param {string} [options.projectRoot] - Explicit project root path
+ * @param {boolean} [options.bootstrap] - Bootstrap mode bypasses .taskmaster directory validation
+ * @param {object} [options.paths] - Path overrides object
+ * @param {string[]} [options.required] - Array of required path names (for future enforcement)
  * @returns {TaskMaster} An initialized TaskMaster instance.
  */
-export function initTaskMaster(overrides = {}) {
+export function initTaskMaster(options = {}) {
+	const {
+		projectRoot,
+		bootstrap = false,
+		paths: pathOverrides = {},
+		required = []
+	} = options;
+
+	// merge into the internal 'overrides' object that the existing
+	// resolution logic already expects
+	const overrides = { bootstrap };
+	if (projectRoot !== undefined) overrides.projectRoot = projectRoot;
+	Object.entries(pathOverrides).forEach(([k, v]) => (overrides[k] = v));
+
+	// Note: required array is kept for future enforcement, but not processed yet
+	// This allows for a more lenient approach aligned with MCP versions
 	const findProjectRoot = (startDir = process.cwd()) => {
 		const projectMarkers = [TASKMASTER_DIR, LEGACY_CONFIG_FILE];
 		let currentDir = path.resolve(startDir);
@@ -292,39 +330,44 @@ export function initTaskMaster(overrides = {}) {
 		defaultPaths = [],
 		basePath = null
 	) => {
+		// Handle string paths - resolve and validate existence
 		if (typeof override === 'string') {
 			const resolvedPath = path.isAbsolute(override)
 				? override
-				: path.resolve(basePath || process.cwd(), override);
+				: path.resolve(basePath ?? process.cwd(), override);
 
 			if (!fs.existsSync(resolvedPath)) {
-				throw new Error(
-					`${pathType} override path does not exist: ${resolvedPath}`
+				throw new TaskMasterError(
+					`${pathType} override path does not exist: ${resolvedPath}`,
+					'PATH_NOT_FOUND'
 				);
 			}
 			return resolvedPath;
 		}
 
-		if (override === true) {
-			// Required path - search defaults and fail if not found
+		// Handle null - explicitly disabled, return null
+		if (override === null) {
+			return null;
+		}
+
+		// Handle undefined - search defaults, return null if not found
+		if (override === undefined) {
 			for (const defaultPath of defaultPaths) {
 				const fullPath = path.isAbsolute(defaultPath)
 					? defaultPath
-					: path.join(basePath || process.cwd(), defaultPath);
+					: path.join(basePath ?? process.cwd(), defaultPath);
 				if (fs.existsSync(fullPath)) {
 					return fullPath;
 				}
 			}
-			throw new Error(
-				`Required ${pathType} not found. Searched: ${defaultPaths.join(', ')}`
-			);
+			return null;
 		}
 
-		// Optional path (override === false/undefined) - search defaults, return null if not found
+		// Fallback for any other value - treat as undefined
 		for (const defaultPath of defaultPaths) {
 			const fullPath = path.isAbsolute(defaultPath)
 				? defaultPath
-				: path.join(basePath || process.cwd(), defaultPath);
+				: path.join(basePath ?? process.cwd(), defaultPath);
 			if (fs.existsSync(fullPath)) {
 				return fullPath;
 			}
@@ -339,33 +382,44 @@ export function initTaskMaster(overrides = {}) {
 	if (overrides.projectRoot) {
 		const resolvedOverride = path.resolve(overrides.projectRoot);
 		if (!fs.existsSync(resolvedOverride)) {
-			throw new Error(
-				`Project root override path does not exist: ${resolvedOverride}`
+			throw new TaskMasterError(
+				`Project root override path does not exist: ${resolvedOverride}`,
+				'PROJECT_ROOT_NOT_FOUND'
 			);
 		}
 
-		const hasTaskmasterDir = fs.existsSync(
-			path.join(resolvedOverride, TASKMASTER_DIR)
-		);
-		const hasLegacyConfig = fs.existsSync(
-			path.join(resolvedOverride, LEGACY_CONFIG_FILE)
-		);
-
-		if (!hasTaskmasterDir && !hasLegacyConfig) {
-			throw new Error(
-				`Project root override is not a valid taskmaster project: ${resolvedOverride}`
+		// Skip validation in bootstrap mode
+		if (!overrides.bootstrap) {
+			const hasTaskmasterDir = fs.existsSync(
+				path.join(resolvedOverride, TASKMASTER_DIR)
 			);
+			const hasLegacyConfig = fs.existsSync(
+				path.join(resolvedOverride, LEGACY_CONFIG_FILE)
+			);
+
+			if (!hasTaskmasterDir && !hasLegacyConfig) {
+				throw new TaskMasterError(
+					`Project root override is not a valid taskmaster project: ${resolvedOverride}`,
+					'INVALID_TASKMASTER_PROJECT'
+				);
+			}
 		}
 
 		paths.projectRoot = resolvedOverride;
 	} else {
-		const foundRoot = findProjectRoot();
-		if (!foundRoot) {
-			throw new Error(
-				'Unable to find project root. No project markers found. Run "init" command first.'
-			);
+		// In bootstrap mode, use current directory if no project root found
+		if (overrides.bootstrap) {
+			paths.projectRoot = process.cwd();
+		} else {
+			const foundRoot = findProjectRoot();
+			if (!foundRoot) {
+				throw new TaskMasterError(
+					'Unable to find project root. No project markers found. Run "init" command first.',
+					'PROJECT_ROOT_NOT_FOUND'
+				);
+			}
+			paths.projectRoot = foundRoot;
 		}
-		paths.projectRoot = foundRoot;
 	}
 
 	// TaskMaster Directory
@@ -385,14 +439,7 @@ export function initTaskMaster(overrides = {}) {
 		);
 	}
 
-	// Always set default paths first
-	// These can be overridden below if needed
-	paths.configPath = path.join(paths.projectRoot, TASKMASTER_CONFIG_FILE);
-	paths.statePath = path.join(
-		paths.taskMasterDir || path.join(paths.projectRoot, TASKMASTER_DIR),
-		'state.json'
-	);
-	paths.tasksPath = path.join(paths.projectRoot, TASKMASTER_TASKS_FILE);
+	// Initialize paths as null by default - only set when explicitly provided or searched for
 
 	// Handle overrides - only validate/resolve if explicitly provided
 	if ('configPath' in overrides) {
@@ -460,6 +507,56 @@ export function initTaskMaster(overrides = {}) {
 		);
 	}
 
+	// Enforce required paths - check that all required paths were successfully resolved
+	required.forEach((requiredPath) => {
+		if (requiredPath in pathOverrides && paths[requiredPath] === null) {
+			// Path was requested but not found - generate specific error with search paths
+			let pathType, searchPaths;
+
+			switch (requiredPath) {
+				case 'tasksPath':
+					pathType = 'tasks file';
+					searchPaths = [TASKMASTER_TASKS_FILE, LEGACY_TASKS_FILE];
+					break;
+				case 'configPath':
+					pathType = 'config file';
+					searchPaths = [TASKMASTER_CONFIG_FILE, LEGACY_CONFIG_FILE];
+					break;
+				case 'statePath':
+					pathType = 'state file';
+					searchPaths = ['state.json'];
+					break;
+				case 'prdPath':
+					pathType = 'PRD file';
+					searchPaths = [
+						path.join(TASKMASTER_DOCS_DIR, 'PRD.md'),
+						path.join(TASKMASTER_DOCS_DIR, 'prd.md'),
+						'PRD.md',
+						'prd.md'
+					];
+					break;
+				case 'complexityReportPath':
+					pathType = 'complexity report';
+					searchPaths = [
+						path.join(TASKMASTER_REPORTS_DIR, 'task-complexity-report.json'),
+						'task-complexity-report.json',
+						'complexity-report.json'
+					];
+					break;
+				default:
+					pathType = requiredPath
+						.replace('Path', '')
+						.replace('Dir', ' directory');
+					searchPaths = [];
+			}
+
+			throw new TaskMasterError(
+				`Required ${pathType} not found. Searched: ${searchPaths.join(', ')}`,
+				'REQUIRED_PATH_NOT_FOUND'
+			);
+		}
+	});
+
 	return new TaskMaster(paths);
 }
 
@@ -469,12 +566,21 @@ export function initTaskMaster(overrides = {}) {
  * that contains all resolved paths upfront. Implements the same priority logic
  * as withNormalizedProjectRoot for project root resolution.
  *
- * @param {Object} pathConfig - Configuration object for path mapping
- * @param {Object} pathConfig.parameterMap - Maps arg names to TaskMaster path names
- * @param {string[]} pathConfig.required - Array of TaskMaster path names that are required
+ * @param {Object} options - Configuration options
+ * @param {Object} [options.paths] - Maps TaskMaster path names to arg names (e.g., {tasksPath: 'file'})
+ * @param {string[]} [options.required] - Array of TaskMaster path names that are required
+ * @param {boolean} [options.bootstrap] - Bootstrap mode bypasses .taskmaster directory validation
+ *
+ * @note When using bootstrap mode, avoid marking paths as required, as bootstrap mode is intended
+ * for initialization scenarios where .taskmaster directory may not exist yet. Required paths in
+ * bootstrap mode may cause failures if dependencies haven't been created.
  * @returns {Function} - Function that takes a handler and returns wrapped handler
  */
-export function withTaskMaster(pathConfig = {}) {
+export function withTaskMaster({
+	paths = {},
+	required = [],
+	bootstrap = false
+} = {}) {
 	return (handler) => {
 		return async (args, context) => {
 			const { log, session } = context;
@@ -524,30 +630,30 @@ export function withTaskMaster(pathConfig = {}) {
 					}
 				}
 
-				// Set up overrides for initTaskMaster
-				const overrides = {
-					projectRoot: normalizedRoot
+				const initOptions = {
+					projectRoot: normalizedRoot,
+					bootstrap,
+					paths: {},
+					required
 				};
 
-				// Apply path configuration mappings
-				Object.entries(pathConfig).forEach(([taskMasterPath, argName]) => {
-					if (argName in args) {
-						const isRequired = pathConfig.required?.includes(taskMasterPath);
-						overrides[taskMasterPath] =
-							args[argName] || (isRequired ? true : false);
+				Object.entries(paths).forEach(([taskPath, argKey]) => {
+					if (argKey in args && args[argKey] !== undefined) {
+						initOptions.paths[taskPath] = args[argKey];
+					} else if (required.includes(taskPath)) {
+						// Required path not provided via args - set to undefined to trigger search
+						initOptions.paths[taskPath] = undefined;
 					}
 				});
 
 				// Handle required paths that weren't explicitly mapped
-				if (pathConfig.required) {
-					pathConfig.required.forEach((requiredPath) => {
-						if (!(requiredPath in overrides)) {
-							overrides[requiredPath] = true;
-						}
-					});
-				}
+				required.forEach((requiredPath) => {
+					if (!(requiredPath in initOptions.paths)) {
+						initOptions.paths[requiredPath] = undefined;
+					}
+				});
 
-				const taskMaster = initTaskMaster(overrides);
+				const taskMaster = initTaskMaster(initOptions);
 				return await handler(taskMaster, args, context);
 			} catch (error) {
 				log.error(

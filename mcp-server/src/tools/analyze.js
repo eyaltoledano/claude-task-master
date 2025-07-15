@@ -66,9 +66,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			complexityReportPath: 'output',
-			required: ['tasksPath', 'complexityReportPath']
+			paths: { tasksPath: 'file', complexityReportPath: 'output' }
 		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'analyze_project_complexity'; // Define tool name for logging
 			try {

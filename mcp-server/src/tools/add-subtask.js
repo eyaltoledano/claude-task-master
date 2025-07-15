@@ -58,8 +58,7 @@ export function registerAddSubtaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);

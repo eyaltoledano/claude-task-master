@@ -45,24 +45,13 @@ export function registerExpandTaskTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				const result = await expandTaskDirect(
 					taskMaster,

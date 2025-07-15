@@ -56,36 +56,23 @@ export function registerExpandAllTool(server) {
 				)
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 				);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				const result = await expandAllTasksDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
-						force: args.force,
-						projectRoot: taskMaster.getProjectRoot()
+						force: args.force
 					},
 					log,
 					{ session }

@@ -44,38 +44,14 @@ export function registerSetTaskStatusTool(server) {
 			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			complexityReportPath: 'complexityReport',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				let complexityReportPath;
-				try {
-					complexityReportPath = findComplexityReportPath(
-						{
-							projectRoot: taskMaster.getProjectRoot(),
-							complexityReport: args.complexityReport
-						},
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-				}
+				// Get paths from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
+				const complexityReportPath = taskMaster.getComplexityReportPath();
 
 				const result = await setTaskStatusDirect(
 					taskMaster,
@@ -88,16 +64,6 @@ export function registerSetTaskStatusTool(server) {
 					log,
 					{ session }
 				);
-
-				if (result.success) {
-					log.info(
-						`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`
-					);
-				} else {
-					log.error(
-						`Failed to update task status: ${result.error?.message || 'Unknown error'}`
-					);
-				}
 
 				return handleApiResult(
 					result,

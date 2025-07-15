@@ -42,8 +42,7 @@ export function registerUpdateTaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			const toolName = 'update_task';
 			try {
@@ -51,29 +50,17 @@ export function registerUpdateTaskTool(server) {
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`${toolName}: Using tasks path: ${taskMaster.getTasksPath()}`);
 
-				// 3. Call Direct Function - Include projectRoot
+				// 3. Call Direct Function - Pass taskMaster as first parameter
 				const result = await updateTaskByIdDirect(
+					taskMaster,
 					{
-						tasksJsonPath: taskMaster.getTasksPath(),
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						append: args.append,
-						projectRoot: taskMaster.getProjectRoot()
+						append: args.append
 					},
 					log,
 					{ session }

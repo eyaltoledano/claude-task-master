@@ -30,9 +30,7 @@ export function registerNextTaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			complexityReportPath: 'complexityReport',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);

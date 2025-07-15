@@ -38,26 +38,10 @@ export function registerRemoveTaskTool(server) {
 				)
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
-
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: taskMaster.getProjectRoot(), file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				log.info(`Using tasks file path: ${tasksJsonPath}`);
 
 				const result = await removeTaskDirect(
 					taskMaster,

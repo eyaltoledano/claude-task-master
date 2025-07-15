@@ -35,8 +35,7 @@ export function registerMoveTaskTool(server) {
 				)
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			try {
 				// Parse comma-separated IDs

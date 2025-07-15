@@ -82,7 +82,36 @@ import {
 	TASKMASTER_DOCS_DIR
 } from '../../src/constants/paths.js';
 
-import { initTaskMaster } from '../../src/task-master.js';
+import { initTaskMaster, TaskMasterError } from '../../src/task-master.js';
+
+/**
+ * Enhanced error handler that provides specific guidance for TaskMaster errors
+ */
+function handleTaskMasterError(error) {
+	if (error instanceof TaskMasterError) {
+		console.error(
+			chalk.red(`TaskMaster error (${error.code}): ${error.message}`)
+		);
+		if (error.code === 'PROJECT_ROOT_NOT_FOUND') {
+			console.log(chalk.yellow('Run "task-master init" to create a project.'));
+		} else if (error.code === 'REQUIRED_PATH_NOT_FOUND') {
+			console.log(
+				chalk.yellow(
+					'The required file may not exist. Check your project structure.'
+				)
+			);
+		} else if (error.code === 'INVALID_TASKMASTER_PROJECT') {
+			console.log(
+				chalk.yellow(
+					'Run "task-master init" to initialize this directory as a TaskMaster project.'
+				)
+			);
+		}
+	} else {
+		console.error(chalk.red(`Error: ${error.message}`));
+	}
+	process.exit(1);
+}
 
 import {
 	displayBanner,
@@ -805,7 +834,11 @@ function registerCommands(programInstance) {
 			'-i, --input <file>',
 			'Path to the PRD file (alternative to positional argument)'
 		)
-		.option('-o, --output <file>', 'Output file path')
+		.option(
+			'-o, --output <file>',
+			`Output file path (defaults to ${TASKMASTER_TASKS_FILE})`
+		)
+
 		.option(
 			'-n, --num-tasks <number>',
 			'Number of tasks to generate',
@@ -825,14 +858,14 @@ function registerCommands(programInstance) {
 			// Initialize TaskMaster
 			let taskMaster;
 			try {
-				const initOptions = {
-					prdPath: file || options.input || true
-				};
-				// Only include tasksPath if output is explicitly specified
-				if (options.output) {
-					initOptions.tasksPath = options.output;
-				}
-				taskMaster = initTaskMaster(initOptions);
+				taskMaster = initTaskMaster({
+					bootstrap: true,
+					paths: {
+						prdPath: file || options.input || null,
+						tasksPath: options.output || null
+					}
+				});
+
 			} catch (error) {
 				console.log(
 					boxen(
@@ -840,8 +873,7 @@ function registerCommands(programInstance) {
 						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 					)
 				);
-				console.error(chalk.red(`\nError: ${error.message}`));
-				process.exit(1);
+				handleTaskMasterError(error);
 			}
 
 			const numTasks = parseInt(options.numTasks, 10);
@@ -862,8 +894,10 @@ function registerCommands(programInstance) {
 			async function confirmOverwriteIfNeeded() {
 				// Check if there are existing tasks in the target tag
 				let hasExistingTasksInTag = false;
-				const tasksPath = taskMaster.getTasksPath();
-				if (fs.existsSync(tasksPath)) {
+				const tasksPath =
+					taskMaster.getTasksPath() ||
+					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
+				if (tasksPath && fs.existsSync(tasksPath)) {
 					try {
 						// Read the entire file to check if the tag exists
 						const existingFileContent = fs.readFileSync(tasksPath, 'utf8');
@@ -966,7 +1000,9 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const fromId = parseInt(options.from, 10); // Validation happens here
@@ -1066,7 +1102,9 @@ function registerCommands(programInstance) {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -1184,32 +1222,36 @@ function registerCommands(programInstance) {
 					);
 				}
 			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
+				if (error instanceof TaskMasterError) {
+					handleTaskMasterError(error);
+				} else {
+					console.error(chalk.red(`Error: ${error.message}`));
 
-				// Provide more helpful error messages for common issues
-				if (
-					error.message.includes('task') &&
-					error.message.includes('not found')
-				) {
-					console.log(chalk.yellow('\nTo fix this issue:'));
-					console.log(
-						'  1. Run task-master list to see all available task IDs'
-					);
-					console.log('  2. Use a valid task ID with the --id parameter');
-				} else if (error.message.includes('API key')) {
-					console.log(
-						chalk.yellow(
-							'\nThis error is related to API keys. Check your environment variables.'
-						)
-					);
+					// Provide more helpful error messages for common issues
+					if (
+						error.message.includes('task') &&
+						error.message.includes('not found')
+					) {
+						console.log(chalk.yellow('\nTo fix this issue:'));
+						console.log(
+							'  1. Run task-master list to see all available task IDs'
+						);
+						console.log('  2. Use a valid task ID with the --id parameter');
+					} else if (error.message.includes('API key')) {
+						console.log(
+							chalk.yellow(
+								'\nThis error is related to API keys. Check your environment variables.'
+							)
+						);
+					}
+
+					// Use getDebugFlag getter instead of CONFIG.debug
+					if (getDebugFlag()) {
+						console.error(error);
+					}
+
+					process.exit(1);
 				}
-
-				// Use getDebugFlag getter instead of CONFIG.debug
-				if (getDebugFlag()) {
-					console.error(error);
-				}
-
-				process.exit(1);
 			}
 		});
 
@@ -1238,7 +1280,9 @@ function registerCommands(programInstance) {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -1404,7 +1448,9 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const outputDir = options.output;
@@ -1444,7 +1490,9 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const taskId = options.id;
@@ -1500,16 +1548,13 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true
-			};
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: options.file || null,
+					complexityReportPath: options.report || null
+				}
+			});
 
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-
-			const taskMaster = initTaskMaster(initOptions);
 
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
@@ -1569,7 +1614,9 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 			const tag = options.tag;
 
@@ -1668,14 +1715,13 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true // Tasks file is required to analyze
-			};
-			// Only include complexityReportPath if output is explicitly specified
-			if (options.output) {
-				initOptions.complexityReportPath = options.output;
-			}
-			const taskMaster = initTaskMaster(initOptions);
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: options.file || null,
+					complexityReportPath: options.output || null
+				}
+			});
+
 
 			const tag = options.tag;
 			const modelOverride = options.model;
@@ -2117,7 +2163,9 @@ ${result.result}
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			// Show current tag context
@@ -2219,7 +2267,10 @@ ${result.result}
 			// Correctly determine projectRoot
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				bootstrap: true,
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const projectRoot = taskMaster.getProjectRoot();
@@ -2283,11 +2334,15 @@ ${result.result}
 				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
 				// No need to call displayAiUsageSummary here anymore.
 			} catch (error) {
-				console.error(chalk.red(`Error adding task: ${error.message}`));
-				if (error.details) {
-					console.error(chalk.red(error.details));
+				if (error instanceof TaskMasterError) {
+					handleTaskMasterError(error);
+				} else {
+					console.error(chalk.red(`Error adding task: ${error.message}`));
+					if (error.details) {
+						console.error(chalk.red(error.details));
+					}
+					process.exit(1);
 				}
-				process.exit(1);
 			}
 		});
 
@@ -2313,7 +2368,9 @@ ${result.result}
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			// Show current tag context
@@ -2354,8 +2411,10 @@ ${result.result}
 		.action(async (taskId, options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				complexityReportPath: options.report || false
+				paths: {
+					tasksPath: options.file || null,
+					complexityReportPath: options.report || null
+				}
 			});
 
 			const idArg = taskId || options.id;
@@ -2415,7 +2474,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const taskId = options.id;
@@ -2470,7 +2531,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const taskId = options.id;
@@ -2525,7 +2588,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			// Resolve tag using standard pattern
@@ -2553,7 +2618,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			// Resolve tag using standard pattern
@@ -2581,7 +2648,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				complexityReportPath: options.file || true
+				paths: {
+					complexityReportPath: options.file || null
+				}
 			});
 
 			// Use the provided tag, or the current active tag, or default to 'master'
@@ -2628,7 +2697,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const parentId = options.parent;
@@ -2812,7 +2883,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const subtaskIds = options.id;
@@ -3113,7 +3186,9 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const taskIdsString = options.id;
@@ -3471,218 +3546,227 @@ Examples:
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || false
-			});
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					bootstrap: true,
+					paths: {
+						tasksPath: null
+					}
+				});
+				const projectRoot = taskMaster.getProjectRoot();
+				// Validate flags: cannot use multiple provider flags simultaneously
+				const providerFlags = [
+					options.openrouter,
+					options.ollama,
+					options.bedrock,
+					options.claudeCode,
+					options.geminiCli
+				].filter(Boolean).length;
+				if (providerFlags > 1) {
 
-			const projectRoot = taskMaster.getProjectRoot();
-
-			// Validate flags: cannot use multiple provider flags simultaneously
-			const providerFlags = [
-				options.openrouter,
-				options.ollama,
-				options.bedrock,
-				options.claudeCode,
-				options.geminiCli
-			].filter(Boolean).length;
-			if (providerFlags > 1) {
-				console.error(
-					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
-					)
-				);
-				process.exit(1);
-			}
-
-			// Determine the primary action based on flags
-			const isSetup = options.setup;
-			const isSetOperation =
-				options.setMain || options.setResearch || options.setFallback;
-
-			// --- Execute Action ---
-
-			if (isSetup) {
-				// Action 1: Run Interactive Setup
-				console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
-				try {
-					await runInteractiveSetup(taskMaster.getProjectRoot());
-					// runInteractiveSetup logs its own completion/error messages
-				} catch (setupError) {
 					console.error(
-						chalk.red('\\nInteractive setup failed unexpectedly:'),
-						setupError.message
+						chalk.red(
+							'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Determine the primary action based on flags
+				const isSetup = options.setup;
+				const isSetOperation =
+					options.setMain || options.setResearch || options.setFallback;
+
+				// --- Execute Action ---
+
+				if (isSetup) {
+					// Action 1: Run Interactive Setup
+					console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
+					try {
+						const projectRoot = taskMaster.getProjectRoot();
+						await runInteractiveSetup(projectRoot);
+						// runInteractiveSetup logs its own completion/error messages
+					} catch (setupError) {
+						console.error(
+							chalk.red('\\nInteractive setup failed unexpectedly:'),
+							setupError.message
+						);
+					}
+					// --- IMPORTANT: Exit after setup ---
+					return; // Stop execution here
+				}
+
+				if (isSetOperation) {
+					// Action 2: Perform Direct Set Operations
+					let updateOccurred = false; // Track if any update actually happened
+
+					if (options.setMain) {
+						const result = await setModel('main', options.setMain, {
+							projectRoot,
+							providerHint: options.openrouter
+								? 'openrouter'
+								: options.ollama
+									? 'ollama'
+									: options.bedrock
+										? 'bedrock'
+										: options.claudeCode
+											? 'claude-code'
+											: options.geminiCli
+												? 'gemini-cli'
+												: undefined
+						});
+						if (result.success) {
+							console.log(chalk.green(`✅ ${result.data.message}`));
+							if (result.data.warning)
+								console.log(chalk.yellow(result.data.warning));
+							updateOccurred = true;
+						} else {
+							console.error(
+								chalk.red(
+									`❌ Error setting main model: ${result.error.message}`
+								)
+							);
+						}
+					}
+					if (options.setResearch) {
+						const result = await setModel('research', options.setResearch, {
+							projectRoot,
+							providerHint: options.openrouter
+								? 'openrouter'
+								: options.ollama
+									? 'ollama'
+									: options.bedrock
+										? 'bedrock'
+										: options.claudeCode
+											? 'claude-code'
+											: options.geminiCli
+												? 'gemini-cli'
+												: undefined
+						});
+						if (result.success) {
+							console.log(chalk.green(`✅ ${result.data.message}`));
+							if (result.data.warning)
+								console.log(chalk.yellow(result.data.warning));
+							updateOccurred = true;
+						} else {
+							console.error(
+								chalk.red(
+									`❌ Error setting research model: ${result.error.message}`
+								)
+							);
+						}
+					}
+					if (options.setFallback) {
+						const result = await setModel('fallback', options.setFallback, {
+							projectRoot,
+							providerHint: options.openrouter
+								? 'openrouter'
+								: options.ollama
+									? 'ollama'
+									: options.bedrock
+										? 'bedrock'
+										: options.claudeCode
+											? 'claude-code'
+											: options.geminiCli
+												? 'gemini-cli'
+												: undefined
+						});
+						if (result.success) {
+							console.log(chalk.green(`✅ ${result.data.message}`));
+							if (result.data.warning)
+								console.log(chalk.yellow(result.data.warning));
+							updateOccurred = true;
+						} else {
+							console.error(
+								chalk.red(
+									`❌ Error setting fallback model: ${result.error.message}`
+								)
+							);
+						}
+					}
+
+					// Optional: Add a final confirmation if any update occurred
+					if (updateOccurred) {
+						console.log(chalk.blue('\nModel configuration updated.'));
+					} else {
+						console.log(
+							chalk.yellow(
+								'\nNo model configuration changes were made (or errors occurred).'
+							)
+						);
+					}
+
+					// --- IMPORTANT: Exit after set operations ---
+					return; // Stop execution here
+				}
+
+				// Action 3: Display Full Status (Only runs if no setup and no set flags)
+				console.log(chalk.blue('Fetching current model configuration...')); // Added feedback
+				const configResult = await getModelConfiguration({ projectRoot });
+				const availableResult = await getAvailableModelsList({ projectRoot });
+				const apiKeyStatusResult = await getApiKeyStatusReport({ projectRoot });
+
+				// 1. Display Active Models
+				if (!configResult.success) {
+					console.error(
+						chalk.red(
+							`❌ Error fetching configuration: ${configResult.error.message}`
+						)
+					);
+				} else {
+					displayModelConfiguration(
+						configResult.data,
+						availableResult.data?.models || []
 					);
 				}
-				// --- IMPORTANT: Exit after setup ---
-				return; // Stop execution here
-			}
 
-			if (isSetOperation) {
-				// Action 2: Perform Direct Set Operations
-				let updateOccurred = false; // Track if any update actually happened
-
-				if (options.setMain) {
-					const result = await setModel('main', options.setMain, {
-						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: options.bedrock
-									? 'bedrock'
-									: options.claudeCode
-										? 'claude-code'
-										: options.geminiCli
-											? 'gemini-cli'
-											: undefined
-					});
-					if (result.success) {
-						console.log(chalk.green(`✅ ${result.data.message}`));
-						if (result.data.warning)
-							console.log(chalk.yellow(result.data.warning));
-						updateOccurred = true;
-					} else {
-						console.error(
-							chalk.red(`❌ Error setting main model: ${result.error.message}`)
-						);
-					}
-				}
-				if (options.setResearch) {
-					const result = await setModel('research', options.setResearch, {
-						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: options.bedrock
-									? 'bedrock'
-									: options.claudeCode
-										? 'claude-code'
-										: options.geminiCli
-											? 'gemini-cli'
-											: undefined
-					});
-					if (result.success) {
-						console.log(chalk.green(`✅ ${result.data.message}`));
-						if (result.data.warning)
-							console.log(chalk.yellow(result.data.warning));
-						updateOccurred = true;
-					} else {
-						console.error(
-							chalk.red(
-								`❌ Error setting research model: ${result.error.message}`
-							)
-						);
-					}
-				}
-				if (options.setFallback) {
-					const result = await setModel('fallback', options.setFallback, {
-						projectRoot,
-						providerHint: options.openrouter
-							? 'openrouter'
-							: options.ollama
-								? 'ollama'
-								: options.bedrock
-									? 'bedrock'
-									: options.claudeCode
-										? 'claude-code'
-										: options.geminiCli
-											? 'gemini-cli'
-											: undefined
-					});
-					if (result.success) {
-						console.log(chalk.green(`✅ ${result.data.message}`));
-						if (result.data.warning)
-							console.log(chalk.yellow(result.data.warning));
-						updateOccurred = true;
-					} else {
-						console.error(
-							chalk.red(
-								`❌ Error setting fallback model: ${result.error.message}`
-							)
-						);
-					}
-				}
-
-				// Optional: Add a final confirmation if any update occurred
-				if (updateOccurred) {
-					console.log(chalk.blue('\nModel configuration updated.'));
+				// 2. Display API Key Status
+				if (apiKeyStatusResult.success) {
+					displayApiKeyStatus(apiKeyStatusResult.data.report);
 				} else {
-					console.log(
+					console.error(
 						chalk.yellow(
-							'\nNo model configuration changes were made (or errors occurred).'
+							`⚠️ Warning: Could not display API Key status: ${apiKeyStatusResult.error.message}`
 						)
 					);
 				}
 
-				// --- IMPORTANT: Exit after set operations ---
+				// 3. Display Other Available Models (Filtered)
+				if (availableResult.success) {
+					const activeIds = configResult.success
+						? [
+								configResult.data.activeModels.main.modelId,
+								configResult.data.activeModels.research.modelId,
+								configResult.data.activeModels.fallback?.modelId
+							].filter(Boolean)
+						: [];
+					const displayableAvailable = availableResult.data.models.filter(
+						(m) => !activeIds.includes(m.modelId) && !m.modelId.startsWith('[')
+					);
+					displayAvailableModels(displayableAvailable);
+				} else {
+					console.error(
+						chalk.yellow(
+							`⚠️ Warning: Could not display available models: ${availableResult.error.message}`
+						)
+					);
+				}
+
+				// 4. Conditional Hint if Config File is Missing
+				const configExists = isConfigFilePresent(projectRoot);
+				if (!configExists) {
+					console.log(
+						chalk.yellow(
+							"\\nHint: Run 'task-master models --setup' to create or update your configuration."
+						)
+					);
+				}
+				// --- IMPORTANT: Exit after displaying status ---
 				return; // Stop execution here
+			} catch (error) {
+				handleTaskMasterError(error);
 			}
-
-			// Action 3: Display Full Status (Only runs if no setup and no set flags)
-			console.log(chalk.blue('Fetching current model configuration...')); // Added feedback
-			const configResult = await getModelConfiguration({ projectRoot });
-			const availableResult = await getAvailableModelsList({ projectRoot });
-			const apiKeyStatusResult = await getApiKeyStatusReport({ projectRoot });
-
-			// 1. Display Active Models
-			if (!configResult.success) {
-				console.error(
-					chalk.red(
-						`❌ Error fetching configuration: ${configResult.error.message}`
-					)
-				);
-			} else {
-				displayModelConfiguration(
-					configResult.data,
-					availableResult.data?.models || []
-				);
-			}
-
-			// 2. Display API Key Status
-			if (apiKeyStatusResult.success) {
-				displayApiKeyStatus(apiKeyStatusResult.data.report);
-			} else {
-				console.error(
-					chalk.yellow(
-						`⚠️ Warning: Could not display API Key status: ${apiKeyStatusResult.error.message}`
-					)
-				);
-			}
-
-			// 3. Display Other Available Models (Filtered)
-			if (availableResult.success) {
-				const activeIds = configResult.success
-					? [
-							configResult.data.activeModels.main.modelId,
-							configResult.data.activeModels.research.modelId,
-							configResult.data.activeModels.fallback?.modelId
-						].filter(Boolean)
-					: [];
-				const displayableAvailable = availableResult.data.models.filter(
-					(m) => !activeIds.includes(m.modelId) && !m.modelId.startsWith('[')
-				);
-				displayAvailableModels(displayableAvailable);
-			} else {
-				console.error(
-					chalk.yellow(
-						`⚠️ Warning: Could not display available models: ${availableResult.error.message}`
-					)
-				);
-			}
-
-			// 4. Conditional Hint if Config File is Missing
-			const configExists = isConfigFilePresent(projectRoot);
-			if (!configExists) {
-				console.log(
-					chalk.yellow(
-						"\\nHint: Run 'task-master models --setup' to create or update your configuration."
-					)
-				);
-			}
-			// --- IMPORTANT: Exit after displaying status ---
-			return; // Stop execution here
 		});
 
 	// response-language command
@@ -3692,7 +3776,7 @@ Examples:
 		.option('--response <response_language>', 'Set the response language')
 		.option('--setup', 'Run interactive setup to configure response language')
 		.action(async (options) => {
-			const taskMaster = initTaskMaster({});
+			const taskMaster = initTaskMaster({ bootstrap: true });
 			const projectRoot = taskMaster.getProjectRoot(); // Find project root for context
 			const { response, setup } = options;
 			console.log(
@@ -3764,7 +3848,9 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const sourceId = options.from;
@@ -4200,7 +4286,9 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				paths: {
+					tasksPath: options.file || null
+				}
 			});
 
 			const withSubtasks = options.withSubtasks || false;
@@ -4256,7 +4344,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -4396,7 +4486,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -4451,7 +4543,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -4501,7 +4595,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -4547,7 +4643,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
@@ -4599,7 +4697,9 @@ Examples:
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					paths: {
+						tasksPath: options.file || null
+					}
 				});
 				const tasksPath = taskMaster.getTasksPath();
 

@@ -47,19 +47,16 @@ export function registerListTasksTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			complexityReportPath: 'complexityReport',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
 		})(async (taskMaster, args, { log, session }) => {
 			log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
 			const result = await listTasksDirect(
+				taskMaster,
 				{
-					tasksJsonPath: taskMaster.getTasksPath(),
 					status: args.status,
 					withSubtasks: args.withSubtasks,
-					reportPath: taskMaster.getComplexityReportPath(),
-					projectRoot: taskMaster.getProjectRoot()
+					reportPath: taskMaster.getComplexityReportPath()
 				},
 				log,
 				{ session }

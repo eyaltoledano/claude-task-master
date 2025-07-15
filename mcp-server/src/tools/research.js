@@ -60,9 +60,7 @@ export function registerResearchTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withTaskMaster({
-			required: ['tasksPath']
-		})(async (taskMaster, args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Starting research with query: "${args.query.substring(0, 100)}${args.query.length > 100 ? '...' : ''}"`

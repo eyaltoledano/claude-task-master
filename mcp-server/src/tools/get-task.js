@@ -63,9 +63,7 @@ export function registerShowTaskTool(server) {
 				)
 		}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			complexityReportPath: 'complexityReport',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
 		})(async (taskMaster, args, { log, session }) => {
 			const { id, status } = args;
 

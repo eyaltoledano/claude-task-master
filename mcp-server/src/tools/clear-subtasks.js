@@ -39,8 +39,7 @@ export function registerClearSubtasksTool(server) {
 				path: ['id', 'all']
 			}),
 		execute: withTaskMaster({
-			tasksPath: 'file',
-			required: ['tasksPath']
+			paths: { tasksPath: 'file' }
 		})(async (taskMaster, args, { log, session }) => {
 			log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 

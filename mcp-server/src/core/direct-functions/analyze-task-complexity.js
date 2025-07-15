@@ -11,6 +11,7 @@ import {
 import fs from 'fs';
 import path from 'path';
 import { createLogWrapper } from '../../tools/utils.js'; // Import the new utility
+import { COMPLEXITY_REPORT_FILE } from '../../../../src/constants/paths.js';
 
 /**
  * Analyze task complexity and generate recommendations
@@ -42,9 +43,13 @@ export async function analyzeTaskComplexityDirect(
 		log.info(`Analyzing task complexity with args: ${JSON.stringify(args)}`);
 
 		log.info(`Analyzing task complexity from: ${taskMaster.getTasksPath()}`);
-		log.info(
-			`Output report will be saved to: ${taskMaster.getComplexityReportPath()}`
-		);
+
+		// Handle case where complexityReportPath might be null
+		const complexityReportPath =
+			taskMaster.getComplexityReportPath() ||
+			path.resolve(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
+
+		log.info(`Output report will be saved to: ${complexityReportPath}`);
 
 		if (ids) {
 			log.info(`Analyzing specific task IDs: ${ids}`);
@@ -61,7 +66,7 @@ export async function analyzeTaskComplexityDirect(
 		// Prepare options for the core function
 		const coreOptions = {
 			file: taskMaster.getTasksPath(),
-			output: taskMaster.getComplexityReportPath(),
+			output: complexityReportPath,
 			threshold: threshold,
 			research: research === true, // Ensure boolean
 			projectRoot: taskMaster.getProjectRoot(),
@@ -152,8 +157,8 @@ export async function analyzeTaskComplexityDirect(
 			return {
 				success: true,
 				data: {
-					message: `Task complexity analysis complete. Report saved to ${taskMaster.getComplexityReportPath()}`,
-					reportPath: taskMaster.getComplexityReportPath(),
+					message: `Task complexity analysis complete. Report saved to ${complexityReportPath}`,
+					reportPath: complexityReportPath,
 					reportSummary: {
 						taskCount: analysisArray.length,
 						highComplexityTasks,

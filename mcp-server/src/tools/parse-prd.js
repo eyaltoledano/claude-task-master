@@ -61,8 +61,7 @@ export function registerParsePRDTool(server) {
 				.describe('Append generated tasks to existing file.')
 		}),
 		execute: withTaskMaster({
-			prdPath: 'input',
-			tasksPath: 'output',
+			paths: { prdPath: 'input', tasksPath: 'output' },
 			required: ['prdPath']
 		})(async (taskMaster, args, { log, session }) => {
 			try {
