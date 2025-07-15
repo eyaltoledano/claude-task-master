@@ -869,7 +869,6 @@ function registerCommands(programInstance) {
 				if (!taskMaster.getTasksPath()) {
 					throw new Error(' WTF ');
 				}
-
 			} catch (error) {
 				console.log(
 					boxen(
@@ -1563,7 +1562,6 @@ function registerCommands(programInstance) {
 				}
 			});
 
-
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
 			const tag =
@@ -1730,7 +1728,6 @@ function registerCommands(programInstance) {
 				}
 			});
 
-
 			const tag = options.tag;
 			const modelOverride = options.model;
 			const thresholdScore = parseFloat(options.threshold);
@@ -1751,7 +1748,6 @@ function registerCommands(programInstance) {
 				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
 					? baseOutputPath?.replace('.json', `_${targetTag}.json`)
 					: baseOutputPath || options.output;
-
 
 			console.log(
 				chalk.blue(
@@ -3573,7 +3569,6 @@ Examples:
 					options.geminiCli
 				].filter(Boolean).length;
 				if (providerFlags > 1) {
-
 					console.error(
 						chalk.red(
 							'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'

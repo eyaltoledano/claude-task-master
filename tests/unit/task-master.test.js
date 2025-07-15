@@ -710,7 +710,6 @@ describe('initTaskMaster', () => {
 
 			// Assert - should resolve relative to project root, not CWD
 			expect(taskMaster.getTasksPath()).toBe(tasksFile);
-
 		});
 	});
 });
