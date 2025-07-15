@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import { ConfirmInput } from '@inkjs/ui';
-import { useAppContext } from '../../../index.jsx';
+import { useAppContext } from '../../../app/index-root.jsx';
 import { theme } from '../../../theme.js';
 import { SimpleTable } from '../../ui';
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { OverflowableText } from '../features/ui';
-import { useAppContext } from '../index.jsx';
+import { useAppContext } from '../app/index-root.jsx';
 import { theme } from '../theme.js';
 import {
 	loadServers,

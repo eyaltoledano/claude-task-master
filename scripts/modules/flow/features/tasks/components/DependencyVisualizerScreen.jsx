@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Text, Spacer } from 'ink';
-import { useAppContext } from '../../../index.jsx';
+import { useAppContext } from '../../../app/index-root.jsx';
 import { DependencyAnalysisService } from '../services/DependencyAnalysisService.js';
 
 /**

@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 export async function launchFlow(options = {}) {
 	return new Promise((resolve, reject) => {
 		// Path to the main flow app
-		const flowAppPath = path.join(__dirname, '..', 'index.jsx');
+		const flowAppPath = path.join(__dirname, 'index-root.jsx');
 
 		// Prepare environment variables
 		const env = { ...process.env };

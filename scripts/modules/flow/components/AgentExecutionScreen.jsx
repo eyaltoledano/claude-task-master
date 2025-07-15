@@ -5,7 +5,7 @@ import { Box, Text, useInput } from 'ink';
 import { useAgentSession } from '../shared/hooks/useAgentSession.js';
 import { UnifiedAgentService } from '../shared/services/UnifiedAgentService.js';
 import { SimpleTable, Toast, LoadingSpinner, OverflowableText, OverflowIndicator } from '../features/ui';
-import { useAppContext } from '../index.jsx';
+import { useAppContext } from '../app/index-root.jsx';
 
 export function AgentExecutionScreen({
   backend,

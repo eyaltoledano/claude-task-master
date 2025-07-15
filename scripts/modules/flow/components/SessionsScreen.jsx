@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useAppContext } from '../index.jsx';
+import { useAppContext } from '../app/index-root.jsx';
 
 export function SessionsScreen() {
 	const { setCurrentScreen, backend } = useAppContext();

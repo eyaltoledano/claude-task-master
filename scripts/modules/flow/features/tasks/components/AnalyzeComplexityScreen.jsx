@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { ConfirmInput } from '@inkjs/ui';
 import { style, gradient } from '../../../theme.js';
-import { useAppContext } from '../../../index.jsx';
+import { useAppContext } from '../../../app/index-root.jsx';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner.jsx';
 import { StreamingModal } from '../../../components/StreamingModal.jsx';
 import { OverflowableText, OverflowIndicator } from '../../ui';

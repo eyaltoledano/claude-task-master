@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { LoadingSpinner, Toast, BaseModal } from '../features/ui';
-import { useAppContext } from '../index.jsx';
+import { useAppContext } from '../app/index-root.jsx';
 
 export function ExecutionManagementScreen({ onBack }) {
 	const { setNotification, backend } = useAppContext();

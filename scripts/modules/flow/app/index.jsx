@@ -11,7 +11,7 @@ import { DirectBackend } from '../infra/backends/direct-backend.js';
 import { CliBackend } from '../infra/backends/cli-backend.js';
 import { MCPClientBackend } from '../infra/backends/mcp-client-backend.js';
 import { createInkUITheme } from '../features/ui/theme/ink-ui-theme.js';
-import { FlowApp } from '../FlowApp.jsx';
+import { FlowApp } from './FlowApp.jsx';
 
 /**
  * Main application bootstrap function

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import SelectInput from 'ink-select-input';
 import { flushSync } from 'react-dom';
-import { useAppContext } from '../../../index.jsx';
+import { useAppContext } from '../../../app/index-root.jsx';
 import { getTheme } from '../../../theme.js';
 import { Toast } from '../../../shared/components/ui/Toast.jsx';
 import { ExpandModal } from './ExpandModal.jsx';

@@ -6,7 +6,7 @@ import { VibeKit } from '@vibe-kit/sdk';
 import LoadingSpinner from '../shared/components/ui/LoadingSpinner.jsx';
 import AnimatedButton from '../shared/components/ui/AnimatedButton.jsx';
 import ProgressBar from '../shared/components/ui/ProgressBar.jsx';
-import { useAppContext } from '../index.jsx';
+import { useAppContext } from '../app/index-root.jsx';
 
 export function VibeKitExecutionModal({ 
   task, 

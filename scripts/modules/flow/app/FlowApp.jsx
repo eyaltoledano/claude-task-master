@@ -8,40 +8,40 @@ import React, {
 } from 'react';
 import { Text, Box, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
-import { theme, setTheme, getTheme } from './theme.js';
+import { theme, setTheme, getTheme } from '../theme.js';
 
 // Import screens
-import { WelcomeScreen } from './components/WelcomeScreen.jsx';
+import { WelcomeScreen } from '../components/WelcomeScreen.jsx';
 import { 
   TaskManagementScreen,
   TagManagementScreen,
   AnalyzeComplexityScreen,
   DependencyVisualizerScreen
-} from './features/tasks/index.js';
-import { StatusScreen } from './components/StatusScreen.jsx';
-import { ParsePRDScreen } from './components/ParsePRDScreen.jsx';
-import { SessionsScreen } from './components/SessionsScreen.jsx';
-import { Toast } from './shared/components/ui/Toast.jsx';
-import { CommandSuggestions } from './features/ui';
-import { CommandPalette } from './features/ui';
-import { MCPServerManager } from './components/MCPServerManager.jsx';
-import { ChatScreen } from './features/chat';
-import { WorkflowGuide } from './features/workflows';
-import { MCPManagementScreen } from './components/MCPManagementScreen.jsx';
-import { NextTaskModal } from './features/tasks/index.js';
-import { WorktreePromptModal } from './components/WorktreePromptModal.jsx';
-import { ProvidersScreen } from './components/ProvidersScreen.jsx';
-import { ExecutionManagementScreen } from './components/ExecutionManagementScreen.jsx';
-import SettingsModal from './components/SettingsModal.jsx';
-import { OverflowProvider } from './contexts/OverflowContext.jsx';
-import { getHookManager } from './shared/hooks/index.js';
-import { BranchAwarenessManager } from './shared/services/BranchAwarenessManager.js';
-import { initializeHookIntegration } from './features/hooks/services/HookIntegrationService.js';
-import { initializeNextTaskService } from './features/tasks/services/NextTaskService.js';
-import { getTaskMasterVersion } from '../../../src/utils/getVersion.js';
+} from '../features/tasks/index.js';
+import { StatusScreen } from '../components/StatusScreen.jsx';
+import { ParsePRDScreen } from '../components/ParsePRDScreen.jsx';
+import { SessionsScreen } from '../components/SessionsScreen.jsx';
+import { Toast } from '../shared/components/ui/Toast.jsx';
+import { CommandSuggestions } from '../features/ui';
+import { CommandPalette } from '../features/ui';
+import { MCPServerManager } from '../components/MCPServerManager.jsx';
+import { ChatScreen } from '../features/chat';
+import { WorkflowGuide } from '../features/workflows';
+import { MCPManagementScreen } from '../components/MCPManagementScreen.jsx';
+import { NextTaskModal } from '../features/tasks/index.js';
+import { WorktreePromptModal } from '../components/WorktreePromptModal.jsx';
+import { ProvidersScreen } from '../components/ProvidersScreen.jsx';
+import { ExecutionManagementScreen } from '../components/ExecutionManagementScreen.jsx';
+import SettingsModal from '../components/SettingsModal.jsx';
+import { OverflowProvider } from '../contexts/OverflowContext.jsx';
+import { getHookManager } from '../shared/hooks/index.js';
+import { BranchAwarenessManager } from '../shared/services/BranchAwarenessManager.js';
+import { initializeHookIntegration } from '../features/hooks/services/HookIntegrationService.js';
+import { initializeNextTaskService } from '../features/tasks/services/NextTaskService.js';
+import { getTaskMasterVersion } from '../../../../src/utils/getVersion.js';
 
 // Import VibeKit components
-import { AgentExecutionScreen } from './components/AgentExecutionScreen.jsx';
+import { AgentExecutionScreen } from '../components/AgentExecutionScreen.jsx';
 
 // Create context for backend and app state
 const AppContext = createContext();
