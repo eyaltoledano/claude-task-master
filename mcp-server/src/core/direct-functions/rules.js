@@ -38,17 +38,12 @@ export async function rulesDirect(taskMaster, args, log, context = {}) {
 	enableSilentMode();
 	try {
 		const { action, profiles, yes, force } = args;
-		if (
-			!action ||
-			!Array.isArray(profiles) ||
-			profiles.length === 0
-		) {
+		if (!action || !Array.isArray(profiles) || profiles.length === 0) {
 			return {
 				success: false,
 				error: {
 					code: 'MISSING_ARGUMENT',
-					message:
-						'action, profiles are required.'
+					message: 'action, profiles are required.'
 				}
 			};
 		}
