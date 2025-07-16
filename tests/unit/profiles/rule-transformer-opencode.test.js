@@ -13,7 +13,7 @@ describe('Rule Transformer - OpenCode Profile', () => {
 		expect(opencodeProfile.rulesDir).toBe('.');
 		expect(opencodeProfile.mcpConfig).toBe(true);
 		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
-		expect(opencodeProfile.mcpConfigPath).toBe('./opencode.json');
+		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json');
 		expect(opencodeProfile.includeDefaultRules).toBe(false);
 		expect(opencodeProfile.fileMap).toEqual({
 			'AGENTS.md': 'AGENTS.md'
@@ -31,7 +31,7 @@ describe('Rule Transformer - OpenCode Profile', () => {
 	test('should use opencode.json instead of mcp.json', () => {
 		const opencodeProfile = getRulesProfile('opencode');
 		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
-		expect(opencodeProfile.mcpConfigPath).toBe('./opencode.json');
+		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json');
 	});
 
 	test('should not include default rules', () => {

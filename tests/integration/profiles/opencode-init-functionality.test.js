@@ -34,7 +34,7 @@ describe('OpenCode Profile Initialization Functionality', () => {
 		expect(opencodeProfile.rulesDir).toBe('.');
 		expect(opencodeProfile.mcpConfig).toBe(true); // computed from mcpConfigName
 		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
-		expect(opencodeProfile.mcpConfigPath).toBe('./opencode.json'); // computed
+		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json'); // computed
 		expect(opencodeProfile.includeDefaultRules).toBe(false);
 		expect(opencodeProfile.fileMap['AGENTS.md']).toBe('AGENTS.md');
 	});
