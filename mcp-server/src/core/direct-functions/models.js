@@ -59,7 +59,7 @@ async function handleModelSetting(args, context) {
  */
 export async function modelsDirect(taskMaster, args, log, context = {}) {
 	const { session } = context;
-	const {} = args; // Extract taskMaster.getProjectRoot() from args
+
 
 	// Create a logger wrapper that the core functions can use
 	const mcpLog = createLogWrapper(log);

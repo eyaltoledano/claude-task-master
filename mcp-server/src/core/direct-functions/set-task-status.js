@@ -14,7 +14,7 @@ import { nextTaskDirect } from './next-task.js';
  * Direct function wrapper for setTaskStatus with error handling.
  *
  * @param {Object} taskMaster - TaskMaster instance with path resolution
- * @param {Object} args - Command arguments containing id, status, taskMaster.getTasksPath(), and taskMaster.getProjectRoot().
+ * @param {Object} args - Command arguments containing id and status. Paths are accessed through the taskMaster instance.
  * @param {Object} log - Logger object.
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.

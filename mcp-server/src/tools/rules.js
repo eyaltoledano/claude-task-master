@@ -45,7 +45,7 @@ export function registerRulesTool(server) {
 				log.info(
 					`[rules tool] Executing action: ${args.action} for profiles: ${args.profiles.join(', ')} in ${taskMaster.getProjectRoot()}`
 				);
-				const result = await rulesDirect(args, log, { session });
+				const result = await rulesDirect(taskMaster, args, log, { session });
 				return handleApiResult(result, log);
 			} catch (error) {
 				log.error(`[rules tool] Error: ${error.message}`);

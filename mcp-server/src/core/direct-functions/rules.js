@@ -28,7 +28,7 @@ import fs from 'fs';
  * @param {Object} args - Command arguments
  * @param {"add"|"remove"} args.action - Action to perform: add or remove rules
  * @param {string[]} args.profiles - List of profiles to add or remove
- * @param {string} taskMaster.getProjectRoot() - Absolute path to the project root
+
  * @param {boolean} [args.yes=true] - Run non-interactively
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
@@ -41,15 +41,14 @@ export async function rulesDirect(taskMaster, args, log, context = {}) {
 		if (
 			!action ||
 			!Array.isArray(profiles) ||
-			profiles.length === 0 ||
-			!taskMaster.getProjectRoot()
+			profiles.length === 0
 		) {
 			return {
 				success: false,
 				error: {
 					code: 'MISSING_ARGUMENT',
 					message:
-						'action, profiles, and taskMaster.getProjectRoot() are required.'
+						'action, profiles are required.'
 				}
 			};
 		}

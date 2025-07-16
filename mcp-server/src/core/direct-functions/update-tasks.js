@@ -15,7 +15,7 @@ import {
  * Direct function wrapper for updating tasks based on new context.
  *
  * @param {Object} taskMaster - TaskMaster instance with path resolution
- * @param {Object} args - Command arguments containing taskMaster.getProjectRoot(), from, prompt, research options.
+ * @param {Object} args - Command arguments containing from, prompt, and research options. Project root is accessed via the taskMaster instance.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.

@@ -865,10 +865,6 @@ function registerCommands(programInstance) {
 						tasksPath: options.output || null
 					}
 				});
-
-				if (!taskMaster.getTasksPath()) {
-					throw new Error(' WTF ');
-				}
 			} catch (error) {
 				console.log(
 					boxen(

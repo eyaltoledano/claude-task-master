@@ -16,7 +16,8 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} args.oldName - Current name of the tag to rename
- * @param {string} args.newName - New name for the tag * @param {Object} log - Logger object
+ * @param {string} args.newName - New name for the tag
+ * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
