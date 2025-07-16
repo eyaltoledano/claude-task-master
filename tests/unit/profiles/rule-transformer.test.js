@@ -22,7 +22,8 @@ describe('Rule Transformer - General', () => {
 				'roo',
 				'trae',
 				'vscode',
-				'windsurf'
+				'windsurf',
+				'zed'
 			];
 			expectedProfiles.forEach((profile) => {
 				expect(RULE_PROFILES).toContain(profile);
@@ -229,6 +230,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
 					expectedPath: '.windsurf/mcp.json'
+				},
+				zed: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.zed/settings.json'
 				}
 			};
 

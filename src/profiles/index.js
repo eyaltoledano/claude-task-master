@@ -9,3 +9,4 @@ export { rooProfile } from './roo.js';
 export { traeProfile } from './trae.js';
 export { vscodeProfile } from './vscode.js';
 export { windsurfProfile } from './windsurf.js';
+export { zedProfile } from './zed.js';
