@@ -22,7 +22,7 @@ export const useConfiguration = () => {
 export const ConfigurationProvider = ({ children }) => {
 	// Get backend from dependency injection
 	const { backend, logger } = useServices();
-	
+
 	const [config, setConfig] = useState(null);
 	const [originalConfig, setOriginalConfig] = useState(null);
 	const [loading, setLoading] = useState(false);

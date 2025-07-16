@@ -19,7 +19,7 @@ export function MCPManagementScreen() {
 		selectedTool,
 		serverTools,
 		scrollOffset,
-		viewportHeight,
+		viewportHeight
 	} = useMCPManager();
 
 	if (loading) {
@@ -37,11 +37,24 @@ export function MCPManagementScreen() {
 	}
 
 	if (view === 'tool-details' && selectedTool) {
-		return <ToolDetails selectedTool={selectedTool} selectedServer={selectedServer} />;
+		return (
+			<ToolDetails
+				selectedTool={selectedTool}
+				selectedServer={selectedServer}
+			/>
+		);
 	}
 
 	if (view === 'server-details' && selectedServer) {
-		return <ServerDetails selectedServer={selectedServer} serverTools={serverTools} selectedIndex={selectedIndex} scrollOffset={scrollOffset} viewportHeight={viewportHeight} />;
+		return (
+			<ServerDetails
+				selectedServer={selectedServer}
+				serverTools={serverTools}
+				selectedIndex={selectedIndex}
+				scrollOffset={scrollOffset}
+				viewportHeight={viewportHeight}
+			/>
+		);
 	}
 
 	return (
@@ -53,4 +66,4 @@ export function MCPManagementScreen() {
 			viewportHeight={viewportHeight}
 		/>
 	);
-} 
+}

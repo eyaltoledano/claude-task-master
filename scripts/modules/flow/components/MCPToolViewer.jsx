@@ -9,7 +9,7 @@ import { useServices } from '../shared/contexts/ServiceContext.jsx';
 export function MCPToolViewer({ tool, serverId, onBack }) {
 	// Get services from dependency injection
 	const { logger } = useServices();
-	
+
 	const [testMode, setTestMode] = useState(false);
 	const [testArgs, setTestArgs] = useState('{}');
 	const [testResult, setTestResult] = useState(null);

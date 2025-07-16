@@ -72,4 +72,4 @@ export * from './advanced/index.js';
 export * from './advanced/cross-language-analysis.js';
 export * from './advanced/documentation-generator.js';
 export * from './advanced/pattern-detection.js';
-export * from './advanced/refactoring-suggestions.js'; 
+export * from './advanced/refactoring-suggestions.js';

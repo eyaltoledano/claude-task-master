@@ -34,7 +34,7 @@ export function useProviders(options = {}) {
 				// Use existing registry health check method
 				const { globalRegistry } = await import('../providers/registry.js');
 				// Create mock health results since health checking isn't implemented yet
-				const healthResults = providerList.map(provider => ({
+				const healthResults = providerList.map((provider) => ({
 					provider: provider.key,
 					success: true,
 					message: 'Operational',
@@ -81,11 +81,9 @@ export function useProviders(options = {}) {
 			setError(null);
 
 			// Get available providers from existing registry
-			const { globalRegistry } = await import(
-				'../providers/registry.js'
-			);
+			const { globalRegistry } = await import('../providers/registry.js');
 			const providerKeys = globalRegistry.getAvailableProviders();
-			const availableProviders = providerKeys.map(key => {
+			const availableProviders = providerKeys.map((key) => {
 				const info = globalRegistry.getProviderInfo(key);
 				return {
 					key,
@@ -148,9 +146,7 @@ export function useProviders(options = {}) {
 			if (!isMountedRef.current) return;
 
 			try {
-				const { globalRegistry } = await import(
-					'../providers/registry.js'
-				);
+				const { globalRegistry } = await import('../providers/registry.js');
 
 				if (providerKey) {
 					// Check single provider with mock result

@@ -7,4 +7,4 @@
 export * from './DesignSystem.js';
 
 // Theme configuration
-export * from './theme.js'; 
+export * from './theme.js';

@@ -29,7 +29,9 @@ export function CommandSuggestions({ suggestions, selectedIndex }) {
 									{cmd.name}
 								</Text>
 							</Box>
-							<Text key={`${uniqueKey}-desc`} color={theme.textDim}>{cmd.description}</Text>
+							<Text key={`${uniqueKey}-desc`} color={theme.textDim}>
+								{cmd.description}
+							</Text>
 						</Box>
 					);
 				})}

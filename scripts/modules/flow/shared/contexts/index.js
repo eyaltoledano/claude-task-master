@@ -5,4 +5,4 @@
 
 // React contexts
 export * from './OverflowContext.jsx';
-export * from './ServiceContext.jsx'; 
+export * from './ServiceContext.jsx';

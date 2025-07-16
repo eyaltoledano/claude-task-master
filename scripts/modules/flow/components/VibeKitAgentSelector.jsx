@@ -1,6 +1,6 @@
 /**
  * VibeKit Agent Selector Component
- * 
+ *
  * Reusable component for selecting and displaying VibeKit agents.
  * Shows agent status, API key configuration, and provides selection interface.
  */
@@ -9,12 +9,12 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
 
-export function VibeKitAgentSelector({ 
-	onSelect, 
+export function VibeKitAgentSelector({
+	onSelect,
 	selectedAgent = 'claude',
 	showStatus = true,
 	compact = false,
-	title = "🤖 Select VibeKit Agent"
+	title = '🤖 Select VibeKit Agent'
 }) {
 	const [agents, setAgents] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ export function VibeKitAgentSelector({
 
 	// Update selected index when selectedAgent prop changes
 	useEffect(() => {
-		const index = agents.findIndex(agent => agent.key === selectedAgent);
+		const index = agents.findIndex((agent) => agent.key === selectedAgent);
 		if (index >= 0) {
 			setSelectedIndex(index);
 		}
@@ -40,7 +40,7 @@ export function VibeKitAgentSelector({
 			const { globalRegistry } = await import('../providers/registry.js');
 			const providerInfo = globalRegistry.getProviderInfo('vibekit');
 
-			const agentList = providerInfo.agents.map(agentKey => {
+			const agentList = providerInfo.agents.map((agentKey) => {
 				const apiKey = getRequiredApiKey(agentKey);
 				const hasApiKey = !!process.env[apiKey];
 
@@ -63,37 +63,37 @@ export function VibeKitAgentSelector({
 
 	const getRequiredApiKey = (agentKey) => {
 		const keyMap = {
-			'claude': 'ANTHROPIC_API_KEY',
-			'codex': 'OPENAI_API_KEY',
-			'gemini': 'GOOGLE_API_KEY',
-			'opencode': 'OPENCODE_API_KEY'
+			claude: 'ANTHROPIC_API_KEY',
+			codex: 'OPENAI_API_KEY',
+			gemini: 'GOOGLE_API_KEY',
+			opencode: 'OPENCODE_API_KEY'
 		};
 		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
 	};
 
 	const formatAgentName = (agentKey) => {
 		const nameMap = {
-			'claude': 'Claude Code',
-			'codex': 'OpenAI Codex',
-			'gemini': 'Gemini CLI',
-			'opencode': 'OpenCode'
+			claude: 'Claude Code',
+			codex: 'OpenAI Codex',
+			gemini: 'Gemini CLI',
+			opencode: 'OpenCode'
 		};
 		return nameMap[agentKey] || agentKey;
 	};
 
 	const getAgentDescription = (agentKey) => {
 		const descMap = {
-			'claude': 'Advanced reasoning and code generation',
-			'codex': 'OpenAI code completion and generation',
-			'gemini': 'Google development assistant',
-			'opencode': 'Full-stack development agent'
+			claude: 'Advanced reasoning and code generation',
+			codex: 'OpenAI code completion and generation',
+			gemini: 'Google development assistant',
+			opencode: 'Full-stack development agent'
 		};
 		return descMap[agentKey] || 'VibeKit coding agent';
 	};
 
 	const renderAgentStatus = (agent) => {
 		if (!showStatus) return null;
-		
+
 		return agent.status === 'ready' ? (
 			<Text color="green">✅</Text>
 		) : (
@@ -133,7 +133,9 @@ export function VibeKitAgentSelector({
 		<Box flexDirection="column" padding={compact ? 0 : 1}>
 			{!compact && (
 				<Box marginBottom={1}>
-					<Text color="cyan" bold>{title}</Text>
+					<Text color="cyan" bold>
+						{title}
+					</Text>
 				</Box>
 			)}
 
@@ -142,13 +144,9 @@ export function VibeKitAgentSelector({
 					<Text color={index === selectedIndex ? 'cyan' : 'white'}>
 						{index === selectedIndex ? '▶ ' : '  '}
 					</Text>
-					
-					{showStatus && (
-						<Box marginRight={1}>
-							{renderAgentStatus(agent)}
-						</Box>
-					)}
-					
+
+					{showStatus && <Box marginRight={1}>{renderAgentStatus(agent)}</Box>}
+
 					<Box flexGrow={1}>
 						<Text
 							color={index === selectedIndex ? 'cyan' : 'white'}
@@ -162,7 +160,7 @@ export function VibeKitAgentSelector({
 							</Box>
 						)}
 					</Box>
-					
+
 					{!compact && showStatus && agent.status === 'no-key' && (
 						<Box marginLeft={2}>
 							<Text color="yellow">Missing: {agent.apiKey}</Text>
@@ -173,9 +171,7 @@ export function VibeKitAgentSelector({
 
 			{!compact && (
 				<Box marginTop={1}>
-					<Text color="gray">
-						[↑↓] Navigate | [Enter] Select
-					</Text>
+					<Text color="gray">[↑↓] Navigate | [Enter] Select</Text>
 				</Box>
 			)}
 		</Box>
@@ -186,7 +182,7 @@ export function VibeKitAgentSelector({
  * VibeKit Agent Status Grid
  * Compact grid view of all agents with status indicators
  */
-export function VibeKitAgentStatusGrid({ 
+export function VibeKitAgentStatusGrid({
 	selectedAgent = 'claude',
 	onAgentClick,
 	showLabels = true
@@ -203,7 +199,7 @@ export function VibeKitAgentStatusGrid({
 			const { globalRegistry } = await import('../providers/registry.js');
 			const providerInfo = globalRegistry.getProviderInfo('vibekit');
 
-			const agentList = providerInfo.agents.map(agentKey => {
+			const agentList = providerInfo.agents.map((agentKey) => {
 				const apiKey = getRequiredApiKey(agentKey);
 				const hasApiKey = !!process.env[apiKey];
 
@@ -224,20 +220,20 @@ export function VibeKitAgentStatusGrid({
 
 	const getRequiredApiKey = (agentKey) => {
 		const keyMap = {
-			'claude': 'ANTHROPIC_API_KEY',
-			'codex': 'OPENAI_API_KEY',
-			'gemini': 'GOOGLE_API_KEY',
-			'opencode': 'OPENCODE_API_KEY'
+			claude: 'ANTHROPIC_API_KEY',
+			codex: 'OPENAI_API_KEY',
+			gemini: 'GOOGLE_API_KEY',
+			opencode: 'OPENCODE_API_KEY'
 		};
 		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
 	};
 
 	const formatAgentName = (agentKey) => {
 		const nameMap = {
-			'claude': 'Claude',
-			'codex': 'Codex',
-			'gemini': 'Gemini',
-			'opencode': 'OpenCode'
+			claude: 'Claude',
+			codex: 'Codex',
+			gemini: 'Gemini',
+			opencode: 'OpenCode'
 		};
 		return nameMap[agentKey] || agentKey;
 	};
@@ -255,7 +251,7 @@ export function VibeKitAgentStatusGrid({
 							{agent.status === 'ready' ? '✅' : '⚠️'}
 						</Text>
 						{showLabels && (
-							<Text 
+							<Text
 								color={agent.key === selectedAgent ? 'cyan' : 'white'}
 								bold={agent.key === selectedAgent}
 								marginLeft={1}
@@ -268,4 +264,4 @@ export function VibeKitAgentStatusGrid({
 			))}
 		</Box>
 	);
-} 
+}

@@ -12,7 +12,7 @@ import { backgroundOperations } from '../shared/services/BackgroundOperationsMan
 function ClaudeCodeTaskModal({ task, subtask, onClose }) {
 	// Get services from dependency injection
 	const { backend, logger } = useServices();
-	
+
 	const [prompt, setPrompt] = useState('');
 	const [messages, setMessages] = useState([]);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -32,11 +32,11 @@ function ClaudeCodeTaskModal({ task, subtask, onClose }) {
 		const taskInfo = subtask || task;
 		const contextPrompt = `Help me implement ${taskInfo.title}:\n\n${taskInfo.description}\n\nDetails: ${taskInfo.details || 'None provided'}`;
 		setPrompt(contextPrompt);
-		
+
 		// Log modal opening
-		logger.info('ClaudeCodeTaskModal opened', { 
-			taskId: task?.id, 
-			subtaskId: subtask?.id 
+		logger.info('ClaudeCodeTaskModal opened', {
+			taskId: task?.id,
+			subtaskId: subtask?.id
 		});
 	}, [task, subtask, logger]);
 

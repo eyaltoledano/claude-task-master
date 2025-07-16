@@ -9,14 +9,21 @@
  * @returns {boolean} True if value is a valid Task
  */
 export function isTask(value) {
-  return (
-    value &&
-    typeof value === 'object' &&
-    typeof value.id === 'string' &&
-    typeof value.title === 'string' &&
-    typeof value.status === 'string' &&
-    ['pending', 'in-progress', 'done', 'review', 'deferred', 'cancelled'].includes(value.status)
-  );
+	return (
+		value &&
+		typeof value === 'object' &&
+		typeof value.id === 'string' &&
+		typeof value.title === 'string' &&
+		typeof value.status === 'string' &&
+		[
+			'pending',
+			'in-progress',
+			'done',
+			'review',
+			'deferred',
+			'cancelled'
+		].includes(value.status)
+	);
 }
 
 /**
@@ -25,12 +32,12 @@ export function isTask(value) {
  * @returns {boolean} True if value is a valid Tag
  */
 export function isTag(value) {
-  return (
-    value &&
-    typeof value === 'object' &&
-    typeof value.name === 'string' &&
-    typeof value.taskCount === 'number'
-  );
+	return (
+		value &&
+		typeof value === 'object' &&
+		typeof value.name === 'string' &&
+		typeof value.taskCount === 'number'
+	);
 }
 
 /**
@@ -39,16 +46,28 @@ export function isTag(value) {
  * @returns {boolean} True if value is a valid BackendService
  */
 export function isBackendService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = [
-    'getTasks', 'getTask', 'setTaskStatus', 'addTask', 'updateTask',
-    'removeTask', 'addSubtask', 'updateSubtask', 'removeSubtask',
-    'getTags', 'addTag', 'deleteTag', 'useTag', 'parsePRD',
-    'analyzeComplexity', 'expandTask'
-  ];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = [
+		'getTasks',
+		'getTask',
+		'setTaskStatus',
+		'addTask',
+		'updateTask',
+		'removeTask',
+		'addSubtask',
+		'updateSubtask',
+		'removeSubtask',
+		'getTags',
+		'addTag',
+		'deleteTag',
+		'useTag',
+		'parsePRD',
+		'analyzeComplexity',
+		'expandTask'
+	];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -57,11 +76,11 @@ export function isBackendService(value) {
  * @returns {boolean} True if value is a valid LoggerService
  */
 export function isLoggerService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = ['info', 'warn', 'error', 'debug', 'success'];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = ['info', 'warn', 'error', 'debug', 'success'];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -70,11 +89,11 @@ export function isLoggerService(value) {
  * @returns {boolean} True if value is a valid ConfigManagerService
  */
 export function isConfigManagerService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = ['load', 'save', 'get', 'set', 'getAll', 'validate'];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = ['load', 'save', 'get', 'set', 'getAll', 'validate'];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -83,14 +102,18 @@ export function isConfigManagerService(value) {
  * @returns {boolean} True if value is a valid BranchManagerService
  */
 export function isBranchManagerService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = [
-    'getCurrentBranch', 'hasUncommittedChanges', 'getStatus',
-    'checkout', 'startWatching', 'stopWatching'
-  ];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = [
+		'getCurrentBranch',
+		'hasUncommittedChanges',
+		'getStatus',
+		'checkout',
+		'startWatching',
+		'stopWatching'
+	];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -99,11 +122,17 @@ export function isBranchManagerService(value) {
  * @returns {boolean} True if value is a valid HookManagerService
  */
 export function isHookManagerService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = ['register', 'execute', 'getHooks', 'unregister', 'listHooks'];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = [
+		'register',
+		'execute',
+		'getHooks',
+		'unregister',
+		'listHooks'
+	];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -112,11 +141,11 @@ export function isHookManagerService(value) {
  * @returns {boolean} True if value is a valid ProviderRegistryService
  */
 export function isProviderRegistryService(value) {
-  if (!value || typeof value !== 'object') return false;
-  
-  const requiredMethods = ['register', 'get', 'list', 'has', 'unregister'];
-  
-  return requiredMethods.every(method => typeof value[method] === 'function');
+	if (!value || typeof value !== 'object') return false;
+
+	const requiredMethods = ['register', 'get', 'list', 'has', 'unregister'];
+
+	return requiredMethods.every((method) => typeof value[method] === 'function');
 }
 
 /**
@@ -129,10 +158,12 @@ export function isProviderRegistryService(value) {
  * @throws {TypeError} If value fails type check
  */
 export function assertService(value, typeGuard, serviceName) {
-  if (!typeGuard(value)) {
-    throw new TypeError(`Invalid ${serviceName} service: required methods missing`);
-  }
-  return value;
+	if (!typeGuard(value)) {
+		throw new TypeError(
+			`Invalid ${serviceName} service: required methods missing`
+		);
+	}
+	return value;
 }
 
 /**
@@ -141,14 +172,34 @@ export function assertService(value, typeGuard, serviceName) {
  * @returns {Object} Typed service container
  */
 export function createTypedServiceContainer(services) {
-  return {
-    backend: assertService(services.backend, isBackendService, 'Backend'),
-    logger: assertService(services.logger, isLoggerService, 'Logger'),
-    configManager: assertService(services.configManager, isConfigManagerService, 'ConfigManager'),
-    astConfigManager: assertService(services.astConfigManager, isConfigManagerService, 'ASTConfigManager'),
-    branchManager: assertService(services.branchManager, isBranchManagerService, 'BranchManager'),
-    hookManager: assertService(services.hookManager, isHookManagerService, 'HookManager'),
-    providerRegistry: assertService(services.providerRegistry, isProviderRegistryService, 'ProviderRegistry'),
-    projectRoot: services.projectRoot
-  };
-} 
+	return {
+		backend: assertService(services.backend, isBackendService, 'Backend'),
+		logger: assertService(services.logger, isLoggerService, 'Logger'),
+		configManager: assertService(
+			services.configManager,
+			isConfigManagerService,
+			'ConfigManager'
+		),
+		astConfigManager: assertService(
+			services.astConfigManager,
+			isConfigManagerService,
+			'ASTConfigManager'
+		),
+		branchManager: assertService(
+			services.branchManager,
+			isBranchManagerService,
+			'BranchManager'
+		),
+		hookManager: assertService(
+			services.hookManager,
+			isHookManagerService,
+			'HookManager'
+		),
+		providerRegistry: assertService(
+			services.providerRegistry,
+			isProviderRegistryService,
+			'ProviderRegistry'
+		),
+		projectRoot: services.projectRoot
+	};
+}

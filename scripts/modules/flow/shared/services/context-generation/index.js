@@ -1,6 +1,6 @@
 /**
  * Context Generation Services
- * 
+ *
  * Unified export of all context generation services for creating
  * comprehensive context for Claude Code and VibeKit agents.
  */
@@ -14,10 +14,13 @@ export { TaskContextGenerator } from '../../features/ast/services/task-context-g
 
 // Convenience factory function
 export async function createTaskContextGenerator(options = {}) {
-  const { TaskContextGenerator } = await import('../../features/ast/services/task-context-generator.js');
-  return new TaskContextGenerator(options);
+	const { TaskContextGenerator } = await import(
+		'../../features/ast/services/task-context-generator.js'
+	);
+	return new TaskContextGenerator(options);
 }
 
 // Version info
 export const VERSION = '1.0.0';
-export const DESCRIPTION = 'TaskMaster Flow Context Generation Services - Phase 1'; 
+export const DESCRIPTION =
+	'TaskMaster Flow Context Generation Services - Phase 1';

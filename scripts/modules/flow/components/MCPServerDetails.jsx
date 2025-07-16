@@ -10,7 +10,7 @@ import { useServices } from '../shared/contexts/ServiceContext.jsx';
 export function MCPServerDetails({ server, onBack, onEdit, onUse }) {
 	// Get services from dependency injection
 	const { logger } = useServices();
-	
+
 	const [tools, setTools] = useState([]);
 	const [filteredTools, setFilteredTools] = useState([]);
 	const [selectedToolIndex, setSelectedToolIndex] = useState(0);

@@ -247,4 +247,4 @@ export function mergeConfigurations(defaultConfig, userConfig) {
 
 	deepMerge(merged, userConfig);
 	return merged;
-} 
+}

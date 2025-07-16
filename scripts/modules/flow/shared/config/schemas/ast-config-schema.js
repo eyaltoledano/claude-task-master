@@ -292,4 +292,4 @@ export class ConfigValidator {
 			rules: this.validationRules
 		};
 	}
-} 
+}

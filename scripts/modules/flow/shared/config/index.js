@@ -11,4 +11,4 @@ export * from './flow-config.js';
 export * from './managers/index.js';
 
 // Configuration schemas
-export * from './schemas/index.js'; 
+export * from './schemas/index.js';

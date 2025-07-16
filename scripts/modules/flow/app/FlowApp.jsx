@@ -13,11 +13,11 @@ import { theme, setTheme, getTheme } from '../shared/theme/theme.js';
 
 // Import screens
 import { WelcomeScreen } from '../components/WelcomeScreen.jsx';
-import { 
-  TaskManagementScreen,
-  TagManagementScreen,
-  AnalyzeComplexityScreen,
-  DependencyVisualizerScreen
+import {
+	TaskManagementScreen,
+	TagManagementScreen,
+	AnalyzeComplexityScreen,
+	DependencyVisualizerScreen
 } from '../features/tasks/index.js';
 import { StatusScreen } from '../components/StatusScreen.jsx';
 import { ParsePRDScreen } from '../components/ParsePRDScreen.jsx';
@@ -44,14 +44,17 @@ import { getTaskMasterVersion } from '../../../../src/utils/getVersion.js';
 import { AgentExecutionScreen } from '../components/AgentExecutionScreen.jsx';
 
 // Import error boundaries
-import { 
-  GlobalErrorHandler,
-  NavigationErrorBoundary,
-  ServiceErrorBoundary
+import {
+	GlobalErrorHandler,
+	NavigationErrorBoundary,
+	ServiceErrorBoundary
 } from '../shared/components/error-boundaries/index.js';
 
 // Import performance utilities
-import { useRenderTracking, usePerformanceTiming } from '../shared/hooks/usePerformance.js';
+import {
+	useRenderTracking,
+	usePerformanceTiming
+} from '../shared/hooks/usePerformance.js';
 import { globalMemoryMonitor } from '../shared/utils/performance.js';
 
 // Create context for backend and app state
@@ -113,7 +116,7 @@ export function FlowApp({ options = {} }) {
 		}
 
 		let url = remoteInfo.url;
-		
+
 		// Remove .git suffix if present
 		if (url.endsWith('.git')) {
 			url = url.slice(0, -4);
@@ -127,7 +130,7 @@ export function FlowApp({ options = {} }) {
 			// https://github.com/user/repo -> github.com/user/repo
 			// https://username@github.com/user/repo -> github.com/user/repo
 			url = url.replace('https://', '');
-			
+
 			// Remove username@ if present
 			if (url.includes('@')) {
 				url = url.split('@')[1];
@@ -304,7 +307,7 @@ export function FlowApp({ options = {} }) {
 	const handleInput = useCallback(
 		async (value) => {
 			const trimmedValue = value.trim();
-			
+
 			if (showCommandPalette) {
 				setShowCommandPalette(false);
 				setInputValue('');
@@ -315,7 +318,7 @@ export function FlowApp({ options = {} }) {
 				setWaitingForShortcut(false);
 				isWaitingForShortcutRef.current = false;
 				setInputValue(savedInputRef.current);
-				setInputKey(prev => prev + 1);
+				setInputKey((prev) => prev + 1);
 				return;
 			}
 
@@ -443,9 +446,11 @@ export function FlowApp({ options = {} }) {
 					const isDark = theme === getTheme('dark');
 					themeMessage = `Switched to auto theme detection (currently using ${isDark ? 'dark mode' : 'light mode'})`;
 				} else if (newTheme === 'dark') {
-					themeMessage = 'Switched to dark mode (light text on dark background)';
+					themeMessage =
+						'Switched to dark mode (light text on dark background)';
 				} else {
-					themeMessage = 'Switched to light mode (dark text on light background)';
+					themeMessage =
+						'Switched to light mode (dark text on light background)';
 				}
 
 				setNotification({
@@ -517,9 +522,9 @@ export function FlowApp({ options = {} }) {
 			if (isWaitingForShortcutRef.current) {
 				return;
 			}
-			
+
 			setInputValue(value);
-			
+
 			// Generate suggestions based on input
 			if (value.startsWith('/')) {
 				const availableCommands = getAvailableCommands();
@@ -568,7 +573,7 @@ export function FlowApp({ options = {} }) {
 				setWaitingForShortcut(false);
 				isWaitingForShortcutRef.current = false;
 				setInputValue(savedInputRef.current);
-				setInputKey(prev => prev + 1);
+				setInputKey((prev) => prev + 1);
 				return;
 			}
 			return;
@@ -580,7 +585,7 @@ export function FlowApp({ options = {} }) {
 			isWaitingForShortcutRef.current = true;
 			savedInputRef.current = inputValue;
 			setInputValue('');
-			setInputKey(prev => prev + 1);
+			setInputKey((prev) => prev + 1);
 			return;
 		}
 
@@ -606,9 +611,11 @@ export function FlowApp({ options = {} }) {
 		// Suggestion navigation
 		if (suggestions.length > 0) {
 			if (key.upArrow) {
-				setSuggestionIndex(prev => Math.max(0, prev - 1));
+				setSuggestionIndex((prev) => Math.max(0, prev - 1));
 			} else if (key.downArrow) {
-				setSuggestionIndex(prev => Math.min(suggestions.length - 1, prev + 1));
+				setSuggestionIndex((prev) =>
+					Math.min(suggestions.length - 1, prev + 1)
+				);
 			} else if (key.tab) {
 				if (suggestions[suggestionIndex]) {
 					setInputValue(suggestions[suggestionIndex]);
@@ -683,247 +690,253 @@ export function FlowApp({ options = {} }) {
 	return (
 		<AppContext.Provider value={contextValue}>
 			<GlobalErrorHandler>
-			<ServiceErrorBoundary serviceName="FlowApp">
-			<OverflowProvider>
-				<Box flexDirection="column" height="100%">
-				{/* Command Palette */}
-				{showCommandPalette && (
-					<CommandPalette
-						onClose={() => setShowCommandPalette(false)}
-						onCommand={handleCommand}
-					/>
-				)}
-
-				{/* Settings Modal */}
-				{showSettings && (
-					<SettingsModal
-						onClose={() => setShowSettings(false)}
-						backend={currentBackend}
-						currentTheme={currentTheme}
-						onThemeChange={setCurrentTheme}
-					/>
-				)}
-
-				{/* Next Task Modal */}
-				{showNextTaskModal && (
-					<NextTaskModal
-						backend={currentBackend}
-						onClose={() => setShowNextTaskModal(false)}
-						onTaskSelect={(task) => {
-							setNavigationData({ taskId: task.id, mode: 'execute' });
-							setCurrentScreen('agent-execution');
-							setShowNextTaskModal(false);
-						}}
-					/>
-				)}
-
-				{/* Screen Content */}
-				{currentScreen === 'tasks' ? (
-					<TaskManagementScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						onTaskSelect={(taskId) => {
-							setNavigationData({ taskId, mode: 'execute' });
-							setCurrentScreen('agent-execution');
-						}}
-					/>
-				) : currentScreen === 'tags' ? (
-					<TagManagementScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						currentTag={currentTag}
-						onTagChange={setCurrentTag}
-					/>
-				) : currentScreen === 'status' ? (
-					<StatusScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-					/>
-				) : currentScreen === 'parse' ? (
-					<ParsePRDScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						onSuccess={() => {
-							setNotification({
-								message: 'PRD parsed successfully',
-								type: 'success',
-								duration: 3000
-							});
-							setCurrentScreen('tasks');
-						}}
-					/>
-				) : currentScreen === 'analyze' ? (
-					<AnalyzeComplexityScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-					/>
-				) : currentScreen === 'dependencies' ? (
-					<DependencyVisualizerScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-					/>
-				) : currentScreen === 'chat' ? (
-					<ChatScreen
-						mcpClient={currentBackend}
-						projectRoot={currentBackend?.getProjectRoot()}
-						onExit={() => setCurrentScreen('welcome')}
-						messages={messages}
-						onMessagesChange={setMessages}
-						currentModel={currentModel}
-						onModelChange={setCurrentModel}
-					/>
-				) : currentScreen === 'mcp' ? (
-					<MCPManagementScreen
-						backend={currentBackend}
-						onBack={() => setCurrentScreen('welcome')}
-						onBackendSwitch={async (newBackend) => {
-							try {
-								await newBackend.initialize();
-								setCurrentBackend(newBackend);
-								setNotification({
-									message: 'Backend switched successfully',
-									type: 'success',
-									duration: 3000
-								});
-							} catch (error) {
-								setNotification({
-									message: `Failed to switch backend: ${error.message}`,
-									type: 'error',
-									duration: 5000
-								});
-							}
-						}}
-						log={currentBackend.log}
-					/>
-				) : currentScreen === 'providers' ? (
-					<ProvidersScreen
-						onBack={() => setCurrentScreen('welcome')}
-						onError={(errorMessage) => {
-							setNotification({
-								message: errorMessage,
-								type: 'error',
-								duration: 5000
-							});
-						}}
-					/>
-				) : currentScreen === 'executions' ? (
-					<ExecutionManagementScreen
-						onBack={() => setCurrentScreen('welcome')}
-					/>
-				) : currentScreen === 'agent-execution' ? (
-					<AgentExecutionScreen
-						backend={currentBackend}
-						initialAgent={navigationData?.initialAgent || 'claude'}
-						taskId={navigationData?.taskId}
-						mode={navigationData?.mode || 'list'}
-					/>
-				) : (
-					<>
-						{/* Main content area */}
-						<Box flexGrow={1} flexDirection="column">
-							{/* Dynamic screen rendering */}
-							<NavigationErrorBoundary>
-							{currentScreen === 'welcome' && <WelcomeScreen />}
-							{currentScreen === 'sessions' && <SessionsScreen />}
-							</NavigationErrorBoundary>
-
-							{/* Notification toast */}
-							{notification && (
-								<Toast
-									message={notification.message}
-									type={notification.type}
-									duration={notification.duration}
-									onDismiss={() => setNotification(null)}
+				<ServiceErrorBoundary serviceName="FlowApp">
+					<OverflowProvider>
+						<Box flexDirection="column" height="100%">
+							{/* Command Palette */}
+							{showCommandPalette && (
+								<CommandPalette
+									onClose={() => setShowCommandPalette(false)}
+									onCommand={handleCommand}
 								/>
 							)}
-						</Box>
 
-						{/* Bottom input bar */}
-						<Box flexDirection="column" flexShrink={0}>
-							{/* Command suggestions */}
-							{suggestions.length > 0 && (
-								<Box flexDirection="column">
-									<Box
-										borderStyle="single"
-										borderColor={theme.text.tertiary}
-										borderBottom={false}
-										paddingLeft={1}
-										paddingRight={1}
-									>
-										<CommandSuggestions
-											suggestions={suggestions}
-											selectedIndex={suggestionIndex}
-										/>
-									</Box>
-								</Box>
+							{/* Settings Modal */}
+							{showSettings && (
+								<SettingsModal
+									onClose={() => setShowSettings(false)}
+									backend={currentBackend}
+									currentTheme={currentTheme}
+									onThemeChange={setCurrentTheme}
+								/>
 							)}
 
-							{/* Input bar */}
-							<Box flexDirection="column">
-								<Box
-									borderStyle="single"
-									borderColor={theme.text.tertiary}
-									paddingLeft={1}
-									paddingRight={1}
-								>
-									<Box width="100%">
-										<Text color="cyan">❯ </Text>
-										<Box flexGrow={1}>
-											<TextInput
-												key={inputKey}
-												value={inputValue}
-												onChange={handleTextInputChange}
-												onSubmit={handleInput}
-												placeholder={
-													waitingForShortcut
-														? 'Waiting for command key...'
-														: 'Type / for commands or use Ctrl+X shortcuts'
-												}
+							{/* Next Task Modal */}
+							{showNextTaskModal && (
+								<NextTaskModal
+									backend={currentBackend}
+									onClose={() => setShowNextTaskModal(false)}
+									onTaskSelect={(task) => {
+										setNavigationData({ taskId: task.id, mode: 'execute' });
+										setCurrentScreen('agent-execution');
+										setShowNextTaskModal(false);
+									}}
+								/>
+							)}
+
+							{/* Screen Content */}
+							{currentScreen === 'tasks' ? (
+								<TaskManagementScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+									onTaskSelect={(taskId) => {
+										setNavigationData({ taskId, mode: 'execute' });
+										setCurrentScreen('agent-execution');
+									}}
+								/>
+							) : currentScreen === 'tags' ? (
+								<TagManagementScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+									currentTag={currentTag}
+									onTagChange={setCurrentTag}
+								/>
+							) : currentScreen === 'status' ? (
+								<StatusScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+								/>
+							) : currentScreen === 'parse' ? (
+								<ParsePRDScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+									onSuccess={() => {
+										setNotification({
+											message: 'PRD parsed successfully',
+											type: 'success',
+											duration: 3000
+										});
+										setCurrentScreen('tasks');
+									}}
+								/>
+							) : currentScreen === 'analyze' ? (
+								<AnalyzeComplexityScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+								/>
+							) : currentScreen === 'dependencies' ? (
+								<DependencyVisualizerScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+								/>
+							) : currentScreen === 'chat' ? (
+								<ChatScreen
+									mcpClient={currentBackend}
+									projectRoot={currentBackend?.getProjectRoot()}
+									onExit={() => setCurrentScreen('welcome')}
+									messages={messages}
+									onMessagesChange={setMessages}
+									currentModel={currentModel}
+									onModelChange={setCurrentModel}
+								/>
+							) : currentScreen === 'mcp' ? (
+								<MCPManagementScreen
+									backend={currentBackend}
+									onBack={() => setCurrentScreen('welcome')}
+									onBackendSwitch={async (newBackend) => {
+										try {
+											await newBackend.initialize();
+											setCurrentBackend(newBackend);
+											setNotification({
+												message: 'Backend switched successfully',
+												type: 'success',
+												duration: 3000
+											});
+										} catch (error) {
+											setNotification({
+												message: `Failed to switch backend: ${error.message}`,
+												type: 'error',
+												duration: 5000
+											});
+										}
+									}}
+									log={currentBackend.log}
+								/>
+							) : currentScreen === 'providers' ? (
+								<ProvidersScreen
+									onBack={() => setCurrentScreen('welcome')}
+									onError={(errorMessage) => {
+										setNotification({
+											message: errorMessage,
+											type: 'error',
+											duration: 5000
+										});
+									}}
+								/>
+							) : currentScreen === 'executions' ? (
+								<ExecutionManagementScreen
+									onBack={() => setCurrentScreen('welcome')}
+								/>
+							) : currentScreen === 'agent-execution' ? (
+								<AgentExecutionScreen
+									backend={currentBackend}
+									initialAgent={navigationData?.initialAgent || 'claude'}
+									taskId={navigationData?.taskId}
+									mode={navigationData?.mode || 'list'}
+								/>
+							) : (
+								<>
+									{/* Main content area */}
+									<Box flexGrow={1} flexDirection="column">
+										{/* Dynamic screen rendering */}
+										<NavigationErrorBoundary>
+											{currentScreen === 'welcome' && <WelcomeScreen />}
+											{currentScreen === 'sessions' && <SessionsScreen />}
+										</NavigationErrorBoundary>
+
+										{/* Notification toast */}
+										{notification && (
+											<Toast
+												message={notification.message}
+												type={notification.type}
+												duration={notification.duration}
+												onDismiss={() => setNotification(null)}
 											/>
+										)}
+									</Box>
+
+									{/* Bottom input bar */}
+									<Box flexDirection="column" flexShrink={0}>
+										{/* Command suggestions */}
+										{suggestions.length > 0 && (
+											<Box flexDirection="column">
+												<Box
+													borderStyle="single"
+													borderColor={theme.text.tertiary}
+													borderBottom={false}
+													paddingLeft={1}
+													paddingRight={1}
+												>
+													<CommandSuggestions
+														suggestions={suggestions}
+														selectedIndex={suggestionIndex}
+													/>
+												</Box>
+											</Box>
+										)}
+
+										{/* Input bar */}
+										<Box flexDirection="column">
+											<Box
+												borderStyle="single"
+												borderColor={theme.text.tertiary}
+												paddingLeft={1}
+												paddingRight={1}
+											>
+												<Box width="100%">
+													<Text color="cyan">❯ </Text>
+													<Box flexGrow={1}>
+														<TextInput
+															key={inputKey}
+															value={inputValue}
+															onChange={handleTextInputChange}
+															onSubmit={handleInput}
+															placeholder={
+																waitingForShortcut
+																	? 'Waiting for command key...'
+																	: 'Type / for commands or use Ctrl+X shortcuts'
+															}
+														/>
+													</Box>
+												</Box>
+											</Box>
+										</Box>
+
+										{/* Bottom status bar */}
+										<Box
+											paddingLeft={1}
+											paddingRight={1}
+											flexDirection="row"
+											justifyContent="space-between"
+											width="100%"
+										>
+											<Box>
+												<Text>
+													<Text color={theme.accent}>[tag] </Text>
+													<Text color={theme.text.accent}>{currentTag}</Text>
+													{repositoryName && (
+														<>
+															<Text color={theme.accent}> • [repo] </Text>
+															<Text>{repositoryName}</Text>
+														</>
+													)}
+													{currentBranch && (
+														<>
+															<Text color={theme.accent}> • [branch] </Text>
+															<Text>{currentBranch}</Text>
+														</>
+													)}
+													{remoteInfo && formatRemoteUrl(remoteInfo) && (
+														<>
+															<Text color={theme.accent}> • [remote] </Text>
+															<Text>{formatRemoteUrl(remoteInfo)}</Text>
+														</>
+													)}
+												</Text>
+											</Box>
+											<Box>
+												<Text color={theme.text.muted}>
+													Task Master AI v{version}
+												</Text>
+											</Box>
 										</Box>
 									</Box>
-								</Box>
-							</Box>
-
-							{/* Bottom status bar */}
-							<Box paddingLeft={1} paddingRight={1} flexDirection="row" justifyContent="space-between" width="100%">
-								<Box>
-									<Text>
-										<Text color={theme.accent}>[tag] </Text>
-										<Text color={theme.text.accent}>{currentTag}</Text>
-										{repositoryName && (
-											<>
-												<Text color={theme.accent}> • [repo] </Text>
-												<Text>{repositoryName}</Text>
-											</>
-										)}
-										{currentBranch && (
-											<>
-												<Text color={theme.accent}> • [branch] </Text>
-												<Text>{currentBranch}</Text>
-											</>
-										)}
-										{remoteInfo && formatRemoteUrl(remoteInfo) && (
-											<>
-												<Text color={theme.accent}> • [remote] </Text>
-												<Text>{formatRemoteUrl(remoteInfo)}</Text>
-											</>
-										)}
-									</Text>
-								</Box>
-								<Box>
-									<Text color={theme.text.muted}>
-										Task Master AI v{version}
-									</Text>
-								</Box>
-							</Box>
+								</>
+							)}
 						</Box>
-					</>
-				)}
-			</Box>
-		</OverflowProvider>
-		</ServiceErrorBoundary>
-		</GlobalErrorHandler>
+					</OverflowProvider>
+				</ServiceErrorBoundary>
+			</GlobalErrorHandler>
 		</AppContext.Provider>
 	);
 }
@@ -935,4 +948,4 @@ export function useAppContext() {
 		throw new Error('useAppContext must be used within AppContext.Provider');
 	}
 	return context;
-} 
+}

@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 
-import { style, gradient, getComponentTheme, getColor } from '../shared/theme/theme.js';
+import {
+	style,
+	gradient,
+	getComponentTheme,
+	getColor
+} from '../shared/theme/theme.js';
 import { useAppContext } from '../app/index-root.jsx';
 import { useServices } from '../shared/contexts/ServiceContext.jsx';
 import { LoadingSpinner } from '../shared/components/ui/LoadingSpinner.jsx';
-
 
 export const StatusScreen = () => {
 	// Get backend from dependency injection, other things from app context
@@ -19,8 +23,6 @@ export const StatusScreen = () => {
 	const [modelsInfo, setModelsInfo] = useState(null);
 	const [mcpInfo, setMcpInfo] = useState(null);
 	const [complexityInfo, setComplexityInfo] = useState(null);
-
-
 
 	// Get terminal width for dynamic borders
 	const terminalWidth = stdout?.columns || 80;
@@ -63,8 +65,10 @@ export const StatusScreen = () => {
 
 				// Try to use new TaskContextGenerator for enhanced project status
 				try {
-					const { TaskContextGenerator } = await import('../shared/services/context-generation/index.js');
-					
+					const { TaskContextGenerator } = await import(
+						'../shared/services/context-generation/index.js'
+					);
+
 					const contextGenerator = new TaskContextGenerator({
 						backend: backend,
 						projectRoot: backend.projectRoot,
@@ -72,7 +76,7 @@ export const StatusScreen = () => {
 					});
 
 					const projectStatus = await contextGenerator.getProjectStatus();
-					
+
 					if (projectStatus && !projectStatus.error) {
 						projectData = {
 							name: projectStatus.projectName || 'Unknown',
@@ -85,13 +89,17 @@ export const StatusScreen = () => {
 							isGitHub: projectStatus.isGitHub || false,
 							hasRemote: projectStatus.hasRemote || false,
 							needsSync: projectStatus.needsSync || false,
-							hasUncommittedChanges: projectStatus.hasUncommittedChanges || false
+							hasUncommittedChanges:
+								projectStatus.hasUncommittedChanges || false
 						};
 					}
 				} catch (err) {
 					// Fallback to basic project detection
-					console.debug('Enhanced project detection failed, using fallback:', err.message);
-					
+					console.debug(
+						'Enhanced project detection failed, using fallback:',
+						err.message
+					);
+
 					// Try to get git branch information if available
 					try {
 						if (backend.getCurrentBranch) {
@@ -107,7 +115,8 @@ export const StatusScreen = () => {
 
 					// Try to get project name from config
 					try {
-						projectData.name = backend.projectRoot?.split('/').pop() || 'Unknown';
+						projectData.name =
+							backend.projectRoot?.split('/').pop() || 'Unknown';
 					} catch (err) {
 						// Keep default name
 					}
@@ -457,10 +466,12 @@ export const StatusScreen = () => {
 						<Text>{style('AST Analysis: ', 'text.secondary')}</Text>
 						<Text>
 							{style(
-								projectInfo?.astAvailable ? 
-									`Available (${projectInfo.astMode})` : 
-									'Not Available',
-								projectInfo?.astAvailable ? 'state.success.primary' : 'text.tertiary'
+								projectInfo?.astAvailable
+									? `Available (${projectInfo.astMode})`
+									: 'Not Available',
+								projectInfo?.astAvailable
+									? 'state.success.primary'
+									: 'text.tertiary'
 							)}
 						</Text>
 					</Box>
@@ -562,8 +573,6 @@ export const StatusScreen = () => {
 					</Box>
 				</Box>
 			)}
-
-
 
 			{/* AI Models Configuration */}
 			<Box flexDirection="column" marginBottom={2}>

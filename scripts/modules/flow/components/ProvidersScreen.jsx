@@ -1,6 +1,6 @@
 /**
  * VibeKit Providers Screen Component
- * 
+ *
  * Simplified provider management focused on VibeKit agents.
  * Shows agent status, API key configuration, and provides basic testing.
  */
@@ -31,7 +31,7 @@ export function ProvidersScreen({ onBack, onError }) {
 			const providerInfo = globalRegistry.getProviderInfo('vibekit');
 
 			// Create agent list with status
-			const agentList = providerInfo.agents.map(agentKey => {
+			const agentList = providerInfo.agents.map((agentKey) => {
 				const apiKey = getRequiredApiKey(agentKey);
 				const hasApiKey = !!process.env[apiKey];
 
@@ -57,9 +57,9 @@ export function ProvidersScreen({ onBack, onError }) {
 	const getRequiredApiKey = (agentKey) => {
 		const keyMap = {
 			'claude-code': 'ANTHROPIC_API_KEY',
-			'codex': 'OPENAI_API_KEY',
+			codex: 'OPENAI_API_KEY',
 			'gemini-cli': 'GOOGLE_API_KEY',
-			'opencode': 'OPENCODE_API_KEY'
+			opencode: 'OPENCODE_API_KEY'
 		};
 		return keyMap[agentKey] || 'ANTHROPIC_API_KEY';
 	};
@@ -68,9 +68,9 @@ export function ProvidersScreen({ onBack, onError }) {
 	const formatAgentName = (agentKey) => {
 		const nameMap = {
 			'claude-code': 'Claude Code',
-			'codex': 'OpenAI Codex',
+			codex: 'OpenAI Codex',
 			'gemini-cli': 'Gemini CLI',
-			'opencode': 'OpenCode'
+			opencode: 'OpenCode'
 		};
 		return nameMap[agentKey] || agentKey;
 	};
@@ -78,10 +78,10 @@ export function ProvidersScreen({ onBack, onError }) {
 	// Get agent description
 	const getAgentDescription = (agentKey) => {
 		const descMap = {
-			'claude-code': 'Anthropic\'s coding assistant with advanced reasoning',
-			'codex': 'OpenAI\'s code generation and completion model',
-			'gemini-cli': 'Google\'s development assistant for CLI tasks',
-			'opencode': 'Full-stack development agent'
+			'claude-code': "Anthropic's coding assistant with advanced reasoning",
+			codex: "OpenAI's code generation and completion model",
+			'gemini-cli': "Google's development assistant for CLI tasks",
+			opencode: 'Full-stack development agent'
 		};
 		return descMap[agentKey] || 'VibeKit coding agent';
 	};
@@ -91,7 +91,7 @@ export function ProvidersScreen({ onBack, onError }) {
 		try {
 			setTestResult({ loading: true, agent: agentKey });
 
-			const agent = agents.find(a => a.key === agentKey);
+			const agent = agents.find((a) => a.key === agentKey);
 			if (!agent) {
 				throw new Error('Agent not found');
 			}
@@ -114,7 +114,6 @@ export function ProvidersScreen({ onBack, onError }) {
 				success: true,
 				message: `Agent ${agent.name} is configured and ready to execute tasks`
 			});
-
 		} catch (error) {
 			setTestResult({
 				loading: false,
@@ -131,7 +130,9 @@ export function ProvidersScreen({ onBack, onError }) {
 			// Update VibeKit configuration to use this agent as default
 			// This would integrate with the flow configuration system
 			setMode('list');
-			onError?.(`Set ${formatAgentName(agentKey)} as default agent (feature coming soon)`);
+			onError?.(
+				`Set ${formatAgentName(agentKey)} as default agent (feature coming soon)`
+			);
 		} catch (error) {
 			onError?.(`Failed to set default agent: ${error.message}`);
 		}
@@ -242,10 +243,18 @@ export function ProvidersScreen({ onBack, onError }) {
 					Agent Details: {agent.name}
 				</Text>
 				<Box marginTop={1} flexDirection="column">
-					<Text><Text color="cyan">Key:</Text> {agent.key}</Text>
-					<Text><Text color="cyan">Status:</Text> {renderStatus(agent)}</Text>
-					<Text><Text color="cyan">API Key:</Text> {agent.apiKey}</Text>
-					<Text><Text color="cyan">Description:</Text> {agent.description}</Text>
+					<Text>
+						<Text color="cyan">Key:</Text> {agent.key}
+					</Text>
+					<Text>
+						<Text color="cyan">Status:</Text> {renderStatus(agent)}
+					</Text>
+					<Text>
+						<Text color="cyan">API Key:</Text> {agent.apiKey}
+					</Text>
+					<Text>
+						<Text color="cyan">Description:</Text> {agent.description}
+					</Text>
 				</Box>
 				<Box marginTop={2}>
 					<Text color="gray">[b/Esc] Back to list</Text>
@@ -282,9 +291,7 @@ export function ProvidersScreen({ onBack, onError }) {
 			</Box>
 
 			<Box marginBottom={1}>
-				<Text color="gray">
-					Available Agents ({agents.length}):
-				</Text>
+				<Text color="gray">Available Agents ({agents.length}):</Text>
 			</Box>
 
 			{agents.map((agent, index) => (
@@ -293,10 +300,7 @@ export function ProvidersScreen({ onBack, onError }) {
 						{index === selectedIndex ? '▶ ' : '  '}
 					</Text>
 					<Box width={16}>
-						<Text
-							color={index === selectedIndex ? 'cyan' : 'white'}
-							bold
-						>
+						<Text color={index === selectedIndex ? 'cyan' : 'white'} bold>
 							{agent.name}
 						</Text>
 					</Box>

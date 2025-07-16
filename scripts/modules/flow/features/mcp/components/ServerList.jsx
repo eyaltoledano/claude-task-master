@@ -2,7 +2,13 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { theme } from '../../../shared/theme/theme.js';
 
-export function ServerList({ servers, selectedIndex, error, scrollOffset, viewportHeight }) {
+export function ServerList({
+	servers,
+	selectedIndex,
+	error,
+	scrollOffset,
+	viewportHeight
+}) {
 	const visibleServers = servers.slice(
 		scrollOffset,
 		scrollOffset + viewportHeight
@@ -206,4 +212,4 @@ export function ServerList({ servers, selectedIndex, error, scrollOffset, viewpo
 			</Box>
 		</Box>
 	);
-} 
+}

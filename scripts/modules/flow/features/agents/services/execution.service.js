@@ -16,8 +16,16 @@ class ExecutionService {
 				agent: 'claude-code',
 				startTime: new Date(Date.now() - 300000).toISOString(),
 				logs: [
-					{ timestamp: new Date().toISOString(), level: 'info', message: 'Execution started' },
-					{ timestamp: new Date().toISOString(), level: 'info', message: 'Processing task...' }
+					{
+						timestamp: new Date().toISOString(),
+						level: 'info',
+						message: 'Execution started'
+					},
+					{
+						timestamp: new Date().toISOString(),
+						level: 'info',
+						message: 'Processing task...'
+					}
 				]
 			},
 			{
@@ -26,11 +34,15 @@ class ExecutionService {
 				status: 'completed',
 				progress: 1.0,
 				provider: 'vibekit',
-				    agent: 'gemini',
+				agent: 'gemini',
 				startTime: new Date(Date.now() - 600000).toISOString(),
 				endTime: new Date(Date.now() - 120000).toISOString(),
 				logs: [
-					{ timestamp: new Date().toISOString(), level: 'info', message: 'Execution completed successfully' }
+					{
+						timestamp: new Date().toISOString(),
+						level: 'info',
+						message: 'Execution completed successfully'
+					}
 				]
 			},
 			{
@@ -44,7 +56,11 @@ class ExecutionService {
 				endTime: new Date(Date.now() - 800000).toISOString(),
 				error: 'API rate limit exceeded',
 				logs: [
-					{ timestamp: new Date().toISOString(), level: 'error', message: 'Execution failed: API rate limit' }
+					{
+						timestamp: new Date().toISOString(),
+						level: 'error',
+						message: 'Execution failed: API rate limit'
+					}
 				]
 			}
 		];
@@ -59,15 +75,15 @@ class ExecutionService {
 		let filtered = [...this.executions];
 
 		if (filters.status) {
-			filtered = filtered.filter(exec => exec.status === filters.status);
+			filtered = filtered.filter((exec) => exec.status === filters.status);
 		}
 
 		if (filters.provider) {
-			filtered = filtered.filter(exec => exec.provider === filters.provider);
+			filtered = filtered.filter((exec) => exec.provider === filters.provider);
 		}
 
 		if (filters.agent) {
-			filtered = filtered.filter(exec => exec.agent === filters.agent);
+			filtered = filtered.filter((exec) => exec.agent === filters.agent);
 		}
 
 		return filtered;
@@ -79,7 +95,7 @@ class ExecutionService {
 	 * @returns {Object|null} The execution object or null if not found
 	 */
 	getExecution(executionId) {
-		return this.executions.find(exec => exec.id === executionId) || null;
+		return this.executions.find((exec) => exec.id === executionId) || null;
 	}
 
 	/**
@@ -97,7 +113,11 @@ class ExecutionService {
 			agent: options.agent || 'claude-code',
 			startTime: new Date().toISOString(),
 			logs: [
-				{ timestamp: new Date().toISOString(), level: 'info', message: 'Execution queued' }
+				{
+					timestamp: new Date().toISOString(),
+					level: 'info',
+					message: 'Execution queued'
+				}
 			]
 		};
 
@@ -153,7 +173,7 @@ class ExecutionService {
 			}
 
 			execution.progress += Math.random() * 0.1;
-			
+
 			if (execution.progress >= 1.0) {
 				execution.progress = 1.0;
 				execution.status = 'completed';
@@ -180,10 +200,16 @@ class ExecutionService {
 	 */
 	getStatistics() {
 		const total = this.executions.length;
-		const running = this.executions.filter(e => e.status === 'running').length;
-		const completed = this.executions.filter(e => e.status === 'completed').length;
-		const failed = this.executions.filter(e => e.status === 'failed').length;
-		const pending = this.executions.filter(e => e.status === 'pending').length;
+		const running = this.executions.filter(
+			(e) => e.status === 'running'
+		).length;
+		const completed = this.executions.filter(
+			(e) => e.status === 'completed'
+		).length;
+		const failed = this.executions.filter((e) => e.status === 'failed').length;
+		const pending = this.executions.filter(
+			(e) => e.status === 'pending'
+		).length;
 
 		return {
 			total,
@@ -200,4 +226,4 @@ class ExecutionService {
 export const executionService = new ExecutionService();
 
 // Export class for testing
-export { ExecutionService }; 
+export { ExecutionService };

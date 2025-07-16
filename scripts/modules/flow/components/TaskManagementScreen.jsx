@@ -8,22 +8,22 @@ import { TaskDetailView } from './task-management/TaskDetailView.jsx';
 // import { SubtaskDetailView } from './task-management/SubtaskDetailView.jsx';
 
 export function TaskManagementScreen() {
-  const { viewMode, isLoading } = useTaskManagementStore();
-  
-  // Initialize hooks
-  useTaskManager();
-  useTaskInput();
+	const { viewMode, isLoading } = useTaskManagementStore();
 
-  if (isLoading) {
-    return <Text>Loading tasks...</Text>;
-  }
+	// Initialize hooks
+	useTaskManager();
+	useTaskInput();
 
-  return (
-    <Box flexDirection="column">
-      {viewMode === 'list' && <TaskListView />}
-      {viewMode === 'detail' && <TaskDetailView />}
-      {/* {viewMode === 'subtasks' && <TaskDetailView />} // Or a combined view */}
-      {/* {viewMode === 'subtask-detail' && <SubtaskDetailView />} */}
-    </Box>
-  );
-} 
+	if (isLoading) {
+		return <Text>Loading tasks...</Text>;
+	}
+
+	return (
+		<Box flexDirection="column">
+			{viewMode === 'list' && <TaskListView />}
+			{viewMode === 'detail' && <TaskDetailView />}
+			{/* {viewMode === 'subtasks' && <TaskDetailView />} // Or a combined view */}
+			{/* {viewMode === 'subtask-detail' && <SubtaskDetailView />} */}
+		</Box>
+	);
+}

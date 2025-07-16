@@ -7,7 +7,10 @@ import fs from 'fs/promises';
 import path from 'path';
 import { loadASTConfig } from '../ast-config.js';
 import { ConfigValidator } from '../schemas/ast-config-schema.js';
-import { mergeConfigurations, parseConfigValue } from '../../utils/config-utils.js';
+import {
+	mergeConfigurations,
+	parseConfigValue
+} from '../../utils/config-utils.js';
 
 /**
  * Advanced AST Configuration Manager
@@ -50,7 +53,12 @@ export class ASTConfigManager {
 					version: '4.1',
 					parsing: {
 						supportedLanguages: ['javascript', 'typescript', 'python', 'go'],
-						excludePatterns: ['node_modules/**', 'dist/**', 'build/**', '.git/**'],
+						excludePatterns: [
+							'node_modules/**',
+							'dist/**',
+							'build/**',
+							'.git/**'
+						],
 						maxFileSize: '1MB',
 						timeoutMs: 5000,
 						enableFallback: true
@@ -93,10 +101,7 @@ export class ASTConfigManager {
 			}
 
 			// Merge with defaults
-			this.currentConfig = mergeConfigurations(
-				this.defaultConfig,
-				fileConfig
-			);
+			this.currentConfig = mergeConfigurations(this.defaultConfig, fileConfig);
 
 			// Validate configuration
 			const validation = this.validateConfiguration(this.currentConfig);
@@ -283,4 +288,4 @@ export class ASTConfigManager {
 			}
 		}
 	}
-} 
+}

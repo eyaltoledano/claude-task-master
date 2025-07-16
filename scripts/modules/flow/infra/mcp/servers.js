@@ -6,7 +6,14 @@ const SERVERS_FILE = 'servers.json';
 
 export async function getServersPath() {
 	const projectRoot = findProjectRoot() || process.cwd();
-	const mcpDir = path.join(projectRoot, 'scripts', 'modules', 'flow', 'infra', 'mcp');
+	const mcpDir = path.join(
+		projectRoot,
+		'scripts',
+		'modules',
+		'flow',
+		'infra',
+		'mcp'
+	);
 	await fs.mkdir(mcpDir, { recursive: true });
 	return path.join(mcpDir, SERVERS_FILE);
 }

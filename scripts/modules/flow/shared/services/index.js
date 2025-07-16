@@ -19,4 +19,4 @@ export * from './interfaces.js';
 export * from './type-guards.js';
 
 // Service factory
-export * from './service-factory.js'; 
+export * from './service-factory.js';

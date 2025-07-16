@@ -5,4 +5,4 @@
 
 // Provider registry and configuration
 export * from './registry.js';
-export * from './provider-config.js'; 
+export * from './provider-config.js';

@@ -11,11 +11,7 @@ import { connectionPool } from '../../../infra/mcp/connection-pool.js';
 
 export function useMCPManager() {
 	const { backend, logger } = useServices();
-	const {
-		currentScreen,
-		setCurrentScreen,
-		showToast
-	} = useAppContext();
+	const { currentScreen, setCurrentScreen, showToast } = useAppContext();
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [loading, setLoading] = useState(true);
@@ -584,6 +580,6 @@ export function useMCPManager() {
 		viewportHeight,
 		pasteMode,
 		pasteContent,
-        getFormFields,
+		getFormFields
 	};
-} 
+}

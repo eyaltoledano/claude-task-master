@@ -11,7 +11,22 @@ const LoadingSpinner = ({
 	const spinnerFrames = {
 		spinner: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
 		dots: ['⠋', '⠙', '⠚', '⠞', '⠖', '⠦', '⠴', '⠲', '⠳', '⠓'],
-		line: ['⠄', '⠆', '⠇', '⠋', '⠙', '⠸', '⠰', '⠠', '⠰', '⠸', '⠙', '⠋', '⠇', '⠆'],
+		line: [
+			'⠄',
+			'⠆',
+			'⠇',
+			'⠋',
+			'⠙',
+			'⠸',
+			'⠰',
+			'⠠',
+			'⠰',
+			'⠸',
+			'⠙',
+			'⠋',
+			'⠇',
+			'⠆'
+		],
 		pipe: ['┤', '┘', '┴', '└', '├', '┌', '┬', '┐'],
 		simple: ['|', '/', '-', '\\'],
 		bounce: ['⠁', '⠂', '⠄', '⠂'],
@@ -30,7 +45,7 @@ const LoadingSpinner = ({
 
 	useEffect(() => {
 		const timer = setInterval(() => {
-			setFrame(current => (current + 1) % frames.length);
+			setFrame((current) => (current + 1) % frames.length);
 		}, interval);
 
 		return () => clearInterval(timer);
@@ -50,7 +65,7 @@ export const SkeletonLoader = ({ width = 40, text = 'Loading' }) => {
 
 	useEffect(() => {
 		const timer = setInterval(() => {
-			setDots(current => {
+			setDots((current) => {
 				if (current.length >= 3) return '';
 				return current + '.';
 			});
@@ -64,7 +79,10 @@ export const SkeletonLoader = ({ width = 40, text = 'Loading' }) => {
 	return (
 		<Box flexDirection="column">
 			<Text color="gray">{skeleton}</Text>
-			<Text color="white">{text}{dots}</Text>
+			<Text color="white">
+				{text}
+				{dots}
+			</Text>
 		</Box>
 	);
 };
@@ -78,9 +96,9 @@ export const LoadingOverlay = ({
 	if (!visible) return null;
 
 	return (
-		<Box 
-			flexDirection="column" 
-			alignItems="center" 
+		<Box
+			flexDirection="column"
+			alignItems="center"
 			justifyContent="center"
 			padding={2}
 			borderStyle="round"

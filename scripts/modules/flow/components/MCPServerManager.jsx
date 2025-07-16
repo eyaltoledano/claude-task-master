@@ -18,7 +18,7 @@ import { useServices } from '../shared/contexts/ServiceContext.jsx';
 export function MCPServerManager({ onBack, onUseServer, onOpenChat }) {
 	// Get services from dependency injection
 	const { logger } = useServices();
-	
+
 	const [servers, setServers] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [view, setView] = useState('list'); // 'list', 'add', 'edit', 'details'

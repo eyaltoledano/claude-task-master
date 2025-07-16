@@ -144,8 +144,10 @@ export function ClaudeWorktreeLauncherModal({
 			if (!actualWorktree && tasks.length > 0) {
 				setProcessingLog('Creating worktree for task...');
 				const task = tasks[0];
-				const worktreeResult = await backend.getOrCreateWorktreeForTask(task.id);
-				
+				const worktreeResult = await backend.getOrCreateWorktreeForTask(
+					task.id
+				);
+
 				if (worktreeResult.created) {
 					actualWorktree = worktreeResult.worktree;
 				} else if (worktreeResult.exists) {
@@ -196,7 +198,7 @@ export function ClaudeWorktreeLauncherModal({
 				console.error('Failed to create PR:', error);
 			}
 		}
-		
+
 		if (onSuccess) {
 			onSuccess(sessionResult);
 		}
@@ -208,7 +210,7 @@ export function ClaudeWorktreeLauncherModal({
 			<Text color={theme.colors.info}>
 				📋 Task: {tasks[0]?.title || 'Unknown Task'}
 			</Text>
-			
+
 			<Text color={theme.colors.muted}>
 				🏗️ Worktree: {worktree?.name || 'Will create new worktree'}
 			</Text>
@@ -219,12 +221,15 @@ export function ClaudeWorktreeLauncherModal({
 
 			<Box flexDirection="column" marginLeft={2}>
 				<Text>
-					Max Turns: <Text color={theme.colors.accent}>{maxTurns}</Text> 
+					Max Turns: <Text color={theme.colors.accent}>{maxTurns}</Text>
 					<Text color={theme.colors.muted}> (use +/- to adjust)</Text>
 				</Text>
-				
+
 				<Text>
-					Create PR: <Text color={shouldCreatePR ? theme.colors.success : theme.colors.error}>
+					Create PR:{' '}
+					<Text
+						color={shouldCreatePR ? theme.colors.success : theme.colors.error}
+					>
 						{shouldCreatePR ? 'Yes' : 'No'}
 					</Text>
 					<Text color={theme.colors.muted}> (press 'p' to toggle)</Text>
@@ -244,13 +249,13 @@ export function ClaudeWorktreeLauncherModal({
 			<Text color={theme.colors.secondary}>
 				Enter custom instructions for Claude:
 			</Text>
-			
+
 			<TextInput
 				value={customPrompt}
 				onChange={setCustomPrompt}
 				placeholder="Describe what you want Claude to do..."
 			/>
-			
+
 			<Text color={theme.colors.muted} marginTop={1}>
 				Press ENTER to launch, or BACKSPACE to go back
 			</Text>
@@ -259,14 +264,10 @@ export function ClaudeWorktreeLauncherModal({
 
 	const renderProcessing = () => (
 		<Box flexDirection="column" gap={1}>
-			<Text color={theme.colors.info}>
-				⚙️ {processingLog}
-			</Text>
-			
+			<Text color={theme.colors.info}>⚙️ {processingLog}</Text>
+
 			{isProcessing && (
-				<Text color={theme.colors.muted}>
-					This may take a few minutes...
-				</Text>
+				<Text color={theme.colors.muted}>This may take a few minutes...</Text>
 			)}
 		</Box>
 	);
@@ -276,7 +277,7 @@ export function ClaudeWorktreeLauncherModal({
 			<Text color={theme.colors.success}>
 				✅ Claude Code session completed successfully!
 			</Text>
-			
+
 			{sessionResult?.output && (
 				<Box marginTop={1} flexDirection="column">
 					<Text color={theme.colors.secondary}>Session Summary:</Text>
@@ -285,7 +286,7 @@ export function ClaudeWorktreeLauncherModal({
 					</Text>
 				</Box>
 			)}
-			
+
 			<Text color={theme.colors.muted} marginTop={1}>
 				Press ENTER to finish
 			</Text>
@@ -316,9 +317,5 @@ export function ClaudeWorktreeLauncherModal({
 		}
 	};
 
-	return (
-		<BaseModal {...getModalProps()}>
-			{renderContent()}
-		</BaseModal>
-	);
-} 
+	return <BaseModal {...getModalProps()}>{renderContent()}</BaseModal>;
+}

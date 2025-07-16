@@ -14,7 +14,7 @@ export function ExecutionManagementScreen({ onBack }) {
 	// Get backend from dependency injection
 	const { backend, logger } = useServices();
 	const { setNotification } = useAppContext();
-	
+
 	// Core state
 	const [selectedAgent, setSelectedAgent] = useState('claude-code');
 	const [executionStatus, setExecutionStatus] = useState('idle');
@@ -49,7 +49,7 @@ export function ExecutionManagementScreen({ onBack }) {
 				console.error('Backend not available');
 				return;
 			}
-			
+
 			const result = await backend.listTasks({ status: 'pending' });
 			setAvailableTasks(result.tasks || []);
 		} catch (error) {
@@ -71,7 +71,7 @@ export function ExecutionManagementScreen({ onBack }) {
 		if (input === '1') setMode('execute');
 		if (input === '2') setMode('generate');
 		if (input === '3') setMode('agents');
-		
+
 		if (input === 'a' && mode === 'agents') {
 			// Cycle through agents
 			const currentIndex = availableAgents.indexOf(selectedAgent);
@@ -94,25 +94,36 @@ export function ExecutionManagementScreen({ onBack }) {
 
 		try {
 			const { executeTask } = await import('../commands/execution.command.js');
-			
+
 			setOutput('🚀 Starting task execution with VibeKit...\n');
-			
+
 			const result = await executeTask(taskId, {
 				agent: selectedAgent,
 				projectRoot: process.cwd(),
 				mode: 'code',
 				onProgress: (data) => {
-					setOutput(prev => prev + `📊 Progress: ${data.progress || 0}% - ${data.message || 'Processing...'}\n`);
+					setOutput(
+						(prev) =>
+							prev +
+							`📊 Progress: ${data.progress || 0}% - ${data.message || 'Processing...'}\n`
+					);
 				}
 			});
 
-			setOutput(prev => prev + `\n✅ Task ${taskId} completed successfully!\n`);
-			setOutput(prev => prev + `📝 Summary: ${result.summary || 'No summary available'}\n`);
-			
+			setOutput(
+				(prev) => prev + `\n✅ Task ${taskId} completed successfully!\n`
+			);
+			setOutput(
+				(prev) =>
+					prev + `📝 Summary: ${result.summary || 'No summary available'}\n`
+			);
+
 			if (result.files && result.files.length > 0) {
-				setOutput(prev => prev + `📁 Files modified: ${result.files.length}\n`);
-				result.files.forEach(file => {
-					setOutput(prev => prev + `   - ${file}\n`);
+				setOutput(
+					(prev) => prev + `📁 Files modified: ${result.files.length}\n`
+				);
+				result.files.forEach((file) => {
+					setOutput((prev) => prev + `   - ${file}\n`);
 				});
 			}
 
@@ -122,11 +133,12 @@ export function ExecutionManagementScreen({ onBack }) {
 				type: 'success',
 				duration: 3000
 			});
-
 		} catch (error) {
 			setExecutionStatus('error');
 			setError(error.message);
-			setOutput(prev => prev + `\n❌ Task execution failed: ${error.message}\n`);
+			setOutput(
+				(prev) => prev + `\n❌ Task execution failed: ${error.message}\n`
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -141,31 +153,32 @@ export function ExecutionManagementScreen({ onBack }) {
 
 		try {
 			const { generateCode } = await import('../commands/execution.command.js');
-			
+
 			setOutput(`🤖 Generating code with ${selectedAgent}...\n`);
-			
+
 			const result = await generateCode(prompt, {
 				agent: selectedAgent,
 				mode: 'code',
 				onUpdate: (data) => {
 					if (data.content) {
-						setOutput(prev => prev + data.content);
+						setOutput((prev) => prev + data.content);
 					}
 				}
 			});
 
-			setOutput(prev => prev + '\n✅ Code generation completed!\n');
+			setOutput((prev) => prev + '\n✅ Code generation completed!\n');
 			setExecutionStatus('completed');
 			setNotification({
 				message: 'Code generation completed!',
 				type: 'success',
 				duration: 3000
 			});
-
 		} catch (error) {
 			setExecutionStatus('error');
 			setError(error.message);
-			setOutput(prev => prev + `\n❌ Code generation failed: ${error.message}\n`);
+			setOutput(
+				(prev) => prev + `\n❌ Code generation failed: ${error.message}\n`
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -177,10 +190,10 @@ export function ExecutionManagementScreen({ onBack }) {
 		try {
 			const { globalRegistry } = await import('../providers/registry.js');
 			const validation = globalRegistry.validateProviderConfig('vibekit');
-			
+
 			const requiredKey = getRequiredApiKey(agentType);
 			const hasApiKey = !!process.env[requiredKey];
-			
+
 			if (!hasApiKey) {
 				setError(`Missing API key: ${requiredKey}`);
 				return;
@@ -192,7 +205,6 @@ export function ExecutionManagementScreen({ onBack }) {
 				type: 'success',
 				duration: 2000
 			});
-
 		} catch (error) {
 			setError(`Agent test failed: ${error.message}`);
 		} finally {
@@ -202,11 +214,16 @@ export function ExecutionManagementScreen({ onBack }) {
 
 	const getRequiredApiKey = (agent) => {
 		switch (agent) {
-			case 'claude-code': return 'ANTHROPIC_API_KEY';
-			case 'codex': return 'OPENAI_API_KEY';
-			case 'gemini-cli': return 'GOOGLE_API_KEY';
-			case 'opencode': return 'OPENCODE_API_KEY';
-			default: return 'ANTHROPIC_API_KEY';
+			case 'claude-code':
+				return 'ANTHROPIC_API_KEY';
+			case 'codex':
+				return 'OPENAI_API_KEY';
+			case 'gemini-cli':
+				return 'GOOGLE_API_KEY';
+			case 'opencode':
+				return 'OPENCODE_API_KEY';
+			default:
+				return 'ANTHROPIC_API_KEY';
 		}
 	};
 
@@ -217,7 +234,7 @@ export function ExecutionManagementScreen({ onBack }) {
 
 	// Render task selection
 	if (mode === 'execute' && !selectedTask) {
-		const taskItems = availableTasks.map(task => ({
+		const taskItems = availableTasks.map((task) => ({
 			label: `${task.id} - ${task.title}`,
 			value: task.id,
 			task: task
@@ -228,12 +245,14 @@ export function ExecutionManagementScreen({ onBack }) {
 				<Box flexDirection="column" padding={1}>
 					<Box marginBottom={1}>
 						<Text color="cyan">Agent: </Text>
-						<Text bold color="green">{selectedAgent}</Text>
+						<Text bold color="green">
+							{selectedAgent}
+						</Text>
 					</Box>
 
 					{taskItems.length > 0 ? (
-						<SelectInput 
-							items={taskItems} 
+						<SelectInput
+							items={taskItems}
 							onSelect={(item) => {
 								setSelectedTask(item.task);
 								handleExecuteTask(item.value);
@@ -244,7 +263,9 @@ export function ExecutionManagementScreen({ onBack }) {
 					)}
 
 					<Box marginTop={1}>
-						<Text color="gray">[1] Execute Task | [2] Generate Code | [3] Agents | [Esc] Back</Text>
+						<Text color="gray">
+							[1] Execute Task | [2] Generate Code | [3] Agents | [Esc] Back
+						</Text>
 					</Box>
 				</Box>
 			</BaseModal>
@@ -260,7 +281,7 @@ export function ExecutionManagementScreen({ onBack }) {
 						<Text color="cyan">Available VibeKit Agents:</Text>
 					</Box>
 
-					{availableAgents.map(agent => (
+					{availableAgents.map((agent) => (
 						<Box key={agent} marginBottom={1} flexDirection="row">
 							<Text color={agent === selectedAgent ? 'green' : 'white'}>
 								{agent === selectedAgent ? '▶ ' : '  '}
@@ -270,7 +291,10 @@ export function ExecutionManagementScreen({ onBack }) {
 							</Text>
 							<Box marginLeft={2}>
 								<Text color="gray">
-									{getRequiredApiKey(agent)} {getAgentStatus(agent) === '✅' ? '(configured)' : '(missing)'}
+									{getRequiredApiKey(agent)}{' '}
+									{getAgentStatus(agent) === '✅'
+										? '(configured)'
+										: '(missing)'}
 								</Text>
 							</Box>
 						</Box>
@@ -278,11 +302,16 @@ export function ExecutionManagementScreen({ onBack }) {
 
 					<Box marginTop={2}>
 						<Text color="cyan">Selected Agent: </Text>
-						<Text bold color="green">{selectedAgent}</Text>
+						<Text bold color="green">
+							{selectedAgent}
+						</Text>
 					</Box>
 
 					<Box marginTop={1}>
-						<Text color="gray">[a] Cycle Agent | [t] Test Agent | [1] Execute | [2] Generate | [Esc] Back</Text>
+						<Text color="gray">
+							[a] Cycle Agent | [t] Test Agent | [1] Execute | [2] Generate |
+							[Esc] Back
+						</Text>
 					</Box>
 				</Box>
 			</BaseModal>
@@ -291,30 +320,43 @@ export function ExecutionManagementScreen({ onBack }) {
 
 	// Main execution/generation view
 	return (
-		<BaseModal 
+		<BaseModal
 			title={
-				mode === 'execute' 
-					? `🤖 VibeKit Execution - ${selectedAgent}` 
+				mode === 'execute'
+					? `🤖 VibeKit Execution - ${selectedAgent}`
 					: `🤖 VibeKit Code Generation - ${selectedAgent}`
-			} 
+			}
 			onBack={onBack}
 		>
 			<Box flexDirection="column" padding={1}>
 				{/* Status Section */}
-				<Box marginBottom={1} flexDirection="row" justifyContent="space-between">
+				<Box
+					marginBottom={1}
+					flexDirection="row"
+					justifyContent="space-between"
+				>
 					<Box>
 						<Text color="cyan">Status: </Text>
-						<Text bold color={
-							executionStatus === 'running' ? 'yellow' :
-							executionStatus === 'completed' ? 'green' :
-							executionStatus === 'error' ? 'red' : 'white'
-						}>
+						<Text
+							bold
+							color={
+								executionStatus === 'running'
+									? 'yellow'
+									: executionStatus === 'completed'
+										? 'green'
+										: executionStatus === 'error'
+											? 'red'
+											: 'white'
+							}
+						>
 							{executionStatus}
 						</Text>
 					</Box>
 					<Box>
 						<Text color="cyan">Agent: </Text>
-						<Text bold color="green">{selectedAgent}</Text>
+						<Text bold color="green">
+							{selectedAgent}
+						</Text>
 					</Box>
 				</Box>
 
@@ -329,21 +371,30 @@ export function ExecutionManagementScreen({ onBack }) {
 				{mode === 'execute' && selectedTask && (
 					<Box marginBottom={1}>
 						<Text color="cyan">Task: </Text>
-						<Text>{selectedTask.id} - {selectedTask.title}</Text>
+						<Text>
+							{selectedTask.id} - {selectedTask.title}
+						</Text>
 					</Box>
 				)}
 
 				{/* Output Section */}
-				<Box borderStyle="single" padding={1} height={15} flexDirection="column">
-					<Text color="yellow" bold>Output:</Text>
+				<Box
+					borderStyle="single"
+					padding={1}
+					height={15}
+					flexDirection="column"
+				>
+					<Text color="yellow" bold>
+						Output:
+					</Text>
 					<Box marginTop={1} flexGrow={1}>
 						{loading && <LoadingSpinner />}
 						{output ? (
 							<Text>{output}</Text>
 						) : (
 							<Text color="gray">
-								{mode === 'execute' 
-									? 'Ready to execute task...' 
+								{mode === 'execute'
+									? 'Ready to execute task...'
 									: 'Ready to generate code...'}
 							</Text>
 						)}
@@ -353,7 +404,8 @@ export function ExecutionManagementScreen({ onBack }) {
 				{/* Controls */}
 				<Box marginTop={1}>
 					<Text color="gray">
-						[1] Execute Task | [2] Generate Code | [3] Agents | [Esc] {selectedTask ? 'Deselect' : 'Back'}
+						[1] Execute Task | [2] Generate Code | [3] Agents | [Esc]{' '}
+						{selectedTask ? 'Deselect' : 'Back'}
 					</Text>
 				</Box>
 			</Box>

@@ -10,9 +10,9 @@ export { useAppContext } from './FlowApp.jsx';
 if (import.meta.url === `file://${process.argv[1]}`) {
 	(async () => {
 		const { run } = await import('./index.jsx');
-	run().catch((error) => {
-		console.error('Error running flow:', error);
-		process.exit(1);
-	});
+		run().catch((error) => {
+			console.error('Error running flow:', error);
+			process.exit(1);
+		});
 	})();
 }

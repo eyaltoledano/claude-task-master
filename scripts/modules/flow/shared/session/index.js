@@ -4,4 +4,4 @@
  */
 
 // Session management
-export * from './chat-session.js'; 
+export * from './chat-session.js';

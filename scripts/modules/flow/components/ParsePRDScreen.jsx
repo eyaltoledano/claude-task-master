@@ -8,7 +8,10 @@ import { theme } from '../shared/theme/theme.js';
 import { FileBrowser, LoadingSpinner, OverflowableText } from '../features/ui';
 import { StreamingModal } from './StreamingModal.jsx';
 import { streamingStateManager } from '../infra/streaming/StreamingStateManager.js';
-import { AsyncErrorBoundary, FileOperationErrorBoundary } from '../shared/components/error-boundaries/index.js';
+import {
+	AsyncErrorBoundary,
+	FileOperationErrorBoundary
+} from '../shared/components/error-boundaries/index.js';
 
 export function ParsePRDScreen() {
 	// Get backend from dependency injection, other things from app context
@@ -75,12 +78,12 @@ export function ParsePRDScreen() {
 		setShowStreamingModal(true);
 		setError(null);
 
-		logger.info('Starting PRD parsing', { 
-			filePath, 
-			force, 
-			useResearch, 
+		logger.info('Starting PRD parsing', {
+			filePath,
+			force,
+			useResearch,
 			taskCount,
-			currentTag 
+			currentTag
 		});
 
 		try {
@@ -118,9 +121,9 @@ export function ParsePRDScreen() {
 			});
 
 			setParseResult(result);
-			logger.success('PRD parsing completed', { 
+			logger.success('PRD parsing completed', {
 				tasksCreated: result?.tasksCreated,
-				tag: currentTag 
+				tag: currentTag
 			});
 			await reloadTasks();
 			setShowStreamingModal(false);
@@ -386,183 +389,183 @@ export function ParsePRDScreen() {
 
 	return (
 		<AsyncErrorBoundary onRetry={() => setStep('file-browser')}>
-		<Box flexDirection="column" height="100%">
-			{/* Header */}
-			<Box
-				borderStyle="single"
-				borderColor={theme.border}
-				paddingLeft={1}
-				paddingRight={1}
-				marginBottom={1}
-			>
-				<Box flexGrow={1}>
-					<Text color={theme.accent}>Task Master</Text>
-					<Text color={theme.textDim}> › </Text>
-					<Text color={theme.text}>Parse PRD</Text>
+			<Box flexDirection="column" height="100%">
+				{/* Header */}
+				<Box
+					borderStyle="single"
+					borderColor={theme.border}
+					paddingLeft={1}
+					paddingRight={1}
+					marginBottom={1}
+				>
+					<Box flexGrow={1}>
+						<Text color={theme.accent}>Task Master</Text>
+						<Text color={theme.textDim}> › </Text>
+						<Text color={theme.text}>Parse PRD</Text>
+					</Box>
+					<Text color={theme.textDim}>[ESC cancel]</Text>
 				</Box>
-				<Text color={theme.textDim}>[ESC cancel]</Text>
-			</Box>
 
-			{/* Content */}
-			<Box
-				flexGrow={1}
-				flexDirection="column"
-				justifyContent="center"
-				alignItems="center"
-			>
-				{step === 'research-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔍 Research Option</Text>
-						<Text color={theme.text} marginTop={1}>
-							Selected file: {selectedFile}
-						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							Would you like to use AI research while parsing?
-						</Text>
-						<Text color={theme.textDim}>
-							This provides more accurate task generation but takes longer.
-						</Text>
-						<Box marginTop={2}>
-							<ConfirmInput
-								message="Use research?"
-								onConfirm={() => handleResearchPrompt(true)}
-								onCancel={() => handleResearchPrompt(false)}
-							/>
-						</Box>
-					</Box>
-				)}
-
-				{step === 'num-tasks-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>📊 Number of Tasks</Text>
-						<Text color={theme.text} marginTop={1}>
-							How many tasks should be generated from this PRD?
-						</Text>
-						<Text color={theme.textDim}>
-							Leave empty for default (10 tasks)
-						</Text>
-						<Box marginTop={2}>
-							<Text color={theme.text}>Number of tasks: </Text>
-							<TextInput
-								value={numTasks}
-								onChange={setNumTasks}
-								onSubmit={handleNumTasksSubmit}
-								placeholder="10"
-							/>
-						</Box>
-						<Text color={theme.textDim} marginTop={1}>
-							Press Enter to continue or ESC to cancel
-						</Text>
-					</Box>
-				)}
-
-				{step === 'confirm-overwrite' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.warning}>⚠️ Existing Tasks Found</Text>
-						<Text color={theme.text} marginTop={1}>
-							Tag '{currentTag}' already contains tasks.
-						</Text>
-						<Text color={theme.textDim} marginTop={1}>
-							File: {selectedFile}
-						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							Parsing this PRD will overwrite all existing tasks in this tag.
-						</Text>
-						<Box marginTop={2}>
-							<ConfirmInput
-								message="Do you want to continue?"
-								onConfirm={() => handleOverwriteConfirmation(true)}
-								onCancel={() => handleOverwriteConfirmation(false)}
-							/>
-						</Box>
-					</Box>
-				)}
-
-				{step === 'success' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.success}>✓ PRD parsed successfully!</Text>
-						<Text color={theme.text} marginTop={1}>
-							Generated tasks in tag '{currentTag}'
-						</Text>
-						<Text color={theme.textDim}>
-							Using {useResearch ? 'research mode' : 'standard mode'} with{' '}
-							{numTasks && numTasks.trim() !== ''
-								? `${numTasks} tasks`
-								: 'default (10 tasks)'}
-						</Text>
-						{parseResult?.message && (
-							<Text color={theme.textDim} marginTop={1}>
-								{parseResult.message}
+				{/* Content */}
+				<Box
+					flexGrow={1}
+					flexDirection="column"
+					justifyContent="center"
+					alignItems="center"
+				>
+					{step === 'research-prompt' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.accent}>🔍 Research Option</Text>
+							<Text color={theme.text} marginTop={1}>
+								Selected file: {selectedFile}
 							</Text>
-						)}
-						<Box marginTop={2}>
-							<ConfirmInput
-								message="Would you like to analyze task complexity?"
-								onConfirm={() => setStep('analyze-prompt')}
-								onCancel={() => {
-									setCurrentScreen('welcome');
-									showToast(`✓ Parsed PRD successfully!`);
-								}}
-							/>
+							<Text color={theme.textDim} marginTop={2}>
+								Would you like to use AI research while parsing?
+							</Text>
+							<Text color={theme.textDim}>
+								This provides more accurate task generation but takes longer.
+							</Text>
+							<Box marginTop={2}>
+								<ConfirmInput
+									message="Use research?"
+									onConfirm={() => handleResearchPrompt(true)}
+									onCancel={() => handleResearchPrompt(false)}
+								/>
+							</Box>
 						</Box>
-					</Box>
-				)}
+					)}
 
-				{step === 'analyze-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.accent}>🔍 Analyze Complexity</Text>
-						<Text color={theme.text} marginTop={1}>
-							This will identify tasks that should be broken down further.
-						</Text>
-						<Box marginTop={2}>
-							<ConfirmInput
-								message="Proceed with complexity analysis?"
-								onConfirm={() => handleAnalyzeResponse(true)}
-								onCancel={() => handleAnalyzeResponse(false)}
-							/>
+					{step === 'num-tasks-prompt' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.accent}>📊 Number of Tasks</Text>
+							<Text color={theme.text} marginTop={1}>
+								How many tasks should be generated from this PRD?
+							</Text>
+							<Text color={theme.textDim}>
+								Leave empty for default (10 tasks)
+							</Text>
+							<Box marginTop={2}>
+								<Text color={theme.text}>Number of tasks: </Text>
+								<TextInput
+									value={numTasks}
+									onChange={setNumTasks}
+									onSubmit={handleNumTasksSubmit}
+									placeholder="10"
+								/>
+							</Box>
+							<Text color={theme.textDim} marginTop={1}>
+								Press Enter to continue or ESC to cancel
+							</Text>
 						</Box>
-					</Box>
-				)}
+					)}
 
-				{step === 'expand-prompt' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.success}>✓ Complexity analysis complete!</Text>
-						<Text color={theme.text} marginTop={1}>
-							Found{' '}
-							{analyzeResult?.recommendations?.filter((r) => r.shouldExpand)
-								.length || 0}{' '}
-							tasks that should be expanded
-						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							Expand tasks now?
-						</Text>
-						<Text color={theme.text} marginTop={1}>
-							(a) All high-complexity tasks
-						</Text>
-						<Text color={theme.text}>(f) First task only</Text>
-						<Text color={theme.text}>(n) No, finish here</Text>
-					</Box>
-				)}
+					{step === 'confirm-overwrite' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.warning}>⚠️ Existing Tasks Found</Text>
+							<Text color={theme.text} marginTop={1}>
+								Tag '{currentTag}' already contains tasks.
+							</Text>
+							<Text color={theme.textDim} marginTop={1}>
+								File: {selectedFile}
+							</Text>
+							<Text color={theme.textDim} marginTop={2}>
+								Parsing this PRD will overwrite all existing tasks in this tag.
+							</Text>
+							<Box marginTop={2}>
+								<ConfirmInput
+									message="Do you want to continue?"
+									onConfirm={() => handleOverwriteConfirmation(true)}
+									onCancel={() => handleOverwriteConfirmation(false)}
+								/>
+							</Box>
+						</Box>
+					)}
 
-				{step === 'error' && (
-					<Box flexDirection="column" alignItems="center">
-						<Text color={theme.error}>✗ Error: {error}</Text>
-						<Text color={theme.textDim} marginTop={1}>
-							File: {selectedFile}
-						</Text>
-						<Text color={theme.textDim} marginTop={2}>
-							Press Enter or ESC to go back
-						</Text>
-					</Box>
-				)}
+					{step === 'success' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.success}>✓ PRD parsed successfully!</Text>
+							<Text color={theme.text} marginTop={1}>
+								Generated tasks in tag '{currentTag}'
+							</Text>
+							<Text color={theme.textDim}>
+								Using {useResearch ? 'research mode' : 'standard mode'} with{' '}
+								{numTasks && numTasks.trim() !== ''
+									? `${numTasks} tasks`
+									: 'default (10 tasks)'}
+							</Text>
+							{parseResult?.message && (
+								<Text color={theme.textDim} marginTop={1}>
+									{parseResult.message}
+								</Text>
+							)}
+							<Box marginTop={2}>
+								<ConfirmInput
+									message="Would you like to analyze task complexity?"
+									onConfirm={() => setStep('analyze-prompt')}
+									onCancel={() => {
+										setCurrentScreen('welcome');
+										showToast(`✓ Parsed PRD successfully!`);
+									}}
+								/>
+							</Box>
+						</Box>
+					)}
+
+					{step === 'analyze-prompt' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.accent}>🔍 Analyze Complexity</Text>
+							<Text color={theme.text} marginTop={1}>
+								This will identify tasks that should be broken down further.
+							</Text>
+							<Box marginTop={2}>
+								<ConfirmInput
+									message="Proceed with complexity analysis?"
+									onConfirm={() => handleAnalyzeResponse(true)}
+									onCancel={() => handleAnalyzeResponse(false)}
+								/>
+							</Box>
+						</Box>
+					)}
+
+					{step === 'expand-prompt' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.success}>✓ Complexity analysis complete!</Text>
+							<Text color={theme.text} marginTop={1}>
+								Found{' '}
+								{analyzeResult?.recommendations?.filter((r) => r.shouldExpand)
+									.length || 0}{' '}
+								tasks that should be expanded
+							</Text>
+							<Text color={theme.textDim} marginTop={2}>
+								Expand tasks now?
+							</Text>
+							<Text color={theme.text} marginTop={1}>
+								(a) All high-complexity tasks
+							</Text>
+							<Text color={theme.text}>(f) First task only</Text>
+							<Text color={theme.text}>(n) No, finish here</Text>
+						</Box>
+					)}
+
+					{step === 'error' && (
+						<Box flexDirection="column" alignItems="center">
+							<Text color={theme.error}>✗ Error: {error}</Text>
+							<Text color={theme.textDim} marginTop={1}>
+								File: {selectedFile}
+							</Text>
+							<Text color={theme.textDim} marginTop={2}>
+								Press Enter or ESC to go back
+							</Text>
+						</Box>
+					)}
+				</Box>
+
+				{/* Streaming Modal */}
+				<StreamingModal
+					isOpen={showStreamingModal}
+					onClose={() => setShowStreamingModal(false)}
+				/>
 			</Box>
-
-			{/* Streaming Modal */}
-			<StreamingModal
-				isOpen={showStreamingModal}
-				onClose={() => setShowStreamingModal(false)}
-			/>
-		</Box>
 		</AsyncErrorBoundary>
 	);
 }

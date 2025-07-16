@@ -18,68 +18,72 @@ const ServiceContext = createContext();
  * Initializes and provides all services to child components
  */
 export function ServiceProvider({ children, backend, projectRoot }) {
-  const [services, setServices] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+	const [services, setServices] = useState(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const initializeServices = async () => {
-      try {
-        // Initialize logger
-        const logger = flowLogger;
-        logger.info('Initializing services...');
+	useEffect(() => {
+		const initializeServices = async () => {
+			try {
+				// Initialize logger
+				const logger = flowLogger;
+				logger.info('Initializing services...');
 
-        // Initialize configuration managers
-        const configManager = new FlowConfigManager({ projectRoot });
-        const astConfigManager = new ASTConfigManager({ projectRoot });
+				// Initialize configuration managers
+				const configManager = new FlowConfigManager({ projectRoot });
+				const astConfigManager = new ASTConfigManager({ projectRoot });
 
-        // Initialize branch awareness manager
-        const branchManager = new BranchAwarenessManager(projectRoot, { backend });
+				// Initialize branch awareness manager
+				const branchManager = new BranchAwarenessManager(projectRoot, {
+					backend
+				});
 
-        // Initialize hook manager
-        const hookManager = await getHookManager();
+				// Initialize hook manager
+				const hookManager = await getHookManager();
 
-        // Get provider registry
-        const providerRegistry = globalRegistry;
+				// Get provider registry
+				const providerRegistry = globalRegistry;
 
-        // Create unified service container
-        const serviceContainer = {
-          backend,
-          logger,
-          configManager,
-          astConfigManager,
-          branchManager,
-          hookManager,
-          providerRegistry,
-          projectRoot
-        };
+				// Create unified service container
+				const serviceContainer = {
+					backend,
+					logger,
+					configManager,
+					astConfigManager,
+					branchManager,
+					hookManager,
+					providerRegistry,
+					projectRoot
+				};
 
-        logger.info('All services initialized successfully');
-        setServices(serviceContainer);
-        setLoading(false);
-      } catch (err) {
-        logger.error('Service initialization failed:', err);
-        setError(err);
-        setLoading(false);
-      }
-    };
+				logger.info('All services initialized successfully');
+				setServices(serviceContainer);
+				setLoading(false);
+			} catch (err) {
+				logger.error('Service initialization failed:', err);
+				setError(err);
+				setLoading(false);
+			}
+		};
 
-    initializeServices();
-  }, [backend, projectRoot]);
+		initializeServices();
+	}, [backend, projectRoot]);
 
-  if (loading) {
-    return <Text>Initializing services...</Text>;
-  }
+	if (loading) {
+		return <Text>Initializing services...</Text>;
+	}
 
-  if (error) {
-    return <Text color="red">Service initialization failed: {error.message}</Text>;
-  }
+	if (error) {
+		return (
+			<Text color="red">Service initialization failed: {error.message}</Text>
+		);
+	}
 
-  return (
-    <ServiceContext.Provider value={services}>
-      {children}
-    </ServiceContext.Provider>
-  );
+	return (
+		<ServiceContext.Provider value={services}>
+			{children}
+		</ServiceContext.Provider>
+	);
 }
 
 /**
@@ -87,11 +91,11 @@ export function ServiceProvider({ children, backend, projectRoot }) {
  * @returns {Object} Service container with all services
  */
 export function useServices() {
-  const context = useContext(ServiceContext);
-  if (!context) {
-    throw new Error('useServices must be used within ServiceProvider');
-  }
-  return context;
+	const context = useContext(ServiceContext);
+	if (!context) {
+		throw new Error('useServices must be used within ServiceProvider');
+	}
+	return context;
 }
 
 /**
@@ -100,12 +104,12 @@ export function useServices() {
  * @returns {*} The requested service
  */
 export function useService(serviceName) {
-  const services = useServices();
-  const service = services[serviceName];
-  
-  if (!service) {
-    throw new Error(`Service '${serviceName}' not found in service container`);
-  }
-  
-  return service;
-} 
+	const services = useServices();
+	const service = services[serviceName];
+
+	if (!service) {
+		throw new Error(`Service '${serviceName}' not found in service container`);
+	}
+
+	return service;
+}

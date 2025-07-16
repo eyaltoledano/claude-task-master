@@ -25,4 +25,4 @@ export * from './components/vibekit/StreamingDisplay.jsx';
 export * from './components/vibekit/SuccessDisplay.jsx';
 
 // Theme
-export * from './theme/ink-ui-theme.js'; 
+export * from './theme/ink-ui-theme.js';

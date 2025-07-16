@@ -1,58 +1,58 @@
 {
-  "ui": {
-    "autoStartWithDefaults": false
-  },
-  "session": {
-    "rememberLastUsed": true,
-    "sessionTimeout": 3600000,
-    "persistSessions": true,
-    "sessionDir": ".taskmaster/flow/sessions",
-    "maxSessionAge": 604800000,
-    "cleanupInterval": 86400000,
-    "autoResume": true
-  },
-  "features": {
-    "githubIntegration": true,
-    "streamingOutput": true,
-    "autoSave": true,
-    "streamingEnabled": true,
-    "autoCreatePR": false,
-    "telemetryEnabled": false,
-    "secretsManagement": true
-  },
-  "limits": {
-    "maxConcurrentSessions": 3,
-    "maxHistoryEntries": 100,
-    "timeout": 300000,
-    "maxRetries": 2,
-    "parallelTasks": 3
-  },
-  "github": {
-    "enabled": true,
-    "autoDetectRepo": true,
-    "defaultBranch": "main",
-    "apiKeyEnv": "GITHUB_API_KEY",
-    "autoSync": false,
-    "branchPrefix": "taskmaster/",
-    "autoCreatePR": false,
-    "autoMerge": false,
-    "requireReviews": true,
-    "deleteSourceBranch": false
-  },
-  "logging": {
-    "level": "info",
-    "enableTelemetry": false,
-    "maxLogSize": 10485760,
-    "console": {
-      "enabled": true,
-      "colorize": true,
-      "timestamp": true
-    },
-    "file": {
-      "enabled": false,
-      "path": ".taskmaster/logs/flow.log",
-      "maxSize": "10MB",
-      "maxFiles": 5
-    }
-  }
-} 
+	"ui": {
+		"autoStartWithDefaults": false
+	},
+	"session": {
+		"rememberLastUsed": true,
+		"sessionTimeout": 3600000,
+		"persistSessions": true,
+		"sessionDir": ".taskmaster/flow/sessions",
+		"maxSessionAge": 604800000,
+		"cleanupInterval": 86400000,
+		"autoResume": true
+	},
+	"features": {
+		"githubIntegration": true,
+		"streamingOutput": true,
+		"autoSave": true,
+		"streamingEnabled": true,
+		"autoCreatePR": false,
+		"telemetryEnabled": false,
+		"secretsManagement": true
+	},
+	"limits": {
+		"maxConcurrentSessions": 3,
+		"maxHistoryEntries": 100,
+		"timeout": 300000,
+		"maxRetries": 2,
+		"parallelTasks": 3
+	},
+	"github": {
+		"enabled": true,
+		"autoDetectRepo": true,
+		"defaultBranch": "main",
+		"apiKeyEnv": "GITHUB_API_KEY",
+		"autoSync": false,
+		"branchPrefix": "taskmaster/",
+		"autoCreatePR": false,
+		"autoMerge": false,
+		"requireReviews": true,
+		"deleteSourceBranch": false
+	},
+	"logging": {
+		"level": "info",
+		"enableTelemetry": false,
+		"maxLogSize": 10485760,
+		"console": {
+			"enabled": true,
+			"colorize": true,
+			"timestamp": true
+		},
+		"file": {
+			"enabled": false,
+			"path": ".taskmaster/logs/flow.log",
+			"maxSize": "10MB",
+			"maxFiles": 5
+		}
+	}
+}

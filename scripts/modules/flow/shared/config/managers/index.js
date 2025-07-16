@@ -6,4 +6,4 @@
 // Configuration managers
 export * from './ast-config-manager.js';
 export * from './flow-config-manager.js';
-export * from './agents-config-manager.js'; 
+export * from './agents-config-manager.js';

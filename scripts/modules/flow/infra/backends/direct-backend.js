@@ -12,7 +12,6 @@ import { flowConfig } from '../../shared/config/flow-config.js';
 import { findProjectRoot } from '../../../utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../../src/constants/paths.js';
 
-
 // Import direct functions
 import { listTasksDirect } from '../../../../../mcp-server/src/core/direct-functions/list-tasks.js';
 import { nextTaskDirect } from '../../../../../mcp-server/src/core/direct-functions/next-task.js';
@@ -392,10 +391,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Update result
 	 */
 	async updateSubtask(subtaskId, options = {}) {
-		                try {
-                        const { updateSubtaskByIdDirect } = await import(
-                                '../../../../../mcp-server/src/core/task-master-core.js'
-                        );
+		try {
+			const { updateSubtaskByIdDirect } = await import(
+				'../../../../../mcp-server/src/core/task-master-core.js'
+			);
 
 			const result = await updateSubtaskByIdDirect(
 				{
@@ -436,10 +435,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Status update result
 	 */
 	async setSubtaskStatus(subtaskId, status) {
-		                try {
-                        const { setTaskStatusDirect } = await import(
-                                '../../../../../mcp-server/src/core/task-master-core.js'
-                        );
+		try {
+			const { setTaskStatusDirect } = await import(
+				'../../../../../mcp-server/src/core/task-master-core.js'
+			);
 
 			const result = await setTaskStatusDirect(
 				{
@@ -478,10 +477,10 @@ export class DirectBackend extends FlowBackend {
 	 * @returns {Promise<Object>} Subtask progress data
 	 */
 	async getSubtaskProgress(subtaskId) {
-		                try {
-                        const { getTask } = await import(
-                                '../../../../../mcp-server/src/core/task-master-core.js'
-                        );
+		try {
+			const { getTask } = await import(
+				'../../../../../mcp-server/src/core/task-master-core.js'
+			);
 
 			const result = await getTask(
 				{
@@ -1417,12 +1416,15 @@ export class DirectBackend extends FlowBackend {
 			// Initialize flow config
 			await flowConfig.initialize(this.projectRoot);
 
-			const claudeCodeConfig = await flowConfig.getValue('vibekit.agents.claude-code', {
-				enabled: false,
-				permissionMode: 'acceptEdits',
-				defaultMaxTurns: 3,
-				allowedTools: ['Read', 'Write', 'Bash']
-			});
+			const claudeCodeConfig = await flowConfig.getValue(
+				'vibekit.agents.claude-code',
+				{
+					enabled: false,
+					permissionMode: 'acceptEdits',
+					defaultMaxTurns: 3,
+					allowedTools: ['Read', 'Write', 'Bash']
+				}
+			);
 
 			return {
 				success: true,
@@ -1520,16 +1522,16 @@ export class DirectBackend extends FlowBackend {
 	// Get detailed Claude session data
 	async getClaudeSessionDetails(sessionId) {
 		try {
-					// First get the session info from index
-		const indexPath = path.join(
-			this.projectRoot,
-			'scripts',
-			'modules',
-			'flow',
-			'config',
-			'state',
-			'claude-sessions.json'
-		);
+			// First get the session info from index
+			const indexPath = path.join(
+				this.projectRoot,
+				'scripts',
+				'modules',
+				'flow',
+				'config',
+				'state',
+				'claude-sessions.json'
+			);
 
 			let sessionInfo = null;
 			try {
@@ -1585,15 +1587,15 @@ export class DirectBackend extends FlowBackend {
 	// Save Claude Code session
 	async saveClaudeCodeSession(sessionData) {
 		try {
-					const sessionsPath = path.join(
-			this.projectRoot,
-			'scripts',
-			'modules',
-			'flow',
-			'config',
-			'state',
-			'claude-sessions.json'
-		);
+			const sessionsPath = path.join(
+				this.projectRoot,
+				'scripts',
+				'modules',
+				'flow',
+				'config',
+				'state',
+				'claude-sessions.json'
+			);
 			let sessions = [];
 
 			try {
@@ -1642,13 +1644,15 @@ export class DirectBackend extends FlowBackend {
 		try {
 			// outputPath can be a directory or specific file path
 			const isDirectory = !outputPath.endsWith('.md');
-			const claudeMdPath = isDirectory 
+			const claudeMdPath = isDirectory
 				? path.join(outputPath, 'CLAUDE.md')
 				: outputPath;
 
 			// Use new TaskContextGenerator for consistent context generation
-			const { TaskContextGenerator } = await import('../../shared/services/context-generation/index.js');
-			
+			const { TaskContextGenerator } = await import(
+				'../../shared/services/context-generation/index.js'
+			);
+
 			const contextGenerator = new TaskContextGenerator({
 				backend: this,
 				projectRoot: this.projectRoot, // Use main project root
@@ -1843,14 +1847,18 @@ Please implement this task following best practices and ensuring high quality co
 
 ## Tasks to Complete
 
-${tasks.map((task, index) => `
+${tasks
+	.map(
+		(task, index) => `
 ### Task ${index + 1}: ${task.title} (ID: ${task.id})
 **Description**: ${task.description || 'No description'}
 **Status**: ${task.status || 'pending'}
 ${task.details ? `**Details**: ${task.details}` : ''}
 ${task.testStrategy ? `**Test Strategy**: ${task.testStrategy}` : ''}
 ${task.dependencies?.length ? `**Dependencies**: ${task.dependencies.join(', ')}` : ''}
-`).join('\n')}
+`
+	)
+	.join('\n')}
 
 ${combinedContext}
 
@@ -2030,8 +2038,6 @@ Please implement all tasks following best practices and ensuring high quality co
 			);
 		}
 	}
-
-
 
 	/**
 	 * Check if a task has research in its details
@@ -2600,16 +2606,16 @@ Please implement all tasks following best practices and ensuring high quality co
 	// Update Claude session with PR information
 	async updateClaudeSessionPR(sessionId, prInfo) {
 		try {
-					// Update the index
-		const indexPath = path.join(
-			this.projectRoot,
-			'scripts',
-			'modules',
-			'flow',
-			'config',
-			'state',
-			'claude-sessions.json'
-		);
+			// Update the index
+			const indexPath = path.join(
+				this.projectRoot,
+				'scripts',
+				'modules',
+				'flow',
+				'config',
+				'state',
+				'claude-sessions.json'
+			);
 
 			let index = [];
 			try {
@@ -2672,7 +2678,6 @@ Please implement all tasks following best practices and ensuring high quality co
 		description += `- File Changes: ${stats.fileChanges || 0}\n`;
 		description += `- Duration: ${stats.durationSeconds || 0}s\n`;
 		description += `- Cost: $${(stats.totalCost || 0).toFixed(4)}\n`;
-
 
 		if (stats.toolsUsed && Object.keys(stats.toolsUsed).length > 0) {
 			description += `\n**Tools Used:**\n`;

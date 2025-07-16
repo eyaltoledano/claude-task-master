@@ -1,106 +1,99 @@
 {
-  "enabled": false,
-  "version": "4.1",
-  "cacheMaxAge": "2h",
-  "cacheMaxSize": "100MB",
-  "supportedLanguages": [
-    "javascript",
-    "typescript",
-    "python",
-    "go"
-  ],
-  "excludePatterns": [
-    "node_modules/**",
-    "dist/**",
-    "build/**",
-    ".git/**",
-    "coverage/**",
-    "*.min.js",
-    "*.bundle.js"
-  ],
-  "parsing": {
-    "maxFileSize": "1MB",
-    "timeoutMs": 5000,
-    "enableFallback": true
-  },
-  "fileWatching": {
-    "enabled": true,
-    "batchDelay": 500,
-    "maxConcurrentAnalysis": 3,
-    "watchPatterns": [
-      "**/*.{js,jsx,ts,tsx,py,go,json}"
-    ],
-    "ignorePatterns": [
-      "node_modules/**",
-      "dist/**",
-      "build/**",
-      ".git/**",
-      "coverage/**",
-      "*.tmp",
-      "*.log"
-    ],
-    "enablePreemptiveAnalysis": true,
-    "backgroundProcessing": true,
-    "debounceWindow": 300,
-    "resourceThrottling": {
-      "cpuThreshold": 80,
-      "memoryThreshold": 75,
-      "enableAdaptiveThrottling": true
-    }
-  },
-  "cacheInvalidation": {
-    "strategy": "selective",
-    "dependencyTracking": true,
-    "batchInvalidation": true,
-    "maxInvalidationDelay": 1000,
-    "maxDependencyDepth": 5,
-    "separateTestFiles": true,
-    "contentHashing": {
-      "algorithm": "sha256",
-      "languageAware": true,
-      "normalizeWhitespace": true,
-      "ignoreComments": true
-    }
-  },
-  "worktreeManager": {
-    "enabled": true,
-    "discoveryInterval": 30000,
-    "maxConcurrentWatchers": 8,
-    "coordinationStrategy": "balanced",
-    "resourceLimits": {
-      "maxMemoryMB": 50,
-      "maxCpuPercent": 15,
-      "maxEventsPerSecond": 1000
-    },
-    "conflictResolution": {
-      "maxRetries": 3,
-      "retryDelayMs": 100,
-      "timeoutMs": 5000
-    },
-    "gitIntegration": {
-      "enabled": false,
-      "preserveExistingHooks": true,
-      "enableGracefulFallback": true
-    }
-  },
-  "performance": {
-    "maxAnalysisTime": 2000,
-    "maxMemoryUsage": "200MB",
-    "cacheHitRateTarget": 80,
-    "monitoringInterval": 5000,
-    "gracefulDegradation": true
-  },
-  "contextGeneration": {
-    "maxFunctions": 10,
-    "maxComplexityScore": 8,
-    "includeImports": true,
-    "includeDependencies": true,
-    "relevanceThreshold": 0.4,
-    "maxContextSize": "50KB"
-  },
-  "debugging": {
-    "enableVerboseLogging": false,
-    "logConfigChanges": true,
-    "validateOnReload": true
-  }
-} 
+	"enabled": false,
+	"version": "4.1",
+	"cacheMaxAge": "2h",
+	"cacheMaxSize": "100MB",
+	"supportedLanguages": ["javascript", "typescript", "python", "go"],
+	"excludePatterns": [
+		"node_modules/**",
+		"dist/**",
+		"build/**",
+		".git/**",
+		"coverage/**",
+		"*.min.js",
+		"*.bundle.js"
+	],
+	"parsing": {
+		"maxFileSize": "1MB",
+		"timeoutMs": 5000,
+		"enableFallback": true
+	},
+	"fileWatching": {
+		"enabled": true,
+		"batchDelay": 500,
+		"maxConcurrentAnalysis": 3,
+		"watchPatterns": ["**/*.{js,jsx,ts,tsx,py,go,json}"],
+		"ignorePatterns": [
+			"node_modules/**",
+			"dist/**",
+			"build/**",
+			".git/**",
+			"coverage/**",
+			"*.tmp",
+			"*.log"
+		],
+		"enablePreemptiveAnalysis": true,
+		"backgroundProcessing": true,
+		"debounceWindow": 300,
+		"resourceThrottling": {
+			"cpuThreshold": 80,
+			"memoryThreshold": 75,
+			"enableAdaptiveThrottling": true
+		}
+	},
+	"cacheInvalidation": {
+		"strategy": "selective",
+		"dependencyTracking": true,
+		"batchInvalidation": true,
+		"maxInvalidationDelay": 1000,
+		"maxDependencyDepth": 5,
+		"separateTestFiles": true,
+		"contentHashing": {
+			"algorithm": "sha256",
+			"languageAware": true,
+			"normalizeWhitespace": true,
+			"ignoreComments": true
+		}
+	},
+	"worktreeManager": {
+		"enabled": true,
+		"discoveryInterval": 30000,
+		"maxConcurrentWatchers": 8,
+		"coordinationStrategy": "balanced",
+		"resourceLimits": {
+			"maxMemoryMB": 50,
+			"maxCpuPercent": 15,
+			"maxEventsPerSecond": 1000
+		},
+		"conflictResolution": {
+			"maxRetries": 3,
+			"retryDelayMs": 100,
+			"timeoutMs": 5000
+		},
+		"gitIntegration": {
+			"enabled": false,
+			"preserveExistingHooks": true,
+			"enableGracefulFallback": true
+		}
+	},
+	"performance": {
+		"maxAnalysisTime": 2000,
+		"maxMemoryUsage": "200MB",
+		"cacheHitRateTarget": 80,
+		"monitoringInterval": 5000,
+		"gracefulDegradation": true
+	},
+	"contextGeneration": {
+		"maxFunctions": 10,
+		"maxComplexityScore": 8,
+		"includeImports": true,
+		"includeDependencies": true,
+		"relevanceThreshold": 0.4,
+		"maxContextSize": "50KB"
+	},
+	"debugging": {
+		"enableVerboseLogging": false,
+		"logConfigChanges": true,
+		"validateOnReload": true
+	}
+}

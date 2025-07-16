@@ -22,4 +22,4 @@ export { default as CleanupDashboard } from './CleanupDashboard.jsx';
 // PR-related components
 export { default as PRDetailsPanel } from './PRDetailsPanel.jsx';
 export { default as PRActionPanel } from './PRActionPanel.jsx';
-export { default as PRListComponent } from './PRListComponent.jsx'; 
+export { default as PRListComponent } from './PRListComponent.jsx';

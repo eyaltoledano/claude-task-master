@@ -373,12 +373,18 @@ export class BranchAwarenessManager extends EventEmitter {
 		try {
 			await this.flowConfig.initialize(this.projectRoot);
 
-			await this.flowConfig.setValue('branchAwareness.currentBranch', this.currentBranch);
+			await this.flowConfig.setValue(
+				'branchAwareness.currentBranch',
+				this.currentBranch
+			);
 			await this.flowConfig.setValue(
 				'branchAwareness.lastWorkingBranch',
 				this.lastWorkingBranch
 			);
-			await this.flowConfig.setValue('branchAwareness.branchHistory', this.branchHistory);
+			await this.flowConfig.setValue(
+				'branchAwareness.branchHistory',
+				this.branchHistory
+			);
 			await this.flowConfig.setValue(
 				'branchAwareness.lastUpdated',
 				new Date().toISOString()

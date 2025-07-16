@@ -142,7 +142,8 @@ export function StreamingModal({ isOpen, onClose }) {
 	};
 
 	const getCurrentThinkingMessage = () => {
-		if (state.state !== 'processing' || !state.context?.operationType) return '';
+		if (state.state !== 'processing' || !state.context?.operationType)
+			return '';
 
 		const config = streamingStateManager.getOperationConfig(
 			state.context.operationType

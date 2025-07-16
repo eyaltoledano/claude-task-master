@@ -105,115 +105,115 @@
  */
 
 export const ServiceInterfaces = {
-  /**
-   * Backend Service Interface
-   * Handles all task-related operations
-   */
-  Backend: {
-    // Task operations
-    getTasks: 'function',
-    getTask: 'function',
-    setTaskStatus: 'function',
-    addTask: 'function',
-    updateTask: 'function',
-    removeTask: 'function',
-    
-    // Subtask operations
-    addSubtask: 'function',
-    updateSubtask: 'function',
-    removeSubtask: 'function',
-    
-    // Tag operations
-    getTags: 'function',
-    addTag: 'function',
-    deleteTag: 'function',
-    useTag: 'function',
-    
-    // PRD and complexity
-    parsePRD: 'function',
-    analyzeComplexity: 'function',
-    expandTask: 'function',
-    getComplexityReport: 'function',
-    
-    // Properties
-    projectRoot: 'string'
-  },
-  
-  /**
-   * Logger Service Interface
-   * Provides structured logging capabilities
-   */
-  Logger: {
-    info: 'function',
-    warn: 'function',
-    error: 'function',
-    debug: 'function',
-    success: 'function',
-    child: 'function'
-  },
-  
-  /**
-   * Configuration Manager Interface
-   * Manages application configuration
-   */
-  ConfigManager: {
-    load: 'function',
-    save: 'function',
-    get: 'function',
-    set: 'function',
-    getAll: 'function',
-    validate: 'function'
-  },
-  
-  /**
-   * AST Configuration Manager Interface
-   * Manages AST-specific configuration
-   */
-  ASTConfigManager: {
-    load: 'function',
-    save: 'function',
-    get: 'function',
-    set: 'function',
-    getAll: 'function',
-    validate: 'function'
-  },
-  
-  /**
-   * Branch Manager Interface
-   * Manages git branch awareness
-   */
-  BranchManager: {
-    getCurrentBranch: 'function',
-    hasUncommittedChanges: 'function',
-    getStatus: 'function',
-    checkout: 'function',
-    startWatching: 'function',
-    stopWatching: 'function'
-  },
-  
-  /**
-   * Hook Manager Interface
-   * Manages application lifecycle hooks
-   */
-  HookManager: {
-    register: 'function',
-    execute: 'function',
-    getHooks: 'function',
-    unregister: 'function',
-    listHooks: 'function'
-  },
-  
-  /**
-   * Provider Registry Interface
-   * Manages AI/service providers
-   */
-  ProviderRegistry: {
-    register: 'function',
-    get: 'function',
-    list: 'function',
-    has: 'function',
-    unregister: 'function'
-  }
+	/**
+	 * Backend Service Interface
+	 * Handles all task-related operations
+	 */
+	Backend: {
+		// Task operations
+		getTasks: 'function',
+		getTask: 'function',
+		setTaskStatus: 'function',
+		addTask: 'function',
+		updateTask: 'function',
+		removeTask: 'function',
+
+		// Subtask operations
+		addSubtask: 'function',
+		updateSubtask: 'function',
+		removeSubtask: 'function',
+
+		// Tag operations
+		getTags: 'function',
+		addTag: 'function',
+		deleteTag: 'function',
+		useTag: 'function',
+
+		// PRD and complexity
+		parsePRD: 'function',
+		analyzeComplexity: 'function',
+		expandTask: 'function',
+		getComplexityReport: 'function',
+
+		// Properties
+		projectRoot: 'string'
+	},
+
+	/**
+	 * Logger Service Interface
+	 * Provides structured logging capabilities
+	 */
+	Logger: {
+		info: 'function',
+		warn: 'function',
+		error: 'function',
+		debug: 'function',
+		success: 'function',
+		child: 'function'
+	},
+
+	/**
+	 * Configuration Manager Interface
+	 * Manages application configuration
+	 */
+	ConfigManager: {
+		load: 'function',
+		save: 'function',
+		get: 'function',
+		set: 'function',
+		getAll: 'function',
+		validate: 'function'
+	},
+
+	/**
+	 * AST Configuration Manager Interface
+	 * Manages AST-specific configuration
+	 */
+	ASTConfigManager: {
+		load: 'function',
+		save: 'function',
+		get: 'function',
+		set: 'function',
+		getAll: 'function',
+		validate: 'function'
+	},
+
+	/**
+	 * Branch Manager Interface
+	 * Manages git branch awareness
+	 */
+	BranchManager: {
+		getCurrentBranch: 'function',
+		hasUncommittedChanges: 'function',
+		getStatus: 'function',
+		checkout: 'function',
+		startWatching: 'function',
+		stopWatching: 'function'
+	},
+
+	/**
+	 * Hook Manager Interface
+	 * Manages application lifecycle hooks
+	 */
+	HookManager: {
+		register: 'function',
+		execute: 'function',
+		getHooks: 'function',
+		unregister: 'function',
+		listHooks: 'function'
+	},
+
+	/**
+	 * Provider Registry Interface
+	 * Manages AI/service providers
+	 */
+	ProviderRegistry: {
+		register: 'function',
+		get: 'function',
+		list: 'function',
+		has: 'function',
+		unregister: 'function'
+	}
 };
 
 /**
@@ -224,24 +224,26 @@ export const ServiceInterfaces = {
  * @throws {Error} If service doesn't match interface
  */
 export function validateService(service, serviceInterface, serviceName) {
-  if (!service) {
-    throw new Error(`Service '${serviceName}' is null or undefined`);
-  }
-  
-  for (const [property, expectedType] of Object.entries(serviceInterface)) {
-    const actualType = typeof service[property];
-    
-    if (actualType === 'undefined') {
-      throw new Error(`Service '${serviceName}' missing required property: ${property}`);
-    }
-    
-    if (actualType !== expectedType) {
-      throw new Error(
-        `Service '${serviceName}' property '${property}' has wrong type. ` +
-        `Expected ${expectedType}, got ${actualType}`
-      );
-    }
-  }
+	if (!service) {
+		throw new Error(`Service '${serviceName}' is null or undefined`);
+	}
+
+	for (const [property, expectedType] of Object.entries(serviceInterface)) {
+		const actualType = typeof service[property];
+
+		if (actualType === 'undefined') {
+			throw new Error(
+				`Service '${serviceName}' missing required property: ${property}`
+			);
+		}
+
+		if (actualType !== expectedType) {
+			throw new Error(
+				`Service '${serviceName}' property '${property}' has wrong type. ` +
+					`Expected ${expectedType}, got ${actualType}`
+			);
+		}
+	}
 }
 
 /**
@@ -250,21 +252,21 @@ export function validateService(service, serviceInterface, serviceName) {
  * @throws {Error} If any service doesn't match its interface
  */
 export function validateServices(services) {
-  const validations = [
-    ['backend', ServiceInterfaces.Backend],
-    ['logger', ServiceInterfaces.Logger],
-    ['configManager', ServiceInterfaces.ConfigManager],
-    ['astConfigManager', ServiceInterfaces.ASTConfigManager],
-    ['branchManager', ServiceInterfaces.BranchManager],
-    ['hookManager', ServiceInterfaces.HookManager],
-    ['providerRegistry', ServiceInterfaces.ProviderRegistry]
-  ];
-  
-  for (const [serviceName, serviceInterface] of validations) {
-    if (services[serviceName]) {
-      validateService(services[serviceName], serviceInterface, serviceName);
-    }
-  }
+	const validations = [
+		['backend', ServiceInterfaces.Backend],
+		['logger', ServiceInterfaces.Logger],
+		['configManager', ServiceInterfaces.ConfigManager],
+		['astConfigManager', ServiceInterfaces.ASTConfigManager],
+		['branchManager', ServiceInterfaces.BranchManager],
+		['hookManager', ServiceInterfaces.HookManager],
+		['providerRegistry', ServiceInterfaces.ProviderRegistry]
+	];
+
+	for (const [serviceName, serviceInterface] of validations) {
+		if (services[serviceName]) {
+			validateService(services[serviceName], serviceInterface, serviceName);
+		}
+	}
 }
 
 /**
@@ -275,11 +277,11 @@ export function validateServices(services) {
  * @returns {T} The requested service
  */
 export function getService(services, serviceName) {
-  const service = services[serviceName];
-  if (!service) {
-    throw new Error(`Service '${serviceName}' not found in container`);
-  }
-  return service;
+	const service = services[serviceName];
+	if (!service) {
+		throw new Error(`Service '${serviceName}' not found in container`);
+	}
+	return service;
 }
 
 /**
@@ -289,23 +291,23 @@ export function getService(services, serviceName) {
  * @returns {Object} Mock service
  */
 export function createMockService(serviceInterface, overrides = {}) {
-  const mock = {};
-  
-  for (const [property, type] of Object.entries(serviceInterface)) {
-    if (overrides[property]) {
-      mock[property] = overrides[property];
-    } else if (type === 'function') {
-      mock[property] = jest.fn();
-    } else if (type === 'string') {
-      mock[property] = `mock-${property}`;
-    } else if (type === 'number') {
-      mock[property] = 0;
-    } else if (type === 'boolean') {
-      mock[property] = false;
-    } else if (type === 'object') {
-      mock[property] = {};
-    }
-  }
-  
-  return mock;
-} 
+	const mock = {};
+
+	for (const [property, type] of Object.entries(serviceInterface)) {
+		if (overrides[property]) {
+			mock[property] = overrides[property];
+		} else if (type === 'function') {
+			mock[property] = jest.fn();
+		} else if (type === 'string') {
+			mock[property] = `mock-${property}`;
+		} else if (type === 'number') {
+			mock[property] = 0;
+		} else if (type === 'boolean') {
+			mock[property] = false;
+		} else if (type === 'object') {
+			mock[property] = {};
+		}
+	}
+
+	return mock;
+}

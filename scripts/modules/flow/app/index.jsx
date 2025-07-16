@@ -88,7 +88,10 @@ export async function run(options = {}) {
 	// Create app instance with ThemeProvider and ServiceProvider
 	const app = render(
 		<ThemeProvider theme={inkUITheme}>
-			<ServiceProvider backend={backend} projectRoot={options.projectRoot || process.cwd()}>
+			<ServiceProvider
+				backend={backend}
+				projectRoot={options.projectRoot || process.cwd()}
+			>
 				<FlowApp backend={backend} options={options} />
 			</ServiceProvider>
 		</ThemeProvider>
@@ -104,4 +107,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		console.error('Error running flow:', error);
 		process.exit(1);
 	});
-} 
+}

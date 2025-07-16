@@ -4,4 +4,4 @@
  */
 
 // AI message handling
-export * from './message-handler.js'; 
+export * from './message-handler.js';
