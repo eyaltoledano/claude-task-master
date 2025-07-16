@@ -113,12 +113,12 @@ export async function runInteractiveProfilesSetup() {
 		const hasMcpConfig = profile.mcpConfig === true;
 
 		if (!profile.includeDefaultRules) {
-			// Integration guide profiles (claude, codex, gemini, amp) - don't include standard coding rules
+			// Integration guide profiles (claude, codex, gemini, zed, amp) - don't include standard coding rules
 			if (profileName === 'claude') {
 				description = 'Integration guide with Task Master slash commands';
 			} else if (profileName === 'codex') {
 				description = 'Comprehensive Task Master integration guide';
-			} else if (profileName === 'gemini') {
+			} else if (profileName === 'gemini' || profileName === 'zed') {
 				description = 'Integration guide and MCP config';
 			} else if (profileName === 'amp') {
 				description = 'Integration guide and MCP config';
