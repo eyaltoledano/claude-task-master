@@ -28,7 +28,7 @@ import { CommandPalette } from '../features/ui';
 import { MCPServerManager } from '../components/MCPServerManager.jsx';
 import { ChatScreen } from '../features/chat';
 import { WorkflowGuide } from '../features/workflows';
-import { MCPManagementScreen } from '../components/MCPManagementScreen.jsx';
+import { MCPManagementScreen } from '../features/mcp/components/MCPManagementScreen.jsx';
 import { NextTaskModal } from '../features/tasks/index.js';
 import { WorktreePromptModal } from '../components/WorktreePromptModal.jsx';
 import { ProvidersScreen } from '../components/ProvidersScreen.jsx';
