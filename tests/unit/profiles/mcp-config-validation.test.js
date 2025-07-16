@@ -92,7 +92,12 @@ describe('MCP Configuration Validation', () => {
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
-					expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+					// Claude profile uses root directory (.), so its path is just '.mcp.json'
+					if (profileName === 'claude') {
+						expect(profile.mcpConfigPath).toBe('.mcp.json');
+					} else {
+						expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+					}
 				}
 			});
 		});
@@ -123,17 +128,13 @@ describe('MCP Configuration Validation', () => {
 		});
 
 		test('should have null config name for non-MCP profiles', () => {
-			const clineProfile = getRulesProfile('cline');
-			expect(clineProfile.mcpConfigName).toBe(null);
+			// Only codex, cline, and trae profiles should have null config names
+			const nonMcpProfiles = ['codex', 'cline', 'trae'];
 
-			const traeProfile = getRulesProfile('trae');
-			expect(traeProfile.mcpConfigName).toBe(null);
-
-			const claudeProfile = getRulesProfile('claude');
-			expect(claudeProfile.mcpConfigName).toBe(null);
-
-			const codexProfile = getRulesProfile('codex');
-			expect(codexProfile.mcpConfigName).toBe(null);
+			for (const profileName of nonMcpProfiles) {
+				const profile = getRulesProfile(profileName);
+				expect(profile.mcpConfigName).toBe(null);
+			}
 		});
 	});
 
@@ -185,17 +186,19 @@ describe('MCP Configuration Validation', () => {
 
 	describe('MCP Configuration Creation Logic', () => {
 		test('should indicate which profiles require MCP configuration creation', () => {
+			// Get all profiles that have MCP configuration enabled
 			const mcpEnabledProfiles = RULE_PROFILES.filter((profileName) => {
 				const profile = getRulesProfile(profileName);
 				return profile.mcpConfig !== false;
 			});
 
+			// Verify expected MCP-enabled profiles
+			expect(mcpEnabledProfiles).toContain('claude');
 			expect(mcpEnabledProfiles).toContain('cursor');
 			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
-			expect(mcpEnabledProfiles).not.toContain('claude');
 			expect(mcpEnabledProfiles).not.toContain('cline');
 			expect(mcpEnabledProfiles).not.toContain('codex');
 			expect(mcpEnabledProfiles).not.toContain('trae');
@@ -215,18 +218,25 @@ describe('MCP Configuration Validation', () => {
 
 	describe('MCP Configuration Path Usage Verification', () => {
 		test('should verify that rule transformer functions use mcpConfigPath correctly', () => {
-			// This test verifies that the mcpConfigPath property exists and is properly formatted
-			// for use with the setupMCPConfiguration function
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
 					// Verify the path is properly formatted for path.join usage
 					expect(profile.mcpConfigPath.startsWith('/')).toBe(false);
-					expect(profile.mcpConfigPath).toContain('/');
+
+					// Claude profile uses root directory (.), so its path is just '.mcp.json'
+					if (profileName === 'claude') {
+						expect(profile.mcpConfigPath).toBe('.mcp.json');
+					} else {
+						expect(profile.mcpConfigPath).toContain('/');
+					}
 
 					// Verify it matches the expected pattern: profileDir/configName
 					const expectedPath = `${profile.profileDir}/${profile.mcpConfigName}`;
-					expect(profile.mcpConfigPath).toBe(expectedPath);
+					// For Claude, path.join('.', '.mcp.json') returns '.mcp.json'
+					const normalizedExpected =
+						profileName === 'claude' ? '.mcp.json' : expectedPath;
+					expect(profile.mcpConfigPath).toBe(normalizedExpected);
 				}
 			});
 		});
@@ -250,20 +260,19 @@ describe('MCP Configuration Validation', () => {
 
 	describe('MCP Configuration Function Integration', () => {
 		test('should verify that setupMCPConfiguration receives the correct mcpConfigPath parameter', () => {
-			// This test verifies the integration between rule transformer and mcp-utils
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
-					// Verify that the mcpConfigPath can be used directly with setupMCPConfiguration
-					// The function signature is: setupMCPConfiguration(projectDir, mcpConfigPath)
-					expect(profile.mcpConfigPath).toBeDefined();
-					expect(typeof profile.mcpConfigPath).toBe('string');
-
 					// Verify the path structure is correct for the new function signature
-					const parts = profile.mcpConfigPath.split('/');
-					expect(parts).toHaveLength(2); // Should be profileDir/configName
-					expect(parts[0]).toBe(profile.profileDir);
-					expect(parts[1]).toBe(profile.mcpConfigName);
+					if (profileName === 'claude') {
+						// Claude profile uses root directory, so path is just '.mcp.json'
+						expect(profile.mcpConfigPath).toBe('.mcp.json');
+					} else {
+						const parts = profile.mcpConfigPath.split('/');
+						expect(parts).toHaveLength(2); // Should be profileDir/configName
+						expect(parts[0]).toBe(profile.profileDir);
+						expect(parts[1]).toBe(profile.mcpConfigName);
+					}
 				}
 			});
 		});
@@ -271,7 +280,9 @@ describe('MCP Configuration Validation', () => {
 
 	describe('MCP configuration validation', () => {
 		const mcpProfiles = ['cursor', 'gemini', 'roo', 'windsurf', 'vscode'];
-		const nonMcpProfiles = ['claude', 'codex', 'cline', 'trae'];
+		const nonMcpProfiles = ['codex', 'cline', 'trae'];
+		const profilesWithLifecycle = ['claude'];
+		const profilesWithoutLifecycle = ['codex'];
 
 		test.each(mcpProfiles)(
 			'should have valid MCP config for %s profile',

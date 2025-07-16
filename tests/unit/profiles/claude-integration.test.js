@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { claudeProfile } from '../../../src/profiles/claude.js';
 
 // Mock external modules
 jest.mock('child_process', () => ({
@@ -77,11 +78,22 @@ describe('Claude Profile Integration', () => {
 		expect(mkdirCalls).toHaveLength(0);
 	});
 
-	test('does not create MCP configuration files', () => {
+	test('supports MCP configuration when using rule transformer', () => {
+		// This test verifies that the Claude profile is configured to support MCP
+		// The actual MCP file creation is handled by the rule transformer
+
+		// Assert - Claude profile should now support MCP configuration
+		expect(claudeProfile.mcpConfig).toBe(true);
+		expect(claudeProfile.mcpConfigName).toBe('.mcp.json');
+		expect(claudeProfile.mcpConfigPath).toBe('.mcp.json');
+	});
+
+	test('mock function does not create MCP configuration files', () => {
 		// Act
 		mockCreateClaudeStructure();
 
-		// Assert - Claude profile should not create any MCP config files
+		// Assert - The mock function should not create MCP config files
+		// (This is expected since the mock doesn't use the rule transformer)
 		const writeFileCalls = fs.writeFileSync.mock.calls;
 		const mcpConfigCalls = writeFileCalls.filter(
 			(call) =>
