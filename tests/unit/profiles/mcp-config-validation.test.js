@@ -143,6 +143,8 @@ describe('MCP Configuration Validation', () => {
 			const profileDirs = new Set();
 			// Profiles that use root directory (can share the same directory)
 			const rootProfiles = ['claude', 'codex', 'gemini'];
+			// Profiles that intentionally share the same directory
+			const sharedDirectoryProfiles = ['amp', 'vscode']; // Both use .vscode
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
@@ -152,10 +154,18 @@ describe('MCP Configuration Validation', () => {
 					expect(profile.rulesDir).toBe('.');
 				}
 
-				// Profile directories should be unique (except for root profiles)
-				if (!rootProfiles.includes(profileName) || profile.profileDir !== '.') {
-					expect(profileDirs.has(profile.profileDir)).toBe(false);
-					profileDirs.add(profile.profileDir);
+				// Profile directories should be unique (except for root profiles and shared directory profiles)
+				if (
+					!rootProfiles.includes(profileName) &&
+					!sharedDirectoryProfiles.includes(profileName)
+				) {
+					if (profile.profileDir !== '.') {
+						expect(profileDirs.has(profile.profileDir)).toBe(false);
+						profileDirs.add(profile.profileDir);
+					}
+				} else if (sharedDirectoryProfiles.includes(profileName)) {
+					// Shared directory profiles should use .vscode
+					expect(profile.profileDir).toBe('.vscode');
 				}
 			});
 		});
@@ -307,6 +317,7 @@ describe('MCP Configuration Validation', () => {
 
 	describe('Profile structure validation', () => {
 		const mcpProfiles = [
+			'amp',
 			'cursor',
 			'gemini',
 			'roo',
@@ -315,7 +326,7 @@ describe('MCP Configuration Validation', () => {
 			'trae',
 			'vscode'
 		];
-		const profilesWithLifecycle = ['claude'];
+		const profilesWithLifecycle = ['amp', 'claude'];
 		const profilesWithoutLifecycle = ['codex'];
 
 		test.each(mcpProfiles)(

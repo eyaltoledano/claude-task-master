@@ -1,5 +1,5 @@
 /**
- * @typedef {'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'roo' | 'trae' | 'windsurf' | 'vscode'} RulesProfile
+ * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'roo' | 'trae' | 'windsurf' | 'vscode'} RulesProfile
  */
 
 /**
@@ -10,6 +10,7 @@
  *
  * @type {RulesProfile[]}
  * @description Defines possible rule profile sets:
+ * - amp: Amp Code integration
  * - claude: Claude Code integration
  * - cline: Cline IDE rules
  * - codex: Codex integration
@@ -26,6 +27,7 @@
  * 3. Export it as {profile}Profile in src/profiles/index.js
  */
 export const RULE_PROFILES = [
+	'amp',
 	'claude',
 	'cline',
 	'codex',

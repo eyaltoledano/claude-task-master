@@ -180,6 +180,11 @@ describe('Rule Transformer - General', () => {
 
 		it('should have correct MCP configuration for each profile', () => {
 			const expectedConfigs = {
+				amp: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.vscode/settings.json'
+				},
 				claude: {
 					mcpConfig: true,
 					mcpConfigName: '.mcp.json',

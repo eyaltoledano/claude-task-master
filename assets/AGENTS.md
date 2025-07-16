@@ -1,4 +1,4 @@
-# Task Master AI - Claude Code Integration Guide
+# Task Master AI - Agent Integration Guide
 
 ## Essential Commands
 
