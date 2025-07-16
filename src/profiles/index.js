@@ -1,4 +1,5 @@
 // Profile exports for centralized importing
+export { ampProfile } from './amp.js';
 export { claudeProfile } from './claude.js';
 export { clineProfile } from './cline.js';
 export { codexProfile } from './codex.js';
@@ -9,3 +10,4 @@ export { rooProfile } from './roo.js';
 export { traeProfile } from './trae.js';
 export { vscodeProfile } from './vscode.js';
 export { windsurfProfile } from './windsurf.js';
+export { zedProfile } from './zed.js';

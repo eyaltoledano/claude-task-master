@@ -296,6 +296,16 @@
 	],
 	"groq": [
 		{
+			"id": "moonshotai/kimi-k2-instruct",
+			"swe_score": 0.66,
+			"cost_per_1m_tokens": {
+				"input": 1.0,
+				"output": 3.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384
+		},
+		{
 			"id": "llama-3.3-70b-versatile",
 			"swe_score": 0.55,
 			"cost_per_1m_tokens": {

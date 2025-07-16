@@ -113,7 +113,7 @@ export async function runInteractiveProfilesSetup() {
 		const hasMcpConfig = profile.mcpConfig === true;
 
 		if (!profile.includeDefaultRules) {
-			// Integration guide profiles (claude, codex, gemini, opencode) - don't include standard coding rules
+			// Integration guide profiles (claude, codex, gemini, opencode, zed, amp) - don't include standard coding rules
 			if (profileName === 'claude') {
 				description = 'Integration guide with Task Master slash commands';
 			} else if (profileName === 'codex') {
@@ -199,7 +199,7 @@ export function generateProfileSummary(profileName, addResult) {
 	const profileConfig = getRulesProfile(profileName);
 
 	if (!profileConfig.includeDefaultRules) {
-		// Integration guide profiles (claude, codex, gemini)
+		// Integration guide profiles (claude, codex, gemini, amp)
 		return `Summary for ${profileName}: Integration guide installed.`;
 	} else {
 		// Rule profiles with coding guidelines
@@ -225,7 +225,7 @@ export function generateProfileRemovalSummary(profileName, removeResult) {
 	const profileConfig = getRulesProfile(profileName);
 
 	if (!profileConfig.includeDefaultRules) {
-		// Integration guide profiles (claude, codex, gemini)
+		// Integration guide profiles (claude, codex, gemini, amp)
 		const baseMessage = `Summary for ${profileName}: Integration guide removed`;
 		if (removeResult.notice) {
 			return `${baseMessage} (${removeResult.notice})`;

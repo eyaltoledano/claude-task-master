@@ -1,21 +1,21 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { z } from 'zod';
-import { fileURLToPath } from 'url';
-import { log, findProjectRoot, resolveEnvVariable, isEmpty } from './utils.js';
+import { AI_COMMAND_NAMES } from '../../src/constants/commands.js';
 import {
 	LEGACY_CONFIG_FILE,
 	TASKMASTER_DIR
 } from '../../src/constants/paths.js';
-import { findConfigPath } from '../../src/utils/path-utils.js';
 import {
-	VALIDATED_PROVIDERS,
+	ALL_PROVIDERS,
 	CUSTOM_PROVIDERS,
 	CUSTOM_PROVIDERS_ARRAY,
-	ALL_PROVIDERS
+	VALIDATED_PROVIDERS
 } from '../../src/constants/providers.js';
-import { AI_COMMAND_NAMES } from '../../src/constants/commands.js';
+import { findConfigPath } from '../../src/utils/path-utils.js';
+import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -641,6 +641,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
+		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
 		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
@@ -725,6 +726,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'xai':
 				apiKeyToCheck = mcpEnv.XAI_API_KEY;
 				placeholderValue = 'YOUR_XAI_API_KEY_HERE';
+				break;
+			case 'groq':
+				apiKeyToCheck = mcpEnv.GROQ_API_KEY;
+				placeholderValue = 'YOUR_GROQ_API_KEY_HERE';
 				break;
 			case 'ollama':
 				return true; // No key needed

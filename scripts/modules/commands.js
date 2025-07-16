@@ -2353,10 +2353,14 @@ ${result.result}
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (taskId, options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				complexityReportPath: options.report || false
-			});
+			const initOptions = {
+				tasksPath: options.file || true
+			};
+			// Only pass complexityReportPath if user provided a custom path
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
+			}
+			const taskMaster = initTaskMaster(initOptions);
 
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
