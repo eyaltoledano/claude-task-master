@@ -2,11 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import path from 'path';
 import fs from 'fs';
-import { VibeKit } from '@vibe-kit/sdk';
 import LoadingSpinner from '../shared/components/ui/LoadingSpinner.jsx';
 import AnimatedButton from '../shared/components/ui/AnimatedButton.jsx';
 import ProgressBar from '../shared/components/ui/ProgressBar.jsx';
 import { useAppContext } from '../app/index-root.jsx';
+
+// Dynamic import to prevent issues during test execution
+let VibeKit = null;
+const loadVibeKit = async () => {
+	if (!VibeKit && typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+		try {
+			const module = await import('@vibe-kit/sdk');
+			VibeKit = module.VibeKit;
+		} catch (error) {
+			console.warn('VibeKit SDK not available:', error.message);
+			// Provide a mock class for fallback
+			VibeKit = class MockVibeKit {
+				constructor() { this.isActive = false; }
+				async initialize() { return { success: false, error: 'VibeKit not available' }; }
+				async generateCode() { return { success: false, error: 'VibeKit not available' }; }
+				async executeCommands() { return { success: false, error: 'VibeKit not available' }; }
+				async createPullRequest() { return { success: false, error: 'VibeKit not available' }; }
+				async cleanup() { return { success: true }; }
+				getStatus() { return { active: false, error: 'VibeKit not available' }; }
+			};
+		}
+	}
+	return VibeKit;
+};
 
 export function VibeKitExecutionModal({
 	task,
@@ -414,7 +437,8 @@ export function VibeKitExecutionModal({
 					: 'NOT_CONFIGURED'
 			});
 
-			vibeKit = new VibeKit(vibeKitConfig);
+			const VibeKitClass = await loadVibeKit();
+			vibeKit = new VibeKitClass(vibeKitConfig);
 			console.log('VibeKit instance created successfully');
 
 			// Phase 3: Prepare task description and project context

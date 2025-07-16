@@ -13,11 +13,11 @@ import { theme, setTheme, getTheme } from '../shared/theme/theme.js';
 
 // Import screens
 import { WelcomeScreen } from '../components/WelcomeScreen.jsx';
-import {
-	TaskManagementScreen,
-	TagManagementScreen,
-	AnalyzeComplexityScreen,
-	DependencyVisualizerScreen
+import { 
+  TaskManagementScreen,
+  TagManagementScreen,
+  AnalyzeComplexityScreen,
+  DependencyVisualizerScreen
 } from '../features/tasks/index.js';
 import { StatusScreen } from '../components/StatusScreen.jsx';
 import { ParsePRDScreen } from '../components/ParsePRDScreen.jsx';
@@ -43,11 +43,44 @@ import { getTaskMasterVersion } from '../../../../src/utils/getVersion.js';
 // Import VibeKit components
 import { AgentExecutionScreen } from '../components/AgentExecutionScreen.jsx';
 
-// Import error boundaries
+// Import new Zustand store and selectors for parallel state management
 import {
-	GlobalErrorHandler,
-	NavigationErrorBoundary,
-	ServiceErrorBoundary
+	// Selector hooks for reading state
+	useCurrentScreen,
+	useInputValue,
+	useTaskList,
+	useIsLoading,
+	useError,
+	useShowCommandPalette,
+	useCurrentBranch,
+	useMessages,
+	// Individual action hooks to prevent re-renders
+	useSetCurrentScreen,
+	useSetInputValue,
+	useSetSuggestions,
+	useSetSuggestionIndex,
+	useSetTasks,
+	useSetCurrentTag,
+	useSetHasTasksFile,
+	useSetLoading,
+	useSetError,
+	useSetShowCommandPalette,
+	useSetShowNextTaskModal,
+	useSetCurrentBranch,
+	useSetRepositoryName,
+	useSetCurrentModel,
+	useSetCurrentBackend,
+	useSyncFromLegacyState,
+	useInitializeApp,
+	// Migration helper
+	useLegacyStateSync
+} from '../stores/flow-app-selectors.js';
+
+// Import error boundaries
+import { 
+  GlobalErrorHandler,
+  NavigationErrorBoundary,
+  ServiceErrorBoundary
 } from '../shared/components/error-boundaries/index.js';
 
 // Import performance utilities
@@ -107,6 +140,102 @@ export function FlowApp({ options = {} }) {
 	const [worktreePromptData, setWorktreePromptData] = useState(null);
 	const [version, setVersion] = useState('');
 
+	// === PARALLEL ZUSTAND STATE SETUP ===
+	// New state management using Zustand (runs parallel to useState during migration)
+	// 
+	// MIGRATION STRATEGY:
+	// 1. ✅ DONE: Both useState and Zustand state run in parallel
+	// 2. 🔄 NEXT: Gradually migrate child components to use Zustand selectors
+	// 3. 🔄 LATER: Remove useState calls once all components use Zustand
+	// 
+	// MIGRATION EXAMPLES:
+	// 
+	// OLD: Pass props from useState
+	// <TaskList tasks={tasks} loading={loading} onSelectTask={setSelectedTask} />
+	// 
+	// NEW: Component uses Zustand selectors directly
+	// <TaskList /> // Component internally uses useTaskList(), useIsLoading(), useTaskActions()
+	// 
+	// TRANSITION: Use helper during migration
+	// const currentTasks = useStateDuringMigration(tasks, useTaskList);
+	// <TaskList tasks={currentTasks} />
+	//
+	// TODO: Replace useState calls with these once migration is complete
+	
+	// Zustand action hooks - individual selectors to prevent re-renders
+	// Note: These actions will be used to sync state changes to Zustand
+	const zustandSetCurrentScreen = useSetCurrentScreen();
+	const zustandSetInputValue = useSetInputValue();
+	const zustandSetSuggestions = useSetSuggestions();
+	const zustandSetSuggestionIndex = useSetSuggestionIndex();
+	const zustandSetTasks = useSetTasks();
+	const zustandSetCurrentTag = useSetCurrentTag();
+	const zustandSetHasTasksFile = useSetHasTasksFile();
+	const zustandSetLoading = useSetLoading();
+	const zustandSetError = useSetError();
+	const zustandSetShowCommandPalette = useSetShowCommandPalette();
+	const zustandSetShowNextTaskModal = useSetShowNextTaskModal();
+	const zustandSetCurrentBranch = useSetCurrentBranch();
+	const zustandSetRepositoryName = useSetRepositoryName();
+	const zustandSetCurrentModel = useSetCurrentModel();
+	const zustandSetCurrentBackend = useSetCurrentBackend();
+	const syncFromLegacyState = useSyncFromLegacyState();
+	const initializeApp = useInitializeApp();
+	
+	// Sync legacy state to Zustand store whenever it changes
+	// This allows gradual migration of components to use Zustand
+	useEffect(() => {
+		syncFromLegacyState({
+			currentScreen,
+			navigationData,
+			inputKey,
+			inputValue,
+			suggestions,
+			suggestionIndex,
+			waitingForShortcut,
+			tasks,
+			currentTag,
+			hasTasksFile,
+			nextTask,
+			loading,
+			error,
+			notification,
+			currentTheme,
+			showCommandPalette,
+			showNextTaskModal,
+			showSettings,
+			showWorktreePrompt,
+			currentBranch,
+			repositoryName,
+			branchInfo,
+			remoteInfo,
+			worktreePromptData,
+			messages,
+			currentModel,
+			currentBackend,
+			version
+		});
+	}, [
+		// Navigation state
+		currentScreen, navigationData, inputKey,
+		// Input state
+		inputValue, suggestions, suggestionIndex, waitingForShortcut,
+		// Task state
+		tasks, currentTag, hasTasksFile, nextTask,
+		// UI state
+		loading, error, notification, currentTheme,
+		// Modal state
+		showCommandPalette, showNextTaskModal, showSettings, showWorktreePrompt,
+		// Git state
+		currentBranch, repositoryName, branchInfo, remoteInfo, worktreePromptData,
+		// AI state
+		messages, currentModel, currentBackend,
+		// Meta state
+		version,
+		// Actions
+		syncFromLegacyState
+	]);
+
 	const { exit } = useApp();
 
 	// Helper function to format remote URL for display
@@ -116,7 +245,7 @@ export function FlowApp({ options = {} }) {
 		}
 
 		let url = remoteInfo.url;
-
+		
 		// Remove .git suffix if present
 		if (url.endsWith('.git')) {
 			url = url.slice(0, -4);
@@ -130,7 +259,7 @@ export function FlowApp({ options = {} }) {
 			// https://github.com/user/repo -> github.com/user/repo
 			// https://username@github.com/user/repo -> github.com/user/repo
 			url = url.replace('https://', '');
-
+			
 			// Remove username@ if present
 			if (url.includes('@')) {
 				url = url.split('@')[1];
@@ -139,6 +268,38 @@ export function FlowApp({ options = {} }) {
 
 		return url;
 	};
+
+	// === MIGRATION HELPER FUNCTIONS ===
+	// These functions help during the transition from useState to Zustand
+	
+	/**
+	 * Helper to use either legacy state or new Zustand state
+	 * During migration, components can gradually switch to using the new state
+	 */
+	const useStateDuringMigration = (legacyValue, zustandSelector) => {
+		const zustandValue = zustandSelector();
+		// For now, return legacy value. Later, we'll switch to zustandValue
+		return legacyValue;
+	};
+	
+	/**
+	 * Helper to update both legacy and Zustand state during migration
+	 * This ensures both systems stay in sync
+	 */
+	const updateStateDuringMigration = (legacySetter, zustandAction) => {
+		return (value) => {
+			legacySetter(value);
+			// Zustand state is already synced via the useEffect above
+		};
+	};
+
+	// === DEVELOPMENT LOGGING ===
+	// Log state sync status in development
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'development') {
+			console.log('🔄 FlowApp: Parallel state sync active - Legacy & Zustand running together');
+		}
+	}, []);
 
 	// Check for completion message from restart
 	useEffect(() => {
@@ -307,7 +468,7 @@ export function FlowApp({ options = {} }) {
 	const handleInput = useCallback(
 		async (value) => {
 			const trimmedValue = value.trim();
-
+			
 			if (showCommandPalette) {
 				setShowCommandPalette(false);
 				setInputValue('');
@@ -522,9 +683,9 @@ export function FlowApp({ options = {} }) {
 			if (isWaitingForShortcutRef.current) {
 				return;
 			}
-
+			
 			setInputValue(value);
-
+			
 			// Generate suggestions based on input
 			if (value.startsWith('/')) {
 				const availableCommands = getAvailableCommands();
@@ -690,209 +851,204 @@ export function FlowApp({ options = {} }) {
 	return (
 		<AppContext.Provider value={contextValue}>
 			<GlobalErrorHandler>
-				<ServiceErrorBoundary serviceName="FlowApp">
-					<OverflowProvider>
-						<Box flexDirection="column" height="100%">
-							{/* Command Palette */}
-							{showCommandPalette && (
-								<CommandPalette
-									onClose={() => setShowCommandPalette(false)}
-									onCommand={handleCommand}
+			<ServiceErrorBoundary serviceName="FlowApp">
+			<OverflowProvider>
+				<Box flexDirection="column" height="100%">
+							{/* Command Palette - Now uses Zustand state directly */}
+							<CommandPalette />
+
+				{/* Settings Modal */}
+				{showSettings && (
+					<SettingsModal
+						onClose={() => setShowSettings(false)}
+						backend={currentBackend}
+						currentTheme={currentTheme}
+						onThemeChange={setCurrentTheme}
+					/>
+				)}
+
+				{/* Next Task Modal */}
+				{showNextTaskModal && (
+					<NextTaskModal
+						backend={currentBackend}
+						onClose={() => setShowNextTaskModal(false)}
+						onTaskSelect={(task) => {
+							setNavigationData({ taskId: task.id, mode: 'execute' });
+							setCurrentScreen('agent-execution');
+							setShowNextTaskModal(false);
+						}}
+					/>
+				)}
+
+				{/* Screen Content */}
+				{currentScreen === 'tasks' ? (
+					<TaskManagementScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+						onTaskSelect={(taskId) => {
+							setNavigationData({ taskId, mode: 'execute' });
+							setCurrentScreen('agent-execution');
+						}}
+					/>
+				) : currentScreen === 'tags' ? (
+					<TagManagementScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+						currentTag={currentTag}
+						onTagChange={setCurrentTag}
+					/>
+				) : currentScreen === 'status' ? (
+					<StatusScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+					/>
+				) : currentScreen === 'parse' ? (
+					<ParsePRDScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+						onSuccess={() => {
+							setNotification({
+								message: 'PRD parsed successfully',
+								type: 'success',
+								duration: 3000
+							});
+							setCurrentScreen('tasks');
+						}}
+					/>
+				) : currentScreen === 'analyze' ? (
+					<AnalyzeComplexityScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+					/>
+				) : currentScreen === 'dependencies' ? (
+					<DependencyVisualizerScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+					/>
+				) : currentScreen === 'chat' ? (
+					<ChatScreen
+						mcpClient={currentBackend}
+						projectRoot={currentBackend?.getProjectRoot()}
+						onExit={() => setCurrentScreen('welcome')}
+						messages={messages}
+						onMessagesChange={setMessages}
+						currentModel={currentModel}
+						onModelChange={setCurrentModel}
+					/>
+				) : currentScreen === 'mcp' ? (
+					<MCPManagementScreen
+						backend={currentBackend}
+						onBack={() => setCurrentScreen('welcome')}
+						onBackendSwitch={async (newBackend) => {
+							try {
+								await newBackend.initialize();
+								setCurrentBackend(newBackend);
+								setNotification({
+									message: 'Backend switched successfully',
+									type: 'success',
+									duration: 3000
+								});
+							} catch (error) {
+								setNotification({
+									message: `Failed to switch backend: ${error.message}`,
+									type: 'error',
+									duration: 5000
+								});
+							}
+						}}
+						log={currentBackend.log}
+					/>
+				) : currentScreen === 'providers' ? (
+					<ProvidersScreen
+						onBack={() => setCurrentScreen('welcome')}
+						onError={(errorMessage) => {
+							setNotification({
+								message: errorMessage,
+								type: 'error',
+								duration: 5000
+							});
+						}}
+					/>
+				) : currentScreen === 'executions' ? (
+					<ExecutionManagementScreen
+						onBack={() => setCurrentScreen('welcome')}
+					/>
+				) : currentScreen === 'agent-execution' ? (
+					<AgentExecutionScreen
+						backend={currentBackend}
+						initialAgent={navigationData?.initialAgent || 'claude'}
+						taskId={navigationData?.taskId}
+						mode={navigationData?.mode || 'list'}
+					/>
+				) : (
+					<>
+						{/* Main content area */}
+						<Box flexGrow={1} flexDirection="column">
+							{/* Dynamic screen rendering */}
+							<NavigationErrorBoundary>
+							{currentScreen === 'welcome' && <WelcomeScreen />}
+							{currentScreen === 'sessions' && <SessionsScreen />}
+							</NavigationErrorBoundary>
+
+							{/* Notification toast */}
+							{notification && (
+								<Toast
+									message={notification.message}
+									type={notification.type}
+									duration={notification.duration}
+									onDismiss={() => setNotification(null)}
 								/>
 							)}
+						</Box>
 
-							{/* Settings Modal */}
-							{showSettings && (
-								<SettingsModal
-									onClose={() => setShowSettings(false)}
-									backend={currentBackend}
-									currentTheme={currentTheme}
-									onThemeChange={setCurrentTheme}
-								/>
-							)}
-
-							{/* Next Task Modal */}
-							{showNextTaskModal && (
-								<NextTaskModal
-									backend={currentBackend}
-									onClose={() => setShowNextTaskModal(false)}
-									onTaskSelect={(task) => {
-										setNavigationData({ taskId: task.id, mode: 'execute' });
-										setCurrentScreen('agent-execution');
-										setShowNextTaskModal(false);
-									}}
-								/>
-							)}
-
-							{/* Screen Content */}
-							{currentScreen === 'tasks' ? (
-								<TaskManagementScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-									onTaskSelect={(taskId) => {
-										setNavigationData({ taskId, mode: 'execute' });
-										setCurrentScreen('agent-execution');
-									}}
-								/>
-							) : currentScreen === 'tags' ? (
-								<TagManagementScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-									currentTag={currentTag}
-									onTagChange={setCurrentTag}
-								/>
-							) : currentScreen === 'status' ? (
-								<StatusScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-								/>
-							) : currentScreen === 'parse' ? (
-								<ParsePRDScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-									onSuccess={() => {
-										setNotification({
-											message: 'PRD parsed successfully',
-											type: 'success',
-											duration: 3000
-										});
-										setCurrentScreen('tasks');
-									}}
-								/>
-							) : currentScreen === 'analyze' ? (
-								<AnalyzeComplexityScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-								/>
-							) : currentScreen === 'dependencies' ? (
-								<DependencyVisualizerScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-								/>
-							) : currentScreen === 'chat' ? (
-								<ChatScreen
-									mcpClient={currentBackend}
-									projectRoot={currentBackend?.getProjectRoot()}
-									onExit={() => setCurrentScreen('welcome')}
-									messages={messages}
-									onMessagesChange={setMessages}
-									currentModel={currentModel}
-									onModelChange={setCurrentModel}
-								/>
-							) : currentScreen === 'mcp' ? (
-								<MCPManagementScreen
-									backend={currentBackend}
-									onBack={() => setCurrentScreen('welcome')}
-									onBackendSwitch={async (newBackend) => {
-										try {
-											await newBackend.initialize();
-											setCurrentBackend(newBackend);
-											setNotification({
-												message: 'Backend switched successfully',
-												type: 'success',
-												duration: 3000
-											});
-										} catch (error) {
-											setNotification({
-												message: `Failed to switch backend: ${error.message}`,
-												type: 'error',
-												duration: 5000
-											});
-										}
-									}}
-									log={currentBackend.log}
-								/>
-							) : currentScreen === 'providers' ? (
-								<ProvidersScreen
-									onBack={() => setCurrentScreen('welcome')}
-									onError={(errorMessage) => {
-										setNotification({
-											message: errorMessage,
-											type: 'error',
-											duration: 5000
-										});
-									}}
-								/>
-							) : currentScreen === 'executions' ? (
-								<ExecutionManagementScreen
-									onBack={() => setCurrentScreen('welcome')}
-								/>
-							) : currentScreen === 'agent-execution' ? (
-								<AgentExecutionScreen
-									backend={currentBackend}
-									initialAgent={navigationData?.initialAgent || 'claude'}
-									taskId={navigationData?.taskId}
-									mode={navigationData?.mode || 'list'}
-								/>
-							) : (
-								<>
-									{/* Main content area */}
-									<Box flexGrow={1} flexDirection="column">
-										{/* Dynamic screen rendering */}
-										<NavigationErrorBoundary>
-											{currentScreen === 'welcome' && <WelcomeScreen />}
-											{currentScreen === 'sessions' && <SessionsScreen />}
-										</NavigationErrorBoundary>
-
-										{/* Notification toast */}
-										{notification && (
-											<Toast
-												message={notification.message}
-												type={notification.type}
-												duration={notification.duration}
-												onDismiss={() => setNotification(null)}
-											/>
-										)}
+						{/* Bottom input bar */}
+						<Box flexDirection="column" flexShrink={0}>
+							{/* Command suggestions */}
+							{suggestions.length > 0 && (
+								<Box flexDirection="column">
+									<Box
+										borderStyle="single"
+										borderColor={theme.text.tertiary}
+										borderBottom={false}
+										paddingLeft={1}
+										paddingRight={1}
+									>
+										<CommandSuggestions
+											suggestions={suggestions}
+											selectedIndex={suggestionIndex}
+										/>
 									</Box>
+								</Box>
+							)}
 
-									{/* Bottom input bar */}
-									<Box flexDirection="column" flexShrink={0}>
-										{/* Command suggestions */}
-										{suggestions.length > 0 && (
-											<Box flexDirection="column">
-												<Box
-													borderStyle="single"
-													borderColor={theme.text.tertiary}
-													borderBottom={false}
-													paddingLeft={1}
-													paddingRight={1}
-												>
-													<CommandSuggestions
-														suggestions={suggestions}
-														selectedIndex={suggestionIndex}
-													/>
-												</Box>
-											</Box>
-										)}
-
-										{/* Input bar */}
-										<Box flexDirection="column">
-											<Box
-												borderStyle="single"
-												borderColor={theme.text.tertiary}
-												paddingLeft={1}
-												paddingRight={1}
-											>
-												<Box width="100%">
-													<Text color="cyan">❯ </Text>
-													<Box flexGrow={1}>
-														<TextInput
-															key={inputKey}
-															value={inputValue}
-															onChange={handleTextInputChange}
-															onSubmit={handleInput}
-															placeholder={
-																waitingForShortcut
-																	? 'Waiting for command key...'
-																	: 'Type / for commands or use Ctrl+X shortcuts'
-															}
-														/>
-													</Box>
-												</Box>
-											</Box>
+							{/* Input bar */}
+							<Box flexDirection="column">
+								<Box
+									borderStyle="single"
+									borderColor={theme.text.tertiary}
+									paddingLeft={1}
+									paddingRight={1}
+								>
+									<Box width="100%">
+										<Text color="cyan">❯ </Text>
+										<Box flexGrow={1}>
+											<TextInput
+												key={inputKey}
+												value={inputValue}
+												onChange={handleTextInputChange}
+												onSubmit={handleInput}
+												placeholder={
+													waitingForShortcut
+														? 'Waiting for command key...'
+														: 'Type / for commands or use Ctrl+X shortcuts'
+												}
+											/>
 										</Box>
+									</Box>
+								</Box>
+							</Box>
 
-										{/* Bottom status bar */}
+							{/* Bottom status bar */}
 										<Box
 											paddingLeft={1}
 											paddingRight={1}
@@ -900,43 +1056,43 @@ export function FlowApp({ options = {} }) {
 											justifyContent="space-between"
 											width="100%"
 										>
-											<Box>
-												<Text>
-													<Text color={theme.accent}>[tag] </Text>
-													<Text color={theme.text.accent}>{currentTag}</Text>
-													{repositoryName && (
-														<>
-															<Text color={theme.accent}> • [repo] </Text>
-															<Text>{repositoryName}</Text>
-														</>
-													)}
-													{currentBranch && (
-														<>
-															<Text color={theme.accent}> • [branch] </Text>
-															<Text>{currentBranch}</Text>
-														</>
-													)}
-													{remoteInfo && formatRemoteUrl(remoteInfo) && (
-														<>
-															<Text color={theme.accent}> • [remote] </Text>
-															<Text>{formatRemoteUrl(remoteInfo)}</Text>
-														</>
-													)}
-												</Text>
-											</Box>
-											<Box>
-												<Text color={theme.text.muted}>
-													Task Master AI v{version}
-												</Text>
-											</Box>
-										</Box>
-									</Box>
-								</>
-							)}
+								<Box>
+									<Text>
+										<Text color={theme.accent}>[tag] </Text>
+										<Text color={theme.text.accent}>{currentTag}</Text>
+										{repositoryName && (
+											<>
+												<Text color={theme.accent}> • [repo] </Text>
+												<Text>{repositoryName}</Text>
+											</>
+										)}
+										{currentBranch && (
+											<>
+												<Text color={theme.accent}> • [branch] </Text>
+												<Text>{currentBranch}</Text>
+											</>
+										)}
+										{remoteInfo && formatRemoteUrl(remoteInfo) && (
+											<>
+												<Text color={theme.accent}> • [remote] </Text>
+												<Text>{formatRemoteUrl(remoteInfo)}</Text>
+											</>
+										)}
+									</Text>
+								</Box>
+								<Box>
+									<Text color={theme.text.muted}>
+										Task Master AI v{version}
+									</Text>
+								</Box>
+							</Box>
 						</Box>
-					</OverflowProvider>
-				</ServiceErrorBoundary>
-			</GlobalErrorHandler>
+					</>
+				)}
+			</Box>
+		</OverflowProvider>
+		</ServiceErrorBoundary>
+		</GlobalErrorHandler>
 		</AppContext.Provider>
 	);
 }
@@ -948,4 +1104,4 @@ export function useAppContext() {
 		throw new Error('useAppContext must be used within AppContext.Provider');
 	}
 	return context;
-}
+} 

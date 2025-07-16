@@ -5,12 +5,35 @@
  * Integrated with Task Master Flow configuration system
  */
 
-import { VibeKit } from '@vibe-kit/sdk';
 import path from 'node:path';
 import fs from 'node:fs';
 import { FlowConfig } from '../../../shared/config/flow-config.js';
 import { GitHubAuthService } from '../../github/services/github-auth.service.js';
 import { AgentsConfigManager } from '../../../shared/config/managers/agents-config-manager.js';
+
+// Dynamic import to prevent issues during test execution
+let VibeKit = null;
+const loadVibeKit = async () => {
+	if (!VibeKit && typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+		try {
+			const module = await import('@vibe-kit/sdk');
+			VibeKit = module.VibeKit;
+		} catch (error) {
+			console.warn('VibeKit SDK not available:', error.message);
+			// Provide a mock class for fallback
+			VibeKit = class MockVibeKit {
+				constructor() { this.isActive = false; }
+				async initialize() { return { success: false, error: 'VibeKit not available' }; }
+				async generateCode() { return { success: false, error: 'VibeKit not available' }; }
+				async executeCommands() { return { success: false, error: 'VibeKit not available' }; }
+				async createPullRequest() { return { success: false, error: 'VibeKit not available' }; }
+				async cleanup() { return { success: true }; }
+				getStatus() { return { active: false, error: 'VibeKit not available' }; }
+			};
+		}
+	}
+	return VibeKit;
+};
 
 export class VibeKitService {
 	constructor(config = {}) {
@@ -25,8 +48,9 @@ export class VibeKitService {
 			// Get VibeKit configuration for this agent
 			const vibeKitConfig = await this.configService.getVibeKitConfig(agent);
 
-			// Create fresh VibeKit instance
-			const vibeKit = new VibeKit(vibeKitConfig);
+			// Load VibeKit dynamically and create fresh instance
+			const VibeKitClass = await loadVibeKit();
+			const vibeKit = new VibeKitClass(vibeKitConfig);
 
 			// Record sandbox creation
 			await this.configService.recordSandboxCreation(agent, subtaskId);

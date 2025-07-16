@@ -6,6 +6,12 @@ export { useDataStore } from './data-store.js';
 export { usePreferencesStore } from './preferences-store.js';
 export { useNavigationStore } from './navigation-store.js';
 
+// FlowApp consolidated store (replaces 42+ useState calls)
+export { useFlowAppStore, getFlowAppState, logFlowAppState } from './flow-app-store.js';
+
+// FlowApp selector hooks for performance optimization
+export * from './flow-app-selectors.js';
+
 // Middleware exports
 export {
 	createPersistentStore,
@@ -18,6 +24,7 @@ export const resetAllStores = async () => {
 	const { useUIStore } = await import('./ui-store.js');
 	const { useDataStore } = await import('./data-store.js');
 	const { usePreferencesStore } = await import('./preferences-store.js');
+	const { useFlowAppStore } = await import('./flow-app-store.js');
 	const { useNavigationStore } = await import('./navigation-store.js');
 
 	useUIStore.getState().resetUIState();
@@ -25,6 +32,7 @@ export const resetAllStores = async () => {
 	useDataStore.getState().resetGitData();
 	usePreferencesStore.getState().resetToDefaults();
 	useNavigationStore.getState().resetNavigation();
+	useFlowAppStore.getState().resetAppState();
 };
 
 // Store hydration check
