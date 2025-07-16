@@ -5,6 +5,7 @@ export { clineProfile } from './cline.js';
 export { codexProfile } from './codex.js';
 export { cursorProfile } from './cursor.js';
 export { geminiProfile } from './gemini.js';
+export { opencodeProfile } from './opencode.js';
 export { rooProfile } from './roo.js';
 export { traeProfile } from './trae.js';
 export { vscodeProfile } from './vscode.js';

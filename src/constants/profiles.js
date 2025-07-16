@@ -1,5 +1,5 @@
 /**
- * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
+ * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'opencode' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
  */
 
 /**
@@ -16,6 +16,7 @@
  * - codex: Codex integration
  * - cursor: Cursor IDE rules
  * - gemini: Gemini integration
+ * - opencode: OpenCode integration
  * - roo: Roo Code IDE rules
  * - trae: Trae IDE rules
  * - vscode: VS Code with GitHub Copilot integration
@@ -34,6 +35,7 @@ export const RULE_PROFILES = [
 	'codex',
 	'cursor',
 	'gemini',
+	'opencode',
 	'roo',
 	'trae',
 	'vscode',
