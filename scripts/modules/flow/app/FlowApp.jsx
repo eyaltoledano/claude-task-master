@@ -889,23 +889,23 @@ export function FlowApp({ options = {} }) {
 							<Box paddingLeft={1} paddingRight={1} flexDirection="row" justifyContent="space-between" width="100%">
 								<Box>
 									<Text>
-										<Text color={theme.text.tertiary}>[tag] </Text>
+										<Text color={theme.accent}>[tag] </Text>
 										<Text color={theme.text.accent}>{currentTag}</Text>
 										{repositoryName && (
 											<>
-												<Text color={theme.text.tertiary}> • [repo] </Text>
+												<Text color={theme.accent}> • [repo] </Text>
 												<Text>{repositoryName}</Text>
 											</>
 										)}
 										{currentBranch && (
 											<>
-												<Text color={theme.text.tertiary}> • [branch] </Text>
+												<Text color={theme.accent}> • [branch] </Text>
 												<Text>{currentBranch}</Text>
 											</>
 										)}
 										{remoteInfo && formatRemoteUrl(remoteInfo) && (
 											<>
-												<Text color={theme.text.tertiary}> • [remote] </Text>
+												<Text color={theme.accent}> • [remote] </Text>
 												<Text>{formatRemoteUrl(remoteInfo)}</Text>
 											</>
 										)}
