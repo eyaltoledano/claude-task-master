@@ -19,6 +19,7 @@ describe('Rule Transformer - General', () => {
 				'codex',
 				'cursor',
 				'gemini',
+				'opencode',
 				'roo',
 				'trae',
 				'vscode',
@@ -211,6 +212,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfigName: 'settings.json',
 					expectedPath: '.gemini/settings.json'
 				},
+				opencode: {
+					mcpConfig: true,
+					mcpConfigName: 'opencode.json',
+					expectedPath: 'opencode.json'
+				},
 				roo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
@@ -253,11 +259,19 @@ describe('Rule Transformer - General', () => {
 				const profileConfig = getRulesProfile(profile);
 				if (profileConfig.mcpConfig !== false) {
 					// Profiles with MCP configuration should have valid paths
-					// The mcpConfigPath should start with the profileDir
-					if (profile === 'claude') {
-						// Claude uses root directory (.), so path.join('.', '.mcp.json') = '.mcp.json'
-						expect(profileConfig.mcpConfigPath).toBe('.mcp.json');
+					// Handle root directory profiles differently
+					if (profileConfig.profileDir === '.') {
+						if (profile === 'claude') {
+							// Claude explicitly uses '.mcp.json'
+							expect(profileConfig.mcpConfigPath).toBe('.mcp.json');
+						} else {
+							// Other root profiles normalize to just the filename
+							expect(profileConfig.mcpConfigPath).toBe(
+								profileConfig.mcpConfigName
+							);
+						}
 					} else {
+						// Non-root profiles should have profileDir/configName pattern
 						expect(profileConfig.mcpConfigPath).toMatch(
 							new RegExp(
 								`^${profileConfig.profileDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`
