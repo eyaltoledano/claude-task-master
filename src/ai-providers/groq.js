@@ -15,6 +15,14 @@ export class GroqProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name required for this provider's API key.
+	 * @returns {string} The environment variable name for the Groq API key
+	 */
+	getRequiredApiKeyName() {
+		return 'GROQ_API_KEY';
+	}
+
+	/**
 	 * Creates and returns a Groq client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Groq API key

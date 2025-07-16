@@ -197,9 +197,73 @@ function onRemoveRulesProfile(targetDir) {
 	}
 }
 
+/**
+ * Transform standard MCP config format to Claude format
+ * @param {Object} mcpConfig - Standard MCP configuration object
+ * @returns {Object} - Transformed Claude configuration object
+ */
+function transformToClaudeFormat(mcpConfig) {
+	const claudeConfig = {};
+
+	// Transform mcpServers to servers (keeping the same structure but adding type)
+	if (mcpConfig.mcpServers) {
+		claudeConfig.mcpServers = {};
+
+		for (const [serverName, serverConfig] of Object.entries(
+			mcpConfig.mcpServers
+		)) {
+			// Transform server configuration with type as first key
+			const reorderedServer = {};
+
+			// Add type: "stdio" as the first key
+			reorderedServer.type = 'stdio';
+
+			// Then add the rest of the properties in order
+			if (serverConfig.command) reorderedServer.command = serverConfig.command;
+			if (serverConfig.args) reorderedServer.args = serverConfig.args;
+			if (serverConfig.env) reorderedServer.env = serverConfig.env;
+
+			// Add any other properties that might exist
+			Object.keys(serverConfig).forEach((key) => {
+				if (!['command', 'args', 'env', 'type'].includes(key)) {
+					reorderedServer[key] = serverConfig[key];
+				}
+			});
+
+			claudeConfig.mcpServers[serverName] = reorderedServer;
+		}
+	}
+
+	return claudeConfig;
+}
+
 function onPostConvertRulesProfile(targetDir, assetsDir) {
 	// For Claude, post-convert is the same as add since we don't transform rules
 	onAddRulesProfile(targetDir, assetsDir);
+
+	// Transform MCP configuration to Claude format
+	const mcpConfigPath = path.join(targetDir, '.mcp.json');
+	if (fs.existsSync(mcpConfigPath)) {
+		try {
+			const mcpConfig = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf8'));
+			const claudeConfig = transformToClaudeFormat(mcpConfig);
+
+			// Write back the transformed configuration
+			fs.writeFileSync(
+				mcpConfigPath,
+				JSON.stringify(claudeConfig, null, '\t') + '\n'
+			);
+			log(
+				'debug',
+				`[Claude] Transformed MCP configuration to Claude format at ${mcpConfigPath}`
+			);
+		} catch (err) {
+			log(
+				'error',
+				`[Claude] Failed to transform MCP configuration: ${err.message}`
+			);
+		}
+	}
 }
 
 // Create and export claude profile using the base factory
@@ -210,8 +274,7 @@ export const claudeProfile = createProfile({
 	docsUrl: 'docs.anthropic.com/en/docs/claude-code',
 	profileDir: '.', // Root directory
 	rulesDir: '.', // No specific rules directory needed
-	mcpConfig: false,
-	mcpConfigName: null,
+	mcpConfigName: '.mcp.json', // Place MCP config in project root
 	includeDefaultRules: false,
 	fileMap: {
 		'AGENTS.md': '.taskmaster/CLAUDE.md'
