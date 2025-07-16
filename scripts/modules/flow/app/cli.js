@@ -11,6 +11,8 @@ import {
 	listAgents,
 	executeTasks
 } from './commands/execution.command.js';
+import { createSyncCommand } from './commands/sync-command.js';
+import { findProjectRoot } from '../../utils.js';
 
 // Enhanced error handling with proper logging and exit codes
 const handleCommandError = (error, command, options = {}) => {
@@ -169,6 +171,10 @@ Examples:
   $ task-master flow github                        # Check GitHub authentication status
   $ task-master flow github login                  # Authenticate with GitHub OAuth
   $ task-master flow github logout --force         # Remove GitHub authentication
+  $ task-master flow sync                          # Synchronize tasks.json with SQLite database
+  $ task-master flow sync --direction json-to-db   # Force sync from JSON to database
+  $ task-master flow sync:status                   # Check sync status and conflicts
+  $ task-master flow sync:force db-to-json         # Force sync from database to JSON
   
 Agent Types:
   claude         Anthropic Claude for coding (default)
@@ -184,6 +190,10 @@ Subcommands:
   config                  Manage VibeKit configuration
   monitor                 Launch real-time monitoring dashboard
   github [action]         GitHub OAuth authentication (status, login, logout, test)
+  sync [direction]        Bidirectional synchronization between tasks.json and SQLite
+  sync:status             Display sync status, conflicts, and health metrics
+  sync:force <direction>  Force synchronization in specific direction
+  sync:trigger <op>       Manually trigger sync after specific operations
 
 For more details: task-master flow <subcommand> --help
     `
@@ -612,6 +622,130 @@ For more details: task-master flow <subcommand> --help
 						break;
 					}
 
+					case 'sync': {
+						const direction = taskIdOrPrompt || 'auto';
+						const projectRoot = options.projectRoot || findProjectRoot() || process.cwd();
+						
+						const syncCmd = createSyncCommand(projectRoot, {
+							dryRun: options.dryRun,
+							verbose: options.verbose
+						});
+						
+						const spinner = options.verbose 
+							? null 
+							: ora(`Syncing tasks (${direction})...`).start();
+						
+						try {
+							const result = await syncCmd.execute(direction, {
+								dryRun: options.dryRun,
+								force: options.force
+							});
+							
+							if (spinner) spinner.succeed(`Sync completed (${direction})`);
+							
+							if (options.verbose) {
+								console.log(chalk.green('✅ Sync Results:'));
+								console.log(`  Direction: ${result.direction}`);
+								console.log(`  Changes: ${result.changesApplied || 0}`);
+								console.log(`  Conflicts: ${result.conflicts || 0}`);
+							}
+						} catch (error) {
+							if (spinner) spinner.fail('Sync failed');
+							throw error;
+						}
+						break;
+					}
+
+					case 'sync:status': {
+						const projectRoot = options.projectRoot || findProjectRoot() || process.cwd();
+						const syncCmd = createSyncCommand(projectRoot);
+						
+						const status = await syncCmd.getStatus();
+						
+						console.log(chalk.cyan('🔄 Sync Status'));
+						console.log(`  Health Score: ${status.healthScore}/100`);
+						console.log(`  Last Sync: ${status.lastSync || 'Never'}`);
+						console.log(`  Conflicts: ${status.conflicts || 0}`);
+						console.log(`  Pending Changes: ${status.pendingChanges || 0}`);
+						
+						if (status.recommendations && status.recommendations.length > 0) {
+							console.log(chalk.yellow('\n💡 Recommendations:'));
+							status.recommendations.forEach(rec => {
+								console.log(`  - ${rec}`);
+							});
+						}
+						break;
+					}
+
+					case 'sync:force': {
+						const direction = taskIdOrPrompt;
+						if (!direction || !['json-to-db', 'db-to-json'].includes(direction)) {
+							throw {
+								code: 'VALIDATION_ERROR',
+								message: 'Direction is required for force sync',
+								suggestion: 'Usage: task-master flow sync:force <json-to-db|db-to-json>'
+							};
+						}
+						
+						const projectRoot = options.projectRoot || findProjectRoot() || process.cwd();
+						const syncCmd = createSyncCommand(projectRoot);
+						
+						const spinner = options.verbose 
+							? null 
+							: ora(`Force syncing (${direction})...`).start();
+						
+						try {
+							const result = await syncCmd.execute(direction, {
+								force: true
+							});
+							
+							if (spinner) spinner.succeed(`Force sync completed (${direction})`);
+							
+							console.log(chalk.green('✅ Force Sync Results:'));
+							console.log(`  Direction: ${result.direction}`);
+							console.log(`  Changes Applied: ${result.changesApplied || 0}`);
+						} catch (error) {
+							if (spinner) spinner.fail('Force sync failed');
+							throw error;
+						}
+						break;
+					}
+
+					case 'sync:trigger': {
+						const operation = taskIdOrPrompt;
+						if (!operation) {
+							throw {
+								code: 'VALIDATION_ERROR',
+								message: 'Operation is required for sync trigger',
+								suggestion: 'Usage: task-master flow sync:trigger <created|updated|deleted>'
+							};
+						}
+						
+						const projectRoot = options.projectRoot || findProjectRoot() || process.cwd();
+						const { getSyncService } = await import('../shared/services/sync-service.js');
+						
+						const syncService = getSyncService(projectRoot);
+						
+						const spinner = options.verbose 
+							? null 
+							: ora(`Triggering sync for ${operation}...`).start();
+						
+						try {
+							await syncService.syncAfterOperation(operation, {
+								type: 'manual',
+								triggeredBy: 'cli'
+							});
+							
+							if (spinner) spinner.succeed(`Sync triggered for ${operation}`);
+							
+							console.log(chalk.green(`✅ Sync triggered for operation: ${operation}`));
+						} catch (error) {
+							if (spinner) spinner.fail('Sync trigger failed');
+							throw error;
+						}
+						break;
+					}
+
 					case 'github': {
 						const { githubCommand } = await import(
 							'./commands/github-auth.command.js'
@@ -639,7 +773,7 @@ For more details: task-master flow <subcommand> --help
 							code: 'VALIDATION_ERROR',
 							message: `Unknown subcommand: "${subcommand}"`,
 							suggestion:
-								'Available subcommands: execute, generate, agents, batch, config, monitor, github, test-config'
+								'Available subcommands: execute, generate, agents, batch, config, monitor, github, sync, sync:status, sync:force, sync:trigger, test-config'
 						};
 				}
 			} catch (error) {

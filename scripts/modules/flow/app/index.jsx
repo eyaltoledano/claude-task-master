@@ -90,7 +90,7 @@ export async function run(options = {}) {
 		<ThemeProvider theme={inkUITheme}>
 			<ServiceProvider
 				backend={backend}
-				projectRoot={options.projectRoot || process.env.TASKMASTER_PROJECT_ROOT || backend.getProjectRoot() || process.cwd()}
+				projectRoot={options.projectRoot || process.cwd()}
 			>
 				<FlowApp backend={backend} options={options} />
 			</ServiceProvider>

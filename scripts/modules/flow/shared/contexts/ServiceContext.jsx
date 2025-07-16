@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Text } from 'ink';
-import { flowLogger } from '../logging/flow-logger.js';
+import { createLogger } from '../services/service-factory.js';
 import { FlowConfigManager } from '../config/managers/flow-config-manager.js';
 import { ASTConfigManager } from '../config/managers/ast-config-manager.js';
 import { globalRegistry } from '../providers/registry.js';
@@ -17,7 +17,7 @@ const ServiceContext = createContext();
  * Service Provider Component
  * Initializes and provides all services to child components
  */
-export function ServiceProvider({ children, backend, projectRoot }) {
+export function ServiceProvider({ backend, projectRoot, children }) {
 	const [services, setServices] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
@@ -25,8 +25,8 @@ export function ServiceProvider({ children, backend, projectRoot }) {
 	useEffect(() => {
 		const initializeServices = async () => {
 			try {
-				// Initialize logger
-				const logger = flowLogger;
+				// Initialize logger using createLogger to ensure all methods are available
+				const logger = createLogger();
 				logger.info('Initializing services...');
 
 				// Initialize configuration managers

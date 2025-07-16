@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { theme } from '../../../shared/theme/theme.js';
+import { useServices } from '../../../shared/contexts/ServiceContext.jsx';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,9 +9,12 @@ export function FileBrowser({
 	onSelect,
 	onCancel,
 	title = 'Select File',
-	fileFilter = null
+	fileFilter = null,
+	initialPath = null
 }) {
-	const [currentPath, setCurrentPath] = useState(process.cwd());
+	const { projectRoot } = useServices();
+	const defaultPath = initialPath || projectRoot || process.cwd();
+	const [currentPath, setCurrentPath] = useState(defaultPath);
 	const [items, setItems] = useState([]);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [loading, setLoading] = useState(true);
