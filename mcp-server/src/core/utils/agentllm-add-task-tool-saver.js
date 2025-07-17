@@ -19,21 +19,21 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
  *                                          includes { newTaskId, userDependencies, userPriority } passed by core 'addTask'.
  * @returns {Promise<Object>} Result object with { success: true, newTask } or { success: false, error: string }.
  */
-async function saveNewTaskFromAgent(
+async function agentllmAddTaskSave(
 	agentTaskData,
 	projectRoot,
 	logWrapper,
 	originalToolArgs,
 	delegatedRequestParams
 ) {
-	logWrapper.info(`saveNewTaskFromAgent: Saving new task data from agent.`);
+	logWrapper.info(`agentllmAddTaskSave: Saving new task data from agent.`);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
 		if (!agentTaskData || typeof agentTaskData !== 'object') {
 			const errorMsg = `Invalid agentTaskData structure. Expected an object. Received: ${JSON.stringify(agentTaskData)}`;
-			logWrapper.error(`saveNewTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmAddTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -44,7 +44,7 @@ async function saveNewTaskFromAgent(
 
 		if (typeof newTaskId !== 'number') {
 			const errorMsg = `Missing or invalid newTaskId in delegatedRequestParams.`;
-			logWrapper.error(`saveNewTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmAddTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -76,7 +76,7 @@ async function saveNewTaskFromAgent(
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			// If tasks.json is missing or invalid, initialize it
 			logWrapper.warn(
-				`saveNewTaskFromAgent: Invalid or missing tasks data in ${tasksJsonPath}. Initializing new tasks array.`
+				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath}. Initializing new tasks array.`
 			);
 			allTasksData = { tasks: [] };
 		}
@@ -84,7 +84,7 @@ async function saveNewTaskFromAgent(
 		// Check for ID collision (shouldn't happen if newTaskId is determined correctly)
 		if (allTasksData.tasks.some((t) => t.id === newTask.id)) {
 			const errorMsg = `Task ID ${newTask.id} already exists. Cannot add task.`;
-			logWrapper.error(`saveNewTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmAddTaskSave: ${errorMsg}`);
 			// This indicates a flaw in newTaskId generation or state management.
 			return { success: false, error: errorMsg };
 		}
@@ -95,21 +95,21 @@ async function saveNewTaskFromAgent(
 
 		writeJSON(tasksJsonPath, allTasksData);
 		logWrapper.info(
-			`saveNewTaskFromAgent: Successfully added new task ID ${newTask.id} to ${tasksJsonPath}.`
+			`agentllmAddTaskSave: Successfully added new task ID ${newTask.id} to ${tasksJsonPath}.`
 		);
 
 		const outputDir = path.dirname(tasksJsonPath);
 		await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
-		logWrapper.info(`saveNewTaskFromAgent: Markdown task files regenerated.`);
+		logWrapper.info(`agentllmAddTaskSave: Markdown task files regenerated.`);
 
 		return { success: true, newTask };
 	} catch (error) {
 		logWrapper.error(
-			`saveNewTaskFromAgent: Error saving new task: ${error.message}`
+			`agentllmAddTaskSave: Error saving new task: ${error.message}`
 		);
-		logWrapper.error(`saveNewTaskFromAgent: Error stack: ${error.stack}`);
+		logWrapper.error(`agentllmAddTaskSave: Error stack: ${error.stack}`);
 		return { success: false, error: error.message };
 	}
 }
 
-export { saveNewTaskFromAgent };
+export { agentllmAddTaskSave };

@@ -15,13 +15,13 @@ import { parseUpdatedTasksFromText } from '../../../../scripts/modules/task-mana
  * @param {Object} logWrapper - Logger object (e.g., from MCP context).
  * @returns {Promise<Object>} Result object with { success: true, updatedTaskIds: string[] } or { success: false, error: string }.
  */
-async function saveMultipleTasksFromAgent(
+async function agentllmUpdateSave(
 	agentOutput,
 	projectRoot,
 	logWrapper
 ) {
 	logWrapper.info(
-		`saveMultipleTasksFromAgent: Saving multiple updated tasks from agent data.`
+		`agentllmUpdateSave: Saving multiple updated tasks from agent data.`
 	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
@@ -30,7 +30,7 @@ async function saveMultipleTasksFromAgent(
 		let parsedAgentTasksArray;
 		if (typeof agentOutput === 'string') {
 			logWrapper.info(
-				'saveMultipleTasksFromAgent: Agent output is a string, attempting to parse with parseUpdatedTasksFromText.'
+				'agentllmUpdateSave: Agent output is a string, attempting to parse with parseUpdatedTasksFromText.'
 			);
 			try {
 				// parseUpdatedTasksFromText expects: (text, expectedCount, logFn, isMCP)
@@ -43,17 +43,16 @@ async function saveMultipleTasksFromAgent(
 					true /* isMCP */
 				);
 			} catch (parseError) {
-				logWrapper.error(
-					`saveMultipleTasksFromAgent: Failed to parse agentOutput string: ${parseError.message}`
-				);
+				const errorMessage = `Failed to parse agentOutput string: ${parseError.message}`;
+				logWrapper.error(`agentllmUpdateSave: ${errorMessage}`);
 				return {
 					success: false,
-					error: `Failed to parse agentOutput string: ${parseError.message}`
+					error: errorMessage
 				};
 			}
 		} else if (Array.isArray(agentOutput)) {
 			logWrapper.info(
-				'saveMultipleTasksFromAgent: Agent output is already an array. Validating structure (basic).'
+				'agentllmUpdateSave: Agent output is already an array. Validating structure (basic).'
 			);
 			// TODO: Add more robust Zod validation here if agentOutput is an array directly.
 			// For now, assume it matches the structure `parseUpdatedTasksFromText` would produce.
@@ -69,7 +68,7 @@ async function saveMultipleTasksFromAgent(
 			) {
 				const errorMsg =
 					'Agent output array contains invalid task objects (missing id or title).';
-				logWrapper.error(`saveMultipleTasksFromAgent: ${errorMsg}`);
+				logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
 				return { success: false, error: errorMsg };
 			}
 			parsedAgentTasksArray = agentOutput;
@@ -77,20 +76,20 @@ async function saveMultipleTasksFromAgent(
 			const errorMsg =
 				'Invalid agentOutput format. Expected a JSON string (array of tasks) or an array of task objects.';
 			logWrapper.error(
-				`saveMultipleTasksFromAgent: ${errorMsg} Received type: ${typeof agentOutput}`
+				`agentllmUpdateSave: ${errorMsg} Received type: ${typeof agentOutput}`
 			);
 			return { success: false, error: errorMsg };
 		}
 
 		if (!Array.isArray(parsedAgentTasksArray)) {
 			const errorMsg = `Task data from agent is invalid after parsing/processing: Expected array, got ${typeof parsedAgentTasksArray}`;
-			logWrapper.error(`saveMultipleTasksFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
 		if (parsedAgentTasksArray.length === 0) {
 			logWrapper.info(
-				'saveMultipleTasksFromAgent: Agent returned an empty array of tasks. No updates to apply.'
+				'agentllmUpdateSave: Agent returned an empty array of tasks. No updates to apply.'
 			);
 			return {
 				success: true,
@@ -100,13 +99,13 @@ async function saveMultipleTasksFromAgent(
 		}
 
 		logWrapper.info(
-			`saveMultipleTasksFromAgent: Parsed ${parsedAgentTasksArray.length} tasks from agent output.`
+			`agentllmUpdateSave: Parsed ${parsedAgentTasksArray.length} tasks from agent output.`
 		);
 
 		const allTasksData = readJSON(tasksJsonPath);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
-			logWrapper.error(`saveMultipleTasksFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -125,12 +124,12 @@ async function saveMultipleTasksFromAgent(
 					originalTask.status === 'completed'
 				) {
 					logWrapper.warn(
-						`saveMultipleTasksFromAgent: Task ${originalTask.id} is completed. Agent's update for this task will be ignored to preserve completed state.`
+						`agentllmUpdateSave: Task ${originalTask.id} is completed. Agent's update for this task will be ignored to preserve completed state.`
 					);
 					// Optionally, check if agentTask differs significantly and log more details.
 				} else {
 					logWrapper.info(
-						`saveMultipleTasksFromAgent: Updating task ID ${originalTask.id}.`
+						`agentllmUpdateSave: Updating task ID ${originalTask.id}.`
 					);
 					updatedTaskIds.push(String(originalTask.id)); // Store ID of task being updated
 					actualUpdatesMade++;
@@ -151,7 +150,7 @@ async function saveMultipleTasksFromAgent(
 									JSON.stringify(compSub)
 							) {
 								logWrapper.warn(
-									`saveMultipleTasksFromAgent: Restoring completed subtask ${originalTask.id}.${compSub.id} as agent modified/removed it.`
+									`agentllmUpdateSave: Restoring completed subtask ${originalTask.id}.${compSub.id} as agent modified/removed it.`
 								);
 								finalSubtasks = finalSubtasks.filter(
 									(st) => st.id !== compSub.id
@@ -186,28 +185,28 @@ async function saveMultipleTasksFromAgent(
 		if (actualUpdatesMade > 0) {
 			writeJSON(tasksJsonPath, allTasksData);
 			logWrapper.info(
-				`saveMultipleTasksFromAgent: Successfully updated ${actualUpdatesMade} tasks in ${tasksJsonPath}.`
+				`agentllmUpdateSave: Successfully updated ${actualUpdatesMade} tasks in ${tasksJsonPath}.`
 			);
 
 			const outputDir = path.dirname(tasksJsonPath);
 			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
 			logWrapper.info(
-				`saveMultipleTasksFromAgent: Markdown task files regenerated.`
+				`agentllmUpdateSave: Markdown task files regenerated.`
 			);
 		} else {
 			logWrapper.info(
-				'saveMultipleTasksFromAgent: No effective updates were made to tasks.json (either no matching tasks or tasks were completed).'
+				'agentllmUpdateSave: No effective updates were made to tasks.json (either no matching tasks or tasks were completed).'
 			);
 		}
 
 		return { success: true, updatedTaskIds, updatesApplied: actualUpdatesMade };
 	} catch (error) {
 		logWrapper.error(
-			`saveMultipleTasksFromAgent: Error processing update for multiple tasks: ${error.message}`
+			`agentllmUpdateSave: Error processing update for multiple tasks: ${error.message}`
 		);
-		logWrapper.error(`saveMultipleTasksFromAgent: Error stack: ${error.stack}`);
+		logWrapper.error(`agentllmUpdateSave: Error stack: ${error.stack}`);
 		return { success: false, error: error.message };
 	}
 }
 
-export { saveMultipleTasksFromAgent };
+export { agentllmUpdateSave };

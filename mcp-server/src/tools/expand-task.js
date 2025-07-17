@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -88,35 +89,9 @@ export function registerExpandTaskTool(server) {
 					result.pendingInteraction
 				) {
 					log.info(
-						'expand-task tool: Agent delegation signaled by expandTaskDirect. Returning EmbeddedResource structure.'
+						`expand-task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 					);
-
-					// Extract the details needed for agent_llm tool from pendingInteraction.
-					// The structure of pendingInteraction from expandTask (core) is:
-					// {
-					//     type: "agent_llm",
-					//     interactionId: ...,
-					//     delegatedCallDetails: { originalCommand, role, serviceType, requestParameters }
-					// }
-					// The 'details' for isAgentLLMPendingInteraction should be this pendingInteraction object itself.
-					const pendingInteractionDetailsForAgent = result.pendingInteraction;
-
-					return {
-						content: [
-							{
-								type: 'resource',
-								resource: {
-									uri: 'agent-llm://pending-interaction',
-									mimeType: 'application/json',
-									text: JSON.stringify({
-										isAgentLLMPendingInteraction: true,
-										details: pendingInteractionDetailsForAgent
-									})
-								}
-							}
-						],
-						isError: false
-					};
+					return createAgentDelegationResponse(result.pendingInteraction);
 				}
 				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 

@@ -198,12 +198,13 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 
 	const validationResult = updatedTaskArraySchema.safeParse(parsedTasks);
 	if (!validationResult.success) {
-		report('error', 'Parsed task array failed Zod validation.');
+		const errorMessage = 'Parsed task array failed Zod validation.';
+		report('error', errorMessage);
 		validationResult.error.errors.forEach((err) => {
 			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
 		});
 		throw new Error(
-			`AI response failed task structure validation: ${validationResult.error.message}`
+			`${errorMessage}\n${JSON.stringify(validationResult.error.errors, null, 2)}`
 		);
 	}
 

@@ -49,12 +49,12 @@ async function saveResearchToFile(researchText, query, projectRoot, log) {
 
 		fs.writeFileSync(filePath, fileContent, 'utf8');
 		log.info(
-			`handleAgentResearchResult (saveToFile): Research saved to: ${path.relative(projectRoot, filePath)}`
+			`agentllmResearchSave (saveToFile): Research saved to: ${path.relative(projectRoot, filePath)}`
 		);
 		return filePath;
 	} catch (error) {
 		log.error(
-			`handleAgentResearchResult (saveToFile): Error saving research file: ${error.message}`
+			`agentllmResearchSave (saveToFile): Error saving research file: ${error.message}`
 		);
 		return null;
 	}
@@ -72,7 +72,7 @@ async function saveResearchToFile(researchText, query, projectRoot, log) {
  * @param {object} sessionContext - The session context from the original MCP call (for internalUpdateContext).
  * @returns {Promise<{success: boolean, taskUpdated: boolean, filePath: string|null, error?: string}>}
  */
-export async function handleAgentResearchResult(
+export async function agentllmResearchSave(
 	agentResearchText,
 	originalResearchArgs,
 	projectRoot,
@@ -87,7 +87,7 @@ export async function handleAgentResearchResult(
 	const { query, saveTo, saveToFile, detailLevel } = originalResearchArgs;
 
 	log.info(
-		`handleAgentResearchResult: Processing agent research. saveTo: ${saveTo}, saveToFile: ${saveToFile}`
+		`agentllmResearchSave: Processing agent research. saveTo: ${saveTo}, saveToFile: ${saveToFile}`
 	);
 
 	if (
@@ -96,7 +96,7 @@ export async function handleAgentResearchResult(
 		agentResearchText.trim() === ''
 	) {
 		log.warn(
-			'handleAgentResearchResult: Agent research text is empty or invalid. Nothing to save.'
+			'agentllmResearchSave: Agent research text is empty or invalid. Nothing to save.'
 		);
 		return {
 			success: false,
@@ -107,7 +107,7 @@ export async function handleAgentResearchResult(
 	}
 
 	if (saveToFile) {
-		log.info(`handleAgentResearchResult: Attempting to save research to file.`);
+		log.info(`agentllmResearchSave: Attempting to save research to file.`);
 		try {
 			savedFilePath = await saveResearchToFile(
 				agentResearchText,
@@ -120,7 +120,7 @@ export async function handleAgentResearchResult(
 			}
 		} catch (e) {
 			log.error(
-				`handleAgentResearchResult: Error in saveResearchToFile: ${e.message}`
+				`agentllmResearchSave: Error in saveResearchToFile: ${e.message}`
 			);
 			errors.push(`File save error: ${e.message}`);
 		}
@@ -128,7 +128,7 @@ export async function handleAgentResearchResult(
 
 	if (saveTo) {
 		log.info(
-			`handleAgentResearchResult: Attempting direct save to task/subtask ID '${saveTo}' in tasks.json.`
+			`agentllmResearchSave: Attempting direct save to task/subtask ID '${saveTo}' in tasks.json.`
 		);
 		try {
 			const isSubtask = String(saveTo).includes('.');
@@ -147,7 +147,7 @@ export async function handleAgentResearchResult(
 			const resolvedTag = sessionContext?.tag || getCurrentTag(projectRoot);
 
 			log.debug(
-				`handleAgentResearchResult: Reading tasks from ${tasksPath} for tag '${resolvedTag}'`
+				`agentllmResearchSave: Reading tasks from ${tasksPath} for tag '${resolvedTag}'`
 			);
 			const rawTasksDataFromFile = readJSON(
 				tasksPath,
@@ -173,13 +173,13 @@ export async function handleAgentResearchResult(
 					description: `Tasks for tag ${resolvedTag}`
 				});
 				log.info(
-					`handleAgentResearchResult: Initialized new tag '${resolvedTag}' in tasks data structure.`
+					`agentllmResearchSave: Initialized new tag '${resolvedTag}' in tasks data structure.`
 				);
 			}
 			if (!Array.isArray(currentTagTasksData.tasks)) {
 				currentTagTasksData.tasks = [];
 				log.warn(
-					`handleAgentResearchResult: Tag '${resolvedTag}' existed without a tasks array or was invalid. Initialized/reset tasks array.`
+					`agentllmResearchSave: Tag '${resolvedTag}' existed without a tasks array or was invalid. Initialized/reset tasks array.`
 				);
 			}
 
@@ -202,17 +202,17 @@ export async function handleAgentResearchResult(
 						subtask.details = (subtask.details || '') + researchContent;
 						itemModified = true;
 						log.info(
-							`handleAgentResearchResult: Appended research to subtask ${saveTo} in tasks.json.`
+							`agentllmResearchSave: Appended research to subtask ${saveTo} in tasks.json.`
 						);
 					} else {
 						log.error(
-							`handleAgentResearchResult: Subtask ${saveTo} not found in tasks.json.`
+							`agentllmResearchSave: Subtask ${saveTo} not found in tasks.json.`
 						);
 						errors.push(`Subtask ${saveTo} not found.`);
 					}
 				} else {
 					log.error(
-						`handleAgentResearchResult: Parent task for subtask ${saveTo} (ID: ${parentId}) not found or has no subtasks array in tasks.json.`
+						`agentllmResearchSave: Parent task for subtask ${saveTo} (ID: ${parentId}) not found or has no subtasks array in tasks.json.`
 					);
 					errors.push(`Parent task for subtask ${saveTo} not found.`);
 				}
@@ -224,11 +224,11 @@ export async function handleAgentResearchResult(
 					task.details = (task.details || '') + researchContent;
 					itemModified = true;
 					log.info(
-						`handleAgentResearchResult: Appended research to task ${saveTo} in tasks.json.`
+						`agentllmResearchSave: Appended research to task ${saveTo} in tasks.json.`
 					);
 				} else {
 					log.error(
-						`handleAgentResearchResult: Task ${saveTo} not found in tasks.json.`
+						`agentllmResearchSave: Task ${saveTo} not found in tasks.json.`
 					);
 					errors.push(`Task ${saveTo} not found.`);
 				}
@@ -239,7 +239,7 @@ export async function handleAgentResearchResult(
 				writeJSON(tasksPath, allTagsData, projectRoot, resolvedTag);
 				taskUpdated = true;
 				log.info(
-					`handleAgentResearchResult: Successfully wrote updated tasks data to ${tasksPath} for tag '${resolvedTag}'.`
+					`agentllmResearchSave: Successfully wrote updated tasks data to ${tasksPath} for tag '${resolvedTag}'.`
 				);
 
 				// Regenerate individual task files
@@ -250,18 +250,18 @@ export async function handleAgentResearchResult(
 						'tasks'
 					);
 					log.info(
-						`handleAgentResearchResult: Regenerating task files in ${taskFilesOutputDir} for tag ${resolvedTag}.`
+						`agentllmResearchSave: Regenerating task files in ${taskFilesOutputDir} for tag ${resolvedTag}.`
 					);
 					await generateTaskFiles(tasksPath, taskFilesOutputDir, {
 						mcpLog: log,
 						tag: resolvedTag
 					});
 					log.info(
-						`handleAgentResearchResult: Successfully regenerated task files for tag ${resolvedTag}.`
+						`agentllmResearchSave: Successfully regenerated task files for tag ${resolvedTag}.`
 					);
 				} catch (genFilesError) {
 					log.error(
-						`handleAgentResearchResult: Error regenerating task files for tag ${resolvedTag}: ${genFilesError.message}`
+						`agentllmResearchSave: Error regenerating task files for tag ${resolvedTag}: ${genFilesError.message}`
 					);
 					// Optionally, add to main errors or decide if this is critical
 					// errors.push(`Failed to regenerate task files: ${genFilesError.message}`);
@@ -269,10 +269,10 @@ export async function handleAgentResearchResult(
 			}
 		} catch (saveError) {
 			log.error(
-				`handleAgentResearchResult: Error during direct save to task/subtask ${saveTo} in tasks.json: ${saveError.message}`
+				`agentllmResearchSave: Error during direct save to task/subtask ${saveTo} in tasks.json: ${saveError.message}`
 			);
 			log.error(
-				`handleAgentResearchResult: Save error stack: ${saveError.stack}`
+				`agentllmResearchSave: Save error stack: ${saveError.stack}`
 			);
 			errors.push(`Task save error: ${saveError.message}`);
 		}

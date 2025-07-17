@@ -263,10 +263,14 @@ function parseSubtasksFromText(
 	}
 
 	if (validationErrors.length > 0) {
-		logger.error(
-			`Found ${validationErrors.length} validation errors in the generated subtasks.`
-		);
+		const errorMessage = `Found ${validationErrors.length} validation errors in the generated subtasks.`;
+		logger.error(errorMessage);
 		logger.warn('Proceeding with only the successfully validated subtasks.');
+		if (validatedSubtasks.length === 0 && parsedSubtasks.length > 0) {
+			throw new Error(
+				`${errorMessage}\n${validationErrors.join('\n')}`
+			);
+		}
 	}
 
 	if (validatedSubtasks.length === 0 && parsedSubtasks.length > 0) {

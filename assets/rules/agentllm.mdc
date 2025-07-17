@@ -37,8 +37,8 @@ Upon receiving a pending-interaction with `delegatedCallDetails`, you (the agent
 
 After performing the LLM call (or determining it cannot be performed due to an error), you must use the `use_mcp_tool` with `server_name: "taskmaster-ai"` and `tool_name: "agent_llm"` to send the result back to Taskmaster.
 
-Do not initialize the project if you are not asked to do so.
-Do not use `get_tasks` tool  before `expand_all`.
+Do not initialize the project if a user does not ask you.
+Do not use `get_tasks` tool  before `expand_all`, `update`.
 **Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
 **Note on `research`:** When a research is made for a specific task always use `saveTo` unless user explicitly asks you not to save the result.
 

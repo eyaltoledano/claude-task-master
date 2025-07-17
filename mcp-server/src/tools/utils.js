@@ -778,6 +778,29 @@ function withNormalizedProjectRoot(executeFn) {
 	};
 }
 
+/**
+ * Creates a standardized response for signaling agent delegation.
+ * @param {Object} pendingInteraction - The pending interaction object.
+ * @returns {Object} - The response object for agent delegation.
+ */
+function createAgentDelegationResponse(pendingInteraction) {
+	return {
+		content: [
+			{
+				type: 'text',
+				text: JSON.stringify({
+					isAgentLLMPendingInteraction: true,
+					details: pendingInteraction,
+					// Add a URI and mimeType here to be compatible with the old format
+					uri: 'agent-llm://pending-interaction',
+					mimeType: 'application/json'
+				})
+			}
+		],
+		isError: false
+	};
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
@@ -792,5 +815,6 @@ export {
 	createLogWrapper,
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 };

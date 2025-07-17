@@ -9,7 +9,8 @@ import fs from 'fs'; // Import fs for directory check/creation
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -138,28 +139,9 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					result.pendingInteraction
 				) {
 					log.info(
-						'analyze_project_complexity tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure.'
+						`analyze_project_complexity tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 					);
-
-					// The 'details' for isAgentLLMPendingInteraction should be the pendingInteraction object itself.
-					const pendingInteractionDetailsForAgent = result.pendingInteraction;
-
-					return {
-						content: [
-							{
-								type: 'resource',
-								resource: {
-									uri: 'agent-llm://pending-interaction',
-									mimeType: 'application/json',
-									text: JSON.stringify({
-										isAgentLLMPendingInteraction: true,
-										details: pendingInteractionDetailsForAgent
-									})
-								}
-							}
-						],
-						isError: false
-					};
+					return createAgentDelegationResponse(result.pendingInteraction);
 				}
 				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 

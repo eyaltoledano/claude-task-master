@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { researchDirect } from '../core/task-master-core.js';
 
@@ -93,27 +94,9 @@ export function registerResearchTool(server) {
 					result.pendingInteraction
 				) {
 					log.info(
-						'research tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure.'
+						`research tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 					);
-
-					const pendingInteractionDetailsForAgent = result.pendingInteraction;
-
-					return {
-						content: [
-							{
-								type: 'resource',
-								resource: {
-									uri: 'agent-llm://pending-interaction',
-									mimeType: 'application/json',
-									text: JSON.stringify({
-										isAgentLLMPendingInteraction: true,
-										details: pendingInteractionDetailsForAgent
-									})
-								}
-							}
-						],
-						isError: false
-					};
+					return createAgentDelegationResponse(result.pendingInteraction);
 				}
 				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 

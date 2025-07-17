@@ -14,7 +14,7 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * @param {Object} originalToolArgs - Original arguments passed to the 'update_subtask' tool (contains the original prompt).
  * @returns {Promise<Object>} Result object with { success: true, updatedSubtaskId } or { success: false, error: string }.
  */
-async function saveSubtaskDetailsFromAgent(
+async function agentllmUpdateSubtaskSave(
 	agentOutputString,
 	subtaskIdToUpdate,
 	projectRoot,
@@ -22,21 +22,21 @@ async function saveSubtaskDetailsFromAgent(
 	originalToolArgs
 ) {
 	logWrapper.info(
-		`saveSubtaskDetailsFromAgent: Appending details to subtask ID ${subtaskIdToUpdate}.`
+		`agentllmUpdateSubtaskSave: Appending details to subtask ID ${subtaskIdToUpdate}.`
 	);
 
 	if (typeof agentOutputString !== 'string') {
 		const errorMsg =
 			'Invalid agentOutputString format. Expected a plain text string.';
 		logWrapper.error(
-			`saveSubtaskDetailsFromAgent: ${errorMsg} Received type: ${typeof agentOutputString}`
+			`agentllmUpdateSubtaskSave: ${errorMsg} Received type: ${typeof agentOutputString}`
 		);
 		return { success: false, error: errorMsg };
 	}
 
 	if (!agentOutputString || agentOutputString.trim() === '') {
 		logWrapper.warn(
-			`saveSubtaskDetailsFromAgent: Agent output string is empty for subtask ${subtaskIdToUpdate}. No details will be appended.`
+			`agentllmUpdateSubtaskSave: Agent output string is empty for subtask ${subtaskIdToUpdate}. No details will be appended.`
 		);
 		return {
 			success: true,
@@ -51,7 +51,7 @@ async function saveSubtaskDetailsFromAgent(
 		const allTasksData = readJSON(tasksJsonPath);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
-			logWrapper.error(`saveSubtaskDetailsFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -61,7 +61,7 @@ async function saveSubtaskDetailsFromAgent(
 
 		if (isNaN(parentId) || isNaN(subId)) {
 			const errorMsg = `Invalid subtask ID format: ${subtaskIdToUpdate}. Could not parse parent/sub IDs.`;
-			logWrapper.error(`saveSubtaskDetailsFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -70,21 +70,21 @@ async function saveSubtaskDetailsFromAgent(
 		);
 		if (parentTaskIndex === -1) {
 			const errorMsg = `Parent task ${parentId} for subtask ${subtaskIdToUpdate} not found.`;
-			logWrapper.error(`saveSubtaskDetailsFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
 		const parentTask = allTasksData.tasks[parentTaskIndex];
 		if (!parentTask.subtasks || !Array.isArray(parentTask.subtasks)) {
 			const errorMsg = `Parent task ${parentId} has no subtasks array for subtask ${subtaskIdToUpdate}.`;
-			logWrapper.error(`saveSubtaskDetailsFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
 		const subtaskIndex = parentTask.subtasks.findIndex((st) => st.id === subId);
 		if (subtaskIndex === -1) {
 			const errorMsg = `Subtask ${subtaskIdToUpdate} not found within parent task ${parentId}.`;
-			logWrapper.error(`saveSubtaskDetailsFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -92,7 +92,7 @@ async function saveSubtaskDetailsFromAgent(
 
 		if (subtask.status === 'done' || subtask.status === 'completed') {
 			logWrapper.warn(
-				`saveSubtaskDetailsFromAgent: Subtask ${subtaskIdToUpdate} is already '${subtask.status}'. Details will not be appended.`
+				`agentllmUpdateSubtaskSave: Subtask ${subtaskIdToUpdate} is already '${subtask.status}'. Details will not be appended.`
 			);
 			return {
 				success: true,
@@ -110,7 +110,7 @@ ${agentOutputString.trim()}
 		subtask.details =
 			(subtask.details ? subtask.details.trim() + '\n\n' : '') + formattedBlock;
 		logWrapper.info(
-			`saveSubtaskDetailsFromAgent: Appended details to subtask ${subtaskIdToUpdate}.`
+			`agentllmUpdateSubtaskSave: Appended details to subtask ${subtaskIdToUpdate}.`
 		);
 
 		// Optionally, update description based on original prompt length (mimicking original updateSubtaskById logic)
@@ -118,7 +118,7 @@ ${agentOutputString.trim()}
 		if (subtask.description && originalUserPrompt.length < 100) {
 			subtask.description += ` [Updated: ${new Date().toLocaleDateString()}]`;
 			logWrapper.info(
-				`saveSubtaskDetailsFromAgent: Appended update marker to description for subtask ${subtaskIdToUpdate}.`
+				`agentllmUpdateSubtaskSave: Appended update marker to description for subtask ${subtaskIdToUpdate}.`
 			);
 		}
 
@@ -126,13 +126,13 @@ ${agentOutputString.trim()}
 
 		writeJSON(tasksJsonPath, allTasksData);
 		logWrapper.info(
-			`saveSubtaskDetailsFromAgent: Successfully updated tasks.json for subtask ID ${subtaskIdToUpdate}.`
+			`agentllmUpdateSubtaskSave: Successfully updated tasks.json for subtask ID ${subtaskIdToUpdate}.`
 		);
 
 		const outputDir = path.dirname(tasksJsonPath);
 		await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
 		logWrapper.info(
-			`saveSubtaskDetailsFromAgent: Markdown task files regenerated.`
+			`agentllmUpdateSubtaskSave: Markdown task files regenerated.`
 		);
 
 		return {
@@ -142,13 +142,13 @@ ${agentOutputString.trim()}
 		};
 	} catch (error) {
 		logWrapper.error(
-			`saveSubtaskDetailsFromAgent: Error processing update for subtask ID ${subtaskIdToUpdate}: ${error.message}`
+			`agentllmUpdateSubtaskSave: Error processing update for subtask ID ${subtaskIdToUpdate}: ${error.message}`
 		);
 		logWrapper.error(
-			`saveSubtaskDetailsFromAgent: Error stack: ${error.stack}`
+			`agentllmUpdateSubtaskSave: Error stack: ${error.stack}`
 		);
 		return { success: false, error: error.message };
 	}
 }
 
-export { saveSubtaskDetailsFromAgent };
+export { agentllmUpdateSubtaskSave };

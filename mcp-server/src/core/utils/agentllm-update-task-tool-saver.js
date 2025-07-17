@@ -19,7 +19,7 @@ import { parseUpdatedTaskFromText } from '../../../../scripts/modules/task-manag
  * @param {Object} originalToolArgs - Original arguments passed to the 'update_task' tool. (Currently not used here but good for future if needed for context)
  * @returns {Promise<Object>} Result object with { success: true, updatedTask } or { success: false, error: string }.
  */
-async function saveUpdatedTaskFromAgent(
+async function agentllmUpdatedTaskSave(
 	agentOutput,
 	taskIdToUpdate,
 	projectRoot,
@@ -27,7 +27,7 @@ async function saveUpdatedTaskFromAgent(
 	originalToolArgs
 ) {
 	logWrapper.info(
-		`saveUpdatedTaskFromAgent: Saving updated task data for ID ${taskIdToUpdate}.`
+		`agentllmUpdatedTaskSave: Saving updated task data for ID ${taskIdToUpdate}.`
 	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
@@ -36,7 +36,7 @@ async function saveUpdatedTaskFromAgent(
 		const allTasksData = readJSON(tasksJsonPath);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
-			logWrapper.error(`saveUpdatedTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -63,7 +63,7 @@ async function saveUpdatedTaskFromAgent(
 
 		if (!taskToUpdateObject) {
 			const errorMsg = `Task/subtask ID ${taskIdToUpdate} not found for update.`;
-			logWrapper.error(`saveUpdatedTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -74,29 +74,40 @@ async function saveUpdatedTaskFromAgent(
 		if (typeof agentOutput === 'string') {
 			if (isAppendMode) {
 				logWrapper.info(
-					'saveUpdatedTaskFromAgent: Agent output is a string and appendMode is true. Formatting for append.'
+					'agentllmUpdatedTaskSave: Agent output is a string and appendMode is true. Formatting for append.'
 				);
 				const timestamp = new Date().toISOString();
 				directAppendText = `<info added on ${timestamp}>\n${agentOutput.trim()}\n</info added on ${timestamp}>`;
 				// parsedAgentTask remains undefined, as we'll modify taskToUpdateObject directly
 			} else {
 				logWrapper.info(
-					'saveUpdatedTaskFromAgent: Agent output is a string and not appendMode. Attempting to parse with parseUpdatedTaskFromText.'
+					'agentllmUpdatedTaskSave: Agent output is a string and not appendMode. Attempting to parse with parseUpdatedTaskFromText.'
 				);
 				const idForParser =
 					typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')
 						? taskIdToUpdate
 						: parseInt(String(taskIdToUpdate), 10);
-				parsedAgentTask = parseUpdatedTaskFromText(
-					agentOutput,
-					idForParser,
-					logWrapper,
-					true /* isMCP */
-				);
+				try {
+					parsedAgentTask = parseUpdatedTaskFromText(
+						agentOutput,
+						idForParser,
+						logWrapper,
+						true /* isMCP */
+					);
+				} catch (parseError) {
+					const errorMessage = `Failed to parse agent output string: ${parseError.message}`;
+					logWrapper.error(
+						`agentllmUpdatedTaskSave: Error parsing task from agent output: ${errorMessage}`
+					);
+					return {
+						success: false,
+						error: errorMessage
+					};
+				}
 			}
 		} else if (typeof agentOutput === 'object' && agentOutput !== null) {
 			logWrapper.info(
-				'saveUpdatedTaskFromAgent: Agent output is already an object. Validating and using directly.'
+				'agentllmUpdatedTaskSave: Agent output is already an object. Validating and using directly.'
 			);
 			// If agent returns an object, we might still want to run it through a Zod schema or similar validation.
 			// For now, assuming it matches the structure `parseUpdatedTaskFromText` would produce.
@@ -118,7 +129,7 @@ async function saveUpdatedTaskFromAgent(
 			const errorMsg =
 				'Invalid agentOutput format. Expected a JSON string or a task object.';
 			logWrapper.error(
-				`saveUpdatedTaskFromAgent: ${errorMsg} Received type: ${typeof agentOutput}`
+				`agentllmUpdatedTaskSave: ${errorMsg} Received type: ${typeof agentOutput}`
 			);
 			return { success: false, error: errorMsg };
 		}
@@ -130,7 +141,7 @@ async function saveUpdatedTaskFromAgent(
 				taskToUpdateObject.status === 'completed'
 			) {
 				logWrapper.warn(
-					`saveUpdatedTaskFromAgent: Task/subtask ${taskIdToUpdate} is completed. Cannot append text.`
+					`agentllmUpdatedTaskSave: Task/subtask ${taskIdToUpdate} is completed. Cannot append text.`
 				);
 				return {
 					success: true,
@@ -143,14 +154,14 @@ async function saveUpdatedTaskFromAgent(
 					? taskToUpdateObject.details + '\n\n'
 					: '') + directAppendText;
 			logWrapper.info(
-				`saveUpdatedTaskFromAgent: Appended text to task/subtask ${taskIdToUpdate}.`
+				`agentllmUpdatedTaskSave: Appended text to task/subtask ${taskIdToUpdate}.`
 			);
 
 			writeJSON(tasksJsonPath, allTasksData); // Save the entire tasks structure
 			const outputDir = path.dirname(tasksJsonPath);
 			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
 			logWrapper.info(
-				`saveUpdatedTaskFromAgent: Markdown task files regenerated after append.`
+				`agentllmUpdatedTaskSave: Markdown task files regenerated after append.`
 			);
 			return {
 				success: true,
@@ -163,7 +174,7 @@ async function saveUpdatedTaskFromAgent(
 		if (!parsedAgentTask || typeof parsedAgentTask !== 'object') {
 			// This case implies that it was not append mode, but parsing failed or agentOutput was not a valid object.
 			const errorMsg = `Task data from agent is invalid for full update after parsing/processing: ${JSON.stringify(parsedAgentTask)}`;
-			logWrapper.error(`saveUpdatedTaskFromAgent: ${errorMsg}`);
+			logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
@@ -176,7 +187,7 @@ async function saveUpdatedTaskFromAgent(
 			taskToUpdateObject.status === 'completed'
 		) {
 			logWrapper.warn(
-				`saveUpdatedTaskFromAgent: Task/subtask ${taskIdToUpdate} is completed and was not updated by agent during full update attempt.`
+				`agentllmUpdatedTaskSave: Task/subtask ${taskIdToUpdate} is completed and was not updated by agent during full update attempt.`
 			);
 			finalUpdatedTaskForReturn = taskToUpdateObject;
 		} else {
@@ -215,7 +226,7 @@ async function saveUpdatedTaskFromAgent(
 							JSON.stringify(updatedVersion) !== JSON.stringify(compSub)
 						) {
 							logWrapper.warn(
-								`saveUpdatedTaskFromAgent: Restoring completed subtask ${taskToUpdateObject.id}.${compSub.id} as agent modified/removed it.`
+								`agentllmUpdatedTaskSave: Restoring completed subtask ${taskToUpdateObject.id}.${compSub.id} as agent modified/removed it.`
 							);
 							finalSubtasks = finalSubtasks.filter(
 								(st) => st.id !== compSub.id
@@ -247,13 +258,13 @@ async function saveUpdatedTaskFromAgent(
 		if (taskUpdated) {
 			writeJSON(tasksJsonPath, allTasksData);
 			logWrapper.info(
-				`saveUpdatedTaskFromAgent: Successfully updated tasks.json for task/subtask ID ${taskIdToUpdate}.`
+				`agentllmUpdatedTaskSave: Successfully updated tasks.json for task/subtask ID ${taskIdToUpdate}.`
 			);
 
 			const outputDir = path.dirname(tasksJsonPath);
 			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
 			logWrapper.info(
-				`saveUpdatedTaskFromAgent: Markdown task files regenerated after update.`
+				`agentllmUpdatedTaskSave: Markdown task files regenerated after update.`
 			);
 		}
 
@@ -264,11 +275,11 @@ async function saveUpdatedTaskFromAgent(
 		};
 	} catch (error) {
 		logWrapper.error(
-			`saveUpdatedTaskFromAgent: Error processing update for ID ${taskIdToUpdate}: ${error.message}`
+			`agentllmUpdatedTaskSave: Error processing update for ID ${taskIdToUpdate}: ${error.message}`
 		);
-		logWrapper.error(`saveUpdatedTaskFromAgent: Error stack: ${error.stack}`);
+		logWrapper.error(`agentllmUpdatedTaskSave: Error stack: ${error.stack}`);
 		return { success: false, error: error.message };
 	}
 }
 
-export { saveUpdatedTaskFromAgent };
+export { agentllmUpdatedTaskSave };

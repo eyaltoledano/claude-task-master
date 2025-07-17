@@ -11,11 +11,11 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
  * @param {Object} logWrapper - Logger object (e.g., from MCP context or mcpLog).
  * @returns {Promise<Object>} - Result object with { success: true, outputPath } or { success: false, error: string }.
  */
-async function saveTasksFromAgentData(tasksData, projectRoot, logWrapper) {
+async function agentllmParsePrdSave(tasksData, projectRoot, logWrapper) {
 	if (!tasksData || !Array.isArray(tasksData.tasks) || !tasksData.metadata) {
 		const errorMsg =
 			'Invalid tasksData structure. Expected object with "tasks" array and "metadata".';
-		logWrapper.error(`saveTasksFromAgentData: ${errorMsg}`);
+		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
 		return { success: false, error: errorMsg };
 	}
 
@@ -25,7 +25,7 @@ async function saveTasksFromAgentData(tasksData, projectRoot, logWrapper) {
 	try {
 		if (!fs.existsSync(outputDir)) {
 			logWrapper.info(
-				`saveTasksFromAgentData: Creating output directory: ${outputDir}`
+				`agentllmParsePrdSave: Creating output directory: ${outputDir}`
 			);
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
@@ -46,22 +46,22 @@ async function saveTasksFromAgentData(tasksData, projectRoot, logWrapper) {
 
 		writeJSON(outputPath, outputToSave);
 		logWrapper.info(
-			`saveTasksFromAgentData: Tasks successfully written to ${outputPath}`
+			`agentllmParsePrdSave: Tasks successfully written to ${outputPath}`
 		);
 
 		await generateTaskFiles(outputPath, outputDir, { mcpLog: logWrapper });
 		logWrapper.info(
-			`saveTasksFromAgentData: Markdown task files generated for tasks from ${outputPath}`
+			`agentllmParsePrdSave: Markdown task files generated for tasks from ${outputPath}`
 		);
 
 		return { success: true, outputPath };
 	} catch (error) {
 		logWrapper.error(
-			`saveTasksFromAgentData: Error saving tasks or generating markdown: ${error.message}`
+			`agentllmParsePrdSave: Error saving tasks or generating markdown: ${error.message}`
 		);
-		logWrapper.error(`saveTasksFromAgentData: Error stack: ${error.stack}`);
+		logWrapper.error(`agentllmParsePrdSave: Error stack: ${error.stack}`);
 		return { success: false, error: error.message };
 	}
 }
 
-export { saveTasksFromAgentData };
+export { agentllmParsePrdSave };

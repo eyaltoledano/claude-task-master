@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot,
-	createErrorResponse
+	createErrorResponse,
+	createAgentDelegationResponse
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -74,26 +75,11 @@ export function registerParsePRDTool(server) {
 					resultFromDirectCall.needsAgentDelegation === true
 				) {
 					log.info(
-						'parse_prd tool: Agent delegation signaled. Returning EmbeddedResource structure.'
+						`parse_prd tool: Agent delegation signaled. Interaction ID: ${resultFromDirectCall.pendingInteraction.interactionId}`
 					);
-					// Return the new EmbeddedResource structure
-					return {
-						content: [
-							{
-								type: 'resource', // Standard MCP content type
-								resource: {
-									uri: 'agent-llm://pending-interaction', // Conventional URI
-									mimeType: 'application/json', // Specifies that 'text' contains JSON
-									text: JSON.stringify({
-										// Stringify the actual payload
-										isAgentLLMPendingInteraction: true, // Flag for easy identification
-										details: resultFromDirectCall.pendingInteraction // Core pendingInteraction data
-									})
-								}
-							}
-						],
-						isError: false // Standard part of CallToolResult
-					};
+					return createAgentDelegationResponse(
+						resultFromDirectCall.pendingInteraction
+					);
 				} else {
 					// If no delegation, process the result as usual
 					return handleApiResult(resultFromDirectCall, log);

@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -86,27 +87,9 @@ export function registerUpdateTool(server) {
 					result.pendingInteraction
 				) {
 					log.info(
-						`update tool: Agent delegation signaled by ...Direct function. Returning EmbeddedResource structure. Interaction ID: ${result.pendingInteraction.interactionId}`
+						`update tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 					);
-
-					const pendingInteractionDetailsForAgent = result.pendingInteraction;
-
-					return {
-						content: [
-							{
-								type: 'resource',
-								resource: {
-									uri: 'agent-llm://pending-interaction', // Standard URI
-									mimeType: 'application/json',
-									text: JSON.stringify({
-										isAgentLLMPendingInteraction: true, // Flag for the client
-										details: pendingInteractionDetailsForAgent // The propagated pendingInteraction object
-									})
-								}
-							}
-						],
-						isError: false // This is not an error, but a signal
-					};
+					return createAgentDelegationResponse(result.pendingInteraction);
 				}
 				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 

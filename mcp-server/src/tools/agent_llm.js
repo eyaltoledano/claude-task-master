@@ -65,56 +65,67 @@ function registerAgentLLMTool(server) {
 			'Manages delegated LLM calls via an agent. Taskmaster uses this to request an LLM call from an agent. The agent uses this to return the LLM response.',
 		parameters: agentLLMParameters,
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			log.debug(`agent_llm tool called with args: ${JSON.stringify(args)}`);
+			try {
+				log.debug(`agent_llm tool called with args: ${JSON.stringify(args)}`);
 
-			if (args.delegatedCallDetails) {
-				const effectiveInteractionId = args.interactionId || uuidv4();
-				log.info(
-					`agent_llm: Taskmaster delegating LLM call for command '${args.delegatedCallDetails.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
-				);
+				if (args.delegatedCallDetails) {
+					const effectiveInteractionId = args.interactionId || uuidv4();
+					log.info(
+						`agent_llm: Taskmaster delegating LLM call for command '${args.delegatedCallDetails.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
+					);
 
-				return {
-					toolResponseSource: 'taskmaster_to_agent',
-					status: 'pending_agent_llm_action',
-					message:
-						'Taskmaster requires an LLM call from the agent. Details provided in llmRequestForAgent. Agent must call agent_llm with this interactionId in response.',
-					llmRequestForAgent: args.delegatedCallDetails.requestParameters,
-					interactionId: effectiveInteractionId,
-					pendingInteractionSignalToAgent: {
-						type: 'agent_must_respond_via_agent_llm',
+					return {
+						toolResponseSource: 'taskmaster_to_agent',
+						status: 'pending_agent_llm_action',
+						message:
+							'Taskmaster requires an LLM call from the agent. Details provided in llmRequestForAgent. Agent must call agent_llm with this interactionId in response.',
+						llmRequestForAgent: args.delegatedCallDetails.requestParameters,
 						interactionId: effectiveInteractionId,
-						instructions:
-							"Agent, please perform the LLM call using llmRequestForAgent and then invoke the 'agent_llm' tool with your response, including this interactionId."
+						pendingInteractionSignalToAgent: {
+							type: 'agent_must_respond_via_agent_llm',
+							interactionId: effectiveInteractionId,
+							instructions:
+								"Agent, please perform the LLM call using llmRequestForAgent and then invoke the 'agent_llm' tool with your response, including this interactionId."
+						}
+					};
+				} else if (args.agentLLMResponse) {
+					if (!args.interactionId) {
+						const errorMsg =
+							'agent_llm: Agent response is missing interactionId.';
+						log.warn(errorMsg);
+						return createErrorResponse(errorMsg, { mcpToolError: true });
 					}
-				};
-			} else if (args.agentLLMResponse) {
-				if (!args.interactionId) {
+					log.info(
+						`agent_llm: Agent providing LLM response for interaction ID: ${args.interactionId}`
+					);
+
+					const taskmasterInternalResponse = {
+						toolResponseSource: 'agent_to_taskmaster',
+						status:
+							args.agentLLMResponse.status === 'success'
+								? 'llm_response_completed'
+								: 'llm_response_error',
+						finalLLMOutput: args.agentLLMResponse.data,
+						error: args.agentLLMResponse.errorDetails,
+						interactionId: args.interactionId
+					};
+
+					return taskmasterInternalResponse;
+				} else {
 					const errorMsg =
-						'agent_llm: Agent response is missing interactionId.';
-					log.warn(errorMsg);
+						"Invalid parameters for agent_llm tool: Must provide either 'delegatedCallDetails' or 'agentLLMResponse'.";
+					log.warn(`agent_llm: ${errorMsg} Args: ${JSON.stringify(args)}`);
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
-				log.info(
-					`agent_llm: Agent providing LLM response for interaction ID: ${args.interactionId}`
-				);
-
-				const taskmasterInternalResponse = {
-					toolResponseSource: 'agent_to_taskmaster',
-					status:
-						args.agentLLMResponse.status === 'success'
-							? 'llm_response_completed'
-							: 'llm_response_error',
-					finalLLMOutput: args.agentLLMResponse.data,
-					error: args.agentLLMResponse.errorDetails,
-					interactionId: args.interactionId
-				};
-
-				return taskmasterInternalResponse;
-			} else {
-				const errorMsg =
-					"Invalid parameters for agent_llm tool: Must provide either 'delegatedCallDetails' or 'agentLLMResponse'.";
-				log.warn(`agent_llm: ${errorMsg} Args: ${JSON.stringify(args)}`);
-				return createErrorResponse(errorMsg, { mcpToolError: true });
+			} catch (error) {
+				if (error instanceof z.ZodError) {
+					const errorMsg = `Invalid parameters for agent_llm tool: ${error.errors
+						.map((e) => e.message)
+						.join(', ')}`;
+					log.warn(`agent_llm: ${errorMsg} Args: ${JSON.stringify(args)}`);
+					return createErrorResponse(errorMsg, { mcpToolError: true });
+				}
+				throw error;
 			}
 		})
 	});
