@@ -292,5 +292,5 @@ class BackgroundOperationsManager extends EventEmitter {
 	}
 }
 
-// Create and export singleton instance
-export const backgroundOperations = new BackgroundOperationsManager();
+// Export the class directly
+export { BackgroundOperationsManager };

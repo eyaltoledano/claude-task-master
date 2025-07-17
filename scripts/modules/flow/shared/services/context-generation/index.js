@@ -8,9 +8,9 @@
 export { ProjectDetector } from './project-detector.js';
 export { TaskEnhancer } from './task-enhancer.js';
 export { GitContextGenerator } from './git-context-generator.js';
-export { ProjectStructureAnalyzer } from '../../features/ast/services/project-structure-analyzer.js';
+export { ProjectStructureAnalyzer } from '../../../features/ast/services/project-structure-analyzer.js';
 export { MarkdownFormatter } from './markdown-formatter.js';
-export { TaskContextGenerator } from '../../features/ast/services/task-context-generator.js';
+export { TaskContextGenerator } from '../../../features/ast/services/task-context-generator.js';
 
 // Convenience factory function
 export async function createTaskContextGenerator(options = {}) {

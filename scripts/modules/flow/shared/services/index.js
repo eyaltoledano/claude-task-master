@@ -4,10 +4,10 @@
  */
 
 // Core services
-export { default as UnifiedAgentService } from './UnifiedAgentService.js';
-export { default as BranchAwarenessManager } from './BranchAwarenessManager.js';
-export { default as BackgroundOperationsManager } from './BackgroundOperationsManager.js';
-export { default as SandboxCleanerService } from './sandbox-cleaner.service.js';
+export { UnifiedAgentService } from './UnifiedAgentService.js';
+export { BranchAwarenessManager } from './BranchAwarenessManager.js';
+export { BackgroundOperationsManager } from './BackgroundOperationsManager.js';
+export { SandboxCleanerService } from './sandbox-cleaner.service.js';
 
 // Context generation services
 export * from './context-generation/index.js';

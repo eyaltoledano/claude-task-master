@@ -269,3 +269,5 @@ export class SandboxCleaner {
 		console.log('Sandbox cleaner stopped');
 	}
 }
+
+export const SandboxCleanerService = SandboxCleaner;
