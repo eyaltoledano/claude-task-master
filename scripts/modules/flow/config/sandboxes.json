@@ -12,7 +12,7 @@
 			"apiKeyEnv": "DAYTONA_API_KEY"
 		},
 		"northflank": {
-			"active": false,
+			"active": true,
 			"rank": 3,
 			"apiKeyEnv": "NORTHFLANK_API_KEY"
 		}
