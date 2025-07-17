@@ -311,6 +311,9 @@ npm run db:push
 # Reset database (delete local .taskmaster/tasks/tasks.db)
 npm run db:reset
 
+# NUCLEAR: Remove entire .taskmaster directory (EXTREMELY DANGEROUS!)
+npm run db:nuke
+
 # Setup database with schema and data sync
 npm run db:setup
 
@@ -329,14 +332,8 @@ npm run db:migrate:remote <project-path>
 # Push schema changes to remote project
 npm run db:push:remote <project-path>
 
-# Reset database with safety warnings and automatic backup
-npm run db:reset
-
 # Reset remote project database with safety warnings and backup
 npm run db:reset:remote <project-path>
-
-# NUCLEAR: Remove entire .taskmaster directory (EXTREMELY DANGEROUS!)
-npm run db:nuke
 
 # NUCLEAR: Remove entire remote .taskmaster directory (EXTREMELY DANGEROUS!)
 npm run db:nuke:remote <project-path>
