@@ -41,6 +41,12 @@ describe('MCP Configuration Validation', () => {
 				expectedConfigName: 'settings.json',
 				expectedPath: '.gemini/settings.json'
 			},
+			kiro: {
+				shouldHaveMcp: true,
+				expectedDir: '.kiro',
+				expectedConfigName: 'settings/mcp.json',
+				expectedPath: '.kiro/settings/mcp.json'
+			},
 			opencode: {
 				shouldHaveMcp: true,
 				expectedDir: '.',
@@ -128,6 +134,7 @@ describe('MCP Configuration Validation', () => {
 
 		test('should ensure all MCP-enabled profiles use proper directory structure', () => {
 			const rootProfiles = ['opencode', 'claude', 'codex']; // Profiles that use root directory for config
+			const nestedConfigProfiles = ['kiro']; // Profiles that use nested directories for config
 
 			RULE_PROFILES.forEach((profileName) => {
 				const profile = getRulesProfile(profileName);
@@ -140,6 +147,11 @@ describe('MCP Configuration Validation', () => {
 							// Other root profiles normalize to just the filename (no ./ prefix)
 							expect(profile.mcpConfigPath).toMatch(/^[\w_.]+$/);
 						}
+					} else if (nestedConfigProfiles.includes(profileName)) {
+						// Profiles with nested config directories
+						expect(profile.mcpConfigPath).toMatch(
+							/^\.[\w-]+\/[\w-]+\/[\w_.]+$/
+						);
 					} else {
 						// Other profiles should have config files in their specific directories
 						expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
@@ -347,6 +359,13 @@ describe('MCP Configuration Validation', () => {
 							// Other root profiles normalize to just the filename
 							expect(profile.mcpConfigPath).toBe(profile.mcpConfigName);
 						}
+					} else if (profileName === 'kiro') {
+						// Kiro has a nested config structure
+						const parts = profile.mcpConfigPath.split('/');
+						expect(parts).toHaveLength(3); // Should be profileDir/settings/mcp.json
+						expect(parts[0]).toBe(profile.profileDir);
+						expect(parts[1]).toBe('settings');
+						expect(parts[2]).toBe('mcp.json');
 					} else {
 						// Non-root profiles should have profileDir/configName structure
 						const parts = profile.mcpConfigPath.split('/');

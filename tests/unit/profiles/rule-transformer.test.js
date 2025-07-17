@@ -19,6 +19,7 @@ describe('Rule Transformer - General', () => {
 				'codex',
 				'cursor',
 				'gemini',
+				'kiro',
 				'opencode',
 				'roo',
 				'trae',
@@ -211,6 +212,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
 					expectedPath: '.gemini/settings.json'
+				},
+				kiro: {
+					mcpConfig: true,
+					mcpConfigName: 'settings/mcp.json',
+					expectedPath: '.kiro/settings/mcp.json'
 				},
 				opencode: {
 					mcpConfig: true,
