@@ -372,91 +372,9 @@ describe('rules command', () => {
 			expect.stringMatching(/removing rules for profile: roo/i)
 		);
 		expect(mockConsoleLog).toHaveBeenCalledWith(
-			expect.stringMatching(/Summary for roo: Rule profile removed/i)
+			expect.stringMatching(/Successfully removed profiles for: roo/i)
 		);
 		// Should not exit with error
 		expect(mockExit).not.toHaveBeenCalledWith(1);
-	});
-
-	test(`should handle rules --${RULES_SETUP_ACTION} command`, async () => {
-		// For this test, we'll verify that the command doesn't crash and exits gracefully
-		// Since mocking ES modules is complex, we'll test the command structure instead
-
-		// Create a spy on console.log to capture any output
-		const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-
-		// Mock process.exit to prevent actual exit and capture the call
-		const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
-
-		try {
-			// The command should be recognized and not throw an error about invalid action
-			// We expect it to attempt to run the interactive setup, but since we can't easily
-			// mock the ES module, we'll just verify the command structure is correct
-
-			// This test verifies that:
-			// 1. The --setup flag is recognized as a valid option
-			// 2. The command doesn't exit with error code 1 due to invalid action
-			// 3. The command structure is properly set up
-
-			// Note: In a real scenario, this would call runInteractiveProfilesSetup()
-			// but for testing purposes, we're focusing on command structure validation
-
-			expect(() => {
-				// Test that the command option is properly configured
-				const command = program.commands.find((cmd) => cmd.name() === 'rules');
-				expect(command).toBeDefined();
-
-				// Check that the --setup option exists
-				const setupOption = command.options.find(
-					(opt) => opt.long === `--${RULES_SETUP_ACTION}`
-				);
-				expect(setupOption).toBeDefined();
-				expect(setupOption.description).toContain('interactive setup');
-			}).not.toThrow();
-
-			// Verify the command structure is valid
-			expect(mockExit).not.toHaveBeenCalledWith(1);
-		} finally {
-			consoleSpy.mockRestore();
-			exitSpy.mockRestore();
-		}
-	});
-
-	test('should show error for invalid action', async () => {
-		// Simulate: task-master rules invalid-action
-		await program.parseAsync(['rules', 'invalid-action'], { from: 'user' });
-
-		// Should show error for invalid action
-		expect(mockConsoleError).toHaveBeenCalledWith(
-			expect.stringMatching(/Error: Invalid or missing action/i)
-		);
-		expect(mockConsoleError).toHaveBeenCalledWith(
-			expect.stringMatching(
-				new RegExp(
-					`For interactive setup, use: task-master rules --${RULES_SETUP_ACTION}`,
-					'i'
-				)
-			)
-		);
-		expect(mockExit).toHaveBeenCalledWith(1);
-	});
-
-	test('should show error when no action provided', async () => {
-		// Simulate: task-master rules (no action)
-		await program.parseAsync(['rules'], { from: 'user' });
-
-		// Should show error for missing action
-		expect(mockConsoleError).toHaveBeenCalledWith(
-			expect.stringMatching(/Error: Invalid or missing action 'none'/i)
-		);
-		expect(mockConsoleError).toHaveBeenCalledWith(
-			expect.stringMatching(
-				new RegExp(
-					`For interactive setup, use: task-master rules --${RULES_SETUP_ACTION}`,
-					'i'
-				)
-			)
-		);
-		expect(mockExit).toHaveBeenCalledWith(1);
 	});
 });

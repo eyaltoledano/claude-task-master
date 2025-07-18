@@ -29,6 +29,8 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 		],
 		// Documentation URL replacements
 		docUrls: [{ from: /docs\.cursor\.so/g, to: 'kiro.dev/docs' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -37,7 +39,19 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (kiro uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (kiro uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (kiro uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'kiro.ai/docs' }]
 	})
 	.globalReplacements([
 		// Core Kiro directory structure changes

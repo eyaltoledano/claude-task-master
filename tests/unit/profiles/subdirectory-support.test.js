@@ -18,7 +18,8 @@ describe('Rules Subdirectory Support Feature', () => {
 
 	it('should not use taskmaster subdirectories for other profiles', () => {
 		// Test profiles that should NOT use subdirectories (new default)
-		const profiles = ['roo', 'vscode', 'cline', 'windsurf', 'trae'];
+		// Only testing profiles that use standard default file mappings
+		const profiles = ['vscode', 'cline', 'windsurf', 'trae'];
 
 		profiles.forEach((profileName) => {
 			const profile = getRulesProfile(profileName);

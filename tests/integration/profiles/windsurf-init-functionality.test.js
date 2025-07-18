@@ -24,8 +24,8 @@ describe('Windsurf Profile Initialization Functionality', () => {
 		// Check the final computed properties on the profile instance
 		expect(windsurfProfile.profileName).toBe('windsurf');
 		expect(windsurfProfile.displayName).toBe('Windsurf');
-		expect(windsurfProfile.profileDir).toBe('.windsurfrules');
-		expect(windsurfProfile.rulesDir).toBe('.windsurfrules');
+		expect(windsurfProfile.profileDir).toBe('.windsurf');
+		expect(windsurfProfile.rulesDir).toBe('.windsurf/rules');
 		expect(windsurfProfile.includeDefaultRules).toBe(true);
 
 		// Verify Profile instance structure
@@ -37,13 +37,9 @@ describe('Windsurf Profile Initialization Functionality', () => {
 	});
 
 	test('windsurf profile has correct MCP configuration', () => {
-		expect(windsurfProfile.mcpConfig).toEqual({
-			configName: 'windsurf_mcp.json'
-		});
-		expect(windsurfProfile.mcpConfigName).toBe('windsurf_mcp.json');
-		expect(windsurfProfile.mcpConfigPath).toBe(
-			'.windsurfrules/windsurf_mcp.json'
-		);
+		expect(windsurfProfile.mcpConfig).toBe(true); // Boolean indicating MCP is enabled
+		expect(windsurfProfile.mcpConfigName).toBe('mcp.json');
+		expect(windsurfProfile.mcpConfigPath).toBe('.windsurf/mcp.json');
 	});
 
 	test('windsurf profile provides legacy format conversion', () => {

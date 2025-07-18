@@ -11,20 +11,22 @@ describe('Cline Profile Initialization Functionality', () => {
 	});
 
 	test('cline.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(clineProfileContent).toContain("name: 'cline'");
-		expect(clineProfileContent).toContain("displayName: 'Cline'");
-		expect(clineProfileContent).toContain("profileDir: '.clinerules'"); // non-default
-		expect(clineProfileContent).toContain("rulesDir: '.clinerules'"); // non-default
-		expect(clineProfileContent).toContain('mcpConfig: false'); // non-default
+		// Check for ProfileBuilder syntax in the source file
+		expect(clineProfileContent).toContain("ProfileBuilder.minimal('cline')");
+		expect(clineProfileContent).toContain(".display('Cline')");
+		expect(clineProfileContent).toContain(".profileDir('.clinerules')"); // non-default
+		expect(clineProfileContent).toContain(".rulesDir('.clinerules')"); // non-default
+		expect(clineProfileContent).toContain('.mcpConfig(false)');
+		expect(clineProfileContent).toContain('.includeDefaultRules(true)');
 
 		// Check the final computed properties on the profile object
 		expect(clineProfile.profileName).toBe('cline');
 		expect(clineProfile.displayName).toBe('Cline');
-		expect(clineProfile.profileDir).toBe('.clinerules');
-		expect(clineProfile.rulesDir).toBe('.clinerules');
-		expect(clineProfile.mcpConfig).toBe(false);
-		expect(clineProfile.mcpConfigName).toBe(null);
+		expect(clineProfile.profileDir).toBe('.clinerules'); // non-default
+		expect(clineProfile.rulesDir).toBe('.clinerules'); // non-default
+		expect(clineProfile.mcpConfig).toBe(false); // no MCP
+		expect(clineProfile.mcpConfigName).toBe(null); // no MCP config
+		expect(clineProfile.includeDefaultRules).toBe(true); // includes default rules
 	});
 
 	test('cline.js configures .mdc to .md extension mapping', () => {
@@ -56,8 +58,9 @@ describe('Cline Profile Initialization Functionality', () => {
 		);
 	});
 
-	test('cline.js uses createProfile factory function', () => {
-		expect(clineProfileContent).toContain('createProfile');
-		expect(clineProfileContent).toContain('export const clineProfile');
+	test('cline.js uses ProfileBuilder factory function', () => {
+		expect(clineProfileContent).toContain('ProfileBuilder.minimal');
+		expect(clineProfileContent).toContain('.build()');
+		expect(clineProfileContent).toContain('export { clineProfile }');
 	});
 });

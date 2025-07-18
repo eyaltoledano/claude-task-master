@@ -11,40 +11,34 @@ describe('Codex Profile Initialization Functionality', () => {
 	});
 
 	test('codex.js has correct asset-only profile configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(codexProfileContent).toContain("name: 'codex'");
-		expect(codexProfileContent).toContain("displayName: 'Codex'");
-		expect(codexProfileContent).toContain("profileDir: '.'"); // non-default
-		expect(codexProfileContent).toContain("rulesDir: '.'"); // non-default
-		expect(codexProfileContent).toContain('mcpConfig: false'); // non-default
-		expect(codexProfileContent).toContain('includeDefaultRules: false'); // non-default
-		expect(codexProfileContent).toContain("'AGENTS.md': 'AGENTS.md'");
+		// Check for ProfileBuilder syntax in the source file
+		expect(codexProfileContent).toContain("ProfileBuilder.minimal('codex')");
+		expect(codexProfileContent).toContain(".display('Codex')");
+		expect(codexProfileContent).toContain(".profileDir('.')"); // Root directory
+		expect(codexProfileContent).toContain(".rulesDir('.')");
+		expect(codexProfileContent).toContain('.mcpConfig(false)'); // No MCP configuration for Codex
+		expect(codexProfileContent).toContain('.includeDefaultRules(false)'); // Codex manages its own simple setup
 
 		// Check the final computed properties on the profile object
 		expect(codexProfile.profileName).toBe('codex');
 		expect(codexProfile.displayName).toBe('Codex');
-		expect(codexProfile.profileDir).toBe('.');
-		expect(codexProfile.rulesDir).toBe('.');
-		expect(codexProfile.mcpConfig).toBe(false);
-		expect(codexProfile.mcpConfigName).toBe(null); // computed
-		expect(codexProfile.includeDefaultRules).toBe(false);
-		expect(codexProfile.fileMap['AGENTS.md']).toBe('AGENTS.md');
+		expect(codexProfile.profileDir).toBe('.'); // non-default
+		expect(codexProfile.rulesDir).toBe('.'); // non-default
+		expect(codexProfile.mcpConfig).toBe(false); // non-default
+		expect(codexProfile.includeDefaultRules).toBe(false); // non-default
 	});
 
-	test('codex.js has no lifecycle functions', () => {
-		// Codex has been simplified - no lifecycle functions
-		expect(codexProfileContent).not.toContain('function onAddRulesProfile');
-		expect(codexProfileContent).not.toContain('function onRemoveRulesProfile');
-		expect(codexProfileContent).not.toContain(
-			'function onPostConvertRulesProfile'
-		);
-		expect(codexProfileContent).not.toContain('log(');
+	test('codex.js has no lifecycle hooks (simple profile)', () => {
+		// Codex should not have lifecycle functions
+		expect(codexProfileContent).not.toContain('onAddRulesProfile');
+		expect(codexProfileContent).not.toContain('onRemoveRulesProfile');
+		expect(codexProfileContent).not.toContain('onPostConvertRulesProfile');
 	});
 
-	test('codex.js has minimal implementation', () => {
-		// Should just use createProfile factory
-		expect(codexProfileContent).toContain('createProfile({');
-		expect(codexProfileContent).toContain("name: 'codex'");
-		expect(codexProfileContent).toContain("'AGENTS.md': 'AGENTS.md'");
+	test('codex.js has ProfileBuilder implementation', () => {
+		// Should use ProfileBuilder pattern
+		expect(codexProfileContent).toContain('ProfileBuilder.minimal');
+		expect(codexProfileContent).toContain('.build()');
+		expect(codexProfileContent).toContain('export { codexProfile }');
 	});
 });

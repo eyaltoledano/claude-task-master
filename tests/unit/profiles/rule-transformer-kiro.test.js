@@ -201,7 +201,7 @@ Use the .mdc extension for all rule files.`;
 		expect(kiroProfile.profileName).toBe('kiro');
 		expect(kiroProfile.displayName).toBe('Kiro');
 		expect(kiroProfile.profileDir).toBe('.kiro');
-		expect(kiroProfile.mcpConfig).toEqual({ configName: 'settings/mcp.json' });
+		expect(kiroProfile.mcpConfig).toBe(true); // Now returns boolean
 		expect(kiroProfile.mcpConfigName).toBe('settings/mcp.json');
 		expect(kiroProfile.mcpConfigPath).toBe('.kiro/settings/mcp.json');
 		expect(kiroProfile.includeDefaultRules).toBe(true);

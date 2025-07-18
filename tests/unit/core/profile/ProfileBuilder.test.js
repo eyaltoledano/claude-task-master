@@ -445,7 +445,8 @@ describe('ProfileBuilder', () => {
 			expect(profile.fileMap).toEqual(fileMap);
 			expect(profile.conversionConfig).toEqual(config);
 			expect(profile.globalReplacements).toEqual(replacements);
-			expect(profile.mcpConfig).toEqual({ configName: 'custom.json' });
+			expect(profile.mcpConfig).toBe(true); // Boolean indicating MCP is enabled
+			expect(profile.mcpConfigName).toBe('custom.json'); // Derived from configuration object
 			expect(profile.includeDefaultRules).toBe(false);
 			expect(profile.supportsRulesSubdirectories).toBe(true);
 			expect(profile.hooks.onAdd).toBe(onAddFn);

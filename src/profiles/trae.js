@@ -22,7 +22,9 @@ const traeProfile = ProfileBuilder.minimal('trae')
 			{ from: /Cursor/g, to: 'Trae' }
 		],
 		// Documentation URL replacements
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'docs.trae.ai' }],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'trae.ai/docs' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -31,7 +33,16 @@ const traeProfile = ProfileBuilder.minimal('trae')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (trae uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (trae uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (trae uses standard file references)
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Directory structure changes
@@ -41,6 +52,10 @@ const traeProfile = ProfileBuilder.minimal('trae')
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
 			to: '[$1](.trae/rules/$2.md)'
+		},
+		{
+			from: /\[(.+?)\]\(mdc:\.trae\/rules\/(.+?)\.md\)/g,
+			to: '(.trae/rules/$2.md)'
 		}
 	])
 	.build();

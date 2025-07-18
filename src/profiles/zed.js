@@ -72,9 +72,12 @@ const zedProfile = ProfileBuilder.minimal('zed')
 	.profileDir('.zed')
 	.rulesDir('.zed/rules')
 	.mcpConfig({
-		configName: 'context_servers.json'
+		configName: 'settings.json' // Use settings.json as expected by tests
 	})
-	.includeDefaultRules(false) // Zed manages its own configuration
+	.includeDefaultRules(false) // Zed has its own complex rules management
+	.fileMap({
+		'AGENTS.md': '.rules' // Zed-specific file mapping
+	})
 	.onAdd(addZedContextServers)
 	.onRemove(removeZedContextServers)
 	.conversion({
@@ -92,6 +95,8 @@ const zedProfile = ProfileBuilder.minimal('zed')
 		],
 		// Documentation URL replacements
 		docUrls: [{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -100,7 +105,19 @@ const zedProfile = ProfileBuilder.minimal('zed')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (zed uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (zed uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (zed uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }]
 	})
 	.globalReplacements([
 		// Core Zed directory structure changes

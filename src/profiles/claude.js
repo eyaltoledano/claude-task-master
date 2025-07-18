@@ -283,14 +283,7 @@ const claudeProfile = ProfileBuilder.minimal('claude')
 			},
 			{ from: /Cursor/g, to: 'Claude Code' }
 		],
-		// Documentation URL replacements
-		docUrls: [
-			{
-				from: /docs\.cursor\.so/g,
-				to: 'docs.anthropic.com/en/docs/claude-code'
-			}
-		],
-		// Standard tool mappings (no custom tools)
+		// Tool name mappings (claude uses standard tool names)
 		toolNames: {
 			edit_file: 'edit_file',
 			search: 'search',
@@ -298,7 +291,24 @@ const claudeProfile = ProfileBuilder.minimal('claude')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (claude uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (claude uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (claude uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [
+			{
+				from: /docs\.cursor\.so/g,
+				to: 'docs.anthropic.com/en/docs/claude-code'
+			}
+		]
 	})
 	.onAdd(onAddRulesProfile)
 	.onRemove(onRemoveRulesProfile)

@@ -16,23 +16,21 @@ describe('VSCode Profile Initialization Functionality', () => {
 	});
 
 	test('vscode.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(vscodeProfileContent).toContain("name: 'vscode'");
-		expect(vscodeProfileContent).toContain("displayName: 'VS Code'");
-		expect(vscodeProfileContent).toContain("url: 'code.visualstudio.com'");
-		expect(vscodeProfileContent).toContain(
-			"docsUrl: 'code.visualstudio.com/docs'"
-		);
-		expect(vscodeProfileContent).toContain("rulesDir: '.github/instructions'"); // non-default
-		expect(vscodeProfileContent).toContain('customReplacements'); // non-default
+		// Check for ProfileBuilder syntax in the source file
+		expect(vscodeProfileContent).toContain("ProfileBuilder.minimal('vscode')");
+		expect(vscodeProfileContent).toContain(".display('VS Code')");
+		expect(vscodeProfileContent).toContain(".profileDir('.vscode')"); // MCP config in .vscode
+		expect(vscodeProfileContent).toContain(".rulesDir('.github/instructions')"); // Rules in .github/instructions
+		expect(vscodeProfileContent).toContain('.mcpConfig(true)');
+		expect(vscodeProfileContent).toContain('.includeDefaultRules(true)');
 
 		// Check the final computed properties on the profile object
 		expect(vscodeProfile.profileName).toBe('vscode');
 		expect(vscodeProfile.displayName).toBe('VS Code');
-		expect(vscodeProfile.profileDir).toBe('.vscode'); // default
+		expect(vscodeProfile.profileDir).toBe('.vscode'); // non-default
 		expect(vscodeProfile.rulesDir).toBe('.github/instructions'); // non-default
-		expect(vscodeProfile.globalReplacements).toBeDefined(); // computed from customReplacements
-		expect(Array.isArray(vscodeProfile.globalReplacements)).toBe(true);
+		expect(vscodeProfile.mcpConfig).toBe(true); // default
+		expect(vscodeProfile.mcpConfigName).toBe('mcp.json'); // default
 	});
 
 	test('vscode.js configures .mdc to .md extension mapping', () => {

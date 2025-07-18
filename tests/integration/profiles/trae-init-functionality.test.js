@@ -33,8 +33,8 @@ describe('Trae Profile Initialization Functionality', () => {
 
 	test('trae profile has correct MCP configuration', () => {
 		expect(traeProfile.mcpConfig).toBe(false);
-		expect(traeProfile.mcpConfigName).toBeUndefined();
-		expect(traeProfile.mcpConfigPath).toBeUndefined();
+		expect(traeProfile.mcpConfigName).toBeNull();
+		expect(traeProfile.mcpConfigPath).toBeNull();
 	});
 
 	test('trae profile provides legacy format conversion', () => {

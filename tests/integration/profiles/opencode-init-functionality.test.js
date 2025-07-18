@@ -16,26 +16,21 @@ describe('OpenCode Profile Initialization Functionality', () => {
 	});
 
 	test('opencode.js has correct asset-only profile configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(opencodeProfileContent).toContain("name: 'opencode'");
-		expect(opencodeProfileContent).toContain("displayName: 'OpenCode'");
-		expect(opencodeProfileContent).toContain("url: 'opencode.ai'");
-		expect(opencodeProfileContent).toContain("docsUrl: 'opencode.ai/docs/'");
-		expect(opencodeProfileContent).toContain("profileDir: '.'"); // non-default
-		expect(opencodeProfileContent).toContain("rulesDir: '.'"); // non-default
-		expect(opencodeProfileContent).toContain("mcpConfigName: 'opencode.json'"); // non-default
-		expect(opencodeProfileContent).toContain('includeDefaultRules: false'); // non-default
-		expect(opencodeProfileContent).toContain("'AGENTS.md': 'AGENTS.md'");
+		// Check for ProfileBuilder syntax in the source file
+		expect(opencodeProfileContent).toContain(
+			"ProfileBuilder.minimal('opencode')"
+		);
+		expect(opencodeProfileContent).toContain(".display('OpenCode')");
+		expect(opencodeProfileContent).toContain(".profileDir('.')"); // Root directory
+		expect(opencodeProfileContent).toContain(".rulesDir('.')"); // Root directory for AGENTS.md
+		expect(opencodeProfileContent).toContain('.includeDefaultRules(false)');
 
 		// Check the final computed properties on the profile object
 		expect(opencodeProfile.profileName).toBe('opencode');
 		expect(opencodeProfile.displayName).toBe('OpenCode');
-		expect(opencodeProfile.profileDir).toBe('.');
-		expect(opencodeProfile.rulesDir).toBe('.');
-		expect(opencodeProfile.mcpConfig).toBe(true); // computed from mcpConfigName
-		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
-		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json'); // computed
-		expect(opencodeProfile.includeDefaultRules).toBe(false);
+		expect(opencodeProfile.profileDir).toBe('.'); // non-default
+		expect(opencodeProfile.rulesDir).toBe('.'); // non-default
+		expect(opencodeProfile.includeDefaultRules).toBe(false); // non-default
 		expect(opencodeProfile.fileMap['AGENTS.md']).toBe('AGENTS.md');
 	});
 
@@ -62,12 +57,16 @@ describe('OpenCode Profile Initialization Functionality', () => {
 	});
 
 	test('opencode.js uses custom MCP config name', () => {
-		// OpenCode uses opencode.json instead of mcp.json
-		expect(opencodeProfileContent).toContain("mcpConfigName: 'opencode.json'");
+		// OpenCode uses opencode.json instead of mcp.json - check ProfileBuilder syntax
+		expect(opencodeProfileContent).toContain("configName: 'opencode.json'");
 		// Should not contain mcp.json as a config value (comments are OK)
 		expect(opencodeProfileContent).not.toMatch(
 			/mcpConfigName:\s*['"]mcp\.json['"]/
 		);
+
+		// Check the final computed properties
+		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
+		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json'); // Root directory doesn't need ./
 	});
 
 	test('opencode.js has transformation logic for OpenCode format', () => {

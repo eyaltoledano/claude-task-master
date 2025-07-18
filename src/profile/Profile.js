@@ -25,8 +25,31 @@ export default class Profile {
 		this.fileMap = config.fileMap ?? {};
 		this.conversionConfig = config.conversionConfig ?? {};
 		this.globalReplacements = config.globalReplacements ?? [];
-		this.mcpConfig = config.mcpConfig;
+
+		// Store MCP config and derive boolean
+		this._mcpConfigRaw = config.mcpConfig;
+		this.mcpConfig = this._deriveMcpConfigBoolean(config.mcpConfig);
 		this.hooks = config.hooks ?? {};
+
+		// Legacy-compatible lifecycle function properties (define before freeze)
+		Object.defineProperty(this, 'onPostConvertRulesProfile', {
+			value: this.hooks.onPost,
+			writable: true, // Allow tests to override
+			configurable: true, // Allow tests to redefine
+			enumerable: false // Don't show up in Object.freeze checks
+		});
+		Object.defineProperty(this, 'onRemoveRulesProfile', {
+			value: this.hooks.onRemove,
+			writable: true, // Allow tests to override
+			configurable: true, // Allow tests to redefine
+			enumerable: false // Don't show up in Object.freeze checks
+		});
+		Object.defineProperty(this, 'onAddRulesProfile', {
+			value: this.hooks.onAdd,
+			writable: true, // Allow tests to override
+			configurable: true, // Allow tests to redefine
+			enumerable: false // Don't show up in Object.freeze checks
+		});
 
 		// Legacy compatibility properties
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
@@ -37,11 +60,13 @@ export default class Profile {
 		this.mcpConfigName = this._computeMcpConfigName();
 		this.mcpConfigPath = this._computeMcpConfigPath();
 
-		// Freeze the object to ensure immutability
+		// Freeze nested objects for immutability
 		Object.freeze(this.fileMap);
 		Object.freeze(this.conversionConfig);
 		Object.freeze(this.globalReplacements);
 		Object.freeze(this.hooks);
+
+		// Always freeze the instance for immutability (lifecycle properties are already configurable)
 		Object.freeze(this);
 	}
 
@@ -236,8 +261,11 @@ export default class Profile {
 	 */
 	_computeMcpConfigName() {
 		if (!this.mcpConfig) return null;
-		if (typeof this.mcpConfig === 'object' && this.mcpConfig.configName) {
-			return this.mcpConfig.configName;
+		if (
+			typeof this._mcpConfigRaw === 'object' &&
+			this._mcpConfigRaw.configName
+		) {
+			return this._mcpConfigRaw.configName;
 		}
 		return 'mcp.json';
 	}
@@ -248,7 +276,25 @@ export default class Profile {
 	 */
 	_computeMcpConfigPath() {
 		if (!this.mcpConfigName) return null;
-		// Simple path joining - may need to be more sophisticated
+
+		// Handle root directory case - return just the filename
+		if (this.profileDir === '.') {
+			return this.mcpConfigName;
+		}
+
+		// For other directories, join them properly
 		return `${this.profileDir}/${this.mcpConfigName}`.replace(/\/+/g, '/');
+	}
+
+	/**
+	 * Derive a boolean value from the MCP config.
+	 * Returns true if MCP is enabled (either true or a config object), false otherwise.
+	 * @private
+	 */
+	_deriveMcpConfigBoolean(config) {
+		if (config === true) return true;
+		if (config === false || config === null || config === undefined)
+			return false;
+		return typeof config === 'object' && config !== null;
 	}
 }

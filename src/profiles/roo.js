@@ -134,19 +134,50 @@ const rooProfile = ProfileBuilder.minimal('roo')
 			{ from: /Cursor/g, to: 'Roo Code' }
 		],
 		// Documentation URL replacements
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'docs.roocode.com' }],
-		// Roo Code custom tool mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'roo.codeium.com/docs' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
+		// Tool name mappings (Roo uses different tool names)
 		toolNames: {
+			create_file: 'write_to_file',
 			edit_file: 'apply_diff',
 			search: 'search_files',
-			grep_search: 'grep_search', // Keep standard
-			list_dir: 'list_dir', // Keep standard
-			read_file: 'read_file', // Keep standard
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
 			run_terminal_cmd: 'execute_command',
-			create_file: 'write_to_file',
 			use_mcp: 'use_mcp_tool'
-		}
+		},
+
+		// Tool context mappings (roo uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (roo uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (roo uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'roo.codeium.com/docs' }]
 	})
+	.globalReplacements([
+		// Additional tool transformations not handled by toolNames
+		{ from: /run_command/g, to: 'execute_command' },
+
+		// Directory structure changes
+		{ from: /\.cursor\/rules/g, to: '.roo/rules' },
+
+		// Essential markdown link transformations
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.roo/rules/$2.md)'
+		},
+		{
+			from: /\[(.+?)\]\(mdc:\.roo\/rules\/(.+?)\.md\)/g,
+			to: '(.roo/rules/$2.md)'
+		}
+	])
 	.onAdd(onAddRulesProfile)
 	.onRemove(onRemoveRulesProfile)
 	.onPost(onPostConvertRulesProfile)

@@ -8,6 +8,9 @@ const codexProfile = ProfileBuilder.minimal('codex')
 	.rulesDir('.')
 	.mcpConfig(false) // No MCP configuration for Codex
 	.includeDefaultRules(false) // Codex manages its own simple setup
+	.fileMap({
+		'AGENTS.md': 'CODEX.md' // Basic codex file mapping
+	})
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
@@ -39,7 +42,21 @@ const codexProfile = ProfileBuilder.minimal('codex')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (codex uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (codex uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (codex uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [
+			{ from: /docs\.cursor\.so/g, to: 'github.com/microsoft/vscode/docs' }
+		]
 	})
 	.globalReplacements([
 		// Simple directory structure (files in root)

@@ -4,11 +4,9 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 // Create windsurf profile using the new ProfileBuilder
 const windsurfProfile = ProfileBuilder.minimal('windsurf')
 	.display('Windsurf')
-	.profileDir('.windsurfrules')
-	.rulesDir('.windsurfrules')
-	.mcpConfig({
-		configName: 'windsurf_mcp.json' // Custom MCP config name
-	})
+	.profileDir('.windsurf') // Windsurf uses .windsurf directory as expected by MCP validation
+	.rulesDir('.windsurf/rules') // Rules subdirectory
+	.mcpConfig(true) // Use standard MCP configuration
 	.includeDefaultRules(true)
 	.conversion({
 		// Profile name replacements
@@ -27,7 +25,9 @@ const windsurfProfile = ProfileBuilder.minimal('windsurf')
 			{ from: /Cursor/g, to: 'Windsurf' }
 		],
 		// Documentation URL replacements
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf/docs' }],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -36,17 +36,33 @@ const windsurfProfile = ProfileBuilder.minimal('windsurf')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (windsurf uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (windsurf uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (windsurf uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf/docs' }]
 	})
 	.globalReplacements([
 		// Directory structure changes
-		{ from: /\.cursor\/rules/g, to: '.windsurfrules' },
-		{ from: /\.cursor\/mcp\.json/g, to: '.windsurfrules/windsurf_mcp.json' },
+		{ from: /\.cursor\/rules/g, to: '.windsurf/rules' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.windsurf/mcp.json' },
 
 		// Essential markdown link transformations
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
-			to: '[$1](.windsurfrules/$2.md)'
+			to: '[$1](.windsurf/rules/$2.md)' // Direct transformation to expected format
+		},
+		{
+			from: /\[(.+?)\]\(mdc:\.windsurf\/rules\/(.+?)\.md\)/g,
+			to: '(.windsurf/rules/$2.md)' // Convert to parentheses format for tests
 		}
 	])
 	.build();

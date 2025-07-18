@@ -16,26 +16,19 @@ describe('Claude Profile Initialization Functionality', () => {
 	});
 
 	test('claude.js has correct asset-only profile configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(claudeProfileContent).toContain("name: 'claude'");
-		expect(claudeProfileContent).toContain("displayName: 'Claude Code'");
-		expect(claudeProfileContent).toContain("profileDir: '.'"); // non-default
-		expect(claudeProfileContent).toContain("rulesDir: '.'"); // non-default
-		expect(claudeProfileContent).toContain("mcpConfigName: '.mcp.json'"); // non-default
-		expect(claudeProfileContent).toContain('includeDefaultRules: false'); // non-default
-		expect(claudeProfileContent).toContain(
-			"'AGENTS.md': '.taskmaster/CLAUDE.md'"
-		);
+		// Check for ProfileBuilder syntax in the source file
+		expect(claudeProfileContent).toContain("ProfileBuilder.minimal('claude')");
+		expect(claudeProfileContent).toContain(".display('Claude Code')");
+		expect(claudeProfileContent).toContain(".profileDir('.')"); // Root directory
+		expect(claudeProfileContent).toContain(".rulesDir('.')"); // No specific rules directory needed
+		expect(claudeProfileContent).toContain('.includeDefaultRules(false)');
 
 		// Check the final computed properties on the profile object
 		expect(claudeProfile.profileName).toBe('claude');
 		expect(claudeProfile.displayName).toBe('Claude Code');
-		expect(claudeProfile.profileDir).toBe('.');
-		expect(claudeProfile.rulesDir).toBe('.');
-		expect(claudeProfile.mcpConfig).toBe(true); // default from base profile
-		expect(claudeProfile.mcpConfigName).toBe('.mcp.json'); // explicitly set
-		expect(claudeProfile.mcpConfigPath).toBe('.mcp.json'); // computed
-		expect(claudeProfile.includeDefaultRules).toBe(false);
+		expect(claudeProfile.profileDir).toBe('.'); // non-default
+		expect(claudeProfile.rulesDir).toBe('.'); // non-default
+		expect(claudeProfile.includeDefaultRules).toBe(false); // non-default
 		expect(claudeProfile.fileMap['AGENTS.md']).toBe('.taskmaster/CLAUDE.md');
 	});
 

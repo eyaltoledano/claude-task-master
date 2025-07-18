@@ -33,7 +33,7 @@ describe('Amp Profile Init Functionality', () => {
 			expect(ampProfile.profileName).toBe('amp');
 			expect(ampProfile.displayName).toBe('Amp');
 			expect(ampProfile.profileDir).toBe('.vscode');
-			expect(ampProfile.rulesDir).toBe('.');
+			expect(ampProfile.rulesDir).toBe('.'); // Root directory for rules
 			expect(ampProfile.mcpConfig).toBe(true);
 			expect(ampProfile.mcpConfigName).toBe('settings.json');
 			expect(ampProfile.mcpConfigPath).toBe('.vscode/settings.json');
@@ -42,6 +42,8 @@ describe('Amp Profile Init Functionality', () => {
 
 		test('should have correct file mapping', () => {
 			expect(ampProfile.fileMap).toBeDefined();
+			// Amp has minimal fileMap but uses lifecycle functions for main functionality
+			expect(Object.keys(ampProfile.fileMap)).toEqual(['AGENTS.md']);
 			expect(ampProfile.fileMap['AGENTS.md']).toBe('.taskmaster/AGENT.md');
 		});
 

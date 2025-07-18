@@ -4,12 +4,15 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 // Create gemini profile using the new ProfileBuilder
 const geminiProfile = ProfileBuilder.minimal('gemini')
 	.display('Gemini')
-	.profileDir('.') // Root directory like simple profiles
+	.profileDir('.gemini') // Gemini uses .gemini directory
 	.rulesDir('.')
 	.mcpConfig({
 		configName: 'settings.json' // Custom name for Gemini
 	})
 	.includeDefaultRules(false) // Gemini manages its own rules
+	.fileMap({
+		'AGENTS.md': 'GEMINI.md' // Gemini-specific file mapping
+	})
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
@@ -36,7 +39,19 @@ const geminiProfile = ProfileBuilder.minimal('gemini')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (gemini uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (gemini uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (gemini uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'ai.google.dev/docs' }]
 	})
 	.globalReplacements([
 		// Simple directory structure (files in root)

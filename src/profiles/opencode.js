@@ -188,7 +188,7 @@ const opencodeProfile = ProfileBuilder.minimal('opencode')
 			{ from: /Cursor/g, to: 'OpenCode' }
 		],
 		// Documentation URL replacements
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'opencode.ai/docs/' }],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'src.codes/docs' }],
 		// Standard tool mappings (no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -197,7 +197,16 @@ const opencodeProfile = ProfileBuilder.minimal('opencode')
 			list_dir: 'list_dir',
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
-		}
+		},
+
+		// Tool context mappings (opencode uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (opencode uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (opencode uses standard file references)
+		fileReferences: []
 	})
 	.onPost(onPostConvertRulesProfile)
 	.onRemove(onRemoveRulesProfile)
