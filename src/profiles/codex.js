@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create codex profile using the new ProfileBuilder
-const codexProfile = ProfileBuilder
-	.minimal('codex')
+const codexProfile = ProfileBuilder.minimal('codex')
 	.display('Codex')
 	.profileDir('.') // Root directory
 	.rulesDir('.')
@@ -14,8 +13,14 @@ const codexProfile = ProfileBuilder
 		profileTerms: [
 			{ from: /cursor\.so/g, to: 'github.com/microsoft/vscode' },
 			{ from: /\[cursor\.so\]/g, to: '[github.com/microsoft/vscode]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://github.com/microsoft/vscode' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://github.com/microsoft/vscode' },
+			{
+				from: /href="https:\/\/cursor\.so/g,
+				to: 'href="https://github.com/microsoft/vscode'
+			},
+			{
+				from: /\(https:\/\/cursor\.so/g,
+				to: '(https://github.com/microsoft/vscode'
+			},
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Codex' : 'codex')
@@ -39,7 +44,7 @@ const codexProfile = ProfileBuilder
 	.globalReplacements([
 		// Simple directory structure (files in root)
 		{ from: /\.cursor\/rules/g, to: '.' },
-		
+
 		// Markdown link transformations for root structure
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,

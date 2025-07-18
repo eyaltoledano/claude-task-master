@@ -158,9 +158,10 @@ describe('Profile', () => {
 				const error = new Error('Hook failed');
 				mockOnAdd.mockRejectedValue(error);
 
-				await expect(profile.install('/project', '/assets'))
-					.rejects.toThrow(ProfileOperationError);
-				
+				await expect(profile.install('/project', '/assets')).rejects.toThrow(
+					ProfileOperationError
+				);
+
 				try {
 					await profile.install('/project', '/assets');
 				} catch (e) {
@@ -208,8 +209,9 @@ describe('Profile', () => {
 				const error = new Error('Remove failed');
 				mockOnRemove.mockRejectedValue(error);
 
-				await expect(profile.remove('/project'))
-					.rejects.toThrow(ProfileOperationError);
+				await expect(profile.remove('/project')).rejects.toThrow(
+					ProfileOperationError
+				);
 			});
 		});
 
@@ -227,8 +229,9 @@ describe('Profile', () => {
 				const error = new Error('Post convert failed');
 				mockOnPost.mockRejectedValue(error);
 
-				await expect(profile.postConvert('/project', '/assets'))
-					.rejects.toThrow(ProfileOperationError);
+				await expect(
+					profile.postConvert('/project', '/assets')
+				).rejects.toThrow(ProfileOperationError);
 			});
 		});
 	});
@@ -291,7 +294,9 @@ describe('Profile', () => {
 			const result = { success: true, notice: 'Preserved 2 existing files' };
 			const summary = profile.summary('remove', result);
 
-			expect(summary).toBe('Test Profile: Rule profile removed (Preserved 2 existing files)');
+			expect(summary).toBe(
+				'Test Profile: Rule profile removed (Preserved 2 existing files)'
+			);
 		});
 
 		it('should generate summary for failed operation', () => {
@@ -462,4 +467,4 @@ describe('Profile', () => {
 			expect(legacy).not.toHaveProperty('onPostConvertRulesProfile');
 		});
 	});
-}); 
+});

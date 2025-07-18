@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create cline profile using the new ProfileBuilder
-const clineProfile = ProfileBuilder
-	.minimal('cline')
+const clineProfile = ProfileBuilder.minimal('cline')
 	.display('Cline')
 	.profileDir('.clinerules')
 	.rulesDir('.clinerules')
@@ -23,9 +22,7 @@ const clineProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Cline' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'cline.dev/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'cline.dev/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

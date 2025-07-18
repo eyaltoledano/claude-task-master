@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create trae profile using the new ProfileBuilder
-const traeProfile = ProfileBuilder
-	.minimal('trae')
+const traeProfile = ProfileBuilder.minimal('trae')
 	.display('Trae')
 	.profileDir('.trae')
 	.rulesDir('.trae/rules')
@@ -23,9 +22,7 @@ const traeProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Trae' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'docs.trae.ai' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'docs.trae.ai' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

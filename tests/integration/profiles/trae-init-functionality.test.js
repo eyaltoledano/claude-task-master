@@ -12,7 +12,7 @@ describe('Trae Profile Initialization Functionality', () => {
 
 	test('trae.js uses ProfileBuilder pattern with correct configuration', () => {
 		// Check for ProfileBuilder pattern in the source file
-		expect(traeProfileContent).toContain("ProfileBuilder");
+		expect(traeProfileContent).toContain('ProfileBuilder');
 		expect(traeProfileContent).toContain(".minimal('trae')");
 		expect(traeProfileContent).toContain(".display('Trae')");
 
@@ -40,7 +40,7 @@ describe('Trae Profile Initialization Functionality', () => {
 	test('trae profile provides legacy format conversion', () => {
 		// Test that toLegacyFormat() works correctly
 		const legacyFormat = traeProfile.toLegacyFormat();
-		
+
 		expect(legacyFormat.profileName).toBe('trae');
 		expect(legacyFormat.displayName).toBe('Trae');
 		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
@@ -52,7 +52,7 @@ describe('Trae Profile Initialization Functionality', () => {
 		expect(() => {
 			traeProfile.profileName = 'modified';
 		}).toThrow();
-		
+
 		expect(() => {
 			traeProfile.newProperty = 'test';
 		}).toThrow();
@@ -60,13 +60,13 @@ describe('Trae Profile Initialization Functionality', () => {
 
 	test('trae profile includes conversion configuration', () => {
 		const { conversionConfig } = traeProfile;
-		
+
 		expect(conversionConfig.profileTerms).toBeInstanceOf(Array);
 		expect(conversionConfig.profileTerms.length).toBeGreaterThan(0);
-		
+
 		expect(conversionConfig.docUrls).toBeInstanceOf(Array);
 		expect(conversionConfig.docUrls.length).toBeGreaterThan(0);
-		
+
 		expect(conversionConfig.toolNames).toBeInstanceOf(Object);
 		expect(Object.keys(conversionConfig.toolNames).length).toBeGreaterThan(0);
 	});

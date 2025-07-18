@@ -63,9 +63,13 @@ function onAddRulesProfile(targetDir, assetsDir) {
 
 		// Setup CLAUDE.md import system
 		const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
-		const taskMasterClaudeFile = path.join(targetDir, '.taskmaster', 'CLAUDE.md');
+		const taskMasterClaudeFile = path.join(
+			targetDir,
+			'.taskmaster',
+			'CLAUDE.md'
+		);
 		const importLine = '@./.taskmaster/CLAUDE.md';
-		
+
 		// Define import section with improved formatting
 		const importSection = `
 ## Task Master AI Instructions
@@ -82,7 +86,10 @@ ${importLine}
 				// Add our import section to the beginning
 				const updatedContent = `${content.trim()}\n\n${importSection}\n`;
 				fs.writeFileSync(userClaudeFile, updatedContent);
-				log('info', `[Claude] Added Task Master import to existing ${userClaudeFile}`);
+				log(
+					'info',
+					`[Claude] Added Task Master import to existing ${userClaudeFile}`
+				);
 			} else {
 				log(
 					'debug',
@@ -93,10 +100,7 @@ ${importLine}
 			// Create minimal CLAUDE.md with the import section
 			const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
 			fs.writeFileSync(userClaudeFile, minimalContent);
-			log(
-				'info',
-				`[Claude] Created ${userClaudeFile} with Task Master import`
-			);
+			log('info', `[Claude] Created ${userClaudeFile} with Task Master import`);
 		}
 	} catch (err) {
 		log(
@@ -255,8 +259,7 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 }
 
 // Create claude profile using the new ProfileBuilder
-const claudeProfile = ProfileBuilder
-	.minimal('claude')
+const claudeProfile = ProfileBuilder.minimal('claude')
 	.display('Claude Code')
 	.profileDir('.') // Root directory
 	.rulesDir('.') // No specific rules directory needed
@@ -282,7 +285,10 @@ const claudeProfile = ProfileBuilder
 		],
 		// Documentation URL replacements
 		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'docs.anthropic.com/en/docs/claude-code' }
+			{
+				from: /docs\.cursor\.so/g,
+				to: 'docs.anthropic.com/en/docs/claude-code'
+			}
 		],
 		// Standard tool mappings (no custom tools)
 		toolNames: {

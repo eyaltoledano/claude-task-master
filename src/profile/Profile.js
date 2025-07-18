@@ -6,7 +6,7 @@ import { ProfileOperationError } from './ProfileError.js';
 
 /**
  * Immutable Profile class representing a complete profile configuration
- * 
+ *
  * @class Profile
  */
 export default class Profile {
@@ -27,11 +27,12 @@ export default class Profile {
 		this.globalReplacements = config.globalReplacements ?? [];
 		this.mcpConfig = config.mcpConfig;
 		this.hooks = config.hooks ?? {};
-		
+
 		// Legacy compatibility properties
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
-		this.supportsRulesSubdirectories = config.supportsRulesSubdirectories ?? false;
-		
+		this.supportsRulesSubdirectories =
+			config.supportsRulesSubdirectories ?? false;
+
 		// Computed properties for legacy compatibility
 		this.mcpConfigName = this._computeMcpConfigName();
 		this.mcpConfigPath = this._computeMcpConfigPath();
@@ -47,7 +48,7 @@ export default class Profile {
 	/**
 	 * Install this profile to a project directory
 	 * Template method that delegates to hooks
-	 * 
+	 *
 	 * @param {string} projectRoot - Target project directory
 	 * @param {string} assetsDir - Source assets directory
 	 * @returns {Promise<import('./types.js').ProfileOperationResult>}
@@ -74,7 +75,7 @@ export default class Profile {
 	/**
 	 * Remove this profile from a project directory
 	 * Template method that delegates to hooks
-	 * 
+	 *
 	 * @param {string} projectRoot - Target project directory
 	 * @returns {Promise<import('./types.js').ProfileOperationResult>}
 	 */
@@ -99,7 +100,7 @@ export default class Profile {
 	/**
 	 * Post-conversion processing for this profile
 	 * Template method that delegates to hooks
-	 * 
+	 *
 	 * @param {string} projectRoot - Target project directory
 	 * @param {string} assetsDir - Source assets directory
 	 * @returns {Promise<import('./types.js').ProfileOperationResult>}
@@ -124,14 +125,14 @@ export default class Profile {
 
 	/**
 	 * Generate a human-readable summary for an operation
-	 * 
+	 *
 	 * @param {import('./types.js').ProfileOperation} operation - Type of operation
 	 * @param {import('./types.js').ProfileOperationResult} result - Operation result
 	 * @returns {string} Formatted summary message
 	 */
 	summary(operation, result) {
 		const baseName = this.displayName;
-		
+
 		if (!result.success) {
 			return `${baseName}: Failed - ${result.error || 'Unknown error'}`;
 		}
@@ -147,7 +148,7 @@ export default class Profile {
 					const skipped = result.filesSkipped || 0;
 					return `${baseName}: ${processed} files processed${skipped > 0 ? `, ${skipped} skipped` : ''}`;
 				}
-			
+
 			case 'remove':
 				const notice = result.notice ? ` (${result.notice})` : '';
 				if (!this.includeDefaultRules) {
@@ -155,10 +156,10 @@ export default class Profile {
 				} else {
 					return `${baseName}: Rule profile removed${notice}`;
 				}
-			
+
 			case 'convert':
 				return `${baseName}: Rules converted successfully`;
-			
+
 			default:
 				return `${baseName}: ${operation} completed`;
 		}
@@ -166,7 +167,7 @@ export default class Profile {
 
 	/**
 	 * Convert this Profile to legacy object format for compatibility
-	 * 
+	 *
 	 * @returns {Object} Legacy profile object
 	 */
 	toLegacyFormat() {
@@ -183,7 +184,7 @@ export default class Profile {
 			fileMap: this.fileMap,
 			globalReplacements: this.globalReplacements,
 			conversionConfig: this.conversionConfig,
-			
+
 			// Legacy lifecycle hooks (sync versions)
 			...(this.hooks.onAdd && { onAddRulesProfile: this.hooks.onAdd }),
 			...(this.hooks.onRemove && { onRemoveRulesProfile: this.hooks.onRemove }),
@@ -193,7 +194,7 @@ export default class Profile {
 
 	/**
 	 * Check if this profile has any lifecycle hooks defined
-	 * 
+	 *
 	 * @returns {boolean} True if profile has hooks
 	 */
 	hasHooks() {
@@ -202,7 +203,7 @@ export default class Profile {
 
 	/**
 	 * Check if this profile includes default rule files
-	 * 
+	 *
 	 * @returns {boolean} True if profile includes default rules
 	 */
 	hasDefaultRules() {
@@ -211,7 +212,7 @@ export default class Profile {
 
 	/**
 	 * Check if this profile has MCP configuration enabled
-	 * 
+	 *
 	 * @returns {boolean} True if MCP config is enabled
 	 */
 	hasMcpConfig() {
@@ -220,7 +221,7 @@ export default class Profile {
 
 	/**
 	 * Get the number of files this profile will process
-	 * 
+	 *
 	 * @returns {number} Number of files in fileMap
 	 */
 	getFileCount() {
@@ -250,4 +251,4 @@ export default class Profile {
 		// Simple path joining - may need to be more sophisticated
 		return `${this.profileDir}/${this.mcpConfigName}`.replace(/\/+/g, '/');
 	}
-} 
+}

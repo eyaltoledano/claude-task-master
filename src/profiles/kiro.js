@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create kiro profile using the new ProfileBuilder
-const kiroProfile = ProfileBuilder
-	.minimal('kiro')
+const kiroProfile = ProfileBuilder.minimal('kiro')
 	.display('Kiro')
 	.profileDir('.kiro')
 	.rulesDir('.kiro/steering') // Kiro rules location
@@ -29,9 +28,7 @@ const kiroProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Kiro' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'kiro.dev/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'kiro.dev/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

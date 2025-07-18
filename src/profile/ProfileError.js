@@ -16,7 +16,7 @@ export class ProfileError extends Error {
 		this.name = 'ProfileError';
 		this.profileName = profileName;
 		this.cause = cause;
-		
+
 		// Maintain proper stack trace for where our error was thrown (only available on V8)
 		if (Error.captureStackTrace) {
 			Error.captureStackTrace(this, ProfileError);
@@ -49,9 +49,10 @@ export class ProfileNotFoundError extends ProfileError {
 	 * @param {string[]} [availableProfiles] - List of available profile names
 	 */
 	constructor(profileName, availableProfiles = []) {
-		const message = availableProfiles.length > 0
-			? `Profile '${profileName}' not found. Available profiles: ${availableProfiles.join(', ')}`
-			: `Profile '${profileName}' not found`;
+		const message =
+			availableProfiles.length > 0
+				? `Profile '${profileName}' not found. Available profiles: ${availableProfiles.join(', ')}`
+				: `Profile '${profileName}' not found`;
 		super(message, profileName);
 		this.name = 'ProfileNotFoundError';
 		this.availableProfiles = availableProfiles;
@@ -67,7 +68,10 @@ export class ProfileRegistrationError extends ProfileError {
 	 * @param {string} reason - Reason for the registration failure
 	 */
 	constructor(profileName, reason = 'Profile already registered') {
-		super(`Failed to register profile '${profileName}': ${reason}`, profileName);
+		super(
+			`Failed to register profile '${profileName}': ${reason}`,
+			profileName
+		);
 		this.name = 'ProfileRegistrationError';
 	}
 }
@@ -88,4 +92,4 @@ export class ProfileOperationError extends ProfileError {
 		this.name = 'ProfileOperationError';
 		this.operation = operation;
 	}
-} 
+}

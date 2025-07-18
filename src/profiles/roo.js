@@ -106,8 +106,7 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 }
 
 // Create roo profile using the new ProfileBuilder
-const rooProfile = ProfileBuilder
-	.minimal('roo')
+const rooProfile = ProfileBuilder.minimal('roo')
 	.display('Roo Code')
 	.profileDir('.roo')
 	.rulesDir('.roo')
@@ -135,9 +134,7 @@ const rooProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Roo Code' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'docs.roocode.com' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'docs.roocode.com' }],
 		// Roo Code custom tool mappings
 		toolNames: {
 			edit_file: 'apply_diff',

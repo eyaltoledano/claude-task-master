@@ -49,7 +49,9 @@ async function postConvertAmpProfile(projectRoot) {
 
 		// Check if it's already in amp format (has amp.mcpServers)
 		if (mcpConfig['amp.mcpServers']) {
-			console.log('settings.json already in amp format, skipping transformation');
+			console.log(
+				'settings.json already in amp format, skipping transformation'
+			);
 			return;
 		}
 
@@ -65,8 +67,7 @@ async function postConvertAmpProfile(projectRoot) {
 }
 
 // Create amp profile using the new ProfileBuilder
-const ampProfile = ProfileBuilder
-	.minimal('amp')
+const ampProfile = ProfileBuilder.minimal('amp')
 	.display('Amp')
 	.profileDir('.vscode')
 	.rulesDir('.vscode/amp')
@@ -91,9 +92,7 @@ const ampProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Amp' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'amp.dev/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'amp.dev/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create cursor profile with comprehensive file mapping
-const cursorProfile = ProfileBuilder
-	.minimal('cursor')
+const cursorProfile = ProfileBuilder.minimal('cursor')
 	.display('Cursor')
 	.profileDir('.cursor')
 	.rulesDir('.cursor/rules')

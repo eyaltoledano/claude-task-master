@@ -29,7 +29,10 @@ async function addZedContextServers(projectRoot) {
 			const content = fs.readFileSync(configPath, 'utf8');
 			existingConfig = JSON.parse(content);
 		} catch (error) {
-			console.warn(`Warning: Could not parse existing ${configPath}:`, error.message);
+			console.warn(
+				`Warning: Could not parse existing ${configPath}:`,
+				error.message
+			);
 		}
 	}
 
@@ -54,7 +57,9 @@ async function removeZedContextServers(projectRoot) {
 
 			// Write back the updated config
 			fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-			console.log(`Taskmaster context server removed from Zed configuration: ${configPath}`);
+			console.log(
+				`Taskmaster context server removed from Zed configuration: ${configPath}`
+			);
 		} catch (error) {
 			console.warn(`Warning: Could not update ${configPath}:`, error.message);
 		}
@@ -62,8 +67,7 @@ async function removeZedContextServers(projectRoot) {
 }
 
 // Create zed profile using the new ProfileBuilder
-const zedProfile = ProfileBuilder
-	.minimal('zed')
+const zedProfile = ProfileBuilder.minimal('zed')
 	.display('Zed')
 	.profileDir('.zed')
 	.rulesDir('.zed/rules')
@@ -87,9 +91,7 @@ const zedProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Zed' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

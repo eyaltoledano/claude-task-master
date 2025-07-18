@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create windsurf profile using the new ProfileBuilder
-const windsurfProfile = ProfileBuilder
-	.minimal('windsurf')
+const windsurfProfile = ProfileBuilder.minimal('windsurf')
 	.display('Windsurf')
 	.profileDir('.windsurfrules')
 	.rulesDir('.windsurfrules')
@@ -16,7 +15,10 @@ const windsurfProfile = ProfileBuilder
 		profileTerms: [
 			{ from: /cursor\.so/g, to: 'codeium.com/windsurf' },
 			{ from: /\[cursor\.so\]/g, to: '[codeium.com/windsurf]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://codeium.com/windsurf' },
+			{
+				from: /href="https:\/\/cursor\.so/g,
+				to: 'href="https://codeium.com/windsurf'
+			},
 			{ from: /\(https:\/\/cursor\.so/g, to: '(https://codeium.com/windsurf' },
 			{
 				from: /\bcursor\b/gi,
@@ -25,9 +27,7 @@ const windsurfProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Windsurf' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

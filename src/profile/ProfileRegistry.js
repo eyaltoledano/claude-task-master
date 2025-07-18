@@ -2,12 +2,15 @@
  * @fileoverview Centralized registry for managing Profile instances
  */
 
-import { ProfileNotFoundError, ProfileRegistrationError } from './ProfileError.js';
+import {
+	ProfileNotFoundError,
+	ProfileRegistrationError
+} from './ProfileError.js';
 
 /**
  * Centralized registry for managing Profile instances
  * Implements singleton pattern for global profile management
- * 
+ *
  * @class ProfileRegistry
  */
 class ProfileRegistry {
@@ -18,14 +21,14 @@ class ProfileRegistry {
 	constructor() {
 		/** @type {Map<string, import('./Profile.js').default>} */
 		this._profiles = new Map();
-		
+
 		/** @type {boolean} */
 		this._sealed = false;
 	}
 
 	/**
 	 * Register a new profile in the registry
-	 * 
+	 *
 	 * @param {import('./Profile.js').default} profile - Profile instance to register
 	 * @throws {ProfileRegistrationError} If profile is already registered or registry is sealed
 	 */
@@ -57,7 +60,7 @@ class ProfileRegistry {
 
 	/**
 	 * Get a profile by name
-	 * 
+	 *
 	 * @param {string} name - Profile name to lookup
 	 * @returns {import('./Profile.js').default|null} Profile instance or null if not found
 	 */
@@ -67,7 +70,7 @@ class ProfileRegistry {
 
 	/**
 	 * Get a profile by name, throwing if not found
-	 * 
+	 *
 	 * @param {string} name - Profile name to lookup
 	 * @returns {import('./Profile.js').default} Profile instance
 	 * @throws {ProfileNotFoundError} If profile is not found
@@ -82,7 +85,7 @@ class ProfileRegistry {
 
 	/**
 	 * Check if a profile is registered
-	 * 
+	 *
 	 * @param {string} name - Profile name to check
 	 * @returns {boolean} True if profile exists
 	 */
@@ -92,7 +95,7 @@ class ProfileRegistry {
 
 	/**
 	 * Get all registered profiles
-	 * 
+	 *
 	 * @returns {import('./Profile.js').default[]} Array of all profile instances
 	 */
 	all() {
@@ -101,7 +104,7 @@ class ProfileRegistry {
 
 	/**
 	 * Get all registered profile names
-	 * 
+	 *
 	 * @returns {string[]} Array of profile names
 	 */
 	names() {
@@ -110,7 +113,7 @@ class ProfileRegistry {
 
 	/**
 	 * Get the number of registered profiles
-	 * 
+	 *
 	 * @returns {number} Number of registered profiles
 	 */
 	size() {
@@ -119,7 +122,7 @@ class ProfileRegistry {
 
 	/**
 	 * Check if the registry is empty
-	 * 
+	 *
 	 * @returns {boolean} True if no profiles are registered
 	 */
 	isEmpty() {
@@ -129,7 +132,7 @@ class ProfileRegistry {
 	/**
 	 * Clear all registered profiles (for testing)
 	 * Only available when registry is not sealed
-	 * 
+	 *
 	 * @throws {Error} If registry is sealed
 	 */
 	reset() {
@@ -151,7 +154,7 @@ class ProfileRegistry {
 
 	/**
 	 * Check if the registry is sealed
-	 * 
+	 *
 	 * @returns {boolean} True if registry is sealed
 	 */
 	isSealed() {
@@ -160,7 +163,7 @@ class ProfileRegistry {
 
 	/**
 	 * Bulk register multiple profiles
-	 * 
+	 *
 	 * @param {import('./Profile.js').default[]} profiles - Array of profiles to register
 	 * @returns {{success: number, failed: Array<{profile: string, error: string}>}} Registration results
 	 */
@@ -187,7 +190,7 @@ class ProfileRegistry {
 
 	/**
 	 * Find profiles matching a predicate function
-	 * 
+	 *
 	 * @param {function(import('./Profile.js').default): boolean} predicate - Function to test profiles
 	 * @returns {import('./Profile.js').default[]} Array of matching profiles
 	 */
@@ -197,50 +200,50 @@ class ProfileRegistry {
 
 	/**
 	 * Get profiles that have MCP configuration enabled
-	 * 
+	 *
 	 * @returns {import('./Profile.js').default[]} Profiles with MCP config
 	 */
 	getMcpEnabledProfiles() {
-		return this.filter(profile => profile.hasMcpConfig());
+		return this.filter((profile) => profile.hasMcpConfig());
 	}
 
 	/**
 	 * Get profiles that include default rules
-	 * 
+	 *
 	 * @returns {import('./Profile.js').default[]} Profiles with default rules
 	 */
 	getDefaultRuleProfiles() {
-		return this.filter(profile => profile.hasDefaultRules());
+		return this.filter((profile) => profile.hasDefaultRules());
 	}
 
 	/**
 	 * Get profiles that have lifecycle hooks
-	 * 
+	 *
 	 * @returns {import('./Profile.js').default[]} Profiles with hooks
 	 */
 	getProfilesWithHooks() {
-		return this.filter(profile => profile.hasHooks());
+		return this.filter((profile) => profile.hasHooks());
 	}
 
 	/**
 	 * Get profile statistics
-	 * 
+	 *
 	 * @returns {Object} Registry statistics
 	 */
 	getStats() {
 		const profiles = this.all();
 		return {
 			total: profiles.length,
-			withMcp: profiles.filter(p => p.hasMcpConfig()).length,
-			withDefaultRules: profiles.filter(p => p.hasDefaultRules()).length,
-			withHooks: profiles.filter(p => p.hasHooks()).length,
+			withMcp: profiles.filter((p) => p.hasMcpConfig()).length,
+			withDefaultRules: profiles.filter((p) => p.hasDefaultRules()).length,
+			withHooks: profiles.filter((p) => p.hasHooks()).length,
 			sealed: this._sealed
 		};
 	}
 
 	/**
 	 * Export registry state for debugging/inspection
-	 * 
+	 *
 	 * @returns {Object} Registry state information
 	 */
 	debug() {
@@ -257,4 +260,4 @@ class ProfileRegistry {
 export const profileRegistry = new ProfileRegistry();
 
 // Export the class for testing purposes
-export { ProfileRegistry }; 
+export { ProfileRegistry };

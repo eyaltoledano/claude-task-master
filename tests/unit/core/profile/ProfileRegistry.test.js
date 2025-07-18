@@ -3,9 +3,15 @@
  */
 
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { ProfileRegistry, profileRegistry } from '../../../../src/profile/ProfileRegistry.js';
+import {
+	ProfileRegistry,
+	profileRegistry
+} from '../../../../src/profile/ProfileRegistry.js';
 import { ProfileBuilder } from '../../../../src/profile/ProfileBuilder.js';
-import { ProfileNotFoundError, ProfileRegistrationError } from '../../../../src/profile/ProfileError.js';
+import {
+	ProfileNotFoundError,
+	ProfileRegistrationError
+} from '../../../../src/profile/ProfileError.js';
 
 describe('ProfileRegistry', () => {
 	let registry;
@@ -52,19 +58,19 @@ describe('ProfileRegistry', () => {
 
 			registry.register(profile1);
 
-			expect(() => registry.register(profile2))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register(profile2)).toThrow(
+				ProfileRegistrationError
+			);
 		});
 
 		it('should throw for invalid profile instance', () => {
-			expect(() => registry.register(null))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register(null)).toThrow(ProfileRegistrationError);
 
-			expect(() => registry.register({}))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register({})).toThrow(ProfileRegistrationError);
 
-			expect(() => registry.register({ profileName: 123 }))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register({ profileName: 123 })).toThrow(
+				ProfileRegistrationError
+			);
 		});
 
 		it('should throw when registry is sealed', () => {
@@ -76,8 +82,9 @@ describe('ProfileRegistry', () => {
 
 			registry.seal();
 
-			expect(() => registry.register(profile))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register(profile)).toThrow(
+				ProfileRegistrationError
+			);
 		});
 	});
 
@@ -134,8 +141,9 @@ describe('ProfileRegistry', () => {
 		});
 
 		it('should throw ProfileNotFoundError for unregistered profile', () => {
-			expect(() => registry.getRequired('non-existent'))
-				.toThrow(ProfileNotFoundError);
+			expect(() => registry.getRequired('non-existent')).toThrow(
+				ProfileNotFoundError
+			);
 		});
 
 		it('should include available profiles in error', () => {
@@ -218,7 +226,7 @@ describe('ProfileRegistry', () => {
 		});
 
 		it('should return sorted profile names', () => {
-			const profiles = ['charlie', 'alpha', 'bravo'].map(name => 
+			const profiles = ['charlie', 'alpha', 'bravo'].map((name) =>
 				new ProfileBuilder()
 					.withName(name)
 					.rulesDir(`.${name}/rules`)
@@ -226,7 +234,7 @@ describe('ProfileRegistry', () => {
 					.build()
 			);
 
-			profiles.forEach(profile => registry.register(profile));
+			profiles.forEach((profile) => registry.register(profile));
 
 			expect(registry.names()).toEqual(['alpha', 'bravo', 'charlie']);
 		});
@@ -296,8 +304,9 @@ describe('ProfileRegistry', () => {
 			registry.seal();
 
 			expect(registry.isSealed()).toBe(true);
-			expect(() => registry.register(profile))
-				.toThrow(ProfileRegistrationError);
+			expect(() => registry.register(profile)).toThrow(
+				ProfileRegistrationError
+			);
 		});
 
 		it('should prevent reset', () => {
@@ -325,7 +334,7 @@ describe('ProfileRegistry', () => {
 
 	describe('registerAll', () => {
 		it('should register multiple profiles successfully', () => {
-			const profiles = ['profile1', 'profile2', 'profile3'].map(name =>
+			const profiles = ['profile1', 'profile2', 'profile3'].map((name) =>
 				new ProfileBuilder()
 					.withName(name)
 					.rulesDir(`.${name}/rules`)
@@ -400,20 +409,20 @@ describe('ProfileRegistry', () => {
 					.withName('with-hooks')
 					.rulesDir('.hooks/rules')
 					.profileDir('.hooks')
-					.mcpConfig(true)  // Explicitly set mcpConfig to true
+					.mcpConfig(true) // Explicitly set mcpConfig to true
 					.onAdd(() => {})
 					.build()
 			];
 
-			profiles.forEach(profile => registry.register(profile));
+			profiles.forEach((profile) => registry.register(profile));
 		});
 
 		it('should filter profiles by predicate', () => {
-			const mcpProfiles = registry.filter(profile => profile.hasMcpConfig());
+			const mcpProfiles = registry.filter((profile) => profile.hasMcpConfig());
 
 			expect(mcpProfiles).toHaveLength(2); // mcp-enabled and with-hooks (default mcpConfig: true)
-			expect(mcpProfiles.map(p => p.profileName)).toContain('mcp-enabled');
-			expect(mcpProfiles.map(p => p.profileName)).toContain('with-hooks');
+			expect(mcpProfiles.map((p) => p.profileName)).toContain('mcp-enabled');
+			expect(mcpProfiles.map((p) => p.profileName)).toContain('with-hooks');
 		});
 	});
 
@@ -437,7 +446,7 @@ describe('ProfileRegistry', () => {
 					.build()
 			];
 
-			profiles.forEach(profile => registry.register(profile));
+			profiles.forEach((profile) => registry.register(profile));
 		});
 
 		describe('getMcpEnabledProfiles', () => {
@@ -495,7 +504,7 @@ describe('ProfileRegistry', () => {
 					.build()
 			];
 
-			profiles.forEach(profile => registry.register(profile));
+			profiles.forEach((profile) => registry.register(profile));
 
 			const stats = registry.getStats();
 
@@ -542,8 +551,10 @@ describe('ProfileRegistry', () => {
 		});
 
 		it('should be the same instance across imports', async () => {
-			const { profileRegistry: registry2 } = await import('../../../../src/profile/ProfileRegistry.js');
+			const { profileRegistry: registry2 } = await import(
+				'../../../../src/profile/ProfileRegistry.js'
+			);
 			expect(profileRegistry).toBe(registry2);
 		});
 	});
-}); 
+});

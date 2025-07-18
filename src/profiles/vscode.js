@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create vscode profile using the new ProfileBuilder
-const vscodeProfile = ProfileBuilder
-	.minimal('vscode')
+const vscodeProfile = ProfileBuilder.minimal('vscode')
 	.display('VS Code')
 	.profileDir('.github')
 	.rulesDir('.github/instructions') // GitHub instructions directory
@@ -14,7 +13,10 @@ const vscodeProfile = ProfileBuilder
 		profileTerms: [
 			{ from: /cursor\.so/g, to: 'code.visualstudio.com' },
 			{ from: /\[cursor\.so\]/g, to: '[code.visualstudio.com]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://code.visualstudio.com' },
+			{
+				from: /href="https:\/\/cursor\.so/g,
+				to: 'href="https://code.visualstudio.com'
+			},
 			{ from: /\(https:\/\/cursor\.so/g, to: '(https://code.visualstudio.com' },
 			{
 				from: /\bcursor\b/gi,
@@ -23,9 +25,7 @@ const vscodeProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'VS Code' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -47,7 +47,7 @@ const vscodeProfile = ProfileBuilder
 			to: '[$1](.github/instructions/$2.md)'
 		},
 
-		// VS Code specific terminology 
+		// VS Code specific terminology
 		{ from: /rules directory/g, to: 'instructions directory' },
 		{ from: /cursor rules/gi, to: 'VS Code instructions' }
 	])

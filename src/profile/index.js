@@ -7,13 +7,13 @@
 export { default as Profile } from './Profile.js';
 export { ProfileBuilder } from './ProfileBuilder.js';
 export { ProfileRegistry } from './ProfileRegistry.js';
-export { 
-	ProfileError, 
-	ProfileValidationError, 
+export {
+	ProfileError,
+	ProfileValidationError,
 	ProfileNotFoundError,
 	ProfileRegistrationError,
-	ProfileOperationError 
+	ProfileOperationError
 } from './ProfileError.js';
 
 // Type definitions are available via JSDoc imports:
-// import('./types.js') 
+// import('./types.js')

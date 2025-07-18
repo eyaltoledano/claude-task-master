@@ -49,4 +49,4 @@
  * @typedef {'add'|'remove'|'convert'} ProfileOperation
  */
 
-export {}; 
+export {};

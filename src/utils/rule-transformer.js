@@ -131,7 +131,7 @@ function updateFileReferences(content, conversionConfig) {
 	if (!conversionConfig.fileReferences) {
 		return content;
 	}
-	
+
 	const { pathPattern, replacement } = conversionConfig.fileReferences;
 	return content.replace(pathPattern, replacement);
 }
@@ -175,9 +175,11 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
  */
 export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
 	// Handle both Profile instances and legacy objects
-	const legacyProfile = profile.toLegacyFormat ? profile.toLegacyFormat() : profile;
+	const legacyProfile = profile.toLegacyFormat
+		? profile.toLegacyFormat()
+		: profile;
 	const { conversionConfig, globalReplacements } = legacyProfile;
-	
+
 	try {
 		// Read source content
 		const content = fs.readFileSync(sourcePath, 'utf8');

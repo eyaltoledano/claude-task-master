@@ -102,10 +102,7 @@ describe('ProfileBuilder', () => {
 			const onRemoveFn = () => {};
 			const onPostFn = () => {};
 
-			builder
-				.onAdd(onAddFn)
-				.onRemove(onRemoveFn)
-				.onPost(onPostFn);
+			builder.onAdd(onAddFn).onRemove(onRemoveFn).onPost(onPostFn);
 
 			expect(builder._config.hooks.onAdd).toBe(onAddFn);
 			expect(builder._config.hooks.onRemove).toBe(onRemoveFn);
@@ -161,28 +158,38 @@ describe('ProfileBuilder', () => {
 
 		describe('fileMap', () => {
 			it('should throw for non-object', () => {
-				expect(() => builder.fileMap('not-object')).toThrow(ProfileValidationError);
+				expect(() => builder.fileMap('not-object')).toThrow(
+					ProfileValidationError
+				);
 				expect(() => builder.fileMap(null)).toThrow(ProfileValidationError);
 			});
 		});
 
 		describe('conversion', () => {
 			it('should throw for non-object', () => {
-				expect(() => builder.conversion('not-object')).toThrow(ProfileValidationError);
+				expect(() => builder.conversion('not-object')).toThrow(
+					ProfileValidationError
+				);
 				expect(() => builder.conversion(null)).toThrow(ProfileValidationError);
 			});
 		});
 
 		describe('globalReplacements', () => {
 			it('should throw for non-array', () => {
-				expect(() => builder.globalReplacements('not-array')).toThrow(ProfileValidationError);
-				expect(() => builder.globalReplacements({})).toThrow(ProfileValidationError);
+				expect(() => builder.globalReplacements('not-array')).toThrow(
+					ProfileValidationError
+				);
+				expect(() => builder.globalReplacements({})).toThrow(
+					ProfileValidationError
+				);
 			});
 		});
 
 		describe('mcpConfig', () => {
 			it('should throw for invalid types', () => {
-				expect(() => builder.mcpConfig('string')).toThrow(ProfileValidationError);
+				expect(() => builder.mcpConfig('string')).toThrow(
+					ProfileValidationError
+				);
 				expect(() => builder.mcpConfig(123)).toThrow(ProfileValidationError);
 			});
 
@@ -195,29 +202,43 @@ describe('ProfileBuilder', () => {
 
 		describe('includeDefaultRules', () => {
 			it('should throw for non-boolean', () => {
-				expect(() => builder.includeDefaultRules('true')).toThrow(ProfileValidationError);
-				expect(() => builder.includeDefaultRules(1)).toThrow(ProfileValidationError);
+				expect(() => builder.includeDefaultRules('true')).toThrow(
+					ProfileValidationError
+				);
+				expect(() => builder.includeDefaultRules(1)).toThrow(
+					ProfileValidationError
+				);
 			});
 		});
 
 		describe('supportsSubdirectories', () => {
 			it('should throw for non-boolean', () => {
-				expect(() => builder.supportsSubdirectories('true')).toThrow(ProfileValidationError);
-				expect(() => builder.supportsSubdirectories(1)).toThrow(ProfileValidationError);
+				expect(() => builder.supportsSubdirectories('true')).toThrow(
+					ProfileValidationError
+				);
+				expect(() => builder.supportsSubdirectories(1)).toThrow(
+					ProfileValidationError
+				);
 			});
 		});
 
 		describe('lifecycle hooks', () => {
 			it('should throw for non-function onAdd', () => {
-				expect(() => builder.onAdd('not-function')).toThrow(ProfileValidationError);
+				expect(() => builder.onAdd('not-function')).toThrow(
+					ProfileValidationError
+				);
 			});
 
 			it('should throw for non-function onRemove', () => {
-				expect(() => builder.onRemove('not-function')).toThrow(ProfileValidationError);
+				expect(() => builder.onRemove('not-function')).toThrow(
+					ProfileValidationError
+				);
 			});
 
 			it('should throw for non-function onPost', () => {
-				expect(() => builder.onPost('not-function')).toThrow(ProfileValidationError);
+				expect(() => builder.onPost('not-function')).toThrow(
+					ProfileValidationError
+				);
 			});
 		});
 	});
@@ -268,7 +289,9 @@ describe('ProfileBuilder', () => {
 				const extendedBuilder = ProfileBuilder.extend(baseProfile);
 
 				expect(extendedBuilder._config.fileMap).not.toBe(baseProfile.fileMap);
-				expect(extendedBuilder._config.globalReplacements).not.toBe(baseProfile.globalReplacements);
+				expect(extendedBuilder._config.globalReplacements).not.toBe(
+					baseProfile.globalReplacements
+				);
 			});
 		});
 
@@ -318,43 +341,50 @@ describe('ProfileBuilder', () => {
 		it('should throw for missing required fields', () => {
 			expect(() => builder.build()).toThrow(ProfileValidationError);
 
-			expect(() => builder.withName('test').build()).toThrow(ProfileValidationError);
+			expect(() => builder.withName('test').build()).toThrow(
+				ProfileValidationError
+			);
 
-			expect(() => builder.withName('test').rulesDir('.test/rules').build())
-				.toThrow(ProfileValidationError);
+			expect(() =>
+				builder.withName('test').rulesDir('.test/rules').build()
+			).toThrow(ProfileValidationError);
 		});
 
 		it('should validate profile name format', () => {
-			expect(() => builder
-				.withName('invalid name with spaces')
-				.rulesDir('.test/rules')
-				.profileDir('.test')
-				.build()
+			expect(() =>
+				builder
+					.withName('invalid name with spaces')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.build()
 			).toThrow(ProfileValidationError);
 
-			expect(() => builder
-				.withName('invalid@name')
-				.rulesDir('.test/rules')
-				.profileDir('.test')
-				.build()
+			expect(() =>
+				builder
+					.withName('invalid@name')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.build()
 			).toThrow(ProfileValidationError);
 
 			// Valid names should work
-			expect(() => builder
-				.withName('valid-name_123')
-				.rulesDir('.test/rules')
-				.profileDir('.test')
-				.build()
+			expect(() =>
+				builder
+					.withName('valid-name_123')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.build()
 			).not.toThrow();
 		});
 
 		it('should validate file map structure', () => {
-			expect(() => builder
-				.withName('test')
-				.rulesDir('.test/rules')
-				.profileDir('.test')
-				.fileMap({ 'source.mdc': 123 }) // invalid value type
-				.build()
+			expect(() =>
+				builder
+					.withName('test')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.fileMap({ 'source.mdc': 123 }) // invalid value type
+					.build()
 			).toThrow(ProfileValidationError);
 
 			// Note: JavaScript automatically converts numeric keys to strings,
@@ -362,12 +392,13 @@ describe('ProfileBuilder', () => {
 			// This is expected JS behavior, so we only test invalid values
 
 			// Valid file map should work
-			expect(() => builder
-				.withName('test')
-				.rulesDir('.test/rules')
-				.profileDir('.test')
-				.fileMap({ 'source.mdc': 'target.md' })
-				.build()
+			expect(() =>
+				builder
+					.withName('test')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.fileMap({ 'source.mdc': 'target.md' })
+					.build()
 			).not.toThrow();
 		});
 
@@ -422,8 +453,7 @@ describe('ProfileBuilder', () => {
 		});
 
 		it('should work with minimal configuration', () => {
-			const profile = ProfileBuilder.minimal('simple')
-				.build();
+			const profile = ProfileBuilder.minimal('simple').build();
 
 			expect(profile.profileName).toBe('simple');
 			expect(profile.displayName).toBe('Simple');
@@ -453,4 +483,4 @@ describe('ProfileBuilder', () => {
 			expect(profile.rulesDir).toBe('.base/rules'); // inherited
 		});
 	});
-}); 
+});

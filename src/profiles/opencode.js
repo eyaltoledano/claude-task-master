@@ -163,8 +163,7 @@ function onRemoveRulesProfile(targetDir) {
 }
 
 // Create opencode profile using the new ProfileBuilder
-const opencodeProfile = ProfileBuilder
-	.minimal('opencode')
+const opencodeProfile = ProfileBuilder.minimal('opencode')
 	.display('OpenCode')
 	.profileDir('.') // Root directory
 	.rulesDir('.') // Root directory for AGENTS.md
@@ -189,9 +188,7 @@ const opencodeProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'OpenCode' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'opencode.ai/docs/' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'opencode.ai/docs/' }],
 		// Standard tool mappings (no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

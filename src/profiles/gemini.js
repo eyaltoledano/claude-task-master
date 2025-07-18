@@ -2,8 +2,7 @@
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create gemini profile using the new ProfileBuilder
-const geminiProfile = ProfileBuilder
-	.minimal('gemini')
+const geminiProfile = ProfileBuilder.minimal('gemini')
 	.display('Gemini')
 	.profileDir('.') // Root directory like simple profiles
 	.rulesDir('.')
@@ -16,7 +15,10 @@ const geminiProfile = ProfileBuilder
 		profileTerms: [
 			{ from: /cursor\.so/g, to: 'ai.google.dev' },
 			{ from: /\[cursor\.so\]/g, to: '[ai.google.dev]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://ai.google.dev' },
+			{
+				from: /href="https:\/\/cursor\.so/g,
+				to: 'href="https://ai.google.dev'
+			},
 			{ from: /\(https:\/\/cursor\.so/g, to: '(https://ai.google.dev' },
 			{
 				from: /\bcursor\b/gi,
@@ -25,9 +27,7 @@ const geminiProfile = ProfileBuilder
 			{ from: /Cursor/g, to: 'Gemini' }
 		],
 		// Documentation URL replacements
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'ai.google.dev/docs' }
-		],
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'ai.google.dev/docs' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',

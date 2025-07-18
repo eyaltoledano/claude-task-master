@@ -17,7 +17,7 @@ describe('Windsurf Profile Initialization Functionality', () => {
 
 	test('windsurf.js uses ProfileBuilder pattern with correct configuration', () => {
 		// Check for ProfileBuilder pattern in the source file
-		expect(windsurfProfileContent).toContain("ProfileBuilder");
+		expect(windsurfProfileContent).toContain('ProfileBuilder');
 		expect(windsurfProfileContent).toContain(".minimal('windsurf')");
 		expect(windsurfProfileContent).toContain(".display('Windsurf')");
 
@@ -37,15 +37,19 @@ describe('Windsurf Profile Initialization Functionality', () => {
 	});
 
 	test('windsurf profile has correct MCP configuration', () => {
-		expect(windsurfProfile.mcpConfig).toEqual({ configName: 'windsurf_mcp.json' });
+		expect(windsurfProfile.mcpConfig).toEqual({
+			configName: 'windsurf_mcp.json'
+		});
 		expect(windsurfProfile.mcpConfigName).toBe('windsurf_mcp.json');
-		expect(windsurfProfile.mcpConfigPath).toBe('.windsurfrules/windsurf_mcp.json');
+		expect(windsurfProfile.mcpConfigPath).toBe(
+			'.windsurfrules/windsurf_mcp.json'
+		);
 	});
 
 	test('windsurf profile provides legacy format conversion', () => {
 		// Test that toLegacyFormat() works correctly
 		const legacyFormat = windsurfProfile.toLegacyFormat();
-		
+
 		expect(legacyFormat.profileName).toBe('windsurf');
 		expect(legacyFormat.displayName).toBe('Windsurf');
 		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
@@ -57,7 +61,7 @@ describe('Windsurf Profile Initialization Functionality', () => {
 		expect(() => {
 			windsurfProfile.profileName = 'modified';
 		}).toThrow();
-		
+
 		expect(() => {
 			windsurfProfile.newProperty = 'test';
 		}).toThrow();
@@ -65,13 +69,13 @@ describe('Windsurf Profile Initialization Functionality', () => {
 
 	test('windsurf profile includes conversion configuration', () => {
 		const { conversionConfig } = windsurfProfile;
-		
+
 		expect(conversionConfig.profileTerms).toBeInstanceOf(Array);
 		expect(conversionConfig.profileTerms.length).toBeGreaterThan(0);
-		
+
 		expect(conversionConfig.docUrls).toBeInstanceOf(Array);
 		expect(conversionConfig.docUrls.length).toBeGreaterThan(0);
-		
+
 		expect(conversionConfig.toolNames).toBeInstanceOf(Object);
 		expect(Object.keys(conversionConfig.toolNames).length).toBeGreaterThan(0);
 	});
