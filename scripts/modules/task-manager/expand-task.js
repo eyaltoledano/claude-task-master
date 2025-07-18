@@ -238,8 +238,9 @@ function parseSubtasksFromText(
 			id: currentId,
 			dependencies: Array.isArray(rawSubtask.dependencies)
 				? rawSubtask.dependencies.filter(
-						(dep) => typeof dep === 'string' && dep.startsWith(`${parentTaskId}.`)
-				  )
+						(dep) =>
+							typeof dep === 'string' && dep.startsWith(`${parentTaskId}.`)
+					)
 				: [],
 			status: 'pending'
 		};

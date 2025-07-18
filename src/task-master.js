@@ -165,7 +165,7 @@ export function initTaskMaster(overrides = {}) {
 		const rootDir = path.parse(currentDir).root;
 		const maxDepth = 50; // Reasonable limit to prevent infinite loops
 		let depth = 0;
-		
+
 		while (currentDir !== rootDir && depth < maxDepth) {
 			for (const marker of projectMarkers) {
 				const markerPath = path.join(currentDir, marker);
