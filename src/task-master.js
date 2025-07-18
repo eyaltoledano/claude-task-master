@@ -163,7 +163,10 @@ export function initTaskMaster(overrides = {}) {
 		const projectMarkers = [TASKMASTER_DIR, LEGACY_CONFIG_FILE];
 		let currentDir = path.resolve(startDir);
 		const rootDir = path.parse(currentDir).root;
-		while (currentDir !== rootDir) {
+		const maxDepth = 50; // Reasonable limit to prevent infinite loops
+		let depth = 0;
+		
+		while (currentDir !== rootDir && depth < maxDepth) {
 			for (const marker of projectMarkers) {
 				const markerPath = path.join(currentDir, marker);
 				if (fs.existsSync(markerPath)) {
@@ -171,8 +174,10 @@ export function initTaskMaster(overrides = {}) {
 				}
 			}
 			currentDir = path.dirname(currentDir);
+			depth++;
 		}
-		return null;
+		// Fallback to current working directory if no project root found
+		return process.cwd();
 	};
 
 	const resolvePath = (
@@ -264,13 +269,8 @@ export function initTaskMaster(overrides = {}) {
 
 		paths.projectRoot = resolvedOverride;
 	} else {
-		const foundRoot = findProjectRoot();
-		if (!foundRoot) {
-			throw new Error(
-				'Unable to find project root. No project markers found. Run "init" command first.'
-			);
-		}
-		paths.projectRoot = foundRoot;
+		// findProjectRoot now always returns a value (fallback to cwd)
+		paths.projectRoot = findProjectRoot();
 	}
 
 	// TaskMaster Directory
