@@ -3,7 +3,19 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 // Mock the schema integration functions to avoid chalk issues
-const mockSetupSchemaIntegration = jest.fn();
+const mockSetupSchemaIntegration = jest.fn().mockResolvedValue();
+
+// Mock the VS Code profile module before importing
+jest.mock('../../../src/profiles/vscode.js', () => {
+	const actualModule = jest.requireActual('../../../src/profiles/vscode.js');
+	return {
+		...actualModule,
+		vscodeProfile: {
+			...actualModule.vscodeProfile,
+			onAddRulesProfile: mockSetupSchemaIntegration
+		}
+	};
+});
 
 import { vscodeProfile } from '../../../src/profiles/vscode.js';
 
@@ -310,6 +322,11 @@ Task Master specific VS Code instruction.`;
 		});
 
 		test.skip('setupSchemaIntegration is called with project root', async () => {
+			// TODO: Profile object immutability prevents mocking lifecycle functions
+			// The Profile objects are frozen after construction, making it difficult to mock
+			// onAddRulesProfile. This test worked before but now conflicts with immutability
+			// requirements. Consider refactoring to test the schema integration function directly.
+			
 			// Arrange
 			mockSetupSchemaIntegration.mockResolvedValue();
 
@@ -327,6 +344,11 @@ Task Master specific VS Code instruction.`;
 		});
 
 		test.skip('schema integration handles errors gracefully', async () => {
+			// TODO: Profile object immutability prevents mocking lifecycle functions
+			// The Profile objects are frozen after construction, making it difficult to mock
+			// onAddRulesProfile. This test worked before but now conflicts with immutability
+			// requirements. Consider refactoring to test the schema integration function directly.
+			
 			// Arrange - Mock to throw an error
 			mockSetupSchemaIntegration.mockRejectedValue(
 				new Error('Schema setup failed')
