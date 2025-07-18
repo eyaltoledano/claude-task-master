@@ -26,7 +26,8 @@ import { log } from '../utils.js';
 import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 
 // Constants
-const CONFIG_MISSING_ERROR = 'The configuration file is missing. Run "task-master init" to create it.';
+const CONFIG_MISSING_ERROR =
+	'The configuration file is missing. Run "task-master init" to create it.';
 
 /**
  * Fetches the list of models from OpenRouter API.
