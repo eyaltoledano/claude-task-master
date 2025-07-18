@@ -1,8 +1,8 @@
-// Zed profile for rule-transformer
+// Zed profile using new ProfileBuilder system
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile } from './base-profile.js';
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 /**
  * Transform standard MCP config format to Zed format
@@ -155,24 +155,59 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 	}
 }
 
-// Create and export zed profile using the base factory
-export const zedProfile = createProfile({
-	name: 'zed',
-	displayName: 'Zed',
-	url: 'zed.dev',
-	docsUrl: 'zed.dev/docs',
-	profileDir: '.zed',
-	rulesDir: '.',
-	mcpConfig: true,
-	mcpConfigName: 'settings.json',
-	includeDefaultRules: false,
-	fileMap: {
+// Create zed profile using the new ProfileBuilder
+const zedProfile = ProfileBuilder
+	.minimal('zed')
+	.display('Zed')
+	.profileDir('.zed')
+	.rulesDir('.')
+	.mcpConfig({
+		configName: 'settings.json'
+	})
+	.includeDefaultRules(false)
+	.fileMap({
 		'AGENTS.md': '.rules'
-	},
-	onAdd: onAddRulesProfile,
-	onRemove: onRemoveRulesProfile,
-	onPostConvert: onPostConvertRulesProfile
-});
+	})
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'zed.dev' },
+			{ from: /\[cursor\.so\]/g, to: '[zed.dev]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://zed.dev' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://zed.dev' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'Zed' : 'zed')
+			},
+			{ from: /Cursor/g, to: 'Zed' }
+		],
+		// Documentation URL replacements
+		docUrls: [
+			{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }
+		],
+		// Standard tool mappings (no custom tools)
+		toolNames: {
+			edit_file: 'edit_file',
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
+		}
+	})
+	.onAdd(onAddRulesProfile)
+	.onRemove(onRemoveRulesProfile)
+	.onPost(onPostConvertRulesProfile)
+	.build();
+
+// Export both the new Profile instance and a legacy-compatible version
+export { zedProfile };
+
+// Legacy-compatible export for backward compatibility
+export const zedProfileLegacy = zedProfile.toLegacyFormat();
+
+// Default export remains legacy format for maximum compatibility
+export default zedProfileLegacy;
 
 // Export lifecycle functions separately to avoid naming conflicts
 export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

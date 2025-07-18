@@ -1,9 +1,27 @@
-// Roo Code conversion profile for rule-transformer
+// Roo Code profile using new ProfileBuilder system
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 import { ROO_MODES } from '../constants/profiles.js';
+
+// Helper function to recursively copy directory
+function copyRecursiveSync(src, dest) {
+	const exists = fs.existsSync(src);
+	const stats = exists && fs.statSync(src);
+	const isDirectory = exists && stats.isDirectory();
+	if (isDirectory) {
+		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+		fs.readdirSync(src).forEach((childItemName) => {
+			copyRecursiveSync(
+				path.join(src, childItemName),
+				path.join(dest, childItemName)
+			);
+		});
+	} else {
+		fs.copyFileSync(src, dest);
+	}
+}
 
 // Lifecycle functions for Roo profile
 function onAddRulesProfile(targetDir, assetsDir) {
@@ -48,23 +66,6 @@ function onAddRulesProfile(targetDir, assetsDir) {
 	}
 }
 
-function copyRecursiveSync(src, dest) {
-	const exists = fs.existsSync(src);
-	const stats = exists && fs.statSync(src);
-	const isDirectory = exists && stats.isDirectory();
-	if (isDirectory) {
-		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-		fs.readdirSync(src).forEach((childItemName) => {
-			copyRecursiveSync(
-				path.join(src, childItemName),
-				path.join(dest, childItemName)
-			);
-		});
-	} else {
-		fs.copyFileSync(src, dest);
-	}
-}
-
 function onRemoveRulesProfile(targetDir) {
 	const roomodesPath = path.join(targetDir, '.roomodes');
 	if (fs.existsSync(roomodesPath)) {
@@ -104,17 +105,64 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 	onAddRulesProfile(targetDir, assetsDir);
 }
 
-// Create and export roo profile using the base factory
-export const rooProfile = createProfile({
-	name: 'roo',
-	displayName: 'Roo Code',
-	url: 'roocode.com',
-	docsUrl: 'docs.roocode.com',
-	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
-	onAdd: onAddRulesProfile,
-	onRemove: onRemoveRulesProfile,
-	onPostConvert: onPostConvertRulesProfile
-});
+// Create roo profile using the new ProfileBuilder
+const rooProfile = ProfileBuilder
+	.minimal('roo')
+	.display('Roo Code')
+	.profileDir('.roo')
+	.rulesDir('.roo')
+	.mcpConfig(true)
+	.includeDefaultRules(true)
+	.fileMap({
+		// Multi-mode file mapping for different agent modes
+		...ROO_MODES.reduce((map, mode) => {
+			map[`rules/cursor_rules.mdc`] = `rules-${mode}/${mode}-rules`;
+			return map;
+		}, {}),
+		'AGENTS.md': 'AGENTS.md'
+	})
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'roocode.com' },
+			{ from: /\[cursor\.so\]/g, to: '[roocode.com]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://roocode.com' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://roocode.com' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'Roo Code' : 'roo')
+			},
+			{ from: /Cursor/g, to: 'Roo Code' }
+		],
+		// Documentation URL replacements
+		docUrls: [
+			{ from: /docs\.cursor\.so/g, to: 'docs.roocode.com' }
+		],
+		// Roo Code custom tool mappings
+		toolNames: {
+			edit_file: 'apply_diff',
+			search: 'search_files',
+			grep_search: 'grep_search', // Keep standard
+			list_dir: 'list_dir', // Keep standard
+			read_file: 'read_file', // Keep standard
+			run_terminal_cmd: 'execute_command',
+			create_file: 'write_to_file',
+			use_mcp: 'use_mcp_tool'
+		}
+	})
+	.onAdd(onAddRulesProfile)
+	.onRemove(onRemoveRulesProfile)
+	.onPost(onPostConvertRulesProfile)
+	.build();
+
+// Export both the new Profile instance and a legacy-compatible version
+export { rooProfile };
+
+// Legacy-compatible export for backward compatibility
+export const rooProfileLegacy = rooProfile.toLegacyFormat();
+
+// Default export remains legacy format for maximum compatibility
+export default rooProfileLegacy;
 
 // Export lifecycle functions separately to avoid naming conflicts
 export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

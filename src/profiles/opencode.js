@@ -1,8 +1,8 @@
-// Opencode profile for rule-transformer
+// Opencode profile using new ProfileBuilder system
 import path from 'path';
 import fs from 'fs';
 import { log } from '../../scripts/modules/utils.js';
-import { createProfile } from './base-profile.js';
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 /**
  * Transform standard MCP config format to OpenCode format
@@ -162,22 +162,58 @@ function onRemoveRulesProfile(targetDir) {
 	}
 }
 
-// Create and export opencode profile using the base factory
-export const opencodeProfile = createProfile({
-	name: 'opencode',
-	displayName: 'OpenCode',
-	url: 'opencode.ai',
-	docsUrl: 'opencode.ai/docs/',
-	profileDir: '.', // Root directory
-	rulesDir: '.', // Root directory for AGENTS.md
-	mcpConfigName: 'opencode.json', // Override default 'mcp.json'
-	includeDefaultRules: false,
-	fileMap: {
+// Create opencode profile using the new ProfileBuilder
+const opencodeProfile = ProfileBuilder
+	.minimal('opencode')
+	.display('OpenCode')
+	.profileDir('.') // Root directory
+	.rulesDir('.') // Root directory for AGENTS.md
+	.mcpConfig({
+		configName: 'opencode.json' // Override default 'mcp.json'
+	})
+	.includeDefaultRules(false)
+	.fileMap({
 		'AGENTS.md': 'AGENTS.md'
-	},
-	onPostConvert: onPostConvertRulesProfile,
-	onRemove: onRemoveRulesProfile
-});
+	})
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'opencode.ai' },
+			{ from: /\[cursor\.so\]/g, to: '[opencode.ai]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://opencode.ai' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://opencode.ai' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'OpenCode' : 'opencode')
+			},
+			{ from: /Cursor/g, to: 'OpenCode' }
+		],
+		// Documentation URL replacements
+		docUrls: [
+			{ from: /docs\.cursor\.so/g, to: 'opencode.ai/docs/' }
+		],
+		// Standard tool mappings (no custom tools)
+		toolNames: {
+			edit_file: 'edit_file',
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
+		}
+	})
+	.onPost(onPostConvertRulesProfile)
+	.onRemove(onRemoveRulesProfile)
+	.build();
+
+// Export both the new Profile instance and a legacy-compatible version
+export { opencodeProfile };
+
+// Legacy-compatible export for backward compatibility
+export const opencodeProfileLegacy = opencodeProfile.toLegacyFormat();
+
+// Default export remains legacy format for maximum compatibility
+export default opencodeProfileLegacy;
 
 // Export lifecycle functions separately to avoid naming conflicts
 export { onPostConvertRulesProfile, onRemoveRulesProfile };
