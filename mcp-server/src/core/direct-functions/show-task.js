@@ -19,6 +19,7 @@ import { findTasksPath } from '../utils/path-utils.js';
  * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {string} [args.status] - Optional status to filter subtasks by.
  * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
+ * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -26,7 +27,7 @@ import { findTasksPath } from '../utils/path-utils.js';
 export async function showTaskDirect(args, log) {
 	// This function doesn't need session context since it only reads data
 	// Destructure projectRoot and other args. projectRoot is assumed normalized.
-	const { id, file, reportPath, status, projectRoot } = args;
+	const { id, file, reportPath, status, projectRoot, tag } = args;
 
 	log.info(
 		`Showing task direct function. ID: ${id}, File: ${file}, Status Filter: ${status}, ProjectRoot: ${projectRoot}`
@@ -55,7 +56,7 @@ export async function showTaskDirect(args, log) {
 
 	// --- Rest of the function remains the same, using tasksJsonPath ---
 	try {
-		const tasksData = readJSON(tasksJsonPath, projectRoot);
+		const tasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		if (!tasksData || !tasksData.tasks) {
 			return {
 				success: false,

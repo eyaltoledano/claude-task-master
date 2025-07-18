@@ -20,7 +20,8 @@ import {
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID(s) of the task(s) or subtask(s) to remove (comma-separated for multiple).
- * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag).
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Remove task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
@@ -117,7 +118,7 @@ export async function removeTaskDirect(args, log, context = {}) {
 					removedTasks: result.removedTasks,
 					message: result.message,
 					tasksPath: tasksJsonPath,
-					tag: data.tag || tag || 'master'
+					tag
 				}
 			};
 		} finally {

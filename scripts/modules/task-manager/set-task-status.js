@@ -7,7 +7,6 @@ import {
 	readJSON,
 	writeJSON,
 	findTaskById,
-	getCurrentTag,
 	ensureTagMetadata
 } from '../utils.js';
 import { displayBanner } from '../ui.js';
@@ -26,16 +25,13 @@ import {
  * @param {string} taskIdInput - Task ID(s) to update
  * @param {string} newStatus - New status
  * @param {Object} options - Additional options (mcpLog for MCP mode, projectRoot for tag resolution)
- * @param {string} tag - Optional tag to override current tag resolution
+ * @param {string} [options.projectRoot] - Project root path
+ * @param {string} [options.tag] - Optional tag to override current tag resolution
+ * @param {string} [options.mcpLog] - MCP logger object
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
-async function setTaskStatus(
-	tasksPath,
-	taskIdInput,
-	newStatus,
-	options = {},
-	tag = null
-) {
+async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
+	const { projectRoot, tag } = options;
 	try {
 		if (!isValidTaskStatus(newStatus)) {
 			throw new Error(
@@ -59,7 +55,7 @@ async function setTaskStatus(
 		log('info', `Reading tasks from ${tasksPath}...`);
 
 		// Read the raw data without tag resolution to preserve tagged structure
-		let rawData = readJSON(tasksPath, options.projectRoot); // No tag parameter
+		let rawData = readJSON(tasksPath, projectRoot, tag); // No tag parameter
 
 		// Handle the case where readJSON returns resolved data with _rawTaggedData
 		if (rawData && rawData._rawTaggedData) {
@@ -67,24 +63,17 @@ async function setTaskStatus(
 			rawData = rawData._rawTaggedData;
 		}
 
-		// Determine the current tag
-		const currentTag = tag || getCurrentTag(options.projectRoot) || 'master';
-
 		// Ensure the tag exists in the raw data
-		if (
-			!rawData ||
-			!rawData[currentTag] ||
-			!Array.isArray(rawData[currentTag].tasks)
-		) {
+		if (!rawData || !rawData[tag] || !Array.isArray(rawData[tag].tasks)) {
 			throw new Error(
-				`Invalid tasks file or tag "${currentTag}" not found at ${tasksPath}`
+				`Invalid tasks file or tag "${tag}" not found at ${tasksPath}`
 			);
 		}
 
 		// Get the tasks for the current tag
 		const data = {
-			tasks: rawData[currentTag].tasks,
-			tag: currentTag,
+			tasks: rawData[tag].tasks,
+			tag,
 			_rawTaggedData: rawData
 		};
 
@@ -123,16 +112,16 @@ async function setTaskStatus(
 		}
 
 		// Update the raw data structure with the modified tasks
-		rawData[currentTag].tasks = data.tasks;
+		rawData[tag].tasks = data.tasks;
 
 		// Ensure the tag has proper metadata
-		ensureTagMetadata(rawData[currentTag], {
-			description: `Tasks for ${currentTag} context`
+		ensureTagMetadata(rawData[tag], {
+			description: `Tasks for ${tag} context`
 		});
 
 		// Write the updated raw data back to the file
 		// The writeJSON function will automatically filter out _rawTaggedData
-		writeJSON(tasksPath, rawData, options.projectRoot, currentTag);
+		writeJSON(tasksPath, rawData, projectRoot, tag);
 
 		// Validate dependencies after status update
 		log('info', 'Validating dependencies after status update...');

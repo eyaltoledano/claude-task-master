@@ -91,11 +91,12 @@ function createEndMarker() {
  * @param {string} options.status - Filter by status (e.g., 'pending', 'done')
  * @param {string} options.tasksPath - Custom path to tasks.json
  * @returns {boolean} - True if sync was successful, false otherwise
+ * TODO: Add tag support - this is not currently supported how we want to handle this  - Parthy
  */
 export async function syncTasksToReadme(projectRoot = null, options = {}) {
 	try {
 		const actualProjectRoot = projectRoot || findProjectRoot() || '.';
-		const { withSubtasks = false, status, tasksPath } = options;
+		const { withSubtasks = false, status, tasksPath, tag } = options;
 
 		// Get current tasks using the list-tasks functionality with markdown-readme format
 		const tasksOutput = await listTasks(
@@ -104,7 +105,8 @@ export async function syncTasksToReadme(projectRoot = null, options = {}) {
 			status,
 			null,
 			withSubtasks,
-			'markdown-readme'
+			'markdown-readme',
+			{ projectRoot, tag }
 		);
 
 		if (!tasksOutput) {

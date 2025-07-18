@@ -11,7 +11,11 @@ import {
 	createAgentDelegationResponse
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import {
+	findTasksPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -52,7 +56,10 @@ export function registerExpandTaskTool(server) {
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
-
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -67,6 +74,11 @@ export function registerExpandTaskTool(server) {
 					);
 				}
 
+				const complexityReportPath = findComplexityReportPath(
+					{ ...args, tag: resolvedTag },
+					log
+				);
+
 				const result = await expandTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -75,8 +87,9 @@ export function registerExpandTaskTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
+						complexityReportPath,
 						projectRoot: args.projectRoot,
-						tag: args.tag || 'master'
+						tag: resolvedTag
 					},
 					log,
 					{ session }

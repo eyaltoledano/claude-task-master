@@ -12,6 +12,7 @@ import {
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the addTask tool with the MCP server
@@ -59,6 +60,7 @@ export function registerAddTaskTool(server) {
 			projectRoot: z
 				.string()
 				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on'),
 			research: z
 				.boolean()
 				.optional()
@@ -67,6 +69,11 @@ export function registerAddTaskTool(server) {
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);
+
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -94,7 +101,8 @@ export function registerAddTaskTool(server) {
 						dependencies: args.dependencies,
 						priority: args.priority,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

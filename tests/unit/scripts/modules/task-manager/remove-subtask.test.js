@@ -19,10 +19,12 @@ const testRemoveSubtask = (
 	tasksPath,
 	subtaskId,
 	convertToTask = false,
-	generateFiles = true
+	generateFiles = true,
+	context = { tag: 'master' }
 ) => {
+	const { projectRoot = undefined, tag = 'master' } = context;
 	// Read the existing tasks
-	const data = mockReadJSON(tasksPath);
+	const data = mockReadJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
 	}
@@ -95,7 +97,7 @@ const testRemoveSubtask = (
 	}
 
 	// Write the updated tasks back to the file
-	mockWriteJSON(tasksPath, data);
+	mockWriteJSON(tasksPath, data, projectRoot, tag);
 
 	// Generate task files if requested
 	if (generateFiles) {
@@ -111,55 +113,66 @@ describe('removeSubtask function', () => {
 		jest.clearAllMocks();
 
 		// Default mock implementations
-		mockReadJSON.mockImplementation(() => ({
-			tasks: [
-				{
-					id: 1,
-					title: 'Parent Task',
-					description: 'This is a parent task',
-					status: 'pending',
-					dependencies: [],
-					subtasks: [
-						{
-							id: 1,
-							title: 'Subtask 1',
-							description: 'This is subtask 1',
-							status: 'pending',
-							dependencies: [],
-							parentTaskId: 1
-						},
-						{
-							id: 2,
-							title: 'Subtask 2',
-							description: 'This is subtask 2',
-							status: 'in-progress',
-							dependencies: [1], // Depends on subtask 1
-							parentTaskId: 1
-						}
-					]
-				},
-				{
-					id: 2,
-					title: 'Another Task',
-					description: 'This is another task',
-					status: 'pending',
-					dependencies: [1]
-				}
-			]
-		}));
+		mockReadJSON.mockImplementation((p, root, tag) => {
+			expect(tag).toBeDefined();
+			expect(tag).toBe('master');
+			return {
+				tasks: [
+					{
+						id: 1,
+						title: 'Parent Task',
+						description: 'This is a parent task',
+						status: 'pending',
+						dependencies: [],
+						subtasks: [
+							{
+								id: 1,
+								title: 'Subtask 1',
+								description: 'This is subtask 1',
+								status: 'pending',
+								dependencies: [],
+								parentTaskId: 1
+							},
+							{
+								id: 2,
+								title: 'Subtask 2',
+								description: 'This is subtask 2',
+								status: 'in-progress',
+								dependencies: [1], // Depends on subtask 1
+								parentTaskId: 1
+							}
+						]
+					},
+					{
+						id: 2,
+						title: 'Another Task',
+						description: 'This is another task',
+						status: 'pending',
+						dependencies: [1]
+					}
+				]
+			};
+		});
 
 		// Setup success write response
-		mockWriteJSON.mockImplementation((path, data) => {
+		mockWriteJSON.mockImplementation((path, data, root, tag) => {
+			expect(tag).toBe('master');
 			return data;
 		});
 	});
 
 	test('should remove a subtask from its parent task', async () => {
 		// Execute the test version of removeSubtask to remove subtask 1.1
-		testRemoveSubtask('tasks/tasks.json', '1.1', false, true);
+		testRemoveSubtask('tasks/tasks.json', '1.1', false, true, {
+			tag: 'master'
+		});
 
 		// Verify readJSON was called with the correct path
-		expect(mockReadJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(mockReadJSON).toHaveBeenCalledWith(
+			'tasks/tasks.json',
+			undefined,
+			'master'
+		);
 
 		// Verify writeJSON was called with updated data
 		expect(mockWriteJSON).toHaveBeenCalled();
@@ -170,7 +183,9 @@ describe('removeSubtask function', () => {
 
 	test('should convert a subtask to a standalone task', async () => {
 		// Execute the test version of removeSubtask to convert subtask 1.1 to a standalone task
-		const result = testRemoveSubtask('tasks/tasks.json', '1.1', true, true);
+		const result = testRemoveSubtask('tasks/tasks.json', '1.1', true, true, {
+			tag: 'master'
+		});
 
 		// Verify the result is the new task
 		expect(result).toBeDefined();
@@ -187,9 +202,9 @@ describe('removeSubtask function', () => {
 
 	test('should throw an error if subtask ID format is invalid', async () => {
 		// Expect an error for invalid subtask ID format
-		expect(() => testRemoveSubtask('tasks/tasks.json', '1', false)).toThrow(
-			/Invalid subtask ID format/
-		);
+		expect(() =>
+			testRemoveSubtask('tasks/tasks.json', '1', false, true, { tag: 'master' })
+		).toThrow(/Invalid subtask ID format/);
 
 		// Verify writeJSON was not called
 		expect(mockWriteJSON).not.toHaveBeenCalled();
@@ -197,9 +212,11 @@ describe('removeSubtask function', () => {
 
 	test('should throw an error if parent task does not exist', async () => {
 		// Expect an error for non-existent parent task
-		expect(() => testRemoveSubtask('tasks/tasks.json', '999.1', false)).toThrow(
-			/Parent task with ID 999 not found/
-		);
+		expect(() =>
+			testRemoveSubtask('tasks/tasks.json', '999.1', false, true, {
+				tag: 'master'
+			})
+		).toThrow(/Parent task with ID 999 not found/);
 
 		// Verify writeJSON was not called
 		expect(mockWriteJSON).not.toHaveBeenCalled();
@@ -207,9 +224,11 @@ describe('removeSubtask function', () => {
 
 	test('should throw an error if subtask does not exist', async () => {
 		// Expect an error for non-existent subtask
-		expect(() => testRemoveSubtask('tasks/tasks.json', '1.999', false)).toThrow(
-			/Subtask 1.999 not found/
-		);
+		expect(() =>
+			testRemoveSubtask('tasks/tasks.json', '1.999', false, true, {
+				tag: 'master'
+			})
+		).toThrow(/Subtask 1.999 not found/);
 
 		// Verify writeJSON was not called
 		expect(mockWriteJSON).not.toHaveBeenCalled();
@@ -217,45 +236,51 @@ describe('removeSubtask function', () => {
 
 	test('should remove subtasks array if last subtask is removed', async () => {
 		// Create a data object with just one subtask
-		mockReadJSON.mockImplementationOnce(() => ({
-			tasks: [
-				{
-					id: 1,
-					title: 'Parent Task',
-					description: 'This is a parent task',
-					status: 'pending',
-					dependencies: [],
-					subtasks: [
-						{
-							id: 1,
-							title: 'Last Subtask',
-							description: 'This is the last subtask',
-							status: 'pending',
-							dependencies: [],
-							parentTaskId: 1
-						}
-					]
-				},
-				{
-					id: 2,
-					title: 'Another Task',
-					description: 'This is another task',
-					status: 'pending',
-					dependencies: [1]
-				}
-			]
-		}));
+		mockReadJSON.mockImplementationOnce((p, root, tag) => {
+			expect(tag).toBe('master');
+			return {
+				tasks: [
+					{
+						id: 1,
+						title: 'Parent Task',
+						description: 'This is a parent task',
+						status: 'pending',
+						dependencies: [],
+						subtasks: [
+							{
+								id: 1,
+								title: 'Last Subtask',
+								description: 'This is the last subtask',
+								status: 'pending',
+								dependencies: [],
+								parentTaskId: 1
+							}
+						]
+					},
+					{
+						id: 2,
+						title: 'Another Task',
+						description: 'This is another task',
+						status: 'pending',
+						dependencies: [1]
+					}
+				]
+			};
+		});
 
 		// Mock the behavior of writeJSON to capture the updated tasks data
 		const updatedTasksData = { tasks: [] };
-		mockWriteJSON.mockImplementation((path, data) => {
+		mockWriteJSON.mockImplementation((path, data, root, tag) => {
+			expect(tag).toBe('master');
 			// Store the data for assertions
 			updatedTasksData.tasks = [...data.tasks];
 			return data;
 		});
 
 		// Remove the last subtask
-		testRemoveSubtask('tasks/tasks.json', '1.1', false, true);
+		testRemoveSubtask('tasks/tasks.json', '1.1', false, true, {
+			tag: 'master'
+		});
 
 		// Verify writeJSON was called
 		expect(mockWriteJSON).toHaveBeenCalled();
@@ -271,7 +296,9 @@ describe('removeSubtask function', () => {
 
 	test('should not regenerate task files if generateFiles is false', async () => {
 		// Execute the test version of removeSubtask with generateFiles = false
-		testRemoveSubtask('tasks/tasks.json', '1.1', false, false);
+		testRemoveSubtask('tasks/tasks.json', '1.1', false, false, {
+			tag: 'master'
+		});
 
 		// Verify writeJSON was called
 		expect(mockWriteJSON).toHaveBeenCalled();
