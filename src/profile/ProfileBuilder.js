@@ -321,11 +321,12 @@ export class ProfileBuilder {
 		if (this._config.includeDefaultRules) {
 			const profileName = this._config.profileName.toLowerCase();
 			const targetExtension = '.md'; // Default target extension
-			const supportsSubdirectories = this._config.supportsRulesSubdirectories || false;
-			
+			const supportsSubdirectories =
+				this._config.supportsRulesSubdirectories || false;
+
 			// Use taskmaster subdirectory only if profile supports it
 			const taskmasterPrefix = supportsSubdirectories ? 'taskmaster/' : '';
-			
+
 			const defaultFileMap = {
 				'rules/cursor_rules.mdc': `${profileName}_rules${targetExtension}`,
 				'rules/dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
