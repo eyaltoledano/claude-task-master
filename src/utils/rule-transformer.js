@@ -19,6 +19,9 @@ import {
 // Import profile constants (single source of truth)
 import { RULE_PROFILES } from '../constants/profiles.js';
 
+// Import ProfileAdapter for seamless legacy/new profile handling
+import { ProfileAdapter } from '../profile/ProfileAdapter.js';
+
 // --- Profile Imports ---
 import * as profilesModule from '../profiles/index.js';
 
@@ -46,7 +49,10 @@ export function getRulesProfile(name) {
 		);
 	}
 
-	return profile;
+	// Use ProfileAdapter to handle both legacy objects and new Profile instances
+	// Always return a legacy-compatible object for rule-transformer compatibility
+	const adaptedProfile = ProfileAdapter.adaptLegacyProfile(profile);
+	return adaptedProfile.toLegacyFormat();
 }
 
 /**
