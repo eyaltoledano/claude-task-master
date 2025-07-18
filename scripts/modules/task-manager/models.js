@@ -25,6 +25,9 @@ import { findConfigPath } from '../../../src/utils/path-utils.js';
 import { log } from '../utils.js';
 import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 
+// Constants
+const CONFIG_MISSING_ERROR = 'The configuration file is missing. Run "task-master init" to create it.';
+
 /**
  * Fetches the list of models from OpenRouter API.
  * @returns {Promise<Array|null>} A promise that resolves with the list of model IDs or null if fetch fails.
@@ -168,9 +171,7 @@ async function getModelConfiguration(options = {}) {
 	);
 
 	if (!configExists) {
-		throw new Error(
-			'The configuration file is missing. Run "task-master init" to create it.'
-		);
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	try {
@@ -298,9 +299,7 @@ async function getAvailableModelsList(options = {}) {
 	);
 
 	if (!configExists) {
-		throw new Error(
-			'The configuration file is missing. Run "task-master init" to create it.'
-		);
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	try {
@@ -391,9 +390,7 @@ async function setModel(role, modelId, options = {}) {
 	);
 
 	if (!configExists) {
-		throw new Error(
-			'The configuration file is missing. Run "task-master init" to create it.'
-		);
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	// Validate role

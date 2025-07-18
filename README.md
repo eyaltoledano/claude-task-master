@@ -20,7 +20,7 @@ For detailed guides, API references, and comprehensive examples, visit our docum
 
 ### Quick Reference
 
-For more detailed information, you can also check out the documentation in the `docs` directory:
+The following documentation is also available in the `docs` directory:
 
 - [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
 - [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master

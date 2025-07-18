@@ -17,6 +17,7 @@ import {
 	LEGACY_CONFIG_FILE,
 	COMPLEXITY_REPORT_FILE
 } from './constants/paths.js';
+import { findProjectRoot } from './utils/path-utils.js';
 
 /**
  * TaskMaster class manages all the paths for the application.
@@ -159,27 +160,6 @@ export class TaskMaster {
  * @returns {TaskMaster} An initialized TaskMaster instance.
  */
 export function initTaskMaster(overrides = {}) {
-	const findProjectRoot = (startDir = process.cwd()) => {
-		const projectMarkers = [TASKMASTER_DIR, LEGACY_CONFIG_FILE];
-		let currentDir = path.resolve(startDir);
-		const rootDir = path.parse(currentDir).root;
-		const maxDepth = 50; // Reasonable limit to prevent infinite loops
-		let depth = 0;
-
-		while (currentDir !== rootDir && depth < maxDepth) {
-			for (const marker of projectMarkers) {
-				const markerPath = path.join(currentDir, marker);
-				if (fs.existsSync(markerPath)) {
-					return currentDir;
-				}
-			}
-			currentDir = path.dirname(currentDir);
-			depth++;
-		}
-		// Fallback to current working directory if no project root found
-		return process.cwd();
-	};
-
 	const resolvePath = (
 		pathType,
 		override,
