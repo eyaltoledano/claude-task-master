@@ -12,30 +12,17 @@ import {
 /**
  * Direct function wrapper for addDependency with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string|number} args.id - Task ID to add dependency to
  * @param {string|number} args.dependsOn - Task ID that will become a dependency
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
-export async function addDependencyDirect(args, log) {
-	// Destructure expected args
-	const { tasksJsonPath, id, dependsOn } = args;
+export async function addDependencyDirect(taskMaster, args, log) {
+	const { id, dependsOn } = args;
 	try {
 		log.info(`Adding dependency with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('addDependencyDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
 
 		// Validate required parameters
 		if (!id) {
@@ -58,9 +45,6 @@ export async function addDependencyDirect(args, log) {
 			};
 		}
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
 		// Format IDs for the core function
 		const taskId =
 			id && id.includes && id.includes('.') ? id : parseInt(id, 10);
@@ -77,7 +61,7 @@ export async function addDependencyDirect(args, log) {
 		enableSilentMode();
 
 		// Call the core function using the provided path
-		await addDependency(tasksPath, taskId, dependencyId);
+		await addDependency(taskMaster.getTasksPath(), taskId, dependencyId);
 
 		// Restore normal logging
 		disableSilentMode();

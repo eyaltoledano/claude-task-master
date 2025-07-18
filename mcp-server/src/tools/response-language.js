@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { responseLanguageDirect } from '../core/direct-functions/response-language.js';
 
 export function registerResponseLanguageTool(server) {
@@ -22,17 +19,15 @@ export function registerResponseLanguageTool(server) {
 					'The new response language to set. like "中文" "English" or "español".'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Executing response-language tool with args: ${JSON.stringify(args)}`
 				);
 
 				const result = await responseLanguageDirect(
-					{
-						...args,
-						projectRoot: args.projectRoot
-					},
+					taskMaster,
+					{ ...args },
 					log,
 					{ session }
 				);

@@ -2,7 +2,15 @@
  * Tests for task-master.js initTaskMaster function
  */
 
-import { jest } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	test,
+	beforeEach,
+	afterEach,
+	expect
+} from '@jest/globals';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -188,85 +196,88 @@ describe('initTaskMaster', () => {
 		});
 	});
 
-	describe('Path resolution with boolean logic', () => {
-		let taskMasterDir, tasksPath, configPath, statePath;
+	describe('Default path behavior', () => {
+		let taskMasterDir, expectedTasksPath, expectedConfigPath;
 
 		beforeEach(() => {
 			// Setup a valid project structure
 			taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
 			fs.mkdirSync(taskMasterDir, { recursive: true });
 
-			tasksPath = path.join(tempDir, TASKMASTER_TASKS_FILE);
-			fs.mkdirSync(path.dirname(tasksPath), { recursive: true });
-			fs.writeFileSync(tasksPath, '[]');
-
-			configPath = path.join(tempDir, TASKMASTER_CONFIG_FILE);
-			fs.writeFileSync(configPath, '{}');
-
-			statePath = path.join(taskMasterDir, 'state.json');
-			fs.writeFileSync(statePath, '{}');
+			expectedTasksPath = path.join(tempDir, TASKMASTER_TASKS_FILE);
+			expectedConfigPath = path.join(tempDir, TASKMASTER_CONFIG_FILE);
 
 			process.chdir(tempDir);
 		});
 
-		test('should return paths when required (true) and files exist', () => {
-			// Act
-			const taskMaster = initTaskMaster({
-				tasksPath: true,
-				configPath: true,
-				statePath: true
-			});
+		test('should return default paths as strings even when files do not exist', () => {
+			// Act - No overrides, files don't exist
 
-			// Assert
-			expect(taskMaster.getTasksPath()).toBe(tasksPath);
-			expect(taskMaster.getConfigPath()).toBe(configPath);
-			expect(taskMaster.getStatePath()).toBe(statePath);
-		});
-
-		test('should throw error when required (true) files do not exist', () => {
-			// Arrange - Remove tasks file
-			fs.unlinkSync(tasksPath);
-
-			// Act & Assert
-			expect(() => {
-				initTaskMaster({ tasksPath: true });
-			}).toThrow(
-				'Required tasks file not found. Searched: .taskmaster/tasks/tasks.json, tasks/tasks.json'
-			);
-		});
-
-		test('should return null when optional (false/undefined) files do not exist', () => {
-			// Arrange - Remove tasks file
-			fs.unlinkSync(tasksPath);
-
-			// Act
-			const taskMaster = initTaskMaster({
-				tasksPath: false
-			});
-
-			// Assert
-			expect(taskMaster.getTasksPath()).toBeNull();
-		});
-
-		test('should return default paths when optional files not specified in overrides', () => {
-			// Arrange - Remove all optional files
-			fs.unlinkSync(tasksPath);
-			fs.unlinkSync(configPath);
-			fs.unlinkSync(statePath);
-
-			// Act - Don't specify any optional paths
 			const taskMaster = initTaskMaster({});
 
-			// Assert - Should return absolute paths with default locations
-			expect(taskMaster.getTasksPath()).toBe(
-				path.join(tempDir, TASKMASTER_TASKS_FILE)
-			);
-			expect(taskMaster.getConfigPath()).toBe(
-				path.join(tempDir, TASKMASTER_CONFIG_FILE)
-			);
-			expect(taskMaster.getStatePath()).toBe(
-				path.join(tempDir, TASKMASTER_DIR, 'state.json')
-			);
+			// Assert - Should return default paths as strings
+			expect(taskMaster.getTasksPath()).toBe(expectedTasksPath);
+			expect(taskMaster.getConfigPath()).toBe(expectedConfigPath);
+			expect(taskMaster.getTaskMasterDir()).toBe(taskMasterDir);
+			expect(typeof taskMaster.getTasksPath()).toBe('string');
+			expect(typeof taskMaster.getConfigPath()).toBe('string');
+			expect(typeof taskMaster.getTaskMasterDir()).toBe('string');
+		});
+
+		test('should return default paths as strings when files exist', () => {
+			// Arrange - Create the files
+			fs.mkdirSync(path.dirname(expectedTasksPath), { recursive: true });
+			fs.writeFileSync(expectedTasksPath, '[]');
+			fs.writeFileSync(expectedConfigPath, '{}');
+
+			// Act - No overrides, files exist
+			const taskMaster = initTaskMaster({});
+
+			// Assert - Should return default paths as strings
+			expect(taskMaster.getTasksPath()).toBe(expectedTasksPath);
+			expect(taskMaster.getConfigPath()).toBe(expectedConfigPath);
+			expect(taskMaster.getTaskMasterDir()).toBe(taskMasterDir);
+		});
+
+		test('should return null only for optional paths not specified', () => {
+			// Act - No overrides
+			const taskMaster = initTaskMaster({});
+
+			// Assert - Core paths are strings, optional paths are null
+			expect(taskMaster.getTasksPath()).toBe(expectedTasksPath);
+			expect(taskMaster.getConfigPath()).toBe(expectedConfigPath);
+			expect(taskMaster.getTaskMasterDir()).toBe(taskMasterDir);
+			expect(taskMaster.getStatePath()).toBe(null);
+			expect(taskMaster.getPrdPath()).toBe(null);
+			expect(taskMaster.getComplexityReportPath()).toBe(null);
+		});
+
+		test('should return null when paths are explicitly set to false', () => {
+			// Act
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: false,
+					configPath: false
+				}
+			});
+
+			// Assert - false means explicitly disabled
+			expect(taskMaster.getTasksPath()).toBe(null);
+			expect(taskMaster.getConfigPath()).toBe(null);
+		});
+
+		test('should return default paths when paths are explicitly set to null', () => {
+			// Act
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: null,
+					configPath: null
+				}
+			});
+
+			// Assert - null means use default
+			expect(taskMaster.getTasksPath()).toBe(expectedTasksPath);
+			expect(taskMaster.getConfigPath()).toBe(expectedConfigPath);
 		});
 	});
 
@@ -286,7 +297,9 @@ describe('initTaskMaster', () => {
 
 			// Act
 			const taskMaster = initTaskMaster({
-				tasksPath: customTasksPath
+				paths: {
+					tasksPath: customTasksPath
+				}
 			});
 
 			// Assert
@@ -300,7 +313,9 @@ describe('initTaskMaster', () => {
 
 			// Act
 			const taskMaster = initTaskMaster({
-				tasksPath: './custom-tasks.json'
+				paths: {
+					tasksPath: './custom-tasks.json'
+				}
 			});
 
 			// Assert
@@ -313,7 +328,7 @@ describe('initTaskMaster', () => {
 
 			// Act & Assert
 			expect(() => {
-				initTaskMaster({ tasksPath: nonExistentPath });
+				initTaskMaster({ paths: { tasksPath: nonExistentPath } });
 			}).toThrow(`tasks file override path does not exist: ${nonExistentPath}`);
 		});
 	});
@@ -334,7 +349,7 @@ describe('initTaskMaster', () => {
 			fs.writeFileSync(legacyTasksPath, '[]');
 
 			// Act
-			const taskMaster = initTaskMaster({ tasksPath: true });
+			const taskMaster = initTaskMaster({ paths: { tasksPath: undefined } });
 
 			// Assert
 			expect(taskMaster.getTasksPath()).toBe(legacyTasksPath);
@@ -352,7 +367,7 @@ describe('initTaskMaster', () => {
 			fs.writeFileSync(legacyTasksPath, '[]');
 
 			// Act
-			const taskMaster = initTaskMaster({ tasksPath: true });
+			const taskMaster = initTaskMaster({ paths: { tasksPath: undefined } });
 
 			// Assert
 			expect(taskMaster.getTasksPath()).toBe(newTasksPath);
@@ -364,7 +379,7 @@ describe('initTaskMaster', () => {
 			fs.writeFileSync(legacyConfigPath, '{}');
 
 			// Act
-			const taskMaster = initTaskMaster({ configPath: true });
+			const taskMaster = initTaskMaster({ paths: { configPath: undefined } });
 
 			// Assert
 			expect(taskMaster.getConfigPath()).toBe(legacyConfigPath);
@@ -388,8 +403,10 @@ describe('initTaskMaster', () => {
 
 			// Act
 			const taskMaster = initTaskMaster({
-				tasksPath: true,
-				configPath: true
+				paths: {
+					tasksPath: undefined,
+					configPath: undefined
+				}
 			});
 
 			// Assert
@@ -421,19 +438,278 @@ describe('initTaskMaster', () => {
 			// Assert
 			expect(taskMaster.getProjectRoot()).toBe(tempDir);
 			expect(taskMaster.getTaskMasterDir()).toBe(taskMasterDir);
-			// Default paths are always set for tasks, config, and state
 			expect(taskMaster.getTasksPath()).toBe(
 				path.join(tempDir, TASKMASTER_TASKS_FILE)
 			);
 			expect(taskMaster.getConfigPath()).toBe(
 				path.join(tempDir, TASKMASTER_CONFIG_FILE)
 			);
+			// Optional paths should be null when not specified
+			expect(taskMaster.getPrdPath()).toBe(null);
+			expect(taskMaster.getComplexityReportPath()).toBe(null);
+			expect(taskMaster.getStatePath()).toBe(null);
+		});
+	});
+
+	describe('Required path validation', () => {
+		beforeEach(() => {
+			// Setup basic project structure
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+			process.chdir(tempDir);
+		});
+
+		test('should throw error when required path is explicitly set to false', () => {
+			// Act & Assert
+			expect(() => {
+				initTaskMaster({
+					paths: {
+						tasksPath: false
+					},
+					required: ['tasksPath']
+				});
+			}).toThrow(
+				'Required tasks file not found. Searched: .taskmaster/tasks/tasks.json, tasks/tasks.json'
+			);
+		});
+
+		test('should throw error when required path string does not exist', () => {
+			// Arrange
+			const nonExistentPath = path.join(tempDir, 'nonexistent.json');
+
+			// Act & Assert
+			expect(() => {
+				initTaskMaster({
+					paths: {
+						tasksPath: nonExistentPath
+					},
+					required: ['tasksPath']
+				});
+			}).toThrow(`tasks file override path does not exist: ${nonExistentPath}`);
+		});
+
+		test('should succeed when required path exists', () => {
+			// Arrange - Create the required file
+			const tasksPath = path.join(tempDir, TASKMASTER_TASKS_FILE);
+			fs.mkdirSync(path.dirname(tasksPath), { recursive: true });
+			fs.writeFileSync(tasksPath, '[]');
+
+			// Act
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: tasksPath
+				},
+				required: ['tasksPath']
+			});
+
+			// Assert
+			expect(taskMaster.getTasksPath()).toBe(tasksPath);
+		});
+
+		test('should succeed when required path is found via search', () => {
+			// Arrange - Create the default file
+			const tasksPath = path.join(tempDir, TASKMASTER_TASKS_FILE);
+			fs.mkdirSync(path.dirname(tasksPath), { recursive: true });
+			fs.writeFileSync(tasksPath, '[]');
+
+			// Act
+			const taskMaster = initTaskMaster({
+				paths: {
+					tasksPath: null // Should search and find the file
+				},
+				required: ['tasksPath']
+			});
+
+			// Assert
+			expect(taskMaster.getTasksPath()).toBe(tasksPath);
+		});
+
+		test('should throw error when required path is not found via search', () => {
+			// Arrange - No tasks file exists
+
+			// Act & Assert
+			expect(() => {
+				initTaskMaster({
+					paths: {
+						tasksPath: null // Should search but not find
+					},
+					required: ['tasksPath']
+				});
+			}).toThrow(
+				'Required tasks file not found. Searched: .taskmaster/tasks/tasks.json, tasks/tasks.json'
+			);
+		});
+
+		test('should handle multiple required paths', () => {
+			// Arrange - Create only one of the required files
+			const tasksPath = path.join(tempDir, TASKMASTER_TASKS_FILE);
+			fs.mkdirSync(path.dirname(tasksPath), { recursive: true });
+			fs.writeFileSync(tasksPath, '[]');
+
+			// Act & Assert
+			expect(() => {
+				initTaskMaster({
+					paths: {
+						tasksPath: null,
+						configPath: null
+					},
+					required: ['tasksPath', 'configPath']
+				});
+			}).toThrow(
+				'Required config file not found. Searched: .taskmaster/config.json, .taskmasterconfig'
+			);
+		});
+	});
+
+	describe('Bootstrap Mode Tests', () => {
+		test('should succeed in empty directory when bootstrap=true', () => {
+			// Arrange - empty directory with no .taskmaster markers
+			process.chdir(tempDir);
+
+			// Act
+			const taskMaster = initTaskMaster({ bootstrap: true });
+
+			// Assert
+			expect(taskMaster.getProjectRoot()).toBe(tempDir);
+			expect(taskMaster.getTaskMasterDir()).toBe(
+				path.join(tempDir, TASKMASTER_DIR)
+			);
+			expect(taskMaster.getTasksPath()).toBe(
+				path.join(tempDir, TASKMASTER_TASKS_FILE)
+			);
+		});
+
+		test('should skip validation when bootstrap=true with project root override', () => {
+			// Arrange - another empty directory
+			const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'empty-test-'));
+
+			// Act - should not throw even though empty dir has no .taskmaster
+			const taskMaster = initTaskMaster({
+				projectRoot: emptyDir,
+				bootstrap: true
+			});
+
+			// Assert
+			expect(taskMaster.getProjectRoot()).toBe(emptyDir);
+			expect(taskMaster.getTaskMasterDir()).toBe(
+				path.join(emptyDir, TASKMASTER_DIR)
+			);
+
+			// Cleanup
+			fs.rmSync(emptyDir, { recursive: true, force: true });
+		});
+
+		test('should resolve paths in .taskmaster directory when it exists', () => {
+			// Arrange
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+			fs.writeFileSync(path.join(taskMasterDir, 'state.json'), '{}');
+			process.chdir(tempDir);
+
+			// Act
+			const taskMaster = initTaskMaster({
+				bootstrap: true,
+				paths: {
+					statePath: undefined
+				}
+			});
+
+			// Assert - statePath should be resolved even in bootstrap mode
 			expect(taskMaster.getStatePath()).toBe(
 				path.join(taskMasterDir, 'state.json')
 			);
-			// PRD and complexity report paths are undefined when not provided
-			expect(taskMaster.getPrdPath()).toBeUndefined();
-			expect(taskMaster.getComplexityReportPath()).toBeUndefined();
+		});
+
+		test('should handle prdPath resolution and default search paths', () => {
+			// Arrange - create PRD file in default location
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			const docsDir = path.join(taskMasterDir, 'docs');
+			fs.mkdirSync(docsDir, { recursive: true });
+			const prdPath = path.join(docsDir, 'PRD.md');
+			fs.writeFileSync(prdPath, '# PRD');
+			process.chdir(tempDir);
+
+			// Act
+			const taskMaster = initTaskMaster({
+				bootstrap: true,
+				paths: {
+					prdPath: undefined
+				}
+			});
+
+			// Assert
+			expect(taskMaster.getPrdPath()).toBe(prdPath);
+		});
+
+		test('should handle complexityReportPath resolution', () => {
+			// Arrange - create complexity report in default location
+			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
+			const reportsDir = path.join(taskMasterDir, 'reports');
+			fs.mkdirSync(reportsDir, { recursive: true });
+			const reportPath = path.join(reportsDir, 'complexity-report.json');
+			fs.writeFileSync(reportPath, '{}');
+			process.chdir(tempDir);
+
+			// Act
+			const taskMaster = initTaskMaster({
+				bootstrap: true,
+				paths: {
+					complexityReportPath: undefined
+				}
+			});
+
+			// Assert
+			expect(taskMaster.getComplexityReportPath()).toBe(reportPath);
+		});
+
+		test('should handle taskMasterDir override scenarios', () => {
+			// Arrange - create custom taskmaster directory
+			const customDir = path.join(tempDir, 'custom-tm');
+			fs.mkdirSync(customDir, { recursive: true });
+			process.chdir(tempDir);
+
+			// Act - test absolute path override
+			const taskMaster1 = initTaskMaster({
+				bootstrap: true,
+				paths: {
+					taskMasterDir: customDir
+				}
+			});
+
+			// Assert
+			expect(taskMaster1.getTaskMasterDir()).toBe(customDir);
+
+			// Act - test relative path override
+			const taskMaster2 = initTaskMaster({
+				bootstrap: true,
+				paths: {
+					taskMasterDir: 'custom-tm'
+				}
+			});
+
+			// Assert
+			expect(taskMaster2.getTaskMasterDir()).toBe(customDir);
+		});
+
+		test('should handle relative path with explicit projectRoot override', () => {
+			// Arrange - create project structure
+			const projectDir = path.join(tempDir, 'project');
+			const tasksDir = path.join(projectDir, 'tasks');
+			fs.mkdirSync(tasksDir, { recursive: true });
+			const tasksFile = path.join(tasksDir, 'tasks.json');
+			fs.writeFileSync(tasksFile, '{"tasks": []}');
+
+			// Act - provide relative tasks path with explicit project root
+			const taskMaster = initTaskMaster({
+				projectRoot: projectDir,
+				bootstrap: true,
+				paths: {
+					tasksPath: 'tasks/tasks.json'
+				}
+			});
+
+			// Assert - should resolve relative to project root, not CWD
+			expect(taskMaster.getTasksPath()).toBe(tasksFile);
 		});
 	});
 });

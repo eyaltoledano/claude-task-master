@@ -13,31 +13,19 @@ import path from 'path';
 
 /**
  * Clear subtasks from specified tasks
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Function arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} [args.id] - Task IDs (comma-separated) to clear subtasks from
  * @param {boolean} [args.all] - Clear subtasks from all tasks
  * @param {string} [args.tag] - Tag context to operate on (defaults to current active tag)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
-export async function clearSubtasksDirect(args, log) {
+export async function clearSubtasksDirect(taskMaster, args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id, all, tag, projectRoot } = args;
+	const { id, all, tag } = args;
 	try {
 		log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
-
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('clearSubtasksDirect called without tasksJsonPath');
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
 
 		// Either id or all must be provided
 		if (!id && !all) {
@@ -51,16 +39,13 @@ export async function clearSubtasksDirect(args, log) {
 			};
 		}
 
-		// Use provided path
-		const tasksPath = tasksJsonPath;
-
 		// Check if tasks.json exists
-		if (!fs.existsSync(tasksPath)) {
+		if (!fs.existsSync(taskMaster.getTasksPath())) {
 			return {
 				success: false,
 				error: {
 					code: 'FILE_NOT_FOUND_ERROR',
-					message: `Tasks file not found at ${tasksPath}`
+					message: `Tasks file not found at ${taskMaster.getTasksPath()}`
 				}
 			};
 		}
@@ -68,14 +53,18 @@ export async function clearSubtasksDirect(args, log) {
 		let taskIds;
 
 		// Use readJSON which handles silent migration and tag resolution
-		const data = readJSON(tasksPath, projectRoot, tag);
+		const data = readJSON(
+			taskMaster.getTasksPath(),
+			taskMaster.getProjectRoot(),
+			tag
+		);
 
 		if (!data || !data.tasks) {
 			return {
 				success: false,
 				error: {
 					code: 'INPUT_VALIDATION_ERROR',
-					message: `No tasks found in tasks file: ${tasksPath}`
+					message: `No tasks found in tasks file: ${taskMaster.getTasksPath()}`
 				}
 			};
 		}
@@ -107,13 +96,20 @@ export async function clearSubtasksDirect(args, log) {
 		enableSilentMode();
 
 		// Call the core function
-		clearSubtasks(tasksPath, taskIds, { projectRoot, tag: currentTag });
+		clearSubtasks(taskMaster.getTasksPath(), taskIds, {
+			projectRoot: taskMaster.getProjectRoot(),
+			tag: currentTag
+		});
 
 		// Restore normal logging
 		disableSilentMode();
 
 		// Read the updated data to provide a summary
-		const updatedData = readJSON(tasksPath, projectRoot, currentTag);
+		const updatedData = readJSON(
+			taskMaster.getTasksPath(),
+			taskMaster.getProjectRoot(),
+			currentTag
+		);
 		const taskIdArray = taskIds.split(',').map((id) => parseInt(id.trim(), 10));
 
 		// Build a summary of what was done

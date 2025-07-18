@@ -14,6 +14,7 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for performing AI-powered research with project context.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} args.query - Research query/prompt (required)
  * @param {string} [args.taskIds] - Comma-separated list of task/subtask IDs for context
@@ -22,13 +23,11 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.includeProjectTree=false] - Include project file tree in context
  * @param {string} [args.detailLevel='medium'] - Detail level: 'low', 'medium', 'high'
  * @param {string} [args.saveTo] - Automatically save to task/subtask ID (e.g., "15" or "15.2")
- * @param {boolean} [args.saveToFile=false] - Save research results to .taskmaster/docs/research/ directory
- * @param {string} [args.projectRoot] - Project root path
- * @param {Object} log - Logger object
+ * @param {boolean} [args.saveToFile=false] - Save research results to .taskmaster/docs/research/ directory * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function researchDirect(args, log, context = {}) {
+export async function researchDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
 	const {
 		query,
@@ -38,8 +37,7 @@ export async function researchDirect(args, log, context = {}) {
 		includeProjectTree = false,
 		detailLevel = 'medium',
 		saveTo,
-		saveToFile = false,
-		projectRoot
+		saveToFile = false
 	} = args;
 	const { session } = context; // Destructure session from context
 
@@ -100,7 +98,7 @@ export async function researchDirect(args, log, context = {}) {
 				`filePaths: [${parsedFilePaths.join(', ')}], ` +
 				`detailLevel: ${detailLevel}, ` +
 				`includeProjectTree: ${includeProjectTree}, ` +
-				`projectRoot: ${projectRoot}`
+				`taskMaster.getProjectRoot(): ${taskMaster.getProjectRoot()}`
 		);
 
 		// Prepare options for the research function
@@ -110,7 +108,7 @@ export async function researchDirect(args, log, context = {}) {
 			customContext: customContext || '',
 			includeProjectTree,
 			detailLevel,
-			projectRoot,
+			projectRoot: taskMaster.getProjectRoot(),
 			saveToFile
 		};
 
@@ -153,12 +151,7 @@ ${result.result}`;
 						'../../../../scripts/modules/task-manager/update-subtask-by-id.js'
 					);
 
-					const tasksPath = path.join(
-						projectRoot,
-						'.taskmaster',
-						'tasks',
-						'tasks.json'
-					);
+					const tasksPath = taskMaster.getTasksPath();
 					await updateSubtaskById(
 						tasksPath,
 						saveTo,
@@ -169,7 +162,7 @@ ${result.result}`;
 							mcpLog,
 							commandName: 'research-save',
 							outputType: 'mcp',
-							projectRoot
+							projectRoot: taskMaster.getProjectRoot()
 						},
 						'json'
 					);
@@ -184,12 +177,7 @@ ${result.result}`;
 					).default;
 
 					const taskIdNum = parseInt(saveTo, 10);
-					const tasksPath = path.join(
-						projectRoot,
-						'.taskmaster',
-						'tasks',
-						'tasks.json'
-					);
+					const tasksPath = taskMaster.getTasksPath();
 					await updateTaskById(
 						tasksPath,
 						taskIdNum,
@@ -200,7 +188,7 @@ ${result.result}`;
 							mcpLog,
 							commandName: 'research-save',
 							outputType: 'mcp',
-							projectRoot
+							projectRoot: taskMaster.getProjectRoot()
 						},
 						'json',
 						true // appendMode = true

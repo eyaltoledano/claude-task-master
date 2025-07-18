@@ -4,13 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { addSubtaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the addSubtask tool with the MCP server
@@ -61,27 +57,15 @@ export function registerAddSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
 				const result = await addSubtaskDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						taskId: args.taskId,
 						title: args.title,
@@ -90,11 +74,9 @@ export function registerAddSubtaskTool(server) {
 						status: args.status,
 						dependencies: args.dependencies,
 						skipGenerate: args.skipGenerate,
-						projectRoot: args.projectRoot,
 						tag: args.tag
 					},
-					log,
-					{ session }
+					log
 				);
 
 				if (result.success) {
@@ -108,10 +90,10 @@ export function registerAddSubtaskTool(server) {
 					log,
 					'Error adding subtask',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
-				log.error(`Error in addSubtask tool: ${error.message}`);
+				log.error(`Error in add-subtask tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

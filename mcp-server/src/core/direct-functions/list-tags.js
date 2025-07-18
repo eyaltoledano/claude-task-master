@@ -13,17 +13,15 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for listing all tags with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
- * @param {boolean} [args.showMetadata=false] - Whether to include metadata in the output
- * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
- * @param {string} [args.projectRoot] - Project root path
- * @param {Object} log - Logger object
+ * @param {boolean} [args.showMetadata=false] - Whether to include metadata in the output * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function listTagsDirect(args, log, context = {}) {
+export async function listTagsDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, showMetadata = false, projectRoot } = args;
+	const { showMetadata = false } = args;
 	const { session } = context;
 
 	// Enable silent mode to prevent console logs from interfering with JSON response
@@ -33,19 +31,6 @@ export async function listTagsDirect(args, log, context = {}) {
 	const mcpLog = createLogWrapper(log);
 
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('listTagsDirect called without tasksJsonPath');
-			disableSilentMode();
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
 		log.info('Listing all tags');
 
 		// Prepare options
@@ -55,12 +40,12 @@ export async function listTagsDirect(args, log, context = {}) {
 
 		// Call the tags function
 		const result = await tags(
-			tasksJsonPath,
+			taskMaster.getTasksPath(),
 			options,
 			{
 				session,
 				mcpLog,
-				projectRoot
+				projectRoot: taskMaster.getProjectRoot()
 			},
 			'json' // outputFormat - use 'json' to suppress CLI UI
 		);

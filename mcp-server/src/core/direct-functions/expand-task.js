@@ -18,25 +18,23 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for expanding a task into subtasks with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} taskMaster.getTasksPath() - Explicit path to the tasks.json file.
  * @param {string} args.id - The ID of the task to expand.
  * @param {number|string} [args.num] - Number of subtasks to generate.
  * @param {boolean} [args.research] - Enable research role for subtask generation.
  * @param {string} [args.prompt] - Additional context to guide subtask generation.
- * @param {boolean} [args.force] - Force expansion even if subtasks exist.
- * @param {string} [args.projectRoot] - Project root directory.
- * @param {string} [args.tag] - Tag for the task
+ * @param {boolean} [args.force] - Force expansion even if subtasks exist. * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @param {Object} [context.session] - MCP Session object
  * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function expandTaskDirect(args, log, context = {}) {
+export async function expandTaskDirect(taskMaster, args, log, context = {}) {
 	const { session } = context; // Extract session
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, num, research, prompt, force, projectRoot, tag } =
-		args;
+	// Destructure expected args, including taskMaster.getProjectRoot()
+	const { id, num, research, prompt, force, tag } = args;
 
 	// Log session root data for debugging
 	log.info(
@@ -46,22 +44,8 @@ export async function expandTaskDirect(args, log, context = {}) {
 			roots: session?.roots,
 			rootsStr: JSON.stringify(session?.roots)
 		})}`
-	);
-
-	// Check if tasksJsonPath was provided
-	if (!tasksJsonPath) {
-		log.error('expandTaskDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
-
-	// Use provided path
-	const tasksPath = tasksJsonPath;
+	); // Use provided path
+	const tasksPath = taskMaster.getTasksPath();
 
 	log.info(`[expandTaskDirect] Using tasksPath: ${tasksPath}`);
 
@@ -91,7 +75,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 
 		// Read tasks data
 		log.info(`[expandTaskDirect] Attempting to read JSON from: ${tasksPath}`);
-		const data = readJSON(tasksPath, projectRoot);
+		const data = readJSON(tasksPath, taskMaster.getProjectRoot());
 		log.info(
 			`[expandTaskDirect] Result of readJSON: ${data ? 'Data read successfully' : 'readJSON returned null or undefined'}`
 		);
@@ -172,7 +156,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 		}
 
 		// Save tasks.json with potentially empty subtasks array and proper context
-		writeJSON(tasksPath, data, projectRoot, tag);
+		writeJSON(tasksPath, data, taskMaster.getProjectRoot(), tag);
 
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
@@ -184,7 +168,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			wasSilent = isSilentMode(); // Assign inside the try block
 			if (!wasSilent) enableSilentMode();
 
-			// Call the core expandTask function with the wrapped logger and projectRoot
+			// Call the core expandTask function with the wrapped logger and taskMaster.getProjectRoot()
 			const coreResult = await expandTask(
 				tasksPath,
 				taskId,
@@ -194,7 +178,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				{
 					mcpLog,
 					session,
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'expand-task',
 					outputType: 'mcp',
 					tag
@@ -206,7 +190,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			if (!wasSilent && isSilentMode()) disableSilentMode();
 
 			// Read the updated data
-			const updatedData = readJSON(tasksPath, projectRoot);
+			const updatedData = readJSON(tasksPath, taskMaster.getProjectRoot());
 			const updatedTask = updatedData.tasks.find((t) => t.id === taskId);
 
 			// Calculate how many subtasks were added

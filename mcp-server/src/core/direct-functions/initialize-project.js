@@ -4,51 +4,31 @@ import {
 	disableSilentMode
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
-import os from 'os'; // Import os module for home directory check
 import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
 import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transformer.js';
 
 /**
  * Direct function wrapper for initializing a project.
  * Derives target directory from session, sets CWD, and calls core init logic.
- * @param {object} args - Arguments containing initialization options (addAliases, initGit, storeTasksInGit, skipInstall, yes, projectRoot, rules)
+ * @param {object} args - Arguments containing initialization options (addAliases, initGit, storeTasksInGit, skipInstall, yes,
+					taskMaster.getProjectRoot(), rules)
  * @param {object} log - The FastMCP logger instance.
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
  */
-export async function initializeProjectDirect(args, log, context = {}) {
+export async function initializeProjectDirect(
+	taskMaster,
+	args,
+	log,
+	context = {}
+) {
 	const { session } = context; // Keep session if core logic needs it
-	const homeDir = os.homedir();
 
 	log.info(`Args received in direct function: ${JSON.stringify(args)}`);
 
-	// --- Determine Target Directory ---
-	// TRUST the projectRoot passed from the tool layer via args
-	// The HOF in the tool layer already normalized and validated it came from a reliable source (args or session)
-	const targetDirectory = args.projectRoot;
-
-	// --- Validate the targetDirectory (basic sanity checks) ---
-	if (
-		!targetDirectory ||
-		typeof targetDirectory !== 'string' || // Ensure it's a string
-		targetDirectory === '/' ||
-		targetDirectory === homeDir
-	) {
-		log.error(
-			`Invalid target directory received from tool layer: '${targetDirectory}'`
-		);
-		return {
-			success: false,
-			error: {
-				code: 'INVALID_TARGET_DIRECTORY',
-				message: `Cannot initialize project: Invalid target directory '${targetDirectory}' received. Please ensure a valid workspace/folder is open or specified.`,
-				details: `Received args.projectRoot: ${args.projectRoot}` // Show what was received
-			}
-		};
-	}
-
-	// --- Proceed with validated targetDirectory ---
-	log.info(`Validated target directory for initialization: ${targetDirectory}`);
+	log.info(
+		`Target directory for initialization: ${taskMaster.getProjectRoot()}`
+	);
 
 	const originalCwd = process.cwd();
 	let resultData;
@@ -56,9 +36,9 @@ export async function initializeProjectDirect(args, log, context = {}) {
 	let errorResult = null;
 
 	log.info(
-		`Temporarily changing CWD to ${targetDirectory} for initialization.`
+		`Temporarily changing CWD to ${taskMaster.getProjectRoot()} for initialization.`
 	);
-	process.chdir(targetDirectory); // Change CWD to the HOF-provided root
+	process.chdir(taskMaster.getProjectRoot()); // Change CWD to the HOF-provided root
 
 	enableSilentMode();
 	try {
@@ -95,7 +75,7 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		};
 		success = true;
 		log.info(
-			`Project initialization completed successfully in ${targetDirectory}.`
+			`Project initialization completed successfully in ${taskMaster.getProjectRoot()}.`
 		);
 	} catch (error) {
 		log.error(`Core initializeProject failed: ${error.message}`);

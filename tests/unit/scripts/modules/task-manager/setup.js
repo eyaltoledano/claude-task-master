@@ -107,7 +107,6 @@ export const setupCommonMocks = () => {
 		isTaskDependentOn: jest.fn().mockReturnValue(false),
 		formatDependenciesWithStatus: jest.fn(),
 		displayTaskList: jest.fn(),
-		validateAndFixDependencies: jest.fn(),
 		generateObjectService: jest.fn().mockResolvedValue({
 			mainResult: { tasks: [] },
 			telemetryData: {}

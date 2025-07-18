@@ -4,19 +4,12 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import {
 	setTaskStatusDirect,
 	nextTaskDirect
 } from '../core/task-master-core.js';
-import {
-	findTasksPath,
-	findComplexityReportPath
-} from '../core/utils/path-utils.js';
 import { TASK_STATUS_OPTIONS } from '../../../src/constants/task-status.js';
 
 /**
@@ -50,66 +43,34 @@ export function registerSetTaskStatusTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				let complexityReportPath;
-				try {
-					complexityReportPath = findComplexityReportPath(
-						{
-							projectRoot: args.projectRoot,
-							complexityReport: args.complexityReport
-						},
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-				}
+				// Get paths from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
+				const complexityReportPath = taskMaster.getComplexityReportPath();
 
 				const result = await setTaskStatusDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						status: args.status,
 						complexityReportPath,
-						projectRoot: args.projectRoot,
 						tag: args.tag
 					},
 					log,
 					{ session }
 				);
 
-				if (result.success) {
-					log.info(
-						`Successfully updated status for task(s) ${args.id} to "${args.status}": ${result.data.message}`
-					);
-				} else {
-					log.error(
-						`Failed to update task status: ${result.error?.message || 'Unknown error'}`
-					);
-				}
-
 				return handleApiResult(
 					result,
 					log,
 					'Error setting task status',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);

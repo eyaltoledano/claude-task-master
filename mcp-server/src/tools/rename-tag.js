@@ -4,13 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { renameTagDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the renameTag tool with the MCP server
@@ -31,32 +27,19 @@ export function registerRenameTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Starting rename-tag with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				// Call the direct function
 				const result = await renameTagDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						oldName: args.oldName,
-						newName: args.newName,
-						projectRoot: args.projectRoot
-					},
+					taskMaster,
+					{ oldName: args.oldName, newName: args.newName },
 					log,
 					{ session }
 				);
@@ -66,7 +49,7 @@ export function registerRenameTagTool(server) {
 					log,
 					'Error renaming tag',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in rename-tag tool: ${error.message}`);

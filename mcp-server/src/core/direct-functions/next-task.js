@@ -16,26 +16,13 @@ import {
 /**
  * Direct function wrapper for finding the next task to work on with error handling and caching.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
- * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function nextTaskDirect(args, log, context = {}) {
-	// Destructure expected args
-	const { tasksJsonPath, reportPath, projectRoot } = args;
+export async function nextTaskDirect(taskMaster, args, log, context = {}) {
 	const { session } = context;
-
-	if (!tasksJsonPath) {
-		log.error('nextTaskDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
 
 	// Define the action function to be executed on cache miss
 	const coreNextTaskAction = async () => {
@@ -43,23 +30,28 @@ export async function nextTaskDirect(args, log, context = {}) {
 			// Enable silent mode to prevent console logs from interfering with JSON response
 			enableSilentMode();
 
-			log.info(`Finding next task from ${tasksJsonPath}`);
+			log.info(`Finding next task from ${taskMaster.getTasksPath()}`);
 
 			// Read tasks data using the provided path
-			const data = readJSON(tasksJsonPath, projectRoot);
+			const data = readJSON(
+				taskMaster.getTasksPath(),
+				taskMaster.getProjectRoot()
+			);
 			if (!data || !data.tasks) {
 				disableSilentMode(); // Disable before return
 				return {
 					success: false,
 					error: {
 						code: 'INVALID_TASKS_FILE',
-						message: `No valid tasks found in ${tasksJsonPath}`
+						message: `No valid tasks found in ${taskMaster.getTasksPath()}`
 					}
 				};
 			}
 
 			// Read the complexity report
-			const complexityReport = readComplexityReport(reportPath);
+			const complexityReport = readComplexityReport(
+				taskMaster.getComplexityReportPath()
+			);
 
 			// Find the next task
 			const nextTask = findNextTask(data.tasks, complexityReport);

@@ -8,35 +8,31 @@ import {
 	enableSilentMode,
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import path from 'path';
+import { COMPLEXITY_REPORT_FILE } from '../../../../src/constants/paths.js';
 
 /**
  * Direct function wrapper for displaying the complexity report with error handling and caching.
  *
- * @param {Object} args - Command arguments containing reportPath.
- * @param {string} args.reportPath - Explicit path to the complexity report file.
+ * @param {Object} taskMaster - TaskMaster instance providing path resolution methods
+ * @param {Object} args - Command arguments (no longer contains reportPath)
  * @param {Object} log - Logger object
  * @returns {Promise<Object>} - Result object with success status and data/error information
  */
-export async function complexityReportDirect(args, log) {
-	// Destructure expected args
-	const { reportPath } = args;
+export async function complexityReportDirect(taskMaster, args, log) {
 	try {
 		log.info(`Getting complexity report with args: ${JSON.stringify(args)}`);
 
-		// Check if reportPath was provided
-		if (!reportPath) {
-			log.error('complexityReportDirect called without reportPath');
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: 'reportPath is required' }
-			};
-		}
+		// Handle case where complexityReportPath might be null
+		const complexityReportPath =
+			taskMaster.getComplexityReportPath() ||
+			path.resolve(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
 
-		// Use the provided report path
-		log.info(`Looking for complexity report at: ${reportPath}`);
+		// Use the resolved report path
+		log.info(`Looking for complexity report at: ${complexityReportPath}`);
 
 		// Generate cache key based on report path
-		const cacheKey = `complexityReport:${reportPath}`;
+		const cacheKey = `complexityReport:${complexityReportPath}`;
 
 		// Define the core action function to read the report
 		const coreActionFn = async () => {
@@ -44,18 +40,18 @@ export async function complexityReportDirect(args, log) {
 				// Enable silent mode to prevent console logs from interfering with JSON response
 				enableSilentMode();
 
-				const report = readComplexityReport(reportPath);
+				const report = readComplexityReport(complexityReportPath);
 
 				// Restore normal logging
 				disableSilentMode();
 
 				if (!report) {
-					log.warn(`No complexity report found at ${reportPath}`);
+					log.warn(`No complexity report found at ${complexityReportPath}`);
 					return {
 						success: false,
 						error: {
 							code: 'FILE_NOT_FOUND_ERROR',
-							message: `No complexity report found at ${reportPath}. Run 'analyze-complexity' first.`
+							message: `No complexity report found at ${complexityReportPath}. Run 'analyze-complexity' first.`
 						}
 					};
 				}
@@ -64,7 +60,7 @@ export async function complexityReportDirect(args, log) {
 					success: true,
 					data: {
 						report,
-						reportPath
+						reportPath: complexityReportPath
 					}
 				};
 			} catch (error) {

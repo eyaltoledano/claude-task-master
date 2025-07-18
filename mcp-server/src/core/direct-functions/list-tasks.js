@@ -12,27 +12,16 @@ import {
 /**
  * Direct function wrapper for listTasks with error handling and caching.
  *
- * @param {Object} args - Command arguments (now expecting tasksJsonPath explicitly).
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
+ * @param {Object} args - Command arguments (now expecting taskMaster.getTasksPath() explicitly).
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
-export async function listTasksDirect(args, log, context = {}) {
-	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot } = args;
+export async function listTasksDirect(taskMaster, args, log, context = {}) {
+	const { reportPath, status, withSubtasks } = args;
 	const { session } = context;
 
-	if (!tasksJsonPath) {
-		log.error('listTasksDirect called without tasksJsonPath');
-		return {
-			success: false,
-			error: {
-				code: 'MISSING_ARGUMENT',
-				message: 'tasksJsonPath is required'
-			}
-		};
-	}
-
-	// Use the explicit tasksJsonPath for cache key
+	// Use the explicit taskMaster.getTasksPath() for cache key
 	const statusFilter = status || 'all';
 	const withSubtasksFilter = withSubtasks || false;
 
@@ -43,17 +32,17 @@ export async function listTasksDirect(args, log, context = {}) {
 			enableSilentMode();
 
 			log.info(
-				`Executing core listTasks function for path: ${tasksJsonPath}, filter: ${statusFilter}, subtasks: ${withSubtasksFilter}`
+				`Executing core listTasks function for path: ${taskMaster.getTasksPath()}, filter: ${statusFilter}, subtasks: ${withSubtasksFilter}`
 			);
-			// Pass the explicit tasksJsonPath to the core function
+			// Pass the explicit taskMaster.getTasksPath() to the core function
 			const resultData = listTasks(
-				tasksJsonPath,
+				taskMaster.getTasksPath(),
 				statusFilter,
 				reportPath,
 				withSubtasksFilter,
 				'json',
 				null, // tag
-				{ projectRoot, session } // context
+				{ projectRoot: taskMaster.getProjectRoot(), session } // context
 			);
 
 			if (!resultData || !resultData.tasks) {

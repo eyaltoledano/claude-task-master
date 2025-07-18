@@ -16,28 +16,24 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for creating a new tag with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} args.name - Name of the new tag to create
  * @param {boolean} [args.copyFromCurrent=false] - Whether to copy tasks from current tag
  * @param {string} [args.copyFromTag] - Specific tag to copy tasks from
  * @param {boolean} [args.fromBranch=false] - Create tag name from current git branch
- * @param {string} [args.description] - Optional description for the tag
- * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
- * @param {string} [args.projectRoot] - Project root path
- * @param {Object} log - Logger object
+ * @param {string} [args.description] - Optional description for the tag * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function addTagDirect(args, log, context = {}) {
+export async function addTagDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
 	const {
-		tasksJsonPath,
 		name,
 		copyFromCurrent = false,
 		copyFromTag,
 		fromBranch = false,
-		description,
-		projectRoot
+		description
 	} = args;
 	const { session } = context;
 
@@ -48,19 +44,6 @@ export async function addTagDirect(args, log, context = {}) {
 	const mcpLog = createLogWrapper(log);
 
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('addTagDirect called without tasksJsonPath');
-			disableSilentMode();
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
 		// Handle --from-branch option
 		if (fromBranch) {
 			log.info('Creating tag from current git branch');
@@ -71,7 +54,7 @@ export async function addTagDirect(args, log, context = {}) {
 			);
 
 			// Check if we're in a git repository
-			if (!(await gitUtils.isGitRepository(projectRoot))) {
+			if (!(await gitUtils.isGitRepository(taskMaster.getProjectRoot()))) {
 				log.error('Not in a git repository');
 				disableSilentMode();
 				return {
@@ -84,7 +67,9 @@ export async function addTagDirect(args, log, context = {}) {
 			}
 
 			// Get current git branch
-			const currentBranch = await gitUtils.getCurrentBranch(projectRoot);
+			const currentBranch = await gitUtils.getCurrentBranch(
+				taskMaster.getProjectRoot()
+			);
 			if (!currentBranch) {
 				log.error('Could not determine current git branch');
 				disableSilentMode();
@@ -107,13 +92,13 @@ export async function addTagDirect(args, log, context = {}) {
 
 			// Call the createTagFromBranch function
 			const result = await createTagFromBranch(
-				tasksJsonPath,
+				taskMaster.getTasksPath(),
 				currentBranch,
 				branchOptions,
 				{
 					session,
 					mcpLog,
-					projectRoot
+					projectRoot: taskMaster.getProjectRoot()
 				},
 				'json' // outputFormat - use 'json' to suppress CLI UI
 			);
@@ -156,13 +141,13 @@ export async function addTagDirect(args, log, context = {}) {
 
 			// Call the createTag function
 			const result = await createTag(
-				tasksJsonPath,
+				taskMaster.getTasksPath(),
 				name,
 				options,
 				{
 					session,
 					mcpLog,
-					projectRoot
+					projectRoot: taskMaster.getProjectRoot()
 				},
 				'json' // outputFormat - use 'json' to suppress CLI UI
 			);

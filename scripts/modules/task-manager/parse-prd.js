@@ -100,6 +100,12 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		}
 	};
 
+	// Create the directory if it doesn't exist
+	const tasksDir = path.dirname(tasksPath);
+	if (!fs.existsSync(tasksDir)) {
+		fs.mkdirSync(tasksDir, { recursive: true });
+	}
+
 	report(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`
 	);
@@ -209,11 +215,6 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			outputType: isMCP ? 'mcp' : 'cli'
 		});
 
-		// Create the directory if it doesn't exist
-		const tasksDir = path.dirname(tasksPath);
-		if (!fs.existsSync(tasksDir)) {
-			fs.mkdirSync(tasksDir, { recursive: true });
-		}
 		logFn.success(
 			`Successfully parsed PRD via AI service${research ? ' with research-backed analysis' : ''}.`
 		);

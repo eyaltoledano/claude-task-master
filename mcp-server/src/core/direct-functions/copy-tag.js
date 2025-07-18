@@ -13,20 +13,17 @@ import { createLogWrapper } from '../../tools/utils.js';
 /**
  * Direct function wrapper for copying a tag with error handling.
  *
+ * @param {Object} taskMaster - TaskMaster instance with path resolution
  * @param {Object} args - Command arguments
  * @param {string} args.sourceName - Name of the source tag to copy from
  * @param {string} args.targetName - Name of the new tag to create
- * @param {string} [args.description] - Optional description for the new tag
- * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
- * @param {string} [args.projectRoot] - Project root path
- * @param {Object} log - Logger object
+ * @param {string} [args.description] - Optional description for the new tag * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function copyTagDirect(args, log, context = {}) {
+export async function copyTagDirect(taskMaster, args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, sourceName, targetName, description, projectRoot } =
-		args;
+	const { sourceName, targetName, description } = args;
 	const { session } = context;
 
 	// Enable silent mode to prevent console logs from interfering with JSON response
@@ -36,19 +33,6 @@ export async function copyTagDirect(args, log, context = {}) {
 	const mcpLog = createLogWrapper(log);
 
 	try {
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			log.error('copyTagDirect called without tasksJsonPath');
-			disableSilentMode();
-			return {
-				success: false,
-				error: {
-					code: 'MISSING_ARGUMENT',
-					message: 'tasksJsonPath is required'
-				}
-			};
-		}
-
 		// Check required parameters
 		if (!sourceName || typeof sourceName !== 'string') {
 			log.error('Missing required parameter: sourceName');
@@ -83,14 +67,14 @@ export async function copyTagDirect(args, log, context = {}) {
 
 		// Call the copyTag function
 		const result = await copyTag(
-			tasksJsonPath,
+			taskMaster.getTasksPath(),
 			sourceName,
 			targetName,
 			options,
 			{
 				session,
 				mcpLog,
-				projectRoot
+				projectRoot: taskMaster.getProjectRoot()
 			},
 			'json' // outputFormat - use 'json' to suppress CLI UI
 		);

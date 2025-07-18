@@ -4,11 +4,8 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { researchDirect } from '../core/task-master-core.js';
 
 /**
@@ -63,7 +60,7 @@ export function registerResearchTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster()(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Starting research with query: "${args.query.substring(0, 100)}${args.query.length > 100 ? '...' : ''}"`
@@ -71,6 +68,7 @@ export function registerResearchTool(server) {
 
 				// Call the direct function
 				const result = await researchDirect(
+					taskMaster,
 					{
 						query: args.query,
 						taskIds: args.taskIds,
@@ -79,8 +77,7 @@ export function registerResearchTool(server) {
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
 						saveTo: args.saveTo,
-						saveToFile: args.saveToFile || false,
-						projectRoot: args.projectRoot
+						saveToFile: args.saveToFile || false
 					},
 					log,
 					{ session }
@@ -91,7 +88,7 @@ export function registerResearchTool(server) {
 					log,
 					'Error performing research',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in research tool: ${error.message}`);

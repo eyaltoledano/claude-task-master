@@ -4,13 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the clearSubtasks tool with the MCP server
@@ -42,53 +38,30 @@ export function registerClearSubtasksTool(server) {
 				message: "Either 'id' or 'all' parameter must be provided",
 				path: ['id', 'all']
 			}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file' }
+		})(async (taskMaster, args, { log, session }) => {
+			log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+			const result = await clearSubtasksDirect(
+				taskMaster,
+				{ id: args.id, all: args.all, tag: args.tag },
+				log
+			);
 
-				const result = await clearSubtasksDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						all: args.all,
-						projectRoot: args.projectRoot,
-						tag: args.tag || 'master'
-					},
-					log,
-					{ session }
-				);
-
-				if (result.success) {
-					log.info(`Subtasks cleared successfully: ${result.data.message}`);
-				} else {
-					log.error(`Failed to clear subtasks: ${result.error.message}`);
-				}
-
-				return handleApiResult(
-					result,
-					log,
-					'Error clearing subtasks',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in clearSubtasks tool: ${error.message}`);
-				return createErrorResponse(error.message);
+			if (result.success) {
+				log.info(`Subtasks cleared successfully: ${result.data.message}`);
+			} else {
+				log.error(`Failed to clear subtasks: ${result.error.message}`);
 			}
+
+			return handleApiResult(
+				result,
+				log,
+				'Error clearing subtasks',
+				undefined,
+				taskMaster.getProjectRoot()
+			);
 		})
 	});
 }

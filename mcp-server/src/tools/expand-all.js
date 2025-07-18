@@ -4,13 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the expandAll tool with the MCP server
@@ -59,34 +55,24 @@ export function registerExpandAllTool(server) {
 					'Absolute path to the project root directory (derived from session if possible)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(
 					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 				);
 
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+				// Get tasks.json path from TaskMaster
+				log.info(`Using tasks path: ${taskMaster.getTasksPath()}`);
 
 				const result = await expandAllTasksDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
 						num: args.num,
 						research: args.research,
 						prompt: args.prompt,
-						force: args.force,
-						projectRoot: args.projectRoot
+						force: args.force
 					},
 					log,
 					{ session }
@@ -97,7 +83,7 @@ export function registerExpandAllTool(server) {
 					log,
 					'Error expanding all tasks',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(

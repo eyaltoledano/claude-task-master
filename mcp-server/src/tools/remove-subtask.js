@@ -4,13 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { removeSubtaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the removeSubtask tool with the MCP server
@@ -46,31 +42,18 @@ export function registerRemoveSubtaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Removing subtask with args: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
 				const result = await removeSubtaskDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						convert: args.convert,
-						skipGenerate: args.skipGenerate,
-						projectRoot: args.projectRoot
+						skipGenerate: args.skipGenerate
 					},
 					log,
 					{ session }
@@ -87,7 +70,7 @@ export function registerRemoveSubtaskTool(server) {
 					log,
 					'Error removing subtask',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in removeSubtask tool: ${error.message}`);

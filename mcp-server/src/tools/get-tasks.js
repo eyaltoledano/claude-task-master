@@ -4,16 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
-import {
-	resolveTasksPath,
-	resolveComplexityReportPath
-} from '../core/utils/path-utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 
 /**
  * Register the getTasks tool with the MCP server
@@ -53,57 +46,32 @@ export function registerListTasksTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
+		})(async (taskMaster, args, { log, session }) => {
+			log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
-				// Resolve the path to tasks.json using new path utilities
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = resolveTasksPath(args, log);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+			const result = await listTasksDirect(
+				taskMaster,
+				{
+					status: args.status,
+					withSubtasks: args.withSubtasks,
+					reportPath: taskMaster.getComplexityReportPath()
+				},
+				log,
+				{ session }
+			);
 
-				// Resolve the path to complexity report
-				let complexityReportPath;
-				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-					// This is optional, so we don't fail the operation
-					complexityReportPath = null;
-				}
-
-				const result = await listTasksDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						status: args.status,
-						withSubtasks: args.withSubtasks,
-						reportPath: complexityReportPath,
-						projectRoot: args.projectRoot
-					},
-					log,
-					{ session }
-				);
-
-				log.info(
-					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
-				);
-				return handleApiResult(
-					result,
-					log,
-					'Error getting tasks',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error getting tasks: ${error.message}`);
-				return createErrorResponse(error.message);
-			}
+			log.info(
+				`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
+			);
+			return handleApiResult(
+				result,
+				log,
+				'Error getting tasks',
+				undefined,
+				taskMaster.getProjectRoot()
+			);
 		})
 	});
 }

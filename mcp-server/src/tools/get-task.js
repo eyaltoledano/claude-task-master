@@ -4,16 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { showTaskDirect } from '../core/task-master-core.js';
-import {
-	findTasksPath,
-	findComplexityReportPath
-} from '../core/utils/path-utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -69,51 +62,22 @@ export function registerShowTaskTool(server) {
 					'Absolute path to the project root directory (Optional, usually from session)'
 				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			const { id, file, status, projectRoot } = args;
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
+		})(async (taskMaster, args, { log, session }) => {
+			const { id, status } = args;
 
 			try {
 				log.info(
-					`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${projectRoot}`
+					`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${taskMaster.getProjectRoot()}`
 				);
 
-				// Resolve the path to tasks.json using the NORMALIZED projectRoot from args
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: projectRoot, file: file },
-						log
-					);
-					log.info(`Resolved tasks path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				// Call the direct function, passing the normalized projectRoot
-				// Resolve the path to complexity report
-				let complexityReportPath;
-				try {
-					complexityReportPath = findComplexityReportPath(
-						{
-							projectRoot: projectRoot,
-							complexityReport: args.complexityReport
-						},
-						log
-					);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-				}
+				// Call the direct function
 				const result = await showTaskDirect(
+					taskMaster,
 					{
-						tasksJsonPath: tasksJsonPath,
-						reportPath: complexityReportPath,
-						// Pass other relevant args
 						id: id,
-						status: status,
-						projectRoot: projectRoot
+						status: status
 					},
 					log,
 					{ session }
@@ -131,7 +95,7 @@ export function registerShowTaskTool(server) {
 					log,
 					'Error retrieving task details',
 					processTaskResponse,
-					projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error in get-task tool: ${error.message}\n${error.stack}`);

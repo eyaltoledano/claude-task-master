@@ -4,16 +4,9 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	handleApiResult,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, handleApiResult } from './utils.js';
+import { withTaskMaster } from '../../../src/task-master.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
-import {
-	resolveTasksPath,
-	resolveComplexityReportPath
-} from '../core/utils/path-utils.js';
 
 /**
  * Register the nextTask tool with the MCP server
@@ -36,40 +29,13 @@ export function registerNextTaskTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withTaskMaster({
+			paths: { tasksPath: 'file', complexityReportPath: 'complexityReport' }
+		})(async (taskMaster, args, { log, session }) => {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);
 
-				// Resolve the path to tasks.json using new path utilities
-				let tasksJsonPath;
-				try {
-					tasksJsonPath = resolveTasksPath(args, session);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
-
-				// Resolve the path to complexity report (optional)
-				let complexityReportPath;
-				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
-				} catch (error) {
-					log.error(`Error finding complexity report: ${error.message}`);
-					// This is optional, so we don't fail the operation
-					complexityReportPath = null;
-				}
-
-				const result = await nextTaskDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						reportPath: complexityReportPath,
-						projectRoot: args.projectRoot
-					},
-					log,
-					{ session }
-				);
+				const result = await nextTaskDirect(taskMaster, {}, log, { session });
 
 				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);
 				return handleApiResult(
@@ -77,7 +43,7 @@ export function registerNextTaskTool(server) {
 					log,
 					'Error finding next task',
 					undefined,
-					args.projectRoot
+					taskMaster.getProjectRoot()
 				);
 			} catch (error) {
 				log.error(`Error finding next task: ${error.message}`);
