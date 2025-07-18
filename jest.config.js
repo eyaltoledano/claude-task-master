@@ -48,5 +48,8 @@ export default {
 	verbose: true,
 
 	// Setup file
-	setupFilesAfterEnv: ['<rootDir>/tests/setup.js']
+	setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+
+	// Ignore e2e tests from default Jest runs
+	testPathIgnorePatterns: ['<rootDir>/tests/e2e/']
 };

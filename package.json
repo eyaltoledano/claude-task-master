@@ -9,21 +9,28 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": [
+		"apps/*",
+		"."
+	],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
-		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
 		"test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
-		"test:e2e": "./tests/e2e/run_e2e.sh",
-		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
+		"test:e2e:bash": "./tests/e2e/run_e2e.sh",
+		"test:e2e:bash:analyze": "./tests/e2e/run_e2e.sh --analyze-log",
+		"e2e": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.config.js",
+		"e2e:watch": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.config.js --watch",
+		"e2e:ai": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.projects.config.js --selectProjects='Heavy AI E2E Tests'",
+		"e2e:non-ai": "node --experimental-vm-modules node_modules/.bin/jest --config jest.e2e.projects.config.js --selectProjects='Non-AI E2E Tests'",
+		"e2e:report": "open test-results/index.html",
 		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
-		"format-check": "biome format .",
-		"format": "biome format . --write"
+		"format": "biome format . --write",
+		"format:check": "biome format ."
 	},
 	"keywords": [
 		"claude",
@@ -84,8 +91,8 @@
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
-		"ai-sdk-provider-gemini-cli": "^0.0.4",
-		"@biomejs/cli-linux-x64": "^1.9.4"
+		"@biomejs/cli-linux-x64": "^1.9.4",
+		"ai-sdk-provider-gemini-cli": "^0.0.4"
 	},
 	"engines": {
 		"node": ">=18.0.0"
@@ -121,6 +128,9 @@
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
+		"jest-html-reporters": "^3.1.7",
+		"jest-junit": "^16.0.0",
+		"mcp-jest": "^1.0.10",
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"react": "^18.3.1",
