@@ -317,6 +317,29 @@ export class ProfileBuilder {
 			);
 		}
 
+		// Generate default file mappings if includeDefaultRules is true
+		if (this._config.includeDefaultRules) {
+			const profileName = this._config.profileName.toLowerCase();
+			const targetExtension = '.md'; // Default target extension
+			const supportsSubdirectories = this._config.supportsRulesSubdirectories || false;
+			
+			// Use taskmaster subdirectory only if profile supports it
+			const taskmasterPrefix = supportsSubdirectories ? 'taskmaster/' : '';
+			
+			const defaultFileMap = {
+				'rules/cursor_rules.mdc': `${profileName}_rules${targetExtension}`,
+				'rules/dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
+				'rules/self_improve.mdc': `self_improve${targetExtension}`,
+				'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`
+			};
+
+			// Merge defaults with any custom fileMap entries
+			this._config.fileMap = {
+				...defaultFileMap,
+				...(this._config.fileMap || {})
+			};
+		}
+
 		// Validate file map structure if provided
 		if (this._config.fileMap) {
 			for (const [source, target] of Object.entries(this._config.fileMap)) {

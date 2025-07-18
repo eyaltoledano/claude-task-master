@@ -111,7 +111,7 @@ const rooProfile = ProfileBuilder.minimal('roo')
 	.profileDir('.roo')
 	.rulesDir('.roo')
 	.mcpConfig(true)
-	.includeDefaultRules(true)
+	.includeDefaultRules(false) // Roo manages its own complex fileMap
 	.fileMap({
 		// Multi-mode file mapping for different agent modes
 		...ROO_MODES.reduce((map, mode) => {

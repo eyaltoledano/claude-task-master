@@ -6,29 +6,13 @@ const cursorProfile = ProfileBuilder.minimal('cursor')
 	.display('Cursor')
 	.profileDir('.cursor')
 	.rulesDir('.cursor/rules')
-	.includeDefaultRules(true)
+	.includeDefaultRules(false) // Cursor explicitly defines its own fileMap
 	.fileMap({
-		// Core rule files with .mdc extension
+		// Core rule files with .mdc extension (same as other profiles)
 		'rules/cursor_rules.mdc': 'cursor_rules.mdc',
 		'rules/dev_workflow.mdc': 'dev_workflow.mdc',
 		'rules/self_improve.mdc': 'self_improve.mdc',
-		'rules/taskmaster.mdc': 'taskmaster.mdc',
-		// Additional files that might be present
-		'rules/ai_providers.mdc': 'ai_providers.mdc',
-		'rules/ai_services.mdc': 'ai_services.mdc',
-		'rules/architecture.mdc': 'architecture.mdc',
-		'rules/changeset.mdc': 'changeset.mdc',
-		'rules/commands.mdc': 'commands.mdc',
-		'rules/context_gathering.mdc': 'context_gathering.mdc',
-		'rules/dependencies.mdc': 'dependencies.mdc',
-		'rules/glossary.mdc': 'glossary.mdc',
-		'rules/mcp.mdc': 'mcp.mdc',
-		'rules/new_features.mdc': 'new_features.mdc',
-		'rules/tasks.mdc': 'tasks.mdc',
-		'rules/tests.mdc': 'tests.mdc',
-		'rules/ui.mdc': 'ui.mdc',
-		'rules/utilities.mdc': 'utilities.mdc',
-		'rules/telemetry.mdc': 'telemetry.mdc'
+		'rules/taskmaster.mdc': 'taskmaster.mdc'
 	})
 	.conversion({
 		// Cursor profile uses default conversion (no changes needed)
