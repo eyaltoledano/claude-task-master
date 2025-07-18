@@ -21,6 +21,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {boolean} [args.research] - Whether to use research role.
  * @param {boolean} [args.append] - Whether to append timestamped information instead of full update.
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -28,7 +29,8 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, append, projectRoot } = args;
+	const { tasksJsonPath, id, prompt, research, append, projectRoot, tag } =
+		args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -116,6 +118,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					mcpLog: logWrapper,
 					session,
 					projectRoot,
+					tag,
 					commandName: 'update-task',
 					outputType: 'mcp'
 				},

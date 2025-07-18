@@ -22,8 +22,7 @@ import {
 	truncate,
 	ensureTagMetadata,
 	performCompleteTagMigration,
-	markMigrationForNotice,
-	getCurrentTag
+	markMigrationForNotice
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
@@ -93,7 +92,7 @@ function getAllTasks(rawData) {
  * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
  * @param {string} [context.commandName] - The name of the command being executed (for telemetry)
  * @param {string} [context.outputType] - The output type ('cli' or 'mcp', for telemetry)
- * @param {string} [tag] - Tag for the task (optional)
+ * @param {string} [context.tag] - Tag for the task (optional)
  * @returns {Promise<object>} An object containing newTaskId and telemetryData
  */
 async function addTask(
@@ -104,10 +103,10 @@ async function addTask(
 	context = {},
 	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
-	useResearch = false,
-	tag = null
+	useResearch = false
 ) {
-	const { session, mcpLog, projectRoot, commandName, outputType } = context;
+	const { session, mcpLog, projectRoot, commandName, outputType, tag } =
+		context;
 	const isMCP = !!mcpLog;
 
 	// Create a consistent logFn object regardless of context
@@ -224,7 +223,7 @@ async function addTask(
 
 	try {
 		// Read the existing tasks - IMPORTANT: Read the raw data without tag resolution
-		let rawData = readJSON(tasksPath, projectRoot); // No tag parameter
+		let rawData = readJSON(tasksPath, projectRoot, tag); // No tag parameter
 
 		// Handle the case where readJSON returns resolved data with _rawTaggedData
 		if (rawData && rawData._rawTaggedData) {
@@ -279,8 +278,7 @@ async function addTask(
 		}
 
 		// Use the provided tag, or the current active tag, or default to 'master'
-		const targetTag =
-			tag || context.tag || getCurrentTag(projectRoot) || 'master';
+		const targetTag = tag;
 
 		// Ensure the target tag exists
 		if (!rawData[targetTag]) {
@@ -389,7 +387,7 @@ async function addTask(
 			report(`Generating task data with AI with prompt:\n${prompt}`, 'info');
 
 			// --- Use the new ContextGatherer ---
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const gatherResult = await contextGatherer.gather({
 				semanticQuery: prompt,
 				dependencyTasks: numericDependencies,

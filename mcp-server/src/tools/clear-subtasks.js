@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the clearSubtasks tool with the MCP server
@@ -46,6 +47,11 @@ export function registerClearSubtasksTool(server) {
 			try {
 				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -65,8 +71,9 @@ export function registerClearSubtasksTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						all: args.all,
+
 						projectRoot: args.projectRoot,
-						tag: args.tag || 'master'
+						tag: resolvedTag
 					},
 					log,
 					{ session }

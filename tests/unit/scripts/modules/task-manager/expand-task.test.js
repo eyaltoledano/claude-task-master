@@ -700,7 +700,9 @@ describe('expandTask', () => {
 			const context = {
 				mcpLog: createMcpLogMock(),
 				projectRoot: '/mock/project/root',
-				tag: 'feature-branch'
+				tag: 'feature-branch',
+				complexityReportPath:
+					'/mock/project/root/task-complexity-report_feature-branch.json'
 			};
 
 			// Stub fs.existsSync to simulate complexity report exists for this tag

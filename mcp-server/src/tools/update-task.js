@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the update-task tool with the MCP server
@@ -43,11 +44,16 @@ export function registerUpdateTaskTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_task';
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
@@ -74,7 +80,8 @@ export function registerUpdateTaskTool(server) {
 						prompt: args.prompt,
 						research: args.research,
 						append: args.append,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

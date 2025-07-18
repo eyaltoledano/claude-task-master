@@ -121,6 +121,7 @@ export function resolveComplexityReportPath(args, log = silentLogger) {
 	// Get explicit path from args.complexityReport if provided
 	const explicitPath = args?.complexityReport;
 	const rawProjectRoot = args?.projectRoot;
+	const tag = args?.tag;
 
 	// If explicit path is provided and absolute, use it directly
 	if (explicitPath && path.isAbsolute(explicitPath)) {
@@ -139,7 +140,11 @@ export function resolveComplexityReportPath(args, log = silentLogger) {
 
 	// Use core findComplexityReportPath with explicit path and normalized projectRoot context
 	if (projectRoot) {
-		return coreFindComplexityReportPath(explicitPath, { projectRoot }, log);
+		return coreFindComplexityReportPath(
+			explicitPath,
+			{ projectRoot, tag },
+			log
+		);
 	}
 
 	// Fallback to core function without projectRoot context

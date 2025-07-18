@@ -185,11 +185,12 @@ describe('generateTaskFiles', () => {
 		const outputDir = 'tasks';
 
 		await generateTaskFiles(tasksPath, outputDir, {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
 		// Verify the data was read with new signature, defaulting to master
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 
 		// Verify dependencies were validated with the raw tagged data
 		expect(validateAndFixDependencies).toHaveBeenCalledWith(
@@ -226,6 +227,7 @@ describe('generateTaskFiles', () => {
 
 		// Call the function
 		await generateTaskFiles('tasks/tasks.json', 'tasks', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
@@ -271,6 +273,7 @@ describe('generateTaskFiles', () => {
 
 		// Call the function
 		await generateTaskFiles('tasks/tasks.json', 'tasks', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
@@ -288,6 +291,7 @@ describe('generateTaskFiles', () => {
 
 		// Call the function
 		await generateTaskFiles('tasks/tasks.json', 'tasks', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 

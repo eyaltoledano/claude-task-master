@@ -9,8 +9,7 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode,
-	getCurrentTag
+	isSilentMode
 } from '../utils.js';
 
 import {
@@ -234,8 +233,8 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
- * @param {string} [tag=null] - Tag associated with the tasks.
  */
 async function updateTasks(
 	tasksPath,
@@ -269,11 +268,8 @@ async function updateTasks(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// Determine the current tag - prioritize explicit tag, then context.tag, then current tag
-		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
-
 		// --- Task Loading/Filtering (Updated to pass projectRoot and tag) ---
-		const data = readJSON(tasksPath, projectRoot, currentTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		const tasksToUpdate = data.tasks.filter(
@@ -292,7 +288,7 @@ async function updateTasks(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update');
 			const searchResults = fuzzySearch.findRelevantTasks(prompt, {
@@ -478,7 +474,7 @@ async function updateTasks(
 				);
 
 			// Fix: Pass projectRoot and currentTag to writeJSON
-			writeJSON(tasksPath, data, projectRoot, currentTag);
+			writeJSON(tasksPath, data, projectRoot, tag);
 			if (isMCP)
 				logFn.info(
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`

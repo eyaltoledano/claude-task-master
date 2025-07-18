@@ -12,8 +12,7 @@ import {
 	truncate,
 	isSilentMode,
 	flattenTasksWithSubtasks,
-	findProjectRoot,
-	getCurrentTag
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -262,6 +261,7 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [context.projectRoot] - Project root path.
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  * @param {boolean} [appendMode=false] - If true, append to details instead of full update.
  * @returns {Promise<Object|null>} - The updated task or null if update failed.
@@ -320,11 +320,8 @@ async function updateTaskById(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// Determine the tag to use
-		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
-
 		// --- Task Loading and Status Check (Keep existing) ---
-		const data = readJSON(tasksPath, projectRoot, currentTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
 		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
@@ -364,7 +361,7 @@ async function updateTaskById(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-task');
 			const searchQuery = `${taskToUpdate.title} ${taskToUpdate.description} ${prompt}`;
@@ -559,7 +556,7 @@ async function updateTaskById(
 
 				// Write the updated task back to file
 				data.tasks[taskIndex] = taskToUpdate;
-				writeJSON(tasksPath, data, projectRoot, currentTag);
+				writeJSON(tasksPath, data, projectRoot, tag);
 				report('success', `Successfully appended to task ${taskId}`);
 
 				// Display success message for CLI
@@ -704,7 +701,7 @@ async function updateTaskById(
 			// --- End Update Task Data ---
 
 			// --- Write File and Generate (Unchanged) ---
-			writeJSON(tasksPath, data, projectRoot, currentTag);
+			writeJSON(tasksPath, data, projectRoot, tag);
 			report('success', `Successfully updated task ${taskId}`);
 			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 			// --- End Write File ---
