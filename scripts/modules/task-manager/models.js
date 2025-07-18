@@ -169,7 +169,7 @@ async function getModelConfiguration(options = {}) {
 
 	if (!configExists) {
 		throw new Error(
-			'The configuration file is missing. Run "task-master models --setup" to create it.'
+			'The configuration file is missing. Run "task-master init" to create it.'
 		);
 	}
 
@@ -299,7 +299,7 @@ async function getAvailableModelsList(options = {}) {
 
 	if (!configExists) {
 		throw new Error(
-			'The configuration file is missing. Run "task-master models --setup" to create it.'
+			'The configuration file is missing. Run "task-master init" to create it.'
 		);
 	}
 
@@ -392,7 +392,7 @@ async function setModel(role, modelId, options = {}) {
 
 	if (!configExists) {
 		throw new Error(
-			'The configuration file is missing. Run "task-master models --setup" to create it.'
+			'The configuration file is missing. Run "task-master init" to create it.'
 		);
 	}
 

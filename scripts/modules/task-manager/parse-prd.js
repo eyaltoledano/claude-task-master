@@ -19,7 +19,6 @@ import {
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
 
 // Define the Zod schema for a SINGLE task object
