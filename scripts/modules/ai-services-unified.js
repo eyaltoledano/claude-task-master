@@ -8,48 +8,49 @@
 
 // --- Core Dependencies ---
 import {
-	getMainProvider,
-	getMainModelId,
-	getResearchProvider,
-	getResearchModelId,
-	getFallbackProvider,
+	MODEL_MAP,
+	getAzureBaseURL,
+	getBaseUrlForRole,
+	getBedrockBaseURL,
+	getDebugFlag,
 	getFallbackModelId,
+	getFallbackProvider,
+	getMainModelId,
+	getMainProvider,
+	getOllamaBaseURL,
 	getParametersForRole,
+	getResearchModelId,
+	getResearchProvider,
 	getResponseLanguage,
 	getUserId,
-	MODEL_MAP,
-	getDebugFlag,
-	getBaseUrlForRole,
-	isApiKeySet,
-	getOllamaBaseURL,
-	getAzureBaseURL,
-	getBedrockBaseURL,
-	getVertexProjectId,
 	getVertexLocation,
+	getVertexProjectId,
+	isApiKeySet,
 	providersWithoutApiKeys
 } from './config-manager.js';
 import {
-	log,
 	findProjectRoot,
-	resolveEnvVariable,
-	getCurrentTag
+	getCurrentTag,
+	log,
+	resolveEnvVariable
 } from './utils.js';
 
 // Import provider classes
 import {
 	AnthropicAIProvider,
-	PerplexityAIProvider,
-	GoogleAIProvider,
-	OpenAIProvider,
-	XAIProvider,
-	OpenRouterAIProvider,
-	OllamaAIProvider,
-	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider,
+	BedrockAIProvider,
 	ClaudeCodeProvider,
 	AgentLLMProvider,
-	GeminiCliProvider
+	GeminiCliProvider,
+	GoogleAIProvider,
+	GroqProvider,
+	OllamaAIProvider,
+	OpenAIProvider,
+	OpenRouterAIProvider,
+	PerplexityAIProvider,
+	VertexAIProvider,
+	XAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -62,6 +63,7 @@ const PROVIDERS = {
 	google: new GoogleAIProvider(),
 	openai: new OpenAIProvider(),
 	xai: new XAIProvider(),
+	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),

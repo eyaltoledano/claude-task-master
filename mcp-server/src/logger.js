@@ -78,8 +78,7 @@ function log(level, ...args) {
 		// is responsible for directing logs correctly (e.g., to stderr)
 		// during tool execution without upsetting the client connection.
 		// Logs outside of tool execution (like startup) will go to stdout.
-		// MODIFIED: Direct all output to console.error (stderr)
-		console.error(prefix, ...coloredArgs);
+		console.log(prefix, ...coloredArgs);
 	}
 }
 

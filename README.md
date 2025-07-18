@@ -25,11 +25,7 @@ For more detailed information, check out the documentation in the `docs` directo
 
 #### Quick Install for Cursor 1.0+ (One-Click)
 
-📋 Click the copy button (top-right of code block) then paste into your browser:
-
-```text
-cursor://anysphere.cursor-deeplink/mcp/install?name=taskmaster-ai&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIi0tcGFja2FnZT10YXNrLW1hc3Rlci1haSIsInRhc2stbWFzdGVyLWFpIl0sImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQo=
-```
+[![Add task-master-ai MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=task-master-ai&config=eyJjb21tYW5kIjoibnB4IC15IC0tcGFja2FnZT10YXNrLW1hc3Rlci1haSB0YXNrLW1hc3Rlci1haSIsImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIkdST1FfQVBJX0tFWSI6IllPVVJfR1JPUV9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQ%3D%3D)
 
 > **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
 
@@ -73,7 +69,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 ```json
 {
   "mcpServers": {
-    "taskmaster-ai": {
+    "task-master-ai": {
       "command": "npx",
       "args": ["-y", "--package=task-master-ai", "task-master-ai"],
       "env": {
@@ -82,6 +78,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
         "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
         "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
@@ -101,7 +98,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 ```json
 {
   "servers": {
-    "taskmaster-ai": {
+    "task-master-ai": {
       "command": "npx",
       "args": ["-y", "--package=task-master-ai", "task-master-ai"],
       "env": {
@@ -110,9 +107,11 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
         "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
         "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       },
       "type": "stdio"
     }

@@ -40,7 +40,7 @@ After performing the LLM call (or determining it cannot be performed due to an e
 Do not initialize the project if a user does not ask you.
 Do not use `get_tasks` tool  before `expand_all`, `update`.
 **Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
-**Note on `research`:** When a research is made for a specific task always use `saveTo` unless user explicitly asks you not to save the result.
+**Note on `research`:** When a research is made for a specific task always fill `saveTo` parameter unless user explicitly asks you not to save the result.
 
 Your arguments for the `agent_llm` tool must include:
 

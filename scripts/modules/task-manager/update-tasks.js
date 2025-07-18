@@ -196,7 +196,18 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 		);
 	}
 
-	const validationResult = updatedTaskArraySchema.safeParse(parsedTasks);
+	// Preprocess tasks to ensure required fields have proper defaults
+	const preprocessedTasks = parsedTasks.map((task) => ({
+		...task,
+		// Ensure subtasks is always an array (not null or undefined)
+		subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
+		// Ensure status has a default value if missing
+		status: task.status || 'pending',
+		// Ensure dependencies is always an array
+		dependencies: Array.isArray(task.dependencies) ? task.dependencies : []
+	}));
+
+	const validationResult = updatedTaskArraySchema.safeParse(preprocessedTasks);
 	if (!validationResult.success) {
 		const errorMessage = 'Parsed task array failed Zod validation.';
 		report('error', errorMessage);
@@ -484,7 +495,17 @@ async function updateTasks(
 			data.tasks.forEach((task, index) => {
 				if (updatedTasksMap.has(task.id)) {
 					// Only update if the task was part of the set sent to AI
-					data.tasks[index] = updatedTasksMap.get(task.id);
+					const updatedTask = updatedTasksMap.get(task.id);
+					// Merge the updated task with the existing one to preserve fields like subtasks
+					data.tasks[index] = {
+						...task, // Keep all existing fields
+						...updatedTask, // Override with updated fields
+						// Ensure subtasks field is preserved if not provided by AI
+						subtasks:
+							updatedTask.subtasks !== undefined
+								? updatedTask.subtasks
+								: task.subtasks
+					};
 					actualUpdateCount++;
 				}
 			});

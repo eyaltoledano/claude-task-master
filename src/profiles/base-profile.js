@@ -46,7 +46,9 @@ export function createProfile(editorConfig) {
 		onPostConvert
 	} = editorConfig;
 
-	const mcpConfigPath = mcpConfigName ? `${profileDir}/${mcpConfigName}` : null;
+	const mcpConfigPath = mcpConfigName
+		? path.join(profileDir, mcpConfigName)
+		: null;
 
 	// Standard file mapping with custom overrides
 	// Use taskmaster subdirectory only if profile supports it

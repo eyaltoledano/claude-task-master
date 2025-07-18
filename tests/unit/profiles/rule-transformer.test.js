@@ -5,9 +5,6 @@ import {
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import path from 'path';
 
-// Helper function to normalize path separators to forward slashes for comparison
-const normalizePath = (p) => (p ? p.replace(/\\/g, '/') : p);
-
 describe('Rule Transformer - General', () => {
 	describe('Profile Configuration Validation', () => {
 		it('should use RULE_PROFILES as the single source of truth', () => {
@@ -22,10 +19,13 @@ describe('Rule Transformer - General', () => {
 				'codex',
 				'cursor',
 				'gemini',
+				'kiro',
+				'opencode',
 				'roo',
 				'trae',
 				'vscode',
-				'windsurf'
+				'windsurf',
+				'zed'
 			];
 			expectedProfiles.forEach((profile) => {
 				expect(RULE_PROFILES).toContain(profile);
@@ -111,8 +111,7 @@ describe('Rule Transformer - General', () => {
 				'cursor_rules.mdc',
 				'dev_workflow.mdc',
 				'self_improve.mdc',
-				'taskmaster.mdc',
-				'agentllm.mdc'
+				'taskmaster.mdc'
 			];
 
 			RULE_PROFILES.forEach((profile) => {
@@ -171,93 +170,85 @@ describe('Rule Transformer - General', () => {
 				// Check types based on MCP configuration
 				expect(typeof profileConfig.mcpConfig).toBe('boolean');
 
-				if (profileConfig.mcpConfig === false) {
-					// Profiles without MCP configuration
-					expect(profileConfig.mcpConfigName).toBe(null);
-					expect(profileConfig.mcpConfigPath).toBe(null);
-				} else {
-					// Profiles with MCP configuration
-					expect(typeof profileConfig.mcpConfigName).toBe('string');
-					expect(typeof profileConfig.mcpConfigPath).toBe('string');
-
+				if (profileConfig.mcpConfig !== false) {
 					// Check that mcpConfigPath is properly constructed
-					expect(profileConfig.mcpConfigPath).toBe(
-						`${profileConfig.profileDir}/${profileConfig.mcpConfigName}`
+					const expectedPath = path.join(
+						profileConfig.profileDir,
+						profileConfig.mcpConfigName
 					);
+					expect(profileConfig.mcpConfigPath).toBe(expectedPath);
 				}
 			});
 		});
 
 		it('should have correct MCP configuration for each profile', () => {
-			const baseExpectedConfigs = {
+			const expectedConfigs = {
+				amp: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.vscode/settings.json'
+				},
 				claude: {
-					mcpConfig: false,
-					mcpConfigName: null,
-					// expectedPath: null // Will remain null
-					profileDir: '.' // Dummy for path.join, won't be used if mcpConfigName is null
+					mcpConfig: true,
+					mcpConfigName: '.mcp.json',
+					expectedPath: '.mcp.json'
 				},
 				cline: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					profileDir: '.cline'
-					//expectedPath: null
+					expectedPath: null
 				},
 				codex: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					// expectedPath: null
-					profileDir: '.'
+					expectedPath: null
 				},
 				cursor: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					profileDir: '.cursor'
-					// expectedPath: '.cursor/mcp.json'
+					expectedPath: '.cursor/mcp.json'
 				},
 				gemini: {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
-					profileDir: '.gemini'
-					//expectedPath: '.gemini/settings.json'
+					expectedPath: '.gemini/settings.json'
+				},
+				kiro: {
+					mcpConfig: true,
+					mcpConfigName: 'settings/mcp.json',
+					expectedPath: '.kiro/settings/mcp.json'
+				},
+				opencode: {
+					mcpConfig: true,
+					mcpConfigName: 'opencode.json',
+					expectedPath: 'opencode.json'
 				},
 				roo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					profileDir: '.roo'
-					// expectedPath: '.roo/mcp.json'
+					expectedPath: '.roo/mcp.json'
 				},
 				trae: {
 					mcpConfig: false,
 					mcpConfigName: null,
-					//expectedPath: null,
-					profileDir: '.trae'
+					expectedPath: null
 				},
 				vscode: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					profileDir: '.vscode'
-					// expectedPath: '.vscode/mcp.json'
+					expectedPath: '.vscode/mcp.json'
 				},
 				windsurf: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					profileDir: '.windsurf'
-					// expectedPath: '.windsurf/mcp.json'
+					expectedPath: '.windsurf/mcp.json'
+				},
+				zed: {
+					mcpConfig: true,
+					mcpConfigName: 'settings.json',
+					expectedPath: '.zed/settings.json'
 				}
 			};
-
-			const expectedConfigs = Object.entries(baseExpectedConfigs).reduce(
-				(acc, [profileName, config]) => {
-					acc[profileName] = {
-						...config,
-						expectedPath: config.mcpConfigName
-							? path.join(config.profileDir, config.mcpConfigName)
-							: null
-					};
-					return acc;
-				},
-				{}
-			);
 
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
@@ -265,38 +256,34 @@ describe('Rule Transformer - General', () => {
 
 				expect(profileConfig.mcpConfig).toBe(expected.mcpConfig);
 				expect(profileConfig.mcpConfigName).toBe(expected.mcpConfigName);
-				expect(normalizePath(profileConfig.mcpConfigPath)).toBe(
-					normalizePath(expected.expectedPath)
-				);
+				expect(profileConfig.mcpConfigPath).toBe(expected.expectedPath);
 			});
 		});
 
 		it('should have consistent profileDir and mcpConfigPath relationship', () => {
 			RULE_PROFILES.forEach((profile) => {
 				const profileConfig = getRulesProfile(profile);
-
-				if (profileConfig.mcpConfig === false) {
-					// Profiles without MCP configuration have null mcpConfigPath
-					expect(profileConfig.mcpConfigPath).toBe(null);
-				} else {
+				if (profileConfig.mcpConfig !== false) {
 					// Profiles with MCP configuration should have valid paths
-					// Normalize paths for comparison
-					const normalizedMcpConfigPath = normalizePath(
-						profileConfig.mcpConfigPath
-					);
-					const normalizedProfileDir = normalizePath(profileConfig.profileDir);
-					const normalizedMcpConfigName = normalizePath(
-						profileConfig.mcpConfigName
-					);
-					// The mcpConfigPath should start with the profileDir
-					expect(
-						normalizedMcpConfigPath.startsWith(normalizedProfileDir + '/')
-					).toBe(true);
-
-					// The mcpConfigPath should end with the mcpConfigName
-					expect(
-						normalizedMcpConfigPath.endsWith('/' + normalizedMcpConfigName)
-					).toBe(true);
+					// Handle root directory profiles differently
+					if (profileConfig.profileDir === '.') {
+						if (profile === 'claude') {
+							// Claude explicitly uses '.mcp.json'
+							expect(profileConfig.mcpConfigPath).toBe('.mcp.json');
+						} else {
+							// Other root profiles normalize to just the filename
+							expect(profileConfig.mcpConfigPath).toBe(
+								profileConfig.mcpConfigName
+							);
+						}
+					} else {
+						// Non-root profiles should have profileDir/configName pattern
+						expect(profileConfig.mcpConfigPath).toMatch(
+							new RegExp(
+								`^${profileConfig.profileDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`
+							)
+						);
+					}
 				}
 			});
 		});

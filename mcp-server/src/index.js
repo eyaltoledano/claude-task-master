@@ -35,10 +35,6 @@ class TaskMasterMCPServer {
 		this.pendingAgentLLMInteractions = new Map(); // For managing paused states
 		this.registeredTools = new Map(); // Internal tool registry
 
-		this.server.addResource({});
-
-		this.server.addResourceTemplate({});
-
 		// Bind methods
 		this.init = this.init.bind(this);
 		this.start = this.start.bind(this);
@@ -75,7 +71,7 @@ class TaskMasterMCPServer {
 					parameters,
 					execute: wrappedExecute
 				});
-				this.logger.info(
+				this.logger.debug(
 					`TaskMasterMCPServer: Tool '${name}' registered internally and with FastMCP.`
 				);
 			}
