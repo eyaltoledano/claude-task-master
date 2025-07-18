@@ -66,8 +66,10 @@ export function findProjectRoot(startDir = process.cwd()) {
 
 	let currentDir = path.resolve(startDir);
 	const rootDir = path.parse(currentDir).root;
+	const maxDepth = 50; // Reasonable limit to prevent infinite loops
+	let depth = 0;
 
-	while (currentDir !== rootDir) {
+	while (currentDir !== rootDir && depth < maxDepth) {
 		// Check if current directory contains any project markers
 		for (const marker of projectMarkers) {
 			const markerPath = path.join(currentDir, marker);
@@ -76,9 +78,11 @@ export function findProjectRoot(startDir = process.cwd()) {
 			}
 		}
 		currentDir = path.dirname(currentDir);
+		depth++;
 	}
 
-	return null;
+	// Fallback to current working directory if no project root found
+	return process.cwd();
 }
 
 /**

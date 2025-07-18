@@ -34,7 +34,7 @@ function setResponseLanguage(lang, options = {}) {
 			error: {
 				code: 'CONFIG_MISSING',
 				message:
-					'The configuration file is missing. Run "task-master models --setup" to create it.'
+					'The configuration file is missing. Run "task-master init" to create it.'
 			}
 		};
 	}

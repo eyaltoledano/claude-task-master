@@ -109,16 +109,15 @@ describe('initTaskMaster', () => {
 			expect(taskMaster.getProjectRoot()).toBe(tempDir);
 		});
 
-		test('should throw error when no project markers found', () => {
+		test('should return cwd when no project markers found cuz we changed the behavior of this function', () => {
 			// Arrange - Empty temp directory, no project markers
 			process.chdir(tempDir);
 
-			// Act & Assert
-			expect(() => {
-				initTaskMaster({});
-			}).toThrow(
-				'Unable to find project root. No project markers found. Run "init" command first.'
-			);
+			// Act
+			const taskMaster = initTaskMaster({});
+
+			// Assert
+			expect(taskMaster.getProjectRoot()).toBe(tempDir);
 		});
 	});
 

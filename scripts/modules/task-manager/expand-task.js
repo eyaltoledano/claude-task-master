@@ -40,8 +40,10 @@ const subtaskSchema = z
 			.min(10)
 			.describe('Detailed description of the subtask'),
 		dependencies: z
-			.array(z.number().int())
-			.describe('IDs of prerequisite subtasks within this expansion'),
+			.array(z.string())
+			.describe(
+				'Array of subtask dependencies within the same parent task. Use format ["parentTaskId.1", "parentTaskId.2"]. Subtasks can only depend on siblings, not external tasks.'
+			),
 		details: z.string().min(20).describe('Implementation details and guidance'),
 		status: z
 			.string()
@@ -235,12 +237,10 @@ function parseSubtasksFromText(
 			...rawSubtask,
 			id: currentId,
 			dependencies: Array.isArray(rawSubtask.dependencies)
-				? rawSubtask.dependencies
-						.map((dep) => (typeof dep === 'string' ? parseInt(dep, 10) : dep))
-						.filter(
-							(depId) =>
-								!Number.isNaN(depId) && depId >= startId && depId < currentId
-						)
+				? rawSubtask.dependencies.filter(
+						(dep) =>
+							typeof dep === 'string' && dep.startsWith(`${parentTaskId}.`)
+					)
 				: [],
 			status: 'pending'
 		};
