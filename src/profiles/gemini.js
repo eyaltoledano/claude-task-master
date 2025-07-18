@@ -5,22 +5,19 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 const geminiProfile = ProfileBuilder
 	.minimal('gemini')
 	.display('Gemini')
-	.profileDir('.gemini') // Keep .gemini for settings.json
-	.rulesDir('.') // Root directory for GEMINI.md
+	.profileDir('.') // Root directory like simple profiles
+	.rulesDir('.')
 	.mcpConfig({
-		configName: 'settings.json' // Override default 'mcp.json'
+		configName: 'settings.json' // Custom name for Gemini
 	})
-	.includeDefaultRules(false)
-	.fileMap({
-		'AGENTS.md': 'GEMINI.md'
-	})
+	.includeDefaultRules(false) // Gemini manages its own rules
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'codeassist.google' },
-			{ from: /\[cursor\.so\]/g, to: '[codeassist.google]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://codeassist.google' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://codeassist.google' },
+			{ from: /cursor\.so/g, to: 'ai.google.dev' },
+			{ from: /\[cursor\.so\]/g, to: '[ai.google.dev]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://ai.google.dev' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://ai.google.dev' },
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Gemini' : 'gemini')
@@ -29,7 +26,7 @@ const geminiProfile = ProfileBuilder
 		],
 		// Documentation URL replacements
 		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'github.com/google-gemini/gemini-cli' }
+			{ from: /docs\.cursor\.so/g, to: 'ai.google.dev/docs' }
 		],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
@@ -41,13 +38,18 @@ const geminiProfile = ProfileBuilder
 			run_terminal_cmd: 'run_terminal_cmd'
 		}
 	})
+	.globalReplacements([
+		// Simple directory structure (files in root)
+		{ from: /\.cursor\/rules/g, to: '.' },
+		{ from: /\.cursor\/mcp\.json/g, to: './settings.json' },
+
+		// Markdown link transformations for root structure
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](./$2.md)'
+		}
+	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { geminiProfile };
-
-// Legacy-compatible export for backward compatibility
-export const geminiProfileLegacy = geminiProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default geminiProfileLegacy;

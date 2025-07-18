@@ -7,18 +7,15 @@ const clineProfile = ProfileBuilder
 	.display('Cline')
 	.profileDir('.clinerules')
 	.rulesDir('.clinerules')
-	.mcpConfig(false)
+	.mcpConfig(true)
 	.includeDefaultRules(true)
-	.fileMap({
-		// Default mappings with .md extension
-	})
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'cline.bot' },
-			{ from: /\[cursor\.so\]/g, to: '[cline.bot]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://cline.bot' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://cline.bot' },
+			{ from: /cursor\.so/g, to: 'cline.dev' },
+			{ from: /\[cursor\.so\]/g, to: '[cline.dev]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://cline.dev' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://cline.dev' },
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Cline' : 'cline')
@@ -27,9 +24,9 @@ const clineProfile = ProfileBuilder
 		],
 		// Documentation URL replacements
 		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'docs.cline.bot' }
+			{ from: /docs\.cursor\.so/g, to: 'cline.dev/docs' }
 		],
-		// Standard tool mappings (no custom tools)
+		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
 			search: 'search',
@@ -39,13 +36,18 @@ const clineProfile = ProfileBuilder
 			run_terminal_cmd: 'run_terminal_cmd'
 		}
 	})
+	.globalReplacements([
+		// Directory structure changes
+		{ from: /\.cursor\/rules/g, to: '.clinerules' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.clinerules/mcp.json' },
+
+		// Essential markdown link transformations
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.clinerules/$2.md)'
+		}
+	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { clineProfile };
-
-// Legacy-compatible export for backward compatibility
-export const clineProfileLegacy = clineProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default clineProfileLegacy;

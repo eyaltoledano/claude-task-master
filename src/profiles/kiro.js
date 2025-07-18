@@ -62,11 +62,5 @@ const kiroProfile = ProfileBuilder
 	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { kiroProfile };
-
-// Legacy-compatible export for backward compatibility
-export const kiroProfileLegacy = kiroProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default kiroProfileLegacy;

@@ -19,9 +19,6 @@ import {
 // Import profile constants (single source of truth)
 import { RULE_PROFILES } from '../constants/profiles.js';
 
-// Import ProfileAdapter for seamless legacy/new profile handling
-import { ProfileAdapter } from '../profile/ProfileAdapter.js';
-
 // --- Profile Imports ---
 import * as profilesModule from '../profiles/index.js';
 
@@ -49,10 +46,9 @@ export function getRulesProfile(name) {
 		);
 	}
 
-	// Use ProfileAdapter to handle both legacy objects and new Profile instances
-	// Always return a legacy-compatible object for rule-transformer compatibility
-	const adaptedProfile = ProfileAdapter.adaptLegacyProfile(profile);
-	return adaptedProfile.toLegacyFormat();
+	// All profiles are now Profile instances, convert directly to legacy format
+	// for rule-transformer compatibility
+	return profile.toLegacyFormat();
 }
 
 /**
@@ -131,6 +127,11 @@ function updateDocReferences(content, conversionConfig) {
  * Update file references in markdown links
  */
 function updateFileReferences(content, conversionConfig) {
+	// Handle profiles that don't define fileReferences
+	if (!conversionConfig.fileReferences) {
+		return content;
+	}
+	
 	const { pathPattern, replacement } = conversionConfig.fileReferences;
 	return content.replace(pathPattern, replacement);
 }
@@ -169,11 +170,14 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
  * Convert a Cursor rule file to a profile-specific rule file
  * @param {string} sourcePath - Path to the source .mdc file
  * @param {string} targetPath - Path to the target file
- * @param {Object} profile - The profile configuration
+ * @param {Object} profile - The profile configuration (Profile instance or legacy object)
  * @returns {boolean} - Success status
  */
 export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
-	const { conversionConfig, globalReplacements } = profile;
+	// Handle both Profile instances and legacy objects
+	const legacyProfile = profile.toLegacyFormat ? profile.toLegacyFormat() : profile;
+	const { conversionConfig, globalReplacements } = legacyProfile;
+	
 	try {
 		// Read source content
 		const content = fs.readFileSync(sourcePath, 'utf8');

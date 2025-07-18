@@ -5,92 +5,51 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 const windsurfProfile = ProfileBuilder
 	.minimal('windsurf')
 	.display('Windsurf')
-	.profileDir('.windsurf')
-	.rulesDir('.windsurf/rules')
-	.mcpConfig(true)
+	.profileDir('.windsurfrules')
+	.rulesDir('.windsurfrules')
+	.mcpConfig({
+		configName: 'windsurf_mcp.json' // Custom MCP config name
+	})
+	.includeDefaultRules(true)
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'windsurf.com' },
-			{ from: /\[cursor\.so\]/g, to: '[windsurf.com]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://windsurf.com' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://windsurf.com' },
+			{ from: /cursor\.so/g, to: 'codeium.com/windsurf' },
+			{ from: /\[cursor\.so\]/g, to: '[codeium.com/windsurf]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://codeium.com/windsurf' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://codeium.com/windsurf' },
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Windsurf' : 'windsurf')
 			},
 			{ from: /Cursor/g, to: 'Windsurf' }
 		],
-
 		// Documentation URL replacements
 		docUrls: [
-			{
-				from: /https:\/\/docs\.cursor\.com\/[^\s)'"]+/g,
-				to: (match) => match.replace('docs.cursor.com', 'docs.windsurf.com')
-			},
-			{
-				from: /https:\/\/docs\.windsurf\.com\//g,
-				to: 'https://docs.windsurf.com/'
-			}
+			{ from: /docs\.cursor\.so/g, to: 'codeium.com/windsurf/docs' }
 		],
-
-		// Tool references
+		// Tool name mappings (standard - no custom tools)
 		toolNames: {
-			search: 'search',
-			read_file: 'read_file',
 			edit_file: 'edit_file',
-			create_file: 'create_file',
-			run_command: 'run_command',
-			terminal_command: 'terminal_command',
-			use_mcp: 'use_mcp',
-			switch_mode: 'switch_mode'
-		},
-
-		// File references in markdown links
-		fileReferences: {
-			pathPattern: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
-			replacement: (match, text, filePath) => {
-				const baseName = filePath.split('/').pop().replace('.mdc', '');
-				const newFileName = `${baseName}.md`;
-				const newLinkText = newFileName;
-				return `[${newLinkText}](.windsurf/rules/${newFileName})`;
-			}
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
 		}
 	})
 	.globalReplacements([
-		// Handle URLs in any context
-		{ from: /cursor\.so/gi, to: 'windsurf.com' },
-		{ from: /cursor\s*\.\s*so/gi, to: 'windsurf.com' },
-		{ from: /https?:\/\/cursor\.so/gi, to: 'https://windsurf.com' },
-		{ from: /https?:\/\/www\.cursor\.so/gi, to: 'https://www.windsurf.com' },
+		// Directory structure changes
+		{ from: /\.cursor\/rules/g, to: '.windsurfrules' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.windsurfrules/windsurf_mcp.json' },
 
-		// Handle basic terms with proper case handling
+		// Essential markdown link transformations
 		{
-			from: /\bcursor\b/gi,
-			to: (match) => match.charAt(0) === 'C' ? 'Windsurf' : 'windsurf'
-		},
-		{ from: /Cursor/g, to: 'Windsurf' },
-		{ from: /CURSOR/g, to: 'WINDSURF' },
-
-		// Handle file extensions
-		{ from: /\.mdc(?!\])b/g, to: '.md' },
-
-		// Handle documentation URLs
-		{ from: /docs\.cursor\.com/gi, to: 'docs.windsurf.com' }
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.windsurfrules/$2.md)'
+		}
 	])
-	.fileMap({
-		'rules/cursor_rules.mdc': 'windsurf_rules.md',
-		'rules/dev_workflow.mdc': 'dev_workflow.md',
-		'rules/self_improve.mdc': 'self_improve.md',
-		'rules/taskmaster.mdc': 'taskmaster.md'
-	})
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { windsurfProfile };
-
-// Export legacy-compatible version for backward compatibility
-export const windsurfProfileLegacy = windsurfProfile.toLegacyFormat();
-
-// Default export for legacy compatibility
-export default windsurfProfileLegacy;

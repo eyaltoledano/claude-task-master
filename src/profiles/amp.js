@@ -1,14 +1,9 @@
 // Amp profile using new ProfileBuilder system
-import path from 'path';
-import fs from 'fs';
-import { isSilentMode, log } from '../../scripts/modules/utils.js';
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
+import fs from 'fs';
+import path from 'path';
 
-/**
- * Transform standard MCP config format to Amp format
- * @param {Object} mcpConfig - Standard MCP configuration object
- * @returns {Object} - Transformed Amp configuration object
- */
+// Helper function to transform standard MCP config to amp format
 function transformToAmpFormat(mcpConfig) {
 	const ampConfig = {};
 
@@ -27,152 +22,45 @@ function transformToAmpFormat(mcpConfig) {
 	return ampConfig;
 }
 
-// Lifecycle functions for Amp profile
-function onAddRulesProfile(targetDir, assetsDir) {
-	// Handle AGENT.md import for non-destructive integration (Amp uses AGENT.md, copies from AGENTS.md)
-	const sourceFile = path.join(assetsDir, 'AGENTS.md');
-	const userAgentFile = path.join(targetDir, 'AGENT.md');
-	const taskMasterAgentFile = path.join(targetDir, '.taskmaster', 'AGENT.md');
-	const importLine = '@./.taskmaster/AGENT.md';
-	const importSection = `\n## Task Master AI Instructions\n**Import Task Master's development workflow commands and guidelines, treat as if import is in the main AGENT.md file.**\n${importLine}`;
-
-	if (fs.existsSync(sourceFile)) {
-		try {
-			// Ensure .taskmaster directory exists
-			const taskMasterDir = path.join(targetDir, '.taskmaster');
-			if (!fs.existsSync(taskMasterDir)) {
-				fs.mkdirSync(taskMasterDir, { recursive: true });
-			}
-
-			// Copy Task Master instructions to .taskmaster/AGENT.md
-			fs.copyFileSync(sourceFile, taskMasterAgentFile);
-			log(
-				'debug',
-				`[Amp] Created Task Master instructions at ${taskMasterAgentFile}`
-			);
-
-			// Handle user's AGENT.md
-			if (fs.existsSync(userAgentFile)) {
-				// Check if import already exists
-				const content = fs.readFileSync(userAgentFile, 'utf8');
-				if (!content.includes(importLine)) {
-					// Append import section at the end
-					const updatedContent = content.trim() + '\n' + importSection + '\n';
-					fs.writeFileSync(userAgentFile, updatedContent);
-					log('info', `[Amp] Added Task Master import to existing ${userAgentFile}`);
-				} else {
-					log(
-						'info',
-						`[Amp] Task Master import already present in ${userAgentFile}`
-					);
-				}
-			} else {
-				// Create minimal AGENT.md with the import section
-				const minimalContent = `# Amp Instructions\n${importSection}\n`;
-				fs.writeFileSync(userAgentFile, minimalContent);
-				log('info', `[Amp] Created ${userAgentFile} with Task Master import`);
-			}
-		} catch (err) {
-			log('error', `[Amp] Failed to set up Amp instructions: ${err.message}`);
-		}
-	}
+// Lifecycle functions for amp profile
+async function addAmpProfile(projectRoot) {
+	// VS Code integration setup handled by base profile
+	console.log('Amp profile added successfully');
 }
 
-function onRemoveRulesProfile(targetDir) {
-	// Clean up AGENT.md import
-	const userAgentFile = path.join(targetDir, 'AGENT.md');
-	const taskMasterAgentFile = path.join(targetDir, '.taskmaster', 'AGENT.md');
-	const importLine = '@./.taskmaster/AGENT.md';
-
-	try {
-		// Remove Task Master AGENT.md from .taskmaster
-		if (fs.existsSync(taskMasterAgentFile)) {
-			fs.rmSync(taskMasterAgentFile, { force: true });
-			log('debug', `[Amp] Removed ${taskMasterAgentFile}`);
-		}
-
-		// Clean up import from user's AGENT.md
-		if (fs.existsSync(userAgentFile)) {
-			const content = fs.readFileSync(userAgentFile, 'utf8');
-			const lines = content.split('\n');
-			const filteredLines = [];
-			let skipNextLines = 0;
-
-			// Remove the Task Master section
-			for (let i = 0; i < lines.length; i++) {
-				if (skipNextLines > 0) {
-					skipNextLines--;
-					continue;
-				}
-
-				// Check if this is the start of our Task Master section
-				if (lines[i].includes('## Task Master AI Instructions')) {
-					// Skip this line and the next two lines (bold text and import)
-					skipNextLines = 2;
-					continue;
-				}
-
-				// Also remove standalone import lines (for backward compatibility)
-				if (lines[i].trim() === importLine) {
-					continue;
-				}
-
-				filteredLines.push(lines[i]);
-			}
-
-			// Join back and clean up excessive newlines
-			let updatedContent = filteredLines
-				.join('\n')
-				.replace(/\n{3,}/g, '\n\n')
-				.trim();
-
-			// Check if file only contained our minimal template
-			if (updatedContent === '# Amp Instructions' || updatedContent === '') {
-				// File only contained our import, remove it
-				fs.rmSync(userAgentFile, { force: true });
-				log('debug', `[Amp] Removed empty ${userAgentFile}`);
-			} else {
-				// Write back without the import
-				fs.writeFileSync(userAgentFile, updatedContent + '\n');
-				log('debug', `[Amp] Removed Task Master import from ${userAgentFile}`);
-			}
-		}
-	} catch (err) {
-		log('error', `[Amp] Failed to remove Amp instructions: ${err.message}`);
-	}
+async function removeAmpProfile(projectRoot) {
+	// Cleanup handled by base profile
+	console.log('Amp profile removed successfully');
 }
 
-function onPostConvertRulesProfile(targetDir, assetsDir) {
-	// For Amp, post-convert is the same as add since we don't transform rules
-	onAddRulesProfile(targetDir, assetsDir);
+async function postConvertAmpProfile(projectRoot) {
+	// Transform MCP config to amp format
+	const mcpConfigPath = path.join(projectRoot, '.vscode', 'settings.json');
 
-	// Transform MCP configuration to Amp format
-	const mcpConfigPath = path.join(targetDir, '.vscode', 'settings.json');
+	if (!fs.existsSync(mcpConfigPath)) {
+		console.log('No .vscode/settings.json found to transform');
+		return;
+	}
+
 	try {
-		let settingsObject = {};
+		// Read the generated standard MCP config
+		const mcpConfigContent = fs.readFileSync(mcpConfigPath, 'utf8');
+		const mcpConfig = JSON.parse(mcpConfigContent);
 
-		// Read existing settings.json if it exists
-		if (fs.existsSync(mcpConfigPath)) {
-			const settingsContent = fs.readFileSync(mcpConfigPath, 'utf8');
-			if (settingsContent.trim()) {
-				settingsObject = JSON.parse(settingsContent);
-			}
+		// Check if it's already in amp format (has amp.mcpServers)
+		if (mcpConfig['amp.mcpServers']) {
+			console.log('settings.json already in amp format, skipping transformation');
+			return;
 		}
 
-		// Transform any mcpServers to amp.mcpServers format
-		if (settingsObject.mcpServers) {
-			settingsObject['amp.mcpServers'] = settingsObject.mcpServers;
-			delete settingsObject.mcpServers;
+		// Transform to amp format
+		const ampConfig = transformToAmpFormat(mcpConfig);
 
-			// Write back the transformed configuration
-			const updatedSettings = JSON.stringify(settingsObject, null, '\t');
-			fs.writeFileSync(mcpConfigPath, updatedSettings + '\n');
-		}
-
-		log('info', '[Amp] Transformed settings.json to Amp format');
-		log('debug', '[Amp] Renamed mcpServers to amp.mcpServers');
+		// Write back the transformed config
+		fs.writeFileSync(mcpConfigPath, JSON.stringify(ampConfig, null, 2));
+		console.log('Transformed settings.json to amp format');
 	} catch (error) {
-		log('error', `[Amp] Failed to transform settings.json: ${error.message}`);
+		console.error(`Failed to transform settings.json: ${error.message}`);
 	}
 }
 
@@ -181,21 +69,21 @@ const ampProfile = ProfileBuilder
 	.minimal('amp')
 	.display('Amp')
 	.profileDir('.vscode')
-	.rulesDir('.')
+	.rulesDir('.vscode/amp')
 	.mcpConfig({
 		configName: 'settings.json'
 	})
-	.includeDefaultRules(false)
-	.fileMap({
-		'AGENTS.md': '.taskmaster/AGENT.md'
-	})
+	.includeDefaultRules(false) // Amp manages its own configuration
+	.onAdd(addAmpProfile)
+	.onRemove(removeAmpProfile)
+	.onPost(postConvertAmpProfile)
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'ampcode.com' },
-			{ from: /\[cursor\.so\]/g, to: '[ampcode.com]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://ampcode.com' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://ampcode.com' },
+			{ from: /cursor\.so/g, to: 'amp.dev' },
+			{ from: /\[cursor\.so\]/g, to: '[amp.dev]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://amp.dev' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://amp.dev' },
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Amp' : 'amp')
@@ -204,9 +92,9 @@ const ampProfile = ProfileBuilder
 		],
 		// Documentation URL replacements
 		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'ampcode.com/manual' }
+			{ from: /docs\.cursor\.so/g, to: 'amp.dev/docs' }
 		],
-		// Standard tool mappings (no custom tools)
+		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
 			search: 'search',
@@ -216,19 +104,22 @@ const ampProfile = ProfileBuilder
 			run_terminal_cmd: 'run_terminal_cmd'
 		}
 	})
-	.onAdd(onAddRulesProfile)
-	.onRemove(onRemoveRulesProfile)
-	.onPost(onPostConvertRulesProfile)
+	.globalReplacements([
+		// Core amp directory structure changes
+		{ from: /\.cursor\/rules/g, to: '.vscode/amp' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.vscode/settings.json' },
+
+		// Essential markdown link transformations for amp structure
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.vscode/amp/$2.md)'
+		},
+
+		// Amp specific terminology
+		{ from: /rules directory/g, to: 'amp directory' },
+		{ from: /cursor rules/gi, to: 'Amp rules' }
+	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { ampProfile };
-
-// Legacy-compatible export for backward compatibility
-export const ampProfileLegacy = ampProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default ampProfileLegacy;
-
-// Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

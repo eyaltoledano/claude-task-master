@@ -6,19 +6,16 @@ const codexProfile = ProfileBuilder
 	.minimal('codex')
 	.display('Codex')
 	.profileDir('.') // Root directory
-	.rulesDir('.') // No specific rules directory needed
-	.mcpConfig(false)
-	.includeDefaultRules(false)
-	.fileMap({
-		'AGENTS.md': 'AGENTS.md'
-	})
+	.rulesDir('.')
+	.mcpConfig(false) // No MCP configuration for Codex
+	.includeDefaultRules(false) // Codex manages its own simple setup
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'codex.ai' },
-			{ from: /\[cursor\.so\]/g, to: '[codex.ai]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://codex.ai' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://codex.ai' },
+			{ from: /cursor\.so/g, to: 'github.com/microsoft/vscode' },
+			{ from: /\[cursor\.so\]/g, to: '[github.com/microsoft/vscode]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://github.com/microsoft/vscode' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://github.com/microsoft/vscode' },
 			{
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Codex' : 'codex')
@@ -27,7 +24,7 @@ const codexProfile = ProfileBuilder
 		],
 		// Documentation URL replacements
 		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'platform.openai.com/docs/codex' }
+			{ from: /docs\.cursor\.so/g, to: 'github.com/microsoft/vscode/docs' }
 		],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
@@ -39,13 +36,17 @@ const codexProfile = ProfileBuilder
 			run_terminal_cmd: 'run_terminal_cmd'
 		}
 	})
+	.globalReplacements([
+		// Simple directory structure (files in root)
+		{ from: /\.cursor\/rules/g, to: '.' },
+		
+		// Markdown link transformations for root structure
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](./$2.md)'
+		}
+	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { codexProfile };
-
-// Legacy-compatible export for backward compatibility
-export const codexProfileLegacy = codexProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default codexProfileLegacy;

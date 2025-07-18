@@ -5,15 +5,10 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 const vscodeProfile = ProfileBuilder
 	.minimal('vscode')
 	.display('VS Code')
-	.profileDir('.vscode')
-	.rulesDir('.github/instructions') // VS Code instructions location
-	.mcpConfig({
-		configName: 'mcp.json' // Default name in .vscode directory
-	})
+	.profileDir('.github')
+	.rulesDir('.github/instructions') // GitHub instructions directory
+	.mcpConfig(true)
 	.includeDefaultRules(true)
-	.fileMap({
-		// Default mappings with .md extension
-	})
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
@@ -23,7 +18,7 @@ const vscodeProfile = ProfileBuilder
 			{ from: /\(https:\/\/cursor\.so/g, to: '(https://code.visualstudio.com' },
 			{
 				from: /\bcursor\b/gi,
-				to: (match) => (match === 'Cursor' ? 'VS Code' : 'vscode')
+				to: (match) => (match === 'Cursor' ? 'VS Code' : 'vs code')
 			},
 			{ from: /Cursor/g, to: 'VS Code' }
 		],
@@ -31,7 +26,7 @@ const vscodeProfile = ProfileBuilder
 		docUrls: [
 			{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }
 		],
-		// Standard tool mappings (no custom tools)
+		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
 			search: 'search',
@@ -42,33 +37,21 @@ const vscodeProfile = ProfileBuilder
 		}
 	})
 	.globalReplacements([
-		// Core VS Code directory structure changes
+		// GitHub instructions directory structure
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },
-		{ from: /\.cursor\/mcp\.json/g, to: '.vscode/mcp.json' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.github/instructions/mcp.json' },
 
-		// Fix any remaining vscode/rules references that might be created during transformation
-		{ from: /\.vscode\/rules/g, to: '.github/instructions' },
-
-		// VS Code custom instructions format - use applyTo with quoted patterns instead of globs
-		{ from: /^globs:\s*(.+)$/gm, to: 'applyTo: "$1"' },
-
-		// Essential markdown link transformations for VS Code structure
+		// Essential markdown link transformations
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
 			to: '[$1](.github/instructions/$2.md)'
 		},
 
-		// VS Code specific terminology
+		// VS Code specific terminology 
 		{ from: /rules directory/g, to: 'instructions directory' },
 		{ from: /cursor rules/gi, to: 'VS Code instructions' }
 	])
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export only the new Profile instance
 export { vscodeProfile };
-
-// Legacy-compatible export for backward compatibility
-export const vscodeProfileLegacy = vscodeProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default vscodeProfileLegacy;
