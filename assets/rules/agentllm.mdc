@@ -10,8 +10,16 @@ The `agent_llm` tool is used for managing delegated LLM calls between the Taskma
 
 ## File Path Rules
 
-- **Use `.taskmaster/tasks/tasks.json` as the tasks file path for all Taskmaster tool calls.**
-- **When updating, reading, or writing tasks, always set the `file` parameter to `.taskmaster/tasks/tasks.json`, unless the user explicitly specifies a different path.**
+- **For task-related operations** (parse_prd, expand_task, update_task, add_task, etc.): Always set the `file` parameter to `.taskmaster/tasks/tasks.json` unless the user explicitly specifies a different path.
+
+- **For report operations** (complexity_report): Always set the `file` parameter to `.taskmaster/reports/task-complexity-report.json` unless the user explicitly specifies a different path.
+
+- **General rule**: When calling ANY Taskmaster tool that has a `file` parameter (whether required or optional), always fill it with the appropriate default value based on the tool's description:
+  - If the tool description specifies a default value, use that exact default value
+  - If no default is specified but the tool deals with tasks, use `.taskmaster/tasks/tasks.json`
+  - If no default is specified but the tool deals with reports, use the appropriate report file path
+
+- **Never omit the `file` parameter** when it exists in a tool's schema, even if it's marked as optional.
 
 ## 1. Receiving a Delegated LLM Call
 

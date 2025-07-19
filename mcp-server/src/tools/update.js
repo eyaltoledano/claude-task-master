@@ -12,6 +12,7 @@ import {
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the update tool with the MCP server
@@ -51,6 +52,11 @@ export function registerUpdateTool(server) {
 			const toolName = 'update';
 			const { from, prompt, research, file, projectRoot, tag } = args;
 
+			const resolvedTag = resolveTag({
+				projectRoot: args.projectRoot,
+				tag: args.tag
+			});
+
 			try {
 				log.info(
 					`Executing ${toolName} tool with normalized root: ${projectRoot}`
@@ -74,7 +80,7 @@ export function registerUpdateTool(server) {
 						prompt: prompt,
 						research: research,
 						projectRoot: projectRoot,
-						tag: tag
+						tag: resolvedTag
 					},
 					log,
 					{ session }

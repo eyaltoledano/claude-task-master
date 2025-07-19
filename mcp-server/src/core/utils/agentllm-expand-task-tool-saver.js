@@ -24,27 +24,22 @@ async function agentllmExpandTaskSave(
 	parentTaskIdNum,
 	projectRoot,
 	logWrapper,
-	originalTaskDetails
+	originalTaskDetails,
+	tag = 'master'
 ) {
 	logWrapper.info(
-		`agentllmExpandTaskSave: Saving subtasks for parent task ID ${parentTaskIdNum}.`
+		`agentllmExpandTaskSave: Saving subtasks for parent task ID ${parentTaskIdNum} with tag '${tag}'.`
 	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
-		const allTasksData = readJSON(tasksJsonPath);
-		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
-			logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
-			return { success: false, error: errorMsg };
-		}
-
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		const taskIndex = allTasksData.tasks.findIndex(
 			(t) => t.id === parentTaskIdNum
 		);
 		if (taskIndex === -1) {
-			const errorMsg = `Parent task with ID ${parentTaskIdNum} not found in ${tasksJsonPath}.`;
+			const errorMsg = `Parent task with ID ${parentTaskIdNum} not found in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
@@ -121,18 +116,22 @@ async function agentllmExpandTaskSave(
 
 		allTasksData.tasks[taskIndex] = parentTask;
 
-		writeJSON(tasksJsonPath, allTasksData);
+		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
-			`agentllmExpandTaskSave: Successfully updated tasks.json for parent task ${parentTaskIdNum} with ${subtasksToSave.length} subtasks.`
+			`agentllmExpandTaskSave: Successfully updated tasks.json for parent task ${parentTaskIdNum} with ${subtasksToSave.length} subtasks for tag '${tag}'.`
 		);
 
 		// Generate individual task files (optional, but good for consistency)
 		// This generateTaskFiles is for the main tasks.json, not specific to subtasks here.
 		// It regenerates all task files based on the updated tasks.json.
 		const outputDir = path.dirname(tasksJsonPath);
-		await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
+		await generateTaskFiles(tasksJsonPath, outputDir, {
+			mcpLog: logWrapper,
+			projectRoot: projectRoot,
+			tag: tag
+		});
 		logWrapper.info(
-			`agentllmExpandTaskSave: Markdown task files regenerated after updating subtasks.`
+			`agentllmExpandTaskSave: Markdown task files regenerated for tag '${tag}' after updating subtasks.`
 		);
 
 		return { success: true, updatedParentTask: parentTask };

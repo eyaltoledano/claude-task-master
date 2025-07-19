@@ -294,6 +294,8 @@ function parseSubtasksFromText(
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
@@ -307,11 +309,15 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
-
-	// Determine if this is an MCP context or CLI context for AI service calls
+	const {
+		session,
+		mcpLog,
+		projectRoot: contextProjectRoot,
+		tag,
+		complexityReportPath
+	} = context;
+	const outputFormat = mcpLog ? 'json' : 'text';
 	const isMCPCall = !!mcpLog;
-	const determinedOutputType = isMCPCall ? 'mcp' : 'cli';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
@@ -327,11 +333,11 @@ async function expandTask(
 
 	if (mcpLog) {
 		logger.info(
-			`expandTask called with context: session=${!!session}, resolved outputType for AI: ${determinedOutputType}`
+			`expandTask called with context: session=${!!session}, resolved outputType for AI: ${outputFormat}`
 		);
 	} else {
 		logger.debug(
-			`expandTask called in CLI mode, resolved outputType for AI: ${determinedOutputType}`
+			`expandTask called in CLI mode, resolved outputType for AI: ${outputFormat}`
 		);
 	}
 
@@ -363,7 +369,7 @@ async function expandTask(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
 			const searchQuery = `${task.title} ${task.description}`;
@@ -392,17 +398,10 @@ async function expandTask(
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
 		let complexityReasoningContext = '';
-
-		// Use tag-aware complexity report path
-		const complexityReportPath = getTagAwareFilePath(
-			COMPLEXITY_REPORT_FILE,
-			tag,
-			projectRoot
-		);
 		let taskAnalysis = null;
 
 		logger.info(
-			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+			`Looking for complexity report at: ${complexityReportPath}${tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
 		);
 
 		try {
@@ -551,7 +550,7 @@ async function expandTask(
 				session,
 				projectRoot,
 				commandName: 'expand-task',
-				outputType: determinedOutputType
+				outputType: outputFormat
 			});
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===

@@ -11,7 +11,7 @@ import {
 } from './utils.js';
 import { fixDependenciesDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-
+import { resolveTag } from '../../../scripts/modules/utils.js';
 /**
  * Register the fixDependencies tool with the MCP server
  * @param {Object} server - FastMCP server instance
@@ -31,6 +31,11 @@ export function registerFixDependenciesTool(server) {
 			try {
 				log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -49,7 +54,7 @@ export function registerFixDependenciesTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						projectRoot: args.projectRoot,
-						tag: args.tag
+						tag: resolvedTag
 					},
 					log
 				);

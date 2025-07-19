@@ -20,13 +20,18 @@ async function agentllmComplexityReportSave(
 	agentOutput,
 	projectRoot,
 	logWrapper,
-	originalToolArgs
+	originalToolArgs,
+	tag = 'master'
 ) {
 	logWrapper.info(
-		`agentllmComplexityReportSave: Saving complexity report from agent.`
+		`agentllmComplexityReportSave: Saving complexity report from agent for tag '${tag}'.`
 	);
 
-	const outputPath = path.resolve(projectRoot, COMPLEXITY_REPORT_FILE);
+	const reportFileName =
+		tag === 'master'
+			? COMPLEXITY_REPORT_FILE
+			: `.taskmaster/reports/task-complexity-report-${tag}.json`;
+	const outputPath = path.resolve(projectRoot, reportFileName);
 	const outputDir = path.dirname(outputPath);
 
 	try {
@@ -100,7 +105,7 @@ async function agentllmComplexityReportSave(
 			originalToolArgs?.to !== undefined;
 
 		if (fs.existsSync(outputPath)) {
-			existingReport = readJSON(outputPath);
+			existingReport = readJSON(outputPath, projectRoot, tag);
 			if (
 				existingReport &&
 				Array.isArray(existingReport.complexityAnalysis) &&
@@ -156,9 +161,9 @@ async function agentllmComplexityReportSave(
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		writeJSON(outputPath, reportToSave);
+		writeJSON(outputPath, reportToSave, projectRoot, tag);
 		logWrapper.info(
-			`agentllmComplexityReportSave: Complexity report successfully written to ${outputPath}`
+			`agentllmComplexityReportSave: Complexity report successfully written to ${outputPath} for tag '${tag}'`
 		);
 
 		return { success: true, outputPath };

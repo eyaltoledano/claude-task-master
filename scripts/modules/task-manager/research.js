@@ -37,6 +37,7 @@ import {
  * @param {string} [options.projectRoot] - Project root directory
  * @param {string} [options.saveTo] - Task ID to save/append results to (for MCP direct calls)
  * @param {boolean} [options.saveToFile] - Whether to save results to file (MCP mode or CLI direct)
+ * @param {string} [options.tag] - Tag for the task
  * @param {Object} [context] - Execution context
  * @param {Object} [context.session] - MCP session object
  * @param {Object} [context.mcpLog] - MCP logger object
@@ -62,7 +63,8 @@ async function performResearch(
 		projectRoot: providedProjectRoot,
 		// options.saveTo is intentionally NOT destructured here, access via options.saveTo directly.
 		// This is crucial for distinguishing between a missing saveTo and an explicit undefined/null.
-		saveToFile = false // saveToFile is destructured as it's used for various conditions.
+		saveToFile = false, // saveToFile is destructured as it's used for various conditions.
+		tag
 	} = options;
 
 	const {
@@ -104,7 +106,7 @@ async function performResearch(
 
 	try {
 		// Initialize context gatherer
-		const contextGatherer = new ContextGatherer(projectRoot);
+		const contextGatherer = new ContextGatherer(projectRoot, tag);
 
 		// Auto-discover relevant tasks using fuzzy search to supplement provided tasks
 		let finalTaskIds = [...taskIds]; // Start with explicitly provided tasks
@@ -119,7 +121,7 @@ async function performResearch(
 				'tasks.json'
 			);
 			// Use tasksPathForDiscovery
-			const tasksData = await readJSON(tasksPathForDiscovery, projectRoot);
+			const tasksData = await readJSON(tasksPathForDiscovery, projectRoot, tag);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
@@ -833,10 +835,7 @@ async function handleFollowUpQuestions(
 					conversationHistory,
 					projectRoot,
 					context, // Pass the original context
-					logFn, // Pass the original logFn
-					cliReadJSON,
-					updateTaskByIdCLI,
-					updateSubtaskByIdCLI
+					logFn // Pass the original logFn
 				);
 				if (saveResult) {
 					interactiveSaveOccurred = true;
@@ -925,11 +924,15 @@ async function handleSaveToTask(
 	conversationHistory,
 	projectRoot,
 	context, // Original context from performResearch
-	logFn, // Original logFn from performResearch
-	cliReadJSON,
-	updateTaskByIdCLI,
-	updateSubtaskByIdCLI
+	logFn // Original logFn from performResearch
 ) {
+	// Import necessary file utilities directly inside the handler
+	const {
+		readJSON: cliReadJSON,
+		writeJSON: cliWriteJSON,
+		getCurrentTag: cliGetCurrentTag
+	} = await import('../utils.js');
+
 	try {
 		// Get task ID from user
 		const { taskId } = await inquirer.prompt([
@@ -942,8 +945,8 @@ async function handleSaveToTask(
 						return 'Please enter a task ID.';
 					}
 					const trimmedInput = input.trim();
-					if (!/^\d+(\.\d+)?$/.test(trimmedInput)) {
-						return 'Invalid format. Use "15" for task or "15.2" for subtask.';
+					if (!/^\d+(\.\d+)*$/.test(trimmedInput)) {
+						return 'Invalid format. Use "15" for a task or "15.1", "15.1.1" etc. for subtasks.';
 					}
 					return true;
 				}
@@ -967,7 +970,6 @@ async function handleSaveToTask(
 			return false;
 		}
 
-		const { getCurrentTag: cliGetCurrentTag } = await import('../utils.js');
 		const tagToUse = context.tag || cliGetCurrentTag(projectRoot) || 'master';
 		const data = cliReadJSON(tasksPathForSave, projectRoot, tagToUse);
 
@@ -976,30 +978,35 @@ async function handleSaveToTask(
 			return false;
 		}
 
-		let taskExistsCheck = false;
+		let taskFound = false;
 		if (isSubtask) {
-			const [parentId, subId] = trimmedTaskId
-				.split('.')
-				.map((id) => parseInt(id, 10));
-			const parent = data.tasks.find((t) => t.id === parentId);
-			if (
-				parent &&
-				parent.subtasks &&
-				parent.subtasks.find((st) => st.id === subId)
-			) {
-				taskExistsCheck = true;
-			} else {
-				console.log(chalk.red(`❌ Subtask ${trimmedTaskId} not found.`));
+			const ids = trimmedTaskId.split('.').map(Number);
+			let currentTasks = data.tasks;
+			let task = null;
+			for (let i = 0; i < ids.length; i++) {
+				const currentId = ids[i];
+				task = currentTasks?.find((t) => t.id === currentId);
+				if (!task) break;
+				if (i < ids.length - 1) {
+					currentTasks = task.subtasks;
+				}
+			}
+
+			if (task) {
+				task.details = (task.details ? task.details + '\n\n' : '') + conversationThread;
+				taskFound = true;
 			}
 		} else {
-			if (data.tasks.find((t) => t.id === parseInt(trimmedTaskId, 10))) {
-				taskExistsCheck = true;
-			} else {
-				console.log(chalk.red(`❌ Task ${trimmedTaskId} not found.`));
+			const taskIdNum = parseInt(trimmedTaskId, 10);
+			const task = data.tasks.find((t) => t.id === taskIdNum);
+			if (task) {
+				task.details = (task.details ? task.details + '\n\n' : '') + conversationThread;
+				taskFound = true;
 			}
 		}
 
-		if (!taskExistsCheck) {
+		if (!taskFound) {
+			console.log(chalk.red(`❌ Task or subtask "${trimmedTaskId}" not found.`));
 			return false;
 		}
 
@@ -1009,33 +1016,9 @@ async function handleSaveToTask(
 			)
 		);
 
-		const updateContext = {
-			...context,
-			tag: tagToUse,
-			mcpLog: logFn,
-			projectRoot: projectRoot
-		};
+		// Write the modified data back to the file
+		cliWriteJSON(tasksPathForSave, data, projectRoot, tagToUse);
 
-		if (isSubtask) {
-			await updateSubtaskByIdCLI(
-				tasksPathForSave,
-				trimmedTaskId,
-				conversationThread,
-				false,
-				updateContext,
-				'text'
-			);
-		} else {
-			await updateTaskByIdCLI(
-				tasksPathForSave,
-				parseInt(trimmedTaskId, 10),
-				conversationThread,
-				false,
-				updateContext,
-				'text',
-				true
-			);
-		}
 		console.log(
 			chalk.green(
 				`✅ Research conversation saved to ${isSubtask ? 'subtask' : 'task'} ${trimmedTaskId}`
@@ -1045,6 +1028,7 @@ async function handleSaveToTask(
 	} catch (error) {
 		console.log(chalk.red(`❌ Error saving conversation: ${error.message}`));
 		logFn.error(`Error saving conversation: ${error.message}`);
+		logFn.error(`Stack trace: ${error.stack}`); // Log stack for better debugging
 		return false;
 	}
 }

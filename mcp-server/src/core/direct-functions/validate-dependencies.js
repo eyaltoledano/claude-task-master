@@ -13,12 +13,14 @@ import fs from 'fs';
  * Validate dependencies in tasks.json
  * @param {Object} args - Function arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function validateDependenciesDirect(args, log) {
 	// Destructure the explicit tasksJsonPath
-	const { tasksJsonPath } = args;
+	const { tasksJsonPath, projectRoot, tag } = args;
 
 	if (!tasksJsonPath) {
 		log.error('validateDependenciesDirect called without tasksJsonPath');
@@ -51,8 +53,9 @@ export async function validateDependenciesDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
+		const options = { projectRoot, tag };
 		// Call the original command function using the provided tasksPath
-		await validateDependenciesCommand(tasksPath);
+		await validateDependenciesCommand(tasksPath, options);
 
 		// Restore normal logging
 		disableSilentMode();

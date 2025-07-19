@@ -13,12 +13,19 @@ import {
  * Direct function wrapper for listTasks with error handling and caching.
  *
  * @param {Object} args - Command arguments (now expecting tasksJsonPath explicitly).
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.reportPath - Path to the report file.
+ * @param {string} args.status - Status of the task.
+ * @param {boolean} args.withSubtasks - Whether to include subtasks.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Task list result { success: boolean, data?: any, error?: { code: string, message: string } }.
  */
 export async function listTasksDirect(args, log, context = {}) {
 	// Destructure the explicit tasksJsonPath from args
-	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot } = args;
+	const { tasksJsonPath, reportPath, status, withSubtasks, projectRoot, tag } =
+		args;
 	const { session } = context;
 
 	if (!tasksJsonPath) {
@@ -52,8 +59,7 @@ export async function listTasksDirect(args, log, context = {}) {
 				reportPath,
 				withSubtasksFilter,
 				'json',
-				null, // tag
-				{ projectRoot, session } // context
+				{ projectRoot, session, tag }
 			);
 
 			if (!resultData || !resultData.tasks) {

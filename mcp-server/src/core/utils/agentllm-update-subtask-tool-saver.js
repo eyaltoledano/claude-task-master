@@ -19,10 +19,11 @@ async function agentllmUpdateSubtaskSave(
 	subtaskIdToUpdate,
 	projectRoot,
 	logWrapper,
-	originalToolArgs
+	originalToolArgs,
+	tag = 'master'
 ) {
 	logWrapper.info(
-		`agentllmUpdateSubtaskSave: Appending details to subtask ID ${subtaskIdToUpdate}.`
+		`agentllmUpdateSubtaskSave: Appending details to subtask ID ${subtaskIdToUpdate} for tag '${tag}'.`
 	);
 
 	if (typeof agentOutputString !== 'string') {
@@ -48,9 +49,9 @@ async function agentllmUpdateSubtaskSave(
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
-		const allTasksData = readJSON(tasksJsonPath);
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
+			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
@@ -124,15 +125,19 @@ ${agentOutputString.trim()}
 
 		allTasksData.tasks[parentTaskIndex].subtasks[subtaskIndex] = subtask;
 
-		writeJSON(tasksJsonPath, allTasksData);
+		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
-			`agentllmUpdateSubtaskSave: Successfully updated tasks.json for subtask ID ${subtaskIdToUpdate}.`
+			`agentllmUpdateSubtaskSave: Successfully updated tasks.json for subtask ID ${subtaskIdToUpdate} for tag '${tag}'.`
 		);
 
 		const outputDir = path.dirname(tasksJsonPath);
-		await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
+		await generateTaskFiles(tasksJsonPath, outputDir, {
+			mcpLog: logWrapper,
+			projectRoot: projectRoot,
+			tag: tag
+		});
 		logWrapper.info(
-			`agentllmUpdateSubtaskSave: Markdown task files regenerated.`
+			`agentllmUpdateSubtaskSave: Markdown task files regenerated for tag '${tag}'.`
 		);
 
 		return {

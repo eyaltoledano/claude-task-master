@@ -14,12 +14,14 @@ import {
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string|number} args.id - Task ID to remove dependency from
  * @param {string|number} args.dependsOn - Task ID to remove as a dependency
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function removeDependencyDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id, dependsOn } = args;
+	const { tasksJsonPath, id, dependsOn, projectRoot, tag } = args;
 	try {
 		log.info(`Removing dependency with args: ${JSON.stringify(args)}`);
 
@@ -75,7 +77,10 @@ export async function removeDependencyDirect(args, log) {
 		enableSilentMode();
 
 		// Call the core function using the provided tasksPath
-		await removeDependency(tasksPath, taskId, dependencyId);
+		await removeDependency(tasksPath, taskId, dependencyId, {
+			projectRoot,
+			tag
+		});
 
 		// Restore normal logging
 		disableSilentMode();

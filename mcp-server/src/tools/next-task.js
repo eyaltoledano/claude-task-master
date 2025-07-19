@@ -14,6 +14,7 @@ import {
 	resolveTasksPath,
 	resolveComplexityReportPath
 } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the nextTask tool with the MCP server
@@ -34,11 +35,16 @@ export function registerNextTaskTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
 				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
@@ -54,7 +60,10 @@ export function registerNextTaskTool(server) {
 				// Resolve the path to complexity report (optional)
 				let complexityReportPath;
 				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
+					complexityReportPath = resolveComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						session
+					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
 					// This is optional, so we don't fail the operation
@@ -65,7 +74,8 @@ export function registerNextTaskTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						reportPath: complexityReportPath,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }

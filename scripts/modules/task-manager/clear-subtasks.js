@@ -11,6 +11,8 @@ import { displayBanner } from '../ui.js';
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} taskIds - Task IDs to clear subtasks from
  * @param {Object} context - Context object containing projectRoot and tag
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  */
 function clearSubtasks(tasksPath, taskIds, context = {}) {
 	const { projectRoot, tag } = context;

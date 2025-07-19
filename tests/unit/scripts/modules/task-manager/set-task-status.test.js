@@ -234,11 +234,12 @@ describe('setTaskStatus', () => {
 
 		// Act
 		await setTaskStatus(tasksPath, '2', 'done', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
 			tasksPath,
 			expect.objectContaining({
@@ -271,11 +272,12 @@ describe('setTaskStatus', () => {
 
 		// Act
 		await setTaskStatus(tasksPath, '3.1', 'done', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
 			tasksPath,
 			expect.objectContaining({
@@ -308,11 +310,12 @@ describe('setTaskStatus', () => {
 
 		// Act
 		await setTaskStatus(tasksPath, '1,2', 'done', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
 			tasksPath,
 			expect.objectContaining({
@@ -341,6 +344,7 @@ describe('setTaskStatus', () => {
 
 		// Act
 		await setTaskStatus(tasksPath, '3', 'done', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
@@ -379,7 +383,10 @@ describe('setTaskStatus', () => {
 
 		// Act & Assert
 		await expect(
-			setTaskStatus(tasksPath, '99', 'done', { mcpLog: { info: jest.fn() } })
+			setTaskStatus(tasksPath, '99', 'done', {
+				tag: 'master',
+				mcpLog: { info: jest.fn() }
+			})
 		).rejects.toThrow('Task 99 not found');
 	});
 
@@ -418,7 +425,10 @@ describe('setTaskStatus', () => {
 
 		// Act & Assert
 		await expect(
-			setTaskStatus(tasksPath, '3.1', 'done', { mcpLog: { info: jest.fn() } })
+			setTaskStatus(tasksPath, '3.1', 'done', {
+				tag: 'master',
+				mcpLog: { info: jest.fn() }
+			})
 		).rejects.toThrow('has no subtasks');
 	});
 
@@ -435,7 +445,10 @@ describe('setTaskStatus', () => {
 
 		// Act & Assert
 		await expect(
-			setTaskStatus(tasksPath, '3.99', 'done', { mcpLog: { info: jest.fn() } })
+			setTaskStatus(tasksPath, '3.99', 'done', {
+				tag: 'master',
+				mcpLog: { info: jest.fn() }
+			})
 		).rejects.toThrow('Subtask 99 not found');
 	});
 
@@ -492,6 +505,7 @@ describe('setTaskStatus', () => {
 
 		// Act
 		const result = await setTaskStatus(tasksPath, taskIds, newStatus, {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 
@@ -555,6 +569,7 @@ describe('setTaskStatus', () => {
 
 		// Act
 		await setTaskStatus(tasksPath, '1', 'done', {
+			tag: 'master',
 			mcpLog: { info: jest.fn() }
 		});
 

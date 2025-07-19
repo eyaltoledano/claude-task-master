@@ -2,53 +2,30 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log as cliLog, readJSON } from '../utils.js';
+import { log, readJSON } from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
-
-function dispatchLog(level, options, ...args) {
-	const message = args
-		.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg))
-		.join(' ');
-	if (options && options.mcpLog) {
-		const mcpLogger = options.mcpLog;
-		if (typeof mcpLogger[level] === 'function') {
-			mcpLogger[level](message);
-		} else if (level === 'success' && typeof mcpLogger.info === 'function') {
-			// Map 'success' to 'info' if mcpLog.success doesn't exist but info does
-			mcpLogger.info(message);
-		} else if (typeof mcpLogger.info === 'function') {
-			// Default to info if specific level method not found on mcpLogger
-			mcpLogger.info(`[${level.toUpperCase()}] ${message}`);
-		} else {
-			// Fallback if mcpLogger is very basic or unrecognised
-			cliLog('info', `[MCP FALLBACK - ${level.toUpperCase()}] ${message}`);
-		}
-	} else {
-		// Fallback to original CLI logging if mcpLog is not provided
-		// cliLog(level, ...args); // Spread original args here for cliLog's formatting
-		// When mcpLog is not present, we assume taskmaster-ai is calling and expecting JSON.
-		// Text logs would break this. True CLI calls might need a different mechanism
-		// or a dedicated flag if text output is desired. For now, silence it.
-	}
-}
 
 /**
  * Generate individual task files from tasks.json
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string} outputDir - Output directory for task files
  * @param {Object} options - Additional options (mcpLog for MCP mode, projectRoot, tag)
+ * @param {string} [options.projectRoot] - Project root path
+ * @param {string} [options.tag] - Tag for the task
+ * @param {Object} [options.mcpLog] - MCP logger object
  * @returns {Object|undefined} Result object in MCP mode, undefined in CLI mode
  */
 function generateTaskFiles(tasksPath, outputDir, options = {}) {
 	try {
 		const isMcpMode = !!options?.mcpLog;
+		const { projectRoot, tag } = options;
 
 		// 1. Read the raw data structure, ensuring we have all tags.
 		// We call readJSON without a specific tag to get the resolved default view,
 		// which correctly contains the full structure in `_rawTaggedData`.
-		const resolvedData = readJSON(tasksPath, options.projectRoot);
+		const resolvedData = readJSON(tasksPath, projectRoot, tag);
 		if (!resolvedData) {
 			throw new Error(`Could not read or parse tasks file: ${tasksPath}`);
 		}
@@ -56,13 +33,10 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		const rawData = resolvedData._rawTaggedData || resolvedData;
 
 		// 2. Determine the target tag we need to generate files for.
-		const targetTag = options.tag || resolvedData.tag || 'master';
-		const tagData = rawData[targetTag];
+		const tagData = rawData[tag];
 
 		if (!tagData || !tagData.tasks) {
-			throw new Error(
-				`Tag '${targetTag}' not found or has no tasks in the data.`
-			);
+			throw new Error(`Tag '${tag}' not found or has no tasks in the data.`);
 		}
 		const tasksForGeneration = tagData.tasks;
 
@@ -71,42 +45,36 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		dispatchLog(
+		log(
 			'info',
-			options,
-			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${targetTag}'`
+			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${tag}'`
 		);
 
 		// 3. Validate dependencies using the FULL, raw data structure to prevent data loss.
 		validateAndFixDependencies(
 			rawData, // Pass the entire object with all tags
 			tasksPath,
-			options.projectRoot,
-			targetTag, // Provide the current tag context for the operation
-			options // Pass the options object for mcpLog compatibility
+			projectRoot,
+			tag // Provide the current tag context for the operation
 		);
 
 		const allTasksInTag = tagData.tasks;
 		const validTaskIds = allTasksInTag.map((task) => task.id);
 
 		// Cleanup orphaned task files
-		dispatchLog(
-			'info',
-			options,
-			'Checking for orphaned task files to clean up...'
-		);
+		log('info', 'Checking for orphaned task files to clean up...');
 		try {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const masterFilePattern = /^task_(\d+)\.txt$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${targetTag}\\.txt$`);
+			const taggedFilePattern = new RegExp(`^task_(\\d+)_${tag}\\.txt$`);
 
 			const orphanedFiles = files.filter((file) => {
 				let match = null;
 				let fileTaskId = null;
 
 				// Check if file belongs to current tag
-				if (targetTag === 'master') {
+				if (tag === 'master') {
 					match = file.match(masterFilePattern);
 					if (match) {
 						fileTaskId = parseInt(match[1], 10);
@@ -125,37 +93,29 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			});
 
 			if (orphanedFiles.length > 0) {
-				dispatchLog(
+				log(
 					'info',
-					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${targetTag}'`
+					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${tag}'`
 				);
 				orphanedFiles.forEach((file) => {
 					const filePath = path.join(outputDir, file);
 					fs.unlinkSync(filePath);
 				});
 			} else {
-				dispatchLog('info', options, 'No orphaned task files found.');
+				log('info', 'No orphaned task files found.');
 			}
 		} catch (err) {
-			dispatchLog(
-				'warn',
-				options,
-				`Error cleaning up orphaned task files: ${err.message}`
-			);
+			log('warn', `Error cleaning up orphaned task files: ${err.message}`);
 		}
 
 		// Generate task files for the target tag
-		dispatchLog(
-			'info',
-			options,
-			`Generating individual task files for tag '${targetTag}'...`
-		);
+		log('info', `Generating individual task files for tag '${tag}'...`);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
-				targetTag === 'master'
+				tag === 'master'
 					? `task_${task.id.toString().padStart(3, '0')}.txt`
-					: `task_${task.id.toString().padStart(3, '0')}_${targetTag}.txt`;
+					: `task_${task.id.toString().padStart(3, '0')}_${tag}.txt`;
 
 			const taskPath = path.join(outputDir, taskFileName);
 
@@ -213,9 +173,9 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.writeFileSync(taskPath, content);
 		});
 
-		dispatchLog(
+		log(
 			'success',
-			`All ${tasksForGeneration.length} tasks for tag '${targetTag}' have been generated into '${outputDir}'.`
+			`All ${tasksForGeneration.length} tasks for tag '${tag}' have been generated into '${outputDir}'.`
 		);
 
 		if (isMcpMode) {
@@ -226,23 +186,14 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			};
 		}
 	} catch (error) {
-		dispatchLog(
-			'error',
-			options,
-			`Error generating task files: ${error.message}`
-		);
+		log('error', `Error generating task files: ${error.message}`);
 		if (!options?.mcpLog) {
-			// If not in MCP mode (i.e., mcpLog is not provided),
-			// taskmaster-ai might be the caller and expecting JSON errors.
-			// Avoid console.error and process.exit which produce text output.
-			// console.error(chalk.red(`Error generating task files: ${error.message}`));
-			// if (getDebugFlag()) {
-			//  console.error(error);
-			// }
-			// process.exit(1);
-			throw error; // Re-throw the error; taskmaster-ai should catch and format it.
+			console.error(chalk.red(`Error generating task files: ${error.message}`));
+			if (getDebugFlag()) {
+				console.error(error);
+			}
+			process.exit(1);
 		} else {
-			// In MCP mode, mcpLog should have already logged, so just re-throw.
 			throw error;
 		}
 	}

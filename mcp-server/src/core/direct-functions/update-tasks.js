@@ -15,6 +15,12 @@ import {
  * Direct function wrapper for updating tasks based on new context.
  *
  * @param {Object} args - Command arguments containing projectRoot, from, prompt, research options.
+ * @param {string} args.from - The ID of the task to update.
+ * @param {string} args.prompt - The prompt to update the task with.
+ * @param {boolean} args.research - Whether to use research mode.
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.

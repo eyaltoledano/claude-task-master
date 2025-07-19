@@ -24,6 +24,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.saveTo] - Automatically save to task/subtask ID (e.g., "15" or "15.2")
  * @param {boolean} [args.saveToFile=false] - Save research results to .taskmaster/docs/research/ directory
  * @param {string} [args.projectRoot] - Project root path
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
@@ -39,7 +40,8 @@ export async function researchDirect(args, log, context = {}) {
 		detailLevel = 'medium',
 		saveTo,
 		saveToFile = false,
-		projectRoot
+		projectRoot,
+		tag
 	} = args;
 	const { session } = context; // Destructure session from context
 
@@ -112,6 +114,7 @@ export async function researchDirect(args, log, context = {}) {
 			includeProjectTree,
 			detailLevel,
 			projectRoot,
+			tag,
 			saveToFile
 		};
 
@@ -181,7 +184,8 @@ ${result.result}`;
 							mcpLog,
 							commandName: 'research-save',
 							outputType: 'mcp',
-							projectRoot
+							projectRoot,
+							tag
 						},
 						'json'
 					);
@@ -212,7 +216,8 @@ ${result.result}`;
 							mcpLog,
 							commandName: 'research-save',
 							outputType: 'mcp',
-							projectRoot
+							projectRoot,
+							tag
 						},
 						'json',
 						true // appendMode = true

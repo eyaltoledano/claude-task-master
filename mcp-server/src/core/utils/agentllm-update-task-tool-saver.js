@@ -24,18 +24,19 @@ async function agentllmUpdatedTaskSave(
 	taskIdToUpdate,
 	projectRoot,
 	logWrapper,
-	originalToolArgs
+	originalToolArgs,
+	tag = 'master'
 ) {
 	logWrapper.info(
-		`agentllmUpdatedTaskSave: Saving updated task data for ID ${taskIdToUpdate}.`
+		`agentllmUpdatedTaskSave: Saving updated task data for ID ${taskIdToUpdate} with tag '${tag}'.`
 	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
-		const allTasksData = readJSON(tasksJsonPath);
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
+			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
@@ -157,11 +158,15 @@ async function agentllmUpdatedTaskSave(
 				`agentllmUpdatedTaskSave: Appended text to task/subtask ${taskIdToUpdate}.`
 			);
 
-			writeJSON(tasksJsonPath, allTasksData); // Save the entire tasks structure
+			writeJSON(tasksJsonPath, allTasksData, projectRoot, tag); // Save the entire tasks structure
 			const outputDir = path.dirname(tasksJsonPath);
-			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
+			await generateTaskFiles(tasksJsonPath, outputDir, {
+				mcpLog: logWrapper,
+				projectRoot: projectRoot,
+				tag: tag
+			});
 			logWrapper.info(
-				`agentllmUpdatedTaskSave: Markdown task files regenerated after append.`
+				`agentllmUpdatedTaskSave: Markdown task files regenerated for tag '${tag}' after append.`
 			);
 			return {
 				success: true,
@@ -256,15 +261,19 @@ async function agentllmUpdatedTaskSave(
 		}
 
 		if (taskUpdated) {
-			writeJSON(tasksJsonPath, allTasksData);
+			writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 			logWrapper.info(
-				`agentllmUpdatedTaskSave: Successfully updated tasks.json for task/subtask ID ${taskIdToUpdate}.`
+				`agentllmUpdatedTaskSave: Successfully updated tasks.json for task/subtask ID ${taskIdToUpdate} for tag '${tag}'.`
 			);
 
 			const outputDir = path.dirname(tasksJsonPath);
-			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
+			await generateTaskFiles(tasksJsonPath, outputDir, {
+				mcpLog: logWrapper,
+				projectRoot: projectRoot,
+				tag: tag
+			});
 			logWrapper.info(
-				`agentllmUpdatedTaskSave: Markdown task files regenerated after update.`
+				`agentllmUpdatedTaskSave: Markdown task files regenerated for tag '${tag}' after update.`
 			);
 		}
 
