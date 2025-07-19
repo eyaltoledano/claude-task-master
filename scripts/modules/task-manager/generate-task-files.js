@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log as cliLog, readJSON } from '../utils.js';
+import { log, readJSON } from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -131,7 +131,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 					fs.unlinkSync(filePath);
 				});
 			} else {
-				dispatchLog('info', options, 'No orphaned task files found.');
+				log('info', 'No orphaned task files found.');
 			}
 		} catch (err) {
 			dispatchLog('warn', options, `Error cleaning up orphaned task files: ${err.message}`);

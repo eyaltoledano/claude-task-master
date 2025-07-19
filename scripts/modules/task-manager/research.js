@@ -909,6 +909,13 @@ async function handleSaveToTask(
 	context, // Original context from performResearch
 	logFn // Original logFn from performResearch
 ) {
+	// Import necessary file utilities directly inside the handler
+	const {
+		readJSON: cliReadJSON,
+		writeJSON: cliWriteJSON,
+		getCurrentTag: cliGetCurrentTag
+	} = await import('../utils.js');
+
 	try {
 		// Get task ID from user
 		const { taskId } = await inquirer.prompt([
