@@ -1,5 +1,6 @@
 {
 	"name": "extension",
+	"private": true,
 	"version": "0.20.0",
 	"main": "index.js",
 	"scripts": {
