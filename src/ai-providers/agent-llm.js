@@ -27,7 +27,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		return null;
 	}
 
-	generateText(params) {
+	async generateText(params) {
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();
@@ -47,7 +47,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		};
 	}
 
-	streamText(params) {
+	async streamText(params) {
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();
@@ -67,7 +67,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		};
 	}
 
-	generateObject(params) {
+	async generateObject(params) {
 		const {
 			modelId,
 			messages,

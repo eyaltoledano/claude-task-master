@@ -18,10 +18,11 @@ import { parseUpdatedTasksFromText } from '../../../../scripts/modules/task-mana
 async function agentllmUpdateSave(
 	agentOutput,
 	projectRoot,
-	logWrapper
+	logWrapper,
+	tag = 'master'
 ) {
 	logWrapper.info(
-		`agentllmUpdateSave: Saving multiple updated tasks from agent data.`
+		`agentllmUpdateSave: Saving multiple updated tasks from agent data for tag '${tag}'.`
 	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
@@ -102,9 +103,9 @@ async function agentllmUpdateSave(
 			`agentllmUpdateSave: Parsed ${parsedAgentTasksArray.length} tasks from agent output.`
 		);
 
-		const allTasksData = readJSON(tasksJsonPath);
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath}.`;
+			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
@@ -183,15 +184,19 @@ async function agentllmUpdateSave(
 		});
 
 		if (actualUpdatesMade > 0) {
-			writeJSON(tasksJsonPath, allTasksData);
+			writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 			logWrapper.info(
-				`agentllmUpdateSave: Successfully updated ${actualUpdatesMade} tasks in ${tasksJsonPath}.`
+				`agentllmUpdateSave: Successfully updated ${actualUpdatesMade} tasks in ${tasksJsonPath} for tag '${tag}'.`
 			);
 
 			const outputDir = path.dirname(tasksJsonPath);
-			await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
+			await generateTaskFiles(tasksJsonPath, outputDir, {
+				mcpLog: logWrapper,
+				projectRoot: projectRoot,
+				tag: tag
+			});
 			logWrapper.info(
-				`agentllmUpdateSave: Markdown task files regenerated.`
+				`agentllmUpdateSave: Markdown task files regenerated for tag '${tag}'.`
 			);
 		} else {
 			logWrapper.info(

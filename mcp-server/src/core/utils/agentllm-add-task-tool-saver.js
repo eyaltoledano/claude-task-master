@@ -24,9 +24,12 @@ async function agentllmAddTaskSave(
 	projectRoot,
 	logWrapper,
 	originalToolArgs,
-	delegatedRequestParams
+	delegatedRequestParams,
+	tag = 'master'
 ) {
-	logWrapper.info(`agentllmAddTaskSave: Saving new task data from agent.`);
+	logWrapper.info(
+		`agentllmAddTaskSave: Saving new task data from agent with tag '${tag}'.`
+	);
 
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
@@ -72,18 +75,18 @@ async function agentllmAddTaskSave(
 		// similar to how parseUpdatedTaskFromText uses updatedTaskSchema.
 		// For now, we assume the agent provides fields aligning with AiTaskDataSchema.
 
-		let allTasksData = readJSON(tasksJsonPath); // Changed from const to let
+		let allTasksData = readJSON(tasksJsonPath, projectRoot, tag); // Changed from const to let
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			// If tasks.json is missing or invalid, initialize it
 			logWrapper.warn(
-				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath}. Initializing new tasks array.`
+				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'. Initializing new tasks array.`
 			);
 			allTasksData = { tasks: [] };
 		}
 
 		// Check for ID collision (shouldn't happen if newTaskId is determined correctly)
 		if (allTasksData.tasks.some((t) => t.id === newTask.id)) {
-			const errorMsg = `Task ID ${newTask.id} already exists. Cannot add task.`;
+			const errorMsg = `Task ID ${newTask.id} already exists in tag '${tag}'. Cannot add task.`;
 			logWrapper.error(`agentllmAddTaskSave: ${errorMsg}`);
 			// This indicates a flaw in newTaskId generation or state management.
 			return { success: false, error: errorMsg };
@@ -93,14 +96,20 @@ async function agentllmAddTaskSave(
 		// Sort tasks by ID for consistency, optional
 		allTasksData.tasks.sort((a, b) => a.id - b.id);
 
-		writeJSON(tasksJsonPath, allTasksData);
+		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
-			`agentllmAddTaskSave: Successfully added new task ID ${newTask.id} to ${tasksJsonPath}.`
+			`agentllmAddTaskSave: Successfully added new task ID ${newTask.id} to ${tasksJsonPath} for tag '${tag}'.`
 		);
 
 		const outputDir = path.dirname(tasksJsonPath);
-		await generateTaskFiles(tasksJsonPath, outputDir, { mcpLog: logWrapper });
-		logWrapper.info(`agentllmAddTaskSave: Markdown task files regenerated.`);
+		await generateTaskFiles(tasksJsonPath, outputDir, {
+			mcpLog: logWrapper,
+			projectRoot: projectRoot,
+			tag: tag
+		});
+		logWrapper.info(
+			`agentllmAddTaskSave: Markdown task files regenerated for tag '${tag}'.`
+		);
 
 		return { success: true, newTask };
 	} catch (error) {

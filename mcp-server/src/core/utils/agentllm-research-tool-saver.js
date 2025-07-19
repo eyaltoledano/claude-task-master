@@ -77,7 +77,8 @@ export async function agentllmResearchSave(
 	originalResearchArgs,
 	projectRoot,
 	log,
-	sessionContext
+	sessionContext,
+	tag = 'master'
 ) {
 	let taskUpdated = false;
 	let savedFilePath = null;
@@ -144,7 +145,7 @@ export async function agentllmResearchSave(
 				'tasks',
 				'tasks.json'
 			);
-			const resolvedTag = sessionContext?.tag || getCurrentTag(projectRoot);
+			const resolvedTag = tag || sessionContext?.tag || getCurrentTag(projectRoot);
 
 			log.debug(
 				`agentllmResearchSave: Reading tasks from ${tasksPath} for tag '${resolvedTag}'`
