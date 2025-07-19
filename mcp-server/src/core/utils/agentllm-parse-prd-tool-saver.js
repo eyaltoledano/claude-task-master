@@ -11,7 +11,12 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
  * @param {Object} logWrapper - Logger object (e.g., from MCP context or mcpLog).
  * @returns {Promise<Object>} - Result object with { success: true, outputPath } or { success: false, error: string }.
  */
-async function agentllmParsePrdSave(tasksData, projectRoot, logWrapper) {
+async function agentllmParsePrdSave(
+	tasksData,
+	projectRoot,
+	logWrapper,
+	tag = 'master'
+) {
 	if (!tasksData || !Array.isArray(tasksData.tasks) || !tasksData.metadata) {
 		const errorMsg =
 			'Invalid tasksData structure. Expected object with "tasks" array and "metadata".';
@@ -30,28 +35,32 @@ async function agentllmParsePrdSave(tasksData, projectRoot, logWrapper) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		// Ensure tasksData includes metadata if it's meant to be saved in tasks.json
-		// The original parsePRD in task-manager.js saves { tasks: finalTasks }
-		// If metadata is also needed in tasks.json, adjust outputToSave.
-		// For now, assuming tasksData IS the object {tasks: [...], metadata: {...}}
-		// and we want to save it as is, or select parts of it.
-		// Based on parsePRD from task-manager/parse-prd.js, it saves { tasks: finalTasks }
-		// So, we should probably do the same:
+		// Based on the existing logic of parse-prd, we should be saving the tasks
+		// under a specific tag in the tasks.json file.
+		// The `writeJSON` utility from scripts/modules/utils.js handles the logic
+		// of reading the existing file, updating the specific tag, and writing it back.
 		const outputToSave = {
-			tasks: tasksData.tasks
-			// Metadata will not be saved in tasks.json to maintain original format
+			[tag]: {
+				tasks: tasksData.tasks,
+				metadata: tasksData.metadata
+			}
 		};
-		// If only tasks should be saved as per original writeJSON in task-manager/parse-prd.js:
-		// const outputToSave = { tasks: tasksData.tasks };
 
-		writeJSON(outputPath, outputToSave);
+		// The `writeJSON` function in utils.js is designed to intelligently merge
+		// the new data with existing data in tasks.json.
+		writeJSON(outputPath, outputToSave, projectRoot, tag);
 		logWrapper.info(
-			`agentllmParsePrdSave: Tasks successfully written to ${outputPath}`
+			`agentllmParsePrdSave: Tasks successfully written to ${outputPath} for tag '${tag}'`
 		);
 
-		await generateTaskFiles(outputPath, outputDir, { mcpLog: logWrapper });
+		// Pass the tag to generateTaskFiles
+		await generateTaskFiles(outputPath, outputDir, {
+			mcpLog: logWrapper,
+			projectRoot: projectRoot,
+			tag: tag
+		});
 		logWrapper.info(
-			`agentllmParsePrdSave: Markdown task files generated for tasks from ${outputPath}`
+			`agentllmParsePrdSave: Markdown task files generated for tag '${tag}' from ${outputPath}`
 		);
 
 		return { success: true, outputPath };

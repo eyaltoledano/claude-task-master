@@ -317,6 +317,7 @@ async function expandTask(
 		complexityReportPath
 	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+	const isMCPCall = !!mcpLog;
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);

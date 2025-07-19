@@ -30,10 +30,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'parse_prd'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmParsePrdSave(
 			finalLLMOutput,
 			projectRoot,
-			log
+			log,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully saved tasks.`;
@@ -58,12 +61,15 @@ async function _handlePostProcessing(
 			numSubtasks: numSubtasksForAgent,
 			nextSubtaskId: nextSubtaskId
 		};
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmExpandTaskSave(
 			finalLLMOutput,
 			parentIdNum,
 			projectRoot,
 			log,
-			taskDetails
+			taskDetails,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully saved subtasks.`;
@@ -77,11 +83,14 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'analyze_project_complexity'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmComplexityReportSave(
 			finalLLMOutput,
 			projectRoot,
 			log,
-			originalToolArgs
+			originalToolArgs,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully saved complexity report.`;
@@ -93,12 +102,15 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'update_task'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdatedTaskSave(
 			finalLLMOutput,
 			taskId,
 			projectRoot,
 			log,
-			originalToolArgs
+			originalToolArgs,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully updated task ${taskId}.`;
@@ -110,12 +122,15 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'add_task'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmAddTaskSave(
 			finalLLMOutput,
 			projectRoot,
 			log,
 			originalToolArgs,
-			delegatedParams
+			delegatedParams,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully added new task ${postProcessingResult.newTask?.id}.`;
@@ -127,12 +142,15 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'update_subtask'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdateSubtaskSave(
 			finalLLMOutput,
 			subtaskId,
 			projectRoot,
 			log,
-			originalToolArgs
+			originalToolArgs,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully updated subtask ${subtaskId}.`;
@@ -146,10 +164,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for '${originalToolName}'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdateSave(
 			finalLLMOutput,
 			projectRoot,
-			log
+			log,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully updated ${postProcessingResult.updatesApplied} tasks.`;
@@ -159,12 +180,15 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'research'.`
 		);
+		const tag =
+			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmResearchSave(
 			finalLLMOutput,
 			originalToolArgs,
 			projectRoot,
 			log,
-			session
+			session,
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully processed research result.`;
