@@ -19,6 +19,7 @@ import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks } from '../utils.js';
@@ -71,6 +72,7 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {string|number} [options.threshold] - Complexity threshold
  * @param {boolean} [options.research] - Use research role
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
+ * @param {string} [options.tag] - Tag for the task
  * @param {string} [options.id] - Comma-separated list of task IDs to analyze specifically
  * @param {number} [options.from] - Starting task ID in a range to analyze
  * @param {number} [options.to] - Ending task ID in a range to analyze
@@ -84,7 +86,6 @@ Do not include any explanatory text, markdown formatting, or code block markers 
 async function analyzeTaskComplexity(options, context = {}) {
 	const { session, mcpLog } = context;
 	const tasksPath = options.file || LEGACY_TASKS_FILE;
-	const outputPath = options.output || COMPLEXITY_REPORT_FILE;
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
@@ -108,6 +109,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 			log(level, message);
 		}
 	};
+
+	// Resolve output path using tag-aware resolution
+	const outputPath = resolveComplexityReportOutputPath(
+		options.output,
+		{ projectRoot, tag },
+		reportLog
+	);
 
 	if (outputFormat === 'text') {
 		console.log(
@@ -220,7 +228,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 		let gatheredContext = '';
 		if (originalData && originalData.tasks.length > 0) {
 			try {
-				const contextGatherer = new ContextGatherer(projectRoot);
+				const contextGatherer = new ContextGatherer(projectRoot, tag);
 				const allTasksFlat = flattenTasksWithSubtasks(originalData.tasks);
 				const fuzzySearch = new FuzzyTaskSearch(
 					allTasksFlat,
@@ -535,7 +543,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 
-			// Merge with existing report
+			// Merge with existing report - only keep entries from the current tag
 			let finalComplexityAnalysis = [];
 
 			if (existingReport && Array.isArray(existingReport.complexityAnalysis)) {
@@ -544,10 +552,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 					complexityAnalysis.map((item) => item.taskId)
 				);
 
-				// Keep existing entries that weren't in this analysis run
+				// Keep existing entries that weren't in this analysis run AND belong to the current tag
+				// We determine tag membership by checking if the task ID exists in the current tag's tasks
+				const currentTagTaskIds = new Set(tasksData.tasks.map((t) => t.id));
 				const existingEntriesNotAnalyzed =
 					existingReport.complexityAnalysis.filter(
-						(item) => !analyzedTaskIds.has(item.taskId)
+						(item) =>
+							!analyzedTaskIds.has(item.taskId) &&
+							currentTagTaskIds.has(item.taskId) // Only keep entries for tasks in current tag
 					);
 
 				// Combine with new analysis
@@ -557,7 +569,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				];
 
 				reportLog(
-					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`,
+					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries from current tag`,
 					'info'
 				);
 			} else {

@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { removeDependencyDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the removeDependency tool with the MCP server
@@ -31,10 +32,15 @@ export function registerRemoveDependencyTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(
 					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
 				);
@@ -57,7 +63,9 @@ export function registerRemoveDependencyTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						dependsOn: args.dependsOn
+						dependsOn: args.dependsOn,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log
 				);

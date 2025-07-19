@@ -11,6 +11,7 @@ import {
 } from './utils.js';
 import { removeTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the remove-task tool with the MCP server
@@ -45,6 +46,11 @@ export function registerRemoveTaskTool(server) {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -66,7 +72,7 @@ export function registerRemoveTaskTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						projectRoot: args.projectRoot,
-						tag: args.tag
+						tag: resolvedTag
 					},
 					log,
 					{ session }

@@ -20,6 +20,8 @@ import boxen from 'boxen';
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
  * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
  */
@@ -32,12 +34,7 @@ async function expandAllTasks(
 	context = {},
 	outputFormat = 'text' // Assume text default for CLI
 ) {
-	const {
-		session,
-		mcpLog,
-		projectRoot: providedProjectRoot,
-		tag: contextTag
-	} = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
 
 	const projectRoot = providedProjectRoot || findProjectRoot();
@@ -79,7 +76,7 @@ async function expandAllTasks(
 
 	try {
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath, projectRoot, contextTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		}
@@ -129,7 +126,7 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					{ ...context, projectRoot, tag: data.tag || contextTag }, // Pass the whole context object with projectRoot and resolved tag
+					{ ...context, projectRoot, tag: data.tag || tag }, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
 				expandedCount++;

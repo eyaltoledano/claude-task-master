@@ -14,8 +14,10 @@ import {
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
 	TASKMASTER_CONFIG_FILE,
-	LEGACY_CONFIG_FILE
+	LEGACY_CONFIG_FILE,
+	COMPLEXITY_REPORT_FILE
 } from './constants/paths.js';
+import { findProjectRoot } from './utils/path-utils.js';
 
 /**
  * TaskMaster class manages all the paths for the application.
@@ -23,13 +25,16 @@ import {
  */
 export class TaskMaster {
 	#paths;
+	#tag;
 
 	/**
 	 * The constructor is intended to be used only by the initTaskMaster factory function.
 	 * @param {object} paths - A pre-resolved object of all application paths.
+	 * @param {string|undefined} tag - The current tag.
 	 */
-	constructor(paths) {
+	constructor(paths, tag) {
 		this.#paths = Object.freeze({ ...paths });
+		this.#tag = tag;
 	}
 
 	/**
@@ -64,7 +69,19 @@ export class TaskMaster {
 	 * @returns {string|null} The absolute path to the complexity report.
 	 */
 	getComplexityReportPath() {
-		return this.#paths.complexityReportPath;
+		if (this.#paths.complexityReportPath) {
+			return this.#paths.complexityReportPath;
+		}
+
+		const complexityReportFile =
+			this.getCurrentTag() !== 'master'
+				? COMPLEXITY_REPORT_FILE.replace(
+						'.json',
+						`_${this.getCurrentTag()}.json`
+					)
+				: COMPLEXITY_REPORT_FILE;
+
+		return path.join(this.#paths.projectRoot, complexityReportFile);
 	}
 
 	/**
@@ -87,6 +104,45 @@ export class TaskMaster {
 	getAllPaths() {
 		return this.#paths;
 	}
+
+	/**
+	 * Gets the current tag from state.json or falls back to defaultTag from config
+	 * @returns {string} The current tag name
+	 */
+	getCurrentTag() {
+		if (this.#tag) {
+			return this.#tag;
+		}
+
+		try {
+			// Try to read current tag from state.json using fs directly
+			if (fs.existsSync(this.#paths.statePath)) {
+				const rawState = fs.readFileSync(this.#paths.statePath, 'utf8');
+				const stateData = JSON.parse(rawState);
+				if (stateData && stateData.currentTag) {
+					return stateData.currentTag;
+				}
+			}
+		} catch (error) {
+			// Ignore errors, fall back to default
+		}
+
+		// Fall back to defaultTag from config using fs directly
+		try {
+			if (fs.existsSync(this.#paths.configPath)) {
+				const rawConfig = fs.readFileSync(this.#paths.configPath, 'utf8');
+				const configData = JSON.parse(rawConfig);
+				if (configData && configData.global && configData.global.defaultTag) {
+					return configData.global.defaultTag;
+				}
+			}
+		} catch (error) {
+			// Ignore errors, use hardcoded default
+		}
+
+		// Final fallback
+		return 'master';
+	}
 }
 
 /**
@@ -100,40 +156,41 @@ export class TaskMaster {
  * @param {string} [overrides.complexityReportPath]
  * @param {string} [overrides.configPath]
  * @param {string} [overrides.statePath]
+ * @param {string} [overrides.tag]
  * @returns {TaskMaster} An initialized TaskMaster instance.
  */
 export function initTaskMaster(overrides = {}) {
-	const findProjectRoot = (startDir = process.cwd()) => {
-		const projectMarkers = [TASKMASTER_DIR, LEGACY_CONFIG_FILE];
-		let currentDir = path.resolve(startDir);
-		const rootDir = path.parse(currentDir).root;
-		while (currentDir !== rootDir) {
-			for (const marker of projectMarkers) {
-				const markerPath = path.join(currentDir, marker);
-				if (fs.existsSync(markerPath)) {
-					return currentDir;
-				}
-			}
-			currentDir = path.dirname(currentDir);
-		}
-		return null;
-	};
-
 	const resolvePath = (
 		pathType,
 		override,
 		defaultPaths = [],
-		basePath = null
+		basePath = null,
+		createParentDirs = false
 	) => {
 		if (typeof override === 'string') {
 			const resolvedPath = path.isAbsolute(override)
 				? override
 				: path.resolve(basePath || process.cwd(), override);
 
-			if (!fs.existsSync(resolvedPath)) {
-				throw new Error(
-					`${pathType} override path does not exist: ${resolvedPath}`
-				);
+			if (createParentDirs) {
+				// For output paths, create parent directory if it doesn't exist
+				const parentDir = path.dirname(resolvedPath);
+				if (!fs.existsSync(parentDir)) {
+					try {
+						fs.mkdirSync(parentDir, { recursive: true });
+					} catch (error) {
+						throw new Error(
+							`Could not create directory for ${pathType}: ${parentDir}. Error: ${error.message}`
+						);
+					}
+				}
+			} else {
+				// Original validation logic
+				if (!fs.existsSync(resolvedPath)) {
+					throw new Error(
+						`${pathType} override path does not exist: ${resolvedPath}`
+					);
+				}
 			}
 			return resolvedPath;
 		}
@@ -192,13 +249,8 @@ export function initTaskMaster(overrides = {}) {
 
 		paths.projectRoot = resolvedOverride;
 	} else {
-		const foundRoot = findProjectRoot();
-		if (!foundRoot) {
-			throw new Error(
-				'Unable to find project root. No project markers found. Run "init" command first.'
-			);
-		}
-		paths.projectRoot = foundRoot;
+		// findProjectRoot now always returns a value (fallback to cwd)
+		paths.projectRoot = findProjectRoot();
 	}
 
 	// TaskMaster Directory
@@ -289,9 +341,10 @@ export function initTaskMaster(overrides = {}) {
 				'task-complexity-report.json',
 				'complexity-report.json'
 			],
-			paths.projectRoot
+			paths.projectRoot,
+			true // Enable parent directory creation for output paths
 		);
 	}
 
-	return new TaskMaster(paths);
+	return new TaskMaster(paths, overrides.tag);
 }

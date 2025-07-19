@@ -24,6 +24,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
  * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
  * @param {string} [args.projectRoot] - Project root path
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
@@ -36,7 +37,8 @@ export async function addTaskDirect(args, log, context = {}) {
 		dependencies,
 		priority,
 		research,
-		projectRoot
+		projectRoot,
+		tag
 	} = args;
 	const { session } = context; // Destructure session from context
 
@@ -121,7 +123,8 @@ export async function addTaskDirect(args, log, context = {}) {
 					mcpLog,
 					projectRoot,
 					commandName: 'add-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					tag
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
@@ -147,7 +150,8 @@ export async function addTaskDirect(args, log, context = {}) {
 					mcpLog,
 					projectRoot,
 					commandName: 'add-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					tag
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation

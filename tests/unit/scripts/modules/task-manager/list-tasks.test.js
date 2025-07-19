@@ -21,7 +21,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		tasks.find((t) => t.id === parseInt(id))
 	),
 	addComplexityToTask: jest.fn(),
-	readComplexityReport: jest.fn(() => null)
+	readComplexityReport: jest.fn(() => null),
+	getTagAwareFilePath: jest.fn((tag, path) => '/mock/tagged/report.json')
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
@@ -152,10 +153,12 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(result).toEqual(
 			expect.objectContaining({
 				tasks: expect.arrayContaining([
@@ -175,10 +178,12 @@ describe('listTasks', () => {
 		const statusFilter = 'pending';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 
 		// Verify only pending tasks are returned
 		expect(result.tasks).toHaveLength(1);
@@ -192,7 +197,9 @@ describe('listTasks', () => {
 		const statusFilter = 'done';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify only done tasks are returned
@@ -206,7 +213,9 @@ describe('listTasks', () => {
 		const statusFilter = 'review';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify only review tasks are returned
@@ -220,7 +229,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, true, 'json');
+		const result = listTasks(tasksPath, null, null, true, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify that the task with subtasks is included
@@ -235,7 +246,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// For JSON output, subtasks should still be included in the data structure
@@ -253,7 +266,9 @@ describe('listTasks', () => {
 		const statusFilter = 'blocked'; // Status that doesn't exist in sample data
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify empty array is returned
@@ -269,7 +284,7 @@ describe('listTasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			listTasks(tasksPath, null, null, false, 'json');
+			listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
 		}).toThrow('File not found');
 	});
 
@@ -278,10 +293,10 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		listTasks(tasksPath, null, null, false, 'json');
+		listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Note: validateAndFixDependencies is not called by listTasks function
 		// This test just verifies the function runs without error
 	});
@@ -291,7 +306,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, 'pending', null, true, 'json');
+		const result = listTasks(tasksPath, 'pending', null, true, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// For JSON output, we don't call displayTaskList, so just verify the result structure
@@ -310,7 +327,9 @@ describe('listTasks', () => {
 		const statusFilter = 'in-progress';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -324,7 +343,9 @@ describe('listTasks', () => {
 		const statusFilter = 'cancelled';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -337,7 +358,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result).toEqual(
@@ -363,10 +386,12 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
-			expect(readJSON).toHaveBeenCalledWith(tasksPath, null, null);
+			expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 
 			// Should return tasks with 'done' or 'pending' status
 			expect(result.tasks).toHaveLength(2);
@@ -381,7 +406,9 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending,in-progress';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return tasks with 'done', 'pending', or 'in-progress' status
@@ -405,7 +432,9 @@ describe('listTasks', () => {
 			const statusFilter = 'done, pending , in-progress';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should trim spaces and work correctly
@@ -422,7 +451,9 @@ describe('listTasks', () => {
 			const statusFilter = 'done,,pending,';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should ignore empty values and work with valid ones
@@ -437,7 +468,9 @@ describe('listTasks', () => {
 			const statusFilter = 'DONE,Pending,IN-PROGRESS';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should match case-insensitively
@@ -454,7 +487,9 @@ describe('listTasks', () => {
 			const statusFilter = 'blocked,deferred';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return empty array as no tasks have these statuses
@@ -467,7 +502,9 @@ describe('listTasks', () => {
 			const statusFilter = 'pending,';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should work the same as single status filter
@@ -481,7 +518,9 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return the original filter string
@@ -494,7 +533,9 @@ describe('listTasks', () => {
 			const statusFilter = 'all';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return all tasks when filter is 'all'
@@ -508,7 +549,9 @@ describe('listTasks', () => {
 			const statusFilter = 'done,nonexistent,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return only tasks with existing statuses
@@ -523,7 +566,9 @@ describe('listTasks', () => {
 			const statusFilter = 'review,cancelled';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
 
 			// Assert
 			// Should return tasks with 'review' or 'cancelled' status
