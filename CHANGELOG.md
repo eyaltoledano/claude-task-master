@@ -1,5 +1,72 @@
 # task-master-ai
 
+## 0.21.0
+
+### Minor Changes
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`9c58a92`](https://github.com/eyaltoledano/claude-task-master/commit/9c58a922436c0c5e7ff1b20ed2edbc269990c772) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Kiro editor rule profile support
+  - Add support for Kiro IDE with custom rule files and MCP configuration
+  - Generate rule files in `.kiro/steering/` directory with markdown format
+  - Include MCP server configuration with enhanced file inclusion patterns
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`444aa5a`](https://github.com/eyaltoledano/claude-task-master/commit/444aa5ae1943ba72d012b3f01b1cc9362a328248) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Created a comprehensive documentation site for Task Master AI. Visit https://docs.task-master.dev to explore guides, API references, and examples.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`58a301c`](https://github.com/eyaltoledano/claude-task-master/commit/58a301c380d18a9d9509137f3e989d24200a5faa) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Complete Groq provider integration and add MoonshotAI Kimi K2 model support
+  - Fixed Groq provider registration
+  - Added Groq API key validation
+  - Added GROQ_API_KEY to .env.example
+  - Added moonshotai/kimi-k2-instruct model with $1/$3 per 1M token pricing and 16k max output
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`b0e09c7`](https://github.com/eyaltoledano/claude-task-master/commit/b0e09c76ed73b00434ac95606679f570f1015a3d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - feat: Add Zed editor rule profile with agent rules and MCP config
+  - Resolves #637
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`6c5e0f9`](https://github.com/eyaltoledano/claude-task-master/commit/6c5e0f97f8403c4da85c1abba31cb8b1789511a7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Amp rule profile with AGENT.md and MCP config
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`444aa5a`](https://github.com/eyaltoledano/claude-task-master/commit/444aa5ae1943ba72d012b3f01b1cc9362a328248) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve project root detection
+  - No longer creates an infinite loop when unable to detect your code workspace
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`36c4a7a`](https://github.com/eyaltoledano/claude-task-master/commit/36c4a7a86924c927ad7f86a4f891f66ad55eb4d2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add OpenCode profile with AGENTS.md and MCP config
+  - Resolves #965
+
+### Patch Changes
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`444aa5a`](https://github.com/eyaltoledano/claude-task-master/commit/444aa5ae1943ba72d012b3f01b1cc9362a328248) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Make `task-master update` more reliable with AI responses
+
+  The `update` command now handles AI responses more robustly. If the AI forgets to include certain task fields, the command will automatically fill in the missing data from your original tasks instead of failing. This means smoother bulk task updates without losing important information like IDs, dependencies, or completed subtasks.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`444aa5a`](https://github.com/eyaltoledano/claude-task-master/commit/444aa5ae1943ba72d012b3f01b1cc9362a328248) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix subtask dependency validation when expanding tasks
+
+  When using `task-master expand` to break down tasks into subtasks, dependencies between subtasks are now properly validated. Previously, subtasks with dependencies would fail validation. Now subtasks can correctly depend on their siblings within the same parent task.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`6d69d02`](https://github.com/eyaltoledano/claude-task-master/commit/6d69d02fe03edcc785380415995d5cfcdd97acbb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prevent CLAUDE.md overwrite by using Claude Code's import feature
+  - Task Master now creates its instructions in `.taskmaster/CLAUDE.md` instead of overwriting the user's `CLAUDE.md`
+  - Adds an import section to the user's CLAUDE.md that references the Task Master instructions
+  - Preserves existing user content in CLAUDE.md files
+  - Provides clean uninstall that only removes Task Master's additions
+
+  **Breaking Change**: Task Master instructions for Claude Code are now stored in `.taskmaster/CLAUDE.md` and imported into the main CLAUDE.md file. Users who previously had Task Master content directly in their CLAUDE.md will need to run `task-master rules remove claude` followed by `task-master rules add claude` to migrate to the new structure.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`fd005c4`](https://github.com/eyaltoledano/claude-task-master/commit/fd005c4c5481ffac58b11f01a448fa5b29056b8d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Implement Boundary-First Tag Resolution to ensure consistent and deterministic tag handling across CLI and MCP, resolving potential race conditions.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`444aa5a`](https://github.com/eyaltoledano/claude-task-master/commit/444aa5ae1943ba72d012b3f01b1cc9362a328248) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix `task-master lang --setup` breaking when no language is defined, now defaults to English
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`624922c`](https://github.com/eyaltoledano/claude-task-master/commit/624922ca598c4ce8afe9a5646ebb375d4616db63) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix: show command no longer requires complexity report file to exist
+
+  The `tm show` command was incorrectly requiring the complexity report file to exist even when not needed. Now it only validates the complexity report path when a custom report file is explicitly provided via the -r/--report option.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`858d4a1`](https://github.com/eyaltoledano/claude-task-master/commit/858d4a1c5486d20e7e3a8e37e3329d7fb8200310) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Update VS Code profile with MCP config transformation
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`0451ebc`](https://github.com/eyaltoledano/claude-task-master/commit/0451ebcc32cd7e9d395b015aaa8602c4734157e1) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server error when retrieving tools and resources
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`0a70ab6`](https://github.com/eyaltoledano/claude-task-master/commit/0a70ab6179cb2b5b4b2d9dc256a7a3b69a0e5dd6) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add MCP configuration support to Claude Code rules
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`4629128`](https://github.com/eyaltoledano/claude-task-master/commit/4629128943f6283385f4762c09cf2752f855cc33) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixed the comprehensive taskmaster system integration via custom slash commands with proper syntax
+  - Provide claude clode with a complete set of of commands that can trigger task master events directly within Claude Code
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`0886c83`](https://github.com/eyaltoledano/claude-task-master/commit/0886c83d0c678417c0313256a6dd96f7ee2c9ac6) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Correct MCP server name and use 'Add to Cursor' button with updated placeholder keys.
+
+- [#1009](https://github.com/eyaltoledano/claude-task-master/pull/1009) [`88c434a`](https://github.com/eyaltoledano/claude-task-master/commit/88c434a9393e429d9277f59b3e20f1005076bbe0) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add missing API keys to .env.example and README.md
+
 ## 0.21.0-rc.0
 
 ### Minor Changes
