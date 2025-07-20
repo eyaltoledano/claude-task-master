@@ -32,8 +32,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'parse_prd'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmParsePrdSave(
 			finalLLMOutput,
 			projectRoot,
@@ -63,8 +61,6 @@ async function _handlePostProcessing(
 			numSubtasks: numSubtasksForAgent,
 			nextSubtaskId: nextSubtaskId
 		};
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmExpandTaskSave(
 			finalLLMOutput,
 			parentIdNum,
@@ -85,8 +81,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'analyze_project_complexity'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmComplexityReportSave(
 			finalLLMOutput,
 			projectRoot,
@@ -104,8 +98,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'update_task'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdatedTaskSave(
 			finalLLMOutput,
 			taskId,
@@ -124,8 +116,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'add_task'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmAddTaskSave(
 			finalLLMOutput,
 			projectRoot,
@@ -144,8 +134,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'update_subtask'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdateSubtaskSave(
 			finalLLMOutput,
 			subtaskId,
@@ -166,8 +154,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for '${originalToolName}'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmUpdateSave(
 			finalLLMOutput,
 			projectRoot,
@@ -182,8 +168,6 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'research'.`
 		);
-		const tag =
-			delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
 		postProcessingResult = await agentllmResearchSave(
 			finalLLMOutput,
 			originalToolArgs,
