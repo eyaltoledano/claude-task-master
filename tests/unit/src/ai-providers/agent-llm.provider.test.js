@@ -12,11 +12,6 @@ describe('AgentLLMProvider', () => {
 		expect(provider.name).toBe('AgentLLM');
 	});
 
-	test('validateAuth should always return true', () => {
-		expect(provider.validateAuth({})).toBe(true);
-		expect(provider.validateAuth({ apiKey: 'anything' })).toBe(true);
-	});
-
 	test('getClient should return the provider instance itself', () => {
 		expect(provider.getClient({})).toBe(provider);
 	});

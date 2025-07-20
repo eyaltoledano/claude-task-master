@@ -71,17 +71,11 @@ async function agentllmAddTaskSave(
 			subtasks: [] // New tasks start with no subtasks
 		};
 
-		// TODO: Add Zod validation for 'newTask' against a schema if desired,
-		// similar to how parseUpdatedTaskFromText uses updatedTaskSchema.
-		// For now, we assume the agent provides fields aligning with AiTaskDataSchema.
-
-		let allTasksData = readJSON(tasksJsonPath, projectRoot, tag); // Changed from const to let
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag) || { tasks: [] };
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-			// If tasks.json is missing or invalid, initialize it
 			logWrapper.warn(
 				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'. Initializing new tasks array.`
 			);
-			allTasksData = { tasks: [] };
 		}
 
 		// Check for ID collision (shouldn't happen if newTaskId is determined correctly)

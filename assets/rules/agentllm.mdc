@@ -45,11 +45,6 @@ Upon receiving a pending-interaction with `delegatedCallDetails`, you (the agent
 
 After performing the LLM call (or determining it cannot be performed due to an error), you must use the `use_mcp_tool` with `server_name: "taskmaster-ai"` and `tool_name: "agent_llm"` to send the result back to Taskmaster.
 
-Do not initialize the project if a user does not ask you.
-Do not use `get_tasks` tool  before `expand_all`, `update`.
-**Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
-**Note on `research`:** When a research is made for a specific task always fill `saveTo` parameter unless user explicitly asks you not to save the result.
-
 Your arguments for the `agent_llm` tool must include:
 
 - **projectRoot**: The current project root directory (e.g., `"f:/path/to/your/app"`).
@@ -58,3 +53,9 @@ Your arguments for the `agent_llm` tool must include:
   - **status**: Set to `"success"` if the LLM call was successful, or `"error"` if it failed.
   - **data**: If status is `"success"`, this field should contain the actual LLM response. When the `originalCommand` is `parse-prd`, the data should be a JSON object with two keys: `tasks` (an array of task objects) and `metadata` (an object with metadata about the parsing). For other `generateObject` calls, it will be the parsed JSON object. For `generateText` calls, it will be the generated text.
   - **errorDetails**: If status is `"error"`, this field should contain details about the error, including a message and optionally a code.
+
+Do not use `get_tasks` tool  before `expand_all`.
+**Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
+**Note on `research`:** When a research is made for a specific task always fill `saveTo` parameter unless user explicitly asks you not to save the result.
+
+The project is already initialized.

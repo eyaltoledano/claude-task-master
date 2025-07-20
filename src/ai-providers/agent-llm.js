@@ -8,8 +8,7 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	validateAuth(params) {
-		// AgentLLM does not use traditional API keys
-		return true;
+		// No validation needed
 	}
 
 	getClient(params) {
@@ -28,6 +27,10 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	async generateText(params) {
+		// Basic validation before delegation
+		if (!params.messages || !Array.isArray(params.messages)) {
+			throw new Error('Messages array is required for delegation');
+		}
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();

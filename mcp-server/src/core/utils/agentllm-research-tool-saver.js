@@ -83,7 +83,7 @@ export async function agentllmResearchSave(
 	let taskUpdated = false;
 	let savedFilePath = null;
 	let overallSuccess = true;
-	let errors = [];
+	const errors = [];
 
 	const { query, saveTo, saveToFile, detailLevel } = originalResearchArgs;
 
@@ -162,7 +162,7 @@ export async function agentllmResearchSave(
 				);
 			}
 
-			let allTagsData = rawTasksDataFromFile._rawTaggedData
+			const allTagsData = rawTasksDataFromFile._rawTaggedData
 				? { ...rawTasksDataFromFile._rawTaggedData }
 				: { ...rawTasksDataFromFile };
 			let currentTagTasksData = allTagsData[resolvedTag];
@@ -265,7 +265,7 @@ export async function agentllmResearchSave(
 						`agentllmResearchSave: Error regenerating task files for tag ${resolvedTag}: ${genFilesError.message}`
 					);
 					// Optionally, add to main errors or decide if this is critical
-					// errors.push(`Failed to regenerate task files: ${genFilesError.message}`);
+					 errors.push(`Failed to regenerate task files: ${genFilesError.message}`);
 				}
 			}
 		} catch (saveError) {

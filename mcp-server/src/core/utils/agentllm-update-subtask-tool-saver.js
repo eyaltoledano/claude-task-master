@@ -60,7 +60,7 @@ async function agentllmUpdateSubtaskSave(
 		const parentId = parseInt(parentIdStr, 10);
 		const subId = parseInt(subIdStr, 10);
 
-		if (isNaN(parentId) || isNaN(subId)) {
+		if (Number.isNaN(parentId) || Number.isNaN(subId)) {
 			const errorMsg = `Invalid subtask ID format: ${subtaskIdToUpdate}. Could not parse parent/sub IDs.`;
 			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };

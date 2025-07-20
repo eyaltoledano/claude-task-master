@@ -59,6 +59,7 @@ When Taskmaster is configured to use an "AgentLLM" provider for a specific AI ro
         *   An `agentLLMResponse` object containing the outcome of its LLM call.
 
     *   **Example `agent_llm` call from Agent (Success):**
+
         ```json
         // Agent calls Taskmaster's agent_llm tool with these parameters:
         {
@@ -85,6 +86,7 @@ When Taskmaster is configured to use an "AgentLLM" provider for a specific AI ro
         ```
 
     *   **Example `agent_llm` call from Agent (Error):**
+
         ```json
         // Agent calls Taskmaster's agent_llm tool with these parameters:
         {
@@ -107,12 +109,12 @@ When Taskmaster is configured to use an "AgentLLM" provider for a specific AI ro
     *   If `agentLLMResponse.status` is `"success"`, the `agentLLMResponse.data` is used as the result of the originally delegated LLM call (e.g., as if `generateText` returned this data). The paused operation resumes and completes.
     *   If `agentLLMResponse.status` is `"error"`, the `agentLLMResponse.errorDetails` are used to signal an error in the paused operation. The operation typically fails or retries based on Taskmaster's internal error handling.
     *   The `agent_llm` tool itself will respond to the agent's call with a confirmation like:
+    
         ```json
         {
             "status": "agent_response_processed_by_taskmaster",
             "interactionId": "some-unique-uuid-string-generated-by-taskmaster"
         }
         ```
+
         This confirms to the agent that Taskmaster has received and processed its LLM response.
-
-

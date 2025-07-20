@@ -76,10 +76,6 @@ async function agentllmExpandTaskSave(
 			logWrapper.info(
 				'agentllmExpandTaskSave: Agent output is already an array of subtasks.'
 			);
-			// If agentOutput is already an array of subtasks (e.g., if generateObjectService was used by agent)
-			// We might still want to validate/normalize them here if parseSubtasksFromText usually does that.
-			// For now, assume they are in the correct format if it's an array.
-			// TODO: Consider adding validation similar to what parseSubtasksFromText does if agent provides raw array.
 			subtasksToSave = agentOutput;
 		} else if (agentOutput && Array.isArray(agentOutput.subtasks)) {
 			logWrapper.info(

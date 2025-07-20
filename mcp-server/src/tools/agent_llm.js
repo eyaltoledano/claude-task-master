@@ -56,7 +56,7 @@ const agentLLMParameters = z.object({
 	projectRoot: z
 		.string()
 		.describe('The directory of the project. Must be an absolute path.')
-});
+}).strict();
 
 function registerAgentLLMTool(server) {
 	server.addTool({
@@ -67,6 +67,13 @@ function registerAgentLLMTool(server) {
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.debug(`agent_llm tool called with args: ${JSON.stringify(args)}`);
+
+				// Ensure mutual exclusivity
+				if (args.delegatedCallDetails && args.agentLLMResponse) {
+					const errorMsg = "Invalid parameters: Cannot provide both 'delegatedCallDetails' and 'agentLLMResponse'.";
+					log.warn(`agent_llm: ${errorMsg}`);
+					return createErrorResponse(errorMsg, { mcpToolError: true });
+				}
 
 				if (args.delegatedCallDetails) {
 					const effectiveInteractionId = args.interactionId || uuidv4();
@@ -95,6 +102,23 @@ function registerAgentLLMTool(server) {
 						log.warn(errorMsg);
 						return createErrorResponse(errorMsg, { mcpToolError: true });
 					}
+					
+					const { status, data, errorDetails } = args.agentLLMResponse;
+
+					if (status === 'success' && typeof data === 'undefined') {
+						const errorMsg =
+							'agent_llm: Agent response has status "success" but is missing the "data" field.';
+						log.warn(errorMsg);
+						return createErrorResponse(errorMsg, { mcpToolError: true });
+					}
+
+					if (status === 'error' && typeof errorDetails === 'undefined') {
+						const errorMsg =
+							'agent_llm: Agent response has status "error" but is missing the "errorDetails" field.';
+						log.warn(errorMsg);
+						return createErrorResponse(errorMsg, { mcpToolError: true });
+					}
+
 					log.info(
 						`agent_llm: Agent providing LLM response for interaction ID: ${args.interactionId}`
 					);
@@ -102,11 +126,11 @@ function registerAgentLLMTool(server) {
 					const taskmasterInternalResponse = {
 						toolResponseSource: 'agent_to_taskmaster',
 						status:
-							args.agentLLMResponse.status === 'success'
+							status === 'success'
 								? 'llm_response_completed'
 								: 'llm_response_error',
-						finalLLMOutput: args.agentLLMResponse.data,
-						error: args.agentLLMResponse.errorDetails,
+						finalLLMOutput: data,
+						error: errorDetails,
 						interactionId: args.interactionId
 					};
 
