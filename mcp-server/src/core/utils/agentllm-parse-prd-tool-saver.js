@@ -9,6 +9,7 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
  * @param {Object} tasksData - The tasks data object, expected to have 'tasks' and 'metadata' properties.
  * @param {string} projectRoot - The absolute path to the project root.
  * @param {Object} logWrapper - Logger object (e.g., from MCP context or mcpLog).
+ * @param {string} [tag='master'] - Tag context for organizing tasks into separate task lists.
  * @returns {Promise<Object>} - Result object with { success: true, outputPath } or { success: false, error: string }.
  */
 async function agentllmParsePrdSave(

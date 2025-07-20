@@ -6,6 +6,63 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
 // Import the parser from the core updateTaskById script
 import { parseUpdatedTaskFromText } from '../../../../scripts/modules/task-manager/update-task-by-id.js';
 
+function updateSubtask(taskToUpdateObject, parsedAgentTask, taskIdToUpdate) {
+	const subId = parseInt(taskIdToUpdate.split('.')[1], 10);
+	Object.assign(taskToUpdateObject, { ...parsedAgentTask, id: subId });
+	return taskToUpdateObject;
+}
+
+function updateMainTask(
+	taskToUpdateObject,
+	parsedAgentTask,
+	taskIdToUpdate,
+	logWrapper
+) {
+	const taskIdNum = parseInt(String(taskIdToUpdate), 10);
+	let finalSubtasks = parsedAgentTask.subtasks || [];
+	if (
+		taskToUpdateObject.subtasks &&
+		taskToUpdateObject.subtasks.length > 0
+	) {
+		const completedOriginalSubtasks = taskToUpdateObject.subtasks.filter(
+			(st) => st.status === 'done' || st.status === 'completed'
+		);
+		completedOriginalSubtasks.forEach((compSub) => {
+			const updatedVersion = finalSubtasks.find(
+				(st) => st.id === compSub.id
+			);
+			if (
+				!updatedVersion ||
+				JSON.stringify(updatedVersion) !== JSON.stringify(compSub)
+			) {
+				logWrapper.warn(
+					`agentllmUpdatedTaskSave: Restoring completed subtask ${taskToUpdateObject.id}.${compSub.id} as agent modified/removed it.`
+				);
+				finalSubtasks = finalSubtasks.filter(
+					(st) => st.id !== compSub.id
+				);
+				finalSubtasks.push(compSub);
+			}
+		});
+		const subtaskIds = new Set();
+		finalSubtasks = finalSubtasks
+			.filter((st) => {
+				if (!subtaskIds.has(st.id)) {
+					subtaskIds.add(st.id);
+					return true;
+				}
+				return false;
+			})
+			.sort((a, b) => a.id - b.id);
+	}
+	Object.assign(taskToUpdateObject, {
+		...parsedAgentTask,
+		id: taskIdNum,
+		subtasks: finalSubtasks
+	});
+	return taskToUpdateObject;
+}
+
 /**
  * Saves updated task data (typically from an agent) to tasks.json.
  * This includes parsing the agent's output and applying updates carefully,
@@ -110,14 +167,6 @@ async function agentllmUpdatedTaskSave(
 			logWrapper.info(
 				'agentllmUpdatedTaskSave: Agent output is already an object. Validating and using directly.'
 			);
-			// If agent returns an object, we might still want to run it through a Zod schema or similar validation.
-			// For now, assuming it matches the structure `parseUpdatedTaskFromText` would produce.
-			// The `parseUpdatedTaskFromText` itself does Zod validation.
-			// We'd need to replicate that validation or trust the agent / have the agent use the Zod schema.
-			// Let's assume for now the agent provides a valid task object as per schema if not string.
-			// TODO: Add Zod validation here if agentOutput is an object.
-			// For simplicity, if it's an object, we'll assume it's the task object directly.
-			// This part might need refinement based on how agents will actually return structured objects.
 			parsedAgentTask = agentOutput;
 			if (parsedAgentTask.id !== taskIdToUpdate) {
 				// Ensure ID consistency
@@ -199,63 +248,20 @@ async function agentllmUpdatedTaskSave(
 			// Apply full update logic
 			if (typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')) {
 				// Handling subtask update (taskToUpdateObject is the subtask)
-				const [parentIdStr, subIdStr] = taskIdToUpdate.split('.');
-				const parentId = parseInt(parentIdStr, 10);
-				const subId = parseInt(subIdStr, 10);
-				const parentTaskIndex = allTasksData.tasks.findIndex(
-					(t) => t.id === parentId
+				finalUpdatedTaskForReturn = updateSubtask(
+					taskToUpdateObject,
+					parsedAgentTask,
+					taskIdToUpdate
 				);
-				// No need to find subtaskIndex again, taskToUpdateObject is the subtask reference
-
-				Object.assign(taskToUpdateObject, { ...parsedAgentTask, id: subId }); // Merge and ensure ID
-				finalUpdatedTaskForReturn = taskToUpdateObject;
 				taskUpdated = true;
 			} else {
 				// Handling main task update (taskToUpdateObject is the main task)
-				const taskIdNum = parseInt(String(taskIdToUpdate), 10);
-				// Preserve completed subtasks from originalTask if agent's task doesn't have them or mishandles them
-				let finalSubtasks = parsedAgentTask.subtasks || [];
-				if (
-					taskToUpdateObject.subtasks &&
-					taskToUpdateObject.subtasks.length > 0
-				) {
-					const completedOriginalSubtasks = taskToUpdateObject.subtasks.filter(
-						(st) => st.status === 'done' || st.status === 'completed'
-					);
-					completedOriginalSubtasks.forEach((compSub) => {
-						const updatedVersion = finalSubtasks.find(
-							(st) => st.id === compSub.id
-						);
-						if (
-							!updatedVersion ||
-							JSON.stringify(updatedVersion) !== JSON.stringify(compSub)
-						) {
-							logWrapper.warn(
-								`agentllmUpdatedTaskSave: Restoring completed subtask ${taskToUpdateObject.id}.${compSub.id} as agent modified/removed it.`
-							);
-							finalSubtasks = finalSubtasks.filter(
-								(st) => st.id !== compSub.id
-							);
-							finalSubtasks.push(compSub);
-						}
-					});
-					const subtaskIds = new Set();
-					finalSubtasks = finalSubtasks
-						.filter((st) => {
-							if (!subtaskIds.has(st.id)) {
-								subtaskIds.add(st.id);
-								return true;
-							}
-							return false;
-						})
-						.sort((a, b) => a.id - b.id);
-				}
-				Object.assign(taskToUpdateObject, {
-					...parsedAgentTask,
-					id: taskIdNum,
-					subtasks: finalSubtasks
-				});
-				finalUpdatedTaskForReturn = taskToUpdateObject;
+				finalUpdatedTaskForReturn = updateMainTask(
+					taskToUpdateObject,
+					parsedAgentTask,
+					taskIdToUpdate,
+					logWrapper
+				);
 				taskUpdated = true;
 			}
 		}

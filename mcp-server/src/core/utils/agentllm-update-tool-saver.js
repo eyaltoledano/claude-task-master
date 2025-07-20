@@ -55,12 +55,6 @@ async function agentllmUpdateSave(
 			logWrapper.info(
 				'agentllmUpdateSave: Agent output is already an array. Validating structure (basic).'
 			);
-			// TODO: Add more robust Zod validation here if agentOutput is an array directly.
-			// For now, assume it matches the structure `parseUpdatedTasksFromText` would produce.
-			// The `parseUpdatedTasksFromText` itself does Zod validation on its output.
-			// We might need to run each item through `updatedTaskSchema` from `update-tasks.js` if not using the parser.
-			// For simplicity, we'll rely on the agent providing valid task objects if it's an array.
-			// A more robust solution would be to validate each task object using the Zod schema from `update-tasks.js`.
 			if (
 				agentOutput.some(
 					(task) =>
@@ -128,6 +122,12 @@ async function agentllmUpdateSave(
 						`agentllmUpdateSave: Task ${originalTask.id} is completed. Agent's update for this task will be ignored to preserve completed state.`
 					);
 					// Optionally, check if agentTask differs significantly and log more details.
+					// Track skipped completed tasks
+					updatedTaskIds.push({
+						id: String(originalTask.id),
+						skipped: true,
+						reason: 'task_completed'
+					});
 				} else {
 					logWrapper.info(
 						`agentllmUpdateSave: Updating task ID ${originalTask.id}.`

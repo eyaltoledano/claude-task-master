@@ -374,7 +374,7 @@ export function AgentLLMProviderToolExecutor(
 			toolName === 'agent_llm' &&
 			toolResult &&
 			toolResult.interactionId &&
-			toolResult.hasOwnProperty('finalLLMOutput')
+			Object.prototype.hasOwnProperty.call(toolResult, 'finalLLMOutput')
 		) {
 			const {
 				interactionId,

@@ -461,7 +461,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 						delegatedCallDetails: {
 							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
 							originalCommand:
-								context.commandName || 'analyze_project_complexity',
+								context.commandName || 'analyze-complexity',
 							role: useResearch ? 'research' : 'main',
 							serviceType: 'generateText', // Agent expected to return JSON string
 							requestParameters: {

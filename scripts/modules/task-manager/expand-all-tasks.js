@@ -232,14 +232,14 @@ async function expandAllTasks(
 
 		// Return summary including the AGGREGATED telemetry data
 		return {
-			success: true, // Consider if this should change based on failures/delegations
+			success: failedCount === 0, // Success only if no failures occurred
 			expandedCount,
 			failedCount,
 			delegationSignaledCount, // Added
 			skippedCount: 0,
 			tasksToExpand: tasksToExpandCount,
 			telemetryData: aggregatedTelemetryData,
-			delegatedTaskIds: delegatedTaskIds // REVERTED and ADDED: Add collected delegated task IDs
+			delegatedTaskIds: delegatedTaskIds // Add collected delegated task IDs
 			// The 'message' in expandAllTasksDirect will use these counts.
 		};
 	} catch (error) {

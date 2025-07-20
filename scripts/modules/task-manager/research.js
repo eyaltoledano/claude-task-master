@@ -275,18 +275,18 @@ async function performResearch(
 		logFn.info(`performResearch: generateTextService call completed.`);
 		logFn.debug(`performResearch: aiResult raw: ${JSON.stringify(aiResult)}`);
 		if (aiResult && aiResult.mainResult) {
-			logFn.info(
+			logFn.debug(
 				`performResearch: aiResult.mainResult type: ${typeof aiResult.mainResult}`
 			);
 			if (
 				typeof aiResult.mainResult === 'object' &&
 				aiResult.mainResult !== null
 			) {
-				logFn.info(
+				logFn.debug(
 					`performResearch: aiResult.mainResult.type property: ${aiResult.mainResult.type}`
 				);
 			} else if (typeof aiResult.mainResult === 'string') {
-				logFn.info(
+				logFn.debug(
 					`performResearch: aiResult.mainResult (string start): ${aiResult.mainResult.substring(0, 200)}...`
 				);
 			}

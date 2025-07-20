@@ -15,7 +15,10 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
+import {
+	getDefaultNumTasks,
+	getDebugFlag
+} from '../../../../scripts/modules/config-manager.js';
 import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
@@ -23,13 +26,6 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * Direct function wrapper for parsing PRD documents and generating tasks.
  *
  * @param {Object} args - Command arguments containing projectRoot, input, output, numTasks options.
- * @param {string} args.input - Path to the input PRD file.
- * @param {string} args.output - Path to the output directory.
- * @param {string} args.numTasks - Number of tasks to generate.
- * @param {boolean} args.force - Whether to force parsing.
- * @param {boolean} args.append - Whether to append to the output file.
- * @param {boolean} args.research - Whether to use research mode.
- * @param {string} args.tag - Tag context for organizing tasks into separate task lists.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -44,8 +40,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		force,
 		append,
 		research,
-		projectRoot,
-		tag
+		projectRoot
 	} = args;
 
 	// Create the standard logger wrapper
@@ -163,7 +158,6 @@ export async function parsePRDDirect(args, log, context = {}) {
 				session,
 				mcpLog: logWrapper,
 				projectRoot,
-				tag,
 				force,
 				append,
 				research,
@@ -173,30 +167,13 @@ export async function parsePRDDirect(args, log, context = {}) {
 			'json'
 		);
 
-		logWrapper.info(
-			`parsePRDDirect: Resumed from await parsePRD. Result type: ${typeof result}`
-		);
-		if (result && typeof result === 'object') {
-			logWrapper.info(
-				`parsePRDDirect: Result keys: ${Object.keys(result).join(', ')}`
-			);
-			logWrapper.info(
-				`parsePRDDirect: result.tasks is array: ${Array.isArray(result.tasks)}`
-			);
-			logWrapper.info(
-				`parsePRDDirect: result.metadata is object: ${typeof result.metadata === 'object' && result.metadata !== null}`
-			);
-			logWrapper.info(
-				`parsePRDDirect: result.needsAgentDelegation value: ${result.needsAgentDelegation}`
-			);
-			logWrapper.info(
-				`parsePRDDirect: result.success value: ${result.success}`
-			);
-			// Optionally, log a snippet of the result if the above isn't detailed enough for diagnosis
-			// logWrapper.info(`parsePRDDirect: Resumed result (snippet): ${JSON.stringify(result, null, 2)?.substring(0, 500)}`);
-		} else {
-			logWrapper.info(
-				`parsePRDDirect: Resumed result is not an object or is null: ${JSON.stringify(result)}`
+		if (getDebugFlag()) {
+			logWrapper.debug(
+				`parsePRDDirect: Result analysis - type: ${typeof result}, keys: [${Object.keys(
+					result || {}
+				).join(', ')}], needsAgentDelegation: ${
+					result?.needsAgentDelegation
+				}, success: ${result?.success}`
 			);
 		}
 

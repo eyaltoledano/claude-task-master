@@ -280,7 +280,7 @@ async function updateSubtaskById(
 							serviceType: 'generateText',
 							requestParameters: {
 								// These are the details from the agent_llm_delegation signal's 'details' field
-								...aiServiceResponse.mainResult.details,
+								...(aiServiceResponse.mainResult.details || {}),
 								// Add specific context useful for the agent to update a subtask
 								subtaskId: subtaskId, // The ID of the subtask being updated (e.g., "1.2")
 								originalUserPrompt: prompt // The user's high-level request string

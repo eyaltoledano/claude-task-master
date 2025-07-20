@@ -1165,7 +1165,7 @@ function validateAndFixDependencies(
 		typeof tasksData !== 'object' ||
 		Object.keys(tasksData).length === 0
 	) {
-		logger.error('Invalid tasks data');
+		logger.error('Invalid tasks data: root object is missing or empty');
 		return false;
 	}
 
@@ -1177,7 +1177,7 @@ function validateAndFixDependencies(
 		!currentTagData.tasks ||
 		!Array.isArray(currentTagData.tasks)
 	) {
-		logger.error('Invalid tasks data');
+		logger.error(`Invalid tasks data: tag '${targetTag}' is missing or has invalid structure`);
 		return false;
 	}
 

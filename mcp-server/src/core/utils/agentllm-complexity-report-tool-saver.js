@@ -138,12 +138,16 @@ async function agentllmComplexityReportSave(
 		// Construct the report meta block
 		// TODO: Determine how to get originalTaskCount if needed for meta, might require passing more original args.
 		// For now, tasksAnalyzed will be the count from the agent, totalTasks might be unknown here.
+		const tasksJsonPath = path.resolve(projectRoot, '.taskmaster/tasks/tasks.json');
+		const tasksData = readJSON(tasksJsonPath, projectRoot, tag);
+		const projectName = tasksData?.metadata?.projectName || getProjectName(null);
+
 		const reportMeta = {
 			generatedAt: new Date().toISOString(),
 			tasksAnalyzed: agentComplexityAnalysis.length, // Number of tasks agent analyzed in this run
 			analysisCount: finalComplexityAnalysis.length, // Total in the report after merge/overwrite
 			thresholdScore: originalToolArgs?.threshold || 5, // Default if not in args
-			projectName: getProjectName(null), // Pass session or projectRoot if available to getProjectName
+			projectName, 
 			usedResearch: originalToolArgs?.research || false
 		};
 
