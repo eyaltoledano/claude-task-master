@@ -113,15 +113,14 @@ async function performResearch(
 		let autoDiscoveredIds = [];
 
 		try {
-			const tasksPathForDiscovery = path.join(
-				// tasksPathForDiscovery instead of tasksPath
+			const tasksPath = path.join(
 				projectRoot,
 				'.taskmaster',
 				'tasks',
 				'tasks.json'
 			);
-			// Use tasksPathForDiscovery
-			const tasksData = await readJSON(tasksPathForDiscovery, projectRoot, tag);
+			// Use tasksPath
+			const tasksData = await readJSON(tasksPath, projectRoot, tag);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
@@ -460,15 +459,6 @@ async function performResearch(
 					logFn.debug(
 						`performResearch: researchContentToAppend for saveTo: ${researchContentToAppend.substring(0, 200)}...`
 					);
-					const tasksPathForSave = path.join(
-						projectRoot,
-						'.taskmaster',
-						'tasks',
-						'tasks.json'
-					);
-					logFn.debug(
-						`performResearch: tasksPathForSave for saveTo: ${tasksPathForSave}`
-					);
 
 					const internalUpdateContextForSave = {
 						session: context.session,
@@ -490,7 +480,7 @@ async function performResearch(
 							'./update-subtask-by-id.js'
 						);
 						await updateSubtaskById(
-							tasksPathForSave,
+							tasksPath,
 							options.saveTo,
 							researchContentToAppend,
 							false,
@@ -505,7 +495,7 @@ async function performResearch(
 							.default;
 						const taskIdNumToSave = parseInt(options.saveTo, 10);
 						await updateTaskById(
-							tasksPathForSave,
+							tasksPath,
 							taskIdNumToSave,
 							researchContentToAppend,
 							false,
@@ -956,14 +946,14 @@ async function handleSaveToTask(
 		const trimmedTaskId = taskId.trim();
 		const conversationThread = formatConversationForSaving(conversationHistory);
 		const isSubtask = trimmedTaskId.includes('.');
-		const tasksPathForSave = path.join(
+		const tasksPath = path.join(
 			projectRoot,
 			'.taskmaster',
 			'tasks',
 			'tasks.json'
 		);
 
-		if (!fs.existsSync(tasksPathForSave)) {
+		if (!fs.existsSync(tasksPath)) {
 			console.log(
 				chalk.red('❌ Tasks file not found. Please run task-master init first.')
 			);
@@ -971,7 +961,7 @@ async function handleSaveToTask(
 		}
 
 		const tagToUse = context.tag || cliGetCurrentTag(projectRoot) || 'master';
-		const data = cliReadJSON(tasksPathForSave, projectRoot, tagToUse);
+		const data = cliReadJSON(tasksPath, projectRoot, tagToUse);
 
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
@@ -1017,7 +1007,7 @@ async function handleSaveToTask(
 		);
 
 		// Write the modified data back to the file
-		cliWriteJSON(tasksPathForSave, data, projectRoot, tagToUse);
+		cliWriteJSON(tasksPath, data, projectRoot, tagToUse);
 
 		console.log(
 			chalk.green(
