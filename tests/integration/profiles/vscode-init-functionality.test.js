@@ -35,10 +35,10 @@ describe('VSCode Profile Initialization Functionality', () => {
 		expect(Array.isArray(vscodeProfile.globalReplacements)).toBe(true);
 	});
 
-	test('vscode.js configures .mdc to .md extension mapping', () => {
+	test('vscode.js configures .mdc to .instructions.md extension mapping', () => {
 		// Check that the profile object has the correct file mapping behavior (vscode converts to .md)
 		expect(vscodeProfile.fileMap['rules/cursor_rules.mdc']).toBe(
-			'vscode_rules.md'
+			'vscode_rules.instructions.md'
 		);
 	});
 

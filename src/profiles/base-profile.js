@@ -234,6 +234,7 @@ export function createProfile(editorConfig) {
 		globalReplacements: baseGlobalReplacements,
 		conversionConfig,
 		getTargetRuleFilename,
+		targetExtension,
 		// Optional lifecycle hooks
 		...(onAdd && { onAddRulesProfile: onAdd }),
 		...(onRemove && { onRemoveRulesProfile: onRemove }),
