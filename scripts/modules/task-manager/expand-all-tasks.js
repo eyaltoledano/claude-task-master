@@ -232,7 +232,7 @@ async function expandAllTasks(
 
 		// Return summary including the AGGREGATED telemetry data
 		return {
-			success: failedCount === 0, // Success only if no failures occurred
+			success: true, // Overall operation succeeded, even if some tasks failed
 			expandedCount,
 			failedCount,
 			delegationSignaledCount, // Added

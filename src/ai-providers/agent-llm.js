@@ -49,6 +49,10 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	async streamText(params) {
+		// Basic validation before delegation
+		if (!params.messages || !Array.isArray(params.messages)) {
+			throw new Error('Messages array is required for delegation');
+		}
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();

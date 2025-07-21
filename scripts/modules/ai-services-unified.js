@@ -474,7 +474,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Enhanced skip logic for agentllm in non-MCP (CLI) contexts
-			if (providerName?.toLowerCase() === 'agentllm' && outputType === 'cli') {
+			if (providerName?.toLowerCase() === 'agentllm' && (outputType === 'cli' || outputType === 'text')) {
 				log(
 					'warn',
 					`Skipping role '${currentRole}' (Provider: ${providerName}): AgentLLM is intended for MCP delegation and is skipped for direct CLI calls.`
