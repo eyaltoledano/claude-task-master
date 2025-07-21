@@ -637,7 +637,7 @@ function showAddSubtaskHelp() {
     chalk.cyan('Examples:') + '\n' +
     '  task-master add-subtask --parent=\'5\' --task-id=\'8\'\n' +
     '  task-master add-subtask -p \'5\' -t \'Implement login UI\' -d \'Create the login form\'\n' +
-    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details $\'Handle 401 Unauthorized.\nHandle 500 Server Error.\' --generate',
+    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details "Handle 401 Unauthorized.\\nHandle 500 Server Error." --generate',
     { padding: 1, borderColor: 'blue', borderStyle: 'round' }
   ));
 }
