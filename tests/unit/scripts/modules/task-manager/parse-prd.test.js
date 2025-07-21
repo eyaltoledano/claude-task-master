@@ -525,9 +525,7 @@ describe('parsePRD', () => {
 		// In test environment, process.exit is prevented and error is thrown instead
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3)
-		).rejects.toThrow(
-			"process.exit was called with code 1"
-		);
+		).rejects.toThrow('process.exit was called with code 1');
 
 		// Verify the file was NOT written
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
