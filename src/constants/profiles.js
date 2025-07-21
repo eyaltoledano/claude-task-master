@@ -1,5 +1,5 @@
 /**
- * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
+ * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'kilo' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
  */
 
 /**
@@ -18,6 +18,7 @@
  * - gemini: Gemini integration
  * - kiro: Kiro IDE rules
  * - opencode: OpenCode integration
+ * - kilo: Kilo Code integration
  * - roo: Roo Code IDE rules
  * - trae: Trae IDE rules
  * - vscode: VS Code with GitHub Copilot integration
@@ -38,6 +39,7 @@ export const RULE_PROFILES = [
 	'gemini',
 	'kiro',
 	'opencode',
+	'kilo',
 	'roo',
 	'trae',
 	'vscode',
@@ -51,6 +53,20 @@ export const RULE_PROFILES = [
  * @description Available Roo Code IDE modes for rule generation
  */
 export const ROO_MODES = [
+	'architect',
+	'ask',
+	'orchestrator',
+	'code',
+	'debug',
+	'test'
+];
+
+/**
+ * Centralized enum for all supported Kilo agent modes
+ * @type {string[]}
+ * @description Available Kilo Code modes for rule generation
+ */
+export const KILO_MODES = [
 	'architect',
 	'ask',
 	'orchestrator',
