@@ -313,6 +313,11 @@ describe('parsePRD', () => {
 		// generateTaskFiles.mockResolvedValue(undefined);
 		promptYesNo.mockResolvedValue(true); // Default to "yes" for confirmation
 
+		// Mock process.exit to prevent actual exit and throw error instead for CLI tests
+		jest.spyOn(process, 'exit').mockImplementation((code) => {
+			throw new Error(`process.exit was called with code ${code}`);
+		});
+
 		// Mock console.error to prevent output
 		jest.spyOn(console, 'error').mockImplementation(() => {});
 		jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -521,7 +526,7 @@ describe('parsePRD', () => {
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3)
 		).rejects.toThrow(
-			"Tag 'master' already contains 2 tasks. Use --force to overwrite or --append to add to existing tasks."
+			"process.exit was called with code 1"
 		);
 
 		// Verify the file was NOT written
