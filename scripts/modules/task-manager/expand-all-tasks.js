@@ -131,7 +131,7 @@ async function expandAllTasks(
 				COMPLEXITY_REPORT_FILE
 			);
 			if (fs.existsSync(complexityReportPath)) {
-				complexityReport = readJSON(complexityReportPath);
+				complexityReport = readJSON(complexityReportPath, projectRoot, data.tag || contextTag);
 				logger.debug('Loaded complexity report for task scores');
 			}
 		} catch (error) {
