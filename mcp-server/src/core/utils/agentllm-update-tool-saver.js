@@ -132,7 +132,10 @@ async function agentllmUpdateSave(
 					logWrapper.info(
 						`agentllmUpdateSave: Updating task ID ${originalTask.id}.`
 					);
-					updatedTaskIds.push(String(originalTask.id)); // Store ID of task being updated
+					updatedTaskIds.push({
+						id: String(originalTask.id),
+						skipped: false
+					});
 					actualUpdatesMade++;
 
 					// Preserve completed subtasks from originalTask

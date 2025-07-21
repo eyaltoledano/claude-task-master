@@ -29,8 +29,10 @@ async function saveResearchToFile(researchText, query, projectRoot, log) {
 			'docs',
 			'research'
 		);
-		if (!fs.existsSync(researchDir)) {
-			fs.mkdirSync(researchDir, { recursive: true });
+		try {
+			await fs.promises.access(researchDir);
+		} catch {
+			await fs.promises.mkdir(researchDir, { recursive: true });
 		}
 
 		const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -47,7 +49,7 @@ async function saveResearchToFile(researchText, query, projectRoot, log) {
 
 		const fileContent = `# Research Query: ${query}\n\n## Date: ${new Date().toLocaleDateString()}\n\n${researchText}`;
 
-		fs.writeFileSync(filePath, fileContent, 'utf8');
+		await fs.promises.writeFile(filePath, fileContent, 'utf8');
 		log.info(
 			`agentllmResearchSave (saveToFile): Research saved to: ${path.relative(projectRoot, filePath)}`
 		);

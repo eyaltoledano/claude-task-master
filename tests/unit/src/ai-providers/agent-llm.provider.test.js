@@ -27,11 +27,10 @@ describe('AgentLLMProvider', () => {
 	describe('generateText', () => {
 		test('should return agent_llm_delegation with interactionId and details', async () => {
 			const params = {
-				modelId: 'test-model',
+				//modelId: 'test-model',
 				messages: [{ role: 'user', content: 'hello' }],
-				maxTokens: 100,
-				temperature: 0.7,
-				baseURL: 'http://localhost:8080' // Example other param
+				//maxTokens: 100,
+				//temperature: 0.7,
 			};
 			const result = await provider.generateText(params);
 
@@ -40,21 +39,34 @@ describe('AgentLLMProvider', () => {
 			expect(result.interactionId.length).toBeGreaterThan(0); // UUIDs are not empty
 
 			const expectedDetails = {
-				apiKey: null, // As set by the provider
-				modelId: params.modelId,
+				//modelId: params.modelId,
 				messages: params.messages,
-				maxTokens: params.maxTokens,
-				temperature: params.temperature,
-				baseURL: params.baseURL
+				//maxTokens: params.maxTokens,
+				//temperature: params.temperature,
 			};
 			expect(result.details).toEqual(expectedDetails);
 		});
 	});
 
 	describe('streamText', () => {
+		test('should throw error when messages is missing', async () => {
+			const params = {
+			//modelId: 'test-model-stream'
+			};
+			await expect(provider.streamText(params)).rejects.toThrow();
+		});
+
+		test('should throw error when messages is not an array', async () => {
+			const params = {
+			//modelId: 'test-model-stream',
+			messages: 'not-an-array'
+			};
+			await expect(provider.streamText(params)).rejects.toThrow();
+		});
+
 		test('should return agent_llm_delegation with interactionId and details', async () => {
 			const params = {
-				modelId: 'test-model-stream',
+				//modelId: 'test-model-stream',
 				messages: [{ role: 'user', content: 'hello stream' }]
 			};
 			const result = await provider.streamText(params);
@@ -64,12 +76,10 @@ describe('AgentLLMProvider', () => {
 			expect(result.interactionId.length).toBeGreaterThan(0);
 
 			const expectedDetails = {
-				apiKey: null,
-				modelId: params.modelId,
+				//modelId: params.modelId,
 				messages: params.messages,
-				maxTokens: undefined, // Assuming these are not set if not in params
-				temperature: undefined,
-				baseURL: undefined
+				//maxTokens: undefined, // Assuming these are not set if not in params
+				//temperature: undefined,
 			};
 			expect(result.details).toEqual(expectedDetails);
 		});
@@ -78,7 +88,7 @@ describe('AgentLLMProvider', () => {
 	describe('generateObject', () => {
 		test('should return agent_llm_delegation with interactionId and details including schema and objectName', async () => {
 			const params = {
-				modelId: 'test-model-object',
+				//modelId: 'test-model-object',
 				messages: [{ role: 'user', content: 'generate obj' }],
 				schema: { type: 'object', properties: { key: { type: 'string' } } },
 				objectName: 'TestObj'
@@ -90,14 +100,12 @@ describe('AgentLLMProvider', () => {
 			expect(result.interactionId.length).toBeGreaterThan(0);
 
 			const expectedDetails = {
-				apiKey: null,
-				modelId: params.modelId,
+				//modelId: params.modelId,
 				messages: params.messages,
-				maxTokens: undefined,
-				temperature: undefined,
+				//maxTokens: undefined,
+				//temperature: undefined,
 				schema: params.schema,
 				objectName: params.objectName,
-				baseURL: undefined
 			};
 			expect(result.details).toEqual(expectedDetails);
 			expect(result.details.schema).toBeDefined();

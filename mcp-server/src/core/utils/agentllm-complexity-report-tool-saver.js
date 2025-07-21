@@ -104,8 +104,9 @@ async function agentllmComplexityReportSave(
 			originalToolArgs?.from !== undefined ||
 			originalToolArgs?.to !== undefined;
 
-		if (fs.existsSync(outputPath)) {
-			existingReport = readJSON(outputPath, projectRoot, tag);
+		try {
+			await fs.promises.access(outputPath); // Check if file exists
+			existingReport = await readJSON(outputPath, projectRoot, tag);
 			if (
 				existingReport &&
 				Array.isArray(existingReport.complexityAnalysis) &&
@@ -133,6 +134,8 @@ async function agentllmComplexityReportSave(
 				);
 				finalComplexityAnalysis = agentComplexityAnalysis;
 			}
+		} catch {
+			// File doesn't exist, continue without existing report
 		}
 
 		// Construct the report meta block
@@ -158,14 +161,18 @@ async function agentllmComplexityReportSave(
 			) // Sort by taskId
 		};
 
-		if (!fs.existsSync(outputDir)) {
+		// Ensure the output directory exists before writing the file
+		try {
+			await fs.promises.access(outputDir);
+		} catch (error) {
+			// If directory doesn't exist, create it
 			logWrapper.info(
 				`agentllmComplexityReportSave: Creating output directory: ${outputDir}`
 			);
-			fs.mkdirSync(outputDir, { recursive: true });
+			await fs.promises.mkdir(outputDir, { recursive: true });
 		}
 
-		writeJSON(outputPath, reportToSave, projectRoot, tag);
+		await writeJSON(outputPath, reportToSave, projectRoot, tag);
 		logWrapper.info(
 			`agentllmComplexityReportSave: Complexity report successfully written to ${outputPath} for tag '${tag}'`
 		);

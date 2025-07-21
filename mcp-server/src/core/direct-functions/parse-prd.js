@@ -6,8 +6,6 @@
 import path from 'path';
 import fs from 'fs';
 // Add these if not already present, adjust paths as necessary
-import { writeJSON } from '../../../../scripts/modules/utils.js';
-import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
@@ -26,6 +24,13 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * Direct function wrapper for parsing PRD documents and generating tasks.
  *
  * @param {Object} args - Command arguments containing projectRoot, input, output, numTasks options.
+ * @param {string} args.input - Path to the input PRD file.
+ * @param {string} args.output - Path to the output directory.
+ * @param {string} args.numTasks - Number of tasks to generate.
+ * @param {boolean} args.force - Whether to force parsing.
+ * @param {boolean} args.append - Whether to append to the output file.
+ * @param {boolean} args.research - Whether to use research mode.
+ * @param {string} args.tag - Tag context for organizing tasks into separate task lists.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -40,7 +45,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 		force,
 		append,
 		research,
-		projectRoot
+		projectRoot,
+		tag
 	} = args;
 
 	// Create the standard logger wrapper
@@ -158,6 +164,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				session,
 				mcpLog: logWrapper,
 				projectRoot,
+				tag,
 				force,
 				append,
 				research,

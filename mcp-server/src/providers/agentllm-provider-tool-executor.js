@@ -398,12 +398,12 @@ export function AgentLLMProviderToolExecutor(
 				);
 				try {
 					if (agentLLMStatus === 'llm_response_error' || error) {
-						const agentError =
+						const errorMessage =
 							error ||
 							(typeof finalLLMOutput === 'string'
 								? new Error(finalLLMOutput)
 								: new Error('Agent LLM call failed'));
-						throw agentError;
+						throw errorMessage;
 					}
 
 					const { mainResult, telemetryData, tagInfo } =

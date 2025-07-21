@@ -39,9 +39,9 @@ import {
 import {
 	AnthropicAIProvider,
 	AzureProvider,
+	AgentLLMProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
-	AgentLLMProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GroqProvider,

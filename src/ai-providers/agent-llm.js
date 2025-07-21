@@ -8,7 +8,7 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	validateAuth(params) {
-		// No validation needed
+		// AgentLLM delegates calls to MCP clients and doesn't require API key validation
 	}
 
 	getClient(params) {
@@ -35,12 +35,10 @@ class AgentLLMProvider extends BaseAIProvider {
 			params;
 		const interactionId = uuidv4();
 		const packagedParams = {
-			apiKey: null,
-			modelId,
+			//modelId,
 			messages,
-			maxTokens,
-			temperature,
-			baseURL: params.baseURL, // Though likely not used by agent-llm directly
+			//maxTokens,
+			//temperature,
 			...restApiParams
 		};
 		return {
@@ -55,12 +53,10 @@ class AgentLLMProvider extends BaseAIProvider {
 			params;
 		const interactionId = uuidv4();
 		const packagedParams = {
-			apiKey: null,
-			modelId,
+			//modelId,
 			messages,
-			maxTokens,
-			temperature,
-			baseURL: params.baseURL, // Though likely not used by agent-llm directly
+			//maxTokens,
+			//temperature,
 			...restApiParams
 		};
 		return {
@@ -71,25 +67,33 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	async generateObject(params) {
+		// Basic validation before delegation
+		if (!params.messages || !Array.isArray(params.messages)) {
+			throw new Error('Messages array is required for delegation');
+		}
+		if (!params.schema) {
+			throw new Error('Schema is required for object generation delegation');
+		}
+		if (!params.objectName) {
+			throw new Error('Object name is required for object generation delegation');
+		}
 		const {
-			modelId,
+			//modelId,
 			messages,
-			maxTokens,
-			temperature,
+			//maxTokens,
+			//temperature,
 			schema,
 			objectName,
 			...restApiParams
 		} = params;
 		const interactionId = uuidv4();
 		const packagedParams = {
-			apiKey: null,
-			modelId,
+			//modelId,
 			messages,
-			maxTokens,
-			temperature,
+			//maxTokens,
+			//temperature,
 			schema,
 			objectName,
-			baseURL: params.baseURL, // Though likely not used by agent-llm directly
 			...restApiParams
 		};
 		return {

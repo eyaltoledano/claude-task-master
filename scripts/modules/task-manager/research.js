@@ -17,6 +17,7 @@ import {
 	log as consoleLog,
 	findProjectRoot,
 	readJSON,
+	writeJSON,
 	flattenTasksWithSubtasks
 } from '../utils.js';
 import {
@@ -119,7 +120,6 @@ async function performResearch(
 				'tasks',
 				'tasks.json'
 			);
-			// Use tasksPath
 			const tasksData = await readJSON(tasksPath, projectRoot, tag);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
@@ -770,12 +770,6 @@ async function handleFollowUpQuestions(
 	let interactiveSaveOccurred = false;
 
 	try {
-		// Import required modules for saving, renaming to avoid conflict in this scope
-		const { readJSON: cliReadJSON } = await import('../utils.js');
-		const updateTaskByIdCLI = (await import('./update-task-by-id.js')).default;
-		const { updateSubtaskById: updateSubtaskByIdCLI } = await import(
-			'./update-subtask-by-id.js'
-		);
 
 		// Initialize conversation history with the initial Q&A
 		const conversationHistory = [
@@ -905,7 +899,6 @@ async function handleFollowUpQuestions(
  * @param {string} projectRoot - Project root directory
  * @param {Object} context - Execution context (original from performResearch)
  * @param {Object} logFn - Logger function (original from performResearch)
- * @param {Function} cliReadJSON - readJSON function specifically for CLI.
  * @param {Function} updateTaskByIdCLI - updateTaskById function for CLI.
  * @param {Function} updateSubtaskByIdCLI - updateSubtaskById function for CLI.
  * @returns {Promise<boolean>} True if save was successful, false otherwise.
@@ -916,13 +909,6 @@ async function handleSaveToTask(
 	context, // Original context from performResearch
 	logFn // Original logFn from performResearch
 ) {
-	// Import necessary file utilities directly inside the handler
-	const {
-		readJSON: cliReadJSON,
-		writeJSON: cliWriteJSON,
-		getCurrentTag: cliGetCurrentTag
-	} = await import('../utils.js');
-
 	try {
 		// Get task ID from user
 		const { taskId } = await inquirer.prompt([
@@ -960,9 +946,7 @@ async function handleSaveToTask(
 			return false;
 		}
 
-		const tagToUse = context.tag || cliGetCurrentTag(projectRoot) || 'master';
-		const data = cliReadJSON(tasksPath, projectRoot, tagToUse);
-
+		const data = readJSON(tasksPath, projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return false;
@@ -1007,7 +991,7 @@ async function handleSaveToTask(
 		);
 
 		// Write the modified data back to the file
-		cliWriteJSON(tasksPath, data, projectRoot, tagToUse);
+		writeJSON(tasksPath, data, projectRoot, context.tag);
 
 		console.log(
 			chalk.green(

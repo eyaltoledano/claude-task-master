@@ -3727,10 +3727,7 @@ Examples:
 			const taskMaster = initTaskMaster({});
 			const projectRoot = taskMaster.getProjectRoot(); // Find project root for context
 			const { response, setup } = options;
-			console.log(
-				chalk.blue('Response language set to:', JSON.stringify(options))
-			);
-			let responseLanguage = response || 'English';
+			let responseLanguage = response !== undefined ? response : 'English';
 			if (setup) {
 				console.log(
 					chalk.blue('Starting interactive response language setup...')
@@ -3772,6 +3769,7 @@ Examples:
 						`❌ Error setting response language: ${result.error.message}`
 					)
 				);
+				process.exit(1);
 			}
 		});
 
