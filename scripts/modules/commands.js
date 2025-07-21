@@ -2838,7 +2838,7 @@ ${result.result}
 			'-c, --convert',
 			'Convert the subtask to a standalone task instead of deleting it'
 		)
-		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--generate', 'Regenerate task files after removing subtask')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -2849,7 +2849,7 @@ ${result.result}
 
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
-			const generateFiles = !options.skipGenerate;
+			const generateFiles = options.generate || false;
 			const tag = taskMaster.getCurrentTag();
 
 			if (!subtaskIds) {
