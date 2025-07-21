@@ -2381,7 +2381,8 @@ ${result.result}
 		.action(async (taskId, options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			};
 			// Only pass complexityReportPath if user provided a custom path
 			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
@@ -4483,11 +4484,13 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.option('--show-metadata', 'Show detailed metadata for each tag')
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					tasksPath: options.file || true,
+					tag: options.tag
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
