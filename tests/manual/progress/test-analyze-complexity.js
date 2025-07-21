@@ -623,21 +623,24 @@ async function main() {
 	try {
 		switch (testType.toLowerCase()) {
 			case 'mcp':
-			case 'mcp-streaming':
+			case 'mcp-streaming': {
 				await testMCPStreaming();
 				break;
+			}
 
 			case 'cli':
-			case 'cli-streaming':
+			case 'cli-streaming': {
 				await testCLIStreaming();
 				break;
+			}
 
 			case 'non-streaming':
-			case 'non':
+			case 'non': {
 				await testNonStreaming();
 				break;
+			}
 
-			case 'both':
+			case 'both': {
 				console.log(
 					chalk.yellow(
 						'Running both MCP streaming and non-streaming tests...\n'
@@ -648,8 +651,9 @@ async function main() {
 				const nonStreamingResult = await testNonStreaming();
 				compareResults(mcpStreamingResult, nonStreamingResult);
 				break;
+			}
 
-			case 'all':
+			case 'all': {
 				console.log(chalk.yellow('Running all test types...\n'));
 				const mcpResult = await testMCPStreaming();
 				console.log('\n' + '='.repeat(60) + '\n');
@@ -668,8 +672,9 @@ async function main() {
 					`Non-streaming: ${nonStreamResult.success ? '✅ PASS' : '❌ FAIL'}`
 				);
 				break;
+			}
 
-			default:
+			default: {
 				console.log(chalk.red(`Unknown test type: ${testType}`));
 				console.log(
 					chalk.yellow(
@@ -677,6 +682,7 @@ async function main() {
 					)
 				);
 				process.exit(1);
+			}
 		}
 
 		console.log(chalk.green('\n🎉 Tests completed successfully!'));
