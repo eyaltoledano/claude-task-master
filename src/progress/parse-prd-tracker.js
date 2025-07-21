@@ -59,8 +59,8 @@ class ParsePrdTracker extends BaseProgressTracker {
 		}
 
 		// Normalize priority
-		const normalizedPriority = ['high', 'medium', 'low'].includes(priority)
-			? priority
+		const normalizedPriority = ['high', 'medium', 'low'].includes(priority.toLowerCase())
+			? priority.toLowerCase()
 			: 'medium';
 
 		// Update counters
