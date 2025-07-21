@@ -296,6 +296,7 @@ async function parsePRDWithStreaming(
 				} else {
 					// CLI context should show error and exit
 					console.error(chalk.red(overwriteError.message));
+					process.exit(1);
 				}
 			} else {
 				// Force overwrite is true

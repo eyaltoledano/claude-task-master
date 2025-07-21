@@ -549,7 +549,7 @@ async function main() {
 				await testNonStreaming(numTasks);
 				break;
 
-			case 'both':
+			case 'both': {
 				console.log(
 					chalk.yellow(
 						'Running both MCP streaming and non-streaming tests...\n'
@@ -560,8 +560,9 @@ async function main() {
 				const nonStreamingResult = await testNonStreaming(numTasks);
 				compareResults(mcpStreamingResult, nonStreamingResult);
 				break;
+			}
 
-			case 'all':
+			case 'all': {
 				console.log(chalk.yellow('Running all test types...\n'));
 				const mcpResult = await testMCPStreaming(numTasks);
 				console.log('\n' + '='.repeat(60) + '\n');
@@ -580,6 +581,7 @@ async function main() {
 					`Non-streaming: ${nonStreamResult.success ? '✅ PASS' : '❌ FAIL'}`
 				);
 				break;
+			}
 
 			default:
 				console.log(chalk.red(`Unknown test type: ${testType}`));
