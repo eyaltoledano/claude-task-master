@@ -184,17 +184,13 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   > **Note**: Although options are defined with kebab-case, like `--num-tasks`, Commander.js stores them internally as camelCase properties. Access them in code as `options.numTasks`, not `options['num-tasks']`.
 
 - **Boolean Flag Conventions**:
-  - ✅ DO: Use positive flags for enabling optional behavior
-  - ✅ DO: Use `--skip-` prefix only when the default behavior is to perform an action
+  - ✅ DO: Use positive flags with `--skip-` prefix for disabling behavior
   - ❌ DON'T: Use negated boolean flags with `--no-` prefix
   - ✅ DO: Use consistent flag handling across all commands
 
   ```javascript
-  // ✅ DO: Use positive flag when default is false
-  .option('--generate', 'Generate task files after operation')
-  
-  // ✅ DO: Use skip- prefix when default is true
-  .option('--skip-validation', 'Skip input validation')
+  // ✅ DO: Use positive flag with skip- prefix 
+  .option('--skip-generate', 'Skip generating task files')
   
   // ❌ DON'T: Use --no- prefix 
   .option('--no-generate', 'Skip generating task files')
@@ -203,10 +199,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   > **Important**: When handling boolean flags in the code, make your intent clear:
   ```javascript
   // ✅ DO: Use clear variable naming that matches the flag's intent
-  const generateFiles = options.generate || false;
-  
-  // ✅ DO: For skip flags, use logical negation
-  const validateInput = !options.skipValidation;
+  const generateFiles = !options.skipGenerate;
   
   // ❌ DON'T: Use confusing double negatives
   const dontSkipGenerate = !options.skipGenerate;
