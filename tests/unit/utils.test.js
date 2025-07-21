@@ -752,7 +752,7 @@ test('getTagAwareFilePath should use slugified tags in file paths', () => {
 	expect(result).toBe(expected); // Same expected path as 'master'
 
 	// Regular tag should be slugified
-	let parsedBasePath = path.parse(relativeBasePath);
+	const parsedBasePath = path.parse(relativeBasePath);
 	let slug = slugifyTagForFilePath('feature-branch');
 	let expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
 	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);

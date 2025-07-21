@@ -54,7 +54,9 @@ class AgentLLMProvider extends BaseAIProvider {
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } = params;
 		const interactionId = uuidv4();
 		const packagedParams = {
+			// modelId excluded: agent determines the model
 			messages,
+			// maxTokens, temperature excluded: mcp client manages these settings
 			...restApiParams
 		};
 		return {
@@ -79,7 +81,9 @@ class AgentLLMProvider extends BaseAIProvider {
 			modelId, messages, maxTokens, temperature, schema, objectName, ...restApiParams} = params;
 		const interactionId = uuidv4();
 		const packagedParams = {
+			// modelId excluded: agent determines the model
 			messages,
+			// maxTokens, temperature excluded: mcp client manages these settings
 			schema,
 			objectName,
 			...restApiParams
