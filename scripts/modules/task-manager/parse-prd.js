@@ -719,7 +719,7 @@ async function parsePRDWithoutStreaming(
 
 				if (hasExistingTasks) {
 					const overwriteError = new Error(
-						`Tag '${targetTag}' already contains ${allData[targetTag].tasks.length} tasks. Use --force to overwrite or --append.`
+						`Tag '${targetTag}' already contains ${allData[targetTag].tasks.length} tasks. Use --force to overwrite or --append to add to existing tasks.`
 					);
 					report(overwriteError.message, 'error');
 					if (isMCP) {
