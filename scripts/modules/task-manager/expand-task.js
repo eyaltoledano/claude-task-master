@@ -37,15 +37,6 @@ import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 import { parseSubtasksFromText } from './subtask-parser.js';
 
 /**
- * Helper function to detect if expandTask is being called from expandAllTasks
- * @returns {boolean} True if called from expand-all-tasks
- */
-function isCalledFromExpandAll() {
-	const stack = new Error().stack;
-	return stack.includes('expandAllTasks') || stack.includes('expand-all-tasks');
-}
-
-/**
  * Expand a task into subtasks using the unified AI service (generateTextService).
  * Appends new subtasks by default. Replaces existing subtasks if force=true.
  * Integrates complexity report to determine subtask count and prompt if available,
@@ -58,6 +49,7 @@ function isCalledFromExpandAll() {
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {boolean} [context.isChildOperation=false] - If true, indicates this is called from expandAllTasks to control UI display.
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
@@ -76,10 +68,11 @@ async function expandTask(
 		mcpLog,
 		projectRoot: contextProjectRoot,
 		tag,
-		parentTracker
+		parentTracker,
+		isChildOperation = false
 	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
-	const isChildExpansion = isCalledFromExpandAll();
+	const isChildExpansion = isChildOperation;
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);

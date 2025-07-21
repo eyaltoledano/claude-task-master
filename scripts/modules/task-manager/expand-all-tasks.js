@@ -131,7 +131,11 @@ async function expandAllTasks(
 				COMPLEXITY_REPORT_FILE
 			);
 			if (fs.existsSync(complexityReportPath)) {
-				complexityReport = readJSON(complexityReportPath, projectRoot, data.tag || contextTag);
+				complexityReport = readJSON(
+					complexityReportPath,
+					projectRoot,
+					data.tag || contextTag
+				);
 				logger.debug('Loaded complexity report for task scores');
 			}
 		} catch (error) {
@@ -259,7 +263,8 @@ async function expandAllTasks(
 						projectRoot,
 						tag: data.tag || contextTag,
 						parentTracker,
-						onSubtaskProgress // Pass the callback
+						onSubtaskProgress, // Pass the callback
+						isChildOperation: true // Indicate this is called from expandAllTasks
 					}, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
