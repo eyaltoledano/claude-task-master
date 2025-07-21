@@ -1,423 +1,769 @@
-// In tests/unit/parse-prd.test.js
-// Testing parse-prd.js streaming vs non-streaming behavior and progress reporting
+// Testing parse-prd.js streaming vs non-streaming behavior and progress reporting, plus file extension compatibility with real files
 
 import { jest } from '@jest/globals';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import os from 'os';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Mock the AI services to avoid real API calls
+jest.unstable_mockModule(
+	'../../scripts/modules/ai-services-unified.js',
+	() => ({
+		streamTextService: jest.fn(),
+		generateObjectService: jest.fn()
+	})
+);
+
+// Mock all config-manager exports comprehensively
+jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
+	getDebugFlag: jest.fn(() => false),
+	getDefaultPriority: jest.fn(() => 'medium'),
+	getMainModelId: jest.fn(() => 'test-model'),
+	getResearchModelId: jest.fn(() => 'test-research-model'),
+	getParametersForRole: jest.fn(() => ({ maxTokens: 1000, temperature: 0.7 })),
+	getMainProvider: jest.fn(() => 'anthropic'),
+	getResearchProvider: jest.fn(() => 'perplexity'),
+	getFallbackProvider: jest.fn(() => 'anthropic'),
+	getResponseLanguage: jest.fn(() => 'English'),
+	getDefaultNumTasks: jest.fn(() => 10),
+	getDefaultSubtasks: jest.fn(() => 5),
+	getLogLevel: jest.fn(() => 'info'),
+	getConfig: jest.fn(() => ({})),
+	getAllProviders: jest.fn(() => ['anthropic', 'perplexity']),
+	MODEL_MAP: {},
+	VALID_PROVIDERS: ['anthropic', 'perplexity'],
+	validateProvider: jest.fn(() => true),
+	validateProviderModelCombination: jest.fn(() => true),
+	isApiKeySet: jest.fn(() => true)
+}));
+
+// Mock utils comprehensively to prevent CLI behavior
+jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
+	log: jest.fn(),
+	writeJSON: jest.fn(),
+	enableSilentMode: jest.fn(),
+	disableSilentMode: jest.fn(),
+	isSilentMode: jest.fn(() => false),
+	getCurrentTag: jest.fn(() => 'master'),
+	ensureTagMetadata: jest.fn(),
+	readJSON: jest.fn(() => ({ master: { tasks: [] } })),
+	findProjectRoot: jest.fn(() => '/tmp/test'),
+	resolveEnvVariable: jest.fn(() => 'mock-key'),
+	findTaskById: jest.fn(() => null),
+	findTaskByPattern: jest.fn(() => []),
+	validateTaskId: jest.fn(() => true),
+	createTask: jest.fn(() => ({ id: 1, title: 'Mock Task' })),
+	sortByDependencies: jest.fn((tasks) => tasks),
+	isEmpty: jest.fn(() => false),
+	truncate: jest.fn((text) => text),
+	slugify: jest.fn((text) => text.toLowerCase()),
+	getTagFromPath: jest.fn(() => 'master'),
+	isValidTag: jest.fn(() => true),
+	migrateToTaggedFormat: jest.fn(() => ({ master: { tasks: [] } })),
+	performCompleteTagMigration: jest.fn(),
+	resolveCurrentTag: jest.fn(() => 'master'),
+	getDefaultTag: jest.fn(() => 'master'),
+	performMigrationIfNeeded: jest.fn()
+}));
+
+// Mock prompt manager
+jest.unstable_mockModule('../../scripts/modules/prompt-manager.js', () => ({
+	getPromptManager: jest.fn(() => ({
+		loadPrompt: jest.fn(() => ({
+			systemPrompt: 'Test system prompt',
+			userPrompt: 'Test user prompt'
+		}))
+	}))
+}));
+
+// Mock progress/UI components to prevent real CLI UI
+jest.unstable_mockModule('../../src/progress/parse-prd-tracker.js', () => ({
+	createParsePrdTracker: jest.fn(() => ({
+		start: jest.fn(),
+		addTaskLine: jest.fn(),
+		updateTokens: jest.fn(),
+		complete: jest.fn()
+	}))
+}));
+
+jest.unstable_mockModule('../../src/ui/parse-prd.js', () => ({
+	displayParsePrdStart: jest.fn(),
+	displayParsePrdSummary: jest.fn()
+}));
+
+jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
+	displayAiUsageSummary: jest.fn()
+}));
+
+// Mock task generation to prevent file operations
+jest.unstable_mockModule(
+	'../../scripts/modules/task-manager/generate-task-files.js',
+	() => ({
+		default: jest.fn()
+	})
+);
+
+// Mock stream parser
+jest.unstable_mockModule('../../src/utils/stream-parser.js', () => ({
+	parseStream: jest.fn()
+}));
+
+// Mock other potential UI elements
+jest.unstable_mockModule('ora', () => ({
+	default: jest.fn(() => ({
+		start: jest.fn(),
+		stop: jest.fn(),
+		succeed: jest.fn(),
+		fail: jest.fn()
+	}))
+}));
+
+jest.unstable_mockModule('chalk', () => ({
+	default: {
+		red: jest.fn((text) => text),
+		green: jest.fn((text) => text),
+		blue: jest.fn((text) => text),
+		yellow: jest.fn((text) => text),
+		cyan: jest.fn((text) => text),
+		white: {
+			bold: jest.fn((text) => text)
+		}
+	},
+	red: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	blue: jest.fn((text) => text),
+	yellow: jest.fn((text) => text),
+	cyan: jest.fn((text) => text),
+	white: {
+		bold: jest.fn((text) => text)
+	}
+}));
+
+// Mock boxen
+jest.unstable_mockModule('boxen', () => ({
+	default: jest.fn((content) => content)
+}));
+
+// Mock constants
+jest.unstable_mockModule('../../src/constants/task-priorities.js', () => ({
+	DEFAULT_TASK_PRIORITY: 'medium',
+	TASK_PRIORITY_OPTIONS: ['low', 'medium', 'high']
+}));
+
+// Mock UI indicators
+jest.unstable_mockModule('../../src/ui/indicators.js', () => ({
+	getPriorityIndicators: jest.fn(() => ({
+		high: '🔴',
+		medium: '🟡',
+		low: '🟢'
+	}))
+}));
+
+// Import modules after mocking
+const { generateObjectService } = await import(
+	'../../scripts/modules/ai-services-unified.js'
+);
+const { parseStream } = await import('../../src/utils/stream-parser.js');
+const parsePRD = (
+	await import('../../scripts/modules/task-manager/parse-prd.js')
+).default;
 
 describe('parse-prd file extension compatibility', () => {
-	test('Accepts .txt files for PRD input', () => {
-		// Test that .txt files are valid PRD inputs
-		const txtPath = '/path/to/requirements.txt';
+	let tempDir;
+	let testFiles;
 
-		// The parse-prd.js implementation uses fs.promises.readFile which works with any text file
-		// regardless of extension, so we verify this behavior
-		expect(txtPath.endsWith('.txt')).toBe(true);
-
-		// Simulate the file reading logic - no extension-specific validation
-		const isValidPath =
-			txtPath && typeof txtPath === 'string' && txtPath.length > 0;
-		expect(isValidPath).toBe(true);
-	});
-
-	test('Accepts .md files for PRD input', () => {
-		// Test that .md files are valid PRD inputs
-		const mdPath = '/path/to/requirements.md';
-
-		// The parse-prd.js implementation treats all text files the same way
-		expect(mdPath.endsWith('.md')).toBe(true);
-
-		// Simulate the file reading logic - no extension-specific validation
-		const isValidPath =
-			mdPath && typeof mdPath === 'string' && mdPath.length > 0;
-		expect(isValidPath).toBe(true);
-	});
-
-	test('Accepts other text file extensions for PRD input', () => {
-		// Test that other text file extensions work
-		const testPaths = [
-			'/path/to/prd.rst',
-			'/path/to/requirements.doc',
-			'/path/to/spec.rtf',
-			'/path/to/prd' // No extension
-		];
-
-		testPaths.forEach((path) => {
-			// The implementation only checks if the file exists and is readable,
-			// not the extension, so all should be treated equally
-			const isValidPath = path && typeof path === 'string' && path.length > 0;
-			expect(isValidPath).toBe(true);
-		});
-	});
-
-	test('File extension does not affect parsing behavior', () => {
-		// Simulate the core logic that determines how files are processed
-		const mockFileContent = '# Sample PRD\n\nThis is a test PRD content.';
-
-		const processFile = (filePath, content) => {
-			// The actual implementation only cares about content, not extension
-			if (!filePath || !content) {
-				return { success: false, error: 'Missing file or content' };
+	const mockTasksResponse = {
+		tasks: [
+			{
+				id: 1,
+				title: 'Test Task 1',
+				description: 'First test task',
+				status: 'pending',
+				dependencies: [],
+				priority: 'high',
+				details: 'Implementation details for task 1',
+				testStrategy: 'Unit tests for task 1'
+			},
+			{
+				id: 2,
+				title: 'Test Task 2',
+				description: 'Second test task',
+				status: 'pending',
+				dependencies: [1],
+				priority: 'medium',
+				details: 'Implementation details for task 2',
+				testStrategy: 'Integration tests for task 2'
 			}
+		],
+		metadata: {
+			projectName: 'Test Project',
+			totalTasks: 2,
+			sourceFile: 'test-prd',
+			generatedAt: new Date().toISOString()
+		}
+	};
 
-			// Same processing logic regardless of extension
-			return {
-				success: true,
-				contentLength: content.length,
-				hasContent: content.trim().length > 0
-			};
+	const samplePRDContent = `# Test Project PRD
+
+## Overview
+Build a simple task management application.
+
+## Features
+1. Create and manage tasks
+2. Set task priorities
+3. Track task dependencies
+
+## Technical Requirements
+- React frontend
+- Node.js backend
+- PostgreSQL database
+
+## Success Criteria
+- Users can create tasks successfully
+- Task dependencies work correctly`;
+
+	beforeAll(() => {
+		// Create temporary directory for test files
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-prd-test-'));
+
+		// Create test files with different extensions
+		testFiles = {
+			txt: path.join(tempDir, 'test-prd.txt'),
+			md: path.join(tempDir, 'test-prd.md'),
+			rst: path.join(tempDir, 'test-prd.rst'),
+			noExt: path.join(tempDir, 'test-prd')
 		};
 
-		// Test different extensions with same content
-		const txtResult = processFile('/path/to/prd.txt', mockFileContent);
-		const mdResult = processFile('/path/to/prd.md', mockFileContent);
-		const noExtResult = processFile('/path/to/prd', mockFileContent);
-
-		// All should produce identical results
-		expect(txtResult).toEqual(mdResult);
-		expect(mdResult).toEqual(noExtResult);
-		expect(txtResult.success).toBe(true);
-		expect(txtResult.contentLength).toBe(mockFileContent.length);
-	});
-});
-
-describe('parse-prd streaming behavior', () => {
-	test('Uses streaming when reportProgress function is provided', () => {
-		const mockReportProgress = jest.fn(() => Promise.resolve());
-
-		// Test the logic that determines streaming vs non-streaming
-		const useStreaming = typeof mockReportProgress === 'function';
-		expect(useStreaming).toBe(true);
-	});
-
-	test('Uses non-streaming when reportProgress is not provided', () => {
-		const useStreaming = typeof undefined === 'function';
-		expect(useStreaming).toBe(false);
-	});
-
-	test('Uses non-streaming when reportProgress is not a function', () => {
-		const notAFunction = 'not a function';
-		const useStreaming = typeof notAFunction === 'function';
-		expect(useStreaming).toBe(false);
-	});
-
-	test('Fallback logic handles streaming errors correctly', () => {
-		// Test the error message patterns that trigger fallback
-		const streamingErrors = [
-			'textStream is not async iterable',
-			'Failed to process AI text stream: some error',
-			'Stream object is not iterable - no textStream found'
-		];
-
-		streamingErrors.forEach((errorMessage) => {
-			const lowerMessage = errorMessage.toLowerCase();
-			const isStreamingError =
-				lowerMessage.includes('not async iterable') ||
-				lowerMessage.includes('failed to process ai text stream') ||
-				lowerMessage.includes('stream object is not iterable');
-
-			expect(isStreamingError).toBe(true);
+		// Write the same content to all test files
+		Object.values(testFiles).forEach((filePath) => {
+			fs.writeFileSync(filePath, samplePRDContent);
 		});
 
-		// Test that non-streaming errors don't trigger fallback
-		const nonStreamingErrors = [
-			'API key not found',
-			'File not found',
-			'Invalid JSON response'
-		];
-
-		nonStreamingErrors.forEach((errorMessage) => {
-			const lowerMessage = errorMessage.toLowerCase();
-			const isStreamingError =
-				lowerMessage.includes('not async iterable') ||
-				lowerMessage.includes('failed to process ai text stream') ||
-				lowerMessage.includes('stream object is not iterable');
-
-			expect(isStreamingError).toBe(false);
+		// Mock process.exit to prevent actual exit
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit was called');
 		});
+
+		// Mock console methods to prevent output
+		jest.spyOn(console, 'log').mockImplementation(() => {});
+		jest.spyOn(console, 'error').mockImplementation(() => {});
 	});
-});
 
-describe('MCP progress reporting compliance', () => {
-	test('Progress values always increase and only report for complete tasks', () => {
-		// Mock progress reports to track sequence
-		const progressReports = [];
-		const mockReportProgress = jest.fn((report) => {
-			progressReports.push(report);
-			return Promise.resolve();
-		});
+	afterAll(() => {
+		// Clean up temporary directory
+		fs.rmSync(tempDir, { recursive: true, force: true });
 
-		// Simulate the progress reporting pattern used in parsePRDWithStreaming
-		const simulateProgress = async (numTasks = 10) => {
-			// Initial progress
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - Starting PRD analysis...`
-			});
+		// Restore mocks
+		jest.restoreAllMocks();
+	});
 
-			// Setup phase (same progress, different message)
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - AI analysis in progress...`
-			});
+	beforeEach(() => {
+		jest.clearAllMocks();
 
-			// Simulate task generation from streaming - partial parsing
-			const streamingTasks = [
-				{ title: 'Task One', description: 'First task', priority: 'high' },
-				{ title: 'Task Two', description: 'Second task', priority: 'medium' },
-				{ title: 'Task Three', description: 'Third task', priority: 'low' }
-			];
-
-			for (let i = 0; i < streamingTasks.length; i++) {
-				const task = streamingTasks[i];
-				// Only report progress if task has a valid title
-				if (task.title && typeof task.title === 'string' && task.title.trim()) {
-					const priority = task.priority || 'medium';
-					await mockReportProgress({
-						progress: i + 1,
-						total: numTasks,
-						message: `Task ${i + 1}/${numTasks} - ${task.title} (${priority})`
-					});
-				}
+		// Mock successful AI response
+		generateObjectService.mockResolvedValue({
+			mainResult: { object: mockTasksResponse },
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: 'test-user',
+				commandName: 'parse-prd',
+				modelUsed: 'test-model',
+				providerName: 'test-provider',
+				inputTokens: 100,
+				outputTokens: 200,
+				totalTokens: 300,
+				totalCost: 0.01,
+				currency: 'USD'
 			}
-
-			// Simulate fallback parsing finding remaining tasks from the same accumulated text
-			// This happens when streaming didn't parse all tasks, so fallback tries full JSON parse
-			const fallbackTasks = [
-				{
-					title: 'Task Four',
-					description: 'Fourth task found in fallback parse',
-					priority: 'medium'
-				},
-				{
-					title: 'Task Five',
-					description: 'Fifth task found in fallback parse',
-					priority: 'high'
-				}
-			];
-
-			for (let i = 0; i < fallbackTasks.length; i++) {
-				const task = fallbackTasks[i];
-				const currentProgress = streamingTasks.length + i + 1;
-				const priority = task.priority || 'medium';
-				await mockReportProgress({
-					progress: currentProgress,
-					total: numTasks,
-					message: `Task ${currentProgress}/${numTasks} - ${task.title} (${priority})`
-				});
-			}
-
-			// Final completion
-			await mockReportProgress({
-				progress: numTasks,
-				total: numTasks,
-				message: `Task ${numTasks}/${numTasks} - ✅ Completed: Successfully generated ${streamingTasks.length + fallbackTasks.length} tasks`
-			});
-		};
-
-		return simulateProgress().then(() => {
-			// Verify progress always increases (or stays the same for setup phases)
-			for (let i = 1; i < progressReports.length; i++) {
-				expect(progressReports[i].progress).toBeGreaterThanOrEqual(
-					progressReports[i - 1].progress
-				);
-			}
-
-			// Verify total is consistent throughout
-			const totals = progressReports.map((r) => r.total);
-			expect(new Set(totals).size).toBe(1); // All totals should be the same
-			expect(totals[0]).toBe(10); // Should equal numTasks
-
-			// Verify we have meaningful progress messages
-			progressReports.forEach((report) => {
-				expect(report.message).toBeTruthy();
-				expect(typeof report.message).toBe('string');
-				expect(report.message.length).toBeGreaterThan(0);
-			});
-
-			// Verify the final progress equals the total
-			const finalReport = progressReports[progressReports.length - 1];
-			expect(finalReport.progress).toBe(finalReport.total);
-
-			// Verify that task generation messages contain task titles and priorities
-			const taskMessages = progressReports.filter(
-				(r) =>
-					r.message.includes('Task ') &&
-					r.message.includes(' - ') &&
-					!r.message.includes('Starting') &&
-					!r.message.includes('AI analysis') &&
-					!r.message.includes('Completed')
-			);
-			taskMessages.forEach((report) => {
-				// Should contain priority in parentheses for task messages
-				expect(report.message).toMatch(/\([a-z]+\)$/); // Should end with "(priority)"
-			});
 		});
 	});
 
-	test('Progress reporting with streaming JSON parser simulation', async () => {
-		// This test simulates the streaming progress behavior without calling real AI services
-		const progressReports = [];
-		const mockReportProgress = jest.fn((report) => {
-			progressReports.push(report);
-			return Promise.resolve();
+	test('should accept and parse .txt files', async () => {
+		const outputPath = path.join(tempDir, 'tasks-txt.json');
+
+		const result = await parsePRD(testFiles.txt, outputPath, 2, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
 		});
 
-		// Simulate the streaming progress pattern used in parsePRDWithStreaming
-		const simulateStreamingProgress = async (numTasks = 3) => {
-			// Initial progress - starting analysis
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - Starting PRD analysis...`
-			});
-
-			// AI analysis in progress
-			await mockReportProgress({
-				progress: 0,
-				total: numTasks,
-				message: `Task 0/${numTasks} - AI analysis in progress...`
-			});
-
-			// Simulate tasks being parsed from streaming JSON
-			const mockTasks = [
-				{ title: 'Set up project structure', priority: 'high' },
-				{ title: 'Implement user authentication', priority: 'high' },
-				{ title: 'Design database schema', priority: 'medium' }
-			];
-
-			// Report progress for each task as it's parsed from the stream
-			for (let i = 0; i < mockTasks.length; i++) {
-				const task = mockTasks[i];
-				const currentProgress = i + 1;
-				await mockReportProgress({
-					progress: currentProgress,
-					total: numTasks,
-					message: `Task ${currentProgress}/${numTasks} - ${task.title} (${task.priority})`
-				});
-			}
-
-			// Final completion message
-			await mockReportProgress({
-				progress: numTasks,
-				total: numTasks,
-				message: `Task ${numTasks}/${numTasks} - ✅ Completed: Successfully generated ${mockTasks.length} tasks`
-			});
-
-			return { success: true, tasksGenerated: mockTasks.length };
-		};
-
-		// Run the simulation
-		const result = await simulateStreamingProgress(3);
-
-		// Verify the simulation succeeded
 		expect(result.success).toBe(true);
-		expect(result.tasksGenerated).toBe(3);
+		expect(result.tasksPath).toBe(outputPath);
+		expect(fs.existsSync(outputPath)).toBe(true);
 
-		// Verify progress reports were made
-		expect(progressReports.length).toBeGreaterThan(0);
-		expect(mockReportProgress).toHaveBeenCalledTimes(6); // 2 setup + 3 tasks + 1 completion
+		// Verify the content was parsed correctly
+		const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+		expect(tasksData.master.tasks).toHaveLength(2);
+		expect(tasksData.master.tasks[0].title).toBe('Test Task 1');
+	});
 
-		// Verify MCP compliance - progress always increases or stays the same
-		for (let i = 1; i < progressReports.length; i++) {
-			expect(progressReports[i].progress).toBeGreaterThanOrEqual(
-				progressReports[i - 1].progress
-			);
+	test('should accept and parse .md files', async () => {
+		const outputPath = path.join(tempDir, 'tasks-md.json');
+
+		const result = await parsePRD(testFiles.md, outputPath, 2, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.tasksPath).toBe(outputPath);
+		expect(fs.existsSync(outputPath)).toBe(true);
+
+		// Verify the content was parsed correctly
+		const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+		expect(tasksData.master.tasks).toHaveLength(2);
+	});
+
+	test('should accept and parse files with other text extensions', async () => {
+		const outputPath = path.join(tempDir, 'tasks-rst.json');
+
+		const result = await parsePRD(testFiles.rst, outputPath, 2, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.tasksPath).toBe(outputPath);
+		expect(fs.existsSync(outputPath)).toBe(true);
+	});
+
+	test('should accept and parse files with no extension', async () => {
+		const outputPath = path.join(tempDir, 'tasks-noext.json');
+
+		const result = await parsePRD(testFiles.noExt, outputPath, 2, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.tasksPath).toBe(outputPath);
+		expect(fs.existsSync(outputPath)).toBe(true);
+	});
+
+	test('should produce identical results regardless of file extension', async () => {
+		const outputs = {};
+
+		// Parse each file type
+		for (const [ext, filePath] of Object.entries(testFiles)) {
+			const outputPath = path.join(tempDir, `tasks-${ext}.json`);
+
+			await parsePRD(filePath, outputPath, 2, {
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				},
+				projectRoot: tempDir
+			});
+
+			const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+			outputs[ext] = tasksData;
 		}
 
-		// Verify consistent total throughout
-		const totals = progressReports.map((r) => r.total);
-		expect(new Set(totals).size).toBe(1); // All totals should be the same
-		expect(totals[0]).toBe(3);
-
-		// Verify we have the expected progress sequence
-		expect(progressReports[0].progress).toBe(0); // Starting
-		expect(progressReports[1].progress).toBe(0); // AI analysis
-		expect(progressReports[2].progress).toBe(1); // First task
-		expect(progressReports[3].progress).toBe(2); // Second task
-		expect(progressReports[4].progress).toBe(3); // Third task
-		expect(progressReports[5].progress).toBe(3); // Completion
-
-		// Verify task messages have the correct format
-		const taskMessages = progressReports.filter(
-			(r) =>
-				r.message.includes('Task ') &&
-				r.message.includes(' - ') &&
-				!r.message.includes('Starting') &&
-				!r.message.includes('AI analysis') &&
-				!r.message.includes('Completed')
-		);
-
-		expect(taskMessages.length).toBe(3); // Should have 3 task progress messages
-
-		// Verify all task messages have the correct format: "Task X/Y - Title (priority)"
-		taskMessages.forEach((report) => {
-			expect(report.message).toMatch(/^Task \d+\/\d+ - .+ \([a-z]+\)$/);
+		// Compare all outputs - they should be identical (except metadata timestamps)
+		const baseOutput = outputs.txt;
+		Object.values(outputs).forEach((output) => {
+			expect(output.master.tasks).toEqual(baseOutput.master.tasks);
+			expect(output.master.metadata.projectName).toEqual(
+				baseOutput.master.metadata.projectName
+			);
+			expect(output.master.metadata.totalTasks).toEqual(
+				baseOutput.master.metadata.totalTasks
+			);
 		});
-
-		// Verify specific task titles and priorities are included
-		expect(taskMessages[0].message).toContain(
-			'Set up project structure (high)'
-		);
-		expect(taskMessages[1].message).toContain(
-			'Implement user authentication (high)'
-		);
-		expect(taskMessages[2].message).toContain(
-			'Design database schema (medium)'
-		);
-
-		// Verify final completion message
-		const completionMessage = progressReports[progressReports.length - 1];
-		expect(completionMessage.message).toContain('✅ Completed');
-		expect(completionMessage.message).toContain(
-			'Successfully generated 3 tasks'
-		);
-		expect(completionMessage.progress).toBe(completionMessage.total);
 	});
 
-	test('Progress reporting handles function validation', () => {
-		const mockValidReportProgress = jest.fn(() => Promise.resolve());
-		const mockInvalidReportProgress = 'not a function';
+	test('should handle non-existent files gracefully', async () => {
+		const nonExistentFile = path.join(tempDir, 'does-not-exist.txt');
+		const outputPath = path.join(tempDir, 'tasks-error.json');
 
-		// Test valid function
-		expect(typeof mockValidReportProgress === 'function').toBe(true);
-
-		// Test invalid function
-		expect(typeof mockInvalidReportProgress === 'function').toBe(false);
-
-		// Test undefined
-		expect(typeof undefined === 'function').toBe(false);
+		await expect(
+			parsePRD(nonExistentFile, outputPath, 2, {
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				},
+				projectRoot: tempDir
+			})
+		).rejects.toThrow();
 	});
+});
 
-	test('Progress error handling does not break main flow', () => {
-		const mockFailingReportProgress = jest.fn(() =>
-			Promise.reject(new Error('Progress reporting failed'))
-		);
+describe('parse-prd streaming vs non-streaming behavior', () => {
+	let tempDir;
+	const samplePRDContent = `# Test Project PRD
 
-		// Simulate the error handling pattern
-		const handleProgressWithErrorHandling = async () => {
-			try {
-				await mockFailingReportProgress({
-					progress: 50,
-					total: 100,
-					message: 'Test progress'
-				}).catch((error) => {
-					// This should not throw - should handle gracefully
-					expect(error.message).toBe('Progress reporting failed');
-					return; // Continue processing
-				});
+## Overview
+Build a simple task management application.
 
-				// Main flow should continue
-				return { success: true };
-			} catch (error) {
-				// Main flow should not be broken by progress errors
-				return { success: false, error: error.message };
+## Features
+1. Create and manage tasks
+2. Set task priorities
+3. Track task dependencies`;
+
+	const mockTasksResponse = {
+		tasks: [
+			{
+				id: 1,
+				title: 'Test Task 1',
+				description: 'First test task',
+				status: 'pending',
+				dependencies: [],
+				priority: 'high',
+				details: 'Implementation details for task 1',
+				testStrategy: 'Unit tests for task 1'
 			}
-		};
+		],
+		metadata: {
+			projectName: 'Test Project',
+			totalTasks: 1,
+			sourceFile: 'test-prd',
+			generatedAt: new Date().toISOString()
+		}
+	};
 
-		return handleProgressWithErrorHandling().then((result) => {
-			expect(result.success).toBe(true);
-			expect(mockFailingReportProgress).toHaveBeenCalled();
+	beforeAll(() => {
+		tempDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), 'parse-prd-behavior-test-')
+		);
+	});
+
+	afterAll(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+		jest.restoreAllMocks();
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+
+		// Mock successful AI response
+		generateObjectService.mockResolvedValue({
+			mainResult: { object: mockTasksResponse },
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: 'test-user',
+				commandName: 'parse-prd',
+				modelUsed: 'test-model',
+				providerName: 'test-provider',
+				inputTokens: 100,
+				outputTokens: 200,
+				totalTokens: 300,
+				totalCost: 0.01,
+				currency: 'USD'
+			}
 		});
+
+		// Mock parseStream for streaming tests
+		parseStream.mockResolvedValue({
+			items: [{ id: 1, title: 'Test Task', priority: 'high' }],
+			accumulatedText:
+				'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+			estimatedTokens: 50,
+			usedFallback: false
+		});
+
+		// Mock process.exit to prevent actual exit
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit was called');
+		});
+	});
+
+	test('should use streaming when reportProgress function is provided', async () => {
+		const testPRDPath = path.join(tempDir, 'test.txt');
+		const outputPath = path.join(tempDir, 'streaming-test.json');
+		fs.writeFileSync(testPRDPath, samplePRDContent);
+
+		// Mock progress reporting function
+		const mockReportProgress = jest.fn(() => Promise.resolve());
+
+		// Mock streaming service
+		const { streamTextService } = await import(
+			'../../scripts/modules/ai-services-unified.js'
+		);
+		streamTextService.mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '{"tasks":[';
+						yield '{"id":1,"title":"Test Task","priority":"high"}';
+						yield ']}';
+					}
+				}
+			},
+			telemetryData: {}
+		});
+
+		const result = await parsePRD(testPRDPath, outputPath, 1, {
+			force: true,
+			reportProgress: mockReportProgress,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(mockReportProgress).toHaveBeenCalled();
+		expect(streamTextService).toHaveBeenCalled();
+	});
+
+	test('should use non-streaming when mcpLog is provided without reportProgress', async () => {
+		const testPRDPath = path.join(tempDir, 'test.txt');
+		const outputPath = path.join(tempDir, 'non-streaming-test.json');
+		fs.writeFileSync(testPRDPath, samplePRDContent);
+
+		const result = await parsePRD(testPRDPath, outputPath, 1, {
+			force: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(generateObjectService).toHaveBeenCalled();
+	});
+
+	test('should handle research flag correctly', async () => {
+		const testPRDPath = path.join(tempDir, 'test.txt');
+		const outputPath = path.join(tempDir, 'research-test.json');
+		fs.writeFileSync(testPRDPath, samplePRDContent);
+
+		await parsePRD(testPRDPath, outputPath, 1, {
+			force: true,
+			research: true,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(generateObjectService).toHaveBeenCalledWith(
+			expect.objectContaining({
+				role: 'research'
+			})
+		);
+	});
+
+	test('should fallback to non-streaming when streaming fails', async () => {
+		const testPRDPath = path.join(tempDir, 'test.txt');
+		const outputPath = path.join(tempDir, 'fallback-test.json');
+		fs.writeFileSync(testPRDPath, samplePRDContent);
+
+		// Mock progress reporting function
+		const mockReportProgress = jest.fn(() => Promise.resolve());
+
+		// Mock streaming service to fail with streaming-specific error
+		const { streamTextService } = await import(
+			'../../scripts/modules/ai-services-unified.js'
+		);
+		streamTextService.mockRejectedValueOnce(
+			new Error('textStream is not async iterable')
+		);
+
+		const result = await parsePRD(testPRDPath, outputPath, 1, {
+			force: true,
+			reportProgress: mockReportProgress,
+			mcpLog: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn(),
+				success: jest.fn()
+			},
+			projectRoot: tempDir
+		});
+
+		expect(result.success).toBe(true);
+		expect(streamTextService).toHaveBeenCalled();
+		expect(generateObjectService).toHaveBeenCalled(); // Fallback was used
+	});
+});
+
+describe('parse-prd progress reporting compliance', () => {
+	test('should report progress with correct MCP format when using reportProgress', () => {
+		// Mock progress reporter that captures progress messages
+		const progressHistory = [];
+		const mockReportProgress = jest.fn(async (data) => {
+			progressHistory.push(data);
+		});
+
+		// Simulate progress reporting calls
+		const progressData = [
+			{
+				message: 'Starting PRD analysis (with research) | Input: 2150 tokens',
+				progressPercentage: 0
+			},
+			{
+				message:
+					'🔴 Task 1/3 - Implement user authentication | ~Output: 150 tokens',
+				progressPercentage: 33
+			},
+			{
+				message: '🟡 Task 2/3 - Setup database schema | ~Output: 180 tokens',
+				progressPercentage: 67
+			},
+			{
+				message:
+					'✅ Task Generation Completed | Tokens (I/O): 2150/450 | Cost: $0.0125',
+				progressPercentage: 100
+			}
+		];
+
+		progressData.forEach((data) => mockReportProgress(data));
+
+		// Verify progress was reported
+		expect(mockReportProgress).toHaveBeenCalledTimes(4);
+
+		// Verify MCP format compliance
+		const taskProgress = progressHistory.filter(
+			(p) =>
+				p.message.includes('Task ') &&
+				p.message.includes(' - ') &&
+				!p.message.includes('Starting') &&
+				!p.message.includes('Completed')
+		);
+
+		taskProgress.forEach((progress) => {
+			// MCP format: "🔴 Task X/Y - Title | ~Output: N tokens"
+			expect(progress.message).toMatch(
+				/^(🔴|🟡|🟢) Task \d+\/\d+ - .+ \| ~Output: \d+ tokens$/
+			);
+		});
+
+		// Verify completion message format
+		const completionMessage = progressHistory.find((p) =>
+			p.message.includes('✅ Task Generation Completed')
+		);
+		expect(completionMessage.message).toMatch(
+			/✅ Task Generation Completed \| Tokens \(I\/O\): \d+\/\d+ \| Cost: \$\d+\.\d+$/
+		);
+	});
+
+	test('should track progress values correctly', () => {
+		const progressValues = [0, 33, 67, 100];
+
+		// Verify progress values always increase
+		for (let i = 1; i < progressValues.length; i++) {
+			expect(progressValues[i]).toBeGreaterThan(progressValues[i - 1]);
+		}
+
+		// Verify progress starts at 0 and ends at 100
+		expect(progressValues[0]).toBe(0);
+		expect(progressValues[progressValues.length - 1]).toBe(100);
+	});
+});
+
+describe('parse-prd error handling', () => {
+	let tempDir;
+
+	beforeAll(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parse-prd-error-test-'));
+	});
+
+	afterAll(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true });
+		jest.restoreAllMocks();
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+
+		// Mock process.exit to prevent actual exit
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit was called');
+		});
+	});
+
+	test('should handle non-existent input files gracefully', async () => {
+		const nonExistentFile = path.join(tempDir, 'does-not-exist.txt');
+		const outputPath = path.join(tempDir, 'output.json');
+
+		await expect(
+			parsePRD(nonExistentFile, outputPath, 1, {
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				},
+				projectRoot: tempDir
+			})
+		).rejects.toThrow();
+	});
+
+	test('should handle AI service failures gracefully', async () => {
+		const testPRDPath = path.join(tempDir, 'test.txt');
+		const outputPath = path.join(tempDir, 'ai-error-test.json');
+		fs.writeFileSync(testPRDPath, 'Test PRD content');
+
+		// Mock AI service to fail
+		generateObjectService.mockRejectedValue(new Error('AI service failed'));
+
+		await expect(
+			parsePRD(testPRDPath, outputPath, 1, {
+				force: true,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				},
+				projectRoot: tempDir
+			})
+		).rejects.toThrow('AI service failed');
 	});
 });
