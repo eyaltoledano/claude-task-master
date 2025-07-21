@@ -275,7 +275,7 @@ async function testMCPStreaming(numTasks = 10) {
 		// Verify MCP-specific message formats (should use emoji indicators)
 		const hasEmojiIndicators = progressReporter
 			.getProgressHistory()
-			.some((entry) => /[🔴🟠🟢]/.test(entry.message));
+			.some((entry) => /[🔴🟠🟢]/u.test(entry.message));
 
 		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
 		console.log(
