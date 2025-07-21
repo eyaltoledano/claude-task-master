@@ -70,6 +70,7 @@
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -113,6 +114,7 @@
 | perplexity  | deep-research                                | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
+| agentllm    | agent-delegated-model                        | 0         | 0          | 0           |
 | bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0 | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0 | 0.49      | 3          | 15          |
@@ -178,6 +180,7 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
 | openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |

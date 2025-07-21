@@ -1137,41 +1137,91 @@ function validateAndFixDependencies(
 	tasksData,
 	tasksPath = null,
 	projectRoot = null,
-	tag = null
+	tag = null,
+	options = {}
 ) {
-	if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
-		log('error', 'Invalid tasks data');
+	const logger = {
+		debug: (...args) =>
+			options.mcpLog ? options.mcpLog.debug(...args) : undefined,
+		error: (...args) => {
+			if (options.mcpLog) {
+				options.mcpLog.error(...args);
+			} else {
+				const message = args
+				.map((arg) => {
+					if (typeof arg === 'object') {
+						try {
+							return JSON.stringify(arg);
+						} catch (e) {
+							return String(arg);
+						}
+					}
+					return String(arg);
+				})
+					.join(' ');
+				throw new Error(message);
+			}
+		},
+		info: (...args) =>
+			options.mcpLog ? options.mcpLog.info(...args) : undefined,
+		success: (...args) =>
+			options.mcpLog ? options.mcpLog.success(...args) : undefined
+	};
+
+	// Validate the overall tasksData (root object) and the specific tag
+	if (
+		!tasksData ||
+		typeof tasksData !== 'object' ||
+		Object.keys(tasksData).length === 0
+	) {
+		logger.error('Invalid tasks data: root object is missing or empty');
 		return false;
 	}
 
-	log('debug', 'Validating and fixing dependencies...');
+	const targetTag = tag || 'master'; // Default to 'master' if no tag is specified
+	const currentTagData = tasksData[targetTag];
 
-	// Create a deep copy for comparison
-	const originalData = JSON.parse(JSON.stringify(tasksData));
+	if (
+		!currentTagData ||
+		!currentTagData.tasks ||
+		!Array.isArray(currentTagData.tasks)
+	) {
+		logger.error(`Invalid tasks data: tag '${targetTag}' is missing or has invalid structure`);
+		return false;
+	}
 
-	// 1. Remove duplicate dependencies from tasks and subtasks
-	tasksData.tasks = tasksData.tasks.map((task) => {
+	const tasksToProcess = currentTagData.tasks;
+
+	logger.debug(`Validating and fixing dependencies for tag '${targetTag}'...`);
+
+	// Create a deep copy for comparison of the specific tag's data
+	const originalTagDataCopy = JSON.parse(JSON.stringify(currentTagData));
+
+	// 1. Remove duplicate dependencies from tasks and subtasks for the current tag
+	const processedTasks = tasksToProcess.map((task) => {
+		const newTask = { ...task }; // Work on a copy
 		// Handle task dependencies
-		if (task.dependencies) {
-			const uniqueDeps = [...new Set(task.dependencies)];
-			task.dependencies = uniqueDeps;
+		if (newTask.dependencies) {
+			const uniqueDeps = [...new Set(newTask.dependencies)];
+			newTask.dependencies = uniqueDeps;
 		}
 
 		// Handle subtask dependencies
-		if (task.subtasks) {
-			task.subtasks = task.subtasks.map((subtask) => {
-				if (subtask.dependencies) {
-					const uniqueDeps = [...new Set(subtask.dependencies)];
-					subtask.dependencies = uniqueDeps;
+		if (newTask.subtasks) {
+			newTask.subtasks = newTask.subtasks.map((subtask) => {
+				const newSubtask = { ...subtask };
+				if (newSubtask.dependencies) {
+					const uniqueDeps = [...new Set(newSubtask.dependencies)];
+					newSubtask.dependencies = uniqueDeps;
 				}
-				return subtask;
+				return newSubtask;
 			});
 		}
-		return task;
+		return newTask;
 	});
 
-	// 2. Remove invalid task dependencies (non-existent tasks)
-	tasksData.tasks.forEach((task) => {
+	// 2. Remove invalid task dependencies (non-existent tasks) for the current tag
+	processedTasks.forEach((task) => {
 		// Clean up task dependencies
 		if (task.dependencies) {
 			task.dependencies = task.dependencies.filter((depId) => {
@@ -1179,8 +1229,8 @@ function validateAndFixDependencies(
 				if (String(depId) === String(task.id)) {
 					return false;
 				}
-				// Remove non-existent dependencies
-				return taskExists(tasksData.tasks, depId);
+				// Remove non-existent dependencies (check within the current tag's tasks)
+				return taskExists(tasksToProcess, depId);
 			});
 		}
 
@@ -1189,21 +1239,22 @@ function validateAndFixDependencies(
 			task.subtasks.forEach((subtask) => {
 				if (subtask.dependencies) {
 					subtask.dependencies = subtask.dependencies.filter((depId) => {
-						// Handle numeric subtask references
+						// Handle numeric subtask references (relative to current task's subtasks)
 						if (typeof depId === 'number' && depId < 100) {
 							const fullSubtaskId = `${task.id}.${depId}`;
-							return taskExists(tasksData.tasks, fullSubtaskId);
+							// Check if this subtask exists within its parent
+							return task.subtasks.some((st) => st.id === depId);
 						}
-						// Handle full task/subtask references
-						return taskExists(tasksData.tasks, depId);
+						// Handle full task/subtask references (check within the current tag's tasks)
+						return taskExists(tasksToProcess, depId);
 					});
 				}
 			});
 		}
 	});
 
-	// 3. Ensure at least one subtask has no dependencies in each task
-	tasksData.tasks.forEach((task) => {
+	// 3. Ensure at least one subtask has no dependencies in each task for the current tag
+	processedTasks.forEach((task) => {
 		if (task.subtasks && task.subtasks.length > 0) {
 			const hasIndependentSubtask = task.subtasks.some(
 				(st) =>
@@ -1218,17 +1269,24 @@ function validateAndFixDependencies(
 		}
 	});
 
-	// Check if any changes were made by comparing with original data
+	// Update the tasksData object with the processed tasks for the current tag
+	tasksData[targetTag].tasks = processedTasks;
+
+	// Check if any changes were made by comparing with original data for the specific tag
 	const changesDetected =
-		JSON.stringify(tasksData) !== JSON.stringify(originalData);
+		JSON.stringify(tasksData[targetTag]) !==
+		JSON.stringify(originalTagDataCopy);
 
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
 		try {
 			writeJSON(tasksPath, tasksData, projectRoot, tag);
-			log('debug', 'Saved dependency fixes to tasks.json');
+			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {
-			log('error', 'Failed to save dependency fixes to tasks.json', error);
+			logger.error(
+				'Failed to save dependency fixes to tasks.json',
+				error.message
+			); // Use error.message
 		}
 	}
 

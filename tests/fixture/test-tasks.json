@@ -1,14 +1,16 @@
 {
-  "tasks": [
-    {
-      "id": 1,
-      "dependencies": [],
-      "subtasks": [
-        {
-          "id": 1,
-          "dependencies": []
-        }
-      ]
-    }
-  ]
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "dependencies": [],
+        "subtasks": [
+          {
+            "id": 1,
+            "dependencies": []
+          }
+        ]
+      }
+    ]
+  }
 }

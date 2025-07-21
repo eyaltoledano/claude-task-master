@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { researchDirect } from '../core/task-master-core.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -94,6 +95,20 @@ export function registerResearchTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`research tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
+				// If not delegating, proceed with existing result handling
 				return handleApiResult(
 					result,
 					log,

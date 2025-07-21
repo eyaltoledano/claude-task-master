@@ -206,6 +206,7 @@ Use the .mdc extension for all rule files.`;
 		expect(kiroProfile.mcpConfigPath).toBe('.kiro/settings/mcp.json');
 		expect(kiroProfile.includeDefaultRules).toBe(true);
 		expect(kiroProfile.fileMap).toEqual({
+			'rules/agentllm.mdc': 'agentllm.md',
 			'rules/cursor_rules.mdc': 'kiro_rules.md',
 			'rules/dev_workflow.mdc': 'dev_workflow.md',
 			'rules/self_improve.mdc': 'self_improve.md',

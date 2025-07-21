@@ -166,6 +166,11 @@ export const vscodeProfile = createProfile({
 	rulesDir: '.github/instructions', // VS Code instructions location
 	profileDir: '.vscode', // VS Code configuration directory
 	mcpConfigName: 'mcp.json', // VS Code uses mcp.json in .vscode directory
+	fileMap: {
+		//As per https://code.visualstudio.com/docs/copilot/copilot-customization
+		//custom rules need to have *.instructions.md extension
+		'rules/agentllm.mdc': 'agentllm.instructions.md'
+	},
 	customReplacements: [
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },

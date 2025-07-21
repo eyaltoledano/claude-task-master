@@ -620,7 +620,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.GEMINI_CLI
+		CUSTOM_PROVIDERS.GEMINI_CLI,
+		CUSTOM_PROVIDERS.AGENTLLM
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -644,7 +645,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
+		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+		agentllm: 'AGENTLLM_API_KEY'
 		// Add other providers as needed
 	};
 
@@ -734,6 +736,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'ollama':
 				return true; // No key needed
 			case 'claude-code':
+				return true; // No key needed
+			case 'agentllm':
 				return true; // No key needed
 			case 'mistral':
 				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
@@ -924,7 +928,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
-	CUSTOM_PROVIDERS.MCP
+	CUSTOM_PROVIDERS.MCP,
+	CUSTOM_PROVIDERS.AGENTLLM
 ];
 
 export {
