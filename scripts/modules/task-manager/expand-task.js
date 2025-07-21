@@ -568,7 +568,7 @@ async function expandTask(
 						type: 'agent_llm',
 						interactionId: aiServiceResponse.mainResult.interactionId,
 						delegatedCallDetails: {
-							originalCommand: context.commandName || 'expand-task', // context.commandName is from options
+							originalCommand: 'expand-task',
 							role: useResearch ? 'research' : 'main',
 							// If we change to generateObjectService for agents, this would be 'generateObject'
 							// and requestParameters.schema would be subtaskWrapperSchema.
