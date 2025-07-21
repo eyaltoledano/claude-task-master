@@ -21,7 +21,7 @@ async function addSubtask(
 	parentId,
 	existingTaskId = null,
 	newSubtaskData = null,
-	generateFiles = true,
+	generateFiles = false,
 	context = {}
 ) {
 	const { projectRoot, tag } = context;
