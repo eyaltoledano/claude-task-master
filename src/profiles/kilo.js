@@ -34,7 +34,12 @@ function onAddRulesProfile(targetDir, assetsDir) {
 
 	for (const mode of KILO_MODES) {
 		const src = path.join(kiloModesDir, `rules-${mode}`, `${mode}-rules`);
-		const dest = path.join(targetDir, '.kilo', `rules-${mode}`, `${mode}-rules`);
+		const dest = path.join(
+			targetDir,
+			'.kilo',
+			`rules-${mode}`,
+			`${mode}-rules`
+		);
 		if (fs.existsSync(src)) {
 			try {
 				const destDir = path.dirname(dest);

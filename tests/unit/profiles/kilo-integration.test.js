@@ -83,7 +83,10 @@ describe('Kilo Integration', () => {
 		fs.mkdirSync(path.join(tempDir, '.kilo', 'logs'), { recursive: true });
 
 		// Copy .kilocodemodes file
-		fs.writeFileSync(path.join(tempDir, '.kilocodemodes'), 'Kilocodemodes file content');
+		fs.writeFileSync(
+			path.join(tempDir, '.kilocodemodes'),
+			'Kilocodemodes file content'
+		);
 	}
 
 	test('creates all required .kilo directories', () => {
