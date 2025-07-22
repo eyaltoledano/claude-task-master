@@ -197,6 +197,10 @@ async function expandTask(
 		}
 
 		// Determine prompt content AND system prompt
+		// Calculate the next subtask ID to match current behavior:
+		// - Start from the number of existing subtasks + 1
+		// - This creates sequential IDs: 1, 2, 3, 4...
+		// - Display format shows as parentTaskId.subtaskId (e.g., "1.1", "1.2", "2.1")
 		const nextSubtaskId = (task.subtasks?.length || 0) + 1;
 
 		// Load prompts using PromptManager
@@ -248,7 +252,6 @@ async function expandTask(
 			useResearch: useResearch,
 			expansionPrompt: expansionPromptText || undefined
 		};
-
 		let variantKey = 'default';
 		if (expansionPromptText) {
 			variantKey = 'complexity-report';
