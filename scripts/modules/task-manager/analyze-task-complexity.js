@@ -11,7 +11,8 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { generateTextService } from '../ai-services-unified.js';
+import { generateObjectService } from '../ai-services-unified.js';
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 
 import { getDebugFlag, getProjectName } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
@@ -24,45 +25,6 @@ import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks } from '../utils.js';
 
-/**
- * Generates the prompt for complexity analysis.
- * (Moved from ai-services.js and simplified)
- * @param {Object} tasksData - The tasks data object.
- * @param {string} [gatheredContext] - The gathered context for the analysis.
- * @returns {string} The generated prompt.
- */
-function generateInternalComplexityAnalysisPrompt(
-	tasksData,
-	gatheredContext = ''
-) {
-	const tasksString = JSON.stringify(tasksData.tasks, null, 2);
-	let prompt = `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
-
-Tasks:
-${tasksString}`;
-
-	if (gatheredContext) {
-		prompt += `\n\n# Project Context\n\n${gatheredContext}`;
-	}
-
-	prompt += `
-
-Respond ONLY with a valid JSON array matching the schema:
-[
-  {
-    "taskId": <number>,
-    "taskTitle": "<string>",
-    "complexityScore": <number 1-10>,
-    "recommendedSubtasks": <number>,
-    "expansionPrompt": "<string>",
-    "reasoning": "<string>"
-  },
-  ...
-]
-
-Do not include any explanatory text, markdown formatting, or code block markers before or after the JSON array.`;
-	return prompt;
-}
 
 /**
  * Analyzes task complexity and generates expansion recommendations
@@ -433,12 +395,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 		try {
 			const role = useResearch ? 'research' : 'main';
 
-			aiServiceResponse = await generateTextService({
+			aiServiceResponse = await generateObjectService({
 				prompt,
 				systemPrompt,
 				role,
 				session,
 				projectRoot,
+				schema: COMMAND_SCHEMAS['analyze-complexity'],
+				objectName: 'complexityAnalysis',
 				commandName: 'analyze-complexity',
 				outputType: mcpLog ? 'mcp' : 'cli'
 			});
@@ -451,62 +415,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 				readline.clearLine(process.stdout, 0);
 				readline.cursorTo(process.stdout, 0);
 				console.log(
-					chalk.green('AI service call complete. Parsing response...')
+					chalk.green('AI service call complete.')
 				);
 			}
 
-			reportLog('Parsing complexity analysis from text response...', 'info');
-			try {
-				let cleanedResponse = aiServiceResponse.mainResult;
-				cleanedResponse = cleanedResponse.trim();
-
-				const codeBlockMatch = cleanedResponse.match(
-					/```(?:json)?\s*([\s\S]*?)\s*```/
-				);
-				if (codeBlockMatch) {
-					cleanedResponse = codeBlockMatch[1].trim();
-				} else {
-					const firstBracket = cleanedResponse.indexOf('[');
-					const lastBracket = cleanedResponse.lastIndexOf(']');
-					if (firstBracket !== -1 && lastBracket > firstBracket) {
-						cleanedResponse = cleanedResponse.substring(
-							firstBracket,
-							lastBracket + 1
-						);
-					} else {
-						reportLog(
-							'Warning: Response does not appear to be a JSON array.',
-							'warn'
-						);
-					}
-				}
-
-				if (outputFormat === 'text' && getDebugFlag(session)) {
-					console.log(chalk.gray('Attempting to parse cleaned JSON...'));
-					console.log(chalk.gray('Cleaned response (first 100 chars):'));
-					console.log(chalk.gray(cleanedResponse.substring(0, 100)));
-					console.log(chalk.gray('Last 100 chars:'));
-					console.log(
-						chalk.gray(cleanedResponse.substring(cleanedResponse.length - 100))
-					);
-				}
-
-				complexityAnalysis = JSON.parse(cleanedResponse);
-			} catch (parseError) {
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-				reportLog(
-					`Error parsing complexity analysis JSON: ${parseError.message}`,
-					'error'
-				);
-				if (outputFormat === 'text') {
-					console.error(
-						chalk.red(
-							`Error parsing complexity analysis JSON: ${parseError.message}`
-						)
-					);
-				}
-				throw parseError;
-			}
+			// With generateObject, we get structured data directly
+			complexityAnalysis = aiServiceResponse.mainResult.complexityAnalysis;
+			reportLog(`Received ${complexityAnalysis.length} complexity analyses from AI.`, 'info');
 
 			const taskIds = tasksData.tasks.map((t) => t.id);
 			const analysisTaskIds = complexityAnalysis.map((a) => a.taskId);

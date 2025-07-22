@@ -2,7 +2,6 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import { z } from 'zod'; // Keep Zod for post-parsing validation
 
 import {
 	log as consoleLog,
@@ -22,257 +21,13 @@ import {
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
-import { generateTextService } from '../ai-services-unified.js';
+import { generateObjectService } from '../ai-services-unified.js';
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { getModelConfiguration } from './models.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
-// Zod schema for validating the structure of tasks AFTER parsing
-const updatedTaskSchema = z
-	.object({
-		id: z.number().int(),
-		title: z.string(),
-		description: z.string(),
-		status: z.string(),
-		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().nullable(),
-		details: z.string().nullable(),
-		testStrategy: z.string().nullable(),
-		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
-	})
-	.strip(); // Allow potential extra fields during parsing if needed, then validate structure
-
-// Preprocessing schema that adds defaults before validation
-const preprocessTaskSchema = z.preprocess((task) => {
-	// Ensure task is an object
-	if (typeof task !== 'object' || task === null) {
-		return {};
-	}
-
-	// Return task with defaults for missing fields
-	return {
-		...task,
-		// Add defaults for required fields if missing
-		id: task.id ?? 0,
-		title: task.title ?? 'Untitled Task',
-		description: task.description ?? '',
-		status: task.status ?? 'pending',
-		dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
-		// Optional fields - preserve undefined/null distinction
-		priority: task.hasOwnProperty('priority') ? task.priority : null,
-		details: task.hasOwnProperty('details') ? task.details : null,
-		testStrategy: task.hasOwnProperty('testStrategy')
-			? task.testStrategy
-			: null,
-		subtasks: Array.isArray(task.subtasks)
-			? task.subtasks
-			: task.subtasks === null
-				? null
-				: []
-	};
-}, updatedTaskSchema);
-
-const updatedTaskArraySchema = z.array(updatedTaskSchema);
-const preprocessedTaskArraySchema = z.array(preprocessTaskSchema);
-
-/**
- * Parses an array of task objects from AI's text response.
- * @param {string} text - Response text from AI.
- * @param {number} expectedCount - Expected number of tasks.
- * @param {Function | Object} logFn - The logging function or MCP log object.
- * @param {boolean} isMCP - Flag indicating if logFn is MCP logger.
- * @returns {Array} Parsed and validated tasks array.
- * @throws {Error} If parsing or validation fails.
- */
-function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
-	const report = (level, ...args) => {
-		if (isMCP) {
-			if (typeof logFn[level] === 'function') logFn[level](...args);
-			else logFn.info(...args);
-		} else if (!isSilentMode()) {
-			// Check silent mode for consoleLog
-			consoleLog(level, ...args);
-		}
-	};
-
-	report(
-		'info',
-		'Attempting to parse updated tasks array from text response...'
-	);
-	if (!text || text.trim() === '')
-		throw new Error('AI response text is empty.');
-
-	let cleanedResponse = text.trim();
-	const originalResponseForDebug = cleanedResponse;
-	let parseMethodUsed = 'raw'; // Track which method worked
-
-	// --- NEW Step 1: Try extracting between [] first ---
-	const firstBracketIndex = cleanedResponse.indexOf('[');
-	const lastBracketIndex = cleanedResponse.lastIndexOf(']');
-	let potentialJsonFromArray = null;
-
-	if (firstBracketIndex !== -1 && lastBracketIndex > firstBracketIndex) {
-		potentialJsonFromArray = cleanedResponse.substring(
-			firstBracketIndex,
-			lastBracketIndex + 1
-		);
-		// Basic check to ensure it's not just "[]" or malformed
-		if (potentialJsonFromArray.length <= 2) {
-			potentialJsonFromArray = null; // Ignore empty array
-		}
-	}
-
-	// If [] extraction yielded something, try parsing it immediately
-	if (potentialJsonFromArray) {
-		try {
-			const testParse = JSON.parse(potentialJsonFromArray);
-			// It worked! Use this as the primary cleaned response.
-			cleanedResponse = potentialJsonFromArray;
-			parseMethodUsed = 'brackets';
-		} catch (e) {
-			report(
-				'info',
-				'Content between [] looked promising but failed initial parse. Proceeding to other methods.'
-			);
-			// Reset cleanedResponse to original if bracket parsing failed
-			cleanedResponse = originalResponseForDebug;
-		}
-	}
-
-	// --- Step 2: If bracket parsing didn't work or wasn't applicable, try code block extraction ---
-	if (parseMethodUsed === 'raw') {
-		// Only look for ```json blocks now
-		const codeBlockMatch = cleanedResponse.match(
-			/```json\s*([\s\S]*?)\s*```/i // Only match ```json
-		);
-		if (codeBlockMatch) {
-			cleanedResponse = codeBlockMatch[1].trim();
-			parseMethodUsed = 'codeblock';
-			report('info', 'Extracted JSON content from JSON Markdown code block.');
-		} else {
-			report('info', 'No JSON code block found.');
-			// --- Step 3: If code block failed, try stripping prefixes ---
-			const commonPrefixes = [
-				'json\n',
-				'javascript\n', // Keep checking common prefixes just in case
-				'python\n',
-				'here are the updated tasks:',
-				'here is the updated json:',
-				'updated tasks:',
-				'updated json:',
-				'response:',
-				'output:'
-			];
-			let prefixFound = false;
-			for (const prefix of commonPrefixes) {
-				if (cleanedResponse.toLowerCase().startsWith(prefix)) {
-					cleanedResponse = cleanedResponse.substring(prefix.length).trim();
-					parseMethodUsed = 'prefix';
-					report('info', `Stripped prefix: "${prefix.trim()}"`);
-					prefixFound = true;
-					break;
-				}
-			}
-			if (!prefixFound) {
-				report(
-					'warn',
-					'Response does not appear to contain [], JSON code block, or known prefix. Attempting raw parse.'
-				);
-			}
-		}
-	}
-
-	// --- Step 4: Attempt final parse ---
-	let parsedTasks;
-	try {
-		parsedTasks = JSON.parse(cleanedResponse);
-	} catch (parseError) {
-		report('error', `Failed to parse JSON array: ${parseError.message}`);
-		report(
-			'error',
-			`Extraction method used: ${parseMethodUsed}` // Log which method failed
-		);
-		report(
-			'error',
-			`Problematic JSON string (first 500 chars): ${cleanedResponse.substring(0, 500)}`
-		);
-		report(
-			'error',
-			`Original Raw Response (first 500 chars): ${originalResponseForDebug.substring(0, 500)}`
-		);
-		throw new Error(
-			`Failed to parse JSON response array: ${parseError.message}`
-		);
-	}
-
-	// --- Step 5 & 6: Validate Array structure and Zod schema ---
-	if (!Array.isArray(parsedTasks)) {
-		report(
-			'error',
-			`Parsed content is not an array. Type: ${typeof parsedTasks}`
-		);
-		report(
-			'error',
-			`Parsed content sample: ${JSON.stringify(parsedTasks).substring(0, 200)}`
-		);
-		throw new Error('Parsed AI response is not a valid JSON array.');
-	}
-
-	report('info', `Successfully parsed ${parsedTasks.length} potential tasks.`);
-	if (expectedCount && parsedTasks.length !== expectedCount) {
-		report(
-			'warn',
-			`Expected ${expectedCount} tasks, but parsed ${parsedTasks.length}.`
-		);
-	}
-
-	// Log missing fields for debugging before preprocessing
-	let hasWarnings = false;
-	parsedTasks.forEach((task, index) => {
-		const missingFields = [];
-		if (!task.hasOwnProperty('id')) missingFields.push('id');
-		if (!task.hasOwnProperty('status')) missingFields.push('status');
-		if (!task.hasOwnProperty('dependencies'))
-			missingFields.push('dependencies');
-
-		if (missingFields.length > 0) {
-			hasWarnings = true;
-			report(
-				'warn',
-				`Task ${index} is missing fields: ${missingFields.join(', ')} - will use defaults`
-			);
-		}
-	});
-
-	if (hasWarnings) {
-		report(
-			'warn',
-			'Some tasks were missing required fields. Applying defaults...'
-		);
-	}
-
-	// Use the preprocessing schema to add defaults and validate
-	const preprocessResult = preprocessedTaskArraySchema.safeParse(parsedTasks);
-
-	if (!preprocessResult.success) {
-		// This should rarely happen now since preprocessing adds defaults
-		report('error', 'Failed to validate task array even after preprocessing.');
-		preprocessResult.error.errors.forEach((err) => {
-			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
-		});
-
-		throw new Error(
-			`AI response failed validation: ${preprocessResult.error.message}`
-		);
-	}
-
-	report('info', 'Successfully validated and transformed task structure.');
-	return preprocessResult.data.slice(
-		0,
-		expectedCount || preprocessResult.data.length
-	);
-}
 
 /**
  * Update tasks based on new context using the unified AI service.
@@ -452,13 +207,15 @@ async function updateTasks(
 			// Determine role based on research flag
 			const serviceRole = useResearch ? 'research' : 'main';
 
-			// Call the unified AI service
-			aiServiceResponse = await generateTextService({
+			// Call the unified AI service with generateObject
+			aiServiceResponse = await generateObjectService({
 				role: serviceRole,
 				session: session,
 				projectRoot: projectRoot,
 				systemPrompt: systemPrompt,
 				prompt: userPrompt,
+				schema: COMMAND_SCHEMAS['update-tasks'],
+				objectName: 'tasks',
 				commandName: 'update-tasks',
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
@@ -466,13 +223,8 @@ async function updateTasks(
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
-			// Use the mainResult (text) for parsing
-			const parsedUpdatedTasks = parseUpdatedTasksFromText(
-				aiServiceResponse.mainResult,
-				tasksToUpdate.length,
-				logFn,
-				isMCP
-			);
+			// With generateObject, we get structured data directly
+			const parsedUpdatedTasks = aiServiceResponse.mainResult.tasks;
 
 			// --- Update Tasks Data (Updated writeJSON call) ---
 			if (!Array.isArray(parsedUpdatedTasks)) {

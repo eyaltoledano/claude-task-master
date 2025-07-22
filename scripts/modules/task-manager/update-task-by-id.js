@@ -3,7 +3,6 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import { z } from 'zod'; // Keep Zod for post-parse validation
 
 import {
 	log as consoleLog,
@@ -22,234 +21,13 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { generateTextService } from '../ai-services-unified.js';
+import { generateTextService, generateObjectService } from '../ai-services-unified.js';
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { getDebugFlag, isApiKeySet } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
-// Zod schema for post-parsing validation of the updated task object
-const updatedTaskSchema = z
-	.object({
-		id: z.number().int(),
-		title: z.string(), // Title should be preserved, but check it exists
-		description: z.string(),
-		status: z.string(),
-		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().nullable().default('medium'),
-		details: z.string().nullable().default(''),
-		testStrategy: z.string().nullable().default(''),
-		subtasks: z
-			.array(
-				z.object({
-					id: z
-						.number()
-						.int()
-						.positive()
-						.describe('Sequential subtask ID starting from 1'),
-					title: z.string(),
-					description: z.string(),
-					status: z.string(),
-					dependencies: z.array(z.number().int()).nullable().default([]),
-					details: z.string().nullable().default(''),
-					testStrategy: z.string().nullable().default('')
-				})
-			)
-			.nullable()
-			.default([])
-	})
-	.strip(); // Allows parsing even if AI adds extra fields, but validation focuses on schema
-
-/**
- * Parses a single updated task object from AI's text response.
- * @param {string} text - Response text from AI.
- * @param {number} expectedTaskId - The ID of the task expected.
- * @param {Function | Object} logFn - Logging function or MCP logger.
- * @param {boolean} isMCP - Flag indicating MCP context.
- * @returns {Object} Parsed and validated task object.
- * @throws {Error} If parsing or validation fails.
- */
-function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
-	// Report helper consistent with the established pattern
-	const report = (level, ...args) => {
-		if (isMCP) {
-			if (typeof logFn[level] === 'function') logFn[level](...args);
-			else logFn.info(...args);
-		} else if (!isSilentMode()) {
-			logFn(level, ...args);
-		}
-	};
-
-	report(
-		'info',
-		'Attempting to parse updated task object from text response...'
-	);
-	if (!text || text.trim() === '')
-		throw new Error('AI response text is empty.');
-
-	let cleanedResponse = text.trim();
-	const originalResponseForDebug = cleanedResponse;
-	let parseMethodUsed = 'raw'; // Keep track of which method worked
-
-	// --- NEW Step 1: Try extracting between {} first ---
-	const firstBraceIndex = cleanedResponse.indexOf('{');
-	const lastBraceIndex = cleanedResponse.lastIndexOf('}');
-	let potentialJsonFromBraces = null;
-
-	if (firstBraceIndex !== -1 && lastBraceIndex > firstBraceIndex) {
-		potentialJsonFromBraces = cleanedResponse.substring(
-			firstBraceIndex,
-			lastBraceIndex + 1
-		);
-		if (potentialJsonFromBraces.length <= 2) {
-			potentialJsonFromBraces = null; // Ignore empty braces {}
-		}
-	}
-
-	// If {} extraction yielded something, try parsing it immediately
-	if (potentialJsonFromBraces) {
-		try {
-			const testParse = JSON.parse(potentialJsonFromBraces);
-			// It worked! Use this as the primary cleaned response.
-			cleanedResponse = potentialJsonFromBraces;
-			parseMethodUsed = 'braces';
-		} catch (e) {
-			report(
-				'info',
-				'Content between {} looked promising but failed initial parse. Proceeding to other methods.'
-			);
-			// Reset cleanedResponse to original if brace parsing failed
-			cleanedResponse = originalResponseForDebug;
-		}
-	}
-
-	// --- Step 2: If brace parsing didn't work or wasn't applicable, try code block extraction ---
-	if (parseMethodUsed === 'raw') {
-		const codeBlockMatch = cleanedResponse.match(
-			/```(?:json|javascript)?\s*([\s\S]*?)\s*```/i
-		);
-		if (codeBlockMatch) {
-			cleanedResponse = codeBlockMatch[1].trim();
-			parseMethodUsed = 'codeblock';
-			report('info', 'Extracted JSON content from Markdown code block.');
-		} else {
-			// --- Step 3: If code block failed, try stripping prefixes ---
-			const commonPrefixes = [
-				'json\n',
-				'javascript\n'
-				// ... other prefixes ...
-			];
-			let prefixFound = false;
-			for (const prefix of commonPrefixes) {
-				if (cleanedResponse.toLowerCase().startsWith(prefix)) {
-					cleanedResponse = cleanedResponse.substring(prefix.length).trim();
-					parseMethodUsed = 'prefix';
-					report('info', `Stripped prefix: "${prefix.trim()}"`);
-					prefixFound = true;
-					break;
-				}
-			}
-			if (!prefixFound) {
-				report(
-					'warn',
-					'Response does not appear to contain {}, code block, or known prefix. Attempting raw parse.'
-				);
-			}
-		}
-	}
-
-	// --- Step 4: Attempt final parse ---
-	let parsedTask;
-	try {
-		parsedTask = JSON.parse(cleanedResponse);
-	} catch (parseError) {
-		report('error', `Failed to parse JSON object: ${parseError.message}`);
-		report(
-			'error',
-			`Problematic JSON string (first 500 chars): ${cleanedResponse.substring(0, 500)}`
-		);
-		report(
-			'error',
-			`Original Raw Response (first 500 chars): ${originalResponseForDebug.substring(0, 500)}`
-		);
-		throw new Error(
-			`Failed to parse JSON response object: ${parseError.message}`
-		);
-	}
-
-	if (!parsedTask || typeof parsedTask !== 'object') {
-		report(
-			'error',
-			`Parsed content is not an object. Type: ${typeof parsedTask}`
-		);
-		report(
-			'error',
-			`Parsed content sample: ${JSON.stringify(parsedTask).substring(0, 200)}`
-		);
-		throw new Error('Parsed AI response is not a valid JSON object.');
-	}
-
-	// Preprocess the task to ensure subtasks have proper structure
-	const preprocessedTask = {
-		...parsedTask,
-		status: parsedTask.status || 'pending',
-		dependencies: Array.isArray(parsedTask.dependencies)
-			? parsedTask.dependencies
-			: [],
-		details:
-			typeof parsedTask.details === 'string'
-				? parsedTask.details
-				: String(parsedTask.details || ''),
-		testStrategy:
-			typeof parsedTask.testStrategy === 'string'
-				? parsedTask.testStrategy
-				: String(parsedTask.testStrategy || ''),
-		// Ensure subtasks is an array and each subtask has required fields
-		subtasks: Array.isArray(parsedTask.subtasks)
-			? parsedTask.subtasks.map((subtask) => ({
-					...subtask,
-					title: subtask.title || '',
-					description: subtask.description || '',
-					status: subtask.status || 'pending',
-					dependencies: Array.isArray(subtask.dependencies)
-						? subtask.dependencies
-						: [],
-					details:
-						typeof subtask.details === 'string'
-							? subtask.details
-							: String(subtask.details || ''),
-					testStrategy:
-						typeof subtask.testStrategy === 'string'
-							? subtask.testStrategy
-							: String(subtask.testStrategy || '')
-				}))
-			: []
-	};
-
-	// Validate the parsed task object using Zod
-	const validationResult = updatedTaskSchema.safeParse(preprocessedTask);
-	if (!validationResult.success) {
-		report('error', 'Parsed task object failed Zod validation.');
-		validationResult.error.errors.forEach((err) => {
-			report('error', `  - Field '${err.path.join('.')}': ${err.message}`);
-		});
-		throw new Error(
-			`AI response failed task structure validation: ${validationResult.error.message}`
-		);
-	}
-
-	// Final check: ensure ID matches expected ID (AI might hallucinate)
-	if (validationResult.data.id !== expectedTaskId) {
-		report(
-			'warn',
-			`AI returned task with ID ${validationResult.data.id}, but expected ${expectedTaskId}. Overwriting ID.`
-		);
-		validationResult.data.id = expectedTaskId; // Enforce correct ID
-	}
-
-	report('info', 'Successfully validated updated task structure.');
-	return validationResult.data; // Return the validated task data
-}
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -512,15 +290,32 @@ async function updateTaskById(
 
 		try {
 			const serviceRole = useResearch ? 'research' : 'main';
-			aiServiceResponse = await generateTextService({
-				role: serviceRole,
-				session: session,
-				projectRoot: projectRoot,
-				systemPrompt: systemPrompt,
-				prompt: userPrompt,
-				commandName: 'update-task',
-				outputType: isMCP ? 'mcp' : 'cli'
-			});
+			
+			if (appendMode) {
+				// Append mode still uses generateTextService since it returns plain text
+				aiServiceResponse = await generateTextService({
+					role: serviceRole,
+					session: session,
+					projectRoot: projectRoot,
+					systemPrompt: systemPrompt,
+					prompt: userPrompt,
+					commandName: 'update-task',
+					outputType: isMCP ? 'mcp' : 'cli'
+				});
+			} else {
+				// Full update mode uses generateObjectService for structured output
+				aiServiceResponse = await generateObjectService({
+					role: serviceRole,
+					session: session,
+					projectRoot: projectRoot,
+					systemPrompt: systemPrompt,
+					prompt: userPrompt,
+					schema: COMMAND_SCHEMAS['update-task-by-id'],
+					objectName: 'task',
+					commandName: 'update-task',
+					outputType: isMCP ? 'mcp' : 'cli'
+				});
+			}
 
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
@@ -590,13 +385,8 @@ async function updateTaskById(
 				};
 			}
 
-			// Full update mode: Use mainResult (text) for parsing
-			const updatedTask = parseUpdatedTaskFromText(
-				aiServiceResponse.mainResult,
-				taskId,
-				logFn,
-				isMCP
-			);
+			// Full update mode: Use structured data directly
+			const updatedTask = aiServiceResponse.mainResult.task;
 
 			// --- Task Validation/Correction (Keep existing logic) ---
 			if (!updatedTask || typeof updatedTask !== 'object')

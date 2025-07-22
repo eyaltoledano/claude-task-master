@@ -177,9 +177,62 @@ jest.unstable_mockModule(
 				});
 			}
 		}),
-		generateObjectService: jest.fn().mockResolvedValue({
-			mainResult: {
-				object: {
+		generateObjectService: jest.fn().mockImplementation((params) => {
+			const commandName = params?.commandName || 'default';
+
+			if (commandName === 'analyze-complexity') {
+				// Check if this is for a specific tag test by looking at the prompt
+				const isFeatureTag =
+					params?.prompt?.includes('feature') || params?.role === 'feature';
+				const isMasterTag =
+					params?.prompt?.includes('master') || params?.role === 'master';
+
+				let taskTitle = 'Test Task';
+				if (isFeatureTag) {
+					taskTitle = 'Feature Task 1';
+				} else if (isMasterTag) {
+					taskTitle = 'Master Task 1';
+				}
+
+				return Promise.resolve({
+					mainResult: {
+						complexityAnalysis: [
+							{
+								taskId: 1,
+								taskTitle: taskTitle,
+								complexityScore: 7,
+								recommendedSubtasks: 4,
+								expansionPrompt: 'Break down this task',
+								reasoning: 'This task is moderately complex'
+							},
+							{
+								taskId: 2,
+								taskTitle: 'Task 2',
+								complexityScore: 5,
+								recommendedSubtasks: 3,
+								expansionPrompt: 'Break down this task with a focus on task 2.',
+								reasoning:
+									'Automatically added due to missing analysis in AI response.'
+							}
+						]
+					},
+					telemetryData: {
+						timestamp: new Date().toISOString(),
+						commandName: 'analyze-complexity',
+						modelUsed: 'claude-3-5-sonnet',
+						providerName: 'anthropic',
+						inputTokens: 1000,
+						outputTokens: 500,
+						totalTokens: 1500,
+						totalCost: 0.012414,
+						currency: 'USD'
+					}
+				});
+			}
+
+			// Default response for expand-task and others
+			return Promise.resolve({
+				mainResult: {
 					subtasks: [
 						{
 							id: 1,
@@ -191,19 +244,19 @@ jest.unstable_mockModule(
 							testStrategy: 'Test strategy'
 						}
 					]
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'expand-task',
+					modelUsed: 'claude-3-5-sonnet',
+					providerName: 'anthropic',
+					inputTokens: 1000,
+					outputTokens: 500,
+					totalTokens: 1500,
+					totalCost: 0.012414,
+					currency: 'USD'
 				}
-			},
-			telemetryData: {
-				timestamp: new Date().toISOString(),
-				commandName: 'expand-task',
-				modelUsed: 'claude-3-5-sonnet',
-				providerName: 'anthropic',
-				inputTokens: 1000,
-				outputTokens: 500,
-				totalTokens: 1500,
-				totalCost: 0.012414,
-				currency: 'USD'
-			}
+			});
 		})
 	})
 );
@@ -401,7 +454,7 @@ const { readJSON, writeJSON, getTagAwareFilePath } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateTextService } = await import(
+const { generateTextService, generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
 

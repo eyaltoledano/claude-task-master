@@ -30,6 +30,12 @@ jest.unstable_mockModule(
 		generateTextService: jest.fn().mockResolvedValue({
 			mainResult: '[]', // mainResult is the text string directly
 			telemetryData: {}
+		}),
+		generateObjectService: jest.fn().mockResolvedValue({
+			mainResult: {
+				tasks: [] // generateObject returns structured data
+			},
+			telemetryData: {}
 		})
 	})
 );
@@ -83,7 +89,7 @@ const { readJSON, writeJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateTextService } = await import(
+const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
 
@@ -153,7 +159,9 @@ describe('updateTasks', () => {
 		];
 
 		const mockApiResponse = {
-			mainResult: JSON.stringify(mockUpdatedTasks), // mainResult is the JSON string directly
+			mainResult: {
+				tasks: mockUpdatedTasks // generateObject returns structured data
+			},
 			telemetryData: {}
 		};
 
@@ -163,7 +171,7 @@ describe('updateTasks', () => {
 			tag: 'master',
 			_rawTaggedData: mockInitialTasks
 		});
-		generateTextService.mockResolvedValue(mockApiResponse);
+		generateObjectService.mockResolvedValue(mockApiResponse);
 
 		// Act
 		const result = await updateTasks(
@@ -184,7 +192,7 @@ describe('updateTasks', () => {
 		);
 
 		// 2. AI Service called with correct args
-		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
+		expect(generateObjectService).toHaveBeenCalledWith(expect.any(Object));
 
 		// 3. Write JSON called with correctly merged tasks
 		expect(writeJSON).toHaveBeenCalledWith(
@@ -251,7 +259,7 @@ describe('updateTasks', () => {
 			'/mock/path',
 			'master'
 		);
-		expect(generateTextService).not.toHaveBeenCalled();
+		expect(generateObjectService).not.toHaveBeenCalled();
 		expect(writeJSON).not.toHaveBeenCalled();
 		expect(log).toHaveBeenCalledWith(
 			'info',
@@ -326,8 +334,10 @@ describe('updateTasks', () => {
 			_rawTaggedData: mockTaggedData
 		});
 
-		generateTextService.mockResolvedValue({
-			mainResult: JSON.stringify(mockUpdatedTasks),
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				tasks: mockUpdatedTasks
+			},
 			telemetryData: { commandName: 'update-tasks', totalCost: 0.05 }
 		});
 
