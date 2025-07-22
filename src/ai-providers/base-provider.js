@@ -203,11 +203,11 @@ export class BaseAIProvider {
 			);
 
 			const client = await this.getClient(params);
-			
+
 			// For providers that don't support tool mode (like claude-code),
 			// we need to ensure the schema is properly communicated in the prompt
 			const needsExplicitSchema = this.name === 'Claude Code';
-			
+
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
