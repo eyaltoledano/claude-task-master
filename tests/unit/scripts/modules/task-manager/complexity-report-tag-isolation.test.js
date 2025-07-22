@@ -177,6 +177,30 @@ jest.unstable_mockModule(
 				});
 			}
 		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				text: JSON.stringify([
+					{
+						taskId: 1,
+						complexityScore: 6,
+						reasoning: 'Moderate complexity task',
+						recommendedSubtasks: 4,
+						expansionPrompt: 'Standard expansion needed'
+					}
+				])
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
 		generateObjectService: jest.fn().mockResolvedValue({
 			mainResult: {
 				object: {
