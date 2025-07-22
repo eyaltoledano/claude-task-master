@@ -47,6 +47,20 @@ function generateMarkdownTable(title, models) {
 	return table;
 }
 
+function generateUnsupportedTable(models) {
+	if (!models || models.length === 0) {
+		return '## Unsupported Models\n\nNo unsupported models found.\n\n';
+	}
+	let table = '## Unsupported Models\n\n';
+	table += '| Provider | Model Name | Reason |\n';
+	table += '|---|---|---|\n';
+	models.forEach((model) => {
+		table += `| ${model.provider} | ${model.modelName} | ${model.reason || '—'} |\n`;
+	});
+	table += '\n';
+	return table;
+}
+
 function main() {
 	try {
 		const correctSupportedModelsPath = path.join(
@@ -68,31 +82,46 @@ function main() {
 		const mainModels = [];
 		const researchModels = [];
 		const fallbackModels = [];
+		const unsupportedModels = [];
 
 		for (const provider in supportedModels) {
 			if (Object.hasOwnProperty.call(supportedModels, provider)) {
 				const models = supportedModels[provider];
 				models.forEach((model) => {
-					const modelEntry = {
-						provider: provider,
-						modelName: model.id,
-						sweScore: model.swe_score,
-						inputCost: model.cost_per_1m_tokens
-							? model.cost_per_1m_tokens.input
-							: null,
-						outputCost: model.cost_per_1m_tokens
-							? model.cost_per_1m_tokens.output
-							: null
-					};
-
-					if (model.allowed_roles.includes('main')) {
-						mainModels.push(modelEntry);
-					}
-					if (model.allowed_roles.includes('research')) {
-						researchModels.push(modelEntry);
-					}
-					if (model.allowed_roles.includes('fallback')) {
-						fallbackModels.push(modelEntry);
+					const isSupported = model.supported !== false; // default to true if missing
+					if (isSupported) {
+						const modelEntry = {
+							provider: provider,
+							modelName: model.id,
+							sweScore: model.swe_score,
+							inputCost: model.cost_per_1m_tokens
+								? model.cost_per_1m_tokens.input
+								: null,
+							outputCost: model.cost_per_1m_tokens
+								? model.cost_per_1m_tokens.output
+								: null
+						};
+						if (model.allowed_roles && model.allowed_roles.includes('main')) {
+							mainModels.push(modelEntry);
+						}
+						if (
+							model.allowed_roles &&
+							model.allowed_roles.includes('research')
+						) {
+							researchModels.push(modelEntry);
+						}
+						if (
+							model.allowed_roles &&
+							model.allowed_roles.includes('fallback')
+						) {
+							fallbackModels.push(modelEntry);
+						}
+					} else {
+						unsupportedModels.push({
+							provider: provider,
+							modelName: model.id,
+							reason: model.reason || 'Not specified'
+						});
 					}
 				});
 			}
@@ -119,6 +148,7 @@ function main() {
 		markdownContent += generateMarkdownTable('Main Models', mainModels);
 		markdownContent += generateMarkdownTable('Research Models', researchModels);
 		markdownContent += generateMarkdownTable('Fallback Models', fallbackModels);
+		markdownContent += generateUnsupportedTable(unsupportedModels);
 
 		fs.writeFileSync(correctOutputMarkdownPath, markdownContent, 'utf8');
 		console.log(`Successfully updated ${correctOutputMarkdownPath}`);
