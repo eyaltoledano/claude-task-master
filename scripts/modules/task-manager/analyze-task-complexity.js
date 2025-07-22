@@ -25,7 +25,6 @@ import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks } from '../utils.js';
 
-
 /**
  * Analyzes task complexity and generates expansion recommendations
  * @param {Object} options Command options
@@ -414,14 +413,15 @@ async function analyzeTaskComplexity(options, context = {}) {
 			if (outputFormat === 'text') {
 				readline.clearLine(process.stdout, 0);
 				readline.cursorTo(process.stdout, 0);
-				console.log(
-					chalk.green('AI service call complete.')
-				);
+				console.log(chalk.green('AI service call complete.'));
 			}
 
 			// With generateObject, we get structured data directly
 			complexityAnalysis = aiServiceResponse.mainResult.complexityAnalysis;
-			reportLog(`Received ${complexityAnalysis.length} complexity analyses from AI.`, 'info');
+			reportLog(
+				`Received ${complexityAnalysis.length} complexity analyses from AI.`,
+				'info'
+			);
 
 			const taskIds = tasksData.tasks.map((t) => t.id);
 			const analysisTaskIds = complexityAnalysis.map((a) => a.taskId);

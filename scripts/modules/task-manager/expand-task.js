@@ -2,31 +2,29 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+	getTagAwareFilePath,
+	isSilentMode,
 	log,
 	readJSON,
-	writeJSON,
-	isSilentMode,
-	getTagAwareFilePath
+	writeJSON
 } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
-import { generateObjectService } from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
+import { generateObjectService } from '../ai-services-unified.js';
 
-import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
-
-
+import generateTaskFiles from './generate-task-files.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).
@@ -278,7 +276,7 @@ async function expandTask(
 			);
 		}
 
-		let responseText = '';
+		const responseText = '';
 		let aiServiceResponse = null;
 
 		try {
@@ -296,12 +294,10 @@ async function expandTask(
 				commandName: 'expand-task',
 				outputType: outputFormat
 			});
-			
+
 			// With generateObject, we get structured data directly
 			generatedSubtasks = aiServiceResponse.mainResult.subtasks;
-			logger.info(
-				`Received ${generatedSubtasks.length} subtasks from AI.`
-			);
+			logger.info(`Received ${generatedSubtasks.length} subtasks from AI.`);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
 			logger.error(

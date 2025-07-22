@@ -64,7 +64,7 @@ jest.unstable_mockModule(
 				currency: 'USD'
 			}
 		}),
-		generateTextService: jest.fn(),
+		generateTextService: jest.fn()
 	})
 );
 

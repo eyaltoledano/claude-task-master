@@ -44,24 +44,22 @@ jest.unstable_mockModule(
 		generateTextService: jest
 			.fn()
 			.mockResolvedValue({ mainResult: { content: '{}' }, telemetryData: {} }),
-		generateObjectService: jest
-			.fn()
-			.mockResolvedValue({ 
-				mainResult: { 
-					task: {
-						id: 1,
-						title: 'Updated Task',
-						description: 'Updated description',
-						status: 'pending',
-						dependencies: [],
-						priority: 'medium',
-						details: null,
-						testStrategy: null,
-						subtasks: []
-					}
-				}, 
-				telemetryData: {} 
-			})
+		generateObjectService: jest.fn().mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: null,
+					testStrategy: null,
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		})
 	})
 );
 

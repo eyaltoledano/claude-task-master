@@ -28,7 +28,6 @@ import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
-
 /**
  * Update tasks based on new context using the unified AI service.
  * @param {string} tasksPath - Path to the tasks.json file

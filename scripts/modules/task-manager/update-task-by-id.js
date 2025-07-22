@@ -21,13 +21,15 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { generateTextService, generateObjectService } from '../ai-services-unified.js';
+import {
+	generateTextService,
+	generateObjectService
+} from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { getDebugFlag, isApiKeySet } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -290,7 +292,7 @@ async function updateTaskById(
 
 		try {
 			const serviceRole = useResearch ? 'research' : 'main';
-			
+
 			if (appendMode) {
 				// Append mode still uses generateTextService since it returns plain text
 				aiServiceResponse = await generateTextService({

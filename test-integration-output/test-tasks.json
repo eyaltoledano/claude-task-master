@@ -1,63 +1,59 @@
 {
-  "master": {
-    "tasks": [
-      {
-        "id": 1,
-        "title": "Setup project infrastructure",
-        "description": "Initialize the project with proper structure and dependencies",
-        "status": "done",
-        "dependencies": [],
-        "priority": "high",
-        "details": "Created project structure with src, tests, and docs folders",
-        "testStrategy": "Manual verification of folder structure",
-        "subtasks": []
-      },
-      {
-        "id": 2,
-        "title": "Implement authentication system",
-        "description": "Add user authentication with JWT tokens and OAuth2 support",
-        "status": "in-progress",
-        "dependencies": [
-          1
-        ],
-        "priority": "high",
-        "details": "Need to support both OAuth2 and traditional email/password login",
-        "testStrategy": "Unit tests for auth logic, integration tests for endpoints",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Design authentication flow",
-            "description": "Create detailed flow diagrams for auth process",
-            "status": "done",
-            "dependencies": []
-          },
-          {
-            "id": 2,
-            "title": "Implement JWT token generation",
-            "description": "Create secure JWT token generation and validation",
-            "status": "pending",
-            "dependencies": []
-          }
-        ]
-      },
-      {
-        "id": 3,
-        "title": "Build RESTful API",
-        "description": "Create comprehensive REST API endpoints",
-        "status": "pending",
-        "dependencies": [
-          2
-        ],
-        "priority": "medium",
-        "details": "Use Express.js with proper middleware and error handling",
-        "testStrategy": null,
-        "subtasks": []
-      }
-    ],
-    "metadata": {
-      "created": "2025-07-21T00:27:15.668Z",
-      "updated": "2025-07-21T00:27:15.668Z",
-      "description": "Test project tasks"
-    }
-  }
+	"master": {
+		"tasks": [
+			{
+				"id": 1,
+				"title": "Setup project infrastructure",
+				"description": "Initialize the project with proper structure and dependencies",
+				"status": "done",
+				"dependencies": [],
+				"priority": "high",
+				"details": "Created project structure with src, tests, and docs folders",
+				"testStrategy": "Manual verification of folder structure",
+				"subtasks": []
+			},
+			{
+				"id": 2,
+				"title": "Implement authentication system",
+				"description": "Add user authentication with JWT tokens and OAuth2 support",
+				"status": "in-progress",
+				"dependencies": [1],
+				"priority": "high",
+				"details": "Need to support both OAuth2 and traditional email/password login",
+				"testStrategy": "Unit tests for auth logic, integration tests for endpoints",
+				"subtasks": [
+					{
+						"id": 1,
+						"title": "Design authentication flow",
+						"description": "Create detailed flow diagrams for auth process",
+						"status": "done",
+						"dependencies": []
+					},
+					{
+						"id": 2,
+						"title": "Implement JWT token generation",
+						"description": "Create secure JWT token generation and validation",
+						"status": "pending",
+						"dependencies": []
+					}
+				]
+			},
+			{
+				"id": 3,
+				"title": "Build RESTful API",
+				"description": "Create comprehensive REST API endpoints",
+				"status": "pending",
+				"dependencies": [2],
+				"priority": "medium",
+				"details": "Use Express.js with proper middleware and error handling",
+				"testStrategy": null,
+				"subtasks": []
+			}
+		],
+		"metadata": {
+			"created": "2025-07-21T00:27:15.668Z",
+			"updated": "2025-07-21T00:27:15.668Z",
+			"description": "Test project tasks"
+		}
+	}
 }
