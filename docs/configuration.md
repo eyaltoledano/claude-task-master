@@ -4,30 +4,7 @@ Taskmaster uses two primary methods for configuration:
 
 1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
 
-    - This JSON file stores most configuration settings, including A5. **Usage Requirements**:
-   8. **Troubleshooting**:
-   - "MCP provider requires session context" → Ensure running in MCP environment
-   - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshootingust be running in an MCP context (session must be available)
-   - Session must provide `clientCapabilities.sampling` capability
-
-6. **Best Practices**:
-   - Always configure a non-MCP fallback provider
-   - Use `mcp` for main/research roles when in MCP environments
-   - Test sampling capability before production use
-
-7. **Setup Commands**:
-   ```bash
-   # Set MCP provider for main role
-   task-master models set-main --provider mcp --model claude-3-5-sonnet-20241022
-   
-   # Set MCP provider for research role  
-   task-master models set-research --provider mcp --model claude-3-opus-20240229
-   
-   # Verify configuration
-   task-master models list
-   ```
-
-8. **Troubleshooting**:lections, parameters, logging levels, and project defaults.
+    - This JSON file stores most configuration settings, including AI model selections, parameters, logging levels, and project defaults.
     - **Location:** This file is created in the `.taskmaster/` directory when you run the `task-master models --setup` interactive setup or initialize a new project with `task-master init`.
     - **Migration:** Existing projects with `.taskmasterconfig` in the root will continue to work, but should be migrated to the new structure using `task-master migrate`.
     - **Management:** Use the `task-master models --setup` command (or `models` MCP tool) to interactively create and manage this file. You can also set specific models directly using `task-master models --set-<role>=<model_id>`, adding `--ollama` or `--openrouter` flags for custom models. Manual editing is possible but not recommended unless you understand the structure.
@@ -68,11 +45,12 @@ Taskmaster uses two primary methods for configuration:
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
           "vertexProjectId": "your-gcp-project-id",
           "vertexLocation": "us-central1",
-		      "responseLanguage": "English"
+	      "responseLanguage": "English"
         }
       }
       ```
 
+> For MCP-specific setup and troubleshooting, see [Provider-Specific Configuration](#provider-specific-configuration).
 
 2.  **Legacy `.taskmasterconfig` File (Backward Compatibility)**
 
@@ -198,8 +176,6 @@ node scripts/init.js
 
 ### MCP (Model Context Protocol) Provider
 
-The MCP provider enables Task Master to use MCP servers as AI providers. This is particularly useful when running Task Master within MCP-compatible development environments like Claude Desktop or Cursor.
-
 1. **Prerequisites**:
    - An active MCP session with sampling capability
    - MCP client with sampling support (e.g. VS Code)
@@ -238,12 +214,24 @@ The MCP provider enables Task Master to use MCP servers as AI providers. This is
    - Must be running in an MCP context (session must be available)
    - Session must provide `clientCapabilities.sampling` capability
 
-5. **Best Practices**:
+6. **Best Practices**:
    - Always configure a non-MCP fallback provider
    - Use `mcp` for main/research roles when in MCP environments
    - Test sampling capability before production use
 
-6. **Troubleshooting**:
+7. **Setup Commands**:
+   ```bash
+   # Set MCP provider for main role
+   task-master models set-main --provider mcp --model claude-3-5-sonnet-20241022
+   
+   # Set MCP provider for research role  
+   task-master models set-research --provider mcp --model claude-3-opus-20240229
+   
+   # Verify configuration
+   task-master models list
+   ```
+
+8. **Troubleshooting**:
    - "MCP provider requires session context" → Ensure running in MCP environment
    - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
 

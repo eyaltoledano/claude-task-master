@@ -9,6 +9,8 @@ import generateTaskFiles from './generate-task-files.js';
  * @param {boolean} convertToTask - Whether to convert the subtask to a standalone task
  * @param {boolean} generateFiles - Whether to regenerate task files after removing the subtask
  * @param {Object} context - Context object containing projectRoot and tag information
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @returns {Object|null} The removed subtask if convertToTask is true, otherwise null
  */
 async function removeSubtask(
@@ -18,11 +20,12 @@ async function removeSubtask(
 	generateFiles = true,
 	context = {}
 ) {
+	const { projectRoot, tag } = context;
 	try {
 		log('info', `Removing subtask ${subtaskId}...`);
 
 		// Read the existing tasks with proper context
-		const data = readJSON(tasksPath, context.projectRoot, context.tag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid or missing tasks file at ${tasksPath}`);
 		}
@@ -103,7 +106,7 @@ async function removeSubtask(
 		}
 
 		// Write the updated tasks back to the file with proper context
-		writeJSON(tasksPath, data, context.projectRoot, context.tag);
+		writeJSON(tasksPath, data, projectRoot, tag);
 
 		// Generate task files if requested
 		if (generateFiles) {

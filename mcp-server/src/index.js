@@ -32,10 +32,6 @@ class TaskMasterMCPServer {
 		this.server = new FastMCP(this.options);
 		this.initialized = false;
 
-		this.server.addResource({});
-
-		this.server.addResourceTemplate({});
-
 		// Bind methods
 		this.init = this.init.bind(this);
 		this.start = this.start.bind(this);

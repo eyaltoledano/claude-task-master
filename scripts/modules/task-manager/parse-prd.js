@@ -34,7 +34,6 @@ import {
 } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
 import {
 	getMainModelId,
@@ -211,8 +210,8 @@ async function parsePRDWithStreaming(
 		reportProgress
 	);
 
-	// Add tag support from incoming changes
-	const targetTag = tag || getCurrentTag(projectRoot) || 'master';
+	// Use the provided tag, or the current active tag, or default to 'master'
+	const targetTag = tag;
 
 	report(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`,

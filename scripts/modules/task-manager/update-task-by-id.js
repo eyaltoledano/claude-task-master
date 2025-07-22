@@ -12,8 +12,7 @@ import {
 	truncate,
 	isSilentMode,
 	flattenTasksWithSubtasks,
-	findProjectRoot,
-	getCurrentTag
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -190,8 +189,45 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
 		throw new Error('Parsed AI response is not a valid JSON object.');
 	}
 
+	// Preprocess the task to ensure subtasks have proper structure
+	const preprocessedTask = {
+		...parsedTask,
+		status: parsedTask.status || 'pending',
+		dependencies: Array.isArray(parsedTask.dependencies)
+			? parsedTask.dependencies
+			: [],
+		details:
+			typeof parsedTask.details === 'string'
+				? parsedTask.details
+				: String(parsedTask.details || ''),
+		testStrategy:
+			typeof parsedTask.testStrategy === 'string'
+				? parsedTask.testStrategy
+				: String(parsedTask.testStrategy || ''),
+		// Ensure subtasks is an array and each subtask has required fields
+		subtasks: Array.isArray(parsedTask.subtasks)
+			? parsedTask.subtasks.map((subtask) => ({
+					...subtask,
+					title: subtask.title || '',
+					description: subtask.description || '',
+					status: subtask.status || 'pending',
+					dependencies: Array.isArray(subtask.dependencies)
+						? subtask.dependencies
+						: [],
+					details:
+						typeof subtask.details === 'string'
+							? subtask.details
+							: String(subtask.details || ''),
+					testStrategy:
+						typeof subtask.testStrategy === 'string'
+							? subtask.testStrategy
+							: String(subtask.testStrategy || '')
+				}))
+			: []
+	};
+
 	// Validate the parsed task object using Zod
-	const validationResult = updatedTaskSchema.safeParse(parsedTask);
+	const validationResult = updatedTaskSchema.safeParse(preprocessedTask);
 	if (!validationResult.success) {
 		report('error', 'Parsed task object failed Zod validation.');
 		validationResult.error.errors.forEach((err) => {
@@ -225,6 +261,7 @@ function parseUpdatedTaskFromText(text, expectedTaskId, logFn, isMCP) {
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [context.projectRoot] - Project root path.
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  * @param {boolean} [appendMode=false] - If true, append to details instead of full update.
  * @returns {Promise<Object|null>} - The updated task or null if update failed.
@@ -283,11 +320,8 @@ async function updateTaskById(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// Determine the tag to use
-		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
-
 		// --- Task Loading and Status Check (Keep existing) ---
-		const data = readJSON(tasksPath, projectRoot, currentTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
 		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
@@ -327,7 +361,7 @@ async function updateTaskById(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-task');
 			const searchQuery = `${taskToUpdate.title} ${taskToUpdate.description} ${prompt}`;
@@ -522,7 +556,7 @@ async function updateTaskById(
 
 				// Write the updated task back to file
 				data.tasks[taskIndex] = taskToUpdate;
-				writeJSON(tasksPath, data, projectRoot, currentTag);
+				writeJSON(tasksPath, data, projectRoot, tag);
 				report('success', `Successfully appended to task ${taskId}`);
 
 				// Display success message for CLI
@@ -667,7 +701,7 @@ async function updateTaskById(
 			// --- End Update Task Data ---
 
 			// --- Write File and Generate (Unchanged) ---
-			writeJSON(tasksPath, data, projectRoot, currentTag);
+			writeJSON(tasksPath, data, projectRoot, tag);
 			report('success', `Successfully updated task ${taskId}`);
 			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 			// --- End Write File ---

@@ -14,7 +14,9 @@ import {
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -71,15 +73,22 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('Ending task ID in a range to analyze.'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(
 			async (args, { log, session, reportProgress }) => {
 				const toolName = 'analyze_project_complexity'; // Define tool name for logging
+
 				try {
 					log.info(
 						`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 					);
+
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
 
 					const progressCapability = checkProgressCapability(
 						reportProgress,
@@ -102,9 +111,14 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						);
 					}
 
-					const outputPath = args.output
-						? path.resolve(args.projectRoot, args.output)
-						: path.resolve(args.projectRoot, COMPLEXITY_REPORT_FILE);
+					const outputPath = resolveComplexityReportOutputPath(
+						args.output,
+						{
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
+						},
+						log
+					);
 
 					log.info(`${toolName}: Report output path: ${outputPath}`);
 
@@ -132,15 +146,13 @@ export function registerAnalyzeProjectComplexityTool(server) {
 							threshold: args.threshold,
 							research: args.research,
 							projectRoot: args.projectRoot,
+							tag: resolvedTag,
 							ids: args.ids,
 							from: args.from,
 							to: args.to
 						},
 						log,
-						{
-							session,
-							reportProgress: progressCapability.reportProgress
-						}
+						{ session, reportProgress: progressCapability.reportProgress }
 					);
 
 					// 4. Handle Result

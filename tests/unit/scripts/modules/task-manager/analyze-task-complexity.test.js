@@ -355,7 +355,7 @@ describe('analyzeTaskComplexity', () => {
 		);
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
 		expect(mockWriteFileSync).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
+			expect.stringContaining('task-complexity-report.json'),
 			expect.stringContaining('"thresholdScore": 5'),
 			'utf8'
 		);
@@ -412,7 +412,7 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		expect(mockWriteFileSync).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
+			expect.stringContaining('task-complexity-report.json'),
 			expect.stringContaining('"thresholdScore": 7'),
 			'utf8'
 		);
@@ -440,7 +440,7 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		expect(mockWriteFileSync).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
+			expect.stringContaining('task-complexity-report.json'),
 			expect.stringContaining('"thresholdScore": 8'),
 			'utf8'
 		);

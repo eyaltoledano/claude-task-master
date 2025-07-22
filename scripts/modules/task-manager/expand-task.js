@@ -50,6 +50,8 @@ import { parseSubtasksFromText } from './subtask-parser.js';
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {boolean} [context.isChildOperation=false] - If true, indicates this is called from expandAllTasks to control UI display.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
@@ -68,6 +70,7 @@ async function expandTask(
 		mcpLog,
 		projectRoot: contextProjectRoot,
 		tag,
+		complexityReportPath,
 		parentTracker,
 		isChildOperation = false
 	} = context;
@@ -118,7 +121,7 @@ async function expandTask(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
 			const searchQuery = `${task.title} ${task.description}`;
@@ -147,17 +150,10 @@ async function expandTask(
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
 		let complexityReasoningContext = '';
-
-		// Use tag-aware complexity report path
-		const complexityReportPath = getTagAwareFilePath(
-			COMPLEXITY_REPORT_FILE,
-			tag,
-			projectRoot
-		);
 		let taskAnalysis = null;
 
 		logger.debug(
-			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+			`Looking for complexity report at: ${complexityReportPath}${tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
 		);
 
 		try {
@@ -229,19 +225,44 @@ async function expandTask(
 				`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
 		}
 
+		// Ensure expansionPrompt is a string (handle both string and object formats)
+		let expansionPromptText = undefined;
+		if (taskAnalysis?.expansionPrompt) {
+			if (typeof taskAnalysis.expansionPrompt === 'string') {
+				expansionPromptText = taskAnalysis.expansionPrompt;
+			} else if (
+				typeof taskAnalysis.expansionPrompt === 'object' &&
+				taskAnalysis.expansionPrompt.text
+			) {
+				expansionPromptText = taskAnalysis.expansionPrompt.text;
+			}
+		}
+
+		// Ensure gatheredContext is a string (handle both string and object formats)
+		let gatheredContextText = gatheredContext;
+		if (typeof gatheredContext === 'object' && gatheredContext !== null) {
+			if (gatheredContext.data) {
+				gatheredContextText = gatheredContext.data;
+			} else if (gatheredContext.text) {
+				gatheredContextText = gatheredContext.text;
+			} else {
+				gatheredContextText = JSON.stringify(gatheredContext);
+			}
+		}
+
 		const promptParams = {
 			task: task,
 			subtaskCount: finalSubtaskCount,
 			nextSubtaskId: nextSubtaskId,
 			additionalContext: additionalContext,
 			complexityReasoningContext: complexityReasoningContext,
-			gatheredContext: gatheredContext,
+			gatheredContext: gatheredContextText || '',
 			useResearch: useResearch,
-			expansionPrompt: taskAnalysis?.expansionPrompt || undefined
+			expansionPrompt: expansionPromptText || undefined
 		};
 
 		let variantKey = 'default';
-		if (taskAnalysis?.expansionPrompt) {
+		if (expansionPromptText) {
 			variantKey = 'complexity-report';
 			logger.info(
 				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`

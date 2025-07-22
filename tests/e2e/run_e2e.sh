@@ -368,7 +368,7 @@ log_step() {
   log_success "Formatted complexity report saved to complexity_report_formatted.log"
 
   log_step "Expanding Task 1 (assuming it exists)"
-  cmd_output_expand1=$(task-master expand --id=1 2>&1)
+  cmd_output_expand1=$(task-master expand --id=1 --cr complexity_results.json 2>&1)
   exit_status_expand1=$?
   echo "$cmd_output_expand1"
   extract_and_sum_cost "$cmd_output_expand1"

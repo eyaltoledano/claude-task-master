@@ -17,8 +17,7 @@ import {
 	truncate,
 	isSilentMode,
 	findProjectRoot,
-	flattenTasksWithSubtasks,
-	getCurrentTag
+	flattenTasksWithSubtasks
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -37,6 +36,7 @@ import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
  * @param {string} [context.projectRoot] - Project root path (needed for AI service key resolution).
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). Automatically 'json' if mcpLog is present.
  * @returns {Promise<Object|null>} - The updated subtask or null if update failed.
  */
@@ -92,10 +92,7 @@ async function updateSubtaskById(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// Determine the tag to use
-		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
-
-		const data = readJSON(tasksPath, projectRoot, currentTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			throw new Error(
 				`No valid tasks found in ${tasksPath}. The file may be corrupted or have an invalid format.`
@@ -142,7 +139,7 @@ async function updateSubtaskById(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update-subtask');
 			const searchQuery = `${parentTask.title} ${subtask.title} ${prompt}`;
@@ -331,13 +328,17 @@ async function updateSubtaskById(
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
-		writeJSON(tasksPath, data, projectRoot, currentTag);
+		writeJSON(tasksPath, data, projectRoot, tag);
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log('>>> DEBUG: writeJSON call completed.');
 		}
 
 		report('success', `Successfully updated subtask ${subtaskId}`);
-		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// Updated  function call to make sure if uncommented it will generate the task files for the updated subtask based on the tag
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+		// 	tag: tag,
+		// 	projectRoot: projectRoot
+		// });
 
 		if (outputFormat === 'text') {
 			if (loadingIndicator) {

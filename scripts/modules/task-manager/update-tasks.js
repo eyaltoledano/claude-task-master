@@ -9,8 +9,7 @@ import {
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode,
-	getCurrentTag
+	isSilentMode
 } from '../utils.js';
 
 import {
@@ -43,7 +42,39 @@ const updatedTaskSchema = z
 		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
 	})
 	.strip(); // Allow potential extra fields during parsing if needed, then validate structure
+
+// Preprocessing schema that adds defaults before validation
+const preprocessTaskSchema = z.preprocess((task) => {
+	// Ensure task is an object
+	if (typeof task !== 'object' || task === null) {
+		return {};
+	}
+
+	// Return task with defaults for missing fields
+	return {
+		...task,
+		// Add defaults for required fields if missing
+		id: task.id ?? 0,
+		title: task.title ?? 'Untitled Task',
+		description: task.description ?? '',
+		status: task.status ?? 'pending',
+		dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
+		// Optional fields - preserve undefined/null distinction
+		priority: task.hasOwnProperty('priority') ? task.priority : null,
+		details: task.hasOwnProperty('details') ? task.details : null,
+		testStrategy: task.hasOwnProperty('testStrategy')
+			? task.testStrategy
+			: null,
+		subtasks: Array.isArray(task.subtasks)
+			? task.subtasks
+			: task.subtasks === null
+				? null
+				: []
+	};
+}, updatedTaskSchema);
+
 const updatedTaskArraySchema = z.array(updatedTaskSchema);
+const preprocessedTaskArraySchema = z.array(preprocessTaskSchema);
 
 /**
  * Parses an array of task objects from AI's text response.
@@ -196,21 +227,50 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 		);
 	}
 
-	const validationResult = updatedTaskArraySchema.safeParse(parsedTasks);
-	if (!validationResult.success) {
-		report('error', 'Parsed task array failed Zod validation.');
-		validationResult.error.errors.forEach((err) => {
-			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
-		});
-		throw new Error(
-			`AI response failed task structure validation: ${validationResult.error.message}`
+	// Log missing fields for debugging before preprocessing
+	let hasWarnings = false;
+	parsedTasks.forEach((task, index) => {
+		const missingFields = [];
+		if (!task.hasOwnProperty('id')) missingFields.push('id');
+		if (!task.hasOwnProperty('status')) missingFields.push('status');
+		if (!task.hasOwnProperty('dependencies'))
+			missingFields.push('dependencies');
+
+		if (missingFields.length > 0) {
+			hasWarnings = true;
+			report(
+				'warn',
+				`Task ${index} is missing fields: ${missingFields.join(', ')} - will use defaults`
+			);
+		}
+	});
+
+	if (hasWarnings) {
+		report(
+			'warn',
+			'Some tasks were missing required fields. Applying defaults...'
 		);
 	}
 
-	report('info', 'Successfully validated task structure.');
-	return validationResult.data.slice(
+	// Use the preprocessing schema to add defaults and validate
+	const preprocessResult = preprocessedTaskArraySchema.safeParse(parsedTasks);
+
+	if (!preprocessResult.success) {
+		// This should rarely happen now since preprocessing adds defaults
+		report('error', 'Failed to validate task array even after preprocessing.');
+		preprocessResult.error.errors.forEach((err) => {
+			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
+		});
+
+		throw new Error(
+			`AI response failed validation: ${preprocessResult.error.message}`
+		);
+	}
+
+	report('info', 'Successfully validated and transformed task structure.');
+	return preprocessResult.data.slice(
 		0,
-		expectedCount || validationResult.data.length
+		expectedCount || preprocessResult.data.length
 	);
 }
 
@@ -223,8 +283,8 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
- * @param {string} [tag=null] - Tag associated with the tasks.
  */
 async function updateTasks(
 	tasksPath,
@@ -258,11 +318,8 @@ async function updateTasks(
 			throw new Error('Could not determine project root directory');
 		}
 
-		// Determine the current tag - prioritize explicit tag, then context.tag, then current tag
-		const currentTag = tag || getCurrentTag(projectRoot) || 'master';
-
 		// --- Task Loading/Filtering (Updated to pass projectRoot and tag) ---
-		const data = readJSON(tasksPath, projectRoot, currentTag);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		const tasksToUpdate = data.tasks.filter(
@@ -281,7 +338,7 @@ async function updateTasks(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update');
 			const searchResults = fuzzySearch.findRelevantTasks(prompt, {
@@ -442,7 +499,17 @@ async function updateTasks(
 			data.tasks.forEach((task, index) => {
 				if (updatedTasksMap.has(task.id)) {
 					// Only update if the task was part of the set sent to AI
-					data.tasks[index] = updatedTasksMap.get(task.id);
+					const updatedTask = updatedTasksMap.get(task.id);
+					// Merge the updated task with the existing one to preserve fields like subtasks
+					data.tasks[index] = {
+						...task, // Keep all existing fields
+						...updatedTask, // Override with updated fields
+						// Ensure subtasks field is preserved if not provided by AI
+						subtasks:
+							updatedTask.subtasks !== undefined
+								? updatedTask.subtasks
+								: task.subtasks
+					};
 					actualUpdateCount++;
 				}
 			});
@@ -457,7 +524,7 @@ async function updateTasks(
 				);
 
 			// Fix: Pass projectRoot and currentTag to writeJSON
-			writeJSON(tasksPath, data, projectRoot, currentTag);
+			writeJSON(tasksPath, data, projectRoot, tag);
 			if (isMCP)
 				logFn.info(
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`

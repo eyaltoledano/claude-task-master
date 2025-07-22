@@ -11,7 +11,11 @@ import {
 	checkProgressCapability
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import {
+	findTasksPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -53,6 +57,10 @@ export function registerExpandTaskTool(server) {
 			async (args, { log, session, reportProgress }) => {
 				try {
 					log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
 
 					const progressCapability = checkProgressCapability(
 						reportProgress,
@@ -73,6 +81,11 @@ export function registerExpandTaskTool(server) {
 						);
 					}
 
+					const complexityReportPath = findComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						log
+					);
+
 					const result = await expandTaskDirect(
 						{
 							tasksJsonPath: tasksJsonPath,
@@ -81,13 +94,12 @@ export function registerExpandTaskTool(server) {
 							research: args.research,
 							prompt: args.prompt,
 							force: args.force,
-							projectRoot: args.projectRoot
+							complexityReportPath,
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
 						},
 						log,
-						{
-							session,
-							reportProgress: progressCapability.reportProgress
-						}
+						{ session, reportProgress: progressCapability.reportProgress }
 					);
 
 					return handleApiResult(

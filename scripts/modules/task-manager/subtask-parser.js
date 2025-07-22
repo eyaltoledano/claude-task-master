@@ -14,8 +14,10 @@ export const subtaskSchema = z
 			.min(10)
 			.describe('Detailed description of the subtask'),
 		dependencies: z
-			.array(z.number().int())
-			.describe('IDs of prerequisite subtasks within this expansion'),
+			.array(z.string())
+			.describe(
+				'Array of subtask dependencies within the same parent task. Use format ["parentTaskId.1", "parentTaskId.2"]. Subtasks can only depend on siblings, not external tasks.'
+			),
 		details: z.string().min(20).describe('Implementation details and guidance'),
 		status: z
 			.string()
@@ -137,28 +139,74 @@ export function parseSubtasksFromText(
 		// Reset jsonToParse to the original full trimmed response for advanced logic
 		jsonToParse = originalTrimmedResponse;
 
-		// (Insert the more complex extraction logic here - the one we worked on with:
-		//  - targetPattern = '{"subtasks":';
-		//  - careful brace counting for that targetPattern
-		//  - fallbacks to last '{' and '}' if targetPattern logic fails)
-		//  This was the logic from my previous message. Let's assume it's here.
-		//  This block should ultimately set `jsonToParse` to the best candidate string.
-
-		// Example snippet of that advanced logic's start:
+		// Look for the target pattern and extract the JSON object
 		const targetPattern = '{"subtasks":';
 		const patternStartIndex = jsonToParse.indexOf(targetPattern);
 
 		if (patternStartIndex !== -1) {
-			const openBraces = 0;
-			const firstBraceFound = false;
-			const extractedJsonBlock = '';
-			// ... (loop for brace counting as before) ...
-			// ... (if successful, jsonToParse = extractedJsonBlock) ...
-			// ... (if that fails, fallbacks as before) ...
+			logger.debug(`Found target pattern at index ${patternStartIndex}`);
+
+			// Start from the pattern and count braces to find the complete object
+			let openBraces = 0;
+			let firstBraceFound = false;
+			let extractedJsonBlock = '';
+
+			for (let i = patternStartIndex; i < jsonToParse.length; i++) {
+				const char = jsonToParse[i];
+				extractedJsonBlock += char;
+
+				if (char === '{') {
+					openBraces++;
+					firstBraceFound = true;
+				} else if (char === '}') {
+					openBraces--;
+
+					// If we've found the closing brace that matches our opening brace
+					if (firstBraceFound && openBraces === 0) {
+						logger.debug(
+							`Complete JSON object extracted, length: ${extractedJsonBlock.length}`
+						);
+						jsonToParse = extractedJsonBlock;
+						break;
+					}
+				}
+			}
+
+			// If brace counting didn't work, fall back to pattern-based extraction
+			if (openBraces !== 0) {
+				logger.warn('Brace counting failed, attempting fallback extraction');
+				// Fallback to last '}' approach
+				const lastBraceIndex = jsonToParse.lastIndexOf('}');
+				if (lastBraceIndex > patternStartIndex) {
+					jsonToParse = jsonToParse.substring(
+						patternStartIndex,
+						lastBraceIndex + 1
+					);
+					logger.debug(
+						`Fallback extraction: ${jsonToParse.substring(0, 200)}...`
+					);
+				}
+			}
 		} else {
-			// ... (fallback to last '{' and '}' if targetPattern not found) ...
+			// Pattern not found, try to extract any JSON-like structure
+			logger.warn(
+				'Target pattern not found, attempting generic JSON extraction'
+			);
+			const firstBraceIndex = jsonToParse.indexOf('{');
+			const lastBraceIndex = jsonToParse.lastIndexOf('}');
+
+			if (
+				firstBraceIndex !== -1 &&
+				lastBraceIndex !== -1 &&
+				lastBraceIndex > firstBraceIndex
+			) {
+				jsonToParse = jsonToParse.substring(
+					firstBraceIndex,
+					lastBraceIndex + 1
+				);
+				logger.debug(`Generic extraction: ${jsonToParse.substring(0, 200)}...`);
+			}
 		}
-		// End of advanced logic excerpt
 
 		logger.debug(
 			`Advanced extraction: JSON string that will be parsed: ${jsonToParse.substring(0, 500)}...`
@@ -174,7 +222,6 @@ export function parseSubtasksFromText(
 				`Advanced extraction: Problematic JSON string for parse (first 500 chars): ${jsonToParse.substring(0, 500)}`
 			);
 			throw new Error(
-				// Re-throw a more specific error if advanced also fails
 				`Failed to parse JSON response object after both simple and advanced attempts: ${parseError.message}`
 			);
 		}
@@ -210,12 +257,10 @@ export function parseSubtasksFromText(
 			...rawSubtask,
 			id: currentId,
 			dependencies: Array.isArray(rawSubtask.dependencies)
-				? rawSubtask.dependencies
-						.map((dep) => (typeof dep === 'string' ? parseInt(dep, 10) : dep))
-						.filter(
-							(depId) =>
-								!Number.isNaN(depId) && depId >= startId && depId < currentId
-						)
+				? rawSubtask.dependencies.filter(
+						(dep) =>
+							typeof dep === 'string' && dep.startsWith(`${parentTaskId}.`)
+					)
 				: [],
 			status: 'pending'
 		};

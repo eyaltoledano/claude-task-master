@@ -53,10 +53,9 @@ export async function fixDependenciesDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
+		const options = { projectRoot, tag };
 		// Call the original command function using the provided path and proper context
-		await fixDependenciesCommand(tasksPath, {
-			context: { projectRoot, tag }
-		});
+		await fixDependenciesCommand(tasksPath, options);
 
 		// Restore normal logging
 		disableSilentMode();

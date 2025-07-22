@@ -12,6 +12,7 @@ import {
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expandAll tool with the MCP server
@@ -58,7 +59,8 @@ export function registerExpandAllTool(server) {
 				.optional()
 				.describe(
 					'Absolute path to the project root directory (derived from session if possible)'
-				)
+				),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(
 			async (args, { log, session, reportProgress }) => {
@@ -67,12 +69,16 @@ export function registerExpandAllTool(server) {
 						`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 					);
 
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+
 					const progressCapability = checkProgressCapability(
 						reportProgress,
 						log
 					);
 
-					let tasksJsonPath;
 					try {
 						tasksJsonPath = findTasksPath(
 							{ projectRoot: args.projectRoot, file: args.file },
@@ -93,13 +99,11 @@ export function registerExpandAllTool(server) {
 							research: args.research,
 							prompt: args.prompt,
 							force: args.force,
-							projectRoot: args.projectRoot
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
 						},
 						log,
-						{
-							session,
-							reportProgress: progressCapability.reportProgress
-						}
+						{ session, reportProgress: progressCapability.reportProgress }
 					);
 
 					return handleApiResult(

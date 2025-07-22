@@ -1,5 +1,122 @@
 # task-master-ai
 
+## 0.21.0-rc.0
+
+### Minor Changes
+
+- [#1001](https://github.com/eyaltoledano/claude-task-master/pull/1001) [`75a36ea`](https://github.com/eyaltoledano/claude-task-master/commit/75a36ea99a1c738a555bdd4fe7c763d0c5925e37) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Kiro editor rule profile support
+  - Add support for Kiro IDE with custom rule files and MCP configuration
+  - Generate rule files in `.kiro/steering/` directory with markdown format
+  - Include MCP server configuration with enhanced file inclusion patterns
+
+- [#1011](https://github.com/eyaltoledano/claude-task-master/pull/1011) [`3eb050a`](https://github.com/eyaltoledano/claude-task-master/commit/3eb050aaddb90fca1a04517e2ee24f73934323be) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Created a comprehensive documentation site for Task Master AI. Visit https://docs.task-master.dev to explore guides, API references, and examples.
+
+- [#978](https://github.com/eyaltoledano/claude-task-master/pull/978) [`fedfd6a`](https://github.com/eyaltoledano/claude-task-master/commit/fedfd6a0f41a78094f7ee7f69be689b699475a79) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Complete Groq provider integration and add MoonshotAI Kimi K2 model support
+  - Fixed Groq provider registration
+  - Added Groq API key validation
+  - Added GROQ_API_KEY to .env.example
+  - Added moonshotai/kimi-k2-instruct model with $1/$3 per 1M token pricing and 16k max output
+
+- [#974](https://github.com/eyaltoledano/claude-task-master/pull/974) [`5b0eda0`](https://github.com/eyaltoledano/claude-task-master/commit/5b0eda07f20a365aa2ec1736eed102bca81763a9) Thanks [@joedanz](https://github.com/joedanz)! - feat: Add Zed editor rule profile with agent rules and MCP config
+  - Resolves #637
+
+- [#973](https://github.com/eyaltoledano/claude-task-master/pull/973) [`6d05e86`](https://github.com/eyaltoledano/claude-task-master/commit/6d05e8622c1d761acef10414940ff9a766b3b57d) Thanks [@joedanz](https://github.com/joedanz)! - Add Amp rule profile with AGENT.md and MCP config
+
+- [#1011](https://github.com/eyaltoledano/claude-task-master/pull/1011) [`3eb050a`](https://github.com/eyaltoledano/claude-task-master/commit/3eb050aaddb90fca1a04517e2ee24f73934323be) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve project root detection
+  - No longer creates an infinite loop when unable to detect your code workspace
+
+- [#970](https://github.com/eyaltoledano/claude-task-master/pull/970) [`b87499b`](https://github.com/eyaltoledano/claude-task-master/commit/b87499b56e626001371a87ed56ffc72675d829f3) Thanks [@joedanz](https://github.com/joedanz)! - Add OpenCode profile with AGENTS.md and MCP config
+  - Resolves #965
+
+### Patch Changes
+
+- [#1011](https://github.com/eyaltoledano/claude-task-master/pull/1011) [`3eb050a`](https://github.com/eyaltoledano/claude-task-master/commit/3eb050aaddb90fca1a04517e2ee24f73934323be) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Make `task-master update` more reliable with AI responses
+
+  The `update` command now handles AI responses more robustly. If the AI forgets to include certain task fields, the command will automatically fill in the missing data from your original tasks instead of failing. This means smoother bulk task updates without losing important information like IDs, dependencies, or completed subtasks.
+
+- [#1011](https://github.com/eyaltoledano/claude-task-master/pull/1011) [`3eb050a`](https://github.com/eyaltoledano/claude-task-master/commit/3eb050aaddb90fca1a04517e2ee24f73934323be) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix subtask dependency validation when expanding tasks
+
+  When using `task-master expand` to break down tasks into subtasks, dependencies between subtasks are now properly validated. Previously, subtasks with dependencies would fail validation. Now subtasks can correctly depend on their siblings within the same parent task.
+
+- [#949](https://github.com/eyaltoledano/claude-task-master/pull/949) [`f662654`](https://github.com/eyaltoledano/claude-task-master/commit/f662654afb8e7a230448655265d6f41adf6df62c) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Prevent CLAUDE.md overwrite by using Claude Code's import feature
+  - Task Master now creates its instructions in `.taskmaster/CLAUDE.md` instead of overwriting the user's `CLAUDE.md`
+  - Adds an import section to the user's CLAUDE.md that references the Task Master instructions
+  - Preserves existing user content in CLAUDE.md files
+  - Provides clean uninstall that only removes Task Master's additions
+
+  **Breaking Change**: Task Master instructions for Claude Code are now stored in `.taskmaster/CLAUDE.md` and imported into the main CLAUDE.md file. Users who previously had Task Master content directly in their CLAUDE.md will need to run `task-master rules remove claude` followed by `task-master rules add claude` to migrate to the new structure.
+
+- [#943](https://github.com/eyaltoledano/claude-task-master/pull/943) [`f98df5c`](https://github.com/eyaltoledano/claude-task-master/commit/f98df5c0fdb253b2b55d4278c11d626529c4dba4) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Implement Boundary-First Tag Resolution to ensure consistent and deterministic tag handling across CLI and MCP, resolving potential race conditions.
+
+- [#1011](https://github.com/eyaltoledano/claude-task-master/pull/1011) [`3eb050a`](https://github.com/eyaltoledano/claude-task-master/commit/3eb050aaddb90fca1a04517e2ee24f73934323be) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix `task-master lang --setup` breaking when no language is defined, now defaults to English
+
+- [#979](https://github.com/eyaltoledano/claude-task-master/pull/979) [`ab2e946`](https://github.com/eyaltoledano/claude-task-master/commit/ab2e94608749a2f148118daa0443bd32bca6e7a1) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix: show command no longer requires complexity report file to exist
+
+  The `tm show` command was incorrectly requiring the complexity report file to exist even when not needed. Now it only validates the complexity report path when a custom report file is explicitly provided via the -r/--report option.
+
+- [#971](https://github.com/eyaltoledano/claude-task-master/pull/971) [`5544222`](https://github.com/eyaltoledano/claude-task-master/commit/55442226d0aa4870470d2a9897f5538d6a0e329e) Thanks [@joedanz](https://github.com/joedanz)! - Update VS Code profile with MCP config transformation
+
+- [#1002](https://github.com/eyaltoledano/claude-task-master/pull/1002) [`6d0654c`](https://github.com/eyaltoledano/claude-task-master/commit/6d0654cb4191cee794e1c8cbf2b92dc33d4fb410) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server error when retrieving tools and resources
+
+- [#980](https://github.com/eyaltoledano/claude-task-master/pull/980) [`cc4fe20`](https://github.com/eyaltoledano/claude-task-master/commit/cc4fe205fb468e7144c650acc92486df30731560) Thanks [@joedanz](https://github.com/joedanz)! - Add MCP configuration support to Claude Code rules
+
+- [#968](https://github.com/eyaltoledano/claude-task-master/pull/968) [`7b4803a`](https://github.com/eyaltoledano/claude-task-master/commit/7b4803a479105691c7ed032fd878fe3d48d82724) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixed the comprehensive taskmaster system integration via custom slash commands with proper syntax
+  - Provide claude clode with a complete set of of commands that can trigger task master events directly within Claude Code
+
+- [#995](https://github.com/eyaltoledano/claude-task-master/pull/995) [`b78de8d`](https://github.com/eyaltoledano/claude-task-master/commit/b78de8dbb4d6dc93b48e2f81c32960ef069736ed) Thanks [@joedanz](https://github.com/joedanz)! - Correct MCP server name and use 'Add to Cursor' button with updated placeholder keys.
+
+- [#972](https://github.com/eyaltoledano/claude-task-master/pull/972) [`1c7badf`](https://github.com/eyaltoledano/claude-task-master/commit/1c7badff2f5c548bfa90a3b2634e63087a382a84) Thanks [@joedanz](https://github.com/joedanz)! - Add missing API keys to .env.example and README.md
+
+## 0.20.0
+
+### Minor Changes
+
+- [#950](https://github.com/eyaltoledano/claude-task-master/pull/950) [`699e9ee`](https://github.com/eyaltoledano/claude-task-master/commit/699e9eefb5d687b256e9402d686bdd5e3a358b4a) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Add support for xAI Grok 4 model
+  - Add grok-4 model to xAI provider with $3/$15 per 1M token pricing
+  - Enable main, fallback, and research roles for grok-4
+  - Max tokens set to 131,072 (matching other xAI models)
+
+- [#946](https://github.com/eyaltoledano/claude-task-master/pull/946) [`5f009a5`](https://github.com/eyaltoledano/claude-task-master/commit/5f009a5e1fc10e37be26f5135df4b7f44a9c5320) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add stricter validation and clearer feedback for task priority when adding new tasks
+  - if a task priority is invalid, it will default to medium
+  - made taks priority case-insensitive, essentially making HIGH and high the same value
+
+- [#863](https://github.com/eyaltoledano/claude-task-master/pull/863) [`b530657`](https://github.com/eyaltoledano/claude-task-master/commit/b53065713c8da0ae6f18eb2655397aa975004923) Thanks [@OrenMe](https://github.com/OrenMe)! - Add support for MCP Sampling as AI provider, requires no API key, uses the client LLM provider
+
+- [#930](https://github.com/eyaltoledano/claude-task-master/pull/930) [`98d1c97`](https://github.com/eyaltoledano/claude-task-master/commit/98d1c974361a56ddbeb772b1272986b9d3913459) Thanks [@OmarElKadri](https://github.com/OmarElKadri)! - Added Groq provider support
+
+### Patch Changes
+
+- [#958](https://github.com/eyaltoledano/claude-task-master/pull/958) [`6c88a4a`](https://github.com/eyaltoledano/claude-task-master/commit/6c88a4a749083e3bd2d073a9240799771774495a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Recover from `@anthropic-ai/claude-code` JSON truncation bug that caused Task Master to crash when handling large (>8 kB) structured responses. The CLI/SDK still truncates, but Task Master now detects the error, preserves buffered text, and returns a usable response instead of throwing.
+
+- [#958](https://github.com/eyaltoledano/claude-task-master/pull/958) [`3334e40`](https://github.com/eyaltoledano/claude-task-master/commit/3334e409ae659d5223bb136ae23fd22c5e219073) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Updating dependency ai-sdk-provider-gemini-cli to 0.0.4 to address breaking change Google made to Gemini CLI and add better 'api-key' in addition to 'gemini-api-key' AI-SDK compatibility.
+
+- [#853](https://github.com/eyaltoledano/claude-task-master/pull/853) [`95c299d`](https://github.com/eyaltoledano/claude-task-master/commit/95c299df642bd8e6d75f8fa5110ac705bcc72edf) Thanks [@joedanz](https://github.com/joedanz)! - Unify and streamline profile system architecture for improved maintainability
+
+## 0.20.0-rc.0
+
+### Minor Changes
+
+- [#950](https://github.com/eyaltoledano/claude-task-master/pull/950) [`699e9ee`](https://github.com/eyaltoledano/claude-task-master/commit/699e9eefb5d687b256e9402d686bdd5e3a358b4a) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Add support for xAI Grok 4 model
+  - Add grok-4 model to xAI provider with $3/$15 per 1M token pricing
+  - Enable main, fallback, and research roles for grok-4
+  - Max tokens set to 131,072 (matching other xAI models)
+
+- [#946](https://github.com/eyaltoledano/claude-task-master/pull/946) [`5f009a5`](https://github.com/eyaltoledano/claude-task-master/commit/5f009a5e1fc10e37be26f5135df4b7f44a9c5320) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add stricter validation and clearer feedback for task priority when adding new tasks
+  - if a task priority is invalid, it will default to medium
+  - made taks priority case-insensitive, essentially making HIGH and high the same value
+
+- [#863](https://github.com/eyaltoledano/claude-task-master/pull/863) [`b530657`](https://github.com/eyaltoledano/claude-task-master/commit/b53065713c8da0ae6f18eb2655397aa975004923) Thanks [@OrenMe](https://github.com/OrenMe)! - Add support for MCP Sampling as AI provider, requires no API key, uses the client LLM provider
+
+- [#930](https://github.com/eyaltoledano/claude-task-master/pull/930) [`98d1c97`](https://github.com/eyaltoledano/claude-task-master/commit/98d1c974361a56ddbeb772b1272986b9d3913459) Thanks [@OmarElKadri](https://github.com/OmarElKadri)! - Added Groq provider support
+
+### Patch Changes
+
+- [#916](https://github.com/eyaltoledano/claude-task-master/pull/916) [`6c88a4a`](https://github.com/eyaltoledano/claude-task-master/commit/6c88a4a749083e3bd2d073a9240799771774495a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Recover from `@anthropic-ai/claude-code` JSON truncation bug that caused Task Master to crash when handling large (>8 kB) structured responses. The CLI/SDK still truncates, but Task Master now detects the error, preserves buffered text, and returns a usable response instead of throwing.
+
+- [#916](https://github.com/eyaltoledano/claude-task-master/pull/916) [`3334e40`](https://github.com/eyaltoledano/claude-task-master/commit/3334e409ae659d5223bb136ae23fd22c5e219073) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Updating dependency ai-sdk-provider-gemini-cli to 0.0.4 to address breaking change Google made to Gemini CLI and add better 'api-key' in addition to 'gemini-api-key' AI-SDK compatibility.
+
+- [#853](https://github.com/eyaltoledano/claude-task-master/pull/853) [`95c299d`](https://github.com/eyaltoledano/claude-task-master/commit/95c299df642bd8e6d75f8fa5110ac705bcc72edf) Thanks [@joedanz](https://github.com/joedanz)! - Unify and streamline profile system architecture for improved maintainability
+
 ## 0.19.0
 
 ### Minor Changes

@@ -35,6 +35,7 @@ import {
  * @param {boolean} [options.includeProjectTree] - Include project file tree
  * @param {string} [options.detailLevel] - Detail level: 'low', 'medium', 'high'
  * @param {string} [options.projectRoot] - Project root directory
+ * @param {string} [options.tag] - Tag for the task
  * @param {boolean} [options.saveToFile] - Whether to save results to file (MCP mode)
  * @param {Object} [context] - Execution context
  * @param {Object} [context.session] - MCP session object
@@ -59,6 +60,7 @@ async function performResearch(
 		includeProjectTree = false,
 		detailLevel = 'medium',
 		projectRoot: providedProjectRoot,
+		tag,
 		saveToFile = false
 	} = options;
 
@@ -101,7 +103,7 @@ async function performResearch(
 
 	try {
 		// Initialize context gatherer
-		const contextGatherer = new ContextGatherer(projectRoot);
+		const contextGatherer = new ContextGatherer(projectRoot, tag);
 
 		// Auto-discover relevant tasks using fuzzy search to supplement provided tasks
 		let finalTaskIds = [...taskIds]; // Start with explicitly provided tasks
@@ -114,7 +116,7 @@ async function performResearch(
 				'tasks',
 				'tasks.json'
 			);
-			const tasksData = await readJSON(tasksPath, projectRoot);
+			const tasksData = await readJSON(tasksPath, projectRoot, tag);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
@@ -769,10 +771,7 @@ async function handleSaveToTask(
 			return;
 		}
 
-		// Validate ID exists - use tag from context
-		const { getCurrentTag } = await import('../utils.js');
-		const tag = context.tag || getCurrentTag(projectRoot) || 'master';
-		const data = readJSON(tasksPath, projectRoot, tag);
+		const data = readJSON(tasksPath, projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return;
@@ -806,7 +805,7 @@ async function handleSaveToTask(
 				trimmedTaskId,
 				conversationThread,
 				false, // useResearch = false for simple append
-				{ ...context, tag },
+				context,
 				'text'
 			);
 
@@ -833,7 +832,7 @@ async function handleSaveToTask(
 				taskIdNum,
 				conversationThread,
 				false, // useResearch = false for simple append
-				{ ...context, tag },
+				context,
 				'text',
 				true // appendMode = true
 			);
