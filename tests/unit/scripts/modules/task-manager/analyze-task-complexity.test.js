@@ -50,7 +50,7 @@ jest.unstable_mockModule(
 	() => ({
 		generateObjectService: jest.fn().mockResolvedValue({
 			mainResult: {
-				tasks: []
+				complexityAnalysis: []
 			},
 			telemetryData: {
 				timestamp: new Date().toISOString(),
@@ -307,10 +307,15 @@ describe('analyzeTaskComplexity', () => {
 			return { task: task || null, originalSubtaskCount: null };
 		});
 
-		generateTextService.mockResolvedValue(sampleApiResponse);
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				complexityAnalysis: JSON.parse(sampleApiResponse.mainResult).tasks
+			},
+			telemetryData: sampleApiResponse.telemetryData
+		});
 	});
 
-	test('should call generateTextService with the correct parameters', async () => {
+	test('should call generateObjectService with the correct parameters', async () => {
 		// Arrange
 		const options = {
 			file: 'tasks/tasks.json',
@@ -338,7 +343,7 @@ describe('analyzeTaskComplexity', () => {
 			'/mock/project/root',
 			undefined
 		);
-		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
+		expect(generateObjectService).toHaveBeenCalledWith(expect.any(Object));
 		expect(mockWriteFileSync).toHaveBeenCalledWith(
 			expect.stringContaining('task-complexity-report.json'),
 			expect.stringContaining('"thresholdScore": 5'),
@@ -369,7 +374,7 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		// Assert
-		expect(generateTextService).toHaveBeenCalledWith(
+		expect(generateObjectService).toHaveBeenCalledWith(
 			expect.objectContaining({
 				role: 'research' // This should be present when research is true
 			})
@@ -454,7 +459,7 @@ describe('analyzeTaskComplexity', () => {
 
 		// Assert
 		// Check if the prompt sent to AI doesn't include the completed task (id: 3)
-		expect(generateTextService).toHaveBeenCalledWith(
+		expect(generateObjectService).toHaveBeenCalledWith(
 			expect.objectContaining({
 				prompt: expect.not.stringContaining('"id": 3')
 			})
@@ -471,7 +476,7 @@ describe('analyzeTaskComplexity', () => {
 		};
 
 		// Force API error
-		generateTextService.mockRejectedValueOnce(new Error('API Error'));
+		generateObjectService.mockRejectedValueOnce(new Error('API Error'));
 
 		const mockMcpLog = {
 			info: jest.fn(),

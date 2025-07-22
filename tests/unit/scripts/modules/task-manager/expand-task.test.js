@@ -65,8 +65,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/ai-services-unified.js',
 	() => ({
-		generateTextService: jest.fn().mockResolvedValue({
-			mainResult: JSON.stringify({
+		generateObjectService: jest.fn().mockResolvedValue({
+			mainResult: {
 				subtasks: [
 					{
 						id: 1,
@@ -101,7 +101,7 @@ jest.unstable_mockModule(
 						testStrategy: 'UI tests and visual regression testing'
 					}
 				]
-			}),
+			},
 			telemetryData: {
 				timestamp: new Date().toISOString(),
 				userId: '1234567890',
@@ -213,7 +213,7 @@ const {
 	findProjectRoot
 } = await import('../../../../../scripts/modules/utils.js');
 
-const { generateTextService } = await import(
+const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
 
@@ -373,7 +373,7 @@ describe('expandTask', () => {
 				'/mock/project/root',
 				undefined
 			);
-			expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
+			expect(generateObjectService).toHaveBeenCalledWith(expect.any(Object));
 			expect(writeJSON).toHaveBeenCalledWith(
 				tasksPath,
 				expect.objectContaining({
@@ -458,7 +458,7 @@ describe('expandTask', () => {
 			);
 
 			// Assert
-			expect(generateTextService).toHaveBeenCalledWith(
+			expect(generateObjectService).toHaveBeenCalledWith(
 				expect.objectContaining({
 					role: 'research',
 					commandName: expect.any(String)
@@ -496,7 +496,7 @@ describe('expandTask', () => {
 					telemetryData: expect.any(Object)
 				})
 			);
-			expect(generateTextService).toHaveBeenCalled();
+			expect(generateObjectService).toHaveBeenCalled();
 		});
 	});
 
@@ -743,8 +743,8 @@ describe('expandTask', () => {
 			// Act
 			await expandTask(tasksPath, taskId, undefined, false, '', context, false);
 
-			// Assert - generateTextService called with systemPrompt for 5 subtasks
-			const callArg = generateTextService.mock.calls[0][0];
+			// Assert - generateObjectService called with systemPrompt for 5 subtasks
+			const callArg = generateObjectService.mock.calls[0][0];
 			expect(callArg.systemPrompt).toContain('Generate exactly 5 subtasks');
 
 			// Assert - Should use complexity-report variant with expansion prompt
@@ -831,7 +831,7 @@ describe('expandTask', () => {
 				projectRoot: '/mock/project/root'
 			};
 
-			generateTextService.mockRejectedValueOnce(new Error('AI service error'));
+			generateObjectService.mockRejectedValueOnce(new Error('AI service error'));
 
 			// Act & Assert
 			await expect(
@@ -941,7 +941,7 @@ describe('expandTask', () => {
 			await expandTask(tasksPath, taskId, 3, false, '', context, false);
 
 			// Assert - Should work with empty context (but may include project context)
-			expect(generateTextService).toHaveBeenCalledWith(
+			expect(generateObjectService).toHaveBeenCalledWith(
 				expect.objectContaining({
 					prompt: expect.stringMatching(/.*/) // Just ensure prompt exists
 				})
@@ -1074,7 +1074,7 @@ describe('expandTask', () => {
 
 			// Assert - Should complete successfully
 			expect(result).toBeDefined();
-			expect(generateTextService).toHaveBeenCalled();
+			expect(generateObjectService).toHaveBeenCalled();
 		});
 
 		test('should use dynamic prompting when numSubtasks is 0', async () => {
@@ -1095,11 +1095,11 @@ describe('expandTask', () => {
 			// Act
 			await expandTask(tasksPath, taskId, 0, false, '', context, false);
 
-			// Assert - Verify generateTextService was called
-			expect(generateTextService).toHaveBeenCalled();
+			// Assert - Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
 
 			// Get the call arguments to verify the system prompt
-			const callArgs = generateTextService.mock.calls[0][0];
+			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain(
 				'an appropriate number of specific subtasks'
 			);
@@ -1122,11 +1122,11 @@ describe('expandTask', () => {
 			// Act
 			await expandTask(tasksPath, taskId, 5, false, '', context, false);
 
-			// Assert - Verify generateTextService was called
-			expect(generateTextService).toHaveBeenCalled();
+			// Assert - Verify generateObjectService was called
+			expect(generateObjectService).toHaveBeenCalled();
 
 			// Get the call arguments to verify the system prompt
-			const callArgs = generateTextService.mock.calls[0][0];
+			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('5 specific subtasks');
 		});
 
@@ -1151,8 +1151,8 @@ describe('expandTask', () => {
 			await expandTask(tasksPath, taskId, -3, false, '', context, false);
 
 			// Assert - Should use default value instead of negative
-			expect(generateTextService).toHaveBeenCalled();
-			const callArgs = generateTextService.mock.calls[0][0];
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('4 specific subtasks');
 		});
 
@@ -1177,8 +1177,8 @@ describe('expandTask', () => {
 			await expandTask(tasksPath, taskId, undefined, false, '', context, false);
 
 			// Assert - Should use default value
-			expect(generateTextService).toHaveBeenCalled();
-			const callArgs = generateTextService.mock.calls[0][0];
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('6 specific subtasks');
 		});
 
@@ -1203,8 +1203,8 @@ describe('expandTask', () => {
 			await expandTask(tasksPath, taskId, null, false, '', context, false);
 
 			// Assert - Should use default value
-			expect(generateTextService).toHaveBeenCalled();
-			const callArgs = generateTextService.mock.calls[0][0];
+			expect(generateObjectService).toHaveBeenCalled();
+			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('7 specific subtasks');
 		});
 	});
