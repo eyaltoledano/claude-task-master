@@ -1,0 +1,25 @@
+{
+	"projectName": "Test Project",
+	"tasks": [
+		{
+			"id": 1,
+			"title": "Setup project structure",
+			"description": "Initialize the project with proper folder structure",
+			"status": "pending",
+			"dependencies": [],
+			"priority": "high",
+			"details": "Create folders for src, tests, docs",
+			"testStrategy": "Manual verification"
+		},
+		{
+			"id": 2,
+			"title": "Implement authentication",
+			"description": "Add user authentication with JWT tokens",
+			"status": "pending",
+			"dependencies": [1],
+			"priority": "high",
+			"details": null,
+			"testStrategy": null
+		}
+	]
+}

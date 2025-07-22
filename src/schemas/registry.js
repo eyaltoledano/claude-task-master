@@ -1,19 +1,19 @@
-import { UpdateTasksResponseSchema } from './update-tasks.js';
-import { ExpandTaskResponseSchema } from './expand-task.js';
+import { AddTaskResponseSchema } from './add-task.js';
 import { ComplexityAnalysisResponseSchema } from './analyze-complexity.js';
+import { ExpandTaskResponseSchema } from './expand-task.js';
+import { ParsePRDResponseSchema } from './parse-prd.js';
 import { UpdateSubtaskResponseSchema } from './update-subtask.js';
 import { UpdateTaskResponseSchema } from './update-task.js';
-import { AddTaskResponseSchema } from './add-task.js';
-import { ParsePRDResponseSchema } from './parse-prd.js';
+import { UpdateTasksResponseSchema } from './update-tasks.js';
 
 export const COMMAND_SCHEMAS = {
-    'update-tasks': UpdateTasksResponseSchema,
-    'expand-task': ExpandTaskResponseSchema,
-    'analyze-complexity': ComplexityAnalysisResponseSchema,
-    'update-subtask-by-id': UpdateSubtaskResponseSchema,
-    'update-task-by-id': UpdateTaskResponseSchema,
-    'add-task': AddTaskResponseSchema,
-    'parse-prd': ParsePRDResponseSchema
+	'update-tasks': UpdateTasksResponseSchema,
+	'expand-task': ExpandTaskResponseSchema,
+	'analyze-complexity': ComplexityAnalysisResponseSchema,
+	'update-subtask-by-id': UpdateSubtaskResponseSchema,
+	'update-task-by-id': UpdateTaskResponseSchema,
+	'add-task': AddTaskResponseSchema,
+	'parse-prd': ParsePRDResponseSchema
 };
 
 // Export individual schemas for direct access

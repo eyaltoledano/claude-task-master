@@ -831,7 +831,9 @@ describe('expandTask', () => {
 				projectRoot: '/mock/project/root'
 			};
 
-			generateObjectService.mockRejectedValueOnce(new Error('AI service error'));
+			generateObjectService.mockRejectedValueOnce(
+				new Error('AI service error')
+			);
 
 			// Act & Assert
 			await expect(

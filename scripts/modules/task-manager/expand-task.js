@@ -2,21 +2,21 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+	getTagAwareFilePath,
+	isSilentMode,
 	log,
 	readJSON,
-	writeJSON,
-	isSilentMode,
-	getTagAwareFilePath
+	writeJSON
 } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
-import { generateObjectService } from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
+import { generateObjectService } from '../ai-services-unified.js';
 
 import {
 	getDefaultSubtasks,
@@ -26,6 +26,9 @@ import {
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
@@ -301,7 +304,7 @@ async function expandTask(
 			);
 		}
 
-		let responseText = '';
+		const responseText = '';
 		let aiServiceResponse = null;
 
 		try {

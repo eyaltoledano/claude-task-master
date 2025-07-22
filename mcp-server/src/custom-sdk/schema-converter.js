@@ -77,12 +77,18 @@ function generateExampleFromSchema(schema) {
 		case 'ZodString':
 			// Check for min/max length constraints
 			if (def.checks) {
-				const minCheck = def.checks.find(c => c.kind === 'min');
-				const maxCheck = def.checks.find(c => c.kind === 'max');
+				const minCheck = def.checks.find((c) => c.kind === 'min');
+				const maxCheck = def.checks.find((c) => c.kind === 'max');
 				if (minCheck && minCheck.value >= 20) {
 					return '<string with at least ' + minCheck.value + ' characters>';
 				} else if (minCheck && maxCheck) {
-					return '<string between ' + minCheck.value + '-' + maxCheck.value + ' characters>';
+					return (
+						'<string between ' +
+						minCheck.value +
+						'-' +
+						maxCheck.value +
+						' characters>'
+					);
 				} else if (maxCheck) {
 					return '<string up to ' + maxCheck.value + ' characters>';
 				}
@@ -92,16 +98,21 @@ function generateExampleFromSchema(schema) {
 		case 'ZodNumber':
 			// Check for int, positive, min/max constraints
 			if (def.checks) {
-				const intCheck = def.checks.find(c => c.kind === 'int');
-				const minCheck = def.checks.find(c => c.kind === 'min');
-				const maxCheck = def.checks.find(c => c.kind === 'max');
-				
+				const intCheck = def.checks.find((c) => c.kind === 'int');
+				const minCheck = def.checks.find((c) => c.kind === 'min');
+				const maxCheck = def.checks.find((c) => c.kind === 'max');
+
 				if (intCheck && minCheck && minCheck.value > 0) {
 					return '<positive integer>';
 				} else if (intCheck) {
 					return '<integer>';
 				} else if (minCheck || maxCheck) {
-					return '<number' + (minCheck ? ' >= ' + minCheck.value : '') + (maxCheck ? ' <= ' + maxCheck.value : '') + '>';
+					return (
+						'<number' +
+						(minCheck ? ' >= ' + minCheck.value : '') +
+						(maxCheck ? ' <= ' + maxCheck.value : '') +
+						'>'
+					);
 				}
 			}
 			return '<number>';
