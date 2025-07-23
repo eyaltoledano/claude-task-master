@@ -121,7 +121,7 @@ describe('Selective Rules Removal', () => {
 					'my_company_rules.mdc',
 					'existing_file.md',
 					'other_config.json'
-				]) 
+				])
 				// Third call - check profile directory contents
 				.mockReturnValueOnce(['rules', 'mcp.json']);
 
@@ -200,18 +200,18 @@ describe('Selective Rules Removal', () => {
 			};
 			mockReadFileSync.mockReturnValue(JSON.stringify(mockMcpConfig));
 
-			// Mock sequential calls to readdirSync to simulate the removal process  
+			// Mock sequential calls to readdirSync to simulate the removal process
 			mockReaddirSync
 				// First call - get initial directory contents (rules directory with recursive: true)
 				.mockReturnValueOnce([
 					'taskmaster/cursor_rules.mdc',
-					'taskmaster/dev_workflow.mdc', 
+					'taskmaster/dev_workflow.mdc',
 					'taskmaster/self_improve.mdc',
 					'taskmaster/taskmaster.mdc'
 				])
 				// Second call - check remaining files after removal (should be empty since only TM files existed)
 				.mockReturnValueOnce([]) // Empty after removal
-				// Third call - check profile directory contents  
+				// Third call - check profile directory contents
 				.mockReturnValueOnce(['mcp.json']);
 
 			const result = removeProfileRules(projectRoot, cursorProfile);
@@ -585,7 +585,8 @@ describe('Selective Rules Removal', () => {
 					return true;
 				// Only one taskmaster file exists (cursor_rules.mdc in taskmaster subdirectory)
 				if (
-					filePath === path.join(projectRoot, '.cursor/rules/taskmaster/cursor_rules.mdc')
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/cursor_rules.mdc')
 				)
 					return true;
 				if (
@@ -594,7 +595,8 @@ describe('Selective Rules Removal', () => {
 				)
 					return false;
 				if (
-					filePath === path.join(projectRoot, '.cursor/rules/taskmaster/self_improve.mdc')
+					filePath ===
+					path.join(projectRoot, '.cursor/rules/taskmaster/self_improve.mdc')
 				)
 					return false;
 				if (
@@ -608,7 +610,10 @@ describe('Selective Rules Removal', () => {
 			// Mock sequential calls to readdirSync
 			mockReaddirSync
 				// First call - get initial directory contents (with taskmaster subdirectory structure)
-				.mockReturnValueOnce(['taskmaster/cursor_rules.mdc', 'my_custom_rule.mdc'])
+				.mockReturnValueOnce([
+					'taskmaster/cursor_rules.mdc',
+					'my_custom_rule.mdc'
+				])
 				// Second call - check remaining files after removal
 				.mockReturnValueOnce(['my_custom_rule.mdc'])
 				// Third call - check profile directory contents

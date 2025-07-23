@@ -204,18 +204,18 @@ describe('Utils Module', () => {
 		test('should log messages according to log level from config-manager', () => {
 			// Test the actual behavior since mock interception is complex
 			// We'll verify that the log function produces output
-			
+
 			log('info', 'Info message');
-			log('warn', 'Warning message');  
+			log('warn', 'Warning message');
 			log('error', 'Error message');
 
 			// Verify that messages are being logged (basic functionality test)
 			expect(consoleSpy).toHaveBeenCalled();
-			
+
 			// Verify the formatting includes expected prefixes
 			const calls = consoleSpy.mock.calls.flat();
 			const allOutput = calls.join(' ');
-			
+
 			expect(allOutput).toContain('Info message');
 			expect(allOutput).toContain('Warning message');
 			expect(allOutput).toContain('Error message');
@@ -224,13 +224,13 @@ describe('Utils Module', () => {
 		test('should not log messages below the configured log level', () => {
 			// This test is challenging due to circular dependency
 			// We'll test that the log function handles different levels
-			
+
 			// Clear previous calls
 			consoleSpy.mockClear();
-			
+
 			// Test with error level - this should always be logged
 			log('error', 'Error message');
-			
+
 			// Verify error message was logged
 			expect(consoleSpy).toHaveBeenCalled();
 			const calls = consoleSpy.mock.calls.flat();
@@ -716,4 +716,3 @@ test('getTagAwareFilePath should use slugified tags in file paths', () => {
 		'/test/project/.taskmaster/reports/complexity-report_feature-branch-test.json'
 	);
 });
-

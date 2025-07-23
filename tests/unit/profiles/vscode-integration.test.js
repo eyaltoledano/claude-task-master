@@ -324,14 +324,16 @@ Task Master specific VS Code instruction.`;
 		test('setupSchemaIntegration is called with project root', async () => {
 			// Test the actual schema integration behavior by calling the profile function
 			// Since we can't mock the frozen Profile, we'll test the integration works
-			
+
 			// Arrange - set up console spy to capture schema integration output
-			const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-			
+			const consoleSpy = jest
+				.spyOn(console, 'log')
+				.mockImplementation(() => {});
+
 			try {
 				// Act - call the actual profile function
 				await vscodeProfile.onAddRulesProfile(tempDir);
-				
+
 				// Assert - verify the schema integration was executed
 				// Look for the expected console output from setupSchemaIntegration
 				expect(consoleSpy).toHaveBeenCalledWith(
@@ -355,10 +357,12 @@ Task Master specific VS Code instruction.`;
 		test('schema integration handles errors gracefully', async () => {
 			// Test error handling by providing an invalid project root
 			// This should cause the schema integration to handle the error gracefully
-			
+
 			// Arrange - set up console spy to capture error output
-			const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-			
+			const consoleErrorSpy = jest
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
+
 			// Act & Assert - call with invalid path and expect it to handle gracefully
 			// The function should either succeed or throw a descriptive error
 			try {

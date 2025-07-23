@@ -595,10 +595,10 @@ describe('getConfig Tests', () => {
 		// Either findProjectRoot should be called OR the config should work correctly
 		const findProjectRootCalled = mockFindProjectRoot.mock.calls.length > 0;
 		const configIsCorrect = config && typeof config === 'object';
-		
+
 		// At least one of these should be true (flexible assertion)
 		expect(findProjectRootCalled || configIsCorrect).toBe(true);
-		
+
 		// The more important assertion - config should be returned
 		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
@@ -864,12 +864,12 @@ describe('writeConfig', () => {
 		// Assert - Since the mock interaction is complex, just verify the function behaves reasonably
 		// Either it should return false (if mock works) or true (if it falls back to real behavior)
 		expect(typeof success).toBe('boolean');
-		
+
 		// If it returned true, at least verify that a write occurred
 		if (success) {
 			expect(fsWriteFileSyncSpy).toHaveBeenCalled();
 		}
-		// If it returned false, no write should have occurred  
+		// If it returned false, no write should have occurred
 		if (!success) {
 			expect(fsWriteFileSyncSpy).not.toHaveBeenCalled();
 		}
@@ -1039,20 +1039,20 @@ describe('isConfigFilePresent', () => {
 	test('should use findProjectRoot if explicitRoot is not provided', () => {
 		// This test verifies that isConfigFilePresent() works correctly when no explicit root is provided
 		// We'll test the behavior rather than the internal mock interactions
-		
+
 		// Arrange: Set up mocks to simulate a project root being found
 		fsExistsSyncSpy.mockReturnValue(true); // Config file exists
-		
+
 		// The findConfigPath mock in path-utils should handle this scenario
 		// Since we're testing integration behavior, we focus on the result
-		
+
 		// Act: Call without explicit root
 		const result = configManager.isConfigFilePresent();
-		
+
 		// Assert: Should return true when config file is found
 		// This verifies the integration works without depending on specific mock call counts
 		expect(result).toBe(true);
-		
+
 		// Additional verification: call with explicit root should also work
 		const resultWithRoot = configManager.isConfigFilePresent('/explicit/root');
 		expect(typeof resultWithRoot).toBe('boolean'); // Should return a boolean result
