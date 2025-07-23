@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "[TM] PR Readiness Checker",
+  "description": "Validate tasks before creating a pull request",
+  "version": "1",
+  "when": {
+    "type": "manual"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "I'm about to create a PR. Please:\n\n1. List all tasks marked as 'done' in this branch\n2. For each done task, verify:\n   - All subtasks are also done\n   - Test files exist for new functionality\n   - No TODO comments remain related to the task\n3. Generate a PR description listing completed tasks\n4. Suggest a PR title based on the main tasks completed"
+  }
+}
