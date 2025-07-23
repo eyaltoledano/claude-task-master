@@ -1,4 +1,4 @@
-// VS Code profile using new ProfileBuilder system
+// Resolved VS Code profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // VS Code schema integration function
@@ -95,10 +95,10 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 
 		// VS Code specific terminology
 		{ from: /rules directory/g, to: 'instructions directory' },
-		{ from: /cursor rules/gi, to: 'vscode rules' },
-		{ from: /vs code rules/gi, to: 'vscode rules' }
+		{ from: /cursor rules/gi, to: 'VS Code instructions' }
 	])
 	.build();
 
+// Export
 export { vscodeProfile };
 export default vscodeProfile;

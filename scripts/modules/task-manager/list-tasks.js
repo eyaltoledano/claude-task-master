@@ -26,8 +26,9 @@ import {
  * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
- * @param {string} tag - Optional tag to override current tag resolution
- * @param {Object} context - Optional context object containing projectRoot and other options
+ * @param {Object} context - Context object (required)
+ * @param {string} context.projectRoot - Project root path
+ * @param {string} context.tag - Tag for the task
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
@@ -36,18 +37,18 @@ function listTasks(
 	reportPath = null,
 	withSubtasks = false,
 	outputFormat = 'text',
-	tag = null,
 	context = {}
 ) {
+	const { projectRoot, tag } = context;
 	try {
 		// Extract projectRoot from context if provided
-		const projectRoot = context.projectRoot || null;
 		const data = readJSON(tasksPath, projectRoot, tag); // Pass projectRoot to readJSON
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}
 
 		// Add complexity scores to tasks if report exists
+		// `reportPath` is already tag-aware (resolved at the CLI boundary).
 		const complexityReport = readComplexityReport(reportPath);
 		// Apply complexity scores to tasks
 		if (complexityReport && complexityReport.complexityAnalysis) {

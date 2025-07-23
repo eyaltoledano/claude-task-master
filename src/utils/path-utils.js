@@ -66,8 +66,10 @@ export function findProjectRoot(startDir = process.cwd()) {
 
 	let currentDir = path.resolve(startDir);
 	const rootDir = path.parse(currentDir).root;
+	const maxDepth = 50; // Reasonable limit to prevent infinite loops
+	let depth = 0;
 
-	while (currentDir !== rootDir) {
+	while (currentDir !== rootDir && depth < maxDepth) {
 		// Check if current directory contains any project markers
 		for (const marker of projectMarkers) {
 			const markerPath = path.join(currentDir, marker);
@@ -76,9 +78,11 @@ export function findProjectRoot(startDir = process.cwd()) {
 			}
 		}
 		currentDir = path.dirname(currentDir);
+		depth++;
 	}
 
-	return null;
+	// Fallback to current working directory if no project root found
+	return process.cwd();
 }
 
 /**
@@ -271,7 +275,12 @@ export function findComplexityReportPath(
 		'' // Project root
 	];
 
-	const fileNames = ['task-complexity-report.json', 'complexity-report.json'];
+	const fileNames = ['task-complexity', 'complexity-report'].map((fileName) => {
+		if (args?.tag && args?.tag !== 'master') {
+			return `${fileName}_${args.tag}.json`;
+		}
+		return `${fileName}.json`;
+	});
 
 	for (const location of locations) {
 		for (const fileName of fileNames) {
@@ -353,6 +362,7 @@ export function resolveComplexityReportOutputPath(
 	log = null
 ) {
 	const logger = getLoggerOrDefault(log);
+	const tag = args?.tag;
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
@@ -369,13 +379,19 @@ export function resolveComplexityReportOutputPath(
 	// 2. Try to get project root from args (MCP) or find it
 	const rawProjectRoot =
 		args?.projectRoot || findProjectRoot() || process.cwd();
-
-	// 3. Normalize project root to prevent double .taskmaster paths
 	const projectRoot = normalizeProjectRoot(rawProjectRoot);
 
+	// 3. Use tag-aware filename
+	let filename = 'task-complexity-report.json';
+	if (tag && tag !== 'master') {
+		filename = `task-complexity-report_${tag}.json`;
+	}
+
 	// 4. Use new .taskmaster structure by default
-	const defaultPath = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
-	logger.info?.(`Using default complexity report output path: ${defaultPath}`);
+	const defaultPath = path.join(projectRoot, '.taskmaster/reports', filename);
+	logger.info?.(
+		`Using tag-aware complexity report output path: ${defaultPath}`
+	);
 
 	// Ensure the directory exists
 	const outputDir = path.dirname(defaultPath);

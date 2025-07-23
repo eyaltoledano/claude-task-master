@@ -16,7 +16,7 @@ describe('OpenCode Profile Initialization Functionality', () => {
 	});
 
 	test('opencode.js has correct asset-only profile configuration', () => {
-		// Check for ProfileBuilder syntax in the source file
+		// Check for ProfileBuilder.minimal('opencode')
 		expect(opencodeProfileContent).toContain(
 			"ProfileBuilder.minimal('opencode')"
 		);
@@ -57,13 +57,12 @@ describe('OpenCode Profile Initialization Functionality', () => {
 	});
 
 	test('opencode.js uses custom MCP config name', () => {
-		// OpenCode uses opencode.json instead of mcp.json - check ProfileBuilder syntax
-		expect(opencodeProfileContent).toContain("configName: 'opencode.json'");
+		// OpenCode uses opencode.json instead of mcp.json
+		expect(opencodeProfileContent).toContain("mcpConfigName: 'opencode.json'");
 		// Should not contain mcp.json as a config value (comments are OK)
 		expect(opencodeProfileContent).not.toMatch(
 			/mcpConfigName:\s*['"]mcp\.json['"]/
 		);
-
 		// Check the final computed properties
 		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');
 		expect(opencodeProfile.mcpConfigPath).toBe('opencode.json'); // Root directory doesn't need ./

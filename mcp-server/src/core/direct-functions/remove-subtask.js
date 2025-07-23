@@ -15,12 +15,14 @@ import {
  * @param {string} args.id - Subtask ID in format "parentId.subtaskId" (required)
  * @param {boolean} [args.convert] - Whether to convert the subtask to a standalone task
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function removeSubtaskDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, id, convert, skipGenerate } = args;
+	const { tasksJsonPath, id, convert, skipGenerate, projectRoot, tag } = args;
 	try {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
@@ -82,7 +84,11 @@ export async function removeSubtaskDirect(args, log) {
 			tasksPath,
 			id,
 			convertToTask,
-			generateFiles
+			generateFiles,
+			{
+				projectRoot,
+				tag
+			}
 		);
 
 		// Restore normal logging

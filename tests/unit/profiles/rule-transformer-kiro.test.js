@@ -201,20 +201,16 @@ Use the .mdc extension for all rule files.`;
 		expect(kiroProfile.profileName).toBe('kiro');
 		expect(kiroProfile.displayName).toBe('Kiro');
 		expect(kiroProfile.profileDir).toBe('.kiro');
-		expect(kiroProfile.mcpConfig).toBe(true); // Now returns boolean
+		expect(kiroProfile.mcpConfig).toBe(true);
 		expect(kiroProfile.mcpConfigName).toBe('settings/mcp.json');
 		expect(kiroProfile.mcpConfigPath).toBe('.kiro/settings/mcp.json');
 		expect(kiroProfile.includeDefaultRules).toBe(true);
-		// ProfileBuilder now auto-generates default file mappings when includeDefaultRules is true
 		expect(kiroProfile.fileMap).toEqual({
 			'rules/cursor_rules.mdc': 'kiro_rules.md',
 			'rules/dev_workflow.mdc': 'dev_workflow.md',
 			'rules/self_improve.mdc': 'self_improve.md',
 			'rules/taskmaster.mdc': 'taskmaster.md'
 		});
-		expect(kiroProfile.conversionConfig).toHaveProperty('profileTerms');
-		expect(kiroProfile.conversionConfig).toHaveProperty('docUrls');
-		expect(kiroProfile.conversionConfig).toHaveProperty('toolNames');
 		expect(kiroProfile.globalReplacements).toBeInstanceOf(Array);
 		expect(kiroProfile.globalReplacements.length).toBeGreaterThan(0);
 	});

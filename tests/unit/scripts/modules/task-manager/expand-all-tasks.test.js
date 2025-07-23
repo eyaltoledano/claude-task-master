@@ -198,7 +198,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -224,7 +225,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -267,7 +269,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -300,7 +303,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -326,7 +330,8 @@ describe('expandAllTasks', () => {
 					{
 						session: mockSession,
 						mcpLog: mockMcpLog,
-						projectRoot: mockProjectRoot
+						projectRoot: mockProjectRoot,
+						tag: 'master'
 					},
 					'json'
 				)
@@ -347,7 +352,8 @@ describe('expandAllTasks', () => {
 					false,
 					{
 						session: mockSession,
-						mcpLog: mockMcpLog
+						mcpLog: mockMcpLog,
+						tag: 'master'
 						// No projectRoot provided, and findProjectRoot will return null
 					},
 					'json'
@@ -384,7 +390,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -412,7 +419,8 @@ describe('expandAllTasks', () => {
 				{
 					session: mockSession,
 					mcpLog: mockMcpLog,
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 				},
 				'json'
 			);
@@ -441,7 +449,8 @@ describe('expandAllTasks', () => {
 				'',
 				false,
 				{
-					projectRoot: mockProjectRoot
+					projectRoot: mockProjectRoot,
+					tag: 'master'
 					// No mcpLog provided, should use CLI logger
 				},
 				'text' // CLI output format

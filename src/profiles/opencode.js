@@ -1,4 +1,4 @@
-// Opencode profile using new ProfileBuilder system
+// Opencode profile using ProfileBuilder
 import path from 'path';
 import fs from 'fs';
 import { log } from '../../scripts/modules/utils.js';

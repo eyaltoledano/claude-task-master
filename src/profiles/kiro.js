@@ -1,7 +1,7 @@
-// Kiro profile using new ProfileBuilder system
+// Kiro profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create kiro profile using the new ProfileBuilder
+// Create kiro profile using ProfileBuilder
 const kiroProfile = ProfileBuilder.minimal('kiro')
 	.display('Kiro')
 	.profileDir('.kiro')
@@ -73,5 +73,5 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the profile
 export { kiroProfile };

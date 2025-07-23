@@ -1,4 +1,4 @@
-// Zed profile using new ProfileBuilder system
+// Zed profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 import path from 'path';
 import fs from 'fs';

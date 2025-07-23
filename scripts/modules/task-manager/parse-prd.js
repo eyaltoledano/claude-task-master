@@ -19,7 +19,6 @@ import {
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 import { displayAiUsageSummary } from '../ui.js';
 
 // Define the Zod schema for a SINGLE task object
@@ -76,7 +75,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	const outputFormat = isMCP ? 'json' : 'text';
 
 	// Use the provided tag, or the current active tag, or default to 'master'
-	const targetTag = tag || getCurrentTag(projectRoot) || 'master';
+	const targetTag = tag;
 
 	const logFn = mcpLog
 		? mcpLog

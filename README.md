@@ -14,7 +14,13 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Documentation
 
-For more detailed information, check out the documentation in the `docs` directory:
+📚 **[View Full Documentation](https://docs.task-master.dev)**
+
+For detailed guides, API references, and comprehensive examples, visit our documentation site.
+
+### Quick Reference
+
+The following documentation is also available in the `docs` directory:
 
 - [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
 - [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master

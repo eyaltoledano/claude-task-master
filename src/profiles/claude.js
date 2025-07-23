@@ -1,4 +1,4 @@
-// Claude Code profile using new ProfileBuilder system
+// Claude profile using ProfileBuilder
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
@@ -107,6 +107,63 @@ ${importLine}
 			'error',
 			`[Claude] Failed to set up Claude instructions: ${err.message}`
 		);
+	}
+
+	// Handle CLAUDE.md import for non-destructive integration
+	const sourceFile = path.join(assetsDir, 'AGENTS.md');
+	const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
+	const taskMasterClaudeFile = path.join(targetDir, '.taskmaster', 'CLAUDE.md');
+	const importLine = '@./.taskmaster/CLAUDE.md';
+	const importSection = `\n## Task Master AI Instructions\n**Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**\n${importLine}`;
+
+	if (fs.existsSync(sourceFile)) {
+		try {
+			// Ensure .taskmaster directory exists
+			const taskMasterDir = path.join(targetDir, '.taskmaster');
+			if (!fs.existsSync(taskMasterDir)) {
+				fs.mkdirSync(taskMasterDir, { recursive: true });
+			}
+
+			// Copy Task Master instructions to .taskmaster/CLAUDE.md
+			fs.copyFileSync(sourceFile, taskMasterClaudeFile);
+			log(
+				'debug',
+				`[Claude] Created Task Master instructions at ${taskMasterClaudeFile}`
+			);
+
+			// Handle user's CLAUDE.md
+			if (fs.existsSync(userClaudeFile)) {
+				// Check if import already exists
+				const content = fs.readFileSync(userClaudeFile, 'utf8');
+				if (!content.includes(importLine)) {
+					// Append import section at the end
+					const updatedContent = content.trim() + '\n' + importSection + '\n';
+					fs.writeFileSync(userClaudeFile, updatedContent);
+					log(
+						'info',
+						`[Claude] Added Task Master import to existing ${userClaudeFile}`
+					);
+				} else {
+					log(
+						'info',
+						`[Claude] Task Master import already present in ${userClaudeFile}`
+					);
+				}
+			} else {
+				// Create minimal CLAUDE.md with the import section
+				const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
+				fs.writeFileSync(userClaudeFile, minimalContent);
+				log(
+					'info',
+					`[Claude] Created ${userClaudeFile} with Task Master import`
+				);
+			}
+		} catch (err) {
+			log(
+				'error',
+				`[Claude] Failed to set up Claude instructions: ${err.message}`
+			);
+		}
 	}
 }
 
@@ -258,8 +315,8 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 	}
 }
 
-// Create claude profile using the new ProfileBuilder
-const claudeProfile = ProfileBuilder.minimal('claude')
+// Create claude profile using ProfileBuilder
+export const claudeProfile = ProfileBuilder.minimal('claude')
 	.display('Claude Code')
 	.profileDir('.') // Root directory
 	.rulesDir('.') // No specific rules directory needed
@@ -323,6 +380,3 @@ export const claudeProfileLegacy = claudeProfile.toLegacyFormat();
 
 // Default export remains legacy format for maximum compatibility
 export default claudeProfileLegacy;
-
-// Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };
