@@ -584,10 +584,21 @@ function getParametersForRole(role, explicitRoot = null) {
 				);
 			}
 		} else {
-			log(
-				'debug',
-				`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
-			);
+			// Special handling for custom OpenRouter models
+			if (providerName === CUSTOM_PROVIDERS.OPENROUTER) {
+				// Use a conservative default for OpenRouter models not in our list
+				const openrouterDefault = 32768;
+				effectiveMaxTokens = Math.min(roleMaxTokens, openrouterDefault);
+				log(
+					'debug',
+					`Custom OpenRouter model ${modelId} detected. Using conservative max_tokens: ${effectiveMaxTokens}`
+				);
+			} else {
+				log(
+					'debug',
+					`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
+				);
+			}
 		}
 	} catch (lookupError) {
 		log(

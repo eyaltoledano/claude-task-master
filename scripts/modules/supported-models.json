@@ -333,7 +333,7 @@
 				"output": 3.0
 			},
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 131072,
+			"max_tokens": 16384,
 			"supported": true
 		},
 		{
@@ -701,7 +701,7 @@
 				"output": 0.2
 			},
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 1000000,
+			"max_tokens": 32768,
 			"supported": true
 		},
 		{
