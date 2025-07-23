@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -32,10 +32,13 @@ jobs:
         run: npm ci
         timeout-minutes: 2
 
-      - name: Enter RC mode
+      - name: Enter RC mode (if not already in RC mode)
         run: |
-          npx changeset pre exit || true
-          npx changeset pre enter rc
+          # ensure we’re in the right pre-mode (tag "rc")
+          if [ ! -f .changeset/pre.json ] \
+            || [ "$(jq -r '.tag' .changeset/pre.json 2>/dev/null || echo '')" != "rc" ]; then
+            npx changeset pre enter rc
+          fi
 
       - name: Version RC packages
         run: npx changeset version
@@ -51,12 +54,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Exit RC mode
-        run: npx changeset pre exit
-
       - name: Commit & Push changes
         uses: actions-js/push@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
-          message: 'chore: rc version bump'
+          message: "chore: rc version bump"
