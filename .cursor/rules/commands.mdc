@@ -523,7 +523,7 @@ For AI-powered commands that benefit from project context, follow the research c
     .option('--details <details>', 'Implementation details for the new subtask, optional')
     .option('--dependencies <ids>', 'Comma-separated list of subtask IDs this subtask depends on')
     .option('--status <status>', 'Initial status for the subtask', 'pending')
-    .option('--skip-generate', 'Skip regenerating task files')
+    .option('--generate', 'Regenerate task files after adding subtask')
     .action(async (options) => {
       // Validate required parameters
       if (!options.parent) {
@@ -545,7 +545,7 @@ For AI-powered commands that benefit from project context, follow the research c
     .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-i, --id <id>', 'ID of the subtask to remove in format parentId.subtaskId, required')
     .option('-c, --convert', 'Convert the subtask to a standalone task instead of deleting')
-    .option('--skip-generate', 'Skip regenerating task files')
+    .option('--generate', 'Regenerate task files after removing subtask')
     .action(async (options) => {
       // Implementation with detailed error handling
     })
@@ -633,11 +633,11 @@ function showAddSubtaskHelp() {
     '  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
     '  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
     '  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
-    '  --skip-generate           Skip regenerating task files\n\n' +
+    '  --generate                Regenerate task files after adding subtask\n\n' +
     chalk.cyan('Examples:') + '\n' +
     '  task-master add-subtask --parent=\'5\' --task-id=\'8\'\n' +
     '  task-master add-subtask -p \'5\' -t \'Implement login UI\' -d \'Create the login form\'\n' +
-    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details $\'Handle 401 Unauthorized.\nHandle 500 Server Error.\'',
+    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details "Handle 401 Unauthorized.\\nHandle 500 Server Error." --generate',
     { padding: 1, borderColor: 'blue', borderStyle: 'round' }
   ));
 }
@@ -652,7 +652,7 @@ function showRemoveSubtaskHelp() {
     '  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
     '  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
     '  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
-    '  --skip-generate     Skip regenerating task files\n\n' +
+    '  --generate          Regenerate task files after removing subtask\n\n' +
     chalk.cyan('Examples:') + '\n' +
     '  task-master remove-subtask --id=\'5.2\'\n' +
     '  task-master remove-subtask --id=\'5.2,6.3,7.1\'\n' +

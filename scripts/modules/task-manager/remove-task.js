@@ -192,18 +192,18 @@ async function removeTask(tasksPath, taskIds, context = {}) {
 			}
 
 			// Generate updated task files ONCE, with context
-			try {
-				await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-					projectRoot,
-					tag
-				});
-				results.messages.push('Task files regenerated successfully.');
-			} catch (genError) {
-				const genErrMsg = `Failed to regenerate task files: ${genError.message}`;
-				results.errors.push(genErrMsg);
-				results.success = false;
-				log('warn', genErrMsg);
-			}
+			// try {
+			// 	await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+			// 		projectRoot,
+			// 		tag
+			// 	});
+			// 	results.messages.push('Task files regenerated successfully.');
+			// } catch (genError) {
+			// 	const genErrMsg = `Failed to regenerate task files: ${genError.message}`;
+			// 	results.errors.push(genErrMsg);
+			// 	results.success = false;
+			// 	log('warn', genErrMsg);
+			// }
 		} else if (results.errors.length === 0) {
 			results.messages.push('No tasks found matching the provided IDs.');
 		}

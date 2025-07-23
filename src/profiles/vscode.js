@@ -1,4 +1,4 @@
-// Resolved VS Code profile using ProfileBuilder
+// VS Code profile using ProfileBuilder system
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // VS Code schema integration function
@@ -19,9 +19,9 @@ async function setupSchemaIntegration(projectRoot) {
 // Create vscode profile using the new ProfileBuilder
 const vscodeProfile = ProfileBuilder.minimal('vscode')
 	.display('VS Code')
-	.profileDir('.vscode') // VS Code uses .vscode directory as expected by MCP validation
-	.rulesDir('.github/instructions') // Instructions still in .github/instructions
-	.mcpConfig(true)
+	.profileDir('.vscode') // VS Code uses .vscode directory for configuration
+	.rulesDir('.github/instructions') // VS Code uses .github/instructions for rules
+	.mcpConfig(true) // Enable MCP configuration
 	.includeDefaultRules(true)
 	.onAdd(setupSchemaIntegration) // Add schema integration lifecycle function
 	.conversion({
@@ -42,6 +42,8 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 		],
 		// Documentation URL replacements
 		docUrls: [{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }],
+		// File extension mappings (.mdc to .instructions.md for VS Code)
+		fileExtensions: [{ from: /\.mdc/g, to: '.instructions.md' }],
 		// Tool name mappings (standard - no custom tools)
 		toolNames: {
 			edit_file: 'edit_file',
@@ -59,13 +61,10 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 		toolGroups: [],
 
 		// File reference mappings (vscode uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
-		// GitHub instructions directory structure
+		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },
 		{ from: /\.cursor\/mcp\.json/g, to: '.vscode/mcp.json' },
 		{ from: /\.vs code\/rules/g, to: '.github/instructions' },
@@ -73,22 +72,31 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 		{ from: /\.vs code\/instructions/g, to: '.github/instructions' },
 		{ from: /\.github\/rules/g, to: '.github/instructions' },
 
-		// Essential markdown link transformations
+		// Fix any remaining vscode/rules references that might be created during transformation
+		{ from: /\.vscode\/rules/g, to: '.github/instructions' },
+
+		// VS Code custom instructions format - use applyTo with quoted patterns instead of globs
+		{ from: /^globs:\s*(.+)$/gm, to: 'applyTo: "$1"' },
+
+		// Remove unsupported property - alwaysApply
+		{ from: /^alwaysApply:\s*(true|false)\s*\n?/gm, to: '' },
+
+		// Essential markdown link transformations for VS Code structure
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
-			to: '[$1](.github/instructions/$2.md)'
+			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
 		{
 			from: /\[(.+?)\]\(mdc:\.vs code\/rules\/(.+?)\.mdc\)/g,
-			to: '[$1](.github/instructions/$2.md)'
+			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
 		{
 			from: /\[(.+?)\]\(mdc:\.github\/instructions\/(.+?)\.mdc\)/g,
-			to: '[$1](.github/instructions/$2.md)'
+			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
 
 		// File extension transformation
-		{ from: /\.mdc/g, to: '.md' },
+		{ from: /\.mdc/g, to: '.instructions.md' },
 
 		// Globs to applyTo transformation for VS Code
 		{ from: /globs:\s*(.+)/g, to: 'applyTo: "$1"' },
@@ -99,6 +107,6 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 	])
 	.build();
 
-// Export
+// Export only the new Profile instance
 export { vscodeProfile };
 export default vscodeProfile;

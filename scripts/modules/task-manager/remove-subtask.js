@@ -17,7 +17,7 @@ async function removeSubtask(
 	tasksPath,
 	subtaskId,
 	convertToTask = false,
-	generateFiles = true,
+	generateFiles = false,
 	context = {}
 ) {
 	const { projectRoot, tag } = context;
@@ -111,7 +111,7 @@ async function removeSubtask(
 		// Generate task files if requested
 		if (generateFiles) {
 			log('info', 'Regenerating task files...');
-			// await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
 		}
 
 		return convertedTask;
