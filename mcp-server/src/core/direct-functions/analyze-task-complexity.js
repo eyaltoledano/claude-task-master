@@ -29,7 +29,7 @@ import { createLogWrapper } from '../../tools/utils.js'; // Import the new utili
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function analyzeTaskComplexityDirect(args, log, context = {}) {
-	const { session } = context;
+	const { session, reportProgress } = context;
 	const {
 		tasksJsonPath,
 		outputPath,
@@ -114,6 +114,7 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			coreResult = await analyzeTaskComplexity(coreOptions, {
 				session,
 				mcpLog: logWrapper,
+				reportProgress,
 				commandName: 'analyze-complexity',
 				outputType: 'mcp',
 				projectRoot,

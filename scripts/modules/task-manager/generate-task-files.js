@@ -46,7 +46,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		}
 
 		log(
-			'info',
+			'debug',
 			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${tag}'`
 		);
 
@@ -62,7 +62,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		const validTaskIds = allTasksInTag.map((task) => task.id);
 
 		// Cleanup orphaned task files
-		log('info', 'Checking for orphaned task files to clean up...');
+		log('debug', 'Checking for orphaned task files to clean up...');
 		try {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
@@ -94,7 +94,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 
 			if (orphanedFiles.length > 0) {
 				log(
-					'info',
+					'debug',
 					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${tag}'`
 				);
 				orphanedFiles.forEach((file) => {
@@ -102,14 +102,14 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 					fs.unlinkSync(filePath);
 				});
 			} else {
-				log('info', 'No orphaned task files found.');
+				log('debug', 'No orphaned task files found.');
 			}
 		} catch (err) {
 			log('warn', `Error cleaning up orphaned task files: ${err.message}`);
 		}
 
 		// Generate task files for the target tag
-		log('info', `Generating individual task files for tag '${tag}'...`);
+		log('debug', `Generating individual task files for tag '${tag}'...`);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
@@ -174,7 +174,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		});
 
 		log(
-			'success',
+			'debug',
 			`All ${tasksForGeneration.length} tasks for tag '${tag}' have been generated into '${outputDir}'.`
 		);
 

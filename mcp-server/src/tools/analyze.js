@@ -9,7 +9,8 @@ import fs from 'fs'; // Import fs for directory check/creation
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -75,96 +76,105 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			const toolName = 'analyze_project_complexity'; // Define tool name for logging
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
+				const toolName = 'analyze_project_complexity'; // Define tool name for logging
 
-			try {
-				log.info(
-					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
-				);
-
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-
-				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+					log.info(
+						`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
+					);
+
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+
+					const progressCapability = checkProgressCapability(
+						reportProgress,
 						log
 					);
-					log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
-				} catch (error) {
-					log.error(`${toolName}: Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json within project root '${args.projectRoot}': ${error.message}`
-					);
-				}
 
-				const outputPath = resolveComplexityReportOutputPath(
-					args.output,
-					{
-						projectRoot: args.projectRoot,
-						tag: resolvedTag
-					},
-					log
-				);
-
-				log.info(`${toolName}: Report output path: ${outputPath}`);
-
-				// Ensure output directory exists
-				const outputDir = path.dirname(outputPath);
-				try {
-					if (!fs.existsSync(outputDir)) {
-						fs.mkdirSync(outputDir, { recursive: true });
-						log.info(`${toolName}: Created output directory: ${outputDir}`);
+					let tasksJsonPath;
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+						log.info(`${toolName}: Resolved tasks path: ${tasksJsonPath}`);
+					} catch (error) {
+						log.error(
+							`${toolName}: Error finding tasks.json: ${error.message}`
+						);
+						return createErrorResponse(
+							`Failed to find tasks.json within project root '${args.projectRoot}': ${error.message}`
+						);
 					}
-				} catch (dirError) {
+
+					const outputPath = resolveComplexityReportOutputPath(
+						args.output,
+						{
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
+						},
+						log
+					);
+
+					log.info(`${toolName}: Report output path: ${outputPath}`);
+
+					// Ensure output directory exists
+					const outputDir = path.dirname(outputPath);
+					try {
+						if (!fs.existsSync(outputDir)) {
+							fs.mkdirSync(outputDir, { recursive: true });
+							log.info(`${toolName}: Created output directory: ${outputDir}`);
+						}
+					} catch (dirError) {
+						log.error(
+							`${toolName}: Failed to create output directory ${outputDir}: ${dirError.message}`
+						);
+						return createErrorResponse(
+							`Failed to create output directory: ${dirError.message}`
+						);
+					}
+
+					// 3. Call Direct Function - Pass projectRoot in first arg object
+					const result = await analyzeTaskComplexityDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							outputPath: outputPath,
+							threshold: args.threshold,
+							research: args.research,
+							projectRoot: args.projectRoot,
+							tag: resolvedTag,
+							ids: args.ids,
+							from: args.from,
+							to: args.to
+						},
+						log,
+						{ session, reportProgress: progressCapability.reportProgress }
+					);
+
+					// 4. Handle Result
+					log.info(
+						`${toolName}: Direct function result: success=${result.success}`
+					);
+					return handleApiResult(
+						result,
+						log,
+						'Error analyzing task complexity',
+						undefined,
+						args.projectRoot
+					);
+				} catch (error) {
 					log.error(
-						`${toolName}: Failed to create output directory ${outputDir}: ${dirError.message}`
+						`Critical error in ${toolName} tool execute: ${error.message}`
 					);
 					return createErrorResponse(
-						`Failed to create output directory: ${dirError.message}`
+						`Internal tool error (${toolName}): ${error.message}`
 					);
 				}
-
-				// 3. Call Direct Function - Pass projectRoot in first arg object
-				const result = await analyzeTaskComplexityDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						outputPath: outputPath,
-						threshold: args.threshold,
-						research: args.research,
-						projectRoot: args.projectRoot,
-						tag: resolvedTag,
-						ids: args.ids,
-						from: args.from,
-						to: args.to
-					},
-					log,
-					{ session }
-				);
-
-				// 4. Handle Result
-				log.info(
-					`${toolName}: Direct function result: success=${result.success}`
-				);
-				return handleApiResult(
-					result,
-					log,
-					'Error analyzing task complexity',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(
-					`Critical error in ${toolName} tool execute: ${error.message}`
-				);
-				return createErrorResponse(
-					`Internal tool error (${toolName}): ${error.message}`
-				);
 			}
-		})
+		)
 	});
 }
