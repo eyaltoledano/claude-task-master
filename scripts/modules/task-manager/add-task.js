@@ -2,7 +2,6 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import { z } from 'zod';
 import Fuse from 'fuse.js'; // Import Fuse.js for advanced fuzzy search
 
 import {
@@ -29,32 +28,13 @@ import { getDefaultPriority } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 import generateTaskFiles from './generate-task-files.js';
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import {
 	TASK_PRIORITY_OPTIONS,
 	DEFAULT_TASK_PRIORITY,
 	isValidTaskPriority,
 	normalizeTaskPriority
 } from '../../../src/constants/task-priority.js';
-
-// Define Zod schema for the expected AI output object
-const AiTaskDataSchema = z.object({
-	title: z.string().describe('Clear, concise title for the task'),
-	description: z
-		.string()
-		.describe('A one or two sentence description of the task'),
-	details: z
-		.string()
-		.describe('In-depth implementation details, considerations, and guidance'),
-	testStrategy: z
-		.string()
-		.describe('Detailed approach for verifying task completion'),
-	dependencies: z
-		.array(z.number())
-		.nullable()
-		.describe(
-			'Array of task IDs that this task depends on (must be completed before this task can start)'
-		)
-});
 
 /**
  * Get all tasks from all tags
@@ -445,7 +425,7 @@ async function addTask(
 					role: serviceRole,
 					session: session,
 					projectRoot: projectRoot,
-					schema: AiTaskDataSchema,
+					schema: COMMAND_SCHEMAS['add-task'],
 					objectName: 'newTaskData',
 					systemPrompt: systemPrompt,
 					prompt: userPrompt,

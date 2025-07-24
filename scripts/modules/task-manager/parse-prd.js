@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { z } from 'zod';
 
 import {
 	log,
@@ -20,29 +19,7 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { displayAiUsageSummary } from '../ui.js';
-
-// Define the Zod schema for a SINGLE task object
-const prdSingleTaskSchema = z.object({
-	id: z.number().int().positive(),
-	title: z.string().min(1),
-	description: z.string().min(1),
-	details: z.string().nullable(),
-	testStrategy: z.string().nullable(),
-	priority: z.enum(['high', 'medium', 'low']).nullable(),
-	dependencies: z.array(z.number().int().positive()).nullable(),
-	status: z.string().nullable()
-});
-
-// Define the Zod schema for the ENTIRE expected AI response object
-const prdResponseSchema = z.object({
-	tasks: z.array(prdSingleTaskSchema),
-	metadata: z.object({
-		projectName: z.string(),
-		totalTasks: z.number(),
-		sourceFile: z.string(),
-		generatedAt: z.string()
-	})
-});
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 
 /**
  * Parse a PRD file and generate tasks
@@ -200,8 +177,8 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			role: research ? 'research' : 'main', // Use research role if flag is set
 			session: session,
 			projectRoot: projectRoot,
-			schema: prdResponseSchema,
-			objectName: 'tasks_data',
+			schema: COMMAND_SCHEMAS['parse-prd'],
+			objectName: 'tasks',
 			systemPrompt: systemPrompt,
 			prompt: userPrompt,
 			commandName: 'parse-prd',
