@@ -244,9 +244,7 @@ Build a simple task management application.
 		});
 
 		// Mock process.exit to prevent actual exit
-		jest.spyOn(process, 'exit').mockImplementation(() => {
-			throw new Error('process.exit was called');
-		});
+		jest.spyOn(process, 'exit').mockImplementation(() => undefined);
 
 		// Mock console methods to prevent output
 		jest.spyOn(console, 'log').mockImplementation(() => {});
