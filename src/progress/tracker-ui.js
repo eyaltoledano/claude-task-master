@@ -55,6 +55,7 @@ export function createProgressRow(multibar, rowFormat, payload) {
 	if (
 		!multibar ||
 		typeof rowFormat !== 'string' ||
+		payload === null ||
 		typeof payload !== 'object'
 	) {
 		throw new Error('Invalid parameters for createProgressRow');
