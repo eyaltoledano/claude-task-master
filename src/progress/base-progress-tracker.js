@@ -7,7 +7,7 @@ import { newMultiBar } from './cli-progress-factory.js';
 export class BaseProgressTracker {
 	constructor(options = {}) {
 		this.numUnits = options.numUnits || 1;
-		this.unitName = options.unitName || 'unit'; // e.g., 'task', 'analysis'
+		this.unitName = options.unitName || 'unit'; // e.g., 'task', 'subtask'
 		this.startTime = null;
 		this.completedUnits = 0;
 		this.tokensIn = 0;

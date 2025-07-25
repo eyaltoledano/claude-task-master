@@ -226,7 +226,8 @@ async function parsePRDWithStreaming(
 	let progressTracker = null;
 	if (outputFormat === 'text' && !isMCP) {
 		progressTracker = createParsePrdTracker({
-			numTasks,
+			numUnits: numTasks,
+			unitName: 'task',
 			append
 		});
 
