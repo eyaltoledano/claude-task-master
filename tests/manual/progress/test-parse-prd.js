@@ -271,12 +271,7 @@ function verifyTaskResults(testTasksPath) {
 
 		// Verify task structure
 		const firstTask = tasksData.tasks[0];
-		if (
-			firstTask &&
-			firstTask.id &&
-			firstTask.title &&
-			firstTask.description
-		) {
+		if (firstTask && firstTask.id && firstTask.title && firstTask.description) {
 			console.log(chalk.green('✅ Task structure is valid'));
 			return true;
 		} else {
@@ -339,16 +334,24 @@ async function testMCPStreaming(numTasks = 10) {
 	try {
 		console.log(chalk.yellow('Starting MCP streaming test...'));
 
-		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks, {
-			reportProgress: progressReporter.reportProgress.bind(progressReporter),
-			mcpLog: mcpLogger // Add MCP context - this is the key difference
-		});
+		const { result, duration } = await runParsePRD(
+			testPRDPath,
+			testTasksPath,
+			numTasks,
+			{
+				reportProgress: progressReporter.reportProgress.bind(progressReporter),
+				mcpLog: mcpLogger // Add MCP context - this is the key difference
+			}
+		);
 
 		console.log(
 			chalk.green(`\n✅ MCP streaming test completed in ${duration}ms`)
 		);
 
-		const { hasEmojiIndicators, logs } = printMCPResults(mcpLogger, progressReporter);
+		const { hasEmojiIndicators, logs } = printMCPResults(
+			mcpLogger,
+			progressReporter
+		);
 		const isValidStructure = verifyTaskResults(testTasksPath);
 
 		return {
@@ -382,7 +385,11 @@ async function testCLIStreaming(numTasks = 10) {
 		console.log(chalk.yellow('Starting CLI streaming test...'));
 
 		// No reportProgress provided; CLI text mode uses the default streaming reporter
-		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks);
+		const { result, duration } = await runParsePRD(
+			testPRDPath,
+			testTasksPath,
+			numTasks
+		);
 
 		console.log(
 			chalk.green(`\n✅ CLI streaming test completed in ${duration}ms`)
@@ -412,13 +419,18 @@ async function testCLIStreaming(numTasks = 10) {
 async function testNonStreaming(numTasks = 10) {
 	console.log(chalk.cyan('🧪 Testing Non-Streaming Functionality\n'));
 
-	const { testPRDPath, testTasksPath, configPath } = setupTestFiles('non-streaming');
+	const { testPRDPath, testTasksPath, configPath } =
+		setupTestFiles('non-streaming');
 
 	try {
 		console.log(chalk.yellow('Starting non-streaming test...'));
 
 		// Force non-streaming by not providing reportProgress
-		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks);
+		const { result, duration } = await runParsePRD(
+			testPRDPath,
+			testTasksPath,
+			numTasks
+		);
 
 		console.log(
 			chalk.green(`\n✅ Non-streaming test completed in ${duration}ms`)
