@@ -1,5 +1,52 @@
 # task-master-ai
 
+## 0.22.0
+
+### Minor Changes
+
+- [#1043](https://github.com/eyaltoledano/claude-task-master/pull/1043) [`dc44ed9`](https://github.com/eyaltoledano/claude-task-master/commit/dc44ed9de8a57aca5d39d3a87565568bd0a82068) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prompt to generate a complexity report when it is missing
+
+- [#1032](https://github.com/eyaltoledano/claude-task-master/pull/1032) [`4423119`](https://github.com/eyaltoledano/claude-task-master/commit/4423119a5ec53958c9dffa8bf564da8be7a2827d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add comprehensive Kiro IDE integration with autonomous task management hooks
+  - **Kiro Profile**: Added full support for Kiro IDE with automatic installation of 7 Taskmaster agent hooks
+  - **Hook-Driven Workflow**: Introduced natural language automation hooks that eliminate manual task status updates
+  - **Automatic Hook Installation**: Hooks are now automatically copied to `.kiro/hooks/` when running `task-master rules add kiro`
+  - **Language-Agnostic Support**: All hooks support multiple programming languages (JS, Python, Go, Rust, Java, etc.)
+  - **Frontmatter Transformation**: Kiro rules use simplified `inclusion: always` format instead of Cursor's complex frontmatter
+  - **Special Rule**: Added `taskmaster_hooks_workflow.md` that guides AI assistants to prefer hook-driven completion
+
+  Key hooks included:
+  - Task Dependency Auto-Progression: Automatically starts tasks when dependencies complete
+  - Code Change Task Tracker: Updates task progress as you save files
+  - Test Success Task Completer: Marks tasks done when tests pass
+  - Daily Standup Assistant: Provides personalized task status summaries
+  - PR Readiness Checker: Validates task completion before creating pull requests
+  - Complexity Analyzer: Auto-expands complex tasks into manageable subtasks
+  - Git Commit Task Linker: Links commits to tasks for better traceability
+
+  This creates a truly autonomous development workflow where task management happens naturally as you code!
+
+### Patch Changes
+
+- [#1033](https://github.com/eyaltoledano/claude-task-master/pull/1033) [`7b90568`](https://github.com/eyaltoledano/claude-task-master/commit/7b9056832653464f934c91c22997077065d738c4) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix compatibility with @google/gemini-cli-core v0.1.12+ by updating ai-sdk-provider-gemini-cli to v0.1.1.
+
+- [#1038](https://github.com/eyaltoledano/claude-task-master/pull/1038) [`77cc5e4`](https://github.com/eyaltoledano/claude-task-master/commit/77cc5e4537397642f2664f61940a101433ee6fb4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix 'expand --all' and 'show' commands to correctly handle tag contexts for complexity reports and task display.
+
+- [#1025](https://github.com/eyaltoledano/claude-task-master/pull/1025) [`8781794`](https://github.com/eyaltoledano/claude-task-master/commit/8781794c56d454697fc92c88a3925982d6b81205) Thanks [@joedanz](https://github.com/joedanz)! - Clean up remaining automatic task file generation calls
+
+- [#1035](https://github.com/eyaltoledano/claude-task-master/pull/1035) [`fb7d588`](https://github.com/eyaltoledano/claude-task-master/commit/fb7d588137e8c53b0d0f54bd1dd8d387648583ee) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix max_tokens limits for OpenRouter and Groq models
+  - Add special handling in config-manager.js for custom OpenRouter models to use a conservative default of 32,768 max_tokens
+  - Update qwen/qwen-turbo model max_tokens from 1,000,000 to 32,768 to match OpenRouter's actual limits
+  - Fix moonshotai/kimi-k2-instruct max_tokens to 16,384 to match Groq's actual limit (fixes #1028)
+  - This prevents "maximum context length exceeded" errors when using OpenRouter models not in our supported models list
+
+- [#1027](https://github.com/eyaltoledano/claude-task-master/pull/1027) [`6ae66b2`](https://github.com/eyaltoledano/claude-task-master/commit/6ae66b2afbfe911340fa25e0236c3db83deaa7eb) Thanks [@andreswebs](https://github.com/andreswebs)! - Fix VSCode profile generation to use correct rule file names (using `.instructions.md` extension instead of `.md`) and front-matter properties (removing the unsupported `alwaysApply` property from instructions files' front-matter).
+
+## 0.22.0-rc.1
+
+### Minor Changes
+
+- [#1043](https://github.com/eyaltoledano/claude-task-master/pull/1043) [`dc44ed9`](https://github.com/eyaltoledano/claude-task-master/commit/dc44ed9de8a57aca5d39d3a87565568bd0a82068) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prompt to generate a complexity report when it is missing
+
 ## 0.22.0-rc.0
 
 ### Minor Changes
