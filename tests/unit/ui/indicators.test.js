@@ -2,15 +2,16 @@
  * Unit tests for indicators module (priority and complexity indicators)
  */
 import { jest } from '@jest/globals';
-import chalk from 'chalk';
 
-// Mock chalk to avoid console color codes in tests
-jest.mock('chalk', () => ({
-	red: jest.fn((str) => str),
-	yellow: jest.fn((str) => str),
-	green: jest.fn((str) => str),
-	white: jest.fn((str) => str),
-	hex: jest.fn(() => jest.fn((str) => str))
+// Mock chalk using unstable_mockModule for ESM compatibility
+jest.unstable_mockModule('chalk', () => ({
+	default: {
+		red: jest.fn((str) => str),
+		yellow: jest.fn((str) => str),
+		green: jest.fn((str) => str),
+		white: jest.fn((str) => str),
+		hex: jest.fn(() => jest.fn((str) => str))
+	}
 }));
 
 // Import after mocking
