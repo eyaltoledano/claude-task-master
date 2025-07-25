@@ -245,7 +245,7 @@ function createMockStreamingResponse(numTasks = 6) {
 	};
 
 	return {
-		mainResult: { textStream: mockStream }, // Return the stream wrapped in textStream property as expected by actual code
+		mainResult: mockStream, // Return the stream directly as mainResult per ai-services-unified implementation
 		telemetryData: {
 			timestamp: new Date().toISOString(),
 			userId: 'test-user',
