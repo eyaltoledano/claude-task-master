@@ -156,17 +156,37 @@ jest.unstable_mockModule('@streamparser/json', () => ({
 }));
 
 // Mock stream-parser functions
-jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => ({
-	parseStream: jest.fn().mockResolvedValue({
-		items: [{ id: 1, title: 'Test Task', priority: 'high' }],
-		accumulatedText:
-			'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
-		estimatedTokens: 50,
-		usedFallback: false
-	}),
-	createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
-	createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn())
-}));
+jest.unstable_mockModule('../../../../../src/utils/stream-parser.js', () => {
+	// Define mock StreamingError class
+	class StreamingError extends Error {
+		constructor(message, code) {
+			super(message);
+			this.name = 'StreamingError';
+			this.code = code;
+		}
+	}
+
+	// Define mock error codes
+	const STREAMING_ERROR_CODES = {
+		NOT_ASYNC_ITERABLE: 'STREAMING_NOT_SUPPORTED',
+		STREAM_PROCESSING_FAILED: 'STREAM_PROCESSING_FAILED',
+		STREAM_NOT_ITERABLE: 'STREAM_NOT_ITERABLE'
+	};
+
+	return {
+		parseStream: jest.fn().mockResolvedValue({
+			items: [{ id: 1, title: 'Test Task', priority: 'high' }],
+			accumulatedText:
+				'{"tasks":[{"id":1,"title":"Test Task","priority":"high"}]}',
+			estimatedTokens: 50,
+			usedFallback: false
+		}),
+		createTaskProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+		createConsoleProgressCallback: jest.fn().mockReturnValue(jest.fn()),
+		StreamingError,
+		STREAMING_ERROR_CODES
+	};
+});
 
 // Mock progress tracker to prevent intervals
 jest.unstable_mockModule(
@@ -204,7 +224,7 @@ const { generateObjectService, streamTextService } = await import(
 
 const { JSONParser } = await import('@streamparser/json');
 
-const { parseStream } = await import(
+const { parseStream, StreamingError, STREAMING_ERROR_CODES } = await import(
 	'../../../../../src/utils/stream-parser.js'
 );
 
@@ -667,7 +687,10 @@ describe('parsePRD', () => {
 
 			// Mock streamTextService to fail with a streaming-specific error
 			streamTextService.mockRejectedValueOnce(
-				new Error('textStream is not async iterable')
+				new StreamingError(
+					'textStream is not async iterable',
+					STREAMING_ERROR_CODES.NOT_ASYNC_ITERABLE
+				)
 			);
 
 			// Call the function with reportProgress to trigger streaming path
@@ -854,7 +877,7 @@ describe('parsePRD', () => {
 			);
 		});
 
-		test('should handle different streaming error types for fallback', async () => {
+		test('should handle StreamingError types for fallback', async () => {
 			// Setup mocks to simulate normal conditions
 			fs.default.existsSync.mockImplementation((path) => {
 				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
@@ -862,14 +885,23 @@ describe('parsePRD', () => {
 				return false;
 			});
 
-			// Test different error messages that should trigger fallback
+			// Test different StreamingError types that should trigger fallback
 			const streamingErrors = [
-				'Stream object is not iterable',
-				'Failed to process AI text stream',
-				'textStream is not async iterable'
+				{
+					message: 'Stream object is not iterable',
+					code: STREAMING_ERROR_CODES.STREAM_NOT_ITERABLE
+				},
+				{
+					message: 'Failed to process AI text stream',
+					code: STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
+				},
+				{
+					message: 'textStream is not async iterable',
+					code: STREAMING_ERROR_CODES.NOT_ASYNC_ITERABLE
+				}
 			];
 
-			for (const errorMessage of streamingErrors) {
+			for (const errorConfig of streamingErrors) {
 				// Clear mocks for each iteration
 				jest.clearAllMocks();
 
@@ -885,8 +917,9 @@ describe('parsePRD', () => {
 					telemetryData: {}
 				});
 
-				// Mock streamTextService to fail with specific error
-				streamTextService.mockRejectedValueOnce(new Error(errorMessage));
+				// Mock streamTextService to fail with StreamingError
+				const error = new StreamingError(errorConfig.message, errorConfig.code);
+				streamTextService.mockRejectedValueOnce(error);
 
 				// Mock progress reporting function
 				const mockReportProgress = jest.fn(() => Promise.resolve());

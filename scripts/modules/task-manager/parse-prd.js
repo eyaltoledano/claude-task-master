@@ -26,6 +26,16 @@ import {
 	writeJSON
 } from '../utils.js';
 
+import { createParsePrdTracker } from '../../../src/progress/parse-prd-tracker.js';
+import {
+	displayParsePrdStart,
+	displayParsePrdSummary
+} from '../../../src/ui/parse-prd.js';
+import {
+	parseStream,
+	StreamingError,
+	STREAMING_ERROR_CODES
+} from '../../../src/utils/stream-parser.js';
 import {
 	generateObjectService,
 	streamTextService
@@ -137,11 +147,12 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			return await parsePRDWithStreaming(prdPath, tasksPath, numTasks, options);
 		} catch (streamingError) {
 			// Check if this is a streaming-specific error
-			const errorMessage = streamingError.message?.toLowerCase() || '';
 			const isStreamingError =
-				errorMessage.includes('not async iterable') ||
-				errorMessage.includes('failed to process ai text stream') ||
-				errorMessage.includes('stream object is not iterable');
+				streamingError instanceof StreamingError ||
+				streamingError.code === STREAMING_ERROR_CODES.NOT_ASYNC_ITERABLE ||
+				streamingError.code ===
+					STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED ||
+				streamingError.code === STREAMING_ERROR_CODES.STREAM_NOT_ITERABLE;
 
 			if (isStreamingError) {
 				// Log fallback warning
