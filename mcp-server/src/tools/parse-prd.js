@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot,
-	createErrorResponse
+	createErrorResponse,
+	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -64,31 +65,37 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('Append generated tasks to existing file.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				const result = await parsePRDDirect(
-					{
-						...args,
-						tag: resolvedTag
-					},
-					log,
-					{ session }
-				);
-				return handleApiResult(
-					result,
-					log,
-					'Error parsing PRD',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in parse_prd: ${error.message}`);
-				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
+				try {
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+					const progressCapability = checkProgressCapability(
+						reportProgress,
+						log
+					);
+					const result = await parsePRDDirect(
+						{
+							...args,
+							tag: resolvedTag
+						},
+						log,
+						{ session, reportProgress: progressCapability }
+					);
+					return handleApiResult(
+						result,
+						log,
+						'Error parsing PRD',
+						undefined,
+						args.projectRoot
+					);
+				} catch (error) {
+					log.error(`Error in parse_prd: ${error.message}`);
+					return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+				}
 			}
-		})
+		)
 	});
 }

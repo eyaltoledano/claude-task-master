@@ -897,8 +897,6 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			let spinner;
-
 			try {
 				if (!(await confirmOverwriteIfNeeded())) return;
 
@@ -915,7 +913,6 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				// Handle case where getTasksPath() returns null
 				const outputPath =
 					taskMaster.getTasksPath() ||
@@ -927,13 +924,8 @@ function registerCommands(programInstance) {
 					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
-				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error parsing PRD: ${error.message}`);
-				} else {
-					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
-				}
+				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
 			}
 		});

@@ -119,6 +119,21 @@ function _getCostForModel(providerName, modelId) {
 	};
 }
 
+/**
+ * Calculate cost from token counts and cost per million
+ * @param {number} inputTokens - Number of input tokens
+ * @param {number} outputTokens - Number of output tokens
+ * @param {number} inputCost - Cost per million input tokens
+ * @param {number} outputCost - Cost per million output tokens
+ * @returns {number} Total calculated cost
+ */
+function _calculateCost(inputTokens, outputTokens, inputCost, outputCost) {
+	const calculatedCost =
+		((inputTokens || 0) / 1_000_000) * inputCost +
+		((outputTokens || 0) / 1_000_000) * outputCost;
+	return parseFloat(calculatedCost.toFixed(6));
+}
+
 // Helper function to get tag information for responses
 function _getTagInfo(projectRoot) {
 	try {
