@@ -11,8 +11,6 @@ import {
 import { getPriorityIndicators } from '../../../src/ui/indicators.js';
 
 import {
-	disableSilentMode,
-	enableSilentMode,
 	ensureTagMetadata,
 	findTaskById,
 	getCurrentTag,
