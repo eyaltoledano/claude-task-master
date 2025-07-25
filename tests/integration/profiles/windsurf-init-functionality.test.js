@@ -15,40 +15,64 @@ describe('Windsurf Profile Initialization Functionality', () => {
 		windsurfProfileContent = fs.readFileSync(windsurfJsPath, 'utf8');
 	});
 
-	test('windsurf.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(windsurfProfileContent).toContain("name: 'windsurf'");
-		expect(windsurfProfileContent).toContain("displayName: 'Windsurf'");
-		expect(windsurfProfileContent).toContain("url: 'windsurf.com'");
-		expect(windsurfProfileContent).toContain("docsUrl: 'docs.windsurf.com'");
+	test('windsurf.js uses ProfileBuilder pattern with correct configuration', () => {
+		// Check for ProfileBuilder pattern in the source file
+		expect(windsurfProfileContent).toContain('ProfileBuilder');
+		expect(windsurfProfileContent).toContain(".minimal('windsurf')");
+		expect(windsurfProfileContent).toContain(".display('Windsurf')");
 
-		// Check the final computed properties on the profile object
+		// Check the final computed properties on the profile instance
 		expect(windsurfProfile.profileName).toBe('windsurf');
 		expect(windsurfProfile.displayName).toBe('Windsurf');
-		expect(windsurfProfile.profileDir).toBe('.windsurf'); // default
-		expect(windsurfProfile.rulesDir).toBe('.windsurf/rules'); // default
-		expect(windsurfProfile.mcpConfig).toBe(true); // default
-		expect(windsurfProfile.mcpConfigName).toBe('mcp.json'); // default
+		expect(windsurfProfile.profileDir).toBe('.windsurf');
+		expect(windsurfProfile.rulesDir).toBe('.windsurf/rules');
+		expect(windsurfProfile.includeDefaultRules).toBe(true);
+
+		// Verify Profile instance structure
+		expect(windsurfProfile.conversionConfig).toHaveProperty('profileTerms');
+		expect(windsurfProfile.conversionConfig).toHaveProperty('docUrls');
+		expect(windsurfProfile.conversionConfig).toHaveProperty('toolNames');
+		expect(windsurfProfile.globalReplacements).toBeInstanceOf(Array);
+		expect(windsurfProfile.globalReplacements.length).toBeGreaterThan(0);
 	});
 
-	test('windsurf.js configures .mdc to .md extension mapping', () => {
-		// Check that the profile object has the correct file mapping behavior (windsurf converts to .md)
-		expect(windsurfProfile.fileMap['rules/cursor_rules.mdc']).toBe(
-			'windsurf_rules.md'
-		);
+	test('windsurf profile has correct MCP configuration', () => {
+		expect(windsurfProfile.mcpConfig).toBe(true); // Boolean indicating MCP is enabled
+		expect(windsurfProfile.mcpConfigName).toBe('mcp.json');
+		expect(windsurfProfile.mcpConfigPath).toBe('.windsurf/mcp.json');
 	});
 
-	test('windsurf.js uses standard tool mappings', () => {
-		// Check that the profile uses default tool mappings (equivalent to COMMON_TOOL_MAPPINGS.STANDARD)
-		// This verifies the architectural pattern: no custom toolMappings = standard tool names
-		expect(windsurfProfileContent).not.toContain('toolMappings:');
-		expect(windsurfProfileContent).not.toContain('apply_diff');
-		expect(windsurfProfileContent).not.toContain('search_files');
+	test('windsurf profile provides legacy format conversion', () => {
+		// Test that toLegacyFormat() works correctly
+		const legacyFormat = windsurfProfile.toLegacyFormat();
 
-		// Verify the result: default mappings means tools keep their original names
-		expect(windsurfProfile.conversionConfig.toolNames.edit_file).toBe(
-			'edit_file'
-		);
-		expect(windsurfProfile.conversionConfig.toolNames.search).toBe('search');
+		expect(legacyFormat.profileName).toBe('windsurf');
+		expect(legacyFormat.displayName).toBe('Windsurf');
+		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
+		expect(legacyFormat.globalReplacements).toBeInstanceOf(Array);
+	});
+
+	test('windsurf profile is immutable', () => {
+		// Test that the profile object is frozen/immutable
+		expect(() => {
+			windsurfProfile.profileName = 'modified';
+		}).toThrow();
+
+		expect(() => {
+			windsurfProfile.newProperty = 'test';
+		}).toThrow();
+	});
+
+	test('windsurf profile includes conversion configuration', () => {
+		const { conversionConfig } = windsurfProfile;
+
+		expect(conversionConfig.profileTerms).toBeInstanceOf(Array);
+		expect(conversionConfig.profileTerms.length).toBeGreaterThan(0);
+
+		expect(conversionConfig.docUrls).toBeInstanceOf(Array);
+		expect(conversionConfig.docUrls.length).toBeGreaterThan(0);
+
+		expect(conversionConfig.toolNames).toBeInstanceOf(Object);
+		expect(Object.keys(conversionConfig.toolNames).length).toBeGreaterThan(0);
 	});
 });

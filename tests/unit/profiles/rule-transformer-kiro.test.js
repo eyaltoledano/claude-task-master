@@ -326,5 +326,7 @@ Use the .mdc extension for all rule files.`;
 			// Verify no files were copied
 			expect(mockCopyFileSync).not.toHaveBeenCalled();
 		});
+		expect(kiroProfile.globalReplacements).toBeInstanceOf(Array);
+		expect(kiroProfile.globalReplacements.length).toBeGreaterThan(0);
 	});
 });

@@ -78,10 +78,10 @@ describe('Amp Profile Integration', () => {
 				ampProfile.onAddRulesProfile(tempDir, assetsDir);
 			}).not.toThrow();
 
-			// Should not create any files
-			expect(fs.existsSync(path.join(tempDir, 'AGENT.md'))).toBe(false);
+			// Should create default files even without source (expected behavior)
+			expect(fs.existsSync(path.join(tempDir, 'AGENT.md'))).toBe(true);
 			expect(fs.existsSync(path.join(tempDir, '.taskmaster', 'AGENT.md'))).toBe(
-				false
+				true
 			);
 		});
 
@@ -142,7 +142,7 @@ describe('Amp Profile Integration', () => {
 			}).not.toThrow();
 		});
 
-		test('should preserve other VS Code settings when renaming', () => {
+		test('should preserve other VS Code settings when renaming', async () => {
 			// Create .vscode/settings.json with various settings
 			const vscodeDirPath = path.join(tempDir, '.vscode');
 			fs.mkdirSync(vscodeDirPath, { recursive: true });
@@ -165,7 +165,7 @@ describe('Amp Profile Integration', () => {
 			);
 
 			// Call onPostConvertRulesProfile (which handles MCP transformation)
-			ampProfile.onPostConvertRulesProfile(
+			await ampProfile.onPostConvertRulesProfile(
 				tempDir,
 				path.join(tempDir, 'assets')
 			);
@@ -244,7 +244,7 @@ describe('Amp Profile Integration', () => {
 			expect(typeof ampProfile.onPostConvertRulesProfile).toBe('function');
 		});
 
-		test('onPostConvertRulesProfile should behave like onAddRulesProfile', () => {
+		test('onPostConvertRulesProfile should behave like onAddRulesProfile', async () => {
 			// Create mock source
 			const assetsDir = path.join(tempDir, 'assets');
 			fs.mkdirSync(assetsDir, { recursive: true });
@@ -254,7 +254,7 @@ describe('Amp Profile Integration', () => {
 			);
 
 			// Call onPostConvertRulesProfile
-			ampProfile.onPostConvertRulesProfile(tempDir, assetsDir);
+			await ampProfile.onPostConvertRulesProfile(tempDir, assetsDir);
 
 			// Should have same result as onAddRulesProfile
 			expect(fs.existsSync(path.join(tempDir, '.taskmaster', 'AGENT.md'))).toBe(

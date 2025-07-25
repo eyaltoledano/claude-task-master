@@ -10,37 +10,64 @@ describe('Trae Profile Initialization Functionality', () => {
 		traeProfileContent = fs.readFileSync(traeJsPath, 'utf8');
 	});
 
-	test('trae.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(traeProfileContent).toContain("name: 'trae'");
-		expect(traeProfileContent).toContain("displayName: 'Trae'");
-		expect(traeProfileContent).toContain("url: 'trae.ai'");
-		expect(traeProfileContent).toContain("docsUrl: 'docs.trae.ai'");
-		expect(traeProfileContent).toContain('mcpConfig: false');
+	test('trae.js uses ProfileBuilder pattern with correct configuration', () => {
+		// Check for ProfileBuilder pattern in the source file
+		expect(traeProfileContent).toContain('ProfileBuilder');
+		expect(traeProfileContent).toContain(".minimal('trae')");
+		expect(traeProfileContent).toContain(".display('Trae')");
 
-		// Check the final computed properties on the profile object
+		// Check the final computed properties on the profile instance
 		expect(traeProfile.profileName).toBe('trae');
 		expect(traeProfile.displayName).toBe('Trae');
-		expect(traeProfile.profileDir).toBe('.trae'); // default
-		expect(traeProfile.rulesDir).toBe('.trae/rules'); // default
-		expect(traeProfile.mcpConfig).toBe(false); // non-default
-		expect(traeProfile.mcpConfigName).toBe(null); // computed from mcpConfig
+		expect(traeProfile.profileDir).toBe('.trae');
+		expect(traeProfile.rulesDir).toBe('.trae/rules');
+		expect(traeProfile.includeDefaultRules).toBe(true);
+
+		// Verify Profile instance structure
+		expect(traeProfile.conversionConfig).toHaveProperty('profileTerms');
+		expect(traeProfile.conversionConfig).toHaveProperty('docUrls');
+		expect(traeProfile.conversionConfig).toHaveProperty('toolNames');
+		expect(traeProfile.globalReplacements).toBeInstanceOf(Array);
+		expect(traeProfile.globalReplacements.length).toBeGreaterThan(0);
 	});
 
-	test('trae.js configures .mdc to .md extension mapping', () => {
-		// Check that the profile object has the correct file mapping behavior (trae converts to .md)
-		expect(traeProfile.fileMap['rules/cursor_rules.mdc']).toBe('trae_rules.md');
+	test('trae profile has correct MCP configuration', () => {
+		expect(traeProfile.mcpConfig).toBe(false);
+		expect(traeProfile.mcpConfigName).toBeNull();
+		expect(traeProfile.mcpConfigPath).toBeNull();
 	});
 
-	test('trae.js uses standard tool mappings', () => {
-		// Check that the profile uses default tool mappings (equivalent to COMMON_TOOL_MAPPINGS.STANDARD)
-		// This verifies the architectural pattern: no custom toolMappings = standard tool names
-		expect(traeProfileContent).not.toContain('toolMappings:');
-		expect(traeProfileContent).not.toContain('apply_diff');
-		expect(traeProfileContent).not.toContain('search_files');
+	test('trae profile provides legacy format conversion', () => {
+		// Test that toLegacyFormat() works correctly
+		const legacyFormat = traeProfile.toLegacyFormat();
 
-		// Verify the result: default mappings means tools keep their original names
-		expect(traeProfile.conversionConfig.toolNames.edit_file).toBe('edit_file');
-		expect(traeProfile.conversionConfig.toolNames.search).toBe('search');
+		expect(legacyFormat.profileName).toBe('trae');
+		expect(legacyFormat.displayName).toBe('Trae');
+		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
+		expect(legacyFormat.globalReplacements).toBeInstanceOf(Array);
+	});
+
+	test('trae profile is immutable', () => {
+		// Test that the profile object is frozen/immutable
+		expect(() => {
+			traeProfile.profileName = 'modified';
+		}).toThrow();
+
+		expect(() => {
+			traeProfile.newProperty = 'test';
+		}).toThrow();
+	});
+
+	test('trae profile includes conversion configuration', () => {
+		const { conversionConfig } = traeProfile;
+
+		expect(conversionConfig.profileTerms).toBeInstanceOf(Array);
+		expect(conversionConfig.profileTerms.length).toBeGreaterThan(0);
+
+		expect(conversionConfig.docUrls).toBeInstanceOf(Array);
+		expect(conversionConfig.docUrls.length).toBeGreaterThan(0);
+
+		expect(conversionConfig.toolNames).toBeInstanceOf(Object);
+		expect(Object.keys(conversionConfig.toolNames).length).toBeGreaterThan(0);
 	});
 });

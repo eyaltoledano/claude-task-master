@@ -46,28 +46,34 @@ export function getRulesProfile(name) {
 		);
 	}
 
-	return profile;
+	// All profiles are now Profile instances, convert directly to legacy format
+	// for rule-transformer compatibility
+	return profile.toLegacyFormat();
 }
 
 /**
- * Replace basic Cursor terms with profile equivalents
+ * Replace Cursor basic terms with profile equivalents
  */
 function replaceBasicTerms(content, conversionConfig) {
 	let result = content;
 
 	// Apply profile term replacements
-	conversionConfig.profileTerms.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (conversionConfig.profileTerms) {
+		conversionConfig.profileTerms.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	// Apply file extension replacements
-	conversionConfig.fileExtensions.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.fileExtensions) {
+		conversionConfig.fileExtensions.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	return result;
 }
@@ -79,26 +85,32 @@ function replaceToolReferences(content, conversionConfig) {
 	let result = content;
 
 	// Basic pattern for direct tool name replacements
-	const toolNames = conversionConfig.toolNames;
-	const toolReferencePattern = new RegExp(
-		`\\b(${Object.keys(toolNames).join('|')})\\b`,
-		'g'
-	);
+	if (conversionConfig.toolNames) {
+		const toolNames = conversionConfig.toolNames;
+		const toolReferencePattern = new RegExp(
+			`\\b(${Object.keys(toolNames).join('|')})\\b`,
+			'g'
+		);
 
-	// Apply direct tool name replacements
-	result = result.replace(toolReferencePattern, (match, toolName) => {
-		return toolNames[toolName] || toolName;
-	});
+		// Apply direct tool name replacements
+		result = result.replace(toolReferencePattern, (match, toolName) => {
+			return toolNames[toolName] || toolName;
+		});
+	}
 
 	// Apply contextual tool replacements
-	conversionConfig.toolContexts.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.toolContexts) {
+		conversionConfig.toolContexts.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	// Apply tool group replacements
-	conversionConfig.toolGroups.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.toolGroups) {
+		conversionConfig.toolGroups.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	return result;
 }
@@ -110,13 +122,15 @@ function updateDocReferences(content, conversionConfig) {
 	let result = content;
 
 	// Apply documentation URL replacements
-	conversionConfig.docUrls.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (conversionConfig.docUrls) {
+		conversionConfig.docUrls.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	return result;
 }
@@ -125,6 +139,11 @@ function updateDocReferences(content, conversionConfig) {
  * Update file references in markdown links
  */
 function updateFileReferences(content, conversionConfig) {
+	// Handle profiles that don't define fileReferences
+	if (!conversionConfig.fileReferences) {
+		return content;
+	}
+
 	const { pathPattern, replacement } = conversionConfig.fileReferences;
 	return content.replace(pathPattern, replacement);
 }
@@ -148,13 +167,15 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
 	// Apply any global/catch-all replacements from the profile
 	// Super aggressive failsafe pass to catch any variations we might have missed
 	// This ensures critical transformations are applied even in contexts we didn't anticipate
-	globalReplacements.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (globalReplacements && Array.isArray(globalReplacements)) {
+		globalReplacements.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	return result;
 }
@@ -163,11 +184,16 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
  * Convert a Cursor rule file to a profile-specific rule file
  * @param {string} sourcePath - Path to the source .mdc file
  * @param {string} targetPath - Path to the target file
- * @param {Object} profile - The profile configuration
+ * @param {Object} profile - The profile configuration (Profile instance or legacy object)
  * @returns {boolean} - Success status
  */
 export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
-	const { conversionConfig, globalReplacements } = profile;
+	// Handle both Profile instances and legacy objects
+	const legacyProfile = profile.toLegacyFormat
+		? profile.toLegacyFormat()
+		: profile;
+	const { conversionConfig, globalReplacements } = legacyProfile;
+
 	try {
 		// Read source content
 		const content = fs.readFileSync(sourcePath, 'utf8');
