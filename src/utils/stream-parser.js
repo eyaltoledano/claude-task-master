@@ -1,6 +1,32 @@
 import { JSONParser } from '@streamparser/json';
 
 /**
+ * Custom error class for streaming-related failures
+ * Provides error codes for robust error handling without string matching
+ */
+export class StreamingError extends Error {
+	constructor(message, code) {
+		super(message);
+		this.name = 'StreamingError';
+		this.code = code;
+
+		// Maintain proper stack trace (V8 engines)
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, StreamingError);
+		}
+	}
+}
+
+/**
+ * Standard streaming error codes
+ */
+export const STREAMING_ERROR_CODES = {
+	NOT_ASYNC_ITERABLE: 'STREAMING_NOT_SUPPORTED',
+	STREAM_PROCESSING_FAILED: 'STREAM_PROCESSING_FAILED',
+	STREAM_NOT_ITERABLE: 'STREAM_NOT_ITERABLE'
+};
+
+/**
  * Configuration options for the streaming JSON parser
  * @typedef {Object} StreamParserConfig
  * @property {string[]} jsonPaths - JSONPath expressions to extract specific objects (required)
@@ -121,7 +147,10 @@ export async function parseStream(textStream, config = {}) {
 			parser.write(chunk);
 		});
 	} catch (streamError) {
-		throw new Error(`Failed to process AI text stream: ${streamError.message}`);
+		throw new StreamingError(
+			`Failed to process AI text stream: ${streamError.message}`,
+			STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
+		);
 	}
 
 	parser.end();
@@ -205,8 +234,9 @@ export async function processTextStream(textStream, onChunk) {
 			onChunk(chunk);
 		}
 	} else {
-		throw new Error(
-			'Stream object is not iterable - no textStream, fullStream, or direct async iterator found'
+		throw new StreamingError(
+			'Stream object is not iterable - no textStream, fullStream, or direct async iterator found',
+			STREAMING_ERROR_CODES.STREAM_NOT_ITERABLE
 		);
 	}
 }

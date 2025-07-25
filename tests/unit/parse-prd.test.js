@@ -109,9 +109,29 @@ jest.unstable_mockModule(
 );
 
 // Mock stream parser
-jest.unstable_mockModule('../../src/utils/stream-parser.js', () => ({
-	parseStream: jest.fn()
-}));
+jest.unstable_mockModule('../../src/utils/stream-parser.js', () => {
+	// Define mock StreamingError class
+	class StreamingError extends Error {
+		constructor(message, code) {
+			super(message);
+			this.name = 'StreamingError';
+			this.code = code;
+		}
+	}
+
+	// Define mock error codes
+	const STREAMING_ERROR_CODES = {
+		NOT_ASYNC_ITERABLE: 'STREAMING_NOT_SUPPORTED',
+		STREAM_PROCESSING_FAILED: 'STREAM_PROCESSING_FAILED',
+		STREAM_NOT_ITERABLE: 'STREAM_NOT_ITERABLE'
+	};
+
+	return {
+		parseStream: jest.fn(),
+		StreamingError,
+		STREAMING_ERROR_CODES
+	};
+});
 
 // Mock other potential UI elements
 jest.unstable_mockModule('ora', () => ({
