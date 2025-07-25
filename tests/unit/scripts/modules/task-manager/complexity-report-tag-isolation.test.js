@@ -178,6 +178,28 @@ jest.unstable_mockModule(
 				});
 			}
 		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				textStream: {
+					[Symbol.asyncIterator]: async function* () {
+						yield '{"tasks":[';
+						yield '{"id":1,"title":"Test Task","priority":"high"}';
+						yield ']}';
+					}
+				}
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
 		generateObjectService: jest.fn().mockResolvedValue({
 			mainResult: {
 				object: {
@@ -402,7 +424,7 @@ const { readJSON, writeJSON, getTagAwareFilePath } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateTextService } = await import(
+const { generateTextService, streamTextService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
 
