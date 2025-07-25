@@ -439,7 +439,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		let telemetryData = null;
 
 		try {
-			log('info', `New AI service call with role: ${currentRole}`);
+			log('debug', `New AI service call with role: ${currentRole}`);
 
 			if (currentRole === 'main') {
 				providerName = getMainProvider(effectiveProjectRoot);
