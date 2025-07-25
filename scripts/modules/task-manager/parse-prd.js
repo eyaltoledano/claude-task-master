@@ -367,7 +367,7 @@ async function parsePRDWithStreaming(
 			outputType: isMCP ? 'mcp' : 'cli'
 		});
 
-		const textStream = aiServiceResponse.mainResult;
+		const textStream = aiServiceResponse.mainResult.textStream;
 		if (!textStream) {
 			throw new Error('No text stream received from AI service');
 		}
