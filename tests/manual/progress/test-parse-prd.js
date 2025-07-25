@@ -381,7 +381,7 @@ async function testCLIStreaming(numTasks = 10) {
 	try {
 		console.log(chalk.yellow('Starting CLI streaming test...'));
 
-		// No reportProgress - should use non-streaming path
+		// No reportProgress provided; CLI text mode uses the default streaming reporter
 		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks);
 
 		console.log(
