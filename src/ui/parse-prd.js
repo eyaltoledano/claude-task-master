@@ -9,6 +9,86 @@ import Table from 'cli-table3';
 import { formatElapsedTime } from '../utils/format.js';
 
 /**
+ * Helper function for building main message content
+ * @param {Object} params - Message parameters
+ * @param {string} params.prdFilePath - Path to the PRD file
+ * @param {string} params.outputPath - Path where tasks will be saved
+ * @param {number} params.numTasks - Number of tasks to generate
+ * @param {string} params.model - AI model name
+ * @param {number} params.temperature - AI temperature setting
+ * @param {boolean} params.append - Whether appending to existing tasks
+ * @param {boolean} params.research - Whether research mode is enabled
+ * @returns {string} The formatted message content
+ */
+function buildMainMessage({
+	prdFilePath,
+	outputPath,
+	numTasks,
+	model,
+	temperature,
+	append,
+	research
+}) {
+	const actionVerb = append ? 'Appending' : 'Generating';
+
+	let modelLine = `Model: ${model} | Temperature: ${temperature}`;
+	if (research) {
+		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
+	}
+
+	return (
+		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
+		'\n' +
+		chalk.dim(modelLine) +
+		'\n\n' +
+		chalk.blue(`Input: ${prdFilePath}`) +
+		'\n' +
+		chalk.blue(`Output: ${outputPath}`) +
+		'\n' +
+		chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`)
+	);
+}
+
+/**
+ * Helper function for displaying the main message box
+ * @param {string} message - The message content to display in the box
+ */
+function displayMainMessageBox(message) {
+	console.log(
+		boxen(message, {
+			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			margin: { top: 0, bottom: 0 },
+			borderColor: 'blue',
+			borderStyle: 'round'
+		})
+	);
+}
+
+/**
+ * Helper function for displaying append mode notice
+ * @param {number} existingTasksCount - Number of existing tasks
+ * @param {number} nextId - Next ID to be used
+ */
+function displayAppendModeNotice(existingTasksCount, nextId) {
+	console.log(
+		chalk.yellow.bold('📝 Append mode') +
+			` - Adding to ${existingTasksCount} existing tasks (next ID: ${nextId})`
+	);
+}
+
+/**
+ * Helper function for force mode messages
+ * @param {boolean} append - Whether in append mode
+ * @returns {string} The formatted force mode message
+ */
+function createForceMessage(append) {
+	const baseMessage = chalk.red.bold('⚠️  Force flag enabled');
+	return append
+		? `${baseMessage} - Will overwrite if conflicts occur`
+		: `${baseMessage} - Overwriting existing tasks`;
+}
+
+/**
  * Display the start of PRD parsing with a boxen announcement
  * @param {Object} options - Options for PRD parsing start
  * @param {string} options.prdFilePath - Path to the PRD file being parsed
@@ -34,60 +114,44 @@ function displayParsePrdStart({
 	existingTasks = [],
 	nextId = 1
 }) {
-	// Determine the action verb based on append flag
-	const actionVerb = append ? 'Appending' : 'Generating';
-
-	// Create the model line with research indicator
-	let modelLine = `Model: ${model} | Temperature: ${temperature}`;
-	if (research) {
-		modelLine += ` | ${chalk.cyan.bold('🔬 Research Mode')}`;
+	// Input validation
+	if (
+		!prdFilePath ||
+		typeof prdFilePath !== 'string' ||
+		prdFilePath.trim() === ''
+	) {
+		throw new Error('prdFilePath is required and must be a non-empty string');
+	}
+	if (
+		!outputPath ||
+		typeof outputPath !== 'string' ||
+		outputPath.trim() === ''
+	) {
+		throw new Error('outputPath is required and must be a non-empty string');
 	}
 
-	// Create the main message content (without append/force notices)
-	const message =
-		chalk.bold(`🤖 Parsing PRD and ${actionVerb} Tasks`) +
-		'\n' +
-		chalk.dim(modelLine) +
-		'\n\n' +
-		chalk.blue(`Input: ${prdFilePath}`) +
-		'\n' +
-		chalk.blue(`Output: ${outputPath}`) +
-		'\n' +
-		chalk.blue(`Tasks to ${append ? 'Append' : 'Generate'}: ${numTasks}`);
-
-	// Display the main boxen
-	console.log(
-		boxen(message, {
-			padding: { top: 1, bottom: 1, left: 2, right: 2 },
-			margin: { top: 0, bottom: 0 },
-			borderColor: 'blue',
-			borderStyle: 'round'
-		})
-	);
+	// Build and display the main message box
+	const message = buildMainMessage({
+		prdFilePath,
+		outputPath,
+		numTasks,
+		model,
+		temperature,
+		append,
+		research
+	});
+	displayMainMessageBox(message);
 
 	// Display append/force notices beneath the boxen if either flag is set
 	if (append || force) {
 		// Add append mode details if enabled
 		if (append) {
-			console.log(
-				chalk.yellow.bold('📝 Append mode') +
-					` - Adding to ${existingTasks.length} existing tasks (next ID: ${nextId})`
-			);
+			displayAppendModeNotice(existingTasks.length, nextId);
 		}
 
 		// Add force mode details if enabled
 		if (force) {
-			if (append) {
-				console.log(
-					chalk.red.bold('⚠️  Force flag enabled') +
-						` - Will overwrite if conflicts occur`
-				);
-			} else {
-				console.log(
-					chalk.red.bold('⚠️  Force flag enabled') +
-						` - Overwriting existing tasks`
-				);
-			}
+			console.log(createForceMessage(append));
 		}
 
 		// Add a blank line after notices for spacing
@@ -159,9 +223,12 @@ function displayParsePrdSummary(summary) {
 		const lowPriority = taskPriorities.low || 0;
 
 		// Calculate percentages - handle division by zero
-		const percentHigh = totalTasks > 0 ? Math.round((highPriority / totalTasks) * 100) : 0;
-		const percentMedium = totalTasks > 0 ? Math.round((mediumPriority / totalTasks) * 100) : 0;
-		const percentLow = totalTasks > 0 ? Math.round((lowPriority / totalTasks) * 100) : 0;
+		const percentHigh =
+			totalTasks > 0 ? Math.round((highPriority / totalTasks) * 100) : 0;
+		const percentMedium =
+			totalTasks > 0 ? Math.round((mediumPriority / totalTasks) * 100) : 0;
+		const percentLow =
+			totalTasks > 0 ? Math.round((lowPriority / totalTasks) * 100) : 0;
 
 		// Priority distribution row
 		const priorityRow = [
