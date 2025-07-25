@@ -62,20 +62,6 @@ export const ROO_MODES = [
 ];
 
 /**
- * Centralized enum for all supported Kilo agent modes
- * @type {string[]}
- * @description Available Kilo Code modes for rule generation
- */
-export const KILO_MODES = [
-	'architect',
-	'ask',
-	'orchestrator',
-	'code',
-	'debug',
-	'test'
-];
-
-/**
  * Check if a given rule profile is valid
  * @param {string} rulesProfile - The rule profile to check
  * @returns {boolean} True if the rule profile is valid, false otherwise
