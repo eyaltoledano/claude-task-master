@@ -329,5 +329,6 @@ async function main() {
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
+	// Top-level await is available in ESM; keep compatibility with Node ≥14
+	await main();
 }
