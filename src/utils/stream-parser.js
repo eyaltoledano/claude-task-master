@@ -155,7 +155,7 @@ export async function parseStream(textStream, config = {}) {
 
 	parser.end();
 
-	// Wait a moment for final parsing
+	// Wait for final parsing to complete (JSON parser may still be processing)
 	await new Promise((resolve) => setTimeout(resolve, 100));
 
 	// If streaming parser didn't get all expected items, try fallback parsing
