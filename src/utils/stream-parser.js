@@ -33,10 +33,9 @@ export const STREAMING_ERROR_CODES = {
  * @returns {boolean} True if item is valid, false otherwise
  */
 function defaultItemValidator(item) {
-	return item &&
-		item.title &&
-		typeof item.title === 'string' &&
-		item.title.trim();
+	return (
+		item && item.title && typeof item.title === 'string' && item.title.trim()
+	);
 }
 
 /**
