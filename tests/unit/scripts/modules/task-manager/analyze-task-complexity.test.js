@@ -81,14 +81,10 @@ jest.unstable_mockModule(
 			}
 		}),
 		streamTextService: jest.fn().mockResolvedValue({
-			mainResult: {
-				textStream: {
-					[Symbol.asyncIterator]: async function* () {
-						yield '{"tasks":[';
-						yield '{"id":1,"title":"Test Task","priority":"high"}';
-						yield ']}';
-					}
-				}
+			mainResult: async function* () {
+				yield '{"tasks":[';
+				yield '{"id":1,"title":"Test Task","priority":"high"}';
+				yield ']}';
 			},
 			telemetryData: {
 				timestamp: new Date().toISOString(),
