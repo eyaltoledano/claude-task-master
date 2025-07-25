@@ -943,7 +943,8 @@ describe('parsePRD', () => {
 
 			// Verify progress tracker was created and used
 			expect(createParsePrdTracker).toHaveBeenCalledWith({
-				numTasks: 3,
+				numUnits: 3,
+				unitName: 'task',
 				append: false
 			});
 			expect(mockProgressTracker.start).toHaveBeenCalled();
