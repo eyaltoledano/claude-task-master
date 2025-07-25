@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.22.0-rc.1
+
+### Minor Changes
+
+- [#1043](https://github.com/eyaltoledano/claude-task-master/pull/1043) [`dc44ed9`](https://github.com/eyaltoledano/claude-task-master/commit/dc44ed9de8a57aca5d39d3a87565568bd0a82068) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prompt to generate a complexity report when it is missing
+
 ## 0.22.0-rc.0
 
 ### Minor Changes
