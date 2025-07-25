@@ -158,10 +158,10 @@ function displayParsePrdSummary(summary) {
 		const mediumPriority = taskPriorities.medium || 0;
 		const lowPriority = taskPriorities.low || 0;
 
-		// Calculate percentages
-		const percentHigh = Math.round((highPriority / totalTasks) * 100);
-		const percentMedium = Math.round((mediumPriority / totalTasks) * 100);
-		const percentLow = Math.round((lowPriority / totalTasks) * 100);
+		// Calculate percentages - handle division by zero
+		const percentHigh = totalTasks > 0 ? Math.round((highPriority / totalTasks) * 100) : 0;
+		const percentMedium = totalTasks > 0 ? Math.round((mediumPriority / totalTasks) * 100) : 0;
+		const percentLow = totalTasks > 0 ? Math.round((lowPriority / totalTasks) * 100) : 0;
 
 		// Priority distribution row
 		const priorityRow = [
@@ -175,19 +175,19 @@ function displayParsePrdSummary(summary) {
 		// Visual bar representation of priority distribution
 		const barWidth = 40; // Total width of the bar
 
-		// Only show bars for priorities with at least 1 task
+		// Only show bars for priorities with at least 1 task - handle division by zero
 		const highChars =
-			highPriority > 0
+			highPriority > 0 && totalTasks > 0
 				? Math.max(1, Math.round((highPriority / totalTasks) * barWidth))
 				: 0;
 
 		const mediumChars =
-			mediumPriority > 0
+			mediumPriority > 0 && totalTasks > 0
 				? Math.max(1, Math.round((mediumPriority / totalTasks) * barWidth))
 				: 0;
 
 		const lowChars =
-			lowPriority > 0
+			lowPriority > 0 && totalTasks > 0
 				? Math.max(1, Math.round((lowPriority / totalTasks) * barWidth))
 				: 0;
 
