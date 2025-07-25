@@ -520,9 +520,6 @@ async function parsePRDWithStreaming(
 			'debug'
 		);
 
-		// Generate markdown task files after writing tasks.json
-		//await generateTaskFiles(tasksPath, path.dirname(tasksPath), { mcpLog });
-
 		// Final progress report - completion
 		// Use actual telemetry if available, otherwise fall back to estimates
 		const hasValidTelemetry =
