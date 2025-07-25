@@ -9,13 +9,19 @@ import { ROO_MODES } from '../constants/profiles.js';
 function applyKiloTransformations(content) {
 	const customReplacements = [
 		// Replace roo-specific terms with kilo equivalents
-		{ from: /\broo\b/gi, to: (match) => match.charAt(0) === 'R' ? 'Kilo' : 'kilo' },
+		{
+			from: /\broo\b/gi,
+			to: (match) => (match.charAt(0) === 'R' ? 'Kilo' : 'kilo')
+		},
 		{ from: /Roo/g, to: 'Kilo' },
 		{ from: /ROO/g, to: 'KILO' },
 		{ from: /roocode\.com/gi, to: 'kilocode.com' },
 		{ from: /docs\.roocode\.com/gi, to: 'docs.kilocode.com' },
 		{ from: /https?:\/\/roocode\.com/gi, to: 'https://kilocode.com' },
-		{ from: /https?:\/\/docs\.roocode\.com/gi, to: 'https://docs.kilocode.com' },
+		{
+			from: /https?:\/\/docs\.roocode\.com/gi,
+			to: 'https://docs.kilocode.com'
+		},
 		{ from: /\.roo\//g, to: '.kilo/' },
 		{ from: /\.roomodes/g, to: '.kilocodemodes' },
 		// Handle file extensions and directory references
@@ -25,7 +31,10 @@ function applyKiloTransformations(content) {
 
 	let transformedContent = content;
 	for (const replacement of customReplacements) {
-		transformedContent = transformedContent.replace(replacement.from, replacement.to);
+		transformedContent = transformedContent.replace(
+			replacement.from,
+			replacement.to
+		);
 	}
 	return transformedContent;
 }
@@ -71,7 +80,7 @@ function onAddRulesProfile(targetDir, assetsDir) {
 			const transformedContent = applyKiloTransformations(roomodesContent);
 			fs.writeFileSync(kilocodemodesDest, transformedContent);
 			log('debug', `[Kilo] Created .kilocodemodes at ${kilocodemodesDest}`);
-			
+
 			// Remove the original .roomodes file
 			fs.unlinkSync(path.join(targetDir, '.roomodes'));
 		} catch (err) {
@@ -95,15 +104,18 @@ function onAddRulesProfile(targetDir, assetsDir) {
 			try {
 				const destDir = path.dirname(dest);
 				if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-				
+
 				// Read, transform, and write the rule file
 				const ruleContent = fs.readFileSync(src, 'utf8');
 				const transformedContent = applyKiloTransformations(ruleContent);
 				fs.writeFileSync(dest, transformedContent);
-				
+
 				log('debug', `[Kilo] Transformed and copied ${mode}-rules to ${dest}`);
 			} catch (err) {
-				log('error', `[Kilo] Failed to transform ${src} to ${dest}: ${err.message}`);
+				log(
+					'error',
+					`[Kilo] Failed to transform ${src} to ${dest}: ${err.message}`
+				);
 			}
 		}
 	}
@@ -157,21 +169,7 @@ export const kiloProfile = createProfile({
 	profileDir: '.kilo',
 	rulesDir: '.kilo/rules',
 	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
-	customReplacements: [
-		// Replace roo-specific terms with kilo equivalents
-		{ from: /\broo\b/gi, to: (match) => match.charAt(0) === 'R' ? 'Kilo' : 'kilo' },
-		{ from: /Roo/g, to: 'Kilo' },
-		{ from: /ROO/g, to: 'KILO' },
-		{ from: /roocode\.com/gi, to: 'kilocode.com' },
-		{ from: /docs\.roocode\.com/gi, to: 'docs.kilocode.com' },
-		{ from: /https?:\/\/roocode\.com/gi, to: 'https://kilocode.com' },
-		{ from: /https?:\/\/docs\.roocode\.com/gi, to: 'https://docs.kilocode.com' },
-		{ from: /\.roo\//g, to: '.kilo/' },
-		{ from: /\.roomodes/g, to: '.kilocodemodes' },
-		// Handle file extensions and directory references
-		{ from: /roo-rules/g, to: 'kilo-rules' },
-		{ from: /rules-roo/g, to: 'rules-kilo' }
-	],
+
 	fileMap: {
 		// Map roo rule files to kilo equivalents
 		'rules/cursor_rules.mdc': 'kilo_rules.md',
