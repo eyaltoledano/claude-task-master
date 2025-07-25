@@ -1,4 +1,4 @@
-# Available Models as of July 19, 2025
+# Available Models as of July 23, 2025
 
 ## Main Models
 
@@ -48,7 +48,6 @@
 | openrouter  | google/gemini-2.5-flash-preview-05-20          | —         | 0.15       | 0.6         |
 | openrouter  | google/gemini-2.5-flash-preview-05-20:thinking | —         | 0.15       | 3.5         |
 | openrouter  | google/gemini-2.5-pro-exp-03-25                | —         | 0          | 0           |
-| openrouter  | deepseek/deepseek-chat-v3-0324:free            | —         | 0          | 0           |
 | openrouter  | deepseek/deepseek-chat-v3-0324                 | —         | 0.27       | 1.1         |
 | openrouter  | openai/gpt-4.1                                 | —         | 2          | 8           |
 | openrouter  | openai/gpt-4.1-mini                            | —         | 0.4        | 1.6         |
@@ -65,11 +64,9 @@
 | openrouter  | qwen/qwen-max                                  | —         | 1.6        | 6.4         |
 | openrouter  | qwen/qwen-turbo                                | —         | 0.05       | 0.2         |
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
-| openrouter  | mistralai/mistral-small-3.1-24b-instruct:free  | —         | 0          | 0           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
-| openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -158,7 +155,6 @@
 | openrouter  | google/gemini-2.5-flash-preview-05-20          | —         | 0.15       | 0.6         |
 | openrouter  | google/gemini-2.5-flash-preview-05-20:thinking | —         | 0.15       | 3.5         |
 | openrouter  | google/gemini-2.5-pro-exp-03-25                | —         | 0          | 0           |
-| openrouter  | deepseek/deepseek-chat-v3-0324:free            | —         | 0          | 0           |
 | openrouter  | openai/gpt-4.1                                 | —         | 2          | 8           |
 | openrouter  | openai/gpt-4.1-mini                            | —         | 0.4        | 1.6         |
 | openrouter  | openai/gpt-4.1-nano                            | —         | 0.1        | 0.4         |
@@ -174,10 +170,8 @@
 | openrouter  | qwen/qwen-max                                  | —         | 1.6        | 6.4         |
 | openrouter  | qwen/qwen-turbo                                | —         | 0.05       | 0.2         |
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
-| openrouter  | mistralai/mistral-small-3.1-24b-instruct:free  | —         | 0          | 0           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
-| openrouter  | thudm/glm-4-32b:free                           | —         | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -196,3 +190,11 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+
+## Unsupported Models
+
+| Provider   | Model Name                                    | Reason                                                                                                                                                                    |
+| ---------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| openrouter | deepseek/deepseek-chat-v3-0324:free           | Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use. |
+| openrouter | mistralai/mistral-small-3.1-24b-instruct:free | Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use. |
+| openrouter | thudm/glm-4-32b:free                          | Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use. |

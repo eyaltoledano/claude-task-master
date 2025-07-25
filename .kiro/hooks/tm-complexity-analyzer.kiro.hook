@@ -1,0 +1,16 @@
+{
+  "enabled": false,
+  "name": "[TM] Complexity Analyzer",
+  "description": "Analyze task complexity when new tasks are added",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".taskmaster/tasks/tasks.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "New tasks were added to tasks.json. For each new task:\n\n1. Run 'tm analyze-complexity --id=<task_id>'\n2. If complexity score is > 7, automatically expand it: 'tm expand --id=<task_id> --num=5'\n3. Show the complexity analysis results\n4. Suggest task dependencies based on the expanded subtasks"
+  }
+}

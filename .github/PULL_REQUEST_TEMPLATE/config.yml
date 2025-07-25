@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🐛 Bug Fix
+    url: https://github.com/eyaltoledano/claude-task-master/compare/next...HEAD?template=bugfix.md
+    about: Fix a bug in Task Master
+  - name: ✨ New Feature
+    url: https://github.com/eyaltoledano/claude-task-master/compare/next...HEAD?template=feature.md
+    about: Add a new feature to Task Master
+  - name: 🔌 New Integration
+    url: https://github.com/eyaltoledano/claude-task-master/compare/next...HEAD?template=integration.md
+    about: Add support for a new tool, IDE, or platform

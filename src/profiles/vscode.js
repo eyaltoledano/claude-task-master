@@ -166,6 +166,7 @@ export const vscodeProfile = createProfile({
 	rulesDir: '.github/instructions', // VS Code instructions location
 	profileDir: '.vscode', // VS Code configuration directory
 	mcpConfigName: 'mcp.json', // VS Code uses mcp.json in .vscode directory
+	targetExtension: '.instructions.md',
 	customReplacements: [
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },
@@ -177,10 +178,13 @@ export const vscodeProfile = createProfile({
 		// VS Code custom instructions format - use applyTo with quoted patterns instead of globs
 		{ from: /^globs:\s*(.+)$/gm, to: 'applyTo: "$1"' },
 
+		// Remove unsupported property - alwaysApply
+		{ from: /^alwaysApply:\s*(true|false)\s*\n?/gm, to: '' },
+
 		// Essential markdown link transformations for VS Code structure
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
-			to: '[$1](.github/instructions/$2.md)'
+			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
 
 		// VS Code specific terminology

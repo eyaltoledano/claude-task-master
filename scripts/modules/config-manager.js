@@ -584,10 +584,21 @@ function getParametersForRole(role, explicitRoot = null) {
 				);
 			}
 		} else {
-			log(
-				'debug',
-				`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
-			);
+			// Special handling for custom OpenRouter models
+			if (providerName === CUSTOM_PROVIDERS.OPENROUTER) {
+				// Use a conservative default for OpenRouter models not in our list
+				const openrouterDefault = 32768;
+				effectiveMaxTokens = Math.min(roleMaxTokens, openrouterDefault);
+				log(
+					'debug',
+					`Custom OpenRouter model ${modelId} detected. Using conservative max_tokens: ${effectiveMaxTokens}`
+				);
+			} else {
+				log(
+					'debug',
+					`No model definitions found for provider ${providerName} in MODEL_MAP. Using role default maxTokens: ${roleMaxTokens}`
+				);
+			}
 		}
 	} catch (lookupError) {
 		log(
@@ -772,36 +783,38 @@ function getAvailableModels() {
 	const available = [];
 	for (const [provider, models] of Object.entries(MODEL_MAP)) {
 		if (models.length > 0) {
-			models.forEach((modelObj) => {
-				// Basic name generation - can be improved
-				const modelId = modelObj.id;
-				const sweScore = modelObj.swe_score;
-				const cost = modelObj.cost_per_1m_tokens;
-				const allowedRoles = modelObj.allowed_roles || ['main', 'fallback'];
-				const nameParts = modelId
-					.split('-')
-					.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
-				// Handle specific known names better if needed
-				let name = nameParts.join(' ');
-				if (modelId === 'claude-3.5-sonnet-20240620')
-					name = 'Claude 3.5 Sonnet';
-				if (modelId === 'claude-3-7-sonnet-20250219')
-					name = 'Claude 3.7 Sonnet';
-				if (modelId === 'gpt-4o') name = 'GPT-4o';
-				if (modelId === 'gpt-4-turbo') name = 'GPT-4 Turbo';
-				if (modelId === 'sonar-pro') name = 'Perplexity Sonar Pro';
-				if (modelId === 'sonar-mini') name = 'Perplexity Sonar Mini';
+			models
+				.filter((modelObj) => Boolean(modelObj.supported))
+				.forEach((modelObj) => {
+					// Basic name generation - can be improved
+					const modelId = modelObj.id;
+					const sweScore = modelObj.swe_score;
+					const cost = modelObj.cost_per_1m_tokens;
+					const allowedRoles = modelObj.allowed_roles || ['main', 'fallback'];
+					const nameParts = modelId
+						.split('-')
+						.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
+					// Handle specific known names better if needed
+					let name = nameParts.join(' ');
+					if (modelId === 'claude-3.5-sonnet-20240620')
+						name = 'Claude 3.5 Sonnet';
+					if (modelId === 'claude-3-7-sonnet-20250219')
+						name = 'Claude 3.7 Sonnet';
+					if (modelId === 'gpt-4o') name = 'GPT-4o';
+					if (modelId === 'gpt-4-turbo') name = 'GPT-4 Turbo';
+					if (modelId === 'sonar-pro') name = 'Perplexity Sonar Pro';
+					if (modelId === 'sonar-mini') name = 'Perplexity Sonar Mini';
 
-				available.push({
-					id: modelId,
-					name: name,
-					provider: provider,
-					swe_score: sweScore,
-					cost_per_1m_tokens: cost,
-					allowed_roles: allowedRoles,
-					max_tokens: modelObj.max_tokens
+					available.push({
+						id: modelId,
+						name: name,
+						provider: provider,
+						swe_score: sweScore,
+						cost_per_1m_tokens: cost,
+						allowed_roles: allowedRoles,
+						max_tokens: modelObj.max_tokens
+					});
 				});
-			});
 		} else {
 			// For providers with empty lists (like ollama), maybe add a placeholder or skip
 			available.push({

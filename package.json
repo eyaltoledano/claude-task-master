@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.21.0",
+	"version": "0.22.0-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -9,10 +9,7 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"."
-	],
+	"workspaces": ["apps/*", "."],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -87,8 +84,8 @@
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.25",
-		"ai-sdk-provider-gemini-cli": "^0.0.4",
-		"@biomejs/cli-linux-x64": "^1.9.4"
+		"@biomejs/cli-linux-x64": "^1.9.4",
+		"ai-sdk-provider-gemini-cli": "^0.1.1"
 	},
 	"engines": {
 		"node": ">=18.0.0"
