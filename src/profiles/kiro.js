@@ -1,18 +1,27 @@
 // Kiro profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
+import fs from 'fs';
+import path from 'path';
+import { log } from '../../scripts/modules/utils.js';
 
-// Create kiro profile using ProfileBuilder
-const kiroProfile = ProfileBuilder.minimal('kiro')
+// Create and export kiro profile using ProfileBuilder
+export const kiroProfile = ProfileBuilder.minimal('kiro')
 	.display('Kiro')
 	.profileDir('.kiro')
 	.rulesDir('.kiro/steering') // Kiro rules location
 	.mcpConfig({
-		configName: 'settings/mcp.json' // Create directly in settings subdirectory
+		configName: 'settings/mcp.json' // Custom name for Kiro
 	})
 	.includeDefaultRules(true) // Include default rules to get all the standard files
+	.targetExtension('.md')
 	.fileMap({
-		// Default mappings with .md extension (handled by base profile)
-		// Override specific mappings if needed
+		// Override specific mappings - the base profile will create:
+		// 'rules/cursor_rules.mdc': 'kiro_rules.md'
+		// 'rules/dev_workflow.mdc': 'dev_workflow.md'
+		// 'rules/self_improve.mdc': 'self_improve.md'
+		// 'rules/taskmaster.mdc': 'taskmaster.md'
+		// We can add additional custom mappings here if needed
+		'rules/taskmaster_hooks_workflow.mdc': 'taskmaster_hooks_workflow.md'
 	})
 	.conversion({
 		// Profile name replacements
@@ -25,7 +34,10 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 				from: /\bcursor\b/gi,
 				to: (match) => (match === 'Cursor' ? 'Kiro' : 'kiro')
 			},
-			{ from: /Cursor/g, to: 'Kiro' }
+			{ from: /Cursor/g, to: 'Kiro' },
+			// Kiro specific terminology
+			{ from: /rules directory/g, to: 'steering directory' },
+			{ from: /cursor rules/gi, to: 'Kiro steering files' }
 		],
 		// Documentation URL replacements
 		docUrls: [{ from: /docs\.cursor\.so/g, to: 'kiro.dev/docs' }],
@@ -40,18 +52,12 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
 		},
-
 		// Tool context mappings (kiro uses standard contexts)
 		toolContexts: [],
-
 		// Tool group mappings (kiro uses standard groups)
 		toolGroups: [],
-
 		// File reference mappings (kiro uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'kiro.ai/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Core Kiro directory structure changes
@@ -67,11 +73,41 @@ const kiroProfile = ProfileBuilder.minimal('kiro')
 			to: '[$1](.kiro/steering/$2.md)'
 		},
 
-		// Kiro specific terminology
-		{ from: /rules directory/g, to: 'steering directory' },
-		{ from: /cursor rules/gi, to: 'Kiro steering files' }
+		// Transform frontmatter to Kiro format
+		// This regex matches the entire frontmatter block and replaces it
+		{
+			from: /^---\n(?:description:\s*[^\n]*\n)?(?:globs:\s*[^\n]*\n)?(?:alwaysApply:\s*true\n)?---/m,
+			to: '---\ninclusion: always\n---'
+		}
 	])
-	.build();
+	.onPost((projectRoot, assetsDir) => {
+		const hooksSourceDir = path.join(assetsDir, 'kiro-hooks');
+		const hooksTargetDir = path.join(projectRoot, '.kiro', 'hooks');
 
-// Export the profile
-export { kiroProfile };
+		// Create hooks directory if it doesn't exist
+		if (!fs.existsSync(hooksTargetDir)) {
+			fs.mkdirSync(hooksTargetDir, { recursive: true });
+		}
+
+		// Copy all .kiro.hook files
+		if (fs.existsSync(hooksSourceDir)) {
+			const hookFiles = fs
+				.readdirSync(hooksSourceDir)
+				.filter((f) => f.endsWith('.kiro.hook'));
+
+			hookFiles.forEach((file) => {
+				const sourcePath = path.join(hooksSourceDir, file);
+				const targetPath = path.join(hooksTargetDir, file);
+
+				fs.copyFileSync(sourcePath, targetPath);
+			});
+
+			if (hookFiles.length > 0) {
+				log(
+					'info',
+					`[Kiro] Installed ${hookFiles.length} Taskmaster hooks in .kiro/hooks/`
+				);
+			}
+		}
+	})
+	.build();

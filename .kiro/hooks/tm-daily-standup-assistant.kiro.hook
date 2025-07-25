@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "[TM] Daily Standup Assistant",
+  "description": "Morning workflow summary and task selection",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Good morning! Please provide my daily standup summary:\n\n1. Run 'tm list --status=done' and show tasks completed in the last 24 hours\n2. Run 'tm list --status=in-progress' to show current work\n3. Run 'tm next' to suggest the highest priority task to start\n4. Show the dependency graph for upcoming work\n5. Ask which task I'd like to focus on today"
+  }
+}
