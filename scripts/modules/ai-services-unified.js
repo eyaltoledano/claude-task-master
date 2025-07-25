@@ -807,9 +807,7 @@ async function logAiUsage({
 			modelId
 		);
 
-		const totalCost =
-			((inputTokens || 0) / 1_000_000) * inputCost +
-			((outputTokens || 0) / 1_000_000) * outputCost;
+		const totalCost = _calculateCost(inputTokens, outputTokens, inputCost, outputCost);
 
 		const telemetryData = {
 			timestamp,
@@ -820,7 +818,7 @@ async function logAiUsage({
 			inputTokens: inputTokens || 0,
 			outputTokens: outputTokens || 0,
 			totalTokens,
-			totalCost: parseFloat(totalCost.toFixed(6)),
+			totalCost,
 			currency // Add currency to the telemetry data
 		};
 
