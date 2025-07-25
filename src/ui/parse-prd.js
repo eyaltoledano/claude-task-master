@@ -242,23 +242,98 @@ function displayParsePrdSummary(summary) {
 		// Visual bar representation of priority distribution
 		const barWidth = 40; // Total width of the bar
 
-		// Only show bars for priorities with at least 1 task - handle division by zero
-		const highChars =
-			highPriority > 0 && totalTasks > 0
-				? Math.max(1, Math.round((highPriority / totalTasks) * barWidth))
-				: 0;
+		// Calculate proportional bar lengths while maintaining consistent total width
+		let highChars = 0;
+		let mediumChars = 0;
+		let lowChars = 0;
 
-		const mediumChars =
-			mediumPriority > 0 && totalTasks > 0
-				? Math.max(1, Math.round((mediumPriority / totalTasks) * barWidth))
-				: 0;
+		if (totalTasks > 0) {
+			// Step 1: Calculate raw proportional lengths without minimum constraints
+			const rawHighChars = (highPriority / totalTasks) * barWidth;
+			const rawMediumChars = (mediumPriority / totalTasks) * barWidth;
+			const rawLowChars = (lowPriority / totalTasks) * barWidth;
 
-		const lowChars =
-			lowPriority > 0 && totalTasks > 0
-				? Math.max(1, Math.round((lowPriority / totalTasks) * barWidth))
-				: 0;
+			// Step 2: Round down initially to get base lengths
+			highChars = Math.floor(rawHighChars);
+			mediumChars = Math.floor(rawMediumChars);
+			lowChars = Math.floor(rawLowChars);
 
-		// Adjust bar width if some priorities have 0 tasks
+			// Step 3: Identify priorities with tasks but no representation yet
+			const nonZeroPriorities = [];
+			if (highPriority > 0 && highChars === 0) nonZeroPriorities.push('high');
+			if (mediumPriority > 0 && mediumChars === 0)
+				nonZeroPriorities.push('medium');
+			if (lowPriority > 0 && lowChars === 0) nonZeroPriorities.push('low');
+
+			// Step 4: Ensure non-zero priorities get at least 1 character
+			for (const priority of nonZeroPriorities) {
+				if (priority === 'high') highChars = 1;
+				else if (priority === 'medium') mediumChars = 1;
+				else if (priority === 'low') lowChars = 1;
+			}
+
+			// Step 5: Calculate remaining characters to distribute
+			let currentTotal = highChars + mediumChars + lowChars;
+			const remainingChars = barWidth - currentTotal;
+
+			// Step 6: Distribute remaining characters proportionally based on decimal parts
+			if (remainingChars > 0) {
+				const decimals = [
+					{
+						priority: 'high',
+						decimal: rawHighChars - Math.floor(rawHighChars),
+						current: highChars
+					},
+					{
+						priority: 'medium',
+						decimal: rawMediumChars - Math.floor(rawMediumChars),
+						current: mediumChars
+					},
+					{
+						priority: 'low',
+						decimal: rawLowChars - Math.floor(rawLowChars),
+						current: lowChars
+					}
+				];
+
+				// Sort by decimal part (largest first) to distribute remaining characters
+				decimals.sort((a, b) => b.decimal - a.decimal);
+
+				for (let i = 0; i < remainingChars && i < decimals.length; i++) {
+					const priorityToIncrement = decimals[i].priority;
+					if (priorityToIncrement === 'high') highChars++;
+					else if (priorityToIncrement === 'medium') mediumChars++;
+					else if (priorityToIncrement === 'low') lowChars++;
+				}
+			}
+
+			// Step 7: Handle case where we still exceed barWidth (should be rare)
+			currentTotal = highChars + mediumChars + lowChars;
+			if (currentTotal > barWidth) {
+				const excess = currentTotal - barWidth;
+				// Remove excess from the priority with the largest representation first
+				const priorities = [
+					{ name: 'low', chars: lowChars },
+					{ name: 'medium', chars: mediumChars },
+					{ name: 'high', chars: highChars }
+				].sort((a, b) => b.chars - a.chars);
+
+				let toRemove = excess;
+				for (const priority of priorities) {
+					if (toRemove <= 0) break;
+					const canRemove = Math.min(
+						toRemove,
+						priority.chars - (priority.chars > 1 ? 1 : 0)
+					);
+					if (priority.name === 'high') highChars -= canRemove;
+					else if (priority.name === 'medium') mediumChars -= canRemove;
+					else if (priority.name === 'low') lowChars -= canRemove;
+					toRemove -= canRemove;
+				}
+			}
+		}
+
+		// Calculate actual bar width for any remaining empty space
 		const actualBarWidth = highChars + mediumChars + lowChars;
 
 		// Use the same colors as formatComplexitySummary
