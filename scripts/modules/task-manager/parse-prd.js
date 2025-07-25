@@ -30,14 +30,14 @@ import {
 	generateObjectService,
 	streamTextService
 } from '../ai-services-unified.js';
-import { getDebugFlag } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
-import { displayAiUsageSummary } from '../ui.js';
 import {
+	getDebugFlag,
 	getMainModelId,
 	getParametersForRole,
 	getResearchModelId
 } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import { displayAiUsageSummary } from '../ui.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
