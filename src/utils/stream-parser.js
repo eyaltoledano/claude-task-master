@@ -27,6 +27,29 @@ export const STREAMING_ERROR_CODES = {
 };
 
 /**
+ * Default validation function for parsed items
+ * Checks if item exists, has a title property of type string, and that the trimmed title is not empty
+ * @param {Object} item - The item to validate
+ * @returns {boolean} True if item is valid, false otherwise
+ */
+function defaultItemValidator(item) {
+	return item &&
+		item.title &&
+		typeof item.title === 'string' &&
+		item.title.trim();
+}
+
+/**
+ * Validates an item using either a custom validator or the default validator
+ * @param {Object} item - The item to validate
+ * @param {Function} [customValidator] - Optional custom validation function
+ * @returns {boolean} True if item is valid, false otherwise
+ */
+function isValidItem(item, customValidator) {
+	return customValidator ? customValidator(item) : defaultItemValidator(item);
+}
+
+/**
  * Configuration options for the streaming JSON parser
  * @typedef {Object} StreamParserConfig
  * @property {string[]} jsonPaths - JSONPath expressions to extract specific objects (required)
@@ -94,16 +117,8 @@ export async function parseStream(textStream, config = {}) {
 		// Extract the actual item object from the parser's nested structure
 		const item = value.value || value;
 
-		// Use custom validator if provided, otherwise default validation
-		const isValidItem = itemValidator
-			? itemValidator(item)
-			: item &&
-				item.title &&
-				typeof item.title === 'string' &&
-				item.title.trim();
-
-		// Only process if we have a valid item
-		if (isValidItem) {
+		// Use helper function to validate item with custom or default validator
+		if (isValidItem(item, itemValidator)) {
 			parsedItems.push(item);
 
 			if (onProgress) {
@@ -267,12 +282,8 @@ async function attemptFallbackParsing(
 			const itemsToAdd = fallbackItems.slice(existingItems.length);
 
 			for (const item of itemsToAdd) {
-				if (
-					item &&
-					item.title &&
-					typeof item.title === 'string' &&
-					item.title.trim()
-				) {
+				// Use the same validation helper function
+				if (isValidItem(item)) {
 					newItems.push(item);
 
 					if (onProgress) {
