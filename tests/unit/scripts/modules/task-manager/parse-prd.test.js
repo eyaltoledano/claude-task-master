@@ -36,12 +36,10 @@ jest.unstable_mockModule(
 		}),
 		streamTextService: jest.fn().mockResolvedValue({
 			mainResult: {
-				textStream: {
-					[Symbol.asyncIterator]: async function* () {
-						yield '{"tasks":[';
-						yield '{"id":1,"title":"Test Task","priority":"high"}';
-						yield ']}';
-					}
+				[Symbol.asyncIterator]: async function* () {
+					yield '{"tasks":[';
+					yield '{"id":1,"title":"Test Task","priority":"high"}';
+					yield ']}';
 				}
 			},
 			telemetryData: {}
@@ -322,12 +320,10 @@ describe('parsePRD', () => {
 		});
 		streamTextService.mockResolvedValue({
 			mainResult: {
-				textStream: {
-					[Symbol.asyncIterator]: async function* () {
-						yield '{"tasks":[';
-						yield '{"id":1,"title":"Test Task","priority":"high"}';
-						yield ']}';
-					}
+				[Symbol.asyncIterator]: async function* () {
+					yield '{"tasks":[';
+					yield '{"id":1,"title":"Test Task","priority":"high"}';
+					yield ']}';
 				}
 			},
 			telemetryData: {}

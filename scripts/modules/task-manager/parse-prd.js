@@ -378,9 +378,14 @@ async function parsePRDWithStreaming(
 			outputType: isMCP ? 'mcp' : 'cli'
 		});
 
-		const textStream = aiServiceResponse.mainResult.textStream;
+		const textStream = aiServiceResponse.mainResult;
 		if (!textStream) {
 			throw new Error('No text stream received from AI service');
+		}
+
+		// Verify textStream is an async iterable
+		if (typeof textStream[Symbol.asyncIterator] !== 'function') {
+			throw new Error('Received textStream is not an async iterable');
 		}
 
 		// Get priority indicators based on context (MCP vs CLI)
