@@ -214,13 +214,11 @@ function createTestConfig() {
 }
 
 /**
- * Test MCP streaming with proper MCP context
+ * Setup test files and configuration
  */
-async function testMCPStreaming(numTasks = 10) {
-	console.log(chalk.cyan('🧪 Testing MCP Streaming Functionality\n'));
-
+function setupTestFiles(testName) {
 	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-mcp-tasks.json');
+	const testTasksPath = path.join(__dirname, `test-${testName}-tasks.json`);
 	const configPath = createTestConfig();
 
 	// Clean up existing files
@@ -228,90 +226,136 @@ async function testMCPStreaming(numTasks = 10) {
 		fs.unlinkSync(testTasksPath);
 	}
 
+	return { testPRDPath, testTasksPath, configPath };
+}
+
+/**
+ * Clean up test files
+ */
+function cleanupTestFiles(testTasksPath, configPath) {
+	if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
+	if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+}
+
+/**
+ * Run parsePRD with configurable options
+ */
+async function runParsePRD(testPRDPath, testTasksPath, numTasks, options = {}) {
+	const startTime = Date.now();
+
+	const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
+		force: true,
+		append: false,
+		research: false,
+		projectRoot: PROJECT_ROOT,
+		...options
+	});
+
+	const endTime = Date.now();
+	const duration = endTime - startTime;
+
+	return { result, duration };
+}
+
+/**
+ * Verify task file existence and structure
+ */
+function verifyTaskResults(testTasksPath) {
+	if (fs.existsSync(testTasksPath)) {
+		const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
+		console.log(
+			chalk.green(
+				`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
+			)
+		);
+
+		// Verify task structure
+		const firstTask = tasksData.tasks[0];
+		if (
+			firstTask &&
+			firstTask.id &&
+			firstTask.title &&
+			firstTask.description
+		) {
+			console.log(chalk.green('✅ Task structure is valid'));
+			return true;
+		} else {
+			console.log(chalk.red('❌ Task structure is invalid'));
+			return false;
+		}
+	} else {
+		console.log(chalk.red('❌ Tasks file was not created'));
+		return false;
+	}
+}
+
+/**
+ * Print MCP-specific logs and validation
+ */
+function printMCPResults(mcpLogger, progressReporter) {
+	// Print progress summary
+	progressReporter.printSummary();
+
+	// Print MCP logs
+	console.log(chalk.cyan('\n=== MCP Logs ==='));
+	const logs = mcpLogger.getLogs();
+	logs.forEach((log, index) => {
+		const color =
+			{
+				info: chalk.blue,
+				warn: chalk.yellow,
+				error: chalk.red,
+				debug: chalk.gray,
+				success: chalk.green
+			}[log.level] || chalk.white;
+		console.log(
+			`${index + 1}. ${color(`[${log.level.toUpperCase()}]`)} ${log.message}`
+		);
+	});
+
+	// Verify MCP-specific message formats (should use emoji indicators)
+	const hasEmojiIndicators = progressReporter
+		.getProgressHistory()
+		.some((entry) => /[🔴🟠🟢]/u.test(entry.message));
+
+	console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
+	console.log(
+		`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`
+	);
+
+	return { hasEmojiIndicators, logs };
+}
+
+/**
+ * Test MCP streaming with proper MCP context
+ */
+async function testMCPStreaming(numTasks = 10) {
+	console.log(chalk.cyan('🧪 Testing MCP Streaming Functionality\n'));
+
+	const { testPRDPath, testTasksPath, configPath } = setupTestFiles('mcp');
 	const progressReporter = new MockProgressReporter(true);
 	const mcpLogger = new MockMCPLogger(true); // Enable debug for MCP context
 
 	try {
 		console.log(chalk.yellow('Starting MCP streaming test...'));
-		const startTime = Date.now();
 
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
+		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks, {
 			reportProgress: progressReporter.reportProgress.bind(progressReporter),
-			projectRoot: PROJECT_ROOT,
-			// Add MCP context - this is the key difference
-			mcpLog: mcpLogger
+			mcpLog: mcpLogger // Add MCP context - this is the key difference
 		});
-
-		const endTime = Date.now();
-		const duration = endTime - startTime;
 
 		console.log(
 			chalk.green(`\n✅ MCP streaming test completed in ${duration}ms`)
 		);
 
-		// Print progress summary
-		progressReporter.printSummary();
-
-		// Print MCP logs
-		console.log(chalk.cyan('\n=== MCP Logs ==='));
-		const logs = mcpLogger.getLogs();
-		logs.forEach((log, index) => {
-			const color =
-				{
-					info: chalk.blue,
-					warn: chalk.yellow,
-					error: chalk.red,
-					debug: chalk.gray,
-					success: chalk.green
-				}[log.level] || chalk.white;
-			console.log(
-				`${index + 1}. ${color(`[${log.level.toUpperCase()}]`)} ${log.message}`
-			);
-		});
-
-		// Verify MCP-specific message formats (should use emoji indicators)
-		const hasEmojiIndicators = progressReporter
-			.getProgressHistory()
-			.some((entry) => /[🔴🟠🟢]/u.test(entry.message));
-
-		console.log(chalk.cyan('\n=== MCP-Specific Validation ==='));
-		console.log(
-			`✅ Emoji priority indicators: ${hasEmojiIndicators ? 'PASS' : 'FAIL'}`
-		);
-
-		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
-			console.log(
-				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
-				)
-			);
-
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
-			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
-			) {
-				console.log(chalk.green('✅ Task structure is valid'));
-			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
-			}
-		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
-		}
+		const { hasEmojiIndicators, logs } = printMCPResults(mcpLogger, progressReporter);
+		const isValidStructure = verifyTaskResults(testTasksPath);
 
 		return {
 			success: true,
 			duration,
 			progressHistory: progressReporter.getProgressHistory(),
-			mcpLogs: mcpLogger.getLogs(),
+			mcpLogs: logs,
 			hasEmojiIndicators,
 			result
 		};
@@ -322,9 +366,7 @@ async function testMCPStreaming(numTasks = 10) {
 			error: error.message
 		};
 	} finally {
-		// Clean up
-		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
-		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+		cleanupTestFiles(testTasksPath, configPath);
 	}
 }
 
@@ -334,59 +376,19 @@ async function testMCPStreaming(numTasks = 10) {
 async function testCLIStreaming(numTasks = 10) {
 	console.log(chalk.cyan('🧪 Testing CLI Streaming (No Progress Reporter)\n'));
 
-	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-cli-tasks.json');
-	const configPath = createTestConfig();
-
-	// Clean up existing files
-	if (fs.existsSync(testTasksPath)) {
-		fs.unlinkSync(testTasksPath);
-	}
+	const { testPRDPath, testTasksPath, configPath } = setupTestFiles('cli');
 
 	try {
 		console.log(chalk.yellow('Starting CLI streaming test...'));
-		const startTime = Date.now();
 
 		// No reportProgress - should use non-streaming path
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
-			// No reportProgress provided
-			projectRoot: PROJECT_ROOT
-		});
-
-		const endTime = Date.now();
-		const duration = endTime - startTime;
+		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks);
 
 		console.log(
 			chalk.green(`\n✅ CLI streaming test completed in ${duration}ms`)
 		);
 
-		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
-			console.log(
-				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
-				)
-			);
-
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
-			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
-			) {
-				console.log(chalk.green('✅ Task structure is valid'));
-			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
-			}
-		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
-		}
+		const isValidStructure = verifyTaskResults(testTasksPath);
 
 		return {
 			success: true,
@@ -400,9 +402,7 @@ async function testCLIStreaming(numTasks = 10) {
 			error: error.message
 		};
 	} finally {
-		// Clean up
-		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
-		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+		cleanupTestFiles(testTasksPath, configPath);
 	}
 }
 
@@ -412,59 +412,19 @@ async function testCLIStreaming(numTasks = 10) {
 async function testNonStreaming(numTasks = 10) {
 	console.log(chalk.cyan('🧪 Testing Non-Streaming Functionality\n'));
 
-	const testPRDPath = getSamplePRDPath();
-	const testTasksPath = path.join(__dirname, 'test-non-streaming-tasks.json');
-	const configPath = createTestConfig();
-
-	// Clean up existing files
-	if (fs.existsSync(testTasksPath)) {
-		fs.unlinkSync(testTasksPath);
-	}
+	const { testPRDPath, testTasksPath, configPath } = setupTestFiles('non-streaming');
 
 	try {
 		console.log(chalk.yellow('Starting non-streaming test...'));
-		const startTime = Date.now();
 
 		// Force non-streaming by not providing reportProgress
-		const result = await parsePRD(testPRDPath, testTasksPath, numTasks, {
-			force: true,
-			append: false,
-			research: false,
-			projectRoot: PROJECT_ROOT
-			// No reportProgress - should use generateObjectService
-		});
-
-		const endTime = Date.now();
-		const duration = endTime - startTime;
+		const { result, duration } = await runParsePRD(testPRDPath, testTasksPath, numTasks);
 
 		console.log(
 			chalk.green(`\n✅ Non-streaming test completed in ${duration}ms`)
 		);
 
-		// Verify results
-		if (fs.existsSync(testTasksPath)) {
-			const tasksData = JSON.parse(fs.readFileSync(testTasksPath, 'utf8'));
-			console.log(
-				chalk.green(
-					`\n✅ Tasks file created with ${tasksData.tasks.length} tasks`
-				)
-			);
-
-			// Verify task structure
-			const firstTask = tasksData.tasks[0];
-			if (
-				firstTask &&
-				firstTask.id &&
-				firstTask.title &&
-				firstTask.description
-			) {
-				console.log(chalk.green('✅ Task structure is valid'));
-			} else {
-				console.log(chalk.red('❌ Task structure is invalid'));
-			}
-		} else {
-			console.log(chalk.red('❌ Tasks file was not created'));
-		}
+		const isValidStructure = verifyTaskResults(testTasksPath);
 
 		return {
 			success: true,
@@ -478,9 +438,7 @@ async function testNonStreaming(numTasks = 10) {
 			error: error.message
 		};
 	} finally {
-		// Clean up
-		if (fs.existsSync(testTasksPath)) fs.unlinkSync(testTasksPath);
-		if (fs.existsSync(configPath)) fs.unlinkSync(configPath);
+		cleanupTestFiles(testTasksPath, configPath);
 	}
 }
 
