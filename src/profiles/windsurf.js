@@ -1,7 +1,7 @@
-// Windsurf profile using new ProfileBuilder system
+// Windsurf profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create windsurf profile using the new ProfileBuilder
+// Create windsurf profile using ProfileBuilder
 const windsurfProfile = ProfileBuilder.minimal('windsurf')
 	.display('Windsurf')
 	.profileDir('.windsurf') // Windsurf uses .windsurf directory as expected by MCP validation
@@ -67,5 +67,5 @@ const windsurfProfile = ProfileBuilder.minimal('windsurf')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the windsurf profile
 export { windsurfProfile };

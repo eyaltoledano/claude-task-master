@@ -1,7 +1,7 @@
-// Trae profile using new ProfileBuilder system
+// Trae profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create trae profile using the new ProfileBuilder
+// Create trae profile using ProfileBuilder
 const traeProfile = ProfileBuilder.minimal('trae')
 	.display('Trae')
 	.profileDir('.trae')
@@ -60,5 +60,5 @@ const traeProfile = ProfileBuilder.minimal('trae')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the trae profile
 export { traeProfile };

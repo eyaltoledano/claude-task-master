@@ -1,7 +1,7 @@
-// Codex profile using new ProfileBuilder system
+// Codex profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create codex profile using the new ProfileBuilder
+// Create codex profile using ProfileBuilder
 const codexProfile = ProfileBuilder.minimal('codex')
 	.display('Codex')
 	.profileDir('.') // Root directory
@@ -70,5 +70,5 @@ const codexProfile = ProfileBuilder.minimal('codex')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the codex profile
 export { codexProfile };

@@ -1,4 +1,4 @@
-// Roo Code profile using new ProfileBuilder system
+// Roo Code profile using ProfileBuilder
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
@@ -105,7 +105,7 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 	onAddRulesProfile(targetDir, assetsDir);
 }
 
-// Create roo profile using the new ProfileBuilder
+// Create roo profile using ProfileBuilder
 const rooProfile = ProfileBuilder.minimal('roo')
 	.display('Roo Code')
 	.profileDir('.roo')
@@ -183,14 +183,8 @@ const rooProfile = ProfileBuilder.minimal('roo')
 	.onPost(onPostConvertRulesProfile)
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export the roo profile
 export { rooProfile };
-
-// Legacy-compatible export for backward compatibility
-export const rooProfileLegacy = rooProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default rooProfileLegacy;
 
 // Export lifecycle functions separately to avoid naming conflicts
 export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

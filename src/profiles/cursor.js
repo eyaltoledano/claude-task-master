@@ -1,4 +1,4 @@
-// Cursor profile using new ProfileBuilder system
+// Cursor profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Create cursor profile with comprehensive file mapping
@@ -49,5 +49,5 @@ const cursorProfile = ProfileBuilder.minimal('cursor')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the cursor profile
 export { cursorProfile };

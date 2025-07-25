@@ -316,7 +316,7 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 }
 
 // Create claude profile using ProfileBuilder
-export const claudeProfile = ProfileBuilder.minimal('claude')
+const claudeProfile = ProfileBuilder.minimal('claude')
 	.display('Claude Code')
 	.profileDir('.') // Root directory
 	.rulesDir('.') // No specific rules directory needed
@@ -372,11 +372,5 @@ export const claudeProfile = ProfileBuilder.minimal('claude')
 	.onPost(onPostConvertRulesProfile)
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export the claude profile
 export { claudeProfile };
-
-// Legacy-compatible export for backward compatibility
-export const claudeProfileLegacy = claudeProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default claudeProfileLegacy;

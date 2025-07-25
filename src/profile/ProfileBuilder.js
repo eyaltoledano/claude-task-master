@@ -103,6 +103,23 @@ export class ProfileBuilder {
 	}
 
 	/**
+	 * Set the target file extension for default file mappings
+	 *
+	 * @param {string} extension - Target file extension (e.g., '.md', '.instructions.md')
+	 * @returns {ProfileBuilder} This builder instance for chaining
+	 */
+	targetExtension(extension) {
+		if (typeof extension !== 'string' || !extension.startsWith('.')) {
+			throw new ProfileValidationError(
+				'Target extension must be a string starting with "."',
+				'targetExtension'
+			);
+		}
+		this._config.targetExtension = extension;
+		return this;
+	}
+
+	/**
 	 * Set the conversion configuration
 	 *
 	 * @param {import('./types.js').ConversionConfig} config - Rule transformation configuration
@@ -320,7 +337,7 @@ export class ProfileBuilder {
 		// Generate default file mappings if includeDefaultRules is true
 		if (this._config.includeDefaultRules) {
 			const profileName = this._config.profileName.toLowerCase();
-			const targetExtension = '.md'; // Default target extension
+			const targetExtension = this._config.targetExtension || '.md'; // Use configured or default target extension
 			const supportsSubdirectories =
 				this._config.supportsRulesSubdirectories || false;
 

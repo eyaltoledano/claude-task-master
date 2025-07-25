@@ -162,7 +162,7 @@ function onRemoveRulesProfile(targetDir) {
 	}
 }
 
-// Create opencode profile using the new ProfileBuilder
+// Create opencode profile using ProfileBuilder
 const opencodeProfile = ProfileBuilder.minimal('opencode')
 	.display('OpenCode')
 	.profileDir('.') // Root directory
@@ -212,14 +212,8 @@ const opencodeProfile = ProfileBuilder.minimal('opencode')
 	.onRemove(onRemoveRulesProfile)
 	.build();
 
-// Export both the new Profile instance and a legacy-compatible version
+// Export the opencode profile
 export { opencodeProfile };
-
-// Legacy-compatible export for backward compatibility
-export const opencodeProfileLegacy = opencodeProfile.toLegacyFormat();
-
-// Default export remains legacy format for maximum compatibility
-export default opencodeProfileLegacy;
 
 // Export lifecycle functions separately to avoid naming conflicts
 export { onPostConvertRulesProfile, onRemoveRulesProfile };

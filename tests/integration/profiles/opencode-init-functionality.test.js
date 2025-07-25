@@ -57,11 +57,11 @@ describe('OpenCode Profile Initialization Functionality', () => {
 	});
 
 	test('opencode.js uses custom MCP config name', () => {
-		// OpenCode uses opencode.json instead of mcp.json
-		expect(opencodeProfileContent).toContain("mcpConfigName: 'opencode.json'");
+		// OpenCode uses opencode.json instead of mcp.json with ProfileBuilder syntax
+		expect(opencodeProfileContent).toContain("configName: 'opencode.json'");
 		// Should not contain mcp.json as a config value (comments are OK)
 		expect(opencodeProfileContent).not.toMatch(
-			/mcpConfigName:\s*['"]mcp\.json['"]/
+			/configName:\s*['"]mcp\.json['"]/
 		);
 		// Check the final computed properties
 		expect(opencodeProfile.mcpConfigName).toBe('opencode.json');

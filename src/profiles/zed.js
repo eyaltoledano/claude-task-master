@@ -66,7 +66,7 @@ async function removeZedContextServers(projectRoot) {
 	}
 }
 
-// Create zed profile using the new ProfileBuilder
+// Create zed profile using ProfileBuilder
 const zedProfile = ProfileBuilder.minimal('zed')
 	.display('Zed')
 	.profileDir('.zed')
@@ -136,5 +136,5 @@ const zedProfile = ProfileBuilder.minimal('zed')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the zed profile
 export { zedProfile };

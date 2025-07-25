@@ -1,7 +1,7 @@
-// Gemini profile using new ProfileBuilder system
+// Gemini profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create gemini profile using the new ProfileBuilder
+// Create gemini profile using ProfileBuilder
 const geminiProfile = ProfileBuilder.minimal('gemini')
 	.display('Gemini')
 	.profileDir('.gemini') // Gemini uses .gemini directory
@@ -66,5 +66,5 @@ const geminiProfile = ProfileBuilder.minimal('gemini')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the gemini profile
 export { geminiProfile };

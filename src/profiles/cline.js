@@ -1,7 +1,7 @@
-// Cline profile using new ProfileBuilder system
+// Cline profile using ProfileBuilder
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
-// Create cline profile using the new ProfileBuilder
+// Create cline profile using ProfileBuilder
 const clineProfile = ProfileBuilder.minimal('cline')
 	.display('Cline')
 	.profileDir('.clinerules')
@@ -71,5 +71,5 @@ const clineProfile = ProfileBuilder.minimal('cline')
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the cline profile
 export { clineProfile };

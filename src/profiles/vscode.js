@@ -16,13 +16,14 @@ async function setupSchemaIntegration(projectRoot) {
 	}
 }
 
-// Create vscode profile using the new ProfileBuilder
+// Create vscode profile using ProfileBuilder
 const vscodeProfile = ProfileBuilder.minimal('vscode')
 	.display('VS Code')
 	.profileDir('.vscode') // VS Code uses .vscode directory for configuration
 	.rulesDir('.github/instructions') // VS Code uses .github/instructions for rules
 	.mcpConfig(true) // Enable MCP configuration
 	.includeDefaultRules(true)
+	.targetExtension('.instructions.md') // VS Code uses .instructions.md extension
 	.onAdd(setupSchemaIntegration) // Add schema integration lifecycle function
 	.conversion({
 		// Profile name replacements
@@ -86,6 +87,8 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
 			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
+		// Remove mdc: protocol from any remaining links
+		{ from: /\(mdc:/g, to: '(' },
 		{
 			from: /\[(.+?)\]\(mdc:\.vs code\/rules\/(.+?)\.mdc\)/g,
 			to: '[$1](.github/instructions/$2.instructions.md)'
@@ -103,10 +106,9 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 
 		// VS Code specific terminology
 		{ from: /rules directory/g, to: 'instructions directory' },
-		{ from: /cursor rules/gi, to: 'VS Code instructions' }
+		{ from: /vs code rules/gi, to: 'VS Code instructions' }
 	])
 	.build();
 
-// Export only the new Profile instance
+// Export the vscode profile
 export { vscodeProfile };
-export default vscodeProfile;

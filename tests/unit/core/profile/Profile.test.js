@@ -444,6 +444,7 @@ describe('Profile', () => {
 				mcpConfigPath: '.test/mcp.json',
 				supportsRulesSubdirectories: false,
 				includeDefaultRules: true,
+				targetExtension: '.md',
 				fileMap: { 'a.mdc': 'a.md' },
 				globalReplacements: [{ from: 'old', to: 'new' }],
 				conversionConfig: { test: true },

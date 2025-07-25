@@ -55,6 +55,7 @@ export default class Profile {
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
 		this.supportsRulesSubdirectories =
 			config.supportsRulesSubdirectories ?? false;
+		this.targetExtension = config.targetExtension ?? '.md';
 
 		// Computed properties for legacy compatibility
 		this.mcpConfigName = this._computeMcpConfigName();
@@ -206,6 +207,7 @@ export default class Profile {
 			mcpConfigPath: this.mcpConfigPath,
 			supportsRulesSubdirectories: this.supportsRulesSubdirectories,
 			includeDefaultRules: this.includeDefaultRules,
+			targetExtension: this.targetExtension,
 			fileMap: this.fileMap,
 			globalReplacements: this.globalReplacements,
 			conversionConfig: this.conversionConfig,

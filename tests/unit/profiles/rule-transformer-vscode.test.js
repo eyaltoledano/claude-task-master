@@ -71,7 +71,7 @@ Also has references to .mdc files and cursor rules.`;
 		expect(transformedContent).toContain('VS Code');
 		expect(transformedContent).toContain('code.visualstudio.com');
 		expect(transformedContent).toContain('.md');
-		expect(transformedContent).toContain('vscode rules'); // "cursor rules" -> "vscode rules"
+		expect(transformedContent).toContain('VS Code instructions'); // "cursor rules" -> "VS Code instructions"
 		expect(transformedContent).toContain('applyTo: "**/*"'); // globs -> applyTo transformation
 		expect(transformedContent).not.toContain('cursor.so');
 		expect(transformedContent).not.toContain('Cursor rule');

@@ -133,7 +133,7 @@ describe('Amp Profile Init Functionality', () => {
 	});
 
 	describe('MCP Configuration', () => {
-		test('should rename mcpServers to amp.mcpServers', () => {
+		test('should rename mcpServers to amp.mcpServers', async () => {
 			// Create .vscode directory and settings.json with mcpServers
 			const vscodeDirPath = path.join(tempDir, '.vscode');
 			fs.mkdirSync(vscodeDirPath, { recursive: true });
@@ -153,7 +153,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onPostConvertRulesProfile (which should transform mcpServers to amp.mcpServers)
-			ampProfile.onPostConvertRulesProfile(
+			await ampProfile.onPostConvertRulesProfile(
 				tempDir,
 				path.join(tempDir, 'assets')
 			);

@@ -114,7 +114,11 @@ async function removeAmpProfile(projectRoot) {
 	}
 }
 
-async function postConvertAmpProfile(projectRoot) {
+async function postConvertAmpProfile(projectRoot, assetsDir) {
+	// First, do the same setup as onAddRulesProfile
+	await addAmpProfile(projectRoot, assetsDir);
+
+	// Handle MCP config transformation
 	const mcpConfigPath = path.join(projectRoot, '.vscode', 'settings.json');
 
 	if (!fs.existsSync(mcpConfigPath)) {
