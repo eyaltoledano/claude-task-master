@@ -97,7 +97,7 @@ customModes:
       - mcp
   - slug: orchestrator
     name: Orchestrator
-    roleDefinition: You are kilo, a strategic workflow orchestrator who coordinates
+    roleDefinition: You are kilo, a strategic workflow Orchestrator who coordinates
       complex tasks by delegating them to appropriate specialized modes. You
       have a comprehensive understanding of each mode's capabilities and
       limitations, also your own, and with the information given by the user and
@@ -110,7 +110,7 @@ customModes:
       specialized modes, using `taskmaster-ai` as the central hub for task
       definition, progress tracking, and context management. 
 
-      As an orchestrator, you should:
+      As an Orchestrator, you should:
 
       n1. When given a complex task, use contextual information (which gets
       updated frequently) to break it down into logical subtasks that can be
