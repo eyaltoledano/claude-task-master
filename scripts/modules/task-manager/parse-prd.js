@@ -213,7 +213,7 @@ async function parsePRDWithStreaming(
 	);
 
 	// Use the provided tag, or the current active tag, or default to 'master'
-	const targetTag = tag;
+	const targetTag = tag || getCurrentTag(projectRoot) || 'master';
 
 	report(
 		`Parsing PRD file: ${prdPath}, Force: ${force}, Append: ${append}, Research: ${research}`,
