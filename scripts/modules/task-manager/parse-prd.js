@@ -17,8 +17,6 @@ import {
 } from '../../../src/ui/parse-prd.js';
 
 import {
-	disableSilentMode,
-	enableSilentMode,
 	ensureTagMetadata,
 	findTaskById,
 	getCurrentTag,
