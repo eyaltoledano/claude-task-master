@@ -282,9 +282,16 @@ function normalizeTaskIds(tasks) {
 		if (Array.isArray(task.subtasks)) {
 			task.subtasks.forEach(subtask => {
 				if (subtask.id !== undefined) {
-					const parsedSubtaskId = parseInt(subtask.id, 10);
-					if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
-						subtask.id = parsedSubtaskId;
+					// Check for dot notation (which shouldn't exist in storage)
+					if (typeof subtask.id === 'string' && subtask.id.includes('.')) {
+						// Extract the subtask part after the dot
+						const parts = subtask.id.split('.');
+						subtask.id = parseInt(parts[parts.length - 1], 10);
+					} else {
+						const parsedSubtaskId = parseInt(subtask.id, 10);
+						if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
+							subtask.id = parsedSubtaskId;
+						}
 					}
 				}
 			});
@@ -432,6 +439,13 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 		// Store reference to the raw tagged data for functions that need it
 		const originalTaggedData = JSON.parse(JSON.stringify(data));
+		
+		// Normalize IDs in all tags before storing as originalTaggedData
+		for (const tagName in originalTaggedData) {
+			if (originalTaggedData[tagName] && Array.isArray(originalTaggedData[tagName].tasks)) {
+				normalizeTaskIds(originalTaggedData[tagName].tasks);
+			}
+		}
 
 		// Check and auto-switch git tags if enabled (for existing tagged format)
 		// This needs to run synchronously BEFORE tag resolution

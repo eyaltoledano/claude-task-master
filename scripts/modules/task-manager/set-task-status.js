@@ -7,8 +7,7 @@ import {
 	readJSON,
 	writeJSON,
 	findTaskById,
-	ensureTagMetadata,
-	normalizeTaskIds
+	ensureTagMetadata
 } from '../utils.js';
 import { displayBanner } from '../ui.js';
 import { validateTaskDependencies } from '../dependency-manager.js';
@@ -77,8 +76,6 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 			tag,
 			_rawTaggedData: rawData
 		};
-		
-		normalizeTaskIds(data.tasks);
 
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);

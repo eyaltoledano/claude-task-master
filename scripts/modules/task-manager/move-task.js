@@ -1,5 +1,5 @@
 import path from 'path';
-import { log, readJSON, writeJSON, setTasksForTag, normalizeTaskIds } from '../utils.js';
+import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
@@ -79,8 +79,6 @@ async function moveTask(
 
 	// Get the tasks for the current tag
 	const tasks = rawData[tag].tasks;
-	
-	normalizeTaskIds(tasks);
 
 	log(
 		'info',
