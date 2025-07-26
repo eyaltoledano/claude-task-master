@@ -492,7 +492,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
-					normalizeTaskIds(data.tasks);
+					normalizeTaskIds(masterData.tasks);
 
 					if (isDebug) {
 						console.log(
