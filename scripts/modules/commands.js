@@ -1564,8 +1564,8 @@ function registerCommands(programInstance) {
 		) // Allow file override
 		.option(
 			'-cr, --complexity-report <file>',
-			'Path to the report file',
-			COMPLEXITY_REPORT_FILE
+			'Path to the complexity report file (use this to specify the complexity report, not --file)'
+			// Removed default value to allow tag-specific auto-detection
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
