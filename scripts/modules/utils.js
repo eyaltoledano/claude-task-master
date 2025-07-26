@@ -270,16 +270,22 @@ function normalizeTaskIds(tasks) {
 	if (!Array.isArray(tasks)) return;
   
 	tasks.forEach(task => {
-		// Convert task ID to number
+		// Convert task ID to number with validation
 		if (task.id !== undefined) {
-			task.id = parseInt(task.id, 10);
+			const parsedId = parseInt(task.id, 10);
+			if (!isNaN(parsedId) && parsedId > 0) {
+				task.id = parsedId;
+			}
 		}
   
-		// Convert subtask IDs to numbers
+		// Convert subtask IDs to numbers with validation
 		if (Array.isArray(task.subtasks)) {
 			task.subtasks.forEach(subtask => {
 				if (subtask.id !== undefined) {
-					subtask.id = parseInt(subtask.id, 10);
+					const parsedSubtaskId = parseInt(subtask.id, 10);
+					if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
+						subtask.id = parsedSubtaskId;
+					}
 				}
 			});
 		}
