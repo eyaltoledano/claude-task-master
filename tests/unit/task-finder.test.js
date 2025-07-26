@@ -23,6 +23,47 @@ describe('Task Finder', () => {
 			expect(result.originalSubtaskCount).toBeNull();
 		});
 
+		test('should find tasks when JSON contains string IDs (normalized to numbers)', () => {
+			// Simulate tasks loaded from JSON with string IDs
+			const tasksWithStringIds = [
+				{ id: "1", title: 'First Task' },
+				{ id: "2", title: 'Second Task', subtasks: [
+					{ id: "1", title: 'Subtask One' },
+					{ id: "2", title: 'Subtask Two' }
+				]},
+				{ id: "5", title: 'Fifth Task' }
+			];
+			
+			// The readJSON function should normalize these IDs to numbers
+			// For this test, we'll manually normalize them to simulate what happens
+			tasksWithStringIds.forEach(task => {
+				task.id = parseInt(task.id, 10);
+				if (task.subtasks) {
+					task.subtasks.forEach(subtask => {
+						subtask.id = parseInt(subtask.id, 10);
+					});
+				}
+			});
+
+			// Test finding tasks by numeric ID
+			const result1 = findTaskById(tasksWithStringIds, 5);
+			expect(result1.task).toBeDefined();
+			expect(result1.task.id).toBe(5);
+			expect(result1.task.title).toBe('Fifth Task');
+
+			// Test finding tasks by string ID  
+			const result2 = findTaskById(tasksWithStringIds, '5');
+			expect(result2.task).toBeDefined();
+			expect(result2.task.id).toBe(5);
+
+			// Test finding subtasks
+			const result3 = findTaskById(tasksWithStringIds, '2.1');
+			expect(result3.task).toBeDefined();
+			expect(result3.task.id).toBe(1);
+			expect(result3.task.title).toBe('Subtask One');
+			expect(result3.task.isSubtask).toBe(true);
+		});
+
 		test('should find a subtask using dot notation', () => {
 			const result = findTaskById(sampleTasks.tasks, '3.1');
 			expect(result.task).toBeDefined();
