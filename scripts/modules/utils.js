@@ -529,6 +529,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// If anything goes wrong, try to return master or empty
 			const masterData = data.master;
 			if (masterData && masterData.tasks) {
+				normalizeTaskIds(masterData.tasks);
 				return {
 					...masterData,
 					_rawTaggedData: originalTaggedData
@@ -1448,5 +1449,6 @@ export {
 	createStateJson,
 	markMigrationForNotice,
 	flattenTasksWithSubtasks,
-	ensureTagMetadata
+	ensureTagMetadata,
+	normalizeTaskIds
 };

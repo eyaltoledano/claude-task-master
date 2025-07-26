@@ -22,7 +22,8 @@ import {
 	truncate,
 	ensureTagMetadata,
 	performCompleteTagMigration,
-	markMigrationForNotice
+	markMigrationForNotice,
+	normalizeTaskIds
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
@@ -69,6 +70,7 @@ function getAllTasks(rawData) {
 			rawData[tagName] &&
 			Array.isArray(rawData[tagName].tasks)
 		) {
+			normalizeTaskIds(rawData[tagName].tasks);
 			allTasks = allTasks.concat(rawData[tagName].tasks);
 		}
 	}
@@ -306,6 +308,8 @@ async function addTask(
 
 		// Find the highest task ID *within the target tag* to determine the next ID
 		const tasksInTargetTag = rawData[targetTag].tasks;
+		
+		normalizeTaskIds(tasksInTargetTag);
 		const highestId =
 			tasksInTargetTag.length > 0
 				? Math.max(...tasksInTargetTag.map((t) => t.id))
