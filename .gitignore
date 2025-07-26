@@ -87,3 +87,6 @@ dev-debug.log
 *.njsproj
 *.sln
 *.sw?
+
+# apps/extension
+apps/extension/vsix-build/

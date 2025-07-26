@@ -1,0 +1,203 @@
+name: Extension CI
+
+on:
+  push:
+    branches:
+      - main
+      - next
+    paths:
+      - 'apps/extension/**'
+      - '.github/workflows/extension-ci.yml'
+  pull_request:
+    branches:
+      - main
+      - next
+    paths:
+      - 'apps/extension/**'
+      - '.github/workflows/extension-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=${{ runner.os }}-extension-pnpm-${{ hashFiles('apps/extension/pnpm-lock.yaml') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            apps/extension/node_modules
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-extension-pnpm-
+
+      - name: Install Extension Dependencies
+        working-directory: apps/extension
+        run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
+
+  lint-and-typecheck:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Restore pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            apps/extension/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install if cache miss
+        working-directory: apps/extension
+        run: pnpm install --frozen-lockfile --prefer-offline
+        timeout-minutes: 3
+
+      - name: Lint Extension
+        working-directory: apps/extension
+        run: pnpm run lint
+        env:
+          FORCE_COLOR: 1
+
+      - name: Type Check Extension
+        working-directory: apps/extension
+        run: pnpm run check-types
+        env:
+          FORCE_COLOR: 1
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Restore pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            apps/extension/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install if cache miss
+        working-directory: apps/extension
+        run: pnpm install --frozen-lockfile --prefer-offline
+        timeout-minutes: 3
+
+      - name: Build Extension
+        working-directory: apps/extension
+        run: pnpm run build
+        env:
+          FORCE_COLOR: 1
+
+      - name: Package Extension
+        working-directory: apps/extension
+        run: pnpm run package
+        env:
+          FORCE_COLOR: 1
+
+      - name: Verify Package Contents
+        working-directory: apps/extension
+        run: |
+          echo "Checking vsix-build contents..."
+          ls -la vsix-build/
+          echo "Checking dist contents..."
+          ls -la vsix-build/dist/
+          echo "Checking package.json exists..."
+          test -f vsix-build/package.json
+
+      - name: Create VSIX Package (Test)
+        working-directory: apps/extension/vsix-build
+        run: pnpm exec vsce package --no-dependencies
+        env:
+          FORCE_COLOR: 1
+
+      - name: Upload Extension Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: |
+            apps/extension/vsix-build/*.vsix
+            apps/extension/dist/
+          retention-days: 30
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Restore pnpm dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            apps/extension/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install if cache miss
+        working-directory: apps/extension
+        run: pnpm install --frozen-lockfile --prefer-offline
+        timeout-minutes: 3
+
+      - name: Run Extension Tests
+        working-directory: apps/extension
+        run: xvfb-run -a pnpm run test
+        env:
+          CI: true
+          FORCE_COLOR: 1
+        timeout-minutes: 10
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-test-results
+          path: apps/extension/test-results
+          retention-days: 30

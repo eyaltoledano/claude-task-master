@@ -332,9 +332,9 @@
 				"input": 1.0,
 				"output": 3.0
 			},
-			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 16384,
-			"supported": true
+					"allowed_roles": ["main", "fallback"],
+		"max_tokens": 16384,
+		"supported": true
 		},
 		{
 			"id": "llama-3.3-70b-versatile",
