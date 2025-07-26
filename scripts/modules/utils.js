@@ -474,7 +474,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
-				normalizeTaskIds(data.tasks);
+				normalizeTaskIds(tagData.tasks);
 
 				// Add the _rawTaggedData property and the resolved tag to the returned data
 				const result = {
