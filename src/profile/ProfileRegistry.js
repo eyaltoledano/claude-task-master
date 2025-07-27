@@ -2,6 +2,7 @@
  * @fileoverview Centralized registry for managing Profile instances
  */
 
+import { ProfileError } from './ProfileError.js';
 import {
 	ProfileNotFoundError,
 	ProfileRegistrationError
@@ -133,11 +134,11 @@ class ProfileRegistry {
 	 * Clear all registered profiles (for testing)
 	 * Only available when registry is not sealed
 	 *
-	 * @throws {Error} If registry is sealed
+	 * @throws {ProfileError} If registry is sealed
 	 */
 	reset() {
 		if (this._sealed) {
-			throw new Error('Cannot reset sealed registry');
+			throw new ProfileError('Cannot reset sealed registry');
 		}
 		this._profiles.clear();
 	}
