@@ -55,11 +55,20 @@ async function removeZedContextServers(projectRoot) {
 			// Remove taskmaster entry
 			delete config.taskmaster;
 
-			// Write back the updated config
-			fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-			console.log(
-				`Taskmaster context server removed from Zed configuration: ${configPath}`
-			);
+			// Check if config is now empty
+			if (Object.keys(config).length === 0) {
+				// Remove the empty file
+				fs.unlinkSync(configPath);
+				console.log(
+					`Removed empty context servers configuration: ${configPath}`
+				);
+			} else {
+				// Write back the updated config
+				fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+				console.log(
+					`Taskmaster context server removed from Zed configuration: ${configPath}`
+				);
+			}
 		} catch (error) {
 			console.warn(`Warning: Could not update ${configPath}:`, error.message);
 		}
