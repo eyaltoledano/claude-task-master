@@ -1,18 +1,70 @@
 // VS Code profile using ProfileBuilder system
 import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
+import fs from 'fs';
+import path from 'path';
+
 // VS Code schema integration function
 async function setupSchemaIntegration(projectRoot) {
-	// Schema integration logic for VS Code
-	// This function sets up VS Code-specific schema integration
 	try {
-		console.log(`Setting up VS Code schema integration for ${projectRoot}`);
-		// Add any VS Code-specific schema setup here
-	} catch (error) {
-		console.error(
-			`Failed to setup VS Code schema integration: ${error.message}`
+		const vscodeDir = path.join(projectRoot, '.vscode');
+		const settingsPath = path.join(vscodeDir, 'settings.json');
+
+		// Only proceed if .vscode directory exists or can be created
+		try {
+			if (!fs.existsSync(vscodeDir)) {
+				fs.mkdirSync(vscodeDir, { recursive: true });
+			}
+		} catch (error) {
+			console.warn(`Could not create .vscode directory: ${error.message}`);
+			return; // Skip schema setup if directory can't be created
+		}
+
+		// Initialize settings object
+		let settings = {};
+		if (fs.existsSync(settingsPath)) {
+			try {
+				settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+			} catch (error) {
+				console.warn('Could not parse existing settings.json, skipping schema setup');
+				return; // Don't overwrite corrupted settings
+			}
+		}
+
+		// Initialize json.schemas array if it doesn't exist
+		if (!settings['json.schemas']) {
+			settings['json.schemas'] = [];
+		}
+
+		// Add schema for tasks.json if not already present
+		const tasksSchema = {
+			fileMatch: ['**/tasks.json'],
+			url: 'https://json.schemastore.org/tasks.json'
+		};
+
+		const schemaExists = settings['json.schemas'].some(schema => 
+			schema.fileMatch && 
+			Array.isArray(schema.fileMatch) && 
+			schema.fileMatch.includes('**/tasks.json')
 		);
-		throw error;
+
+		if (!schemaExists) {
+			settings['json.schemas'].push(tasksSchema);
+			
+			try {
+				fs.writeFileSync(
+					settingsPath,
+					JSON.stringify(settings, null, 2) + '\n',
+					'utf8'
+				);
+				console.log('VS Code schema integration complete');
+			} catch (error) {
+				console.warn(`Could not update settings.json: ${error.message}`);
+			}
+		}
+
+	} catch (error) {
+		console.warn(`VS Code schema integration failed: ${error.message}`);
 	}
 }
 
