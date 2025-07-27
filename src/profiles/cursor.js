@@ -36,9 +36,7 @@ const cursorProfile = ProfileBuilder.minimal('cursor')
 		toolGroups: [],
 
 		// File reference mappings (cursor uses standard file references)
-		fileReferences: [],
-
-		globalReplacements: []
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Cursor-specific path transformations - add taskmaster subdirectory
