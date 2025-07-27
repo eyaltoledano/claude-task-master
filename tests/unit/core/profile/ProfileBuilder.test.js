@@ -391,6 +391,16 @@ describe('ProfileBuilder', () => {
 			// so { 123: 'target.md' } becomes { "123": 'target.md' }
 			// This is expected JS behavior, so we only test invalid values
 
+			// Verify numeric keys are handled correctly
+			expect(() =>
+				builder
+					.withName('test')
+					.rulesDir('.test/rules')
+					.profileDir('.test')
+					.fileMap({ 123: 'target.md' }) // numeric key
+					.build()
+			).not.toThrow();
+
 			// Valid file map should work
 			expect(() =>
 				builder
