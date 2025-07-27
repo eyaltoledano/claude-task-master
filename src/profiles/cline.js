@@ -43,10 +43,7 @@ const clineProfile = ProfileBuilder.minimal('cline')
 		toolGroups: [],
 
 		// File reference mappings (cline uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'cline.bot/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Directory structure changes
