@@ -56,11 +56,17 @@ describe('Gemini Profile Initialization Functionality', () => {
 	});
 
 	test('gemini.js has implementation with ProfileBuilder', () => {
-		// With ProfileBuilder system, the profile will be more verbose but structured
-		const lines = geminiProfileContent.split('\n');
-		const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
-		// ProfileBuilder profiles are more detailed than the simple factory patterns
-		expect(nonEmptyLines.length).toBeGreaterThan(20);
-		expect(nonEmptyLines.length).toBeLessThan(80); // But still reasonable
+		// Verify ProfileBuilder structure is present
+		expect(geminiProfileContent).toContain('ProfileBuilder.minimal');
+		expect(geminiProfileContent).toContain('.build()');
+
+		// Check for required profile configuration
+		expect(geminiProfileContent).toContain('.display(');
+		expect(geminiProfileContent).toContain('.profileDir(');
+		expect(geminiProfileContent).toContain('.rulesDir(');
+		expect(geminiProfileContent).toContain('.includeDefaultRules(');
+
+		// Check for proper export
+		expect(geminiProfileContent).toMatch(/export\s+const\s+geminiProfile\s*=/);
 	});
 });
