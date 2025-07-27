@@ -34,6 +34,7 @@
  * @property {ProfileHooks} [hooks] - Lifecycle hook functions
  * @property {boolean} [includeDefaultRules] - Whether to include default rule files
  * @property {boolean} [supportsRulesSubdirectories] - Whether to use subdirectories for rules
+ * @property {string} [targetExtension] - Target file extension for rules (e.g., '.md', '.instructions.md')
  */
 
 /**
