@@ -12,7 +12,10 @@ jest.mock('../../../src/profiles/vscode.js', () => {
 		...actualModule,
 		vscodeProfile: {
 			...actualModule.vscodeProfile,
-			onAddRulesProfile: mockSetupSchemaIntegration
+			hooks: {
+				...actualModule.vscodeProfile.hooks,
+				onAdd: mockSetupSchemaIntegration
+			}
 		}
 	};
 });
