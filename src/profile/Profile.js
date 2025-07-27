@@ -31,13 +31,13 @@ export default class Profile {
 		this.mcpConfig = this._deriveMcpConfigBoolean(config.mcpConfig);
 		this.hooks = config.hooks ?? {};
 
-		// Legacy compatibility properties
+		// Core profile behavior properties
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
 		this.supportsRulesSubdirectories =
 			config.supportsRulesSubdirectories ?? false;
 		this.targetExtension = config.targetExtension ?? '.md';
 
-		// Computed properties for legacy compatibility
+		// Computed MCP configuration properties
 		this.mcpConfigName = this._computeMcpConfigName();
 		this.mcpConfigPath = this._computeMcpConfigPath();
 
@@ -210,7 +210,7 @@ export default class Profile {
 	// Private helper methods
 
 	/**
-	 * Compute MCP config name for legacy compatibility
+	 * Compute MCP config name from configuration
 	 * @private
 	 */
 	_computeMcpConfigName() {
@@ -225,7 +225,7 @@ export default class Profile {
 	}
 
 	/**
-	 * Compute MCP config path for legacy compatibility
+	 * Compute MCP config path from configuration
 	 * @private
 	 */
 	_computeMcpConfigPath() {

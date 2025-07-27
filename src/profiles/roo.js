@@ -185,6 +185,3 @@ const rooProfile = ProfileBuilder.minimal('roo')
 
 // Export the roo profile
 export { rooProfile };
-
-// Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };

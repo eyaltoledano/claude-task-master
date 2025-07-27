@@ -214,6 +214,3 @@ const opencodeProfile = ProfileBuilder.minimal('opencode')
 
 // Export the opencode profile
 export { opencodeProfile };
-
-// Export lifecycle functions separately to avoid naming conflicts
-export { onPostConvertRulesProfile, onRemoveRulesProfile };

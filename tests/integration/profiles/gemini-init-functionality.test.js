@@ -66,7 +66,7 @@ describe('Gemini Profile Initialization Functionality', () => {
 		expect(geminiProfileContent).toContain('.rulesDir(');
 		expect(geminiProfileContent).toContain('.includeDefaultRules(');
 
-		// Check for proper export
-		expect(geminiProfileContent).toMatch(/export\s+const\s+geminiProfile\s*=/);
+		// Check for proper export (using destructured export pattern)
+		expect(geminiProfileContent).toMatch(/export\s*\{\s*geminiProfile\s*\}/);
 	});
 });
