@@ -370,10 +370,14 @@ Task Master specific VS Code instruction.`;
 
 		test('schema integration handles errors gracefully', async () => {
 			// Arrange - mock file system to throw an error
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-			const mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {
-				throw new Error('Permission denied');
-			});
+			const consoleWarnSpy = jest
+				.spyOn(console, 'warn')
+				.mockImplementation(() => {});
+			const mockMkdirSync = jest
+				.spyOn(fs, 'mkdirSync')
+				.mockImplementation(() => {
+					throw new Error('Permission denied');
+				});
 
 			try {
 				// Act - call with an error condition
