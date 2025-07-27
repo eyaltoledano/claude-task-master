@@ -321,30 +321,44 @@ Task Master specific VS Code instruction.`;
 			jest.clearAllMocks();
 		});
 
-		test('setupSchemaIntegration is called with project root', async () => {
-			// Test the actual schema integration behavior by calling the profile function
-			// Since we can't mock the frozen Profile, we'll test the integration works
-
-			// Arrange - set up console spy to capture schema integration output
+		test('setupSchemaIntegration completes successfully', async () => {
+			// Arrange - mock file system operations
 			const consoleSpy = jest
 				.spyOn(console, 'log')
+				.mockImplementation(() => {});
+			const mockMkdirSync = jest
+				.spyOn(fs, 'mkdirSync')
+				.mockImplementation(() => {});
+			const mockExistsSync = jest
+				.spyOn(fs, 'existsSync')
+				.mockReturnValue(false);
+			const mockWriteFileSync = jest
+				.spyOn(fs, 'writeFileSync')
 				.mockImplementation(() => {});
 
 			try {
 				// Act - call the actual profile function
 				await vscodeProfile.hooks.onAdd(tempDir);
 
-				// Assert - verify the schema integration was executed
-				// Look for the expected console output from setupSchemaIntegration
-				expect(consoleSpy).toHaveBeenCalledWith(
-					expect.stringContaining('Setting up VS Code schema integration')
+				// Assert - verify the schema integration completed successfully
+				expect(mockMkdirSync).toHaveBeenCalledWith(
+					expect.stringContaining('.vscode'),
+					{ recursive: true }
+				);
+				expect(mockWriteFileSync).toHaveBeenCalledWith(
+					expect.stringContaining('settings.json'),
+					expect.any(String),
+					'utf8'
 				);
 				expect(consoleSpy).toHaveBeenCalledWith(
-					expect.stringContaining(tempDir)
+					'VS Code schema integration complete'
 				);
 			} finally {
 				// Clean up
 				consoleSpy.mockRestore();
+				mockMkdirSync.mockRestore();
+				mockExistsSync.mockRestore();
+				mockWriteFileSync.mockRestore();
 			}
 		});
 
@@ -355,26 +369,24 @@ Task Master specific VS Code instruction.`;
 		});
 
 		test('schema integration handles errors gracefully', async () => {
-			// Test error handling by providing an invalid project root
-			// This should cause the schema integration to handle the error gracefully
+			// Arrange - mock file system to throw an error
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+			const mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {
+				throw new Error('Permission denied');
+			});
 
-			// Arrange - set up console spy to capture error output
-			const consoleErrorSpy = jest
-				.spyOn(console, 'error')
-				.mockImplementation(() => {});
-
-			// Act & Assert - call with invalid path and expect it to handle gracefully
-			// The function should either succeed or throw a descriptive error
 			try {
-				await vscodeProfile.hooks.onAdd('/invalid/nonexistent/path');
-				// If it succeeds, that's fine - the function is robust
-			} catch (error) {
-				// If it throws, verify it's a meaningful error
-				expect(error.message).toBeDefined();
-				expect(typeof error.message).toBe('string');
+				// Act - call with an error condition
+				await vscodeProfile.hooks.onAdd(tempDir);
+
+				// Assert - verify the error was handled gracefully
+				expect(consoleWarnSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Could not create .vscode directory')
+				);
 			} finally {
 				// Clean up
-				consoleErrorSpy.mockRestore();
+				consoleWarnSpy.mockRestore();
+				mockMkdirSync.mockRestore();
 			}
 		});
 	});
