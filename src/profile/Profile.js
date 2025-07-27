@@ -22,33 +22,43 @@ export default class Profile {
 
 		// Optional properties with defaults
 		this.displayName = config.displayName ?? config.profileName;
-		this.fileMap = config.fileMap ?? {};
-		this.conversionConfig = config.conversionConfig ?? {};
-		this.globalReplacements = config.globalReplacements ?? [];
+		this.fileMap = Object.freeze(config.fileMap ?? {});
+		this.conversionConfig = Object.freeze(config.conversionConfig ?? {});
+		this.globalReplacements = Object.freeze(config.globalReplacements ?? []);
+		this.hooks = Object.freeze(config.hooks ?? {});
 
-		// Store MCP config and derive boolean
+		// MCP configuration
 		this._mcpConfigRaw = config.mcpConfig;
 		this.mcpConfig = this._deriveMcpConfigBoolean(config.mcpConfig);
-		this.hooks = config.hooks ?? {};
 
-		// Core profile behavior properties
+		// Core profile behavior
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
 		this.supportsRulesSubdirectories =
 			config.supportsRulesSubdirectories ?? false;
 		this.targetExtension = config.targetExtension ?? '.md';
 
-		// Computed MCP configuration properties
+		// Computed properties
 		this.mcpConfigName = this._computeMcpConfigName();
 		this.mcpConfigPath = this._computeMcpConfigPath();
 
-		// Freeze nested objects for immutability
-		Object.freeze(this.fileMap);
-		Object.freeze(this.conversionConfig);
-		Object.freeze(this.globalReplacements);
-		Object.freeze(this.hooks);
-
-		// Always freeze the instance for immutability (lifecycle properties are already configurable)
+		// Freeze the instance for immutability
 		Object.freeze(this);
+	}
+
+	/**
+	 * Handle operation errors consistently
+	 * @private
+	 * @param {string} operation - Operation type
+	 * @param {Error} error - Error object
+	 * @throws {ProfileOperationError}
+	 */
+	_handleOperationError(operation, error) {
+		throw new ProfileOperationError(
+			operation,
+			this.profileName,
+			error.message,
+			error
+		);
 	}
 
 	/**
@@ -69,12 +79,7 @@ export default class Profile {
 				filesProcessed: Object.keys(this.fileMap).length
 			};
 		} catch (error) {
-			throw new ProfileOperationError(
-				'install',
-				this.profileName,
-				error.message,
-				error
-			);
+			this._handleOperationError('install', error);
 		}
 	}
 
@@ -94,12 +99,7 @@ export default class Profile {
 				success: true
 			};
 		} catch (error) {
-			throw new ProfileOperationError(
-				'remove',
-				this.profileName,
-				error.message,
-				error
-			);
+			this._handleOperationError('remove', error);
 		}
 	}
 
@@ -120,12 +120,7 @@ export default class Profile {
 				success: true
 			};
 		} catch (error) {
-			throw new ProfileOperationError(
-				'convert',
-				this.profileName,
-				error.message,
-				error
-			);
+			this._handleOperationError('convert', error);
 		}
 	}
 
@@ -137,38 +132,33 @@ export default class Profile {
 	 * @returns {string} Formatted summary message
 	 */
 	summary(operation, result) {
-		const baseName = this.displayName;
-
 		if (!result.success) {
-			return `${baseName}: Failed - ${result.error || 'Unknown error'}`;
+			return `${this.displayName}: Failed - ${result.error || 'Unknown error'}`;
 		}
 
-		switch (operation) {
-			case 'add':
+		// Operation-specific summary functions
+		const operationSummaries = {
+			add: () => {
 				if (!this.includeDefaultRules) {
-					// Integration guide profiles
-					return `${baseName}: Integration guide installed`;
-				} else {
-					// Standard rule profiles
-					const processed = result.filesProcessed || 0;
-					const skipped = result.filesSkipped || 0;
-					return `${baseName}: ${processed} files processed${skipped > 0 ? `, ${skipped} skipped` : ''}`;
+					return `${this.displayName}: Integration guide installed`;
 				}
-
-			case 'remove':
+				const processed = result.filesProcessed || 0;
+				const skipped = result.filesSkipped || 0;
+				return `${this.displayName}: ${processed} files processed${skipped > 0 ? `, ${skipped} skipped` : ''}`;
+			},
+			remove: () => {
 				const notice = result.notice ? ` (${result.notice})` : '';
-				if (!this.includeDefaultRules) {
-					return `${baseName}: Integration guide removed${notice}`;
-				} else {
-					return `${baseName}: Rule profile removed${notice}`;
-				}
+				return this.includeDefaultRules
+					? `${this.displayName}: Rule profile removed${notice}`
+					: `${this.displayName}: Integration guide removed${notice}`;
+			},
+			convert: () => `${this.displayName}: Rules converted successfully`,
+			default: () => `${this.displayName}: ${operation} completed`
+		};
 
-			case 'convert':
-				return `${baseName}: Rules converted successfully`;
-
-			default:
-				return `${baseName}: ${operation} completed`;
-		}
+		const summaryFn =
+			operationSummaries[operation] || operationSummaries.default;
+		return summaryFn();
 	}
 
 	/**
@@ -210,18 +200,28 @@ export default class Profile {
 	// Private helper methods
 
 	/**
+	 * Normalize file paths by joining segments and removing duplicate slashes
+	 * @private
+	 * @param {...string} segments - Path segments to join
+	 * @returns {string} Normalized path
+	 */
+	_normalizePath(...segments) {
+		return segments
+			.filter(Boolean)
+			.join('/')
+			.replace(/\/+/g, '/')
+			.replace(/\/$/, '');
+	}
+
+	/**
 	 * Compute MCP config name from configuration
 	 * @private
 	 */
 	_computeMcpConfigName() {
 		if (!this.mcpConfig) return null;
-		if (
-			typeof this._mcpConfigRaw === 'object' &&
-			this._mcpConfigRaw.configName
-		) {
-			return this._mcpConfigRaw.configName;
-		}
-		return 'mcp.json';
+		const { configName = 'mcp.json' } =
+			typeof this._mcpConfigRaw === 'object' ? this._mcpConfigRaw : {};
+		return configName;
 	}
 
 	/**
@@ -229,15 +229,12 @@ export default class Profile {
 	 * @private
 	 */
 	_computeMcpConfigPath() {
-		if (!this.mcpConfigName) return null;
-
-		// Handle root directory case - return just the filename
-		if (this.profileDir === '.') {
-			return this.mcpConfigName;
-		}
-
-		// For other directories, join them properly
-		return `${this.profileDir}/${this.mcpConfigName}`.replace(/\/+/g, '/');
+		return this.mcpConfigName
+			? this._normalizePath(
+					this.profileDir === '.' ? '' : this.profileDir,
+					this.mcpConfigName
+				)
+			: null;
 	}
 
 	/**
@@ -247,8 +244,7 @@ export default class Profile {
 	 */
 	_deriveMcpConfigBoolean(config) {
 		if (config === true) return true;
-		if (config === false || config === null || config === undefined)
-			return false;
-		return typeof config === 'object' && config !== null;
+		if (config === false || config == null) return false;
+		return typeof config === 'object';
 	}
 }
