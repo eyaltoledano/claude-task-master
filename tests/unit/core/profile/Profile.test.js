@@ -249,7 +249,7 @@ describe('Profile', () => {
 			const result = { success: true, filesProcessed: 5, filesSkipped: 2 };
 			const summary = profile.summary('add', result);
 
-			expect(summary).toBe('Test Profile: 5 files processed, 2 skipped');
+			expect(summary).toBe('Test Profile: [OK] 5 files processed, 2 skipped');
 		});
 
 		it('should generate summary for add operation without skipped files', () => {
@@ -264,7 +264,7 @@ describe('Profile', () => {
 			const result = { success: true, filesProcessed: 3 };
 			const summary = profile.summary('add', result);
 
-			expect(summary).toBe('Test Profile: 3 files processed');
+			expect(summary).toBe('Test Profile: [OK] 3 files processed');
 		});
 
 		it('should generate summary for add operation for integration guide profile', () => {
@@ -279,7 +279,9 @@ describe('Profile', () => {
 			const result = { success: true };
 			const summary = profile.summary('add', result);
 
-			expect(summary).toBe('Test Integration: Integration guide installed');
+			expect(summary).toBe(
+				'Test Integration: [OK] Integration guide installed'
+			);
 		});
 
 		it('should generate summary for remove operation', () => {
@@ -291,11 +293,15 @@ describe('Profile', () => {
 				includeDefaultRules: true
 			});
 
-			const result = { success: true, notice: 'Preserved 2 existing files' };
+			const result = {
+				success: true,
+				filesRemoved: 5,
+				notice: 'Preserved 2 existing files'
+			};
 			const summary = profile.summary('remove', result);
 
 			expect(summary).toBe(
-				'Test Profile: Rule profile removed (Preserved 2 existing files)'
+				'Test Profile: [OK] rule profile removed (5 files deleted) - Preserved 2 existing files'
 			);
 		});
 
@@ -310,7 +316,7 @@ describe('Profile', () => {
 			const result = { success: false, error: 'File not found' };
 			const summary = profile.summary('add', result);
 
-			expect(summary).toBe('Test Profile: Failed - File not found');
+			expect(summary).toBe('Test Profile: [ERROR] Failed - File not found');
 		});
 
 		it('should generate summary for convert operation', () => {
@@ -321,10 +327,12 @@ describe('Profile', () => {
 				profileDir: '.test'
 			});
 
-			const result = { success: true };
+			const result = { success: true, filesConverted: 3 };
 			const summary = profile.summary('convert', result);
 
-			expect(summary).toBe('Test Profile: Rules converted successfully');
+			expect(summary).toBe(
+				'Test Profile: [OK] Rules converted successfully (3 files)'
+			);
 		});
 	});
 

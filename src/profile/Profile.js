@@ -133,27 +133,145 @@ export default class Profile {
 	 */
 	summary(operation, result) {
 		if (!result.success) {
-			return `${this.displayName}: Failed - ${result.error || 'Unknown error'}`;
+			const errorDetails = result.error || 'Unknown error';
+			const context = result.context ? ` (${result.context})` : '';
+			return `${this.displayName}: [ERROR] Failed - ${errorDetails}${context}`;
 		}
 
 		// Operation-specific summary functions
 		const operationSummaries = {
 			add: () => {
 				if (!this.includeDefaultRules) {
-					return `${this.displayName}: Integration guide installed`;
+					// Integration guide profiles
+					const mcpStatus = this.hasMcpConfig()
+						? ' with MCP configuration'
+						: '';
+					const notice = result.notice ? ` (${result.notice})` : '';
+					return `${this.displayName}: [OK] Integration guide installed${mcpStatus}${notice}`;
 				}
+
+				// Standard rule profiles
 				const processed = result.filesProcessed || 0;
 				const skipped = result.filesSkipped || 0;
-				return `${this.displayName}: ${processed} files processed${skipped > 0 ? `, ${skipped} skipped` : ''}`;
+				const total = processed + skipped;
+				const existing = result.filesExisting || 0;
+				const updated = result.filesUpdated || 0;
+
+				// Handle edge cases
+				if (processed === 0 && skipped === 0) {
+					return `${this.displayName}: [WARN] No files processed - profile may already be installed`;
+				}
+
+				if (processed === 0 && skipped > 0) {
+					return `${this.displayName}: [WARN] All ${skipped} files skipped - profile may already be installed`;
+				}
+
+				// Build detailed summary
+				let summary = `${this.displayName}: [OK] ${processed} file${processed !== 1 ? 's' : ''} processed`;
+
+				if (updated > 0) {
+					summary += ` (${updated} updated)`;
+				}
+
+				if (skipped > 0) {
+					summary += `, ${skipped} skipped`;
+				}
+
+				if (existing > 0) {
+					summary += ` (${existing} already existed)`;
+				}
+
+				// Add MCP configuration status
+				if (this.hasMcpConfig() && result.mcpConfigInstalled) {
+					summary += ', MCP config installed';
+				}
+
+				const notice = result.notice ? ` - ${result.notice}` : '';
+				return summary + notice;
 			},
+
 			remove: () => {
-				const notice = result.notice ? ` (${result.notice})` : '';
-				return this.includeDefaultRules
-					? `${this.displayName}: Rule profile removed${notice}`
-					: `${this.displayName}: Integration guide removed${notice}`;
+				const removedCount = result.filesRemoved || 0;
+				const notFoundCount = result.filesNotFound || 0;
+				const total = removedCount + notFoundCount;
+
+				// Handle edge cases
+				if (removedCount === 0 && notFoundCount === 0) {
+					const profileType = this.includeDefaultRules
+						? 'rule profile'
+						: 'integration guide';
+					return `${this.displayName}: [WARN] No files found to remove - ${profileType} may not be installed`;
+				}
+
+				if (removedCount === 0 && notFoundCount > 0) {
+					const profileType = this.includeDefaultRules
+						? 'rule profile'
+						: 'integration guide';
+					return `${this.displayName}: [WARN] ${profileType} not found - may already be removed`;
+				}
+
+				// Build detailed summary
+				const profileType = this.includeDefaultRules
+					? 'rule profile'
+					: 'integration guide';
+				let summary = `${this.displayName}: [OK] ${profileType} removed`;
+
+				if (removedCount > 0) {
+					summary += ` (${removedCount} file${removedCount !== 1 ? 's' : ''} deleted)`;
+				}
+
+				if (notFoundCount > 0) {
+					summary += `, ${notFoundCount} file${notFoundCount !== 1 ? 's' : ''} not found`;
+				}
+
+				// Add MCP configuration removal status
+				if (this.hasMcpConfig() && result.mcpConfigRemoved) {
+					summary += ', MCP config removed';
+				}
+
+				const notice = result.notice ? ` - ${result.notice}` : '';
+				return summary + notice;
 			},
-			convert: () => `${this.displayName}: Rules converted successfully`,
-			default: () => `${this.displayName}: ${operation} completed`
+
+			convert: () => {
+				const converted = result.filesConverted || 0;
+				const skipped = result.filesSkipped || 0;
+				const errors = result.conversionErrors || 0;
+
+				// Handle edge cases
+				if (converted === 0 && skipped === 0 && errors === 0) {
+					return `${this.displayName}: [WARN] No files found to convert`;
+				}
+
+				if (converted === 0 && errors > 0) {
+					return `${this.displayName}: [ERROR] Conversion failed for ${errors} file${errors !== 1 ? 's' : ''}`;
+				}
+
+				// Build detailed summary
+				let summary = `${this.displayName}: [OK] Rules converted successfully`;
+
+				if (converted > 0) {
+					summary += ` (${converted} file${converted !== 1 ? 's' : ''})`;
+				}
+
+				if (skipped > 0) {
+					summary += `, ${skipped} skipped`;
+				}
+
+				if (errors > 0) {
+					summary += `, ${errors} error${errors !== 1 ? 's' : ''}`;
+				}
+
+				const notice = result.notice ? ` - ${result.notice}` : '';
+				return summary + notice;
+			},
+
+			default: () => {
+				const status = result.success ? '[OK]' : '[ERROR]';
+				const notice = result.notice ? ` - ${result.notice}` : '';
+				const duration = result.duration ? ` (${result.duration}ms)` : '';
+				return `${this.displayName}: ${status} ${operation} completed${duration}${notice}`;
+			}
 		};
 
 		const summaryFn =
