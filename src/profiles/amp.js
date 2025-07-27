@@ -192,10 +192,7 @@ const ampProfile = ProfileBuilder.minimal('amp')
 		toolGroups: [],
 
 		// File reference mappings (amp uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'amp.dev/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Core amp directory structure changes
