@@ -48,10 +48,7 @@ const geminiProfile = ProfileBuilder.minimal('gemini')
 		toolGroups: [],
 
 		// File reference mappings (gemini uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'ai.google.dev/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Simple directory structure (files in root)
