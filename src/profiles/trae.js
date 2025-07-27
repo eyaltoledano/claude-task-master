@@ -55,7 +55,7 @@ const traeProfile = ProfileBuilder.minimal('trae')
 		},
 		{
 			from: /\[(.+?)\]\(mdc:\.trae\/rules\/(.+?)\.md\)/g,
-			to: '(.trae/rules/$2.md)'
+			to: '[$1](.trae/rules/$2.md)'
 		}
 	])
 	.build();
