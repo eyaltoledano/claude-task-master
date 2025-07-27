@@ -63,7 +63,7 @@ const clineProfile = ProfileBuilder.minimal('cline')
 		},
 		{
 			from: /\[(.+?)\]\(mdc:\.clinerules\/(.+?)\.md\)/g,
-			to: '(.clinerules/$2.md)'
+			to: '[$1](.clinerules/$2.md)'
 		}
 	])
 	.build();
