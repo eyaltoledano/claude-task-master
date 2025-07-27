@@ -51,12 +51,7 @@ const codexProfile = ProfileBuilder.minimal('codex')
 		toolGroups: [],
 
 		// File reference mappings (codex uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [
-			{ from: /docs\.cursor\.so/g, to: 'github.com/microsoft/vscode/docs' }
-		]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Simple directory structure (files in root)
