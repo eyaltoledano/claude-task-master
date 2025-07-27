@@ -114,10 +114,7 @@ const zedProfile = ProfileBuilder.minimal('zed')
 		toolGroups: [],
 
 		// File reference mappings (zed uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Core Zed directory structure changes
