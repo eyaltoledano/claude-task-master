@@ -42,7 +42,7 @@ const cursorProfile = ProfileBuilder.minimal('cursor')
 		// Cursor-specific path transformations - add taskmaster subdirectory
 		{
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
-			to: '(mdc:.cursor/rules/taskmaster/$2.mdc)'
+			to: '[$1](mdc:.cursor/rules/taskmaster/$2.mdc)'
 		}
 	])
 	.build();
