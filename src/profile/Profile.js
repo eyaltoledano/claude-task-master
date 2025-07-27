@@ -31,26 +31,6 @@ export default class Profile {
 		this.mcpConfig = this._deriveMcpConfigBoolean(config.mcpConfig);
 		this.hooks = config.hooks ?? {};
 
-		// Legacy-compatible lifecycle function properties (define before freeze)
-		Object.defineProperty(this, 'onPostConvertRulesProfile', {
-			value: this.hooks.onPost,
-			writable: true, // Allow tests to override
-			configurable: true, // Allow tests to redefine
-			enumerable: false // Don't show up in Object.freeze checks
-		});
-		Object.defineProperty(this, 'onRemoveRulesProfile', {
-			value: this.hooks.onRemove,
-			writable: true, // Allow tests to override
-			configurable: true, // Allow tests to redefine
-			enumerable: false // Don't show up in Object.freeze checks
-		});
-		Object.defineProperty(this, 'onAddRulesProfile', {
-			value: this.hooks.onAdd,
-			writable: true, // Allow tests to override
-			configurable: true, // Allow tests to redefine
-			enumerable: false // Don't show up in Object.freeze checks
-		});
-
 		// Legacy compatibility properties
 		this.includeDefaultRules = config.includeDefaultRules ?? true;
 		this.supportsRulesSubdirectories =
@@ -189,34 +169,6 @@ export default class Profile {
 			default:
 				return `${baseName}: ${operation} completed`;
 		}
-	}
-
-	/**
-	 * Convert this Profile to legacy object format for compatibility
-	 *
-	 * @returns {Object} Legacy profile object
-	 */
-	toLegacyFormat() {
-		return {
-			profileName: this.profileName,
-			displayName: this.displayName,
-			profileDir: this.profileDir,
-			rulesDir: this.rulesDir,
-			mcpConfig: this.mcpConfig,
-			mcpConfigName: this.mcpConfigName,
-			mcpConfigPath: this.mcpConfigPath,
-			supportsRulesSubdirectories: this.supportsRulesSubdirectories,
-			includeDefaultRules: this.includeDefaultRules,
-			targetExtension: this.targetExtension,
-			fileMap: this.fileMap,
-			globalReplacements: this.globalReplacements,
-			conversionConfig: this.conversionConfig,
-
-			// Legacy lifecycle hooks (sync versions)
-			...(this.hooks.onAdd && { onAddRulesProfile: this.hooks.onAdd }),
-			...(this.hooks.onRemove && { onRemoveRulesProfile: this.hooks.onRemove }),
-			...(this.hooks.onPost && { onPostConvertRulesProfile: this.hooks.onPost })
-		};
 	}
 
 	/**

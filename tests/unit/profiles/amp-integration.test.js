@@ -54,8 +54,8 @@ describe('Amp Profile Integration', () => {
 				'Task Master instructions'
 			);
 
-			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, assetsDir);
+			// Call onAdd hook
+			ampProfile.hooks.onAdd(tempDir, assetsDir);
 
 			// Should only have created .taskmaster directory and AGENT.md
 			expect(fs.existsSync(path.join(tempDir, '.taskmaster'))).toBe(true);
@@ -69,13 +69,13 @@ describe('Amp Profile Integration', () => {
 
 	describe('AGENT.md Import Logic', () => {
 		test('should handle missing source file gracefully', () => {
-			// Call onAddRulesProfile without creating source file
+			// Call onAdd hook without creating source file
 			const assetsDir = path.join(tempDir, 'assets');
 			fs.mkdirSync(assetsDir, { recursive: true });
 
 			// Should not throw error
 			expect(() => {
-				ampProfile.onAddRulesProfile(tempDir, assetsDir);
+				ampProfile.hooks.onAdd(tempDir, assetsDir);
 			}).not.toThrow();
 
 			// Should create default files even without source (expected behavior)
@@ -99,8 +99,8 @@ describe('Amp Profile Integration', () => {
 				'Task Master instructions'
 			);
 
-			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, assetsDir);
+			// Call onAdd hook
+			ampProfile.hooks.onAdd(tempDir, assetsDir);
 
 			// Check that existing content is preserved
 			const updatedContent = fs.readFileSync(
@@ -117,13 +117,13 @@ describe('Amp Profile Integration', () => {
 
 	describe('MCP Configuration Handling', () => {
 		test('should handle missing .vscode directory gracefully', () => {
-			// Call onAddRulesProfile without .vscode directory
+			// Call onAdd hook without .vscode directory
 			const assetsDir = path.join(tempDir, 'assets');
 			fs.mkdirSync(assetsDir, { recursive: true });
 
 			// Should not throw error
 			expect(() => {
-				ampProfile.onAddRulesProfile(tempDir, assetsDir);
+				ampProfile.hooks.onAdd(tempDir, assetsDir);
 			}).not.toThrow();
 		});
 
@@ -138,7 +138,7 @@ describe('Amp Profile Integration', () => {
 
 			// Should not throw error
 			expect(() => {
-				ampProfile.onAddRulesProfile(tempDir, path.join(tempDir, 'assets'));
+				ampProfile.hooks.onAdd(tempDir, path.join(tempDir, 'assets'));
 			}).not.toThrow();
 		});
 
@@ -164,11 +164,8 @@ describe('Amp Profile Integration', () => {
 				JSON.stringify(initialConfig, null, '\t')
 			);
 
-			// Call onPostConvertRulesProfile (which handles MCP transformation)
-			await ampProfile.onPostConvertRulesProfile(
-				tempDir,
-				path.join(tempDir, 'assets')
-			);
+			// Call onPost hook (which handles MCP transformation)
+			await ampProfile.hooks.onPost(tempDir, path.join(tempDir, 'assets'));
 
 			// Check that other settings are preserved
 			const settingsFile = path.join(vscodeDirPath, 'settings.json');
@@ -187,7 +184,7 @@ describe('Amp Profile Integration', () => {
 		test('should handle missing files gracefully during removal', () => {
 			// Should not throw error when removing non-existent files
 			expect(() => {
-				ampProfile.onRemoveRulesProfile(tempDir);
+				ampProfile.hooks.onRemove(tempDir);
 			}).not.toThrow();
 		});
 
@@ -202,7 +199,7 @@ describe('Amp Profile Integration', () => {
 
 			// Should not throw error
 			expect(() => {
-				ampProfile.onRemoveRulesProfile(tempDir);
+				ampProfile.hooks.onRemove(tempDir);
 			}).not.toThrow();
 		});
 
@@ -228,8 +225,8 @@ describe('Amp Profile Integration', () => {
 			// Create another file in .vscode
 			fs.writeFileSync(path.join(vscodeDirPath, 'launch.json'), '{}');
 
-			// Call onRemoveRulesProfile
-			ampProfile.onRemoveRulesProfile(tempDir);
+			// Call onRemove hook
+			ampProfile.hooks.onRemove(tempDir);
 
 			// Check that .vscode directory is preserved
 			expect(fs.existsSync(vscodeDirPath)).toBe(true);
@@ -239,12 +236,12 @@ describe('Amp Profile Integration', () => {
 
 	describe('Lifecycle Function Integration', () => {
 		test('should have all required lifecycle functions', () => {
-			expect(typeof ampProfile.onAddRulesProfile).toBe('function');
-			expect(typeof ampProfile.onRemoveRulesProfile).toBe('function');
-			expect(typeof ampProfile.onPostConvertRulesProfile).toBe('function');
+			expect(typeof ampProfile.hooks.onAdd).toBe('function');
+			expect(typeof ampProfile.hooks.onRemove).toBe('function');
+			expect(typeof ampProfile.hooks.onPost).toBe('function');
 		});
 
-		test('onPostConvertRulesProfile should behave like onAddRulesProfile', async () => {
+		test('onPost hook should behave like onAdd hook', async () => {
 			// Create mock source
 			const assetsDir = path.join(tempDir, 'assets');
 			fs.mkdirSync(assetsDir, { recursive: true });
@@ -253,10 +250,10 @@ describe('Amp Profile Integration', () => {
 				'Task Master instructions'
 			);
 
-			// Call onPostConvertRulesProfile
-			await ampProfile.onPostConvertRulesProfile(tempDir, assetsDir);
+			// Call onPost hook
+			await ampProfile.hooks.onPost(tempDir, assetsDir);
 
-			// Should have same result as onAddRulesProfile
+			// Should have same result as onAdd hook
 			expect(fs.existsSync(path.join(tempDir, '.taskmaster', 'AGENT.md'))).toBe(
 				true
 			);
@@ -289,7 +286,7 @@ describe('Amp Profile Integration', () => {
 
 			// Should not throw error
 			expect(() => {
-				ampProfile.onAddRulesProfile(tempDir, assetsDir);
+				ampProfile.hooks.onAdd(tempDir, assetsDir);
 			}).not.toThrow();
 
 			// Restore original function

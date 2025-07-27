@@ -42,16 +42,6 @@ describe('Windsurf Profile Initialization Functionality', () => {
 		expect(windsurfProfile.mcpConfigPath).toBe('.windsurf/mcp.json');
 	});
 
-	test('windsurf profile provides legacy format conversion', () => {
-		// Test that toLegacyFormat() works correctly
-		const legacyFormat = windsurfProfile.toLegacyFormat();
-
-		expect(legacyFormat.profileName).toBe('windsurf');
-		expect(legacyFormat.displayName).toBe('Windsurf');
-		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
-		expect(legacyFormat.globalReplacements).toBeInstanceOf(Array);
-	});
-
 	test('windsurf profile is immutable', () => {
 		// Test that the profile object is frozen/immutable
 		expect(() => {

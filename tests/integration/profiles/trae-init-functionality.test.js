@@ -37,16 +37,6 @@ describe('Trae Profile Initialization Functionality', () => {
 		expect(traeProfile.mcpConfigPath).toBeNull();
 	});
 
-	test('trae profile provides legacy format conversion', () => {
-		// Test that toLegacyFormat() works correctly
-		const legacyFormat = traeProfile.toLegacyFormat();
-
-		expect(legacyFormat.profileName).toBe('trae');
-		expect(legacyFormat.displayName).toBe('Trae');
-		expect(legacyFormat.conversionConfig).toHaveProperty('profileTerms');
-		expect(legacyFormat.globalReplacements).toBeInstanceOf(Array);
-	});
-
 	test('trae profile is immutable', () => {
 		// Test that the profile object is frozen/immutable
 		expect(() => {

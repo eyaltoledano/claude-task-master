@@ -454,9 +454,9 @@ describe('MCP Configuration Validation', () => {
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
-				expect(typeof profile.onAddRulesProfile).toBe('function');
-				expect(typeof profile.onRemoveRulesProfile).toBe('function');
-				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+				expect(typeof profile.hooks.onAdd).toBe('function');
+				expect(typeof profile.hooks.onRemove).toBe('function');
+				expect(typeof profile.hooks.onPost).toBe('function');
 			}
 		);
 
@@ -469,9 +469,9 @@ describe('MCP Configuration Validation', () => {
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
-				expect(profile.onAddRulesProfile).toBeUndefined(); // OpenCode doesn't have onAdd
-				expect(typeof profile.onRemoveRulesProfile).toBe('function');
-				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
+				expect(profile.hooks.onAdd).toBeUndefined(); // OpenCode doesn't have onAdd
+				expect(typeof profile.hooks.onRemove).toBe('function');
+				expect(typeof profile.hooks.onPost).toBe('function');
 			}
 		);
 
@@ -484,9 +484,9 @@ describe('MCP Configuration Validation', () => {
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
-				expect(profile.onAddRulesProfile).toBeUndefined();
-				expect(profile.onRemoveRulesProfile).toBeUndefined();
-				expect(profile.onPostConvertRulesProfile).toBeUndefined();
+				expect(profile.hooks.onAdd).toBeUndefined();
+				expect(profile.hooks.onRemove).toBeUndefined();
+				expect(profile.hooks.onPost).toBeUndefined();
 			}
 		);
 	});

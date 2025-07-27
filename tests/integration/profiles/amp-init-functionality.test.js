@@ -47,9 +47,9 @@ describe('Amp Profile Init Functionality', () => {
 		});
 
 		test('should have lifecycle functions', () => {
-			expect(typeof ampProfile.onAddRulesProfile).toBe('function');
-			expect(typeof ampProfile.onRemoveRulesProfile).toBe('function');
-			expect(typeof ampProfile.onPostConvertRulesProfile).toBe('function');
+			expect(typeof ampProfile.hooks.onAdd).toBe('function');
+			expect(typeof ampProfile.hooks.onRemove).toBe('function');
+			expect(typeof ampProfile.hooks.onPost).toBe('function');
 		});
 	});
 
@@ -64,7 +64,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, assetsDir);
+			ampProfile.hooks.onAdd(tempDir, assetsDir);
 
 			// Check that AGENT.md was created with import
 			const agentFile = path.join(tempDir, 'AGENT.md');
@@ -95,7 +95,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, assetsDir);
+			ampProfile.hooks.onAdd(tempDir, assetsDir);
 
 			// Check that import was appended
 			const agentFile = path.join(tempDir, 'AGENT.md');
@@ -121,7 +121,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, assetsDir);
+			ampProfile.hooks.onAdd(tempDir, assetsDir);
 
 			// Check that import was not duplicated
 			const agentFile = path.join(tempDir, 'AGENT.md');
@@ -153,10 +153,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onPostConvertRulesProfile (which should transform mcpServers to amp.mcpServers)
-			await ampProfile.onPostConvertRulesProfile(
-				tempDir,
-				path.join(tempDir, 'assets')
-			);
+			await ampProfile.hooks.onPost(tempDir, path.join(tempDir, 'assets'));
 
 			// Check that mcpServers was renamed to amp.mcpServers
 			const settingsFile = path.join(vscodeDirPath, 'settings.json');
@@ -193,7 +190,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onAddRulesProfile
-			ampProfile.onAddRulesProfile(tempDir, path.join(tempDir, 'assets'));
+			ampProfile.hooks.onAdd(tempDir, path.join(tempDir, 'assets'));
 
 			// Check that both sections remain unchanged
 			const settingsFile = path.join(vscodeDirPath, 'settings.json');
@@ -221,7 +218,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onRemoveRulesProfile
-			ampProfile.onRemoveRulesProfile(tempDir);
+			ampProfile.hooks.onRemove(tempDir);
 
 			// Check that .taskmaster/AGENT.md was removed
 			expect(fs.existsSync(path.join(tempDir, '.taskmaster', 'AGENT.md'))).toBe(
@@ -252,7 +249,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onRemoveRulesProfile
-			ampProfile.onRemoveRulesProfile(tempDir);
+			ampProfile.hooks.onRemove(tempDir);
 
 			// Check that AGENT.md was removed
 			expect(fs.existsSync(path.join(tempDir, 'AGENT.md'))).toBe(false);
@@ -279,7 +276,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onRemoveRulesProfile
-			ampProfile.onRemoveRulesProfile(tempDir);
+			ampProfile.hooks.onRemove(tempDir);
 
 			// Check that amp.mcpServers was removed but other settings remain
 			const settingsFile = path.join(vscodeDirPath, 'settings.json');
@@ -312,7 +309,7 @@ describe('Amp Profile Init Functionality', () => {
 			);
 
 			// Call onRemoveRulesProfile
-			ampProfile.onRemoveRulesProfile(tempDir);
+			ampProfile.hooks.onRemove(tempDir);
 
 			// Check that settings.json and .vscode directory were removed
 			expect(fs.existsSync(path.join(vscodeDirPath, 'settings.json'))).toBe(

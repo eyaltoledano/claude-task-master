@@ -332,7 +332,7 @@ Task Master specific VS Code instruction.`;
 
 			try {
 				// Act - call the actual profile function
-				await vscodeProfile.onAddRulesProfile(tempDir);
+				await vscodeProfile.hooks.onAdd(tempDir);
 
 				// Assert - verify the schema integration was executed
 				// Look for the expected console output from setupSchemaIntegration
@@ -350,8 +350,8 @@ Task Master specific VS Code instruction.`;
 
 		test('schema integration function exists and is callable', () => {
 			// Assert that the VS Code profile has the schema integration function
-			expect(vscodeProfile.onAddRulesProfile).toBeDefined();
-			expect(typeof vscodeProfile.onAddRulesProfile).toBe('function');
+			expect(vscodeProfile.hooks.onAdd).toBeDefined();
+			expect(typeof vscodeProfile.hooks.onAdd).toBe('function');
 		});
 
 		test('schema integration handles errors gracefully', async () => {
@@ -366,7 +366,7 @@ Task Master specific VS Code instruction.`;
 			// Act & Assert - call with invalid path and expect it to handle gracefully
 			// The function should either succeed or throw a descriptive error
 			try {
-				await vscodeProfile.onAddRulesProfile('/invalid/nonexistent/path');
+				await vscodeProfile.hooks.onAdd('/invalid/nonexistent/path');
 				// If it succeeds, that's fine - the function is robust
 			} catch (error) {
 				// If it throws, verify it's a meaningful error

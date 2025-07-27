@@ -235,10 +235,12 @@ export function createProfile(editorConfig) {
 		conversionConfig,
 		getTargetRuleFilename,
 		targetExtension,
-		// Optional lifecycle hooks
-		...(onAdd && { onAddRulesProfile: onAdd }),
-		...(onRemove && { onRemoveRulesProfile: onRemove }),
-		...(onPostConvert && { onPostConvertRulesProfile: onPostConvert })
+		// Lifecycle hooks object
+		hooks: {
+			...(onAdd && { onAdd }),
+			...(onRemove && { onRemove }),
+			...(onPostConvert && { onPost: onPostConvert })
+		}
 	};
 }
 

@@ -29,7 +29,7 @@ export function isValidProfile(profile) {
 /**
  * Get rule profile by name
  * @param {string} name - Profile name
- * @returns {Object|null} Profile object or null if not found
+ * @returns {Profile|null} Profile instance or null if not found
  */
 export function getRulesProfile(name) {
 	if (!isValidProfile(name)) {
@@ -46,9 +46,8 @@ export function getRulesProfile(name) {
 		);
 	}
 
-	// All profiles are now Profile instances, convert directly to legacy format
-	// for rule-transformer compatibility
-	return profile.toLegacyFormat();
+	// Return Profile instance directly - no more legacy conversion
+	return profile;
 }
 
 /**
@@ -184,15 +183,12 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
  * Convert a Cursor rule file to a profile-specific rule file
  * @param {string} sourcePath - Path to the source .mdc file
  * @param {string} targetPath - Path to the target file
- * @param {Object} profile - The profile configuration (Profile instance or legacy object)
+ * @param {Profile} profile - The profile configuration (Profile instance)
  * @returns {boolean} - Success status
  */
 export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
-	// Handle both Profile instances and legacy objects
-	const legacyProfile = profile.toLegacyFormat
-		? profile.toLegacyFormat()
-		: profile;
-	const { conversionConfig, globalReplacements } = legacyProfile;
+	// Work with Profile instance properties directly
+	const { conversionConfig, globalReplacements } = profile;
 
 	try {
 		// Read source content
@@ -234,18 +230,18 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	let success = 0;
 	let failed = 0;
 
-	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
-	if (typeof profile.onAddRulesProfile === 'function') {
+	// 1. Call onAdd hook first (for pre-processing like copying assets)
+	if (typeof profile.hooks?.onAdd === 'function') {
 		try {
-			profile.onAddRulesProfile(projectRoot, assetsDir);
+			profile.hooks.onAdd(projectRoot, assetsDir);
 			log(
 				'debug',
-				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
+				`[Rule Transformer] Called onAdd hook for ${profile.profileName}`
 			);
 		} catch (error) {
 			log(
 				'error',
-				`[Rule Transformer] onAddRulesProfile failed for ${profile.profileName}: ${error.message}`
+				`[Rule Transformer] onAdd hook failed for ${profile.profileName}: ${error.message}`
 			);
 			failed++;
 		}
@@ -332,17 +328,17 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	}
 
 	// 4. Call post-conversion hook (for finalization)
-	if (typeof profile.onPostConvertRulesProfile === 'function') {
+	if (typeof profile.hooks?.onPost === 'function') {
 		try {
-			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			profile.hooks.onPost(projectRoot, assetsDir);
 			log(
 				'debug',
-				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
+				`[Rule Transformer] Called onPost hook for ${profile.profileName}`
 			);
 		} catch (error) {
 			log(
 				'error',
-				`[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`
+				`[Rule Transformer] onPost hook failed for ${profile.profileName}: ${error.message}`
 			);
 		}
 	}
@@ -373,18 +369,18 @@ export function removeProfileRules(projectRoot, profile) {
 	};
 
 	try {
-		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
-		if (typeof profile.onRemoveRulesProfile === 'function') {
+		// 1. Call onRemove hook first (for custom cleanup like removing assets)
+		if (typeof profile.hooks?.onRemove === 'function') {
 			try {
-				profile.onRemoveRulesProfile(projectRoot);
+				profile.hooks.onRemove(projectRoot);
 				log(
 					'debug',
-					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
+					`[Rule Transformer] Called onRemove hook for ${profile.profileName}`
 				);
 			} catch (error) {
 				log(
 					'error',
-					`[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`
+					`[Rule Transformer] onRemove hook failed for ${profile.profileName}: ${error.message}`
 				);
 			}
 		}

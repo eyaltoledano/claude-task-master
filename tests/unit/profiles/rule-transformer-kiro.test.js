@@ -255,7 +255,7 @@ Use the .mdc extension for all rule files.`;
 			mockReaddirSync.mockReturnValue(hookFiles);
 
 			// Call the lifecycle hook
-			kiroProfile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			kiroProfile.hooks.onPost(projectRoot, assetsDir);
 
 			// Verify hooks directory was created
 			expect(mockMkdirSync).toHaveBeenCalledWith('/test/project/.kiro/hooks', {
@@ -284,7 +284,7 @@ Use the .mdc extension for all rule files.`;
 			mockReaddirSync.mockReturnValue(hookFiles);
 
 			// Call the lifecycle hook
-			kiroProfile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			kiroProfile.hooks.onPost(projectRoot, assetsDir);
 
 			// Verify hooks directory was NOT created (already exists)
 			expect(mockMkdirSync).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ Use the .mdc extension for all rule files.`;
 			});
 
 			// Call the lifecycle hook
-			kiroProfile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			kiroProfile.hooks.onPost(projectRoot, assetsDir);
 
 			// Verify no files were copied
 			expect(mockReaddirSync).not.toHaveBeenCalled();
@@ -323,7 +323,7 @@ Use the .mdc extension for all rule files.`;
 			mockReaddirSync.mockReturnValue(['readme.txt', 'config.json']);
 
 			// Call the lifecycle hook
-			kiroProfile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			kiroProfile.hooks.onPost(projectRoot, assetsDir);
 
 			// Verify no files were copied
 			expect(mockCopyFileSync).not.toHaveBeenCalled();
