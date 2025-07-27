@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
@@ -52,59 +53,67 @@ export function registerExpandTaskTool(server) {
 				.describe('Force expansion even if subtasks exist'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
-				let tasksJsonPath;
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+					log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+
+					const progressCapability = checkProgressCapability(
+						reportProgress,
 						log
 					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
+
+					// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+					let tasksJsonPath;
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+					} catch (error) {
+						log.error(`Error finding tasks.json: ${error.message}`);
+						return createErrorResponse(
+							`Failed to find tasks.json: ${error.message}`
+						);
+					}
+
+					const complexityReportPath = findComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						log
 					);
+
+					const result = await expandTaskDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							id: args.id,
+							num: args.num,
+							research: args.research,
+							prompt: args.prompt,
+							force: args.force,
+							complexityReportPath,
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
+						},
+						log,
+						{ session, reportProgress: progressCapability.reportProgress }
+					);
+
+					return handleApiResult(
+						result,
+						log,
+						'Error expanding task',
+						undefined,
+						args.projectRoot
+					);
+				} catch (error) {
+					log.error(`Error in expand-task tool: ${error.message}`);
+					return createErrorResponse(error.message);
 				}
-
-				const complexityReportPath = findComplexityReportPath(
-					{ ...args, tag: resolvedTag },
-					log
-				);
-
-				const result = await expandTaskDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						id: args.id,
-						num: args.num,
-						research: args.research,
-						prompt: args.prompt,
-						force: args.force,
-						complexityReportPath,
-						projectRoot: args.projectRoot,
-						tag: resolvedTag
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error expanding task',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in expand-task tool: ${error.message}`);
-				return createErrorResponse(error.message);
 			}
-		})
+		)
 	});
 }

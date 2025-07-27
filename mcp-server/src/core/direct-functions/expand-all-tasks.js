@@ -24,7 +24,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @returns {Promise<{success: boolean, data?: Object, error?: {code: string, message: string}}>}
  */
 export async function expandAllTasksDirect(args, log, context = {}) {
-	const { session } = context; // Extract session
+	const { session, reportProgress } = context; // Extract session and reportProgress
 	// Destructure expected args, including projectRoot
 	const { tasksJsonPath, num, research, prompt, force, projectRoot, tag } =
 		args;
@@ -55,14 +55,22 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
 
-		// Call the core function, passing options and the context object { session, mcpLog, projectRoot }
+		// Call the core function, passing options and the context object { session, mcpLog, projectRoot, reportProgress }
 		const result = await expandAllTasks(
 			tasksJsonPath,
 			numSubtasks,
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot, tag },
+			{
+				session,
+				mcpLog,
+				projectRoot,
+				tag,
+				reportProgress,
+				commandName: 'expand-all',
+				outputType: 'mcp'
+			},
 			'json'
 		);
 

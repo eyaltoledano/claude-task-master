@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -61,62 +62,69 @@ export function registerExpandAllTool(server) {
 				),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(
-					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
-				);
-
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				let tasksJsonPath;
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session, reportProgress }) => {
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
+					log.info(
+						`Tool expand_all execution started with args: ${JSON.stringify(args)}`
+					);
+
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+
+					const progressCapability = checkProgressCapability(
+						reportProgress,
 						log
 					);
-					log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
+
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+						log.info(`Resolved tasks.json path: ${tasksJsonPath}`);
+					} catch (error) {
+						log.error(`Error finding tasks.json: ${error.message}`);
+						return createErrorResponse(
+							`Failed to find tasks.json: ${error.message}`
+						);
+					}
+
+					const result = await expandAllTasksDirect(
+						{
+							tasksJsonPath: tasksJsonPath,
+							num: args.num,
+							research: args.research,
+							prompt: args.prompt,
+							force: args.force,
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
+						},
+						log,
+						{ session, reportProgress: progressCapability.reportProgress }
+					);
+
+					return handleApiResult(
+						result,
+						log,
+						'Error expanding all tasks',
+						undefined,
+						args.projectRoot
+					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					log.error(
+						`Unexpected error in expand_all tool execute: ${error.message}`
+					);
+					if (error.stack) {
+						log.error(error.stack);
+					}
 					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
+						`An unexpected error occurred: ${error.message}`
 					);
 				}
-
-				const result = await expandAllTasksDirect(
-					{
-						tasksJsonPath: tasksJsonPath,
-						num: args.num,
-						research: args.research,
-						prompt: args.prompt,
-						force: args.force,
-						projectRoot: args.projectRoot,
-						tag: resolvedTag
-					},
-					log,
-					{ session }
-				);
-
-				return handleApiResult(
-					result,
-					log,
-					'Error expanding all tasks',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(
-					`Unexpected error in expand_all tool execute: ${error.message}`
-				);
-				if (error.stack) {
-					log.error(error.stack);
-				}
-				return createErrorResponse(
-					`An unexpected error occurred: ${error.message}`
-				);
 			}
-		})
+		)
 	});
 }
