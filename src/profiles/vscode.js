@@ -4,6 +4,85 @@ import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 import fs from 'fs';
 import path from 'path';
 
+// Clean up schema integration when profile is removed
+async function cleanupSchemaIntegration(projectRoot) {
+	try {
+		const vscodeDir = path.join(projectRoot, '.vscode');
+		const settingsPath = path.join(vscodeDir, 'settings.json');
+
+		// Skip if settings file doesn't exist
+		if (!fs.existsSync(settingsPath)) {
+			return;
+		}
+
+		try {
+			// Read and parse settings
+			const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+			let settingsChanged = false;
+
+			// Remove Taskmaster schemas if they exist
+			if (Array.isArray(settings['json.schemas'])) {
+				const originalLength = settings['json.schemas'].length;
+
+				settings['json.schemas'] = settings['json.schemas'].filter((schema) => {
+					// Remove tasks.json schema
+					if (schema.fileMatch && Array.isArray(schema.fileMatch)) {
+						const isTasksSchema = schema.fileMatch.includes('**/tasks.json');
+						// Remove prompt template schema
+						const isPromptSchema = schema.fileMatch.some(
+							(match) =>
+								match.includes('src/prompts/') &&
+								schema.url &&
+								schema.url.includes('prompt-template.schema.json')
+						);
+						return !(isTasksSchema || isPromptSchema);
+					}
+					return true;
+				});
+
+				settingsChanged = settings['json.schemas'].length < originalLength;
+			}
+
+			// Remove Taskmaster file associations if they exist
+			if (settings['files.associations']) {
+				const originalAssociations = JSON.stringify(
+					settings['files.associations']
+				);
+
+				// Remove prompt file associations
+				Object.keys(settings['files.associations']).forEach((key) => {
+					if (key.includes('src/prompts/')) {
+						delete settings['files.associations'][key];
+					}
+				});
+
+				// Remove the entire files.associations object if it's empty
+				if (Object.keys(settings['files.associations']).length === 0) {
+					delete settings['files.associations'];
+				}
+
+				settingsChanged =
+					settingsChanged ||
+					JSON.stringify(settings['files.associations'] || {}) !==
+						originalAssociations;
+			}
+
+			// Only write back if we made changes
+			if (settingsChanged) {
+				fs.writeFileSync(
+					settingsPath,
+					JSON.stringify(settings, null, 2) + '\n',
+					'utf8'
+				);
+			}
+		} catch (error) {
+			console.warn('Could not clean up VS Code settings:', error.message);
+		}
+	} catch (error) {
+		console.warn('Error during VS Code schema cleanup:', error.message);
+	}
+}
+
 // VS Code schema integration function
 async function setupSchemaIntegration(projectRoot) {
 	try {
@@ -79,6 +158,7 @@ const vscodeProfile = ProfileBuilder.minimal('vscode')
 	.includeDefaultRules(true)
 	.targetExtension('.instructions.md') // VS Code uses .instructions.md extension
 	.onAdd(setupSchemaIntegration) // Add schema integration lifecycle function
+	.onRemove(cleanupSchemaIntegration) // Clean up schema when profile is removed
 	.conversion({
 		// Profile name replacements
 		profileTerms: [
