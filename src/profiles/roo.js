@@ -156,10 +156,7 @@ const rooProfile = ProfileBuilder.minimal('roo')
 		toolGroups: [],
 
 		// File reference mappings (roo uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
-		docUrls: [{ from: /docs\.cursor\.so/g, to: 'roo.codeium.com/docs' }]
+		fileReferences: []
 	})
 	.globalReplacements([
 		// Additional tool transformations not handled by toolNames
