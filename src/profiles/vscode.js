@@ -26,7 +26,9 @@ async function setupSchemaIntegration(projectRoot) {
 			try {
 				settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
 			} catch (error) {
-				console.warn('Could not parse existing settings.json, skipping schema setup');
+				console.warn(
+					'Could not parse existing settings.json, skipping schema setup'
+				);
 				return; // Don't overwrite corrupted settings
 			}
 		}
@@ -42,15 +44,16 @@ async function setupSchemaIntegration(projectRoot) {
 			url: 'https://json.schemastore.org/tasks.json'
 		};
 
-		const schemaExists = settings['json.schemas'].some(schema => 
-			schema.fileMatch && 
-			Array.isArray(schema.fileMatch) && 
-			schema.fileMatch.includes('**/tasks.json')
+		const schemaExists = settings['json.schemas'].some(
+			(schema) =>
+				schema.fileMatch &&
+				Array.isArray(schema.fileMatch) &&
+				schema.fileMatch.includes('**/tasks.json')
 		);
 
 		if (!schemaExists) {
 			settings['json.schemas'].push(tasksSchema);
-			
+
 			try {
 				fs.writeFileSync(
 					settingsPath,
@@ -62,7 +65,6 @@ async function setupSchemaIntegration(projectRoot) {
 				console.warn(`Could not update settings.json: ${error.message}`);
 			}
 		}
-
 	} catch (error) {
 		console.warn(`VS Code schema integration failed: ${error.message}`);
 	}
