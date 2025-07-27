@@ -221,6 +221,8 @@ Use the .mdc extension for all rule files.`;
 			'rules/taskmaster.mdc': 'taskmaster.md',
 			'rules/taskmaster_hooks_workflow.mdc': 'taskmaster_hooks_workflow.md'
 		});
+		expect(kiroProfile.globalReplacements).toBeInstanceOf(Array);
+		expect(kiroProfile.globalReplacements.length).toBeGreaterThan(0);
 	});
 
 	describe('onPostConvert lifecycle hook', () => {
@@ -326,7 +328,5 @@ Use the .mdc extension for all rule files.`;
 			// Verify no files were copied
 			expect(mockCopyFileSync).not.toHaveBeenCalled();
 		});
-		expect(kiroProfile.globalReplacements).toBeInstanceOf(Array);
-		expect(kiroProfile.globalReplacements.length).toBeGreaterThan(0);
 	});
 });
