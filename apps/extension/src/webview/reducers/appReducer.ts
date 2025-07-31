@@ -3,13 +3,14 @@
  */
 
 import type { AppState, AppAction } from '../types';
+import { logger } from '../utils/logger';
 
 export const appReducer = (state: AppState, action: AppAction): AppState => {
-	console.log('Reducer action:', action.type, action.payload);
+	logger.debug('Reducer action:', action.type, action.payload);
 	switch (action.type) {
 		case 'SET_TASKS':
 			const newTasks = Array.isArray(action.payload) ? action.payload : [];
-			console.log('SET_TASKS reducer - updating tasks:', {
+			logger.debug('SET_TASKS reducer - updating tasks:', {
 				oldCount: state.tasks.length,
 				newCount: newTasks.length,
 				newTasks
@@ -127,17 +128,17 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
 		case 'CLEAR_ALL_TOASTS':
 			return { ...state, toastNotifications: [] };
 		case 'NAVIGATE_TO_TASK':
-			console.log('📍 Reducer: Navigating to task:', action.payload);
+			logger.debug('📍 Reducer: Navigating to task:', action.payload);
 			return {
 				...state,
 				currentView: 'task-details',
 				selectedTaskId: action.payload
 			};
 		case 'NAVIGATE_TO_KANBAN':
-			console.log('📍 Reducer: Navigating to kanban');
+			logger.debug('📍 Reducer: Navigating to kanban');
 			return { ...state, currentView: 'kanban', selectedTaskId: undefined };
 		case 'NAVIGATE_TO_CONFIG':
-			console.log('📍 Reducer: Navigating to config');
+			logger.debug('📍 Reducer: Navigating to config');
 			return { ...state, currentView: 'config', selectedTaskId: undefined };
 		case 'SET_CURRENT_TAG':
 			return {
