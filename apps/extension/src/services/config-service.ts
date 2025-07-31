@@ -116,12 +116,15 @@ export class ConfigService {
 
 	/**
 	 * Mask API key for display
+	 * Shows only the last 4 characters for better security
 	 */
 	private maskApiKey(key: string): string {
-		if (key.length <= 8) {
+		if (key.length <= 4) {
 			return '****';
 		}
-		return key.substring(0, 4) + '****' + key.substring(key.length - 4);
+		const visibleChars = 4;
+		const maskedLength = key.length - visibleChars;
+		return '*'.repeat(Math.min(maskedLength, 12)) + key.substring(key.length - visibleChars);
 	}
 
 	/**
