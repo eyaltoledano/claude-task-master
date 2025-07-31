@@ -268,8 +268,8 @@ function hasTaggedStructure(data) {
  */
 function normalizeTaskIds(tasks) {
 	if (!Array.isArray(tasks)) return;
-  
-	tasks.forEach(task => {
+
+	tasks.forEach((task) => {
 		// Convert task ID to number with validation
 		if (task.id !== undefined) {
 			const parsedId = parseInt(task.id, 10);
@@ -277,10 +277,10 @@ function normalizeTaskIds(tasks) {
 				task.id = parsedId;
 			}
 		}
-  
+
 		// Convert subtask IDs to numbers with validation
 		if (Array.isArray(task.subtasks)) {
-			task.subtasks.forEach(subtask => {
+			task.subtasks.forEach((subtask) => {
 				if (subtask.id !== undefined) {
 					// Check for dot notation (which shouldn't exist in storage)
 					if (typeof subtask.id === 'string' && subtask.id.includes('.')) {
@@ -439,10 +439,13 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 		// Store reference to the raw tagged data for functions that need it
 		const originalTaggedData = JSON.parse(JSON.stringify(data));
-		
+
 		// Normalize IDs in all tags before storing as originalTaggedData
 		for (const tagName in originalTaggedData) {
-			if (originalTaggedData[tagName] && Array.isArray(originalTaggedData[tagName].tasks)) {
+			if (
+				originalTaggedData[tagName] &&
+				Array.isArray(originalTaggedData[tagName].tasks)
+			) {
 				normalizeTaskIds(originalTaggedData[tagName].tasks);
 			}
 		}
