@@ -124,7 +124,10 @@ export class ConfigService {
 		}
 		const visibleChars = 4;
 		const maskedLength = key.length - visibleChars;
-		return '*'.repeat(Math.min(maskedLength, 12)) + key.substring(key.length - visibleChars);
+		return (
+			'*'.repeat(Math.min(maskedLength, 12)) +
+			key.substring(key.length - visibleChars)
+		);
 	}
 
 	/**

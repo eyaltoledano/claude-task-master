@@ -23,9 +23,7 @@
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write",
-		"lint": "biome check .",
-		"lint:fix": "biome check . --write"
+		"format": "biome format . --write"
 	},
 	"keywords": [
 		"claude",
@@ -125,8 +123,6 @@
 		"jest-environment-node": "^29.7.0",
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
-		"react": "^19.1.0",
-		"react-dom": "^19.1.0",
 		"supertest": "^7.1.0",
 		"tsx": "^4.16.2"
 	}

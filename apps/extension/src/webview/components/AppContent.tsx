@@ -7,7 +7,6 @@ import { useVSCodeContext } from '../contexts/VSCodeContext';
 export const AppContent: React.FC = () => {
 	const { state, dispatch, sendMessage } = useVSCodeContext();
 
-
 	if (state.currentView === 'config') {
 		return (
 			<ConfigView

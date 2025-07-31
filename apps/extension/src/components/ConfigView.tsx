@@ -48,23 +48,23 @@ export const ConfigView: React.FC<ConfigViewProps> = ({
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-  const loadConfig = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await sendMessage({ type: 'getConfig' });
-      setConfig(response);
-    } catch (err) {
-      setError('Failed to load configuration');
-      console.error('Error loading config:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [sendMessage]);
+	const loadConfig = useCallback(async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			const response = await sendMessage({ type: 'getConfig' });
+			setConfig(response);
+		} catch (err) {
+			setError('Failed to load configuration');
+			console.error('Error loading config:', err);
+		} finally {
+			setLoading(false);
+		}
+	}, [sendMessage]);
 
-  useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
+	useEffect(() => {
+		loadConfig();
+	}, [loadConfig]);
 
 	const modelLabels = {
 		main: {

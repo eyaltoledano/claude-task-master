@@ -104,7 +104,7 @@ export class ErrorHandler {
 	 * Filter and validate suggested actions
 	 */
 	private getValidActions(actions: string[]): string[] {
-		return actions.filter(action => this.isValidAction(action));
+		return actions.filter((action) => this.isValidAction(action));
 	}
 
 	private notifyUser(context: ErrorContext): void {
@@ -122,7 +122,7 @@ export class ErrorHandler {
 			this.logger.warn('Invalid actions filtered out:', {
 				original: rawActions,
 				filtered: actions,
-				removed: rawActions.filter(a => !actions.includes(a))
+				removed: rawActions.filter((a) => !actions.includes(a))
 			});
 		}
 
@@ -140,12 +140,10 @@ export class ErrorHandler {
 			case ErrorSeverity.HIGH:
 				if (context.category === ErrorCategory.MCP_CONNECTION) {
 					// Use validated actions or default actions for MCP connection
-					const mcpActions = actions.length > 0 ? actions : ['Retry', 'Settings'];
+					const mcpActions =
+						actions.length > 0 ? actions : ['Retry', 'Settings'];
 					vscode.window
-						.showWarningMessage(
-							`TaskMaster: ${context.message}`,
-							...mcpActions
-						)
+						.showWarningMessage(`TaskMaster: ${context.message}`, ...mcpActions)
 						.then((action) => {
 							if (action === 'Retry') {
 								vscode.commands.executeCommand('tm.reconnect');
@@ -180,7 +178,10 @@ export class ErrorHandler {
 				) {
 					if (actions.length > 0) {
 						vscode.window
-							.showInformationMessage(`TaskMaster: ${context.message}`, ...actions)
+							.showInformationMessage(
+								`TaskMaster: ${context.message}`,
+								...actions
+							)
 							.then((action) => {
 								if (action) {
 									this.handleUserAction(action, context);
@@ -213,29 +214,29 @@ export class ErrorHandler {
 					vscode.commands.executeCommand('tm.refreshTasks');
 				}
 				break;
-			
+
 			case 'Settings':
 				vscode.commands.executeCommand('tm.openSettings');
 				break;
-			
+
 			case 'Reload':
 				vscode.commands.executeCommand('workbench.action.reloadWindow');
 				break;
-			
+
 			case 'View Logs':
 				// Show error details in a modal dialog instead of output channel
 				this.showErrorDetails(context);
 				break;
-			
+
 			case 'Report Issue':
 				const issueUrl = this.generateIssueUrl(context);
 				vscode.env.openExternal(vscode.Uri.parse(issueUrl));
 				break;
-			
+
 			case 'Dismiss':
 				// No action needed
 				break;
-			
+
 			default:
 				// Handle TaskMaster commands (tm.*)
 				if (action.startsWith('tm.')) {
@@ -260,9 +261,14 @@ export class ErrorHandler {
 			context.operation ? `Operation: ${context.operation}` : '',
 			context.taskId ? `Task ID: ${context.taskId}` : '',
 			context.originalError ? `\nOriginal Error:\n${context.originalError}` : ''
-		].filter(Boolean).join('\n');
+		]
+			.filter(Boolean)
+			.join('\n');
 
-		vscode.window.showInformationMessage(details, { modal: true, detail: details });
+		vscode.window.showInformationMessage(details, {
+			modal: true,
+			detail: details
+		});
 	}
 
 	/**
@@ -270,30 +276,34 @@ export class ErrorHandler {
 	 */
 	private generateIssueUrl(context: ErrorContext): string {
 		const title = encodeURIComponent(`[Extension Error] ${context.message}`);
-		const body = encodeURIComponent([
-			`**Error Details:**`,
-			`- Category: ${context.category}`,
-			`- Severity: ${context.severity}`,
-			`- Message: ${context.message}`,
-			context.operation ? `- Operation: ${context.operation}` : '',
-			context.taskId ? `- Task ID: ${context.taskId}` : '',
-			``,
-			`**Context:**`,
-			'```json',
-			JSON.stringify(context, null, 2),
-			'```',
-			``,
-			`**Environment:**`,
-			`- VS Code Version: ${vscode.version}`,
-			`- Extension Version: ${vscode.extensions.getExtension('Hamster.taskmaster')?.packageJSON.version || 'Unknown'}`,
-			``,
-			`**Steps to Reproduce:**`,
-			`1. [Please describe the steps that led to this error]`,
-			``,
-			`**Expected Behavior:**`,
-			`[What should have happened instead]`
-		].filter(Boolean).join('\n'));
-		
+		const body = encodeURIComponent(
+			[
+				`**Error Details:**`,
+				`- Category: ${context.category}`,
+				`- Severity: ${context.severity}`,
+				`- Message: ${context.message}`,
+				context.operation ? `- Operation: ${context.operation}` : '',
+				context.taskId ? `- Task ID: ${context.taskId}` : '',
+				``,
+				`**Context:**`,
+				'```json',
+				JSON.stringify(context, null, 2),
+				'```',
+				``,
+				`**Environment:**`,
+				`- VS Code Version: ${vscode.version}`,
+				`- Extension Version: ${vscode.extensions.getExtension('Hamster.taskmaster')?.packageJSON.version || 'Unknown'}`,
+				``,
+				`**Steps to Reproduce:**`,
+				`1. [Please describe the steps that led to this error]`,
+				``,
+				`**Expected Behavior:**`,
+				`[What should have happened instead]`
+			]
+				.filter(Boolean)
+				.join('\n')
+		);
+
 		return `https://github.com/eyaltoledano/claude-task-master/issues/new?title=${title}&body=${body}`;
 	}
 
