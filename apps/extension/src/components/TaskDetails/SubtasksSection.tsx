@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { Plus, Loader2, ChevronRight } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import type { TaskMasterTask } from '../../webview/types';
+import { getStatusDotColor } from '../constants';
 
 interface SubtasksSectionProps {
 	currentTask: TaskMasterTask;
@@ -175,22 +176,6 @@ export const SubtasksSection: React.FC<SubtasksSectionProps> = ({
 					<div className="space-y-2">
 						{currentTask.subtasks.map((subtask, index) => {
 							const subtaskId = `${currentTask.id}.${index + 1}`;
-							const getStatusDotColor = (status: string) => {
-								switch (status) {
-									case 'done':
-										return '#22c55e';
-									case 'in-progress':
-										return '#3b82f6';
-									case 'review':
-										return '#a855f7';
-									case 'deferred':
-										return '#ef4444';
-									case 'cancelled':
-										return '#6b7280';
-									default:
-										return '#eab308';
-								}
-							};
 
 							return (
 								<div
