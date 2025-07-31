@@ -123,22 +123,27 @@ The automation ensures these fields stay in sync between `package.json` and `pac
 ## 🔍 Monitoring Builds
 
 ### CI Status
+
 - **Green ✅**: Extension builds and tests successfully
 - **Red ❌**: Build/test failures - check logs for details
 - **Yellow 🟡**: Partial success - some jobs may have warnings
 
 ### Version PR Status
+
 - **Version PR Created**: Changesets detected, review and merge to publish
 - **No Version PR**: No changesets found, no releases pending
 - **Version PR Merged**: Automated publishing triggered
 
 ### Release Status
+
 - **Published 🎉**: Extension live on VS Code Marketplace and Open VSX
 - **Skipped ℹ️**: No changesets found, no release needed
 - **Failed ❌**: Check logs - often missing secrets or build issues
 
 ### Artifacts
+
 Workflows upload artifacts that you can download:
+
 - **CI**: Test results, built files, and VSIX package
 - **Version**: Final VSIX package and published extension
 
@@ -147,38 +152,45 @@ Workflows upload artifacts that you can download:
 ### Common Issues
 
 #### No Version PR Created
+
 - **Check**: Changeset files exist in `.changeset/` directory
 - **Check**: Changeset refers to `taskr-kanban` package name
 - **Check**: Changes were pushed to `main` branch
 - **Solution**: Create changeset with `npx changeset add`
 
 #### Version PR Not Publishing
+
 - **Check**: Version PR was actually merged (not just closed)
 - **Check**: Required secrets (`VSCE_PAT`, `OVSX_PAT`) are set
 - **Check**: No build failures in workflow logs
 - **Solution**: Re-run workflow or check secret configuration
 
 #### `VSCE_PAT` is not set Error
+
 - Ensure `VSCE_PAT` secret is added to repository
 - Check token hasn't expired
 - Verify token has Marketplace → Manage permissions
 
 #### `OVSX_PAT` is not set Error
+
 - Ensure `OVSX_PAT` secret is added to repository
 - Check token hasn't expired
 - Verify you're signed in to Open VSX Registry with GitHub
 
 #### Build Failures
+
 - Check extension code compiles locally: `cd apps/extension && pnpm run build`
 - Verify tests pass locally: `pnpm run test`
 - Check for TypeScript errors: `pnpm run check-types`
 
 #### Packaging Failures
+
 - Ensure clean package builds: `pnpm run package`
 - Check vsix-build structure is correct
 - Verify `package.publish.json` has correct `repository` field
 
 #### Changeset Issues
+
 - **Wrong package name**: Ensure changeset refers to `taskr-kanban`
 - **Invalid format**: Check changeset markdown format is correct
 - **Merge conflicts**: Resolve any conflicts in changeset files
