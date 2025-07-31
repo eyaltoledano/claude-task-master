@@ -82,14 +82,49 @@ export class ErrorHandler {
 	/**
 	 * Show user notification based on severity and category
 	 */
+	/**
+	 * Validate if an action is allowed
+	 */
+	private isValidAction(action: string): boolean {
+		// Define predefined valid actions
+		const predefinedActions = [
+			'Retry',
+			'Settings',
+			'Reload',
+			'Dismiss',
+			'View Logs',
+			'Report Issue'
+		];
+
+		// Check if it's a predefined action or a TaskMaster command
+		return predefinedActions.includes(action) || action.startsWith('tm.');
+	}
+
+	/**
+	 * Filter and validate suggested actions
+	 */
+	private getValidActions(actions: string[]): string[] {
+		return actions.filter(action => this.isValidAction(action));
+	}
+
 	private notifyUser(context: ErrorContext): void {
 		// Don't show low severity errors to users
 		if (context.severity === ErrorSeverity.LOW) {
 			return;
 		}
 
-		// Determine notification type
-		const actions = context.suggestedActions || [];
+		// Validate and filter suggested actions
+		const rawActions = context.suggestedActions || [];
+		const actions = this.getValidActions(rawActions);
+
+		// Log if any actions were filtered out
+		if (rawActions.length !== actions.length) {
+			this.logger.warn('Invalid actions filtered out:', {
+				original: rawActions,
+				filtered: actions,
+				removed: rawActions.filter(a => !actions.includes(a))
+			});
+		}
 
 		switch (context.severity) {
 			case ErrorSeverity.CRITICAL:
@@ -104,21 +139,35 @@ export class ErrorHandler {
 
 			case ErrorSeverity.HIGH:
 				if (context.category === ErrorCategory.MCP_CONNECTION) {
+					// Use validated actions or default actions for MCP connection
+					const mcpActions = actions.length > 0 ? actions : ['Retry', 'Settings'];
 					vscode.window
 						.showWarningMessage(
 							`TaskMaster: ${context.message}`,
-							'Retry',
-							'Settings'
+							...mcpActions
 						)
 						.then((action) => {
 							if (action === 'Retry') {
 								vscode.commands.executeCommand('tm.reconnect');
 							} else if (action === 'Settings') {
 								vscode.commands.executeCommand('tm.openSettings');
+							} else if (action) {
+								this.handleUserAction(action, context);
 							}
 						});
 				} else {
-					vscode.window.showWarningMessage(`TaskMaster: ${context.message}`);
+					// Show warning with validated actions
+					if (actions.length > 0) {
+						vscode.window
+							.showWarningMessage(`TaskMaster: ${context.message}`, ...actions)
+							.then((action) => {
+								if (action) {
+									this.handleUserAction(action, context);
+								}
+							});
+					} else {
+						vscode.window.showWarningMessage(`TaskMaster: ${context.message}`);
+					}
 				}
 				break;
 
@@ -129,9 +178,19 @@ export class ErrorHandler {
 						context.category
 					)
 				) {
-					vscode.window.showInformationMessage(
-						`TaskMaster: ${context.message}`
-					);
+					if (actions.length > 0) {
+						vscode.window
+							.showInformationMessage(`TaskMaster: ${context.message}`, ...actions)
+							.then((action) => {
+								if (action) {
+									this.handleUserAction(action, context);
+								}
+							});
+					} else {
+						vscode.window.showInformationMessage(
+							`TaskMaster: ${context.message}`
+						);
+					}
 				}
 				break;
 		}
@@ -144,7 +203,98 @@ export class ErrorHandler {
 		this.logger.debug(`User selected action: ${action}`, {
 			errorContext: context
 		});
-		// Action handling would be implemented based on specific needs
+
+		// Handle predefined actions
+		switch (action) {
+			case 'Retry':
+				if (context.category === ErrorCategory.MCP_CONNECTION) {
+					vscode.commands.executeCommand('tm.reconnect');
+				} else {
+					vscode.commands.executeCommand('tm.refreshTasks');
+				}
+				break;
+			
+			case 'Settings':
+				vscode.commands.executeCommand('tm.openSettings');
+				break;
+			
+			case 'Reload':
+				vscode.commands.executeCommand('workbench.action.reloadWindow');
+				break;
+			
+			case 'View Logs':
+				// Show error details in a modal dialog instead of output channel
+				this.showErrorDetails(context);
+				break;
+			
+			case 'Report Issue':
+				const issueUrl = this.generateIssueUrl(context);
+				vscode.env.openExternal(vscode.Uri.parse(issueUrl));
+				break;
+			
+			case 'Dismiss':
+				// No action needed
+				break;
+			
+			default:
+				// Handle TaskMaster commands (tm.*)
+				if (action.startsWith('tm.')) {
+					vscode.commands.executeCommand(action).catch((error) => {
+						this.logger.error(`Failed to execute command: ${action}`, error);
+					});
+				}
+				break;
+		}
+	}
+
+	/**
+	 * Show detailed error information in a modal dialog
+	 */
+	private showErrorDetails(context: ErrorContext): void {
+		const details = [
+			`**Error Details**`,
+			``,
+			`Category: ${context.category}`,
+			`Severity: ${context.severity}`,
+			`Message: ${context.message}`,
+			context.operation ? `Operation: ${context.operation}` : '',
+			context.taskId ? `Task ID: ${context.taskId}` : '',
+			context.originalError ? `\nOriginal Error:\n${context.originalError}` : ''
+		].filter(Boolean).join('\n');
+
+		vscode.window.showInformationMessage(details, { modal: true, detail: details });
+	}
+
+	/**
+	 * Generate GitHub issue URL with pre-filled information
+	 */
+	private generateIssueUrl(context: ErrorContext): string {
+		const title = encodeURIComponent(`[Extension Error] ${context.message}`);
+		const body = encodeURIComponent([
+			`**Error Details:**`,
+			`- Category: ${context.category}`,
+			`- Severity: ${context.severity}`,
+			`- Message: ${context.message}`,
+			context.operation ? `- Operation: ${context.operation}` : '',
+			context.taskId ? `- Task ID: ${context.taskId}` : '',
+			``,
+			`**Context:**`,
+			'```json',
+			JSON.stringify(context, null, 2),
+			'```',
+			``,
+			`**Environment:**`,
+			`- VS Code Version: ${vscode.version}`,
+			`- Extension Version: ${vscode.extensions.getExtension('Hamster.taskmaster')?.packageJSON.version || 'Unknown'}`,
+			``,
+			`**Steps to Reproduce:**`,
+			`1. [Please describe the steps that led to this error]`,
+			``,
+			`**Expected Behavior:**`,
+			`[What should have happened instead]`
+		].filter(Boolean).join('\n'));
+		
+		return `https://github.com/eyaltoledano/claude-task-master/issues/new?title=${title}&body=${body}`;
 	}
 
 	/**

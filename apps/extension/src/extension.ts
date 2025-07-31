@@ -164,7 +164,7 @@ function handleConnectionError(error: any) {
 				if (action === 'Open Settings') {
 					vscode.commands.executeCommand(
 						'workbench.action.openSettings',
-						'@ext:taskr taskmaster'
+						'@ext:Hamster.task-master-hamster taskmaster'
 					);
 				}
 			});
@@ -195,7 +195,7 @@ function registerCommands(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('tm.openSettings', () => {
 			vscode.commands.executeCommand(
 				'workbench.action.openSettings',
-				'@ext:taskr taskmaster'
+				'@ext:Hamster.task-master-hamster taskmaster'
 			);
 		})
 	);
