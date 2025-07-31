@@ -7,12 +7,6 @@ import { useVSCodeContext } from '../contexts/VSCodeContext';
 export const AppContent: React.FC = () => {
 	const { state, dispatch, sendMessage } = useVSCodeContext();
 
-	console.log(
-		'🎯 AppContent render - currentView:',
-		state.currentView,
-		'selectedTaskId:',
-		state.selectedTaskId
-	);
 
 	if (state.currentView === 'config') {
 		return (
