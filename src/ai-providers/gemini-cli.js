@@ -654,9 +654,8 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 	}
 
 	getRequiredApiKeyName() {
-		return 'GEMINI_API_KEY';
+		return 'GOOGLE_API_KEY';
 	}
-
 	isRequiredApiKey() {
 		return false;
 	}

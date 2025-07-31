@@ -37,7 +37,7 @@ For OAuth use, select `Login with Google` - This will open a browser window for 
 While the primary use case is OAuth authentication, you can also use an API key if needed:
 
 ```bash
-export GEMINI_API_KEY="your-gemini-api-key"
+export GOOGLE_API_KEY="your-google-api-key"
 ```
 
 **Note:** If you want to use API keys, consider using the standard `google` provider instead, as `gemini-cli` is specifically designed for OAuth/subscription users.
@@ -130,7 +130,7 @@ If you get an authentication error:
 
 1. **Primary solution**: Run `gemini` to authenticate with your Google account - use `/auth` slash command in **gemini-cli** to change authentication method if desired.
 2. **Check authentication status**: Run `gemini` and use `/about` to verify your Auth Method and GCP Project if applicable.
-3. **If using API key** (not recommended): Ensure `GEMINI_API_KEY` env variable is set correctly, see the gemini-cli README.md for more info.
+3. **If using API key** (not recommended): Ensure `GOOGLE_API_KEY` env variable is set correctly, see the gemini-cli README.md for more info.
 
 ### "Model not found" Error
 

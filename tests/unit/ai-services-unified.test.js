@@ -224,7 +224,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
-		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
+		getRequiredApiKeyName: jest.fn(() => 'GOOGLE_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	}))
 }));
