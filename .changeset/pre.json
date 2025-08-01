@@ -1,0 +1,12 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.22.0",
+    "extension": "0.20.0"
+  },
+  "changesets": [
+    "eleven-horses-shop",
+    "fix-tag-complexity-detection"
+  ]
+}
