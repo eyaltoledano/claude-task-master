@@ -274,10 +274,8 @@
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0"
 	},
-	"pnpm": {
-		"overrides": {
-			"glob@<8": "^10.4.5",
-			"inflight": "npm:@tootallnate/once@2"
-		}
+	"overrides": {
+		"glob@<8": "^10.4.5",
+		"inflight": "npm:@tootallnate/once@2"
 	}
 }

@@ -46,25 +46,25 @@ apps/extension/
 ### Local Development
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Start development with hot reload
-pnpm run watch
+npm run watch
 
 # Run just JavaScript build
-pnpm run build:js
+npm run build:js
 
 # Run just CSS build  
-pnpm run build:css
+npm run build:css
 
 # Full production build
-pnpm run build
+npm run build
 
 # Type checking
-pnpm run check-types
+npm run check-types
 
 # Linting
-pnpm run lint
+npm run lint
 ```
 
 ### Testing in VS Code
@@ -76,20 +76,20 @@ pnpm run lint
 
 ### Step 1: Build Clean Package
 ```bash
-pnpm run package
+npm run package
 ```
 This creates `vsix-build/` with clean distribution files.
 
 ### Step 2: Create VSIX
 ```bash
 cd vsix-build
-pnpm exec vsce package --no-dependencies
+npx vsce package --no-dependencies
 ```
 Creates: `taskr-kanban-1.0.1.vsix`
 
 ### Alternative: One Command
 ```bash
-pnpm run package && cd vsix-build && pnpm exec vsce package --no-dependencies
+npm run package && cd vsix-build && npx vsce package --no-dependencies
 ```
 
 ## 🔄 Keeping Files in Sync

@@ -15,9 +15,9 @@ try {
 
 	// 1. Build Project
 	console.log('\nBuilding JavaScript...');
-	execSync('pnpm run build:js', { stdio: 'inherit' });
+	execSync('npm run build:js', { stdio: 'inherit' });
 	console.log('\nBuilding CSS...');
-	execSync('pnpm run build:css', { stdio: 'inherit' });
+	execSync('npm run build:css', { stdio: 'inherit' });
 
 	// 2. Prepare Clean Directory
 	console.log(`\nPreparing clean directory at: ${packageDir}`);
@@ -121,7 +121,7 @@ try {
 	console.log('\nTo create the VSIX package, run:');
 	console.log(
 		'\x1b[36m%s\x1b[0m',
-		`cd vsix-build && pnpm exec vsce package --no-dependencies`
+		`cd vsix-build && npx vsce package --no-dependencies`
 	);
 
 	// Use the synced version for output

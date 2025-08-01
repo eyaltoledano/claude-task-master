@@ -14,8 +14,8 @@ This document explains the CI/CD setup for the Task Master VS Code extension usi
 #### What it does
 
 - ✅ Lints and type-checks the extension code
-- 🔨 Builds the extension (`pnpm run build`)
-- 📦 Creates a clean package (`pnpm run package`)
+- 🔨 Builds the extension (`npm run build`)
+- 📦 Creates a clean package (`npm run package`)
 - 🧪 Runs tests with VS Code test framework
 - 📋 Creates a test VSIX package to verify packaging works
 - 💾 Uploads build artifacts for inspection
@@ -179,13 +179,13 @@ Workflows upload artifacts that you can download:
 
 #### Build Failures
 
-- Check extension code compiles locally: `cd apps/extension && pnpm run build`
-- Verify tests pass locally: `pnpm run test`
-- Check for TypeScript errors: `pnpm run check-types`
+- Check extension code compiles locally: `cd apps/extension && npm run build`
+- Verify tests pass locally: `npm run test`
+- Check for TypeScript errors: `npm run check-types`
 
 #### Packaging Failures
 
-- Ensure clean package builds: `pnpm run package`
+- Ensure clean package builds: `npm run package`
 - Check vsix-build structure is correct
 - Verify `package.publish.json` has correct `repository` field
 
