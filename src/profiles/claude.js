@@ -1,8 +1,8 @@
-// Claude Code profile for rule-transformer
+// Claude profile using ProfileBuilder
 import path from 'path';
 import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile } from './base-profile.js';
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Helper function to recursively copy directory (adopted from Roo profile)
 function copyRecursiveSync(src, dest) {
@@ -51,12 +51,61 @@ function onAddRulesProfile(targetDir, assetsDir) {
 	}
 
 	try {
+		// Copy the entire .claude directory structure
 		copyRecursiveSync(claudeSourceDir, claudeDestDir);
 		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
+
+		// Ensure .taskmaster directory exists
+		const taskMasterDir = path.join(targetDir, '.taskmaster');
+		if (!fs.existsSync(taskMasterDir)) {
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+		}
+
+		// Setup CLAUDE.md import system
+		const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
+		const taskMasterClaudeFile = path.join(
+			targetDir,
+			'.taskmaster',
+			'CLAUDE.md'
+		);
+		const importLine = '@./.taskmaster/CLAUDE.md';
+
+		// Define import section with improved formatting
+		const importSection = `
+## Task Master AI Instructions
+
+**Task Master Integration**: The instructions below are automatically managed by Task Master.
+
+${importLine}
+`.trim();
+
+		// Check if user already has a CLAUDE.md file
+		if (fs.existsSync(userClaudeFile)) {
+			const content = fs.readFileSync(userClaudeFile, 'utf8');
+			if (!content.includes(importLine)) {
+				// Add our import section to the beginning
+				const updatedContent = `${content.trim()}\n\n${importSection}\n`;
+				fs.writeFileSync(userClaudeFile, updatedContent);
+				log(
+					'info',
+					`[Claude] Added Task Master import to existing ${userClaudeFile}`
+				);
+			} else {
+				log(
+					'debug',
+					`[Claude] Task Master import already present in ${userClaudeFile}`
+				);
+			}
+		} else {
+			// Create minimal CLAUDE.md with the import section
+			const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
+			fs.writeFileSync(userClaudeFile, minimalContent);
+			log('info', `[Claude] Created ${userClaudeFile} with Task Master import`);
+		}
 	} catch (err) {
 		log(
 			'error',
-			`[Claude] An error occurred during directory copy: ${err.message}`
+			`[Claude] Failed to set up Claude instructions: ${err.message}`
 		);
 	}
 
@@ -266,23 +315,62 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 	}
 }
 
-// Create and export claude profile using the base factory
-export const claudeProfile = createProfile({
-	name: 'claude',
-	displayName: 'Claude Code',
-	url: 'claude.ai',
-	docsUrl: 'docs.anthropic.com/en/docs/claude-code',
-	profileDir: '.', // Root directory
-	rulesDir: '.', // No specific rules directory needed
-	mcpConfigName: '.mcp.json', // Place MCP config in project root
-	includeDefaultRules: false,
-	fileMap: {
+// Create claude profile using ProfileBuilder
+const claudeProfile = ProfileBuilder.minimal('claude')
+	.display('Claude Code')
+	.profileDir('.') // Root directory
+	.rulesDir('.') // No specific rules directory needed
+	.mcpConfig({
+		configName: '.mcp.json' // Place MCP config in project root
+	})
+	.includeDefaultRules(false)
+	.fileMap({
 		'AGENTS.md': '.taskmaster/CLAUDE.md'
-	},
-	onAdd: onAddRulesProfile,
-	onRemove: onRemoveRulesProfile,
-	onPostConvert: onPostConvertRulesProfile
-});
+	})
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'claude.ai' },
+			{ from: /\[cursor\.so\]/g, to: '[claude.ai]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://claude.ai' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://claude.ai' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'Claude Code' : 'claude')
+			},
+			{ from: /Cursor/g, to: 'Claude Code' }
+		],
+		// Tool name mappings (claude uses standard tool names)
+		toolNames: {
+			edit_file: 'edit_file',
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
+		},
 
-// Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };
+		// Tool context mappings (claude uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (claude uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (claude uses standard file references)
+		fileReferences: [],
+
+		// Documentation URL mappings
+		docUrls: [
+			{
+				from: /docs\.cursor\.so/g,
+				to: 'docs.anthropic.com/en/docs/claude-code'
+			}
+		]
+	})
+	.onAdd(onAddRulesProfile)
+	.onRemove(onRemoveRulesProfile)
+	.onPost(onPostConvertRulesProfile)
+	.build();
+
+// Export the claude profile
+export { claudeProfile };
