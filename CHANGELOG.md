@@ -1,5 +1,15 @@
 # task-master-ai
 
+## 0.22.1-rc.0
+
+### Patch Changes
+
+- [#1063](https://github.com/eyaltoledano/claude-task-master/pull/1063) [`2ae6e7e`](https://github.com/eyaltoledano/claude-task-master/commit/2ae6e7e6be3605c3c4d353f34666e54750dba973) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix for tasks not found when using string IDs
+
+- [#1049](https://github.com/eyaltoledano/claude-task-master/pull/1049) [`45a14c3`](https://github.com/eyaltoledano/claude-task-master/commit/45a14c323d21071c15106335e89ad1f4a20976ab) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix tag-specific complexity report detection in expand command
+
+  The expand command now correctly finds and uses tag-specific complexity reports (e.g., `task-complexity-report_feature-xyz.json`) when operating in a tag context. Previously, it would always look for the generic `task-complexity-report.json` file due to a default value in the CLI option definition.
+
 ## 0.22.0
 
 ### Minor Changes
