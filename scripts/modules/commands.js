@@ -1496,6 +1496,7 @@ function registerCommands(programInstance) {
 		)
 		.option('-s, --status <status>', 'Filter by status')
 		.option('--with-subtasks', 'Show subtasks for each task')
+		.option('-c, --compact', 'Display tasks in compact one-line format')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -1513,18 +1514,21 @@ function registerCommands(programInstance) {
 
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
+			const compact = options.compact || false;
 			const tag = taskMaster.getCurrentTag();
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
-			console.log(
-				chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
-			);
-			if (statusFilter) {
-				console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-			}
-			if (withSubtasks) {
-				console.log(chalk.blue('Including subtasks in listing'));
+			if (!compact) {
+				console.log(
+					chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
+				);
+				if (statusFilter) {
+					console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
+				}
+				if (withSubtasks) {
+					console.log(chalk.blue('Including subtasks in listing'));
+				}
 			}
 
 			await listTasks(
@@ -1532,7 +1536,7 @@ function registerCommands(programInstance) {
 				statusFilter,
 				taskMaster.getComplexityReportPath(),
 				withSubtasks,
-				'text',
+				compact ? 'compact' : 'text',
 				{ projectRoot: taskMaster.getProjectRoot(), tag }
 			);
 		});
