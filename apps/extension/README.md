@@ -1,18 +1,23 @@
 # Official TaskMaster AI Extension
 
-Transform your [TaskMaster AI](https://github.com/TaskMasterEYJ/task-master-ai) projects into a beautiful, interactive Kanban board directly in VS Code. Drag, drop, and manage your tasks with ease while maintaining real-time synchronization with your TaskMaster project files.
+Transform your AI-driven development workflow with a beautiful, interactive Kanban board directly in VS Code. Seamlessly manage tasks from [TaskMaster AI](https://github.com/eyaltoledano/claude-task-master) projects with real-time synchronization and intelligent task management.
 
-![TaskMaster AI Kanban](https://img.shields.io/badge/VS%20Code-Extension-blue)
-![Free](https://img.shields.io/badge/Price-Free-brightgreen)
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
+![TaskMaster AI Extension](https://img.shields.io/badge/VS%20Code-Extension-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Version](https://img.shields.io/visual-studio-marketplace/v/Hamster.task-master-hamster)
+![Installs](https://img.shields.io/visual-studio-marketplace/i/Hamster.task-master-hamster)
 
-## ✨ Features
+## 🎯 What is TaskMaster AI?
 
-### 🎯 **Visual Task Management**
-- **Drag & Drop Kanban Board** - Intuitive task management with visual columns
-- **Real-time Synchronization** - Changes sync instantly with your TaskMaster project files
-- **Status Columns** - To Do, In Progress, Review, Done, and Deferred
-- **Task Details View** - View and edit implementation details, test strategies, and notes
+TaskMaster AI is an intelligent task management system designed for AI-assisted development. It helps you break down complex projects into manageable tasks, track progress, and leverage AI to enhance your development workflow.
+
+## ✨ Key Features
+
+### 📊 **Interactive Kanban Board**
+- **Drag & Drop Interface** - Effortlessly move tasks between status columns
+- **Real-time Sync** - Changes instantly reflect in your TaskMaster project files
+- **Multiple Views** - Board view and detailed task sidebar
+- **Smart Columns** - Pending, In Progress, Review, Done, Deferred, and Cancelled
 
 ![Kanban Board](assets/screenshots/kanban-board.png)
 
@@ -49,7 +54,8 @@ Transform your [TaskMaster AI](https://github.com/TaskMasterEYJ/task-master-ai) 
 If you don't have a TaskMaster project yet:
 ```bash
 cd your-project
-   npx task-master-ai init
+npm i -g task-master-ai
+   task-master init
    ```
 
 ### 2. **Open Kanban Board**
@@ -70,23 +76,24 @@ The extension automatically handles the TaskMaster MCP server connection:
 
 ## 📋 Usage Guide
 
-### **Managing Tasks**
+### Task Management
 
-| Action | How To |
-|--------|--------|
-| **Change Task Status** | Drag task to different column |
-| **View Details** | Click on any task |
-| **Edit Task** | Click task, then use edit controls |
-| **Add Subtask** | Click + button on parent task |
-| **Use AI Features** | Open task details and use AI panel |
+| Action | How to Do It |
+|--------|--------------|
+| **View Kanban Board** | `Ctrl/Cmd + Shift + P` → "TaskMaster: Show Board" |
+| **Change Task Status** | Drag task card to different column |
+| **View Task Details** | Click on any task card |
+| **Edit Task Content** | Click task → Use edit buttons in details panel |
+| **Add Subtasks** | Click the + button on parent task cards |
+| **Use AI Features** | Open task details → Click AI action buttons |
 
-### **Kanban Columns**
+### Understanding Task Statuses
 
-- **📝 To Do** - Tasks ready to be worked on
-- **⚡ In Progress** - Currently active tasks  
-- **👀 Review** - Tasks pending review or approval
-- **✅ Done** - Completed tasks
-- **⏸️ Deferred** - Postponed or blocked tasks
+- 📋 **Pending** - Tasks ready to be started
+- 🚀 **In Progress** - Currently being worked on
+- 👀 **Review** - Awaiting review or feedback
+- ✅ **Done** - Completed tasks
+- ⏸️ **Deferred** - Postponed for later
 
 ### **AI-Powered Task Management**
 
@@ -147,9 +154,7 @@ Access settings via **File → Preferences → Settings** and search for "TaskMa
 - 📖 **Documentation**: [TaskMaster AI Docs](https://github.com/eyaltoledano/claude-task-master)
 - 🐛 **Report Issues**: [GitHub Issues](https://github.com/eyaltoledano/claude-task-master/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/eyaltoledano/claude-task-master/discussions)
-
-### **Related Projects**
-- 📡 **MCP Protocol**: [Model Context Protocol](https://modelcontextprotocol.io/)
+- 🐛 **Report Issues**: [GitHub Issues](https://github.com/eyaltoledano/claude-task-master/issues)
 
 ## 🎯 Tips for Best Results
 
