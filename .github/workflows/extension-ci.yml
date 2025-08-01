@@ -46,7 +46,7 @@ jobs:
         run: npm ci
         timeout-minutes: 5
 
-  lint-and-typecheck:
+  typecheck:
     needs: setup
     runs-on: ubuntu-latest
     steps:

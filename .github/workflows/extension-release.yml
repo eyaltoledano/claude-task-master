@@ -2,73 +2,20 @@ name: Extension Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - "apps/extension/**"
-  workflow_dispatch:
-    inputs:
-      force_publish:
-        description: "Force publish even without version changes"
-        required: false
-        default: false
-        type: boolean
+    tags:
+      - "extension@*"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency: extension-release-${{ github.ref }}
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      should-publish: ${{ steps.version-check.outputs.should-publish }}
-      current-version: ${{ steps.version-check.outputs.current-version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check version changes
-        id: version-check
-        run: |
-          # Get current version from package.json
-          CURRENT_VERSION=$(jq -r '.version' apps/extension/package.json)
-          echo "current-version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
-
-          # Check if this is a force publish
-          if [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
-            echo "should-publish=true" >> "$GITHUB_OUTPUT"
-            echo "Force publish requested"
-            exit 0
-          fi
-
-          # Check if version changed in the last commit
-          if git diff HEAD~1 HEAD --name-only | grep -q "apps/extension/package.json\|apps/extension/package.publish.json"; then
-            # Check if version field actually changed
-            PREV_VERSION=$(git show HEAD~1:apps/extension/package.json | jq -r '.version')
-            if [ "$CURRENT_VERSION" != "$PREV_VERSION" ]; then
-              echo "should-publish=true" >> "$GITHUB_OUTPUT"
-              echo "Version changed from $PREV_VERSION to $CURRENT_VERSION"
-            else
-              echo "should-publish=false" >> "$GITHUB_OUTPUT"
-              echo "No version change detected"
-            fi
-          else
-            echo "should-publish=false" >> "$GITHUB_OUTPUT"
-            echo "No package.json changes detected"
-          fi
-
-  build-and-publish:
-    needs: check-version
-    if: needs.check-version.outputs.should-publish == 'true'
+  publish-extension:
     runs-on: ubuntu-latest
     environment: extension-release
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -107,19 +54,6 @@ jobs:
         env:
           FORCE_COLOR: 1
 
-      - name: Verify Package Structure
-        working-directory: apps/extension
-        run: |
-          echo "=== Checking vsix-build structure ==="
-          ls -la vsix-build/
-          echo "=== Checking dist contents ==="
-          ls -la vsix-build/dist/
-          echo "=== Verifying required files ==="
-          test -f vsix-build/package.json || (echo "Missing package.json" && exit 1)
-          test -f vsix-build/dist/extension.js || (echo "Missing extension.js" && exit 1)
-          echo "=== Checking package.json content ==="
-          cat vsix-build/package.json | jq '.name, .version, .publisher'
-
       - name: Create VSIX Package
         working-directory: apps/extension/vsix-build
         run: npx vsce package --no-dependencies
@@ -130,7 +64,6 @@ jobs:
         id: vsix-info
         working-directory: apps/extension/vsix-build
         run: |
-          # Find VSIX file with proper handling for special characters
           VSIX_FILE=$(find . -maxdepth 1 -name "*.vsix" -type f | head -n1 | xargs basename)
           if [ -z "$VSIX_FILE" ]; then
             echo "Error: No VSIX file found"
@@ -138,12 +71,6 @@ jobs:
           fi
           echo "vsix-filename=$VSIX_FILE" >> "$GITHUB_OUTPUT"
           echo "Found VSIX: $VSIX_FILE"
-
-      - name: Validate VSIX Package
-        working-directory: apps/extension/vsix-build
-        run: |
-          echo "=== VSIX Package Contents ==="
-          unzip -l "${{ steps.vsix-info.outputs.vsix-filename }}"
 
       - name: Publish to VS Code Marketplace
         working-directory: apps/extension/vsix-build
@@ -167,20 +94,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: extension-v${{ needs.check-version.outputs.current-version }}
-          release_name: Extension v${{ needs.check-version.outputs.current-version }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Extension ${{ github.ref_name }}
           body: |
-            VS Code Extension Release v${{ needs.check-version.outputs.current-version }}
-
-            **Changes in this release:**
-            - Published to VS Code Marketplace
-            - Published to Open VSX Registry
-            - Extension package: `${{ steps.vsix-info.outputs.vsix-filename }}`
-
-            **Installation:**
-            - Install from VS Code Marketplace: [Task Master Kanban](https://marketplace.visualstudio.com/items?itemName=[TBD])
-            - Install from Open VSX Registry: [Task Master Kanban](https://open-vsx.org/extension/[TBD])
-            - Or download the VSIX file below and install manually
+            VS Code Extension Release ${{ github.ref_name }}
+            
+            **Marketplaces:**
+            - [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Hamster.task-master-hamster)
+            - [Open VSX Registry](https://open-vsx.org/extension/Hamster/task-master-hamster)
           draft: false
           prerelease: false
 
@@ -197,31 +118,20 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: extension-release-v${{ needs.check-version.outputs.current-version }}
+          name: extension-release-${{ github.ref_name }}
           path: |
             apps/extension/vsix-build/*.vsix
             apps/extension/dist/
           retention-days: 90
 
   notify-success:
-    needs: [check-version, build-and-publish]
-    if: success() && needs.check-version.outputs.should-publish == 'true'
+    needs: publish-extension
+    if: success()
     runs-on: ubuntu-latest
     steps:
       - name: Success Notification
         run: |
-          echo "🎉 Extension v${{ needs.check-version.outputs.current-version }} successfully published!"
+          echo "🎉 Extension ${{ github.ref_name }} successfully published!"
           echo "📦 Available on VS Code Marketplace"
           echo "🌍 Available on Open VSX Registry"
-          echo "🏷️ GitHub release created: extension-v${{ needs.check-version.outputs.current-version }}"
-
-  notify-skipped:
-    needs: check-version
-    if: needs.check-version.outputs.should-publish == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip Notification
-        run: |
-          echo "ℹ️ Extension publish skipped - no version changes detected"
-          echo "Current version: ${{ needs.check-version.outputs.current-version }}"
-          echo "To force publish, use workflow_dispatch with force_publish=true"
+          echo "🏷️ GitHub release created: ${{ github.ref_name }}"
