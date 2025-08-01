@@ -1,8 +1,8 @@
 {
 	"name": "task-master-hamster",
-	"displayName": "TaskMaster AI",
-	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.0.0",
+	"displayName": "Taskmaster AI",
+	"description": "A visual Kanban board interface for Taskmaster projects in VS Code",
+	"version": "0.22.1",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
@@ -51,26 +51,44 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "taskmaster",
+					"title": "Taskmaster",
+					"icon": "assets/sidebar-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"taskmaster": [
+				{
+					"id": "taskmaster.welcome",
+					"name": "Taskmaster",
+					"type": "webview"
+				}
+			]
+		},
 		"commands": [
 			{
 				"command": "tm.showKanbanBoard",
-				"title": "TaskMaster: Show Board"
+				"title": "Taskmaster: Show Board"
 			},
 			{
 				"command": "tm.checkConnection",
-				"title": "TaskMaster: Check Connection"
+				"title": "Taskmaster: Check Connection"
 			},
 			{
 				"command": "tm.reconnect",
-				"title": "TaskMaster: Reconnect"
+				"title": "Taskmaster: Reconnect"
 			},
 			{
 				"command": "tm.openSettings",
-				"title": "TaskMaster: Open Settings"
+				"title": "Taskmaster: Open Settings"
 			}
 		],
 		"configuration": {
-			"title": "TaskMaster Kanban",
+			"title": "Taskmaster Kanban",
 			"properties": {
 				"taskmaster.mcp.command": {
 					"type": "string",

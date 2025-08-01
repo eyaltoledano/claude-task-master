@@ -3,7 +3,7 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.0.0",
+	"version": "0.22.1",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
