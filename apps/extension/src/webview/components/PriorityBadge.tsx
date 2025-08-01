@@ -15,7 +15,7 @@ export const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
 
 	const variants = {
 		high: 'destructive' as const,
-		medium: 'warning' as const,
+		medium: 'default' as const,
 		low: 'secondary' as const
 	};
 

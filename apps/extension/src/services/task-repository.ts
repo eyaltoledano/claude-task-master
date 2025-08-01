@@ -68,10 +68,17 @@ export class TaskRepository extends EventEmitter {
 				if (task.subtasks) {
 					for (const subtask of task.subtasks) {
 						if (
-							subtask.id === taskId ||
+							subtask.id.toString() === taskId ||
 							`${task.id}.${subtask.id}` === taskId
 						) {
-							return subtask;
+							return {
+								...subtask,
+								id: subtask.id.toString(),
+								description: subtask.description || '',
+								status: (subtask.status || 'pending') as TaskMasterTask['status'],
+								priority: 'medium' as const,
+								dependencies: subtask.dependencies?.map(d => d.toString()) || []
+							};
 						}
 					}
 				}
@@ -87,8 +94,15 @@ export class TaskRepository extends EventEmitter {
 			// Check subtasks
 			if (task.subtasks) {
 				for (const subtask of task.subtasks) {
-					if (subtask.id === taskId || `${task.id}.${subtask.id}` === taskId) {
-						return subtask;
+					if (subtask.id.toString() === taskId || `${task.id}.${subtask.id}` === taskId) {
+						return {
+							...subtask,
+							id: subtask.id.toString(),
+							description: subtask.description || '',
+							status: (subtask.status || 'pending') as TaskMasterTask['status'],
+							priority: 'medium' as const,
+							dependencies: subtask.dependencies?.map(d => d.toString()) || []
+						};
 					}
 				}
 			}

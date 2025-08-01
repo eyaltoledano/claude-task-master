@@ -114,16 +114,21 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 							const headingMatch = line.match(/^(#{1,6})\s(.+)$/);
 							if (headingMatch) {
 								const level = headingMatch[1].length;
-								const HeadingTag =
-									`h${Math.min(level + 2, 6)}` as keyof JSX.IntrinsicElements;
-								return (
-									<HeadingTag
-										key={lineIndex}
-										className="font-semibold text-vscode-foreground mb-2 mt-4 first:mt-0"
-									>
-										{headingMatch[2]}
-									</HeadingTag>
-								);
+								const headingLevel = Math.min(level + 2, 6);
+								const headingClassName = "font-semibold text-vscode-foreground mb-2 mt-4 first:mt-0";
+								
+								switch (headingLevel) {
+									case 3:
+										return <h3 key={lineIndex} className={headingClassName}>{headingMatch[2]}</h3>;
+									case 4:
+										return <h4 key={lineIndex} className={headingClassName}>{headingMatch[2]}</h4>;
+									case 5:
+										return <h5 key={lineIndex} className={headingClassName}>{headingMatch[2]}</h5>;
+									case 6:
+										return <h6 key={lineIndex} className={headingClassName}>{headingMatch[2]}</h6>;
+									default:
+										return <h3 key={lineIndex} className={headingClassName}>{headingMatch[2]}</h3>;
+								}
 							}
 
 							if (line.trim() === '') {

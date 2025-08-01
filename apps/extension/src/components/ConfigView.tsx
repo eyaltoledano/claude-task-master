@@ -1,6 +1,6 @@
 import { ArrowLeft, RefreshCw, Settings } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import {

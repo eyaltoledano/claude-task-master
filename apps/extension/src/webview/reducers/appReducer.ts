@@ -6,7 +6,7 @@ import type { AppState, AppAction } from '../types';
 import { logger } from '../utils/logger';
 
 export const appReducer = (state: AppState, action: AppAction): AppState => {
-	logger.debug('Reducer action:', action.type, action.payload);
+	logger.debug('Reducer action:', action.type, 'payload' in action ? action.payload : 'no payload');
 	switch (action.type) {
 		case 'SET_TASKS':
 			const newTasks = Array.isArray(action.payload) ? action.payload : [];

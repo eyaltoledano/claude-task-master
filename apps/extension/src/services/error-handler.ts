@@ -240,9 +240,12 @@ export class ErrorHandler {
 			default:
 				// Handle TaskMaster commands (tm.*)
 				if (action.startsWith('tm.')) {
-					vscode.commands.executeCommand(action).catch((error) => {
-						this.logger.error(`Failed to execute command: ${action}`, error);
-					});
+					void vscode.commands.executeCommand(action).then(
+						() => {},
+						(error: unknown) => {
+							this.logger.error(`Failed to execute command: ${action}`, error);
+						}
+					);
 				}
 				break;
 		}
