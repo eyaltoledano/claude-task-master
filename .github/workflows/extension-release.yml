@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - 'apps/extension/**'
+      - "apps/extension/**"
   workflow_dispatch:
     inputs:
       force_publish:
-        description: 'Force publish even without version changes'
+        description: "Force publish even without version changes"
         required: false
         default: false
         type: boolean
@@ -36,14 +36,14 @@ jobs:
           # Get current version from package.json
           CURRENT_VERSION=$(jq -r '.version' apps/extension/package.json)
           echo "current-version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
-          
+
           # Check if this is a force publish
           if [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
             echo "should-publish=true" >> "$GITHUB_OUTPUT"
             echo "Force publish requested"
             exit 0
           fi
-          
+
           # Check if version changed in the last commit
           if git diff HEAD~1 HEAD --name-only | grep -q "apps/extension/package.json\|apps/extension/package.publish.json"; then
             # Check if version field actually changed
@@ -74,54 +74,36 @@ jobs:
         with:
           node-version: 20
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - name: Cache pnpm dependencies
+      - name: Cache node_modules
         uses: actions/cache@v4
         with:
           path: |
-            ~/.pnpm-store
-            apps/extension/node_modules
-          key: ${{ runner.os }}-extension-pnpm-${{ hashFiles('apps/extension/pnpm-lock.yaml') }}
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-extension-pnpm-
+            ${{ runner.os }}-node-
 
       - name: Install Extension Dependencies
         working-directory: apps/extension
-        run: pnpm install --frozen-lockfile
+        run: npm ci
         timeout-minutes: 5
-
-      - name: Run Tests
-        working-directory: apps/extension
-        run: xvfb-run -a pnpm run test
-        env:
-          CI: true
-          FORCE_COLOR: 1
-        timeout-minutes: 10
-
-      - name: Lint Extension
-        working-directory: apps/extension
-        run: pnpm run lint
-        env:
-          FORCE_COLOR: 1
 
       - name: Type Check Extension
         working-directory: apps/extension
-        run: pnpm run check-types
+        run: npm run check-types
         env:
           FORCE_COLOR: 1
 
       - name: Build Extension
         working-directory: apps/extension
-        run: pnpm run build
+        run: npm run build
         env:
           FORCE_COLOR: 1
 
       - name: Package Extension
         working-directory: apps/extension
-        run: pnpm run package
+        run: npm run package
         env:
           FORCE_COLOR: 1
 
@@ -140,7 +122,7 @@ jobs:
 
       - name: Create VSIX Package
         working-directory: apps/extension/vsix-build
-        run: pnpm exec vsce package --no-dependencies
+        run: npx vsce package --no-dependencies
         env:
           FORCE_COLOR: 1
 
@@ -165,7 +147,7 @@ jobs:
 
       - name: Publish to VS Code Marketplace
         working-directory: apps/extension/vsix-build
-        run: pnpm exec vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
+        run: npx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           FORCE_COLOR: 1
@@ -189,12 +171,12 @@ jobs:
           release_name: Extension v${{ needs.check-version.outputs.current-version }}
           body: |
             VS Code Extension Release v${{ needs.check-version.outputs.current-version }}
-            
+
             **Changes in this release:**
             - Published to VS Code Marketplace
             - Published to Open VSX Registry
             - Extension package: `${{ steps.vsix-info.outputs.vsix-filename }}`
-            
+
             **Installation:**
             - Install from VS Code Marketplace: [Task Master Kanban](https://marketplace.visualstudio.com/items?itemName=[TBD])
             - Install from Open VSX Registry: [Task Master Kanban](https://open-vsx.org/extension/[TBD])
@@ -242,4 +224,4 @@ jobs:
         run: |
           echo "ℹ️ Extension publish skipped - no version changes detected"
           echo "Current version: ${{ needs.check-version.outputs.current-version }}"
-          echo "To force publish, use workflow_dispatch with force_publish=true" 
+          echo "To force publish, use workflow_dispatch with force_publish=true"

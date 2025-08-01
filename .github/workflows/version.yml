@@ -26,32 +26,25 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
+      - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-node-
 
       - name: Install root dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Install extension dependencies
         working-directory: apps/extension
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Install vsce and ovsx globally
-        run: pnpm add -g @vscode/vsce ovsx
+        run: npm install -g @vscode/vsce ovsx
 
       - name: Make release script executable
         run: chmod +x scripts/release.sh

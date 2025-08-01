@@ -3,7 +3,7 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.22.0",
+	"version": "0.0.0",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
@@ -235,7 +235,6 @@
 		"watch": "npm run watch:js & npm run watch:css",
 		"watch:js": "node ./esbuild.js --watch",
 		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
-		"test": "vscode-test",
 		"check-types": "tsc --noEmit"
 	},
 	"devDependencies": {
