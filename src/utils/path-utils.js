@@ -12,6 +12,7 @@ import {
 	TASKMASTER_REPORTS_DIR,
 	COMPLEXITY_REPORT_FILE,
 	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_CONFIG_FILE_JSONC,
 	LEGACY_CONFIG_FILE
 } from '../constants/paths.js';
 import { getLoggerOrDefault } from './logger-utils.js';
@@ -442,7 +443,8 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 
 	// 4. Check possible locations in order of preference
 	const possiblePaths = [
-		path.join(projectRoot, TASKMASTER_CONFIG_FILE), // NEW location
+		path.join(projectRoot, TASKMASTER_CONFIG_FILE_JSONC), // NEW .jsonc location (highest priority)
+		path.join(projectRoot, TASKMASTER_CONFIG_FILE), // NEW .json location
 		path.join(projectRoot, LEGACY_CONFIG_FILE) // LEGACY location
 	];
 

@@ -6,6 +6,7 @@
 import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import * as jsoncParser from 'jsonc-parser';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 import { fileURLToPath } from 'url';
 import { getCurrentTag } from '../../../scripts/modules/utils.js';
@@ -38,7 +39,8 @@ function getVersionInfo() {
 			'../../../package.json'
 		);
 		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+const fileContent = fs.readFileSync(packageJsonPath, 'utf-8');
+			const packageJson = packageJsonPath.endsWith('.jsonc') ? jsoncParser.parse(fileContent) : JSON.parse(fileContent);
 			cachedVersionInfo = {
 				version: packageJson.version,
 				name: packageJson.name
@@ -85,12 +87,13 @@ function getTagInfo(projectRoot, log) {
 				'tasks.json'
 			);
 			if (fs.existsSync(tasksJsonPath)) {
-				const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf-8'));
+const fileContent = fs.readFileSync(tasksJsonPath, 'utf-8');
+				const tasksData = tasksJsonPath.endsWith('.jsonc') ? jsoncParser.parse(fileContent) : JSON.parse(fileContent);
 
 				// If it's the new tagged format, extract tag keys
 				if (
-					tasksData &&
-					typeof tasksData === 'object' &&
+					tasksData [33m&&[39m
+					typeof tasksData === [32m'object'[39m [33m&&[39m
 					!Array.isArray(tasksData.tasks)
 				) {
 					const tagKeys = Object.keys(tasksData).filter(

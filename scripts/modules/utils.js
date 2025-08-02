@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import * as jsoncParser from 'jsonc-parser';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import * as gitUtils from './utils/git-utils.js';
@@ -292,13 +293,21 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 	let data;
 	try {
-		data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-		if (isDebug) {
-			console.log(`Successfully read JSON from ${filepath}`);
+		const fileContent = fs.readFileSync(filepath, 'utf8');
+		if (filepath.endsWith('.jsonc')) {
+			data = jsoncParser.parse(fileContent);
+			if (isDebug) {
+				console.log(`Successfully read JSONC from ${filepath}`);
+			}
+		} else {
+			data = JSON.parse(fileContent);
+			if (isDebug) {
+				console.log(`Successfully read JSON from ${filepath}`);
+			}
 		}
 	} catch (err) {
 		if (isDebug) {
-			console.log(`Failed to read JSON from ${filepath}: ${err.message}`);
+			console.log(`Failed to read JSON/JSONC from ${filepath}: ${err.message}`);
 		}
 		return null;
 	}
