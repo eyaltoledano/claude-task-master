@@ -8,13 +8,17 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master')
+	getCurrentTag: jest.fn(() => 'master'),
+	readComplexityReport: jest.fn(),
+	findTaskInComplexityReport: jest.fn(),
+	findProjectRoot: jest.fn()
 }));
 
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/ai-services-unified.js',
 	() => ({
-		generateObjectService: jest.fn()
+		generateObjectService: jest.fn(),
+		generateTextService: jest.fn()
 	})
 );
 
@@ -26,10 +30,25 @@ jest.unstable_mockModule(
 	})
 );
 
-// Import modules after mocking
-const { log, readJSON, writeJSON } = await import(
-	'../../../../../scripts/modules/utils.js'
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/task-manager/analyze-task-complexity.js',
+	() => ({
+		default: jest.fn()
+	})
 );
+
+jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({
+	findComplexityReportPath: jest.fn()
+}));
+
+// Import modules after mocking
+const {
+	log,
+	readJSON,
+	writeJSON,
+	readComplexityReport,
+	findTaskInComplexityReport
+} = await import('../../../../../scripts/modules/utils.js');
 const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );

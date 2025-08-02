@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { Wand2, Loader2, PlusCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+	Wand2,
+	Loader2,
+	PlusCircle,
+	TrendingUp,
+	TrendingDown
+} from 'lucide-react';
 import {
 	useUpdateTask,
 	useUpdateSubtask,
@@ -34,10 +40,12 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 }) => {
 	const [prompt, setPrompt] = useState('');
 	const [scopePrompt, setScopePrompt] = useState('');
-	const [scopeStrength, setScopeStrength] = useState<'light' | 'regular' | 'heavy'>('regular');
-	const [lastAction, setLastAction] = useState<'regenerate' | 'append' | 'scope-up' | 'scope-down' | null>(
-		null
-	);
+	const [scopeStrength, setScopeStrength] = useState<
+		'light' | 'regular' | 'heavy'
+	>('regular');
+	const [lastAction, setLastAction] = useState<
+		'regenerate' | 'append' | 'scope-up' | 'scope-down' | null
+	>(null);
 	const updateTask = useUpdateTask();
 	const updateSubtask = useUpdateSubtask();
 	const scopeUpTask = useScopeUpTask();
@@ -117,8 +125,11 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 		setLastAction('scope-up');
 
 		try {
-			const taskId = isSubtask && parentTask ? `${parentTask.id}.${currentTask.id}` : currentTask.id;
-			
+			const taskId =
+				isSubtask && parentTask
+					? `${parentTask.id}.${currentTask.id}`
+					: currentTask.id;
+
 			await scopeUpTask.mutateAsync({
 				taskId,
 				strength: scopeStrength,
@@ -143,8 +154,11 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 		setLastAction('scope-down');
 
 		try {
-			const taskId = isSubtask && parentTask ? `${parentTask.id}.${currentTask.id}` : currentTask.id;
-			
+			const taskId =
+				isSubtask && parentTask
+					? `${parentTask.id}.${currentTask.id}`
+					: currentTask.id;
+
 			await scopeDownTask.mutateAsync({
 				taskId,
 				strength: scopeStrength,
@@ -162,7 +176,11 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 	};
 
 	// Track loading states based on the last action
-	const isLoading = updateTask.isPending || updateSubtask.isPending || scopeUpTask.isPending || scopeDownTask.isPending;
+	const isLoading =
+		updateTask.isPending ||
+		updateSubtask.isPending ||
+		scopeUpTask.isPending ||
+		scopeDownTask.isPending;
 	const isRegenerating = isLoading && lastAction === 'regenerate';
 	const isAppending = isLoading && lastAction === 'append';
 	const isScopingUp = isLoading && lastAction === 'scope-up';
@@ -251,7 +269,7 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 						<Label className="block text-sm font-medium text-vscode-foreground/80 mb-3">
 							Task Complexity Adjustment
 						</Label>
-						
+
 						{/* Strength Selection */}
 						<div className="mb-3">
 							<Label className="block text-xs text-vscode-foreground/60 mb-2">
@@ -348,10 +366,12 @@ export const AIActionsSection: React.FC<AIActionsSectionProps> = ({
 						</>
 					)}
 					<p>
-						<strong>Scope Up:</strong> Increases task complexity with more details, requirements, or implementation steps
+						<strong>Scope Up:</strong> Increases task complexity with more
+						details, requirements, or implementation steps
 					</p>
 					<p>
-						<strong>Scope Down:</strong> Decreases task complexity by simplifying or removing unnecessary details
+						<strong>Scope Down:</strong> Decreases task complexity by
+						simplifying or removing unnecessary details
 					</p>
 				</div>
 			</div>

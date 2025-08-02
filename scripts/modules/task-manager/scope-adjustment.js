@@ -279,8 +279,9 @@ async function regenerateSubtasksForComplexity(
 		'debug',
 		`Complexity-aware subtask calculation${complexityInfo}: ${currentPendingCount} pending -> target ${targetSubtaskCount} total`
 	);
-	console.log(
-		`[DEBUG] Complexity-aware calculation${complexityInfo}: ${currentPendingCount} pending -> ${targetSubtaskCount} total subtasks (${strength} ${direction})`
+	log(
+		'debug',
+		`Complexity-aware calculation${complexityInfo}: ${currentPendingCount} pending -> ${targetSubtaskCount} total subtasks (${strength} ${direction})`
 	);
 
 	const newSubtasksNeeded = Math.max(1, targetSubtaskCount - preservedCount);
@@ -386,8 +387,9 @@ Ensure the JSON is valid and properly formatted.`;
 			generated: generatedSubtasks.length
 		};
 	} catch (error) {
-		console.log(
-			`[WARN] Failed to regenerate subtasks for task ${task.id}: ${error.message}`
+		log(
+			'warn',
+			`Failed to regenerate subtasks for task ${task.id}: ${error.message}`
 		);
 		// Don't fail the whole operation if subtask regeneration fails
 		return {
@@ -583,7 +585,7 @@ export async function scopeUpTask(
 		// Get original complexity score (if available)
 		const originalComplexity = getCurrentComplexityScore(taskId, context);
 		if (originalComplexity && outputFormat === 'text') {
-			console.log(`[INFO] Original complexity: ${originalComplexity}/10`);
+			log('info', `Original complexity: ${originalComplexity}/10`);
 		}
 
 		const adjustResult = await adjustTaskComplexity(
@@ -635,8 +637,9 @@ export async function scopeUpTask(
 					const complexityChange = newComplexity - originalComplexity;
 					const arrow =
 						complexityChange > 0 ? '↗️' : complexityChange < 0 ? '↘️' : '➡️';
-					console.log(
-						`[INFO] New complexity: ${originalComplexity}/10 ${arrow} ${newComplexity}/10 (${complexityChange > 0 ? '+' : ''}${complexityChange})`
+					log(
+						'info',
+						`New complexity: ${originalComplexity}/10 ${arrow} ${newComplexity}/10 (${complexityChange > 0 ? '+' : ''}${complexityChange})`
 					);
 				}
 			} catch (error) {
@@ -733,7 +736,7 @@ export async function scopeDownTask(
 		// Get original complexity score (if available)
 		const originalComplexity = getCurrentComplexityScore(taskId, context);
 		if (originalComplexity && outputFormat === 'text') {
-			console.log(`[INFO] Original complexity: ${originalComplexity}/10`);
+			log('info', `Original complexity: ${originalComplexity}/10`);
 		}
 
 		const adjustResult = await adjustTaskComplexity(
@@ -785,8 +788,9 @@ export async function scopeDownTask(
 					const complexityChange = newComplexity - originalComplexity;
 					const arrow =
 						complexityChange > 0 ? '↗️' : complexityChange < 0 ? '↘️' : '➡️';
-					console.log(
-						`[INFO] New complexity: ${originalComplexity}/10 ${arrow} ${newComplexity}/10 (${complexityChange > 0 ? '+' : ''}${complexityChange})`
+					log(
+						'info',
+						`New complexity: ${originalComplexity}/10 ${arrow} ${newComplexity}/10 (${complexityChange > 0 ? '+' : ''}${complexityChange})`
 					);
 				}
 			} catch (error) {

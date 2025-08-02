@@ -9,17 +9,9 @@
 	"engines": {
 		"vscode": "^1.93.0"
 	},
-	"categories": [
-		"AI",
-		"Visualization",
-		"Education",
-		"Other"
-	],
+	"categories": ["AI", "Visualization", "Education", "Other"],
 	"main": "./dist/extension.js",
-	"activationEvents": [
-		"onStartupFinished",
-		"workspaceContains:.taskmaster/**"
-	],
+	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
 	"contributes": {
 		"viewsContainers": {
 			"activitybar": [
@@ -80,9 +72,7 @@
 					"items": {
 						"type": "string"
 					},
-					"default": [
-						"task-master-ai"
-					],
+					"default": ["task-master-ai"],
 					"description": "An array of arguments to pass to the MCP server command."
 				},
 				"taskmaster.mcp.cwd": {
@@ -149,11 +139,7 @@
 				},
 				"taskmaster.ui.theme": {
 					"type": "string",
-					"enum": [
-						"auto",
-						"light",
-						"dark"
-					],
+					"enum": ["auto", "light", "dark"],
 					"default": "auto",
 					"description": "UI theme preference"
 				},
@@ -214,12 +200,7 @@
 				},
 				"taskmaster.debug.logLevel": {
 					"type": "string",
-					"enum": [
-						"error",
-						"warn",
-						"info",
-						"debug"
-					],
+					"enum": ["error", "warn", "info", "debug"],
 					"default": "info",
 					"description": "Logging level"
 				},

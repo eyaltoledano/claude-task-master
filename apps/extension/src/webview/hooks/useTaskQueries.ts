@@ -251,7 +251,7 @@ export function useScopeUpTask() {
 				type: 'mcpRequest',
 				tool: 'scope_up_task',
 				params: {
-					id: taskId,
+					id: String(taskId),
 					strength,
 					prompt,
 					research: options.research || false
@@ -268,9 +268,7 @@ export function useScopeUpTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log(
-				'✅ Task scope up successful, invalidating all task queries'
-			);
+			console.log('✅ Task scope up successful, invalidating all task queries');
 			console.log('Task ID:', variables.taskId);
 
 			// Invalidate ALL task-related queries
@@ -309,7 +307,7 @@ export function useScopeDownTask() {
 				type: 'mcpRequest',
 				tool: 'scope_down_task',
 				params: {
-					id: taskId,
+					id: String(taskId),
 					strength,
 					prompt,
 					research: options.research || false
