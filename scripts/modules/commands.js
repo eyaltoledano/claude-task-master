@@ -42,7 +42,10 @@ import {
 	taskExists,
 	moveTask,
 	migrateProject,
-	setResponseLanguage
+	setResponseLanguage,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 } from './task-manager.js';
 
 import {
@@ -1378,6 +1381,258 @@ function registerCommands(programInstance) {
 				}
 
 				// Use getDebugFlag getter instead of CONFIG.debug
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
+	// scope-up command
+	programInstance
+		.command('scope-up')
+		.description('Increase task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope up (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity increase strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-up --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping up ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-up',
+					outputType: 'cli'
+				};
+
+				const result = await scopeUpTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped up ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
+	// scope-down command
+	programInstance
+		.command('scope-down')
+		.description('Decrease task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope down (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity decrease strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-down --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping down ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-down',
+					outputType: 'cli'
+				};
+
+				const result = await scopeDownTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped down ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
 				if (getDebugFlag()) {
 					console.error(error);
 				}

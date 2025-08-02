@@ -227,3 +227,119 @@ export function useUpdateSubtask() {
 		}
 	});
 }
+
+// Hook to scope up task complexity
+export function useScopeUpTask() {
+	const { sendMessage } = useVSCodeContext();
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			strength = 'regular',
+			prompt,
+			options = {}
+		}: {
+			taskId: string;
+			strength?: 'light' | 'regular' | 'heavy';
+			prompt?: string;
+			options?: { research?: boolean };
+		}) => {
+			console.log('🔄 Scoping up task:', taskId, strength, prompt, options);
+
+			const response = await sendMessage({
+				type: 'mcpRequest',
+				tool: 'scope_up_task',
+				params: {
+					id: taskId,
+					strength,
+					prompt,
+					research: options.research || false
+				}
+			});
+
+			console.log('📥 Scope up task response:', response);
+
+			// Check for error in response
+			if (response && typeof response === 'object' && 'error' in response) {
+				throw new Error(response.error || 'Failed to scope up task');
+			}
+
+			return response;
+		},
+		onSuccess: async (data, variables) => {
+			console.log(
+				'✅ Task scope up successful, invalidating all task queries'
+			);
+			console.log('Task ID:', variables.taskId);
+
+			// Invalidate ALL task-related queries
+			await queryClient.invalidateQueries({
+				queryKey: taskKeys.all
+			});
+
+			console.log(
+				'🔄 All task queries invalidated for scoped up task:',
+				variables.taskId
+			);
+		}
+	});
+}
+
+// Hook to scope down task complexity
+export function useScopeDownTask() {
+	const { sendMessage } = useVSCodeContext();
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			strength = 'regular',
+			prompt,
+			options = {}
+		}: {
+			taskId: string;
+			strength?: 'light' | 'regular' | 'heavy';
+			prompt?: string;
+			options?: { research?: boolean };
+		}) => {
+			console.log('🔄 Scoping down task:', taskId, strength, prompt, options);
+
+			const response = await sendMessage({
+				type: 'mcpRequest',
+				tool: 'scope_down_task',
+				params: {
+					id: taskId,
+					strength,
+					prompt,
+					research: options.research || false
+				}
+			});
+
+			console.log('📥 Scope down task response:', response);
+
+			// Check for error in response
+			if (response && typeof response === 'object' && 'error' in response) {
+				throw new Error(response.error || 'Failed to scope down task');
+			}
+
+			return response;
+		},
+		onSuccess: async (data, variables) => {
+			console.log(
+				'✅ Task scope down successful, invalidating all task queries'
+			);
+			console.log('Task ID:', variables.taskId);
+
+			// Invalidate ALL task-related queries
+			await queryClient.invalidateQueries({
+				queryKey: taskKeys.all
+			});
+
+			console.log(
+				'🔄 All task queries invalidated for scoped down task:',
+				variables.taskId
+			);
+		}
+	});
+}
