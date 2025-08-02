@@ -1,0 +1,250 @@
+{
+	"name": "task-master-hamster",
+	"displayName": "Taskmaster AI",
+	"description": "A visual Kanban board interface for Taskmaster projects in VS Code",
+	"version": "0.22.3",
+	"publisher": "Hamster",
+	"icon": "assets/icon.png",
+	"engines": {
+		"vscode": "^1.93.0"
+	},
+	"categories": ["AI", "Visualization", "Education", "Other"],
+	"keywords": [
+		"kanban",
+		"kanban board",
+		"productivity",
+		"todo",
+		"task tracking",
+		"project management",
+		"task-master",
+		"task management",
+		"agile",
+		"scrum",
+		"ai",
+		"mcp",
+		"model context protocol",
+		"dashboard",
+		"chatgpt",
+		"claude",
+		"openai",
+		"anthropic",
+		"task",
+		"npm",
+		"intellicode",
+		"react",
+		"typescript",
+		"php",
+		"python",
+		"node",
+		"planner",
+		"organizer",
+		"workflow",
+		"boards",
+		"cards"
+	],
+	"repository": "https://github.com/eyaltoledano/claude-task-master",
+	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "taskmaster",
+					"title": "Taskmaster",
+					"icon": "assets/sidebar-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"taskmaster": [
+				{
+					"id": "taskmaster.welcome",
+					"name": "Taskmaster",
+					"type": "webview"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "tm.showKanbanBoard",
+				"title": "Taskmaster: Show Board"
+			},
+			{
+				"command": "tm.checkConnection",
+				"title": "Taskmaster: Check Connection"
+			},
+			{
+				"command": "tm.reconnect",
+				"title": "Taskmaster: Reconnect"
+			},
+			{
+				"command": "tm.openSettings",
+				"title": "Taskmaster: Open Settings"
+			}
+		],
+		"configuration": {
+			"title": "Taskmaster Kanban",
+			"properties": {
+				"taskmaster.mcp.command": {
+					"type": "string",
+					"default": "npx",
+					"description": "The command or absolute path to execute for the MCP server (e.g., 'npx' or '/usr/local/bin/task-master-ai')."
+				},
+				"taskmaster.mcp.args": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": ["-y", "--package=task-master-ai", "task-master-ai"],
+					"description": "An array of arguments to pass to the MCP server command."
+				},
+				"taskmaster.mcp.cwd": {
+					"type": "string",
+					"description": "Working directory for the Task Master MCP server (defaults to workspace root)"
+				},
+				"taskmaster.mcp.env": {
+					"type": "object",
+					"description": "Environment variables for the Task Master MCP server"
+				},
+				"taskmaster.mcp.timeout": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Connection timeout in milliseconds"
+				},
+				"taskmaster.mcp.maxReconnectAttempts": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of reconnection attempts"
+				},
+				"taskmaster.mcp.reconnectBackoffMs": {
+					"type": "number",
+					"default": 1000,
+					"minimum": 100,
+					"maximum": 10000,
+					"description": "Initial reconnection backoff delay in milliseconds"
+				},
+				"taskmaster.mcp.maxBackoffMs": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Maximum reconnection backoff delay in milliseconds"
+				},
+				"taskmaster.mcp.healthCheckIntervalMs": {
+					"type": "number",
+					"default": 15000,
+					"minimum": 5000,
+					"maximum": 60000,
+					"description": "Health check interval in milliseconds"
+				},
+				"taskmaster.mcp.requestTimeoutMs": {
+					"type": "number",
+					"default": 300000,
+					"minimum": 30000,
+					"maximum": 600000,
+					"description": "MCP request timeout in milliseconds (default: 5 minutes)"
+				},
+				"taskmaster.ui.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically refresh tasks from the server"
+				},
+				"taskmaster.ui.refreshIntervalMs": {
+					"type": "number",
+					"default": 10000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Auto-refresh interval in milliseconds"
+				},
+				"taskmaster.ui.theme": {
+					"type": "string",
+					"enum": ["auto", "light", "dark"],
+					"default": "auto",
+					"description": "UI theme preference"
+				},
+				"taskmaster.ui.showCompletedTasks": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show completed tasks in the Kanban board"
+				},
+				"taskmaster.ui.taskDisplayLimit": {
+					"type": "number",
+					"default": 100,
+					"minimum": 1,
+					"maximum": 1000,
+					"description": "Maximum number of tasks to display"
+				},
+				"taskmaster.ui.showPriority": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show task priority indicators"
+				},
+				"taskmaster.ui.showTaskIds": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show task IDs in the interface"
+				},
+				"taskmaster.performance.maxConcurrentRequests": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of concurrent MCP requests"
+				},
+				"taskmaster.performance.requestTimeoutMs": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Request timeout in milliseconds"
+				},
+				"taskmaster.performance.cacheTasksMs": {
+					"type": "number",
+					"default": 5000,
+					"minimum": 0,
+					"maximum": 60000,
+					"description": "Task cache duration in milliseconds"
+				},
+				"taskmaster.performance.lazyLoadThreshold": {
+					"type": "number",
+					"default": 50,
+					"minimum": 10,
+					"maximum": 500,
+					"description": "Number of tasks before enabling lazy loading"
+				},
+				"taskmaster.debug.enableLogging": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable debug logging"
+				},
+				"taskmaster.debug.logLevel": {
+					"type": "string",
+					"enum": ["error", "warn", "info", "debug"],
+					"default": "info",
+					"description": "Logging level"
+				},
+				"taskmaster.debug.enableConnectionMetrics": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable connection performance metrics"
+				},
+				"taskmaster.debug.saveEventLogs": {
+					"type": "boolean",
+					"default": false,
+					"description": "Save event logs to files"
+				},
+				"taskmaster.debug.maxEventLogSize": {
+					"type": "number",
+					"default": 1000,
+					"minimum": 10,
+					"maximum": 10000,
+					"description": "Maximum number of events to keep in memory"
+				}
+			}
+		}
+	}
+}
