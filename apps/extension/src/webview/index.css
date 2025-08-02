@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+/* shadcn/ui CSS variables */
+@theme {
+	/* VS Code CSS variables will be injected here */
+	/* color-scheme: var(--vscode-theme-kind, light); */
+
+	/* shadcn/ui variables - adapted for VS Code */
+	--color-background: var(--vscode-editor-background);
+	--color-sidebar-background: var(--vscode-sideBar-background);
+	--color-foreground: var(--vscode-foreground);
+	--color-card: var(--vscode-editor-background);
+	--color-card-foreground: var(--vscode-foreground);
+	--color-popover: var(--vscode-editor-background);
+	--color-popover-foreground: var(--vscode-foreground);
+	--color-primary: var(--vscode-button-background);
+	--color-primary-foreground: var(--vscode-button-foreground);
+	--color-secondary: var(--vscode-button-secondaryBackground);
+	--color-secondary-foreground: var(--vscode-button-secondaryForeground);
+	--color-widget-background: var(--vscode-editorWidget-background);
+	--color-widget-border: var(--vscode-editorWidget-border);
+	--color-code-snippet-background: var(--vscode-textPreformat-background);
+	--color-code-snippet-text: var(--vscode-textPreformat-foreground);
+	--font-editor-font: var(--vscode-editor-font-family);
+	--font-editor-size: var(--vscode-editor-font-size);
+	--color-input-background: var(--vscode-input-background);
+	--color-input-foreground: var(--vscode-input-foreground);
+	--color-accent: var(--vscode-focusBorder);
+	--color-accent-foreground: var(--vscode-foreground);
+	--color-destructive: var(--vscode-errorForeground);
+	--color-destructive-foreground: var(--vscode-foreground);
+	--color-border: var(--vscode-panel-border);
+	--color-ring: var(--vscode-focusBorder);
+	--color-link: var(--vscode-editorLink-foreground);
+	--color-link-hover: var(--vscode-editorLink-activeForeground);
+	--color-textSeparator-foreground: var(--vscode-textSeparator-foreground);
+	--radius: 0.5rem;
+
+	/* VS Code specific color mappings for Tailwind utilities */
+	--color-vscode-foreground: var(--vscode-foreground);
+	--color-vscode-button-background: var(--vscode-button-background);
+	--color-vscode-button-foreground: var(--vscode-button-foreground);
+	--color-vscode-button-hoverBackground: var(--vscode-button-hoverBackground);
+	--color-vscode-editor-background: var(--vscode-editor-background);
+	--color-vscode-input-background: var(--vscode-input-background);
+	--color-vscode-input-foreground: var(--vscode-input-foreground);
+	--color-vscode-dropdown-background: var(--vscode-dropdown-background);
+	--color-vscode-dropdown-foreground: var(--vscode-dropdown-foreground);
+	--color-vscode-dropdown-border: var(--vscode-dropdown-border);
+	--color-vscode-focusBorder: var(--vscode-focusBorder);
+	--color-vscode-panel-border: var(--vscode-panel-border);
+	--color-vscode-sideBar-background: var(--vscode-sideBar-background);
+	--color-vscode-sideBar-foreground: var(--vscode-sideBar-foreground);
+	--color-vscode-sideBarTitle-foreground: var(--vscode-sideBarTitle-foreground);
+	--color-vscode-testing-iconPassed: var(--vscode-testing-iconPassed);
+	--color-vscode-testing-iconFailed: var(--vscode-testing-iconFailed);
+	--color-vscode-errorForeground: var(--vscode-errorForeground);
+	--color-vscode-editorWidget-background: var(--vscode-editorWidget-background);
+	--color-vscode-editorWidget-border: var(--vscode-editorWidget-border);
+	--color-vscode-list-hoverBackground: var(--vscode-list-hoverBackground);
+	--color-vscode-list-activeSelectionBackground: var(
+		--vscode-list-activeSelectionBackground
+	);
+	--color-vscode-list-activeSelectionForeground: var(
+		--vscode-list-activeSelectionForeground
+	);
+	--color-vscode-badge-background: var(--vscode-badge-background);
+	--color-vscode-badge-foreground: var(--vscode-badge-foreground);
+	--color-vscode-textLink-foreground: var(--vscode-textLink-foreground);
+	--color-vscode-textLink-activeForeground: var(
+		--vscode-textLink-activeForeground
+	);
+	--color-vscode-icon-foreground: var(--vscode-icon-foreground);
+	--color-vscode-descriptionForeground: var(--vscode-descriptionForeground);
+	--color-vscode-disabledForeground: var(--vscode-disabledForeground);
+}
+
+/* Reset body to match VS Code styles instead of Tailwind defaults */
+@layer base {
+	html,
+	body {
+		height: 100%;
+		margin: 0 !important;
+		padding: 0 !important;
+		overflow: hidden;
+	}
+
+	body {
+		background-color: var(--vscode-editor-background) !important;
+		color: var(--vscode-foreground) !important;
+		font-family: var(--vscode-font-family) !important;
+		font-size: var(--vscode-font-size) !important;
+		font-weight: var(--vscode-font-weight) !important;
+		line-height: 1.4 !important;
+	}
+
+	/* Ensure root container takes full space */
+	#root {
+		height: 100vh;
+		width: 100vw;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	/* Override any conflicting Tailwind defaults for VS Code integration */
+	* {
+		box-sizing: border-box;
+	}
+
+	/* Ensure buttons and inputs use VS Code styling */
+	button,
+	input,
+	select,
+	textarea {
+		font-family: inherit;
+	}
+}
+
+/* Enhanced scrollbar styling for Kanban board */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.1));
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(
+		--vscode-scrollbarSlider-hoverBackground,
+		rgba(255, 255, 255, 0.2)
+	);
+	border-radius: 4px;
+	border: 1px solid transparent;
+	background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(
+		--vscode-scrollbarSlider-activeBackground,
+		rgba(255, 255, 255, 0.3)
+	);
+}
+
+::-webkit-scrollbar-corner {
+	background: var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.1));
+}
+
+/* Kanban specific styles */
+@layer components {
+	.kanban-container {
+		scrollbar-gutter: stable;
+	}
+
+	/* Smooth scrolling for better UX */
+	.kanban-container {
+		scroll-behavior: smooth;
+	}
+
+	/* Ensure proper touch scrolling on mobile */
+	.kanban-container {
+		-webkit-overflow-scrolling: touch;
+	}
+
+	/* Add subtle shadow for depth */
+	.kanban-column {
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+
+	/* Enhanced scrolling for column content areas */
+	.kanban-column > div[style*="overflow-y"] {
+		scrollbar-width: thin;
+		scrollbar-color: var(
+				--vscode-scrollbarSlider-hoverBackground,
+				rgba(255, 255, 255, 0.2)
+			)
+			var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.1));
+	}
+
+	/* Card hover effects */
+	.kanban-card {
+		transition: all 0.2s ease-in-out;
+	}
+
+	.kanban-card:hover {
+		transform: translateY(-1px);
+	}
+
+	/* Focus indicators for accessibility */
+	.kanban-card:focus-visible {
+		outline: 2px solid var(--vscode-focusBorder);
+		outline-offset: 2px;
+	}
+}
+
+/* Line clamp utility for text truncation */
+@layer utilities {
+	.line-clamp-2 {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+	}
+
+	.line-clamp-3 {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
+
+	/* Custom scrollbar utilities */
+	.scrollbar-thin {
+		scrollbar-width: thin;
+	}
+
+	.scrollbar-track-transparent {
+		scrollbar-color: var(
+				--vscode-scrollbarSlider-hoverBackground,
+				rgba(255, 255, 255, 0.2)
+			)
+			transparent;
+	}
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+	::-webkit-scrollbar-track {
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: rgba(255, 255, 255, 0.25);
+	}
+}

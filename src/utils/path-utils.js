@@ -275,7 +275,11 @@ export function findComplexityReportPath(
 		'' // Project root
 	];
 
-	const fileNames = ['task-complexity', 'complexity-report'].map((fileName) => {
+	const fileNames = [
+		'task-complexity-report',
+		'task-complexity',
+		'complexity-report'
+	].map((fileName) => {
 		if (args?.tag && args?.tag !== 'master') {
 			return `${fileName}_${args.tag}.json`;
 		}

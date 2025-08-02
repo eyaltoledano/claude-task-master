@@ -6,6 +6,11 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -33,13 +38,31 @@ jobs:
         run: npm ci
         timeout-minutes: 2
 
-      - name: Exit pre-release mode (safety check)
-        run: npx changeset pre exit || true
+      - name: Exit pre-release mode and clean up
+        run: |
+          echo "🔄 Ensuring we're not in pre-release mode for main branch..."
+          
+          # Exit pre-release mode if we're in it
+          npx changeset pre exit || echo "Not in pre-release mode"
+          
+          # Remove pre.json file if it exists (belt and suspenders approach)
+          if [ -f .changeset/pre.json ]; then
+            echo "🧹 Removing pre.json file..."
+            rm -f .changeset/pre.json
+          fi
+          
+          # Verify the file is gone
+          if [ ! -f .changeset/pre.json ]; then
+            echo "✅ pre.json successfully removed"
+          else
+            echo "❌ Failed to remove pre.json"
+            exit 1
+          fi
 
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1
         with:
-          publish: npm run release
+          publish: ./.github/scripts/release.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

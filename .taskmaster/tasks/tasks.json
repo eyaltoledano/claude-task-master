@@ -2571,42 +2571,42 @@
         "testStrategy": "Testing should verify both the protocol design and implementation:\n\n1. Unit tests for the adapter pattern, ensuring it correctly translates between Taskmaster's internal models and the MCP protocol.\n2. Integration tests with a mock MCP tool or server to validate the full request/response cycle.\n3. Specific tests for the reference implementation (e.g., GitHub-MCP or Postgres-MCP), including authentication flows.\n4. Error handling tests that simulate network failures, timeouts, and malformed responses.\n5. Performance tests to ensure the communication does not introduce significant latency.\n6. Security tests to verify that authentication and encryption mechanisms are functioning correctly.\n7. End-to-end tests demonstrating Taskmaster's ability to programmatically interact with external MCP tools and execute tasks.\n8. Compatibility tests with different versions of the protocol to ensure backward compatibility.\n9. Tests for mode switching:\n   - Validate that Taskmaster correctly operates in solo/local mode using the `tasks.json` file.\n   - Validate that Taskmaster correctly operates in multiplayer/remote mode with external MCP integrations (e.g., GitHub-MCP or Postgres-MCP).\n   - Ensure seamless switching between modes without data loss or corruption.\n10. A test harness should be created to simulate an MCP tool or server for testing purposes without relying on external dependencies. Test cases should be documented thoroughly to serve as examples for other implementations.",
         "subtasks": [
           {
-            "id": "42-1",
+            "id": 42,
             "title": "Define MCP-to-MCP communication protocol",
             "status": "pending"
           },
           {
-            "id": "42-2",
+            "id": 42,
             "title": "Implement adapter pattern for MCP integration",
             "status": "pending"
           },
           {
-            "id": "42-3",
+            "id": 42,
             "title": "Develop client module for MCP tool discovery and interaction",
             "status": "pending"
           },
           {
-            "id": "42-4",
+            "id": 42,
             "title": "Provide reference implementation for GitHub-MCP integration",
             "status": "pending"
           },
           {
-            "id": "42-5",
+            "id": 42,
             "title": "Add support for solo/local and multiplayer/remote modes",
             "status": "pending"
           },
           {
-            "id": "42-6",
+            "id": 42,
             "title": "Update core modules to support dynamic mode-based operations",
             "status": "pending"
           },
           {
-            "id": "42-7",
+            "id": 42,
             "title": "Document protocol and mode-switching functionality",
             "status": "pending"
           },
           {
-            "id": "42-8",
+            "id": 42,
             "title": "Update terminology to reflect MCP server-based communication",
             "status": "pending"
           }
@@ -5403,7 +5403,7 @@
         "id": 92,
         "title": "Implement Project Root Environment Variable Support in MCP Configuration",
         "description": "Add support for a 'TASK_MASTER_PROJECT_ROOT' environment variable in MCP configuration, allowing it to be set in both mcp.json and .env, with precedence over other methods. This will define the root directory for the MCP server and take precedence over all other project root resolution methods. The implementation should be backward compatible with existing workflows that don't use this variable.",
-        "status": "review",
+        "status": "done",
         "dependencies": [
           1,
           3,
@@ -5417,49 +5417,49 @@
             "id": 1,
             "title": "Update configuration loader to check for TASK_MASTER_PROJECT_ROOT environment variable",
             "description": "Modify the configuration loading system to check for the TASK_MASTER_PROJECT_ROOT environment variable as the primary source for project root directory. Ensure proper error handling if the variable is set but points to a non-existent or inaccessible directory.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 2,
             "title": "Add support for 'projectRoot' in configuration files",
             "description": "Implement support for a 'projectRoot' key in mcp_config.toml and mcp.json configuration files as a fallback when the environment variable is not set. Update the configuration parser to recognize and validate this field.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 3,
             "title": "Refactor project root resolution logic with clear precedence rules",
             "description": "Create a unified project root resolution function that follows the precedence order: 1) TASK_MASTER_PROJECT_ROOT environment variable, 2) 'projectRoot' in config files, 3) existing resolution methods. Ensure this function is used consistently throughout the codebase.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 4,
             "title": "Update all MCP tools to use the new project root resolution",
             "description": "Identify all MCP tools and components that need to access the project root and update them to use the new resolution logic. Ensure consistent behavior across all parts of the system.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 5,
             "title": "Add comprehensive tests for the new project root resolution",
             "description": "Create unit and integration tests to verify the correct behavior of the project root resolution logic under various configurations and edge cases.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 6,
             "title": "Update documentation with new configuration options",
             "description": "Update the project documentation to clearly explain the new TASK_MASTER_PROJECT_ROOT environment variable, the 'projectRoot' configuration option, and the precedence rules. Include examples of different configuration scenarios.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 7,
             "title": "Implement validation for project root directory",
             "description": "Add validation to ensure the specified project root directory exists and has the necessary permissions. Provide clear error messages when validation fails.",
-            "status": "pending"
+            "status": "done"
           },
           {
             "id": 8,
             "title": "Implement support for loading environment variables from .env files",
             "description": "Add functionality to load the TASK_MASTER_PROJECT_ROOT variable from .env files in the workspace, following best practices for environment variable management in MCP servers.",
-            "status": "pending"
+            "status": "done"
           }
         ]
       },
@@ -5806,93 +5806,43 @@
       },
       {
         "id": 97,
-        "title": "Implement Git Workflow Integration",
-        "description": "Add `task-master git` command suite to automate git workflows based on established patterns from Task 4, eliminating manual overhead and ensuring 100% consistency",
+        "title": "Implement Basic Git Branch Management for Tasks",
+        "description": "Develop a simple Git integration module that provides essential branch management capabilities for tasks, including creation and tracking",
         "status": "pending",
         "dependencies": [],
-        "priority": "high",
-        "details": "Create a comprehensive git workflow automation system that integrates deeply with TaskMaster's task management. The feature will:\n\n1. **Automated Branch Management**:\n   - Create branches following `task-{id}` naming convention\n   - Validate branch names and prevent conflicts\n   - Handle branch switching with uncommitted changes\n   - Clean up local and remote branches post-merge\n\n2. **Intelligent Commit Generation**:\n   - Auto-detect commit type (feat/fix/test/refactor/docs) from file changes\n   - Generate standardized commit messages with task context\n   - Support subtask-specific commits with proper references\n   - Include coverage delta in test commits\n\n3. **PR Automation**:\n   - Generate comprehensive PR descriptions from task/subtask data\n   - Include implementation details, test coverage, breaking changes\n   - Format using GitHub markdown with task hierarchy\n   - Auto-populate PR template with relevant metadata\n\n4. **Workflow State Management**:\n   - Track current task branch and status\n   - Validate task readiness before PR creation\n   - Ensure all subtasks completed before finishing\n   - Handle merge conflicts gracefully\n\n5. **Integration Points**:\n   - Seamless integration with existing task commands\n   - MCP server support for IDE integrations\n   - GitHub CLI (`gh`) authentication support\n   - Coverage report parsing and display\n\n**Technical Architecture**:\n- Modular command structure in `scripts/modules/task-manager/git-*`\n- Git operations wrapper using simple-git or native child_process\n- Template engine for commit/PR generation in `scripts/modules/`\n- State persistence in `.taskmaster/git-state.json`\n- Error recovery and rollback mechanisms\n\n**Key Files to Create**:\n- `scripts/modules/task-manager/git-start.js` - Branch creation and task status update\n- `scripts/modules/task-manager/git-commit.js` - Intelligent commit message generation\n- `scripts/modules/task-manager/git-pr.js` - PR creation with auto-generated description\n- `scripts/modules/task-manager/git-finish.js` - Post-merge cleanup and status update\n- `scripts/modules/task-manager/git-status.js` - Current git workflow state display\n- `scripts/modules/git-operations.js` - Core git functionality wrapper\n- `scripts/modules/commit-analyzer.js` - File change analysis for commit types\n- `scripts/modules/pr-description-generator.js` - PR description template generator\n\n**MCP Integration Files**:\n- `mcp-server/src/core/direct-functions/git-start.js`\n- `mcp-server/src/core/direct-functions/git-commit.js`\n- `mcp-server/src/core/direct-functions/git-pr.js`\n- `mcp-server/src/core/direct-functions/git-finish.js`\n- `mcp-server/src/core/direct-functions/git-status.js`\n- `mcp-server/src/tools/git-start.js`\n- `mcp-server/src/tools/git-commit.js`\n- `mcp-server/src/tools/git-pr.js`\n- `mcp-server/src/tools/git-finish.js`\n- `mcp-server/src/tools/git-status.js`\n\n**Configuration**:\n- Add git workflow settings to `.taskmasterconfig`\n- Support for custom commit prefixes and PR templates\n- Branch naming pattern customization\n- Remote repository detection and validation",
-        "testStrategy": "Implement comprehensive test suite following Task 4's TDD approach:\n\n1. **Unit Tests** (target: 95%+ coverage):\n   - Git operations wrapper with mocked git commands\n   - Commit type detection with various file change scenarios\n   - PR description generation with different task structures\n   - Branch name validation and generation\n   - State management and persistence\n\n2. **Integration Tests**:\n   - Full workflow simulation in test repository\n   - Error handling for git conflicts and failures\n   - Multi-task workflow scenarios\n   - Coverage integration with real test runs\n   - GitHub API interaction (mocked)\n\n3. **E2E Tests**:\n   - Complete task lifecycle from start to finish\n   - Multiple developer workflow simulation\n   - Merge conflict resolution scenarios\n   - Branch protection and validation\n\n4. **Test Implementation Details**:\n   - Use Jest with git repository fixtures\n   - Mock simple-git for isolated unit tests\n   - Create test tasks.json scenarios\n   - Validate all error messages and edge cases\n   - Test rollback and recovery mechanisms\n\n5. **Coverage Requirements**:\n   - Minimum 90% overall coverage\n   - 100% coverage for critical paths (branch creation, PR generation)\n   - All error scenarios must be tested\n   - Performance tests for large task hierarchies",
+        "priority": "medium",
+        "details": "Implement a basic Git branch management system with the following features:\n\n1. **Core Command Interface**:\n   - `task-master git start [task-id]` - Creates a branch with standard naming pattern\n   - `task-master git status` - Shows task-related branches and their statuses\n   - `task-master git finish [task-id]` - Completes work on a task branch\n\n2. **Simple Configuration**:\n   - Use a basic configuration file: `config/git-integration.json`\n   - Support for default branch naming template (e.g., `feature/{id}`)\n   - Basic team workflow settings\n\n3. **Streamlined Implementation**:\n   - Create simple file structure:\n     - `scripts/modules/git/index.js` - Main entry point\n     - `scripts/modules/git/commands/` - Basic command implementations\n   - Use synchronous Git operations for simplicity\n   - Focus on supporting the main Git client only\n\n4. **Basic Error Handling**:\n   - Standard error messages for common issues\n   - Simple input validation\n   - Handle basic edge cases:\n     - Existing branches\n     - Uncommitted changes detection\n\n5. **Core Integration**:\n   - Basic task status updates based on branch activity\n   - Support for primary remote repository only\n\n6. **User Experience**:\n   - Simple terminal output\n   - Basic help documentation for commands",
+        "testStrategy": "Implement a focused testing strategy:\n\n1. **Unit Tests**:\n   - Test core command functions\n   - Test basic configuration parsing\n   - Coverage target: >70% for core functionality\n\n2. **Integration Tests**:\n   - Set up simple test repositories\n   - Test basic workflows (start, status, finish)\n   - Verify correct branch creation and naming\n\n3. **Basic Edge Case Testing**:\n   - Test behavior with uncommitted changes\n   - Test with simple repository states\n\n4. **Manual Testing**:\n   - Create a simple test plan with basic workflows\n   - Document expected outcomes\n   - Perform manual verification\n\n5. **Documentation Check**:\n   - Verify help text for accuracy",
         "subtasks": [
           {
             "id": 1,
-            "title": "Design and implement core git operations wrapper",
-            "description": "Create a robust git operations layer that handles all git commands with proper error handling and state management",
+            "title": "Implement Core Git Branch Commands",
+            "description": "Create the essential Git branch command implementations for starting, checking status, and finishing task branches with minimal functionality.",
+            "dependencies": [],
+            "details": "Implement the three core commands in their simplest form:\n1. `task-master git start [task-id]` - Create a branch using a basic naming pattern like `feature/{id}`\n2. `task-master git status` - Show only the current task branches without detailed status information\n3. `task-master git finish [task-id]` - Basic completion of a task branch\n\nUse synchronous Git operations and focus only on the happy path. Skip advanced error handling and edge cases. Place all command implementations in `scripts/modules/git/commands/` with minimal code.",
             "status": "pending",
-            "details": "Create `scripts/modules/git-operations.js` with methods for:\n- Branch creation/deletion (local and remote)\n- Commit operations with message formatting\n- Status checking and conflict detection\n- Remote operations (fetch, push, pull)\n- Repository validation and setup\n\nUse simple-git library or child_process for git commands. Implement comprehensive error handling with specific error types for different git failures. Include retry logic for network operations.",
-            "testStrategy": "Unit test all git operations with mocked git commands. Test error scenarios including conflicts, network failures, and invalid states. Achieve 100% coverage."
+            "testStrategy": "Manual testing only - verify each command works in a simple test repository with the basic workflow: start a branch, check status, finish the branch."
           },
           {
             "id": 2,
-            "title": "Implement git start command",
-            "description": "Create the entry point for task-based git workflows with automated branch creation and task status updates",
+            "title": "Create Minimal Configuration Setup",
+            "description": "Set up the simplest possible configuration file structure to support basic branch naming and minimal settings.",
+            "dependencies": [],
+            "details": "Create a basic `config/git-integration.json` file with only two settings:\n1. Default branch naming template (e.g., `feature/{id}`)\n2. Default base branch name (e.g., `main`)\n\nImplement a simple function to read this configuration file. Do not implement validation, fallback options, or advanced configuration capabilities. Focus only on the minimal setup needed for the core commands to function.",
             "status": "pending",
-            "details": "Implement `scripts/modules/task-manager/git-start.js` with functionality to:\n- Validate task exists and is ready to start\n- Check for clean working directory\n- Create branch with `task-{id}` naming\n- Update task status to 'in-progress'\n- Store workflow state in `.taskmaster/git-state.json`\n- Handle existing branch scenarios\n- Support --force flag for branch recreation\n\nIntegrate with existing task-master commands and ensure MCP compatibility.",
-            "testStrategy": "Test all scenarios including clean start, existing branches, dirty working directory, and force recreation. Mock git operations and task updates."
+            "testStrategy": "Verify the configuration file can be read and the values are correctly used by the branch commands."
           },
           {
             "id": 3,
-            "title": "Build intelligent commit analyzer and generator",
-            "description": "Create a system that analyzes file changes to auto-detect commit types and generate standardized commit messages",
+            "title": "Integrate Git Module with Task System",
+            "description": "Connect the Git branch commands to the task tracking system with minimal integration to update task statuses.",
+            "dependencies": [
+              "1",
+              "2"
+            ],
+            "details": "Create the main entry point at `scripts/modules/git/index.js` that exposes the three core commands. Implement the simplest possible integration with the task system:\n1. When a branch is started, update the task status to 'in-progress'\n2. When a branch is finished, update the task status to 'completed'\n\nSkip all advanced integrations, error handling, and edge cases. Do not implement remote repository support beyond the absolute basics. Focus only on making the commands accessible through the main CLI interface.",
             "status": "pending",
-            "details": "Develop `scripts/modules/commit-analyzer.js` with:\n- File change detection and categorization\n- Commit type inference rules:\n  - feat: new files in scripts/, new functions\n  - fix: changes to existing logic\n  - test: changes in tests/ directory\n  - docs: markdown and comment changes\n  - refactor: file moves, renames, cleanup\n- Smart message generation with task context\n- Support for custom commit templates\n- Subtask reference inclusion\n\nCreate `scripts/modules/task-manager/git-commit.js` that uses the analyzer to generate commits with proper formatting.",
-            "testStrategy": "Test commit type detection with various file change combinations. Validate message generation for all scenarios. Test edge cases and custom templates."
-          },
-          {
-            "id": 4,
-            "title": "Create PR description generator and command",
-            "description": "Build a comprehensive PR description generator that creates detailed, formatted descriptions from task data",
-            "status": "pending",
-            "details": "Implement `scripts/modules/pr-description-generator.js` to generate:\n- Task overview with full context\n- Subtask completion checklist\n- Implementation details summary\n- Test coverage metrics integration\n- Breaking changes section\n- Related tasks and dependencies\n\nCreate `scripts/modules/task-manager/git-pr.js` to:\n- Validate all subtasks are complete\n- Generate PR title and description\n- Use GitHub CLI for PR creation\n- Handle draft PR scenarios\n- Support custom PR templates\n- Include labels based on task metadata",
-            "testStrategy": "Test PR generation with various task structures. Validate markdown formatting and GitHub compatibility. Test with incomplete subtasks and edge cases."
-          },
-          {
-            "id": 5,
-            "title": "Implement git finish command with cleanup",
-            "description": "Create the workflow completion command that handles post-merge cleanup and task status updates",
-            "status": "pending",
-            "details": "Build `scripts/modules/task-manager/git-finish.js` with:\n- PR merge verification via GitHub API\n- Local branch cleanup\n- Remote branch deletion (with confirmation)\n- Task status update to 'done'\n- Workflow state cleanup\n- Switch back to main branch\n- Pull latest changes\n\nHandle scenarios where PR isn't merged yet or merge failed. Include --skip-cleanup flag for manual branch management.",
-            "testStrategy": "Test successful completion flow, unmerged PR handling, and cleanup failures. Mock GitHub API and git operations. Validate state cleanup."
-          },
-          {
-            "id": 6,
-            "title": "Add git status command for workflow visibility",
-            "description": "Create a status command that shows current git workflow state with task context",
-            "status": "pending",
-            "details": "Implement `scripts/modules/task-manager/git-status.js` to display:\n- Current task and branch information\n- Subtask completion status\n- Uncommitted changes summary\n- PR status if exists\n- Coverage metrics comparison\n- Suggested next actions\n\nIntegrate with existing task status displays and provide actionable guidance based on workflow state.",
-            "testStrategy": "Test status display in various workflow states. Validate suggestion logic and formatting. Test with missing or corrupted state."
-          },
-          {
-            "id": 7,
-            "title": "Integrate with Commander.js and add command routing",
-            "description": "Add the git command suite to TaskMaster's CLI with proper help text and option handling",
-            "status": "pending",
-            "details": "Update `scripts/modules/commands.js` to:\n- Add 'git' command with subcommands\n- Implement option parsing for all git commands\n- Add comprehensive help text\n- Ensure proper error handling and display\n- Validate command prerequisites\n\nCreate proper command structure:\n- `task-master git start [taskId] [options]`\n- `task-master git commit [options]`\n- `task-master git pr [options]`\n- `task-master git finish [options]`\n- `task-master git status [options]`",
-            "testStrategy": "Test command registration and routing. Validate help text and option parsing. Test error handling for invalid commands."
-          },
-          {
-            "id": 8,
-            "title": "Add MCP server integration for git commands",
-            "description": "Implement MCP tools and direct functions for git workflow commands to enable IDE integration",
-            "status": "pending",
-            "details": "Create MCP integration in:\n- `mcp-server/src/core/direct-functions/git-start.js`\n- `mcp-server/src/core/direct-functions/git-commit.js`\n- `mcp-server/src/core/direct-functions/git-pr.js`\n- `mcp-server/src/core/direct-functions/git-finish.js`\n- `mcp-server/src/core/direct-functions/git-status.js`\n- `mcp-server/src/tools/git-start.js`\n- `mcp-server/src/tools/git-commit.js`\n- `mcp-server/src/tools/git-pr.js`\n- `mcp-server/src/tools/git-finish.js`\n- `mcp-server/src/tools/git-status.js`\n\nImplement tools for:\n- git_start_task\n- git_commit_task\n- git_create_pr\n- git_finish_task\n- git_workflow_status\n\nEnsure proper error handling, logging, and response formatting. Include telemetry data for git operations.",
-            "testStrategy": "Test MCP tool registration and execution. Validate response formats and error handling. Test with various parameter combinations."
-          },
-          {
-            "id": 9,
-            "title": "Create comprehensive test suite",
-            "description": "Implement full test coverage following Task 4's high standards with unit, integration, and E2E tests",
-            "status": "pending",
-            "details": "Create test files:\n- `tests/unit/git/` - Unit tests for all git components\n- `tests/integration/git-workflow.test.js` - Full workflow tests\n- `tests/e2e/git-automation.test.js` - End-to-end scenarios\n\nImplement:\n- Git repository fixtures and mocks\n- Coverage tracking and reporting\n- Performance benchmarks\n- Error scenario coverage\n- Multi-developer workflow simulations\n\nTarget 95%+ coverage with focus on critical paths.",
-            "testStrategy": "Follow TDD approach. Write tests before implementation. Use Jest with proper mocking. Validate all edge cases and error scenarios."
-          },
-          {
-            "id": 10,
-            "title": "Add configuration and documentation",
-            "description": "Create configuration options and comprehensive documentation for the git workflow feature",
-            "status": "pending",
-            "details": "Configuration tasks:\n- Add git workflow settings to `.taskmasterconfig`\n- Support environment variables for GitHub tokens\n- Create default PR and commit templates\n- Add branch naming customization\n\nDocumentation tasks:\n- Update README with git workflow section\n- Create `docs/git-workflow.md` guide\n- Add examples for common scenarios\n- Document configuration options\n- Create troubleshooting guide\n\nUpdate rule files:\n- Create `.cursor/rules/git_workflow.mdc`\n- Update existing workflow rules",
-            "testStrategy": "Test configuration loading and validation. Verify documentation accuracy with real usage scenarios. Test template rendering."
+            "testStrategy": "Test the complete workflow manually: create a task, start a branch for it, verify the task status changes, finish the branch, and verify the task status updates accordingly."
           }
         ]
       },
@@ -6330,7 +6280,7 @@
         "id": 103,
         "title": "Implement Tagged Task Lists System for Multi-Context Task Management",
         "description": "Develop a comprehensive tagged task lists system enabling users to organize, filter, and manage tasks across multiple contexts (e.g., personal, branch, version) with full backward compatibility.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           3,
           11,
@@ -6402,7 +6352,7 @@
               4
             ],
             "details": "Enable seamless context switching between code branches and task tags. Use add-tag internally when creating tags from branch names.\n<info added on 2025-06-13T17:27:34.449Z>\n**Code Context Analysis Complete**\n\n**Current State:**\n- `state.json` has `branchTagMapping: {}` ready for storing git branch to tag mappings\n- `config.json` has `tags.enabledGitworkflow: false` and `tags.autoSwitchTagWithBranch: false` controls\n- Existing tag management functions in `scripts/modules/task-manager/tag-management.js` provide `createTag`, `useTag`, `switchCurrentTag` utilities\n- No existing git integration - need to add git CLI dependencies\n\n**Implementation Plan:**\n\n1. **Add Git Dependencies**: Add `simple-git` package for git operations (better than calling CLI directly)\n2. **Create Git Utilities Module**: `scripts/modules/utils/git-utils.js` with functions:\n   - `getCurrentBranch()` - Get current git branch name\n   - `isGitRepository()` - Check if we're in a git repo\n   - `getBranchList()` - Get list of all branches\n   - `onBranchChange()` - Hook for branch change detection\n\n3. **Enhance Tag Management**: Add git integration functions:\n   - `createTagFromBranch(branchName)` - Create tag from git branch name\n   - `autoSwitchTagForBranch()` - Auto-switch tag when branch changes\n   - `updateBranchTagMapping()` - Update state.json mapping\n\n4. **Add CLI Commands**:\n   - `--from-branch` flag for `add-tag` command\n   - `task-master sync-git` command for manual git-tag synchronization\n\n5. **Configuration Integration**: \n   - Check `config.tags.enabledGitworkflow` before git operations\n   - Use `config.tags.autoSwitchTagWithBranch` for automatic switching\n\n**Next Steps**: Start with adding simple-git dependency and creating git utilities module.\n</info added on 2025-06-13T17:27:34.449Z>\n<info added on 2025-06-13T17:45:03.727Z>\n**Updated Implementation Strategy - Automatic Git Integration**\n\n**Revised Approach:**\n- Eliminate manual `sync-git` command for seamless user experience\n- Implement automatic git-tag synchronization following the established migration pattern\n- Integration occurs transparently during normal task operations without user intervention\n- Behavior controlled entirely through existing configuration flags\n\n**Updated Implementation Plan:**\n\n1. **Simplified Git Dependencies**: Keep `simple-git` package for git operations\n\n2. **Enhanced Git Utilities Module**: `scripts/modules/utils/git-utils.js` with streamlined functions:\n   - `getCurrentBranch()` - Get current git branch name\n   - `isGitRepository()` - Check if we're in a git repo\n   - `shouldAutoSync()` - Check if git workflow is enabled and conditions are met\n\n3. **Automatic Integration Hook**: \n   - Add `checkAndSyncGitTags()` function to utils.js\n   - Integrate into `readJSON()` similar to migration system\n   - Automatically create tags from branch names when conditions are met\n   - Update branch-tag mappings in state.json transparently\n\n4. **Streamlined Tag Management**: Remove complex CLI additions:\n   - No `--from-branch` flag needed for `add-tag`\n   - No manual `sync-git` command\n   - Automatic tag creation and switching based on git context\n\n5. **Configuration-Driven Behavior**:\n   - `config.tags.enabledGitworkflow` enables/disables entire system\n   - `config.tags.autoSwitchTagWithBranch` controls automatic tag switching\n   - Silent operation when disabled, seamless when enabled\n\n**Benefits**: Zero-friction git integration that \"just works\" when enabled, following established project patterns for automatic system enhancements.\n</info added on 2025-06-13T17:45:03.727Z>\n<info added on 2025-06-13T17:50:24.997Z>\n**✅ IMPLEMENTATION COMPLETED**\n\n**Final Implementation Summary:**\n\n1. **Proper Module Organization**: \n   - Moved `checkAndAutoSwitchGitTag` function to correct location in `scripts/modules/utils/git-utils.js`\n   - Updated imports in `utils.js` to use the git-utils version\n   - Maintains clean separation of concerns with git operations in dedicated module\n\n2. **Seamless Integration Architecture**:\n   - Function automatically executes during `readJSON()` operations\n   - Integrates with both migration system and normal tagged format processing\n   - Zero user intervention required - works transparently in background\n\n3. **Smart Git-Tag Synchronization**:\n   - Automatically switches to existing tags matching current branch names\n   - Creates new tags for branches without corresponding tags\n   - Updates `state.json` branch-tag mappings for persistent tracking\n   - Validates branch names (excludes main/master/develop/dev/HEAD)\n\n4. **Configuration-Driven Operation**:\n   - Controlled by `config.tags.enabledGitworkflow` and `config.tags.autoSwitchTagWithBranch` flags\n   - Silent operation when disabled, seamless when enabled\n   - Uses `console.debug` for error handling to avoid disrupting normal operations\n\n5. **MCP-Compatible Design**:\n   - All functions require `projectRoot` parameter for MCP compatibility\n   - Leverages existing git utility functions (`isGitRepository`, `getCurrentBranch`, `isValidBranchForTag`, `sanitizeBranchNameForTag`)\n   - Follows established project patterns for automatic system enhancements\n\n**Status**: Implementation complete and ready for production use. Users can enable automatic git integration by configuring the appropriate flags in `.taskmaster/config.json`.\n</info added on 2025-06-13T17:50:24.997Z>\n<info added on 2025-06-14T01:01:52.559Z>\n**SCOPE SIMPLIFIED: Basic CLI Git Integration Only**\n\n**Implementation Status Changed:**\n- **CANCELLED**: All automatic git-tag synchronization features\n- **CANCELLED**: Configuration-driven git workflow automation  \n- **CANCELLED**: Silent background git integration\n- **CANCELLED**: Branch-tag mapping persistence and auto-switching\n\n**COMPLETED: Core Git Utilities**\n- Git utilities module with MCP-compatible functions ready\n- Branch name sanitization and validation implemented\n- Git repository detection working\n\n**REMAINING WORK: CLI Integration**\n- Add `--from-branch` flag to `add-tag` command in `scripts/modules/commands.js`\n- Integrate existing git utilities with tag creation workflow\n- Enable `task-master add-tag --from-branch` command functionality\n\n**Final Simplified Scope:**\nSingle explicit command: `task-master add-tag --from-branch`\n- Detects current git branch name\n- Sanitizes branch name to valid tag format\n- Creates new tag with sanitized name\n- No automation, no background processes, no persistent mappings\n\n**Benefits**: Explicit user control, predictable behavior, simple implementation, easy debugging, clear separation of concerns between git and task management.\n\n**Next Step**: Implement CLI flag integration to complete the simplified git integration feature.\n</info added on 2025-06-14T01:01:52.559Z>",
-            "status": "deferred",
+            "status": "done",
             "testStrategy": "Test tag creation and switching in repositories with multiple branches."
           },
           {
@@ -6530,7 +6480,7 @@
             "title": "Implement Task Template Importing from External .json Files",
             "description": "Implement a mechanism to import tasks from external .json files, treating them as task templates. This allows users to add new .json files to the .taskmaster/tasks folder. The system should read these files, extract tasks under a specific tag, and merge them into the main tasks.json. The 'master' tag from template files must be ignored to prevent conflicts, and the primary tasks.json file will always take precedence over imported tags.",
             "details": "Key implementation steps: 1. Develop a file watcher or a manual import command to detect and process new .json files in the tasks directory. 2. Implement logic to read an external json file, identify the tag key, and extract the array of tasks. 3. Handle potential conflicts: if an imported tag already exists in the main tasks.json, the existing tasks should be preserved and new ones appended, or the import should be skipped based on a defined precedence rule. 4. Ignore any 'master' key in template files to protect the integrity of the main task list. 5. Update task ID sequencing to ensure imported tasks are assigned unique IDs that don't conflict with existing tasks.\n<info added on 2025-06-13T23:39:39.385Z>\n**UPDATED IMPLEMENTATION PLAN - Silent Task Template Discovery**\n\n**Core Architecture Changes**:\n- Replace manual import workflow with automatic file discovery during tag operations\n- Implement file pattern matching for `tasks_*.json` files in tasks directory\n- Create seamless tag resolution system that checks external files when tags not found in main tasks.json\n\n**Silent Discovery Mechanism**:\n- Scan for `tasks_*.json` files during any tag-related operation (list-tags, use-tag, etc.)\n- Extract tag names from filenames and validate against internal tag keys\n- Build dynamic tag registry combining main tasks.json tags with discovered external tags\n- Apply precedence rule: main tasks.json tags override external files with same tag name\n\n**File Naming and Structure Convention**:\n- External files follow pattern: `tasks_[tagname].json` where tagname must match internal tag key\n- Files contain same structure as main tasks.json but only the specific tag section is used\n- Master key in external files is ignored to prevent conflicts with main task list\n\n**Key Implementation Updates**:\n- Enhance `getAvailableTags()` to include filesystem scan and merge results\n- Modify tag resolution logic to check external files as fallback when tag missing from main file\n- Update `listTags()` to display external tags with visual indicator (e.g., \"[ext]\" suffix)\n- Implement read-only access for external tags - all task modifications route to main tasks.json\n- Add error handling for malformed external files without breaking core functionality\n\n**User Experience Flow**:\n- Users drop `tasks_projectname.json` files into tasks directory\n- Tags become immediately available via `task-master use-tag projectname`\n- No manual import commands or configuration required\n- External tags appear in tag listings alongside main tags\n\n**Benefits Over Manual Import**:\n- Zero-friction workflow for adding new task contexts\n- Supports team collaboration through shared task template files\n- Enables multi-project task management without cluttering main tasks.json\n- Maintains clean separation between permanent tasks and temporary project contexts\n</info added on 2025-06-13T23:39:39.385Z>\n<info added on 2025-06-13T23:55:04.512Z>\n**Tag Preservation Bug Fix Testing**\n\nConducted testing to verify the fix for the tag preservation bug where tag structures were being lost during operations. The fix ensures that:\n\n- Tag hierarchies and relationships are maintained during file discovery operations\n- External tag files preserve their internal structure when accessed through the silent discovery mechanism\n- Main tasks.json tag integrity is protected during external file scanning\n- Tag metadata and associations remain intact across read operations\n- No data corruption occurs when switching between main and external tag contexts\n\nTesting confirmed that tag structures now persist correctly without loss of organizational data or task relationships within tagged contexts.\n</info added on 2025-06-13T23:55:04.512Z>\n<info added on 2025-06-13T23:55:42.394Z>\n**MCP Server Update-Subtask Tool Testing**\n\nPerformed testing of the MCP server's update-subtask tool to verify it maintains tag structure integrity during subtask modifications. The test confirms that:\n\n- Tag hierarchies remain intact when subtasks are updated through the MCP interface\n- External tag file references are preserved during update operations\n- Silent discovery mechanism continues to function correctly after subtask modifications\n- No tag disappearance occurs when using the MCP server tools for task management\n- Tag preservation fixes remain effective across different update pathways including MCP server operations\n\nThis validates that the tag structure preservation improvements work consistently across both direct CLI operations and MCP server-mediated task updates.\n</info added on 2025-06-13T23:55:42.394Z>\n<info added on 2025-06-14T01:20:45.903Z>\n**IMPLEMENTATION STARTED - External File Discovery System**\n\n**Current Progress:**\n- ✅ Analyzed existing tag management architecture\n- ✅ Identified integration points in `readJSON`, `tags()`, and tag resolution logic\n- ✅ Confirmed file naming convention: `tasks_[tagname].json` pattern\n- 🔄 **STARTING**: Implementation of core external file discovery functions\n\n**Implementation Plan:**\n1. **Create External File Discovery Functions** in `utils.js`:\n   - `scanForExternalTaskFiles(projectRoot)` - Scan tasks directory for `tasks_*.json` files\n   - `getExternalTagsFromFiles(projectRoot)` - Extract tag names from external files\n   - `readExternalTagData(projectRoot, tagName)` - Read specific external tag data\n   - `getAvailableTags(projectRoot)` - Enhanced to include both main + external tags\n\n2. **Enhance Tag Resolution Logic** in `readJSON`:\n   - Add fallback to external files when tag not found in main tasks.json\n   - Maintain precedence: main tasks.json tags override external files\n   - Preserve read-only access for external tags\n\n3. **Update `tags()` Function** in `tag-management.js`:\n   - Display external tags with `[ext]` indicator\n   - Show external tag metadata and task counts\n   - Maintain current tag highlighting and sorting\n\n4. **Integration Points**:\n   - `readJSON()` - Add external file fallback in tag resolution\n   - `tags()` - Include external tags in listing\n   - `useTag()` - Support switching to external tags\n   - All tag operations maintain read-only access for external tags\n\n**Next Step:** Implementing external file discovery functions in utils.js\n</info added on 2025-06-14T01:20:45.903Z>\n<info added on 2025-06-14T01:23:58.909Z>\n**IMPLEMENTATION PROGRESS UPDATE - External File Discovery System**\n\n**Current Status:**\n- ✅ Analyzed existing tag management architecture\n- ✅ Identified integration points in `readJSON`, `tags()`, and tag resolution logic\n- ✅ Confirmed file naming convention: `tasks_[tagname].json` pattern\n- 🔄 **IN PROGRESS**: Implementation of core external file discovery functions\n\n**Updated Implementation Plan:**\n1. **Create External File Discovery Functions** in `utils.js`:\n   - `scanForExternalTaskFiles(projectRoot)` - Scan tasks directory for `tasks_*.json` files\n   - `getExternalTagsFromFiles(projectRoot)` - Extract tag names from external files\n   - `readExternalTagData(projectRoot, tagName)` - Read specific external tag data\n   - `getAvailableTags(projectRoot)` - Enhanced to include both main + external tags\n\n2. **Enhance Tag Resolution Logic** in `readJSON`:\n   - Add fallback to external files when tag not found in main tasks.json\n   - Maintain precedence: main tasks.json tags override external files\n   - Preserve read-only access for external tags\n\n3. **Update `tags()` Function** in `tag-management.js`:\n   - Display external tags with `(imported)` indicator *(updated from [ext])*\n   - Show external tag metadata and task counts\n   - Maintain current tag highlighting and sorting\n\n4. **Integration Points**:\n   - `readJSON()` - Add external file fallback in tag resolution\n   - `tags()` - Include external tags in listing with `(imported)` suffix\n   - `useTag()` - Support switching to external tags\n   - All tag operations maintain read-only access for external tags\n\n**Visual Indicator Change:**\n- **Previous**: External tags shown with `[ext]` suffix\n- **Updated**: External tags shown with `(imported)` suffix for better UX\n\n**Next Step:** Continuing implementation of external file discovery functions in utils.js\n</info added on 2025-06-14T01:23:58.909Z>\n<info added on 2025-06-14T02:32:56.477Z>\n**IMPLEMENTATION SIZE ASSESSMENT - External File Discovery System**\n\n**Scope: Moderate Implementation (~150-200 lines total)**\n\n**Core Functions to Add (4-5 functions in utils.js):**\n1. `scanForExternalTaskFiles(projectRoot)` - ~20-30 lines\n   - Use fs.readdirSync to scan tasks directory\n   - Filter for `tasks_*.json` pattern using regex\n   - Return array of discovered external files\n\n2. `getExternalTagsFromFiles(projectRoot)` - ~15-20 lines  \n   - Call scanForExternalTaskFiles()\n   - Extract tag names from filenames using regex\n   - Return array of external tag names\n\n3. `readExternalTagData(projectRoot, tagName)` - ~25-35 lines\n   - Construct external file path: `tasks/tasks_${tagName}.json`\n   - Read and parse JSON with error handling\n   - Return tag data or null if not found/invalid\n\n4. `getAvailableTags(projectRoot)` - ~20-30 lines\n   - Get main tags from existing readJSON logic\n   - Get external tags from getExternalTagsFromFiles()\n   - Merge and deduplicate, prioritizing main tags\n   - Return combined tag list with metadata\n\n**Integration Points (3 main areas):**\n1. **Enhance `readJSON()` function** - Add ~15-20 lines\n   - Add external file fallback when tag not found in main tasks.json\n   - Maintain precedence: main tasks.json > external files\n   - Preserve existing error handling patterns\n\n2. **Update `tags()` function** in tag-management.js - Modify ~10-15 lines\n   - Use enhanced getAvailableTags() instead of current logic\n   - Display external tags with `(imported)` indicator\n   - Show external tag metadata and task counts\n   - Maintain current tag highlighting and sorting\n\n3. **Update `useTag()` function** in tag-management.js - Modify ~5-10 lines\n   - Allow switching to external tags (read-only mode)\n   - Update state.json with external tag context\n   - Display appropriate warnings for read-only external tags\n\n**Testing Requirements:**\n- Create test external files: `tasks_feature-branch.json`, `tasks_v2.json`\n- Test tag listing with mixed main/external tags\n- Test tag switching to external tags\n- Test read-only behavior for external tags\n- Test precedence when same tag exists in both main and external\n\n**Total Estimated Lines: ~150-200 lines**\n**Estimated Time: 45-60 minutes**\n**Complexity: Moderate - mostly file I/O and data merging logic**\n</info added on 2025-06-14T02:32:56.477Z>",
-            "status": "deferred",
+            "status": "done",
             "dependencies": [],
             "parentTaskId": 103
           },
@@ -6557,10 +6507,8 @@
       {
         "id": 104,
         "title": "Implement 'scope-up' and 'scope-down' CLI Commands for Dynamic Task Complexity Adjustment",
-        "description": "Add new CLI commands 'scope-up' and 'scope-down' to enable users to dynamically increase or decrease the complexity of tasks or subtasks, with support for multiple IDs, strength levels, and milestone-aware adjustments.",
-        "details": "1. Extend the CLI (commands.js) to introduce 'scope-up' and 'scope-down' commands, following established subcommand patterns for consistency and discoverability. \n2. Accept comma-separated task/subtask IDs and an optional '--strength' flag (light|regular|heavy, defaulting to regular). Validate all inputs, ensuring referenced tasks/subtasks exist and strength is valid.\n3. Fetch current task details and associated milestone context to inform the adjustment logic.\n4. Implement core logic functions that:\n   - Construct context-aware AI prompts for scaling complexity up or down, leveraging the current state, project phase, and strength parameter.\n   - Call the unified AI service (ai-services-unified.js) to generate new task/subtask content at the desired complexity level.\n   - Replace existing task details and subtasks with the AI-generated output, preserving historical versions for rollback/comparison.\n   - Ensure task dependency integrity and update tasks.json and related files accordingly.\n5. Integrate robust error handling for invalid IDs, parameters, or AI failures, and provide clear CLI output showing before/after differences.\n6. Add corresponding MCP tool equivalents for integrated environments and update documentation/help text to reflect new commands and usage patterns.\n7. Ensure compatibility with batch operations, milestone-based guidelines, and existing task management workflows.",
-        "testStrategy": "- Write unit and integration tests for both 'scope-up' and 'scope-down' commands, covering single and multiple ID scenarios, all strength levels, and edge cases (e.g., non-existent IDs, invalid strength values).\n- Simulate CLI usage to verify correct parsing, validation, and error handling.\n- Test AI prompt construction and output integration, ensuring that task complexity is adjusted as expected for each strength level and milestone context.\n- Verify that historical data is preserved and that before/after summaries are accurate and clear.\n- Confirm that task dependencies remain intact and that batch operations work as intended.\n- Validate MCP tool integration and documentation updates.",
-        "status": "pending",
+        "description": "Add new CLI commands 'scope-up' and 'scope-down' to enable users to dynamically increase or decrease the complexity of tasks or subtasks, with support for multiple IDs, strength levels, milestone-aware adjustments, and custom prompts for targeted modifications.",
+        "status": "done",
         "dependencies": [
           3,
           11,
@@ -6568,22 +6516,68 @@
           94
         ],
         "priority": "high",
+        "details": "1. Extend the CLI (commands.js) to introduce 'scope-up' and 'scope-down' commands, following established subcommand patterns for consistency and discoverability. \n2. Accept comma-separated task/subtask IDs and an optional '--strength' flag (light|regular|heavy, defaulting to regular). Validate all inputs, ensuring referenced tasks/subtasks exist and strength is valid.\n3. Implement a '--prompt' flag that allows users to specify custom instructions for how to scope up/down tasks, including targeting specific parts of tasks/subtasks (e.g., removing unnecessary test sections, focusing on particular implementation aspects).\n4. Fetch current task details and associated milestone context to inform the adjustment logic.\n5. Implement core logic functions that:\n   - Construct context-aware AI prompts for scaling complexity up or down, leveraging the current state, project phase, strength parameter, and any user-provided custom prompt.\n   - Call the unified AI service (ai-services-unified.js) to generate new task/subtask content at the desired complexity level.\n   - Replace existing task details and subtasks with the AI-generated output, preserving historical versions for rollback/comparison.\n   - Ensure task dependency integrity and update tasks.json and related files accordingly.\n6. Integrate robust error handling for invalid IDs, parameters, or AI failures, and provide clear CLI output showing before/after differences.\n7. Add corresponding MCP tool equivalents for integrated environments and update documentation/help text to reflect new commands and usage patterns.\n8. Ensure compatibility with batch operations, milestone-based guidelines, and existing task management workflows.",
+        "testStrategy": "- Write unit and integration tests for both 'scope-up' and 'scope-down' commands, covering single and multiple ID scenarios, all strength levels, custom prompts, and edge cases (e.g., non-existent IDs, invalid strength values).\n- Test various custom prompt scenarios, including prompts that target specific sections of tasks/subtasks for modification.\n- Simulate CLI usage to verify correct parsing, validation, and error handling.\n- Test AI prompt construction and output integration, ensuring that task complexity is adjusted as expected for each strength level, milestone context, and custom prompt.\n- Verify that historical data is preserved and that before/after summaries are accurate and clear.\n- Confirm that task dependencies remain intact and that batch operations work as intended.\n- Validate MCP tool integration and documentation updates.",
         "subtasks": [
           {
-            "id": 2,
-            "title": "Set up Authentication System and User Management Backend",
-            "description": "Implement the complete authentication infrastructure including user registration, login, password reset, and session management with database schema and API endpoints.",
+            "id": 1,
+            "title": "Extend CLI with scope-up and scope-down commands",
+            "description": "Implement the basic command structure for scope-up and scope-down in commands.js, following established patterns and adding appropriate help text. [Updated: 2025-08-01]",
             "dependencies": [],
-            "details": "Create user database schema with fields for id, email, password_hash, name, bio, avatar_url, created_at, updated_at. Implement JWT-based authentication with refresh tokens. Set up API endpoints for /auth/register, /auth/login, /auth/logout, /auth/refresh, /auth/forgot-password, /auth/reset-password, /auth/verify-email. Include password hashing with bcrypt, email verification system, and role-based access control with user roles (admin, user). Implement middleware for route protection and session validation.",
-            "status": "pending",
-            "testStrategy": "Unit tests for authentication functions, integration tests for auth API endpoints, test password reset flow, verify JWT token generation and validation"
+            "details": "1. Add new command definitions in commands.js for 'scope-up' and 'scope-down'\n2. Implement command argument parsing for comma-separated task/subtask IDs\n3. Add the '--strength' flag with validation for 'light', 'regular', and 'heavy' options (default to 'regular')\n4. Add the '--prompt' flag for custom scoping instructions\n5. Create help text and usage examples for both commands\n6. Ensure commands follow the established pattern of other Task Master commands\n7. Implement basic input validation (checking if IDs exist, strength values are valid)\n<info added on 2025-08-01T11:42:01.901Z>\nTDD Progress Update:\n\n1. Completed test setup:\n   - Fixed test file to use ES module imports instead of CommonJS require\n   - Jest watch mode is running and showing failing tests as expected\n\n2. Implemented comprehensive test coverage for scope adjustment functionality:\n   - Tests for scopeUpTask and scopeDownTask core functions\n   - Strength level validation (light/regular/heavy)\n   - Custom prompt handling\n   - Multiple task ID processing\n   - AI service integration testing\n\n3. Current test status:\n   - All 5 tests are failing as expected (function modules don't exist yet)\n   - Ready to implement core logic to make tests pass\n   - Following TDD red-green-refactor cycle\n\n4. Next implementation step:\n   - Creating scripts/modules/task-manager/scope-adjustment.js with core functions to make tests pass\n</info added on 2025-08-01T11:42:01.901Z>\n<info added on 2025-08-01T13:57:37.573Z>\nTesting the subtask note feature from the kanban board. This is a simple test to verify that notes can be added directly from the kanban view. The feature appears to be working as expected.\n</info added on 2025-08-01T13:57:37.573Z>",
+            "status": "done",
+            "testStrategy": "Write unit tests for command registration, argument parsing, and input validation. Test with various combinations of valid and invalid inputs including non-existent task IDs, invalid strength values, and empty inputs."
+          },
+          {
+            "id": 2,
+            "title": "Implement task/subtask retrieval and context gathering",
+            "description": "Create functions to retrieve task/subtask details and gather relevant context information needed for complexity adjustment.",
+            "dependencies": [
+              "104.1"
+            ],
+            "details": "1. Implement a function to fetch task and subtask details by ID from tasks.json\n2. Create a function to gather milestone context for the specified tasks\n3. Implement validation to ensure all specified IDs exist and are valid\n4. Add error handling for missing or invalid tasks/subtasks\n5. Create a data structure to hold the original task state for later comparison\n6. Implement functions to determine if an ID refers to a task or subtask\n7. Add support for handling multiple IDs in a single command execution",
+            "status": "done",
+            "testStrategy": "Test task and subtask retrieval with various ID formats. Verify correct handling of both task and subtask IDs. Test error cases like non-existent IDs and malformed ID strings."
+          },
+          {
+            "id": 3,
+            "title": "Develop core complexity adjustment logic",
+            "description": "Implement the core functions that construct AI prompts and process responses to adjust task complexity up or down.",
+            "dependencies": [
+              "104.2"
+            ],
+            "details": "1. Create separate handler functions for scope-up and scope-down operations\n2. Implement prompt construction logic that incorporates:\n   - Current task/subtask details\n   - Milestone context\n   - Strength parameter (light/regular/heavy)\n   - User-provided custom prompt\n3. Add integration with ai-services-unified.js to generate new content\n4. Implement response parsing to extract updated task details\n5. Create utility functions to determine how much to increase/decrease complexity based on strength\n6. Add special handling for different task components (description, implementation details, test strategy)",
+            "status": "done",
+            "testStrategy": "Test prompt construction with various inputs and strength levels. Mock AI service responses to test parsing logic. Verify that different strength levels produce appropriately scaled adjustments."
+          },
+          {
+            "id": 4,
+            "title": "Implement task update and persistence logic",
+            "description": "Create functions to update tasks/subtasks with new content while preserving integrity and handling dependencies.",
+            "dependencies": [
+              "104.3"
+            ],
+            "details": "1. Implement functions to update task and subtask objects with new content\n2. Create logic to preserve task dependency integrity during updates\n3. Add version history tracking to store previous versions of tasks\n4. Implement file writing functions to persist changes to tasks.json\n5. Add validation to ensure updated tasks maintain required fields and format\n6. Implement rollback capability in case of errors\n7. Create utility functions to display before/after differences in the CLI\n8. Add support for batch updates when multiple IDs are provided",
+            "status": "done",
+            "testStrategy": "Test task updates with various scenarios including single tasks, subtasks, and multiple items. Verify that dependencies remain intact after updates. Test rollback functionality by simulating errors during the update process."
+          },
+          {
+            "id": 5,
+            "title": "Integrate with MCP tool and add comprehensive error handling",
+            "description": "Add MCP tool equivalents for the new commands and implement robust error handling throughout the implementation.",
+            "dependencies": [
+              "104.4"
+            ],
+            "details": "1. Create MCP tool equivalents for scope-up and scope-down commands\n2. Implement comprehensive error handling for all potential failure points:\n   - Network errors during AI service calls\n   - Invalid task/subtask IDs\n   - Malformed AI responses\n   - File system errors\n3. Add clear user feedback with colorized output showing differences\n4. Implement progress indicators for longer operations\n5. Update documentation to include the new commands\n6. Add examples of common usage patterns to help text\n7. Ensure compatibility with existing task management workflows\n8. Add logging integration using the existing logging system\n<info added on 2025-08-02T14:00:38.363Z>\nMCP Integration Complete:\n\n✅ **Direct Functions Created:**\n- Created `mcp-server/src/core/direct-functions/scope-up.js` - Direct function wrapper for scope-up functionality\n- Created `mcp-server/src/core/direct-functions/scope-down.js` - Direct function wrapper for scope-down functionality\n- Both follow the exact same pattern as add-task direct function with proper error handling and silent mode\n\n✅ **MCP Tools Created:**\n- Created `mcp-server/src/tools/scope-up.js` - MCP tool for scope_up_task \n- Created `mcp-server/src/tools/scope-down.js` - MCP tool for scope_down_task\n- Both follow the exact same pattern as add-task tool with proper Zod schema validation\n\n✅ **Integration Updates:**\n- Added imports and exports to `mcp-server/src/core/task-master-core.js` for both direct functions\n- Added imports and registrations to `mcp-server/src/tools/index.js` in Group 5: Task Creation & Modification\n- Tools will be available as `mcp_task-master-ai_scope_up_task` and `mcp_task-master-ai_scope_down_task` after MCP server restart\n\n✅ **Tool Parameters:**\n- `id`: Comma-separated list of task IDs (required)\n- `strength`: light/regular/heavy (optional, defaults to regular)  \n- `prompt`: Custom scoping instructions (optional)\n- `file`: Path to tasks.json (optional, auto-detected)\n- `projectRoot`: Absolute project path (required)\n- `tag`: Tag context (optional, uses current tag)\n- `research`: Enable research mode (optional, defaults to false)\n\n✅ **Error Handling:**\n- Comprehensive error handling for missing parameters, invalid task IDs, AI failures\n- Structured error responses with appropriate error codes\n- Silent mode handling to prevent CLI output interference\n\n**Status**: MCP integration complete. Requires MCP server restart for new tools to become available.\n</info added on 2025-08-02T14:00:38.363Z>",
+            "status": "done",
+            "testStrategy": "Test error handling by simulating various failure conditions. Verify that appropriate error messages are displayed. Test MCP tool integration and ensure consistent behavior between CLI and MCP interfaces. Perform end-to-end testing with real tasks to verify the complete workflow."
           }
         ]
       }
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-06-14T15:19:05.130Z",
+      "updated": "2025-08-02T14:13:14.826Z",
       "description": "Main tag for the taskmaster project"
     }
   },
