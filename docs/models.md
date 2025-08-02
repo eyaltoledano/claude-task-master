@@ -85,6 +85,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 
 ## Research Models
 
@@ -117,6 +118,7 @@
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0   | 0.727     | 3          | 15          |
 | bedrock     | us.deepseek.r1-v1:0                          | —         | 1.35       | 5.4         |
+| agentllm    | agent-delegated-model                        | 0         | 0          | 0           |
 
 ## Fallback Models
 
@@ -190,6 +192,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 
 ## Unsupported Models
 

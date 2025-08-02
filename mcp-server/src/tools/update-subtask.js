@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateSubtaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -74,6 +75,19 @@ export function registerUpdateSubtaskTool(server) {
 					log,
 					{ session }
 				);
+
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`update_subtask tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 
 				if (result.success) {
 					log.info(`Successfully updated subtask with ID ${args.id}`);

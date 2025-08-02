@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -41,9 +42,8 @@ export function registerUpdateTool(server) {
 				.describe('Path to the tasks file relative to project root'),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
-					'The directory of the project. (Optional, usually from session)'
+					'The directory of the project.'
 				),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
@@ -84,6 +84,19 @@ export function registerUpdateTool(server) {
 					log,
 					{ session }
 				);
+
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`update tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
 
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
