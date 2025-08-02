@@ -1,5 +1,5 @@
 ---
-"task-master-ai": patch
+"task-master-ai": minor
 ---
 
 Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
