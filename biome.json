@@ -24,7 +24,11 @@
 		}
 	},
 	"linter": {
+		"enabled": true,
+		"include": ["apps/extension/**/*.ts", "apps/extension/**/*.tsx"],
+		"ignore": ["**/*", "!apps/extension/**/*"],
 		"rules": {
+			"recommended": true,
 			"complexity": {
 				"noForEach": "off",
 				"useOptionalChain": "off",
@@ -44,7 +48,8 @@
 				"useNumberNamespace": "off",
 				"noParameterAssign": "off",
 				"useTemplate": "off",
-				"noUnusedTemplateLiteral": "off"
+				"noUnusedTemplateLiteral": "off",
+				"noNonNullAssertion": "warn"
 			}
 		}
 	}
