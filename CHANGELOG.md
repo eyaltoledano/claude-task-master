@@ -4,7 +4,7 @@
 
 ### Minor Changes
 
-- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
 
   This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
 
