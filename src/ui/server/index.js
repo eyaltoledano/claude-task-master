@@ -3,6 +3,8 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import { createApiRouter } from './routes/api.js';
+import { TaskSyncService } from './services/taskSync.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,6 +23,7 @@ export async function createServer(options = {}) {
 	
 	const app = express();
 	const preferredPort = options.port || 3000;
+	const taskMaster = options.taskMaster;
 
 	// Configure CORS for localhost only
 	const corsOptions = {
@@ -72,6 +75,30 @@ export async function createServer(options = {}) {
 			uptime: process.uptime()
 		});
 	});
+
+	// Mount API routes if taskMaster is provided
+	if (taskMaster) {
+		// Create task sync service
+		const taskSync = new TaskSyncService(taskMaster);
+		
+		// Create an enhanced taskMaster with additional methods
+		const enhancedTaskMaster = {
+			...taskMaster,
+			setTaskStatus: async (id, status) => {
+				return await taskSync.setTaskStatus(id, status);
+			},
+			executeCommand: async (command, args) => {
+				return await taskSync.executeCommand(command, args);
+			},
+			getTaskById: (id) => {
+				return taskSync.getTaskById(id);
+			}
+		};
+		
+		// Mount API router
+		const apiRouter = createApiRouter(enhancedTaskMaster);
+		app.use('/api', apiRouter);
+	}
 
 	// 404 handler
 	app.use((req, res, next) => {

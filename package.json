@@ -9,7 +9,10 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": [
+		"apps/*",
+		"."
+	],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -76,6 +79,7 @@
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
+		"open": "^10.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
 		"uuid": "^11.1.0",

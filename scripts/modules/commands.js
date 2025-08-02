@@ -4251,7 +4251,7 @@ Examples:
 				// Initialize TaskMaster for accessing tasks
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true,
-					tag: options.tag || getCurrentTag()
+					tag: options.tag || getCurrentTag(process.cwd())
 				});
 				
 				// Create and start the server
