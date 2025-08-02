@@ -1,15 +1,37 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Find the root directory by looking for package.json
+function findRootDir(startDir) {
+	let currentDir = resolve(startDir);
+	while (currentDir !== '/') {
+		if (existsSync(join(currentDir, 'package.json'))) {
+			// Verify it's the root package.json by checking for expected fields
+			try {
+				const pkg = JSON.parse(
+					readFileSync(join(currentDir, 'package.json'), 'utf8')
+				);
+				if (pkg.name === 'task-master-ai' || pkg.repository) {
+					return currentDir;
+				}
+			} catch {}
+		}
+		currentDir = dirname(currentDir);
+	}
+	throw new Error('Could not find root directory');
+}
+
+const rootDir = findRootDir(__dirname);
+
 // Read the extension's package.json
-const extensionDir = join(__dirname, '..', 'apps', 'extension');
+const extensionDir = join(rootDir, 'apps', 'extension');
 const pkgPath = join(extensionDir, 'package.json');
 
 let pkg;
@@ -22,7 +44,7 @@ try {
 }
 
 // Read root package.json for repository info
-const rootPkgPath = join(__dirname, '..', 'package.json');
+const rootPkgPath = join(rootDir, 'package.json');
 let rootPkg;
 try {
 	const rootPkgContent = readFileSync(rootPkgPath, 'utf8');
