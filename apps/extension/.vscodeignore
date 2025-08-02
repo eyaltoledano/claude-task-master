@@ -1,0 +1,25 @@
+# Ignore everything by default
+*
+
+# Only include specific essential files
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE
+!icon.png
+!assets/**
+
+# Include only the built files we need (not source maps)
+!dist/extension.js
+!dist/index.js
+!dist/index.css
+
+# Exclude development documentation
+docs/extension-CI-setup.md
+docs/extension-DEV-guide.md
+
+# Exclude 
+assets/.DS_Store
+assets/banner.png
+
+

@@ -1,0 +1,137 @@
+name: Extension Release
+
+on:
+  push:
+    tags:
+      - "extension@*"
+
+permissions:
+  contents: write
+
+concurrency: extension-release-${{ github.ref }}
+
+jobs:
+  publish-extension:
+    runs-on: ubuntu-latest
+    environment: extension-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Extension Dependencies
+        working-directory: apps/extension
+        run: npm ci
+        timeout-minutes: 5
+
+      - name: Type Check Extension
+        working-directory: apps/extension
+        run: npm run check-types
+        env:
+          FORCE_COLOR: 1
+
+      - name: Build Extension
+        working-directory: apps/extension
+        run: npm run build
+        env:
+          FORCE_COLOR: 1
+
+      - name: Package Extension
+        working-directory: apps/extension
+        run: npm run package
+        env:
+          FORCE_COLOR: 1
+
+      - name: Create VSIX Package
+        working-directory: apps/extension/vsix-build
+        run: npx vsce package --no-dependencies
+        env:
+          FORCE_COLOR: 1
+
+      - name: Get VSIX filename
+        id: vsix-info
+        working-directory: apps/extension/vsix-build
+        run: |
+          VSIX_FILE=$(find . -maxdepth 1 -name "*.vsix" -type f | head -n1 | xargs basename)
+          if [ -z "$VSIX_FILE" ]; then
+            echo "Error: No VSIX file found"
+            exit 1
+          fi
+          echo "vsix-filename=$VSIX_FILE" >> "$GITHUB_OUTPUT"
+          echo "Found VSIX: $VSIX_FILE"
+
+      - name: Publish to VS Code Marketplace
+        working-directory: apps/extension/vsix-build
+        run: npx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          FORCE_COLOR: 1
+
+      - name: Install Open VSX CLI
+        run: npm install -g ovsx
+
+      - name: Publish to Open VSX Registry
+        working-directory: apps/extension/vsix-build
+        run: ovsx publish "${{ steps.vsix-info.outputs.vsix-filename }}"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          FORCE_COLOR: 1
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Extension ${{ github.ref_name }}
+          body: |
+            VS Code Extension Release ${{ github.ref_name }}
+            
+            **Marketplaces:**
+            - [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Hamster.task-master-hamster)
+            - [Open VSX Registry](https://open-vsx.org/extension/Hamster/task-master-hamster)
+          draft: false
+          prerelease: false
+
+      - name: Upload VSIX to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: apps/extension/vsix-build/${{ steps.vsix-info.outputs.vsix-filename }}
+          asset_name: ${{ steps.vsix-info.outputs.vsix-filename }}
+          asset_content_type: application/zip
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-release-${{ github.ref_name }}
+          path: |
+            apps/extension/vsix-build/*.vsix
+            apps/extension/dist/
+          retention-days: 90
+
+  notify-success:
+    needs: publish-extension
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Success Notification
+        run: |
+          echo "🎉 Extension ${{ github.ref_name }} successfully published!"
+          echo "📦 Available on VS Code Marketplace"
+          echo "🌍 Available on Open VSX Registry"
+          echo "🏷️ GitHub release created: ${{ github.ref_name }}"

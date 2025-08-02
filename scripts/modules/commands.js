@@ -1564,8 +1564,8 @@ function registerCommands(programInstance) {
 		) // Allow file override
 		.option(
 			'-cr, --complexity-report <file>',
-			'Path to the report file',
-			COMPLEXITY_REPORT_FILE
+			'Path to the complexity report file (use this to specify the complexity report, not --file)'
+			// Removed default value to allow tag-specific auto-detection
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
@@ -2381,7 +2381,8 @@ ${result.result}
 		.action(async (taskId, options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			};
 			// Only pass complexityReportPath if user provided a custom path
 			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
@@ -2654,7 +2655,7 @@ ${result.result}
 			'Comma-separated list of dependency IDs for the new subtask'
 		)
 		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
-		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--generate', 'Regenerate task files after adding subtask')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -2665,7 +2666,7 @@ ${result.result}
 
 			const parentId = options.parent;
 			const existingTaskId = options.taskId;
-			const generateFiles = !options.skipGenerate;
+			const generateFiles = options.generate || false;
 
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
@@ -2815,7 +2816,7 @@ ${result.result}
 	function showAddSubtaskHelp() {
 		console.log(
 			boxen(
-				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --skip-generate           Skip regenerating task files\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`,
+				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --generate                Regenerate task files after adding subtask\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form" --generate`,
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -2838,7 +2839,7 @@ ${result.result}
 			'-c, --convert',
 			'Convert the subtask to a standalone task instead of deleting it'
 		)
-		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--generate', 'Regenerate task files after removing subtask')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -2849,7 +2850,7 @@ ${result.result}
 
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
-			const generateFiles = !options.skipGenerate;
+			const generateFiles = options.generate || false;
 			const tag = taskMaster.getCurrentTag();
 
 			if (!subtaskIds) {
@@ -4483,11 +4484,13 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.option('--show-metadata', 'Show detailed metadata for each tag')
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					tasksPath: options.file || true,
+					tag: options.tag
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
