@@ -1,0 +1,355 @@
+# TaskMaster Kanban UI Integration - Product Requirements Document
+
+<context>
+This PRD provides comprehensive requirements for integrating a Kanban UI into TaskMaster while maintaining the tool's CLI-first philosophy and ensuring seamless workflow integration.
+
+## Project Overview
+
+### Summary
+Enhance TaskMaster AI with a visual Kanban board interface that provides real-time task visualization and drag-and-drop task management while maintaining full compatibility with the existing CLI and MCP functionality.
+
+### Problem Statement
+TaskMaster currently operates as a CLI-only tool, which limits visual project tracking and team collaboration. Users need a visual way to monitor task progress, identify bottlenecks, and manage workflows without losing the power and flexibility of the existing command-line interface.
+
+### Goals
+- **Primary**: Add visual Kanban board functionality as a native TaskMaster CLI command
+- **Secondary**: Maintain 100% backward compatibility with existing TaskMaster features
+- **Tertiary**: Enable real-time collaboration and progress visualization for teams
+
+## Core Features  
+1. CLI Integration
+2. Kanban Board Layout
+3. Task Card System
+4. Parent Task Visual Grouping
+5. Automatic Synchronization
+6. API Architecture
+
+### Success Metrics
+- Users can visualize task progress in a Kanban format
+- Drag-and-drop operations sync seamlessly with CLI commands
+- Zero disruption to existing TaskMaster workflows
+- Server startup time under 3 seconds
+- Real-time updates with <500ms latency
+</context>
+
+<PRD>
+## Core Features
+
+### 1. CLI Integration
+**Command**: `task-master ui` or `task-master kanban`
+
+**Behavior**:
+- Automatically finds available port (default: 3000)
+- Starts embedded Express server with WebSocket support
+- Opens default browser automatically (unless `--no-browser` flag)
+- Displays rich console feedback with connection details
+- Graceful shutdown on Ctrl+C
+
+**Command Options**:
+- `--port <number>`: Specify custom port
+- `--no-browser`: Prevent automatic browser launch
+- `--help`: Show usage information
+
+### 2. Kanban Board Layout
+
+**Column Structure**:
+1. **Backlog** - Newly parsed tasks from PRD
+2. **Ready** - Tasks with satisfied dependencies
+3. **In Progress** - Currently active work
+4. **Review** - Completed tasks awaiting validation
+5. **Done** - Fully completed tasks
+
+**Visual Design**:
+- Modern, responsive design with glassmorphism effects
+- Color-coded priority system (Critical=Red, High=Orange, Medium=Blue, Low=Green)
+- Drag-and-drop between columns using SortableJS
+- Real-time task count indicators per column
+
+### 3. Task Card System
+
+**Card Types**:
+
+**Main Task Cards** (for tasks without subtasks):
+- Task badge in top-right corner (e.g., "T-001")
+- Full task title and description
+- Complexity score, AI model assignment, time estimates
+- Dependency indicators and priority color coding
+
+**Subtask Cards** (individual actionable items):
+- Parent task badge in top-left corner with color coding
+- Subtask title and description
+- Parent task progress indicator showing overall completion
+- Individual complexity and dependency tracking
+- Color-coded top border matching parent task
+
+**Card Information Architecture**:
+- **Header**: Task/subtask ID for CLI reference
+- **Title**: Clear, actionable task name
+- **Description**: Truncated with expand option
+- **Meta Tags**: Complexity (1-10), AI model, dependency count
+- **Progress**: Parent task completion for subtasks
+- **Footer**: Dependency status and time estimates
+
+### 4. Parent Task Visual Grouping
+
+**Color System**:
+- Each parent task gets unique color (Purple, Orange, Teal, Dark Gray)
+- Subtask cards have matching colored badges and top borders
+- Visual progress bars show parent task completion status
+
+**Grouping Features**:
+- Click parent badge to highlight all related subtasks
+- Filter view by parent task
+- Parent progress auto-calculated from subtask completion
+
+### 5. Automatic Synchronization
+
+**File System Integration**:
+- Monitor `tasks.json` using chokidar file watcher for CLI feedback
+- Detect changes from CLI operations via periodic polling
+- Update UI every 30 seconds to reflect external changes
+
+**Bidirectional Sync**:
+- UI drag operations trigger CLI commands (`task-master set-status`)
+- CLI status changes reflect in UI within 30 seconds
+- Immediate UI updates after user actions
+- Optimistic UI updates with error rollback
+
+### 6. API Architecture
+
+**RESTful Endpoints**:
+- `GET /api/tasks` - Retrieve all tasks with subtask hierarchy
+- `PATCH /api/tasks/:id/status` - Update task status
+- `POST /api/commands/:command` - Execute TaskMaster CLI commands
+- `GET /api/health` - Server health check
+
+**Automatic Updates**:
+- Client polls `/api/tasks` every 30 seconds for changes
+- Immediate updates after user drag operations
+- Optimistic UI updates with server validation
+
+## Technical Requirements
+
+### Technology Stack
+- **Backend**: Node.js + Express (embedded in CLI)
+- **Frontend**: Vanilla JavaScript + CSS (no build process)
+- **Updates**: Simple polling every 30 seconds + immediate user feedback
+- **Drag & Drop**: SortableJS library
+- **File Watching**: chokidar for CLI console feedback
+- **Browser Launch**: open package for auto-launch
+- **CLI Enhancement**: chalk + ora for rich console output
+
+### Dependencies to Add
+```json
+{
+  "dependencies": {
+    "express": "^4.18.2",
+    "chokidar": "^3.5.3",
+    "open": "^9.1.0",
+    "ora": "^7.0.1",
+    "chalk": "^5.3.0"
+  }
+}
+```
+
+### File Structure
+```
+taskmaster-ai
+├── scripts/
+│   └── modules/
+│       └── commands.js             # Command-line interface for the Task Master CLI
+│       └── ...
+├── src/
+│   └── ui/
+│       ├── server/
+│       │   ├── index.js            # Express server setup
+│       │   ├── routes/
+│       │   │   ├── api.js          # API route handlers
+│       │   │   └── tasks.js        # Task operation endpoints
+│       │   ├── services/
+│       │   │   ├── fileWatcher.js  # CLI console feedback
+│       │   │   └── taskSync.js     # CLI integration service
+│       │   └── middleware.js       # Express middleware
+│       └── client/
+│           ├── index.html          # Main UI entry point
+│           ├── js/
+│           │   ├── kanban.js       # Core Kanban logic
+│           │   ├── api.js          # API communication
+│           │   ├── polling.js      # 30-second update polling
+│           │   └── components/
+│           │       ├── taskCard.js # Task card rendering
+│           │       └── column.js   # Column management
+│           ├── css/
+│           │   ├── main.css        # Base styles
+│           │   └── kanban.css      # Kanban-specific styles
+│           └── lib/
+│               └── sortable.min.js # SortableJS library
+```
+
+### Performance Requirements
+- Server startup time: <3 seconds
+- Initial task load: <1 second for 100 tasks
+- Drag operation response: <200ms
+- Update polling interval: 30 seconds
+- Memory usage: <30MB additional overhead
+- Browser compatibility: Modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
+
+## User Experience Requirements
+
+### CLI Experience
+**Startup Feedback**:
+```bash
+$ task-master ui
+
+⠋ Starting TaskMaster UI...
+✓ TaskMaster UI started successfully!
+
+🎯 TaskMaster Kanban UI
+══════════════════════════════════════════════════
+🌐 URL: http://localhost:3000
+📝 Port: 3000
+📊 Status: Running
+══════════════════════════════════════════════════
+💡 Press Ctrl+C to stop the server
+
+👀 Watching for file changes (console feedback)
+🚀 Browser opened automatically
+📊 Polling for updates every 30 seconds
+```
+
+**Error Handling**:
+- Port conflicts: Automatically try next available port
+- File system errors: Clear error messages with recovery suggestions
+- Network issues: Graceful degradation with offline indicators
+
+### Web Interface Experience
+**Responsive Design**:
+- Desktop-first design optimized for project management
+- Tablet support for reviewing progress
+- Mobile-friendly for quick status checks
+
+**Accessibility**:
+- Keyboard navigation for drag-and-drop operations
+- Screen reader support for task information
+- High contrast mode support
+- Focus indicators for all interactive elements
+
+**Visual Feedback**:
+- Smooth animations for drag operations (150ms)
+- Loading states for API operations
+- Success/error notifications for user actions
+- Real-time update indicators
+
+### Integration Points
+
+**TaskMaster CLI Commands to Support**:
+- `task-master set-status --id=X --status=Y` (triggered by drag operations)
+- `task-master list --status=all --with-subtasks` (initial data load)
+- `task-master expand --id=X` (task breakdown operations)
+- `task-master next` (highlight next priority tasks)
+- `task-master generate` (regenerate files after changes)
+
+**File System Integration**:
+- Monitor `tasks/tasks.json` for external changes
+- Support both flat task structure and hierarchical subtasks
+- Handle task creation, deletion, and modification events
+- Maintain data consistency during concurrent access
+
+## User Stories
+
+### As a Developer
+- **Story**: I want to start a visual Kanban board with a single command
+- **Acceptance**: Running `task-master ui` starts the server and opens my browser automatically
+- **Benefit**: Quick access to visual project overview without setup complexity
+
+### As a Project Manager
+- **Story**: I want to see all subtasks as individual cards to track granular progress
+- **Acceptance**: Complex tasks show as individual subtask cards with parent context
+- **Benefit**: Better understanding of actual work being done and bottlenecks
+
+### As a Team Lead
+- **Story**: I want to see task updates from CLI operations within a reasonable time
+- **Acceptance**: Changes from CLI commands appear in the UI within 30 seconds
+- **Benefit**: Stay informed of project progress without needing instant updates
+
+### As an AI Assistant User
+- **Story**: I want to see which AI model is handling each task
+- **Acceptance**: Task cards show AI model tags (Claude Sonnet, Perplexity, etc.)
+- **Benefit**: Understanding AI workload distribution and model assignments
+
+### As a Remote Worker
+- **Story**: I want to drag tasks between columns and have changes sync with CLI
+- **Acceptance**: Drag operations trigger appropriate CLI commands and update files
+- **Benefit**: Visual task management without losing CLI workflow integration
+
+## Non-Functional Requirements
+
+### Security
+- No authentication required (local development tool)
+- Server binds to localhost only (127.0.0.1)
+- No external network access required
+- File system access limited to TaskMaster project directory
+
+### Scalability
+- Support up to 500 tasks without performance degradation
+- Handle up to 5 concurrent browser connections
+- Efficient polling with minimal server load
+- Smart caching to reduce unnecessary data transfers
+
+### Reliability
+- Graceful handling of file system errors
+- Automatic retry logic for failed polling requests
+- Data consistency during concurrent CLI/UI operations
+- Proper cleanup on server shutdown
+
+### Maintainability
+- Pure JavaScript implementation (no transpilation)
+- Modular component architecture
+- Comprehensive error logging
+- Clear separation between server and client code
+
+
+
+## Risk Assessment
+
+### Technical Risks
+- **Port Conflicts**: Mitigated by automatic port discovery
+- **File System Race Conditions**: Handled by file locking and conflict resolution
+- **Network Connectivity**: Graceful degradation when polling fails
+- **Browser Compatibility**: Graceful degradation for older browsers
+
+### User Experience Risks
+- **Learning Curve**: Mitigated by maintaining existing CLI workflows
+- **Performance with Large Datasets**: Addressed by pagination and lazy loading
+- **Data Loss**: Prevented by optimistic updates with rollback capability
+
+### Integration Risks
+- **CLI Command Conflicts**: Careful testing of all existing command interactions
+- **File Format Changes**: Backward compatibility testing with existing projects
+- **Memory Leaks**: Proper cleanup of WebSocket connections and file watchers
+
+## Acceptance Criteria
+
+### Must Have
+- [ ] `task-master ui` command starts server and opens browser
+- [ ] Drag-and-drop moves tasks between columns and syncs with CLI
+- [ ] Subtasks appear as individual cards with parent context
+- [ ] Real-time updates from CLI changes appear in UI instantly
+- [ ] Server shuts down gracefully on Ctrl+C
+- [ ] All existing TaskMaster functionality remains unchanged
+
+### Should Have
+- [ ] Custom port specification via `--port` flag
+- [ ] Parent task progress indicators on subtask cards
+- [ ] Visual dependency indicators and blocking status
+- [ ] Responsive design works on desktop and tablet
+- [ ] Error handling with user-friendly messages
+
+### Could Have
+- [ ] Task filtering by complexity, priority, or AI model
+- [ ] Keyboard shortcuts for common operations
+- [ ] Dark mode theme option
+- [ ] Task search and quick navigation
+
+
+</PRD>

@@ -6579,12 +6579,707 @@
             "testStrategy": "Unit tests for authentication functions, integration tests for auth API endpoints, test password reset flow, verify JWT token generation and validation"
           }
         ]
+      },
+      {
+        "id": 105,
+        "title": "[Kanban Board] Set Up Express Server Infrastructure with CLI Integration",
+        "description": "Create the core Express server that will be embedded in the TaskMaster CLI, implementing the foundational server architecture with proper middleware, error handling, and graceful shutdown capabilities",
+        "details": "1. Create src/ui/server/index.js with Express 4.18.2 setup\n2. Implement automatic port discovery starting from 3000\n3. Add graceful shutdown handler for Ctrl+C\n4. Set up CORS for localhost-only access\n5. Configure static file serving for client assets\n6. Implement health check endpoint at /api/health\n7. Add chalk 5.3.0 and ora 7.0.1 for rich console output\n8. Create middleware.js for request logging and error handling\n9. Ensure server binds to 127.0.0.1 only for security\n10. Add startup timing metrics (<3 second requirement)",
+        "testStrategy": "Unit tests for port discovery logic, integration tests for server startup/shutdown, load tests to verify 3-second startup time, security tests to ensure localhost-only binding",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Express Server Core Structure",
+            "description": "Set up the main Express server file with basic configuration, middleware setup, and port discovery logic",
+            "dependencies": [],
+            "details": "Create src/ui/server/index.js with Express 4.18.2 initialization, configure express.json() and express.urlencoded() middleware, implement port discovery function that tries ports starting from 3000, set up server to bind only to 127.0.0.1 for security, add basic error handling middleware, configure Node.js process environment for production optimizations",
+            "status": "pending",
+            "testStrategy": "Unit tests for port discovery function, integration tests for server initialization, security tests to verify localhost-only binding"
+          },
+          {
+            "id": 2,
+            "title": "Implement Middleware and Request Handling",
+            "description": "Create middleware module for request logging, CORS configuration, static file serving, and centralized error handling",
+            "dependencies": [
+              "105.1"
+            ],
+            "details": "Create src/ui/server/middleware.js with request logging using chalk for colored output, implement CORS middleware restricted to localhost origins only, configure express.static() for serving client assets from src/ui/client directory, add compression middleware for response optimization, implement centralized error handling with proper status codes and error formatting, add request timing middleware to track performance metrics",
+            "status": "pending",
+            "testStrategy": "Unit tests for each middleware function, integration tests for middleware chain execution, performance tests for request timing accuracy"
+          },
+          {
+            "id": 3,
+            "title": "Add Health Check and API Infrastructure",
+            "description": "Implement the health check endpoint and basic API routing structure for future endpoints",
+            "dependencies": [
+              "105.1",
+              "105.2"
+            ],
+            "details": "Create /api/health endpoint that returns server status, uptime, and version information, set up express.Router() for API route organization, implement response time headers for monitoring, add API versioning structure (v1), create standardized JSON response format for all API endpoints, implement rate limiting for API protection",
+            "status": "pending",
+            "testStrategy": "API endpoint tests for health check responses, load tests to verify rate limiting, integration tests for routing structure"
+          },
+          {
+            "id": 4,
+            "title": "Implement Graceful Shutdown and Signal Handling",
+            "description": "Create robust shutdown handling for SIGINT/SIGTERM signals with proper cleanup and connection draining",
+            "dependencies": [
+              "105.1",
+              "105.3"
+            ],
+            "details": "Implement process signal handlers for SIGINT (Ctrl+C) and SIGTERM, create graceful shutdown function that stops accepting new connections, implement connection draining with configurable timeout (default 10 seconds), add cleanup for any open resources or intervals, use ora spinner to show shutdown progress, ensure proper exit codes for different shutdown scenarios, add shutdown hooks for future resource cleanup",
+            "status": "pending",
+            "testStrategy": "Signal handling tests with process.kill simulation, timeout tests for connection draining, cleanup verification tests"
+          },
+          {
+            "id": 5,
+            "title": "Add Rich Console Output and Startup Metrics",
+            "description": "Implement beautiful console output using chalk and ora with startup timing metrics and server information display",
+            "dependencies": [
+              "105.1",
+              "105.2",
+              "105.3",
+              "105.4"
+            ],
+            "details": "Integrate chalk 5.3.0 for colored console output with consistent color scheme, implement ora 7.0.1 spinner for startup progress indication, create ASCII art banner for TaskMaster UI, measure and display startup time with <3 second target, format server information in a bordered box showing URL, port, and status, add startup phase indicators (initializing, loading middleware, starting server, ready), implement verbose logging mode for debugging",
+            "status": "pending",
+            "testStrategy": "Visual regression tests for console output, performance tests for startup time measurement, unit tests for formatting functions"
+          }
+        ]
+      },
+      {
+        "id": 106,
+        "title": "[Kanban Board] Implement CLI Command Integration for UI Launch",
+        "description": "Add the 'task-master ui' and 'task-master kanban' commands to the existing CLI system with proper argument parsing, browser launching, and console feedback",
+        "details": "1. Update scripts/modules/commands.js to register new UI commands\n2. Implement command handler with --port and --no-browser flags\n3. Integrate 'open' package 9.1.0 for automatic browser launch\n4. Create rich console feedback using chalk and ora spinners\n5. Display formatted server information box with ASCII art\n6. Handle port conflicts with automatic retry logic\n7. Implement --help documentation for the new command\n8. Add proper error messages for common failure scenarios\n9. Ensure command respects existing TaskMaster patterns\n10. Add console output for file watching status",
+        "testStrategy": "CLI integration tests for command parsing, mock tests for browser launch behavior, error scenario testing for port conflicts, visual regression tests for console output formatting",
+        "priority": "high",
+        "dependencies": [
+          105
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Register UI Commands in Command System",
+            "description": "Update the TaskMaster command registration system to include both 'ui' and 'kanban' commands with proper aliases and configuration",
+            "dependencies": [],
+            "details": "Modify scripts/modules/commands.js to add new command entries for 'ui' and 'kanban' commands. Ensure both commands point to the same handler function. Configure command metadata including description, aliases, and available flags (--port, --no-browser). Follow existing TaskMaster command registration patterns and naming conventions.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify command registration, integration tests to ensure command routing works correctly, test alias functionality for both 'ui' and 'kanban' variants"
+          },
+          {
+            "id": 2,
+            "title": "Implement Command Handler with Argument Parsing",
+            "description": "Create the main command handler function that processes --port and --no-browser flags with proper validation and defaults",
+            "dependencies": [
+              "106.1"
+            ],
+            "details": "Implement handler function in appropriate module location (likely scripts/modules/ui-command.js). Parse command-line arguments for --port (default 3000) and --no-browser flags. Validate port number is within valid range (1024-65535). Handle edge cases like invalid port numbers or conflicting flags. Integrate with existing TaskMaster error handling patterns.",
+            "status": "pending",
+            "testStrategy": "Unit tests for argument parsing logic, edge case tests for invalid inputs, integration tests with various flag combinations, mock tests for command execution flow"
+          },
+          {
+            "id": 3,
+            "title": "Create Server Launch and Port Management System",
+            "description": "Implement server startup logic with automatic port conflict detection and retry mechanism using configurable port ranges",
+            "dependencies": [
+              "106.2"
+            ],
+            "details": "Create server initialization logic that attempts to start on specified port. Implement port availability checking before launch. Add automatic retry logic that tries next available port (up to 10 attempts). Use Node.js net module for port checking. Integrate with existing TaskMaster server infrastructure if applicable. Handle EADDRINUSE errors gracefully.",
+            "status": "pending",
+            "testStrategy": "Mock tests for port conflict scenarios, integration tests with actual server startup, stress tests with multiple concurrent launches, error handling tests for all failure modes"
+          },
+          {
+            "id": 4,
+            "title": "Implement Browser Launch and Console Feedback System",
+            "description": "Integrate the 'open' package for cross-platform browser launching and create rich console output with chalk and ora spinners",
+            "dependencies": [
+              "106.3"
+            ],
+            "details": "Install and configure 'open' package version 9.1.0. Implement browser launch logic that respects --no-browser flag. Create console feedback system using chalk for colored output and ora for loading spinners. Design ASCII art server information box showing port, URL, and status. Add file watching status indicators. Format output to be visually appealing and informative. Handle browser launch failures gracefully.",
+            "status": "pending",
+            "testStrategy": "Mock tests for browser launch behavior, visual regression tests for console output, cross-platform compatibility tests, performance tests for spinner animations"
+          },
+          {
+            "id": 5,
+            "title": "Add Help Documentation and Error Handling",
+            "description": "Create comprehensive --help documentation and implement robust error handling for all common failure scenarios",
+            "dependencies": [
+              "106.4"
+            ],
+            "details": "Write detailed help text for 'task-master ui --help' command. Include usage examples, flag descriptions, and common troubleshooting tips. Implement error handlers for: server startup failures, port binding issues, browser launch failures, missing dependencies, and file system errors. Create user-friendly error messages with actionable solutions. Add logging for debugging purposes while keeping console output clean.",
+            "status": "pending",
+            "testStrategy": "Documentation tests to verify help text accuracy, error scenario simulation tests, user experience tests for error message clarity, integration tests for help command functionality"
+          }
+        ]
+      },
+      {
+        "id": 107,
+        "title": "[Kanban Board] Build Task API Endpoints and Data Services",
+        "description": "Create RESTful API endpoints for task operations including retrieval, status updates, and CLI command execution with proper error handling and data validation",
+        "details": "1. Create src/ui/server/routes/api.js with Express Router\n2. Implement GET /api/tasks with subtask hierarchy support\n3. Create PATCH /api/tasks/:id/status with validation\n4. Add POST /api/commands/:command for CLI integration\n5. Build src/ui/server/services/taskSync.js for file operations\n6. Implement proper error responses with status codes\n7. Add request validation middleware for data integrity\n8. Create response caching for performance (<1s for 100 tasks)\n9. Handle concurrent file access with proper locking\n10. Implement data transformation for UI consumption",
+        "testStrategy": "API endpoint tests with supertest, concurrent access tests, performance benchmarks for 100+ tasks, error injection tests for file system failures, integration tests with actual tasks.json files",
+        "priority": "high",
+        "dependencies": [
+          105
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Express router and base API structure",
+            "description": "Create the foundational Express router setup in src/ui/server/routes/api.js with proper middleware configuration and error handling setup",
+            "dependencies": [],
+            "details": "Initialize Express Router instance, configure JSON body parser middleware, set up CORS headers for cross-origin requests, implement global error handling middleware, create base route structure with versioning support (/api/v1), add request logging middleware for debugging, set up response time headers, implement 404 handler for undefined routes",
+            "status": "pending",
+            "testStrategy": "Unit tests for middleware configuration, integration tests for router initialization, verify CORS headers are properly set, test error handling middleware with various error types"
+          },
+          {
+            "id": 2,
+            "title": "Implement GET /api/tasks endpoint with hierarchy support",
+            "description": "Create the main tasks retrieval endpoint that returns all tasks with proper subtask nesting and filtering capabilities",
+            "dependencies": [
+              "107.1"
+            ],
+            "details": "Read tasks.json file using fs.promises, parse JSON data with error handling, transform flat task list into nested hierarchy structure, implement query parameter support for filtering by status/priority, add pagination support for large task lists, include subtask count and completion percentage calculations, implement response compression for large payloads, add ETag support for client-side caching",
+            "status": "pending",
+            "testStrategy": "Test with various tasks.json file sizes, verify subtask hierarchy is correctly nested, test filtering with different query parameters, benchmark response time with 100+ tasks, test error handling for malformed JSON files"
+          },
+          {
+            "id": 3,
+            "title": "Create PATCH /api/tasks/:id/status endpoint with validation",
+            "description": "Implement the task status update endpoint with comprehensive validation, file system updates, and proper error responses",
+            "dependencies": [
+              "107.1"
+            ],
+            "details": "Validate task ID format (supports both main tasks and subtasks like 1.2), implement request body validation for status field using express-validator, verify status value is one of: pending/in-progress/done/blocked/deferred, read current tasks.json to find target task, update task status in memory, write updated data back to tasks.json atomically, implement optimistic locking to prevent race conditions, return updated task data in response",
+            "status": "pending",
+            "testStrategy": "Test validation with invalid task IDs and status values, verify file system updates are atomic, test concurrent update scenarios, verify proper HTTP status codes for various error cases, test with both main tasks and subtasks"
+          },
+          {
+            "id": 4,
+            "title": "Build taskSync.js service for file operations",
+            "description": "Create a dedicated service module for handling all file system operations with the tasks.json file, including locking, caching, and atomic updates",
+            "dependencies": [],
+            "details": "Implement file locking mechanism using proper-lockfile package, create in-memory cache with TTL for read operations, implement atomic write operations using temp files and rename, add file watcher for external changes detection, create retry logic for file access conflicts, implement data validation before writes, add backup creation before modifications, create methods for read/write/update operations with consistent API",
+            "status": "pending",
+            "testStrategy": "Test concurrent read/write operations, verify atomic updates don't corrupt data, test cache invalidation on file changes, simulate file system errors and verify recovery, benchmark performance with frequent operations"
+          },
+          {
+            "id": 5,
+            "title": "Add POST /api/commands/:command endpoint for CLI integration",
+            "description": "Implement the CLI command execution endpoint that safely runs Task Master commands and returns structured responses",
+            "dependencies": [
+              "107.1",
+              "107.4"
+            ],
+            "details": "Whitelist allowed CLI commands for security (next, show, list, set-status), validate command parameters and sanitize inputs, spawn child process to execute task-master CLI commands, capture stdout/stderr and exit codes, implement timeout mechanism (30s default), parse CLI output into structured JSON responses, handle streaming output for long-running commands, implement command queueing to prevent overload, add rate limiting per client",
+            "status": "pending",
+            "testStrategy": "Test command execution with various valid/invalid commands, verify output parsing for different command types, test timeout behavior with slow commands, verify security with command injection attempts, test concurrent command execution limits"
+          }
+        ]
+      },
+      {
+        "id": 108,
+        "title": "[Kanban Board] Develop Kanban Board Frontend Structure",
+        "description": "Create the main HTML structure and core JavaScript architecture for the Kanban board with responsive design and accessibility features",
+        "details": "1. Create src/ui/client/index.html with semantic HTML5\n2. Implement 5-column layout (Backlog, Ready, In Progress, Review, Done)\n3. Add responsive CSS Grid/Flexbox for desktop-first design\n4. Include SortableJS 1.15.0 via CDN or local copy\n5. Create src/ui/client/js/kanban.js as main entry point\n6. Implement component-based architecture without framework\n7. Add ARIA labels and keyboard navigation support\n8. Create loading states and error boundaries\n9. Implement high contrast mode CSS variables\n10. Add meta tags for proper viewport handling",
+        "testStrategy": "Accessibility audit with axe-core, responsive design tests across viewports, keyboard navigation tests, screen reader compatibility tests, browser compatibility tests (Chrome 90+, Firefox 88+, Safari 14+)",
+        "priority": "medium",
+        "dependencies": [
+          105
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create HTML5 Structure with Semantic Markup",
+            "description": "Build the foundational index.html file with proper semantic HTML5 elements, meta tags, and Kanban board layout structure",
+            "dependencies": [],
+            "details": "Create src/ui/client/index.html with DOCTYPE, proper head section including viewport meta tag, charset declaration, and title. Build semantic main structure using <header>, <main>, <section> elements for the 5-column layout. Each column (Backlog, Ready, In Progress, Review, Done) should use <article> tags with data attributes for column identification. Include placeholder elements for loading states and error messages. Add skip navigation links for accessibility.",
+            "status": "pending",
+            "testStrategy": "Validate HTML5 markup using W3C validator, verify semantic structure with automated accessibility tools, test meta tags functionality across devices, ensure proper document outline hierarchy"
+          },
+          {
+            "id": 2,
+            "title": "Implement Responsive CSS Grid Layout System",
+            "description": "Design and implement a responsive CSS Grid/Flexbox layout for the 5-column Kanban board with desktop-first approach and mobile adaptations",
+            "dependencies": [
+              "108.1"
+            ],
+            "details": "Create src/ui/client/css/kanban.css with CSS Grid for main column layout. Implement desktop-first design with 5 equal columns using grid-template-columns: repeat(5, 1fr). Add Flexbox for card containers within columns. Create responsive breakpoints at 1200px, 768px, and 480px for tablet and mobile views. Implement horizontal scrolling for mobile with snap-scroll behavior. Add CSS custom properties for spacing, colors, and transitions. Style column headers with fixed positioning during scroll.",
+            "status": "pending",
+            "testStrategy": "Test layout responsiveness across multiple viewport sizes (320px to 2560px), verify CSS Grid fallbacks for older browsers, validate touch-friendly spacing on mobile devices, test horizontal scroll performance"
+          },
+          {
+            "id": 3,
+            "title": "Build Component Architecture and Main Entry Point",
+            "description": "Create the JavaScript module structure with kanban.js as the main entry point and establish component-based architecture patterns",
+            "dependencies": [
+              "108.1"
+            ],
+            "details": "Create src/ui/client/js/kanban.js as the main application entry point. Establish module pattern with IIFE for encapsulation. Define core application state management object. Create component registry system for dynamic component loading. Implement event delegation pattern for efficient event handling. Set up initialization sequence with DOM ready detection. Create base component class with lifecycle methods (init, render, destroy). Add error boundary wrapper functions for component isolation.",
+            "status": "pending",
+            "testStrategy": "Unit test module initialization and component registry, verify proper event delegation setup, test error boundary isolation between components, validate memory cleanup on component destruction"
+          },
+          {
+            "id": 4,
+            "title": "Integrate SortableJS and Loading States",
+            "description": "Add SortableJS library integration and implement comprehensive loading and error state management",
+            "dependencies": [
+              "108.1",
+              "108.3"
+            ],
+            "details": "Include SortableJS 1.15.0 via CDN with local fallback option. Create loading state manager in src/ui/client/js/utils/loadingStates.js. Implement skeleton screens for initial card loading with CSS animations. Add spinner components for async operations. Create error boundary UI components with retry mechanisms. Implement progressive enhancement to ensure basic functionality without JavaScript. Add loading state transitions with fade effects. Create connection status indicator component.",
+            "status": "pending",
+            "testStrategy": "Test SortableJS CDN fallback mechanism, verify loading states appear within 100ms of async operations, test error recovery flows, validate graceful degradation without JavaScript"
+          },
+          {
+            "id": 5,
+            "title": "Implement Accessibility and High Contrast Features",
+            "description": "Add comprehensive accessibility features including ARIA labels, keyboard navigation, and high contrast mode support",
+            "dependencies": [
+              "108.1",
+              "108.2",
+              "108.3"
+            ],
+            "details": "Add ARIA labels and roles to all interactive elements. Implement keyboard navigation with Tab, Arrow keys, and Space/Enter for card selection. Create focus management system for modal-like interactions. Add aria-live regions for status updates. Implement high contrast mode using CSS custom properties and prefers-contrast media query. Create theme switcher component with localStorage persistence. Add skip links and landmark navigation. Ensure all interactive elements have visible focus indicators. Implement roving tabindex for card navigation within columns.",
+            "status": "pending",
+            "testStrategy": "Run axe-core accessibility audit for WCAG 2.1 AA compliance, test keyboard navigation flow with screen reader software (NVDA/JAWS), verify high contrast mode with Windows High Contrast, test focus management across all interactive states"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "title": "[Kanban Board] Implement Task Card Component System",
+        "description": "Build the task card rendering system with support for both main tasks and subtasks, including visual hierarchy, color coding, and interactive elements",
+        "details": "1. Create src/ui/client/js/components/taskCard.js\n2. Implement dual card types: main task and subtask variants\n3. Add color-coded priority system (Critical=Red, High=Orange, Medium=Blue, Low=Green)\n4. Create parent task badge system with unique colors\n5. Implement truncated descriptions with expand functionality\n6. Add complexity score badges (1-10 scale)\n7. Display AI model assignment tags\n8. Create dependency count indicators\n9. Add progress bars for parent task completion\n10. Implement glassmorphism effects with CSS",
+        "testStrategy": "Component unit tests, visual regression tests for card variations, interaction tests for expand/collapse, performance tests with 500+ cards, memory leak tests for card creation/destruction",
+        "priority": "high",
+        "dependencies": [
+          108
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Base TaskCard Component Structure",
+            "description": "Implement the foundational TaskCard class with core properties and methods for rendering both main tasks and subtasks",
+            "dependencies": [],
+            "details": "Create src/ui/client/js/components/taskCard.js with ES6 class structure. Define constructor accepting task data object, implement base render() method returning DOM element, add properties for task type (main/subtask), ID, title, description, status, priority, complexity score, and parent task reference. Include utility methods for DOM manipulation and event binding. Set up module exports for component reusability.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation with various task data shapes, property assignment verification, render method output validation, edge case handling for missing or malformed data"
+          },
+          {
+            "id": 2,
+            "title": "Implement Priority Color Coding and Visual Styling",
+            "description": "Build the CSS styling system with color-coded priorities, glassmorphism effects, and responsive card layouts",
+            "dependencies": [
+              "109.1"
+            ],
+            "details": "Create src/ui/client/css/taskCard.css with CSS custom properties for priority colors (Critical=#FF4444, High=#FF8C00, Medium=#4169E1, Low=#32CD32). Implement glassmorphism with backdrop-filter, semi-transparent backgrounds, and subtle shadows. Add responsive card dimensions, padding, and typography. Create hover states, active states, and dragging states. Style card borders with priority colors. Implement CSS classes for main task vs subtask visual differentiation.",
+            "status": "pending",
+            "testStrategy": "Visual regression tests for each priority color variation, cross-browser rendering tests for glassmorphism effects, responsive design tests at multiple breakpoints, contrast ratio accessibility tests"
+          },
+          {
+            "id": 3,
+            "title": "Build Interactive Elements and Badges System",
+            "description": "Create the interactive components including expandable descriptions, complexity badges, dependency indicators, and progress bars",
+            "dependencies": [
+              "109.1",
+              "109.2"
+            ],
+            "details": "Implement description truncation with 'Show more/less' toggle, limiting to 3 lines initially. Create complexity score badge (1-10) with color gradients. Build dependency count indicator showing number with icon. Add progress bar for parent tasks calculating completion percentage from subtasks. Implement parent task badge with unique color generation based on task ID. Add AI model assignment tags as small pills. Handle click events for expansion/collapse with smooth animations.",
+            "status": "pending",
+            "testStrategy": "Interaction tests for expand/collapse functionality, animation performance tests, badge rendering tests with various data ranges, progress calculation accuracy tests, memory leak tests for event listeners"
+          },
+          {
+            "id": 4,
+            "title": "Implement Card Type Variants and Hierarchy Display",
+            "description": "Create distinct visual representations for main tasks versus subtasks with proper hierarchy indication",
+            "dependencies": [
+              "109.1",
+              "109.2",
+              "109.3"
+            ],
+            "details": "Implement main task cards with full-width layout, prominent title styling, and visible progress bars. Create subtask cards with indented layout, smaller fonts, and parent task reference badge. Add visual connectors or indentation to show task relationships. Implement different shadow depths for hierarchy levels. Add icons to differentiate task types. Create smooth transitions when switching between card types. Handle edge cases for deeply nested subtasks.",
+            "status": "pending",
+            "testStrategy": "Component rendering tests for both card types, visual hierarchy validation tests, parent-child relationship display tests, accessibility tests for hierarchy understanding"
+          },
+          {
+            "id": 5,
+            "title": "Optimize Performance and Add Accessibility Features",
+            "description": "Implement performance optimizations for rendering hundreds of cards and ensure full accessibility compliance",
+            "dependencies": [
+              "109.1",
+              "109.2",
+              "109.3",
+              "109.4"
+            ],
+            "details": "Implement virtual DOM updates to minimize reflows when updating cards. Add requestAnimationFrame for smooth animations. Create card object pooling to reuse DOM elements. Implement lazy loading for off-screen cards. Add ARIA labels for all interactive elements. Ensure keyboard navigation for expand/collapse actions. Add screen reader announcements for state changes. Implement focus management for card interactions. Test with 500+ cards for performance benchmarks.",
+            "status": "pending",
+            "testStrategy": "Performance benchmarks with 500+ cards measuring render time and memory usage, accessibility audit with screen readers (NVDA, JAWS), keyboard navigation complete path testing, memory profiling for leak detection"
+          }
+        ]
+      },
+      {
+        "id": 110,
+        "title": "[Kanban Board] Create Drag-and-Drop Functionality with Status Sync",
+        "description": "Implement SortableJS-based drag-and-drop system that triggers appropriate CLI commands and provides optimistic updates with rollback capabilities",
+        "details": "1. Initialize SortableJS on each column container\n2. Configure drag constraints (only between valid columns)\n3. Implement onEnd handler to capture status changes\n4. Create optimistic UI updates (<200ms response)\n5. Call PATCH /api/tasks/:id/status on drop\n6. Implement rollback on API failure\n7. Add visual feedback during drag operations\n8. Create ghost element styling for drag preview\n9. Handle multi-select drag for batch operations\n10. Ensure touch device compatibility",
+        "testStrategy": "Drag operation integration tests, API sync verification tests, rollback scenario tests, performance tests for <200ms response time, touch device compatibility tests",
+        "priority": "high",
+        "dependencies": [
+          107,
+          109
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize SortableJS Library and Configure Base Drag Behavior",
+            "description": "Set up SortableJS on all Kanban column containers with proper configuration for drag constraints, animation settings, and event handlers",
+            "dependencies": [],
+            "details": "Import SortableJS library (v1.15.0) and initialize on each .kanban-column element. Configure options including: group settings to allow dragging between columns, animation duration (150ms), ghostClass for drag preview styling, chosenClass for selected items, dragClass for dragging state, and filter to exclude non-draggable elements. Set up base event handlers for onStart, onEnd, onChange, and onMove events.",
+            "status": "pending",
+            "testStrategy": "Unit tests for SortableJS initialization, integration tests for drag start/end events, visual tests for ghost element rendering, performance tests for initialization with 100+ cards"
+          },
+          {
+            "id": 2,
+            "title": "Implement Optimistic UI Updates with State Management",
+            "description": "Create a state management system for optimistic updates that immediately reflects drag actions in the UI while maintaining rollback capability",
+            "dependencies": [
+              "110.1"
+            ],
+            "details": "Build a lightweight state manager in src/ui/client/js/stateManager.js that tracks card positions and status. Implement optimistic update logic that: captures pre-drag state, immediately updates DOM and internal state on drop, maintains a pending changes queue, and provides rollback functionality. Ensure updates complete in <200ms by using requestAnimationFrame and batch DOM operations. Create visual feedback during pending state with subtle animations.",
+            "status": "pending",
+            "testStrategy": "Performance tests ensuring <200ms update time, unit tests for state rollback logic, integration tests for DOM sync accuracy, stress tests with rapid consecutive drags"
+          },
+          {
+            "id": 3,
+            "title": "Create API Integration Layer for Status Updates",
+            "description": "Implement the PATCH endpoint calls to /api/tasks/:id/status with proper error handling, retry logic, and rollback triggers",
+            "dependencies": [
+              "110.2"
+            ],
+            "details": "Develop src/ui/client/js/apiClient.js module with updateTaskStatus method. Implement: PATCH request to /api/tasks/:id/status with new status payload, Promise-based architecture for async handling, automatic retry with exponential backoff (max 3 attempts), proper error categorization (network vs server errors), and rollback trigger on failure. Include request queuing to handle rapid successive drops and ensure proper order of operations.",
+            "status": "pending",
+            "testStrategy": "Mock API tests for success/failure scenarios, network failure simulation tests, retry logic verification, request ordering tests with concurrent drops"
+          },
+          {
+            "id": 4,
+            "title": "Implement Multi-Select and Batch Drag Operations",
+            "description": "Add support for selecting multiple cards and dragging them together with proper visual feedback and batch API updates",
+            "dependencies": [
+              "110.1",
+              "110.3"
+            ],
+            "details": "Extend drag functionality to support multi-select through Ctrl/Cmd+click or checkbox selection. Implement: selection state tracking in stateManager, visual indicators for selected cards (border highlight, checkbox), grouped ghost element during multi-drag, batch API calls for multiple status updates, atomic rollback if any update fails, and selection persistence across columns. Add keyboard shortcuts for select all/none within columns.",
+            "status": "pending",
+            "testStrategy": "Multi-select interaction tests, batch API call verification, rollback tests for partial batch failures, keyboard shortcut tests, visual regression tests for selection states"
+          },
+          {
+            "id": 5,
+            "title": "Add Touch Device Support and Accessibility Enhancements",
+            "description": "Ensure full touch device compatibility and keyboard-based drag alternatives for accessibility compliance",
+            "dependencies": [
+              "110.1",
+              "110.4"
+            ],
+            "details": "Implement comprehensive touch support including: touch-action CSS properties for smooth scrolling, larger hit targets for touch interaction (min 44x44px), long-press to initiate drag on mobile, and haptic feedback where supported. Add keyboard alternatives: arrow keys for moving between columns, Space to select/deselect cards, Enter to confirm moves, and Escape to cancel operations. Ensure ARIA live regions announce status changes and maintain focus management throughout drag operations.",
+            "status": "pending",
+            "testStrategy": "Touch device testing on iOS/Android simulators, keyboard navigation tests with screen readers, WCAG 2.1 compliance audit, gesture recognition tests, focus management verification"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "title": "[Kanban Board] Implement Real-Time Update System with Polling",
+        "description": "Create the 30-second polling mechanism for external changes and immediate update system for user actions with efficient data transfer and UI updates",
+        "details": "1. Create src/ui/client/js/polling.js module\n2. Implement 30-second interval polling with setInterval\n3. Add intelligent diff detection to minimize redraws\n4. Create immediate update triggers for user actions\n5. Implement request debouncing for rapid changes\n6. Add visual indicators for pending updates\n7. Handle network failures with exponential backoff\n8. Create smart caching to reduce data transfer\n9. Implement partial update logic for large datasets\n10. Add connection status indicator in UI",
+        "testStrategy": "Polling interval accuracy tests, network failure simulation tests, data consistency tests during updates, performance tests with concurrent users, memory usage monitoring over time",
+        "priority": "medium",
+        "dependencies": [
+          107,
+          109
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Polling Module Architecture",
+            "description": "Set up the polling.js module with proper class structure, configuration options, and public API for managing polling lifecycle",
+            "dependencies": [],
+            "details": "Create src/ui/client/js/polling.js with a PollingManager class that supports configurable intervals, start/stop/pause methods, and event emitters for state changes. Include JSDoc documentation and TypeScript definitions. Implement singleton pattern to ensure only one polling instance exists.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation, configuration validation, lifecycle methods, and event emission patterns"
+          },
+          {
+            "id": 2,
+            "title": "Implement Intelligent Diff Detection System",
+            "description": "Build the diff detection mechanism to compare API responses and identify changes, minimizing unnecessary UI updates",
+            "dependencies": [
+              "111.1"
+            ],
+            "details": "Create deep comparison algorithm for task objects, tracking changes at field level. Implement hash-based change detection for performance. Build change queue system that batches updates. Add configurable sensitivity levels for different field types (e.g., ignore timestamp updates). Include change history tracking for debugging.",
+            "status": "pending",
+            "testStrategy": "Unit tests for diff algorithms with various data scenarios, performance benchmarks for large datasets, edge case testing for nested object comparisons"
+          },
+          {
+            "id": 3,
+            "title": "Build Network Resilience Layer",
+            "description": "Implement exponential backoff retry logic, connection status monitoring, and graceful degradation for network failures",
+            "dependencies": [
+              "111.1"
+            ],
+            "details": "Create retry mechanism with configurable backoff (2s, 4s, 8s, 16s, 32s). Implement connection state machine (connected, disconnected, reconnecting). Add network speed detection for adaptive polling intervals. Create offline queue for user actions during disconnection. Build connection status UI component with visual indicators.",
+            "status": "pending",
+            "testStrategy": "Network simulation tests for various failure scenarios, retry logic verification, offline queue persistence tests, UI indicator state transition tests"
+          },
+          {
+            "id": 4,
+            "title": "Develop Smart Caching and Partial Updates",
+            "description": "Create intelligent caching system with partial update capabilities to minimize data transfer and improve performance",
+            "dependencies": [
+              "111.2"
+            ],
+            "details": "Implement LRU cache with configurable size limits. Create ETag-based validation for cache entries. Build partial update protocol using JSON Patch format. Add cache warming on initial load. Implement predictive prefetching for likely next actions. Create cache invalidation strategies based on user actions.",
+            "status": "pending",
+            "testStrategy": "Cache hit/miss ratio tests, memory usage monitoring, partial update correctness verification, performance tests comparing full vs partial updates"
+          },
+          {
+            "id": 5,
+            "title": "Implement User Action Debouncing and Immediate Updates",
+            "description": "Build the immediate update system for user actions with intelligent debouncing to prevent API flooding",
+            "dependencies": [
+              "111.3",
+              "111.4"
+            ],
+            "details": "Create action queue with 300ms debounce window. Implement optimistic UI updates with rollback capability. Build action coalescing for rapid sequential changes. Add priority queue for critical updates. Create visual feedback system showing pending changes. Implement conflict resolution for concurrent user updates.",
+            "status": "pending",
+            "testStrategy": "Debounce timing accuracy tests, action coalescing verification, rollback scenario testing, concurrent update conflict resolution tests, UI feedback timing measurements"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "title": "[Kanban Board] Add File System Monitoring for CLI Feedback",
+        "description": "Implement chokidar-based file watching system to provide real-time console feedback when tasks.json changes occur from external sources",
+        "details": "1. Create src/ui/server/services/fileWatcher.js\n2. Implement chokidar 3.5.3 watcher on tasks.json\n3. Add debouncing for rapid file changes\n4. Create console output for detected changes\n5. Handle file system permissions errors gracefully\n6. Implement file locking detection and retry\n7. Add change type detection (create/update/delete)\n8. Create formatted console messages with chalk\n9. Handle watcher cleanup on server shutdown\n10. Add file system event statistics logging",
+        "testStrategy": "File system event tests, concurrent access tests, permission error handling tests, memory leak tests for long-running watchers, integration tests with actual CLI operations",
+        "priority": "medium",
+        "dependencies": [
+          106,
+          107
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create FileWatcher Service Module",
+            "description": "Set up the core file watcher service module with chokidar integration and proper error handling",
+            "dependencies": [],
+            "details": "Create src/ui/server/services/fileWatcher.js with chokidar 3.5.3 dependency. Initialize watcher with proper configuration for tasks.json monitoring, including options for persistent watching, ignoring initial events, and handling symlinks. Implement error event handlers for EACCES, ENOENT, and other file system errors. Set up proper module exports with start/stop methods.",
+            "status": "pending",
+            "testStrategy": "Unit tests for service initialization, mock tests for chokidar events, error handling tests for various file system errors"
+          },
+          {
+            "id": 2,
+            "title": "Implement Change Detection and Debouncing",
+            "description": "Add intelligent change detection with debouncing to handle rapid file modifications and prevent excessive notifications",
+            "dependencies": [
+              "112.1"
+            ],
+            "details": "Implement a debouncing mechanism with configurable delay (default 500ms) to batch rapid changes. Create change type detection logic to distinguish between create, update, and delete events. Add file content hashing to detect actual changes vs timestamp-only updates. Implement a queue system to collect changes during the debounce period and process them as a batch.",
+            "status": "pending",
+            "testStrategy": "Tests for debouncing timing accuracy, rapid change batching tests, change type detection tests with various file operations"
+          },
+          {
+            "id": 3,
+            "title": "Build Console Output Formatting System",
+            "description": "Create formatted console messages using chalk with color-coded output for different event types",
+            "dependencies": [
+              "112.2"
+            ],
+            "details": "Implement chalk-based console formatting with distinct colors for create (green), update (yellow), and delete (red) events. Create formatted message templates with timestamps, event types, and file paths. Add ASCII box drawing for important notifications. Implement verbose and quiet mode options. Create spinner animations for ongoing operations using ora.",
+            "status": "pending",
+            "testStrategy": "Visual output tests, color rendering tests in different terminal environments, format consistency tests"
+          },
+          {
+            "id": 4,
+            "title": "Add File Locking Detection and Retry Logic",
+            "description": "Implement intelligent file locking detection with exponential backoff retry mechanism",
+            "dependencies": [
+              "112.1"
+            ],
+            "details": "Create file locking detection by attempting read operations and catching EBUSY/EAGAIN errors. Implement exponential backoff retry logic starting at 100ms up to 5 seconds. Add maximum retry count (default 10) with failure notification. Create lock release detection to resume normal watching. Implement concurrent access handling for multiple CLI instances.",
+            "status": "pending",
+            "testStrategy": "File locking simulation tests, retry timing tests, concurrent access tests with multiple processes"
+          },
+          {
+            "id": 5,
+            "title": "Implement Statistics Logging and Cleanup",
+            "description": "Add comprehensive event statistics tracking and proper cleanup on server shutdown",
+            "dependencies": [
+              "112.1",
+              "112.2",
+              "112.3",
+              "112.4"
+            ],
+            "details": "Create statistics module to track total events, event types, error counts, and retry attempts. Implement periodic statistics output (configurable interval). Add graceful shutdown handler to stop watcher and display final statistics. Implement memory leak prevention with proper event listener cleanup. Create log rotation for long-running instances. Add performance metrics for file system response times.",
+            "status": "pending",
+            "testStrategy": "Statistics accuracy tests, memory leak tests with extended runs, cleanup verification tests, shutdown handler tests"
+          }
+        ]
+      },
+      {
+        "id": 113,
+        "title": "[Kanban Board] Implement Parent Task Visual Grouping and Filtering",
+        "description": "Create the visual grouping system for parent tasks with color coordination, filtering capabilities, and progress tracking across related subtasks",
+        "details": "1. Implement color assignment algorithm for parent tasks\n2. Create click-to-highlight functionality for task groups\n3. Add filter UI controls for parent task selection\n4. Implement visual progress calculation from subtasks\n5. Create color-coded badges and borders system\n6. Add parent task completion percentage display\n7. Implement smooth highlight animations (150ms)\n8. Create filter state persistence in sessionStorage\n9. Add keyboard shortcuts for quick filtering\n10. Implement clear visual hierarchy indicators",
+        "testStrategy": "Visual regression tests for grouping states, interaction tests for filtering, calculation accuracy tests for progress tracking, performance tests with nested task hierarchies, accessibility tests for color contrast",
+        "priority": "medium",
+        "dependencies": [
+          109,
+          110
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement Color Assignment Algorithm",
+            "description": "Create a deterministic color assignment system for parent tasks that ensures consistent, visually distinct colors across the Kanban board",
+            "dependencies": [],
+            "details": "Implement a hash-based color generation algorithm in src/ui/client/js/utils/colorAssigner.js that takes parent task IDs and generates HSL colors with optimal contrast. Ensure minimum color distance of 30 degrees on the color wheel between adjacent parent tasks. Create a palette of 12 predefined colors for the most common parent tasks, with automatic generation for overflow. Include color-blind friendly mode with patterns/icons as secondary indicators. Store color assignments in a Map structure for O(1) lookup performance.",
+            "status": "pending",
+            "testStrategy": "Unit tests for color generation consistency, visual tests for color contrast ratios meeting WCAG AA standards, performance tests ensuring <1ms assignment time for 100+ parent tasks"
+          },
+          {
+            "id": 2,
+            "title": "Build Interactive Task Group Highlighting System",
+            "description": "Implement click-to-highlight functionality that visually emphasizes all tasks belonging to the same parent when any task in the group is selected",
+            "dependencies": [
+              "113.1"
+            ],
+            "details": "Create event handlers in src/ui/client/js/components/taskGroupHighlight.js for click events on task cards. Implement highlighting logic that adds 'highlighted' class to all related tasks (parent and subtasks) with 150ms CSS transition. Add semi-transparent overlay to non-highlighted tasks (opacity: 0.4). Include click-outside handler to clear highlights. Implement keyboard support (Enter to highlight, Escape to clear). Store highlight state in component-level state management. Add visual indicators showing relationship lines between highlighted tasks.",
+            "status": "pending",
+            "testStrategy": "Integration tests for click event propagation, animation timing tests verifying 150ms transitions, accessibility tests for keyboard navigation, performance tests with 50+ highlighted tasks"
+          },
+          {
+            "id": 3,
+            "title": "Create Parent Task Filter UI Controls",
+            "description": "Design and implement the filter interface allowing users to show/hide tasks by parent task selection with multi-select capability",
+            "dependencies": [
+              "113.1"
+            ],
+            "details": "Build filter UI component in src/ui/client/js/components/parentTaskFilter.js with dropdown multi-select or pill-based selection. Display parent task titles with their assigned colors as visual indicators. Implement 'Select All', 'Clear All', and individual toggle functionality. Add search/filter within the parent task list for large datasets. Create filter badge showing active filter count. Position filter controls in the board header with responsive design. Include smooth fade-in/out animations for filtered tasks. Integrate with the existing filter state management system.",
+            "status": "pending",
+            "testStrategy": "UI interaction tests for filter controls, state management tests for filter combinations, visual regression tests for filter UI states, performance tests filtering 200+ tasks"
+          },
+          {
+            "id": 4,
+            "title": "Implement Progress Calculation and Display System",
+            "description": "Create the visual progress tracking system that calculates and displays completion percentage for parent tasks based on their subtasks",
+            "dependencies": [
+              "113.2"
+            ],
+            "details": "Develop progress calculation engine in src/ui/client/js/utils/progressCalculator.js that computes parent task completion based on subtask statuses (done/total * 100). Create circular progress indicators and progress bars with smooth animations. Display percentage text (e.g., '3/5 - 60%') within parent task cards. Implement weighted progress calculation option based on subtask complexity scores. Add visual states for 0%, 1-99%, and 100% completion with different styling. Cache calculations to avoid redundant computation. Update progress in real-time as subtasks move between columns.",
+            "status": "pending",
+            "testStrategy": "Unit tests for calculation accuracy with various task hierarchies, visual tests for progress indicator rendering, performance tests ensuring <10ms calculation for 50 subtasks"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Filter State Persistence and Keyboard Shortcuts",
+            "description": "Implement sessionStorage-based filter persistence and keyboard shortcuts for rapid filter toggling to enhance user workflow efficiency",
+            "dependencies": [
+              "113.3",
+              "113.4"
+            ],
+            "details": "Create state persistence layer in src/ui/client/js/utils/filterStatePersistence.js using sessionStorage API. Store active filters, highlight states, and view preferences as JSON. Implement automatic state restoration on page reload with 500ms debounced saves. Add keyboard shortcuts: Cmd/Ctrl+F for filter focus, number keys 1-9 for quick parent task toggle, Cmd/Ctrl+Shift+C to clear all filters. Display keyboard shortcut hints in tooltips. Implement state versioning to handle schema changes. Add export/import functionality for filter presets. Create visual feedback for keyboard actions with toast notifications.",
+            "status": "pending",
+            "testStrategy": "Integration tests for sessionStorage operations, keyboard event tests for all shortcuts, state restoration tests across browser sessions, performance tests for debounced save operations"
+          }
+        ]
+      },
+      {
+        "id": 114,
+        "title": "[Kanban Board] Add Error Handling and User Feedback System",
+        "description": "Implement comprehensive error handling throughout the application with user-friendly notifications, recovery suggestions, and graceful degradation",
+        "details": "1. Create toast notification system for user feedback\n2. Implement error boundaries for component failures\n3. Add offline mode detection and indicators\n4. Create helpful error messages with recovery steps\n5. Implement automatic retry logic for failed requests\n6. Add loading states for all async operations\n7. Create success confirmations for user actions\n8. Implement graceful degradation for older browsers\n9. Add comprehensive error logging to console\n10. Create error reporting mechanism for debugging",
+        "testStrategy": "Error injection tests for all failure scenarios, user feedback timing tests, browser compatibility tests, offline mode simulation tests, error message clarity user tests",
+        "priority": "low",
+        "dependencies": [
+          110,
+          111
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Toast Notification System",
+            "description": "Create a flexible toast notification component for displaying success, error, warning, and info messages throughout the application",
+            "dependencies": [],
+            "details": "Build a standalone toast notification system in src/ui/client/js/components/toast.js that supports: 1) Multiple notification types (success, error, warning, info) with distinct visual styles and icons, 2) Configurable duration with auto-dismiss and manual close options, 3) Stacking behavior for multiple simultaneous notifications with proper positioning, 4) Smooth entry/exit animations using CSS transitions, 5) Accessibility features including ARIA live regions and keyboard dismissal, 6) Queue management to prevent notification overflow, 7) Position configuration (top-right, top-center, bottom-right, etc.), 8) Action buttons for toast messages (e.g., 'Retry', 'Undo'), 9) Progress indicators for time-based dismissal, 10) Responsive design that adapts to mobile viewports",
+            "status": "pending",
+            "testStrategy": "Unit tests for notification queue management, visual tests for different notification types and positions, accessibility tests for screen reader announcements, animation performance tests, mobile responsiveness tests"
+          },
+          {
+            "id": 2,
+            "title": "Create Error Boundary System for Component Failures",
+            "description": "Implement a vanilla JavaScript error boundary pattern to catch and handle component-level errors gracefully without using React",
+            "dependencies": [
+              "114.1"
+            ],
+            "details": "Develop error boundary functionality in src/ui/client/js/errorBoundary.js that: 1) Wraps critical UI components with try-catch blocks and error event listeners, 2) Provides fallback UI when components fail (graceful degradation), 3) Logs detailed error information including stack traces and component context, 4) Offers recovery mechanisms like 'Reload Component' buttons, 5) Prevents error propagation that could crash the entire application, 6) Implements component-specific error handlers for known failure modes, 7) Creates error reporting to track component failures in production, 8) Maintains application state during component failures, 9) Shows user-friendly error messages via the toast system, 10) Includes debug mode with detailed error information for developers",
+            "status": "pending",
+            "testStrategy": "Error injection tests for various component failure scenarios, recovery mechanism tests, error propagation prevention tests, fallback UI rendering tests, state preservation tests during failures"
+          },
+          {
+            "id": 3,
+            "title": "Build Offline Mode Detection and Recovery System",
+            "description": "Create comprehensive offline handling with visual indicators, request queuing, and automatic synchronization when connectivity returns",
+            "dependencies": [
+              "114.1"
+            ],
+            "details": "Implement offline capabilities in src/ui/client/js/offlineHandler.js including: 1) Network status monitoring using navigator.onLine and connection change events, 2) Visual offline indicator banner with connection status details, 3) Request queue system to store failed API calls during offline periods, 4) Automatic retry with exponential backoff when connection returns, 5) Local storage caching for critical application data, 6) Optimistic UI updates that sync when online, 7) Conflict resolution for queued changes vs server state, 8) Service Worker integration for advanced offline features, 9) Toast notifications for connection state changes, 10) Graceful degradation of features that require network access",
+            "status": "pending",
+            "testStrategy": "Network simulation tests for offline/online transitions, request queue persistence tests, conflict resolution tests, service worker functionality tests, UI indicator visibility tests"
+          },
+          {
+            "id": 4,
+            "title": "Implement Loading States and Async Operation Handlers",
+            "description": "Create a comprehensive loading state system for all asynchronous operations with skeleton screens, spinners, and progress indicators",
+            "dependencies": [
+              "114.1"
+            ],
+            "details": "Build loading state management in src/ui/client/js/loadingStates.js that provides: 1) Global loading state manager for tracking all async operations, 2) Component-specific loading indicators (spinners, skeleton screens, progress bars), 3) Automatic loading state injection for API calls, 4) Configurable loading delays to prevent flash of loading state, 5) Progress tracking for long-running operations like bulk updates, 6) Loading state persistence across page refreshes, 7) Accessibility announcements for loading start/end, 8) Visual feedback hierarchy (inline vs full-page loaders), 9) Request deduplication to prevent redundant loading states, 10) Performance monitoring to track loading times",
+            "status": "pending",
+            "testStrategy": "Loading state timing tests, concurrent operation tests, accessibility tests for screen reader announcements, visual regression tests for loading components, performance impact tests"
+          },
+          {
+            "id": 5,
+            "title": "Create Comprehensive Error Logging and Reporting System",
+            "description": "Build a robust error logging system with console output, local storage persistence, and optional remote error reporting capabilities",
+            "dependencies": [
+              "114.2",
+              "114.3",
+              "114.4"
+            ],
+            "details": "Develop error logging infrastructure in src/ui/client/js/errorLogger.js featuring: 1) Structured error logging with severity levels (debug, info, warn, error, critical), 2) Contextual information capture (user actions, browser info, timestamp), 3) Circular reference safe object serialization for complex errors, 4) Local storage persistence with size limits and rotation, 5) Error grouping and deduplication to reduce noise, 6) Export functionality for debugging (download logs as JSON), 7) Optional remote error reporting endpoint integration, 8) Performance impact monitoring of the logging system itself, 9) Privacy-conscious logging that excludes sensitive data, 10) Developer console integration with formatted output and filtering",
+            "status": "pending",
+            "testStrategy": "Error logging accuracy tests, storage limit tests, serialization tests for complex objects, privacy filter tests, performance benchmarks for high-volume logging, export functionality tests"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-06-14T15:19:05.130Z",
-      "description": "Main tag for the taskmaster project"
+      "updated": "2025-08-02T17:01:14.942Z",
+      "description": "Tasks for master context"
     }
   },
   "test-tag": {
