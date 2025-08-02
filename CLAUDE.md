@@ -201,3 +201,6 @@ When modifying Task Master:
 ## Development Best Practices
 
 - Always commit any pending changes before starting a task, and after marking it as done
+
+## Memories
+- Use git emoji in git commit messages
