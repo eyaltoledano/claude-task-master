@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import * as jsoncParser from 'jsonc-parser';
 import { log } from '../../scripts/modules/utils.js';
 
 // Return JSON with existing mcp.json formatting style
@@ -72,7 +73,8 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 		);
 		try {
 			// Read existing config
-			const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
+const fileContent = fs.readFileSync(mcpPath, 'utf8');
+			const mcpConfig = mcpPath.endsWith('.jsonc') ? jsoncParser.parse(fileContent) : JSON.parse(fileContent);
 			// Initialize mcpServers if it doesn't exist
 			if (!mcpConfig.mcpServers) {
 				mcpConfig.mcpServers = {};
@@ -175,7 +177,8 @@ export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 
 	try {
 		// Read existing config
-		const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
+const fileContent = fs.readFileSync(mcpPath, 'utf8');
+		const mcpConfig = mcpPath.endsWith('.jsonc') ? jsoncParser.parse(fileContent) : JSON.parse(fileContent);
 
 		if (!mcpConfig.mcpServers) {
 			result.success = true;
