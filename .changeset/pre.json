@@ -7,6 +7,8 @@
   },
   "changesets": [
     "eleven-horses-shop",
-    "fix-tag-complexity-detection"
+    "fix-tag-complexity-detection",
+    "floppy-news-buy",
+    "sour-pans-beam"
   ]
 }
