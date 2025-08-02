@@ -62,13 +62,47 @@ assert(rootPkg.repository, 'root package.json must have a repository field');
 const tag = `${pkg.name}@${pkg.version}`;
 
 // Get repository URL from root package.json
-const repoUrl = rootPkg.repository.url;
+// Get repository URL and clean it up for git ls-remote
+let repoUrl = rootPkg.repository.url || rootPkg.repository;
+if (typeof repoUrl === 'string') {
+	// Convert git+https://github.com/... to https://github.com/...
+	repoUrl = repoUrl.replace(/^git\+/, '');
+	// Ensure it ends with .git for proper remote access
+	if (!repoUrl.endsWith('.git')) {
+		repoUrl += '.git';
+	}
+}
 
-const { status, stdout, error } = spawnSync('git', ['ls-remote', repoUrl, tag]);
+console.log(`Checking remote repository: ${repoUrl} for tag: ${tag}`);
 
-assert.equal(status, 0, error);
+let gitResult = spawnSync('git', ['ls-remote', repoUrl, tag], {
+	encoding: 'utf8',
+	env: { ...process.env }
+});
 
-const exists = String(stdout).trim() !== '';
+if (gitResult.status !== 0) {
+	console.error('Git ls-remote failed:');
+	console.error('Exit code:', gitResult.status);
+	console.error('Error:', gitResult.error);
+	console.error('Stderr:', gitResult.stderr);
+	console.error('Command:', `git ls-remote ${repoUrl} ${tag}`);
+	
+	// For CI environments, try using origin instead of the full URL
+	if (process.env.CI) {
+		console.log('Retrying with origin remote...');
+		gitResult = spawnSync('git', ['ls-remote', 'origin', tag], {
+			encoding: 'utf8'
+		});
+		
+		if (gitResult.status !== 0) {
+			throw new Error(`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`);
+		}
+	} else {
+		throw new Error(`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`);
+	}
+}
+
+const exists = String(gitResult.stdout).trim() !== '';
 
 if (!exists) {
 	console.log(`Creating new extension tag: ${tag}`);
