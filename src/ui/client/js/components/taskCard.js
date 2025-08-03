@@ -47,7 +47,7 @@ class TaskCard {
         }
         
         // Create card content
-        const header = this.createTaskHeader(task, isSubtask);
+        const header = this.createTaskHeader(task, parentTask);
         const description = this.createTaskDescription(task);
         const parentProgress = isSubtask ? this.createParentProgress(parentTask) : null;
         const meta = this.createTaskMeta(task, parentTask);
@@ -75,8 +75,8 @@ class TaskCard {
     static createMainTaskBadge(task) {
         const badge = document.createElement('div');
         badge.className = 'main-task-badge';
-        badge.textContent = `T-${this.formatTaskId(task.id)}`;
-        badge.setAttribute('title', `Task ID: ${task.id}`);
+        badge.textContent = `Task# ${this.formatTaskId(task.id)}`;
+        badge.setAttribute('title', `Main Task ID: ${task.id}`);
         return badge;
     }
 
@@ -92,7 +92,7 @@ class TaskCard {
         badge.className = 'parent-task-badge';
         const colorIndex = this.getParentColorIndex(parentTask.id);
         badge.classList.add(`parent-${colorIndex}`);
-        badge.textContent = `T-${this.formatTaskId(parentTask.id)}`;
+        badge.textContent = `Task# ${this.formatTaskId(parentTask.id)}`;
         badge.setAttribute('title', `Parent: ${parentTask.title}`);
         
         // Make badge clickable to highlight related tasks
@@ -108,22 +108,22 @@ class TaskCard {
     /**
      * Create task header with title and ID badge (matches artifact exactly)
      * @param {Object} task - Task data
-     * @param {boolean} isSubtask - Whether this is a subtask
+     * @param {Object} parentTask - Parent task object (for subtasks)
      * @returns {HTMLElement} - Header element
      */
-    static createTaskHeader(task, isSubtask) {
+    static createTaskHeader(task, parentTask = null) {
         const header = document.createElement('div');
         header.className = 'task-header';
         
         // Task title
         const title = document.createElement('div');
-        title.className = isSubtask ? 'subtask-title' : 'task-title';
+        title.className = (parentTask != null) ? 'subtask-title' : 'task-title';
         title.textContent = task.title || 'Untitled Task';
         
         // Task ID badge
         const taskId = document.createElement('div');
         taskId.className = 'task-id';
-        taskId.textContent = this.formatTaskId(task.id);
+        taskId.textContent =  this.formatTaskId(task.id);
         
         header.appendChild(title);
         header.appendChild(taskId);
@@ -235,8 +235,12 @@ class TaskCard {
         if (task.dependencies && task.dependencies.length > 0) {
             const deps = document.createElement('span');
             deps.className = 'meta-tag dependency-indicator';
-            deps.textContent = `${task.dependencies.length} dep${task.dependencies.length > 1 ? 's' : ''}`;
-            deps.setAttribute('title', `Depends on: ${task.dependencies.join(', ')}`)
+            
+            // Format dependencies for display - keep them as is, no automatic sibling conversion
+            const formattedDeps = task.dependencies.map(dep => String(dep)).join(' ');
+            
+            deps.textContent = `Depends on: ${formattedDeps}`;
+            deps.setAttribute('title', `Dependencies: ${task.dependencies.join(', ')}`);
             meta.appendChild(deps);
         }
         
@@ -341,6 +345,11 @@ class TaskCard {
         // Convert to string to handle numeric IDs
         const idStr = String(id);
         
+        // If ID contains a period (subtask ID like "1.2"), show only the part after the period
+        if (idStr.includes('.')) {
+            return idStr.split('.').pop();
+        }
+        
         // If ID is a UUID or long string, show last part
         if (idStr.includes('-')) {
             return idStr.split('-').pop().slice(0, 6);
@@ -351,12 +360,7 @@ class TaskCard {
             return idStr.replace('task-', '');
         }
         
-        // Pad numeric IDs with zeros
-        const numericId = parseInt(idStr);
-        if (!isNaN(numericId)) {
-            return String(numericId).padStart(3, '0');
-        }
-        
+        // For regular numeric IDs, return as-is (no padding)
         return idStr;
     }
 

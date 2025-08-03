@@ -119,7 +119,8 @@ class KanbanBoard {
                         ...subtask,
                         id: `${task.id}.${subtask.id}`, // Create proper subtask ID
                         status: subtask.status || task.status || 'backlog',
-                        priority: subtask.priority || task.priority || 'medium'
+                        priority: subtask.priority || task.priority || 'medium',
+                        dependencies: subtask.dependencies || [] // Preserve dependencies
                     };
                     
                     cardsToRender.push({
@@ -209,7 +210,7 @@ class KanbanBoard {
         }
         
         // For pending or deferred tasks, check dependencies
-        if (status === 'pending' || status === 'deferred') {
+        if (status === 'pending' || status === 'deferred' || !status) {
             // Check if task has dependencies
             if (!task.dependencies || task.dependencies.length === 0) {
                 // No dependencies - ready to start
@@ -218,9 +219,32 @@ class KanbanBoard {
             
             // Has dependencies - check if all are done
             const allDependenciesDone = task.dependencies.every(depId => {
-                // Find the dependency task
-                const depTask = this.findTaskById(depId, allTasks);
-                return depTask && depTask.status === 'done';
+                // For subtask dependencies, we need to resolve them properly
+                let resolvedDepId = depId;
+                
+                // First, try to find the dependency as a main task
+                const mainTask = this.findTaskById(depId, allTasks);
+                if (mainTask) {
+                    return mainTask.status === 'done';
+                }
+                
+                // If not found as main task and this is a subtask, check for sibling subtask
+                if (String(task.id).includes('.') && !String(depId).includes('.')) {
+                    // Get parent ID from the subtask's composite ID
+                    const parentId = String(task.id).split('.')[0];
+                    
+                    // Try to find as a sibling subtask
+                    const siblingId = `${parentId}.${depId}`;
+                    const siblingTask = this.findTaskById(siblingId, allTasks);
+                    if (siblingTask) {
+                        return siblingTask.status === 'done';
+                    }
+                }
+                
+                // If we can't find the dependency, assume it's not done
+                // This prevents tasks from appearing ready when dependencies are missing
+                console.warn(`Dependency ${depId} not found for task ${task.id}`);
+                return false;
             });
             
             if (allDependenciesDone) {
@@ -256,6 +280,7 @@ class KanbanBoard {
                     // Check both the subtask's own ID and the composite ID
                     if (String(subtask.id) === searchId || 
                         `${task.id}.${subtask.id}` === searchId) {
+                        // Return the actual subtask object with its real status
                         return subtask;
                     }
                 }

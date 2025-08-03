@@ -42,6 +42,9 @@ Task Master is an AI-driven task management system designed for seamless integra
   - Fixed column header visibility in light/dark modes
   - Fixed card cutoff issues in scrollable areas
   - Added proper hover effect compensation
+  - Fixed dependency resolution: main tasks checked before sibling subtasks
+  - Fixed task 22.3 appearing in Ready despite having dependencies
+  - Updated dependency display format to "Depends on: x y z"
 
 ### Previous: Kanban Board UI (Tasks 105-109)
 - ✅ **Task 105**: Express server infrastructure with CORS, error handling, and graceful shutdown
