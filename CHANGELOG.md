@@ -1,5 +1,24 @@
 # task-master-ai
 
+## 0.23.1-rc.0
+
+### Patch Changes
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix scope-up/down prompts to include all required fields for better AI model compatibility
+  - Added missing `priority` field to scope adjustment prompts to prevent validation errors with Claude-code and other models
+  - Ensures generated JSON includes all fields required by the schema
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP scope-up/down tools not finding tasks
+  - Fixed task ID parsing in MCP layer - now correctly converts string IDs to numbers
+  - scope_up_task and scope_down_task MCP tools now work properly
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve AI provider compatibility for JSON generation
+  - Fixed schema compatibility issues between Perplexity and OpenAI o3 models
+  - Removed nullable/default modifiers from Zod schemas for broader compatibility
+  - Added automatic JSON repair for malformed AI responses (handles cases like missing array values)
+  - Perplexity now uses JSON mode for more reliable structured output
+  - Post-processing handles default values separately from schema validation
+
 ## 0.23.0
 
 ### Minor Changes
