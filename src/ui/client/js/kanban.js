@@ -149,6 +149,11 @@ class KanbanBoard {
         cardsToRender.forEach(card => {
             const columnId = this.determineColumn(card.task, this.tasks);
             
+            // Skip cancelled tasks (determineColumn returns null for them)
+            if (columnId === null) {
+                return; // Skip this card
+            }
+            
             if (cardsByStatus[columnId]) {
                 cardsByStatus[columnId].push(card);
             } else {
@@ -199,6 +204,11 @@ class KanbanBoard {
     determineColumn(task, allTasks) {
         const status = task.status || 'pending';
         
+        // Skip cancelled tasks entirely - they shouldn't appear on the board
+        if (status === 'cancelled') {
+            return null; // Will be filtered out
+        }
+        
         // Status "done" always goes to completed column
         if (status === 'done') {
             return 'completed';
@@ -209,8 +219,13 @@ class KanbanBoard {
             return 'in-progress';
         }
         
-        // For pending or deferred tasks, check dependencies
-        if (status === 'pending' || status === 'deferred' || !status) {
+        // Deferred tasks always go to backlog regardless of dependencies
+        if (status === 'deferred') {
+            return 'backlog';
+        }
+        
+        // For pending tasks, check dependencies
+        if (status === 'pending' || !status) {
             // Check if task has dependencies
             if (!task.dependencies || task.dependencies.length === 0) {
                 // No dependencies - ready to start
