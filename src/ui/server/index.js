@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { createApiRouter } from './routes/api.js';
 import { TaskSyncService } from './services/taskSync.js';
+import TaskMasterWebSocketServer from './websocket.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -149,6 +150,26 @@ export async function createServer(options = {}) {
 
 	// Create HTTP server
 	const server = http.createServer(app);
+	
+	// Initialize WebSocket server
+	let wsServer = null;
+	if (options.enableWebSocket !== false) {
+		wsServer = new TaskMasterWebSocketServer(server, {
+			taskFilePath: path.join(process.cwd(), '.taskmaster/tasks/tasks.json'),
+			allowedOrigins: [
+				'http://localhost:3000',
+				'http://localhost:3001',
+				'http://localhost:3002',
+				'http://localhost:3003',
+				'http://localhost:3004',
+				'http://localhost:3005'
+			]
+		});
+		wsServer.init();
+		if (options.verbose) {
+			console.log('WebSocket server enabled');
+		}
+	}
 
 	// Start server
 	await new Promise((resolve, reject) => {
@@ -166,9 +187,9 @@ export async function createServer(options = {}) {
 	});
 
 	// Set up graceful shutdown
-	setupGracefulShutdown(server);
+	setupGracefulShutdown(server, wsServer);
 
-	return { app, server, port };
+	return { app, server, port, wsServer };
 }
 
 /**
@@ -224,7 +245,7 @@ function checkPortAvailable(port) {
  * Set up graceful shutdown handlers
  * @param {http.Server} server - The HTTP server instance
  */
-function setupGracefulShutdown(server) {
+function setupGracefulShutdown(server, wsServer) {
 	let isShuttingDown = false;
 	const connections = new Set();
 
@@ -247,6 +268,11 @@ function setupGracefulShutdown(server) {
 			console.error('Could not close connections in time, forcefully shutting down');
 			process.exit(1);
 		}, 10000);
+		
+		// Shutdown WebSocket server if exists
+		if (wsServer) {
+			wsServer.shutdown();
+		}
 
 		// Stop accepting new connections
 		server.close(() => {

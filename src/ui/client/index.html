@@ -212,13 +212,25 @@
     <script src="js/components/taskCard.js"></script>
     <script src="js/components/column.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/websocket-client.js"></script>
     <script src="js/kanban.js"></script>
     
     <!-- Initialize application -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Kanban board
             const kanban = new KanbanBoard();
+            window.kanbanBoard = kanban; // Make globally accessible for WebSocket
             kanban.init();
+            
+            // Initialize WebSocket client for real-time updates
+            const wsClient = new TaskMasterWebSocketClient();
+            window.wsClient = wsClient;
+            
+            // Connect WebSocket after a short delay
+            setTimeout(() => {
+                wsClient.connect();
+            }, 1000);
         });
     </script>
 </body>

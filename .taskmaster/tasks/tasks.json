@@ -7345,11 +7345,82 @@
             "testStrategy": "Test dependency validation prevents invalid moves. Verify business rules are enforced correctly. Test keyboard navigation alternatives. Validate parent-child task relationships are maintained. Test undo/redo functionality."
           }
         ]
+      },
+      {
+        "id": 116,
+        "title": "Implement WebSocket Real-time Updates for Kanban Board",
+        "description": "Add WebSocket support to enable real-time updates when tasks change via CLI or other clients",
+        "details": "Implement WebSocket functionality to provide real-time updates to the Kanban board when tasks are modified through the CLI or other clients. This includes setting up a WebSocket server, client connection handling, broadcasting task changes, and automatic reconnection logic.",
+        "testStrategy": "1. Unit tests for WebSocket server setup\n2. Integration tests for client-server communication\n3. Tests for broadcast functionality\n4. Reconnection logic tests\n5. Error handling and graceful degradation tests",
+        "status": "done",
+        "dependencies": [
+          105,
+          106,
+          107,
+          115
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up WebSocket server infrastructure",
+            "description": "Install and configure WebSocket server using ws library alongside the existing Express server",
+            "dependencies": [],
+            "details": "Install the 'ws' WebSocket library and integrate it with the existing Express server from Task 105. Configure the WebSocket server to run on the same port as the HTTP server using server upgrade handling. Set up connection management with client tracking, heartbeat/ping-pong for connection health monitoring, and proper error handling. Implement connection lifecycle events (connect, disconnect, error) with appropriate logging.",
+            "status": "done",
+            "testStrategy": "Unit tests for WebSocket server initialization, connection acceptance, and lifecycle event handling. Test server upgrade from HTTP to WebSocket. Verify heartbeat mechanism keeps connections alive."
+          },
+          {
+            "id": 2,
+            "title": "Implement file system watcher for task changes",
+            "description": "Create a file system monitoring service to detect changes to tasks.json and trigger broadcasts",
+            "dependencies": [
+              "116.1"
+            ],
+            "details": "Implement a file system watcher using Node.js fs.watch or chokidar to monitor the tasks.json file for changes. Create a debouncing mechanism to prevent multiple rapid broadcasts for successive file writes. Parse the updated tasks.json file when changes are detected and compare with previous state to identify specific changes (added, updated, deleted tasks). Queue changes for broadcasting to connected clients.",
+            "status": "done",
+            "testStrategy": "Unit tests for file watcher initialization and change detection. Test debouncing logic with rapid file changes. Verify correct change detection for different modification types."
+          },
+          {
+            "id": 3,
+            "title": "Create WebSocket message protocol and broadcasting",
+            "description": "Design and implement the message protocol for client-server communication and broadcast system",
+            "dependencies": [
+              "116.1",
+              "116.2"
+            ],
+            "details": "Define a structured message protocol with message types (TASK_UPDATED, TASK_CREATED, TASK_DELETED, STATUS_CHANGED, BULK_UPDATE). Implement server-side broadcast functionality to send updates to all connected clients. Create message serialization/deserialization with JSON format. Add message validation and error handling for malformed messages. Include timestamp and change metadata in broadcasts.",
+            "status": "done",
+            "testStrategy": "Test message serialization and deserialization. Verify broadcast reaches all connected clients. Test handling of invalid messages. Verify message ordering and delivery."
+          },
+          {
+            "id": 4,
+            "title": "Implement WebSocket client in Kanban UI",
+            "description": "Add WebSocket client functionality to the Kanban board frontend for receiving real-time updates",
+            "dependencies": [
+              "116.3"
+            ],
+            "details": "Create a WebSocket client service in the Kanban UI JavaScript that establishes connection to the WebSocket server. Implement message handlers for each message type to update the UI accordingly. Add visual indicators for connection status (connected, disconnected, reconnecting). Implement optimistic UI updates with rollback on failure. Handle incoming updates without disrupting user interactions (preserve drag state, form inputs).",
+            "status": "done",
+            "testStrategy": "Integration tests for client-server communication. Test UI updates for each message type. Verify connection status indicators work correctly. Test that ongoing user interactions aren't disrupted by updates."
+          },
+          {
+            "id": 5,
+            "title": "Add automatic reconnection and error recovery",
+            "description": "Implement robust reconnection logic and graceful degradation for connection failures",
+            "dependencies": [
+              "116.4"
+            ],
+            "details": "Implement exponential backoff reconnection strategy with configurable max retries. Add connection state management (connecting, connected, disconnected, reconnecting). Queue messages during disconnection for retry when reconnected. Implement graceful degradation to polling when WebSocket is unavailable. Add user notifications for connection issues and recovery. Implement connection recovery with state synchronization after reconnection.",
+            "status": "done",
+            "testStrategy": "Test reconnection with various network failure scenarios. Verify exponential backoff timing. Test message queuing during disconnection. Verify graceful degradation to polling mode. Test state synchronization after reconnection."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-03T19:45:15.249Z",
+      "updated": "2025-08-03T20:05:53.886Z",
       "description": "Tasks for master context"
     }
   },

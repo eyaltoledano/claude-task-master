@@ -261,6 +261,70 @@ small {
 }
 
 /* ======================================
+   WebSocket Status Indicator
+   ====================================== */
+
+.ws-status {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.ws-status-connected {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.ws-status-disconnected {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.ws-status-reconnecting {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    animation: pulse 1s infinite;
+}
+
+.ws-status-failed {
+    background: rgba(255, 87, 34, 0.2);
+    color: #ff5722;
+    border: 1px solid rgba(255, 87, 34, 0.3);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .ws-status {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .ws-status-connected {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+[data-theme="dark"] .ws-status-disconnected {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+[data-theme="dark"] .ws-status-reconnecting {
+    background: rgba(255, 193, 7, 0.3);
+}
+
+/* ======================================
    Header Styles
    ====================================== */
 
