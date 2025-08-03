@@ -709,3 +709,10 @@ small {
         box-shadow: none !important;
     }
 }
+
+/* ======================================
+   Import Component Styles
+   ====================================== */
+
+/* Task Card Component Styles */
+@import url('./components/taskCard.css');

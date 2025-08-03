@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Task Master is an AI-driven task management system designed for seamless integration with Claude Code, Cursor AI, and other AI coding assistants. It uses AI to break down Product Requirements Documents (PRDs) into manageable tasks, tracks progress, and provides intelligent task expansion and updates.
 
+## Recent Updates
+
+### Kanban Board UI (Tasks 105-109)
+- ✅ **Task 105**: Express server infrastructure with CORS, error handling, and graceful shutdown
+- ✅ **Task 106**: CLI command integration - `task-master ui` command launches the server
+- ✅ **Task 107**: RESTful API endpoints for task operations
+- ✅ **Task 108**: Pure HTML/CSS/JS frontend with responsive 5-column layout
+- ✅ **Task 109**: Task card component system with:
+  - Dual card types (main task vs subtask)
+  - Color-coded priority system
+  - Badge system (parent, complexity, AI model, dependencies)
+  - Description truncation/expansion
+  - Progress bars for parent tasks
+  - Glassmorphism effects
+  - Full accessibility support (ARIA, keyboard nav)
+  - Performance optimized for 500+ cards
+
 ## Development Commands
 
 ### Build & Development
