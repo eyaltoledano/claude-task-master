@@ -546,9 +546,72 @@ class KanbanBoard {
      * Handle SortableJS move validation
      */
     handleSortableMove(evt) {
-        // You can add validation logic here to prevent certain moves
-        // Return false to cancel the move
+        const taskCard = evt.dragged;
+        const targetColumn = evt.to.closest('.kanban-column');
+        
+        if (!taskCard || !targetColumn) return true;
+        
+        const taskId = taskCard.getAttribute('data-task-id');
+        const task = this.findTaskById(taskId, this.tasks);
+        
+        if (!task) return true;
+        
+        const targetColumnId = targetColumn.getAttribute('data-column');
+        const targetStatus = this.mapColumnToStatus(targetColumnId);
+        
+        // Check business rules
+        // 1. Tasks with unmet dependencies cannot go to In Progress
+        if (targetStatus === 'in-progress' && task.dependencies && task.dependencies.length > 0) {
+            const hasUnmetDependencies = !this.checkAllDependenciesMet(task, this.tasks);
+            if (hasUnmetDependencies) {
+                evt.to.classList.add('cannot-drop');
+                setTimeout(() => evt.to.classList.remove('cannot-drop'), 500);
+                this.showError('Cannot move task with unmet dependencies to In Progress');
+                return false;
+            }
+        }
+        
+        // 2. Deferred tasks should only go to Backlog
+        if (task.status === 'deferred' && targetColumnId !== 'backlog') {
+            this.showError('Deferred tasks must remain in Backlog');
+            return false;
+        }
+        
+        // 3. Add visual feedback for valid drop
+        evt.to.classList.add('can-drop');
+        setTimeout(() => evt.to.classList.remove('can-drop'), 500);
+        
         return true;
+    }
+    
+    /**
+     * Check if all dependencies are met for a task
+     */
+    checkAllDependenciesMet(task, allTasks) {
+        if (!task.dependencies || task.dependencies.length === 0) {
+            return true;
+        }
+        
+        return task.dependencies.every(depId => {
+            // First, try to find the dependency as a main task
+            const depTask = this.findTaskById(depId, allTasks);
+            if (depTask) {
+                return depTask.status === 'done';
+            }
+            
+            // If not found as main task and this is a subtask, check for sibling
+            if (String(task.id).includes('.') && !String(depId).includes('.')) {
+                const parentId = String(task.id).split('.')[0];
+                const siblingId = `${parentId}.${depId}`;
+                const siblingTask = this.findTaskById(siblingId, allTasks);
+                if (siblingTask) {
+                    return siblingTask.status === 'done';
+                }
+            }
+            
+            // Dependency not found
+            return false;
+        });
     }
 
     /**

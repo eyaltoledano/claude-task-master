@@ -465,6 +465,90 @@
 }
 
 /* ======================================
+   SortableJS Drag and Drop Styles
+   ====================================== */
+
+.sortable-ghost {
+    opacity: 0.4;
+    background: rgba(147, 51, 234, 0.1) !important;
+    border: 2px dashed rgba(147, 51, 234, 0.5) !important;
+    transform: rotate(2deg);
+}
+
+.sortable-chosen {
+    opacity: 0.9;
+    box-shadow: 0 5px 20px rgba(147, 51, 234, 0.3);
+    transform: scale(1.02);
+}
+
+.sortable-drag {
+    opacity: 0 !important;
+}
+
+/* Column highlight during drag */
+.task-container.drag-over {
+    background: rgba(147, 51, 234, 0.05);
+    border: 2px dashed rgba(147, 51, 234, 0.3);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+/* Dragging state for cards */
+.task-card.dragging,
+.main-task-card.dragging,
+.subtask-card.dragging {
+    cursor: grabbing !important;
+    opacity: 0.5;
+    transform: rotate(-2deg);
+}
+
+/* Visual feedback for valid/invalid drop zones */
+.task-container.can-drop {
+    background: rgba(76, 175, 80, 0.05);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.task-container.cannot-drop {
+    background: rgba(244, 67, 54, 0.05);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+/* Smooth transitions for drag operations */
+.main-task-card,
+.subtask-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+/* Cursor styles for draggable elements */
+.main-task-card:not(.dragging),
+.subtask-card:not(.dragging) {
+    cursor: grab;
+}
+
+.main-task-card:active:not(.dragging),
+.subtask-card:active:not(.dragging) {
+    cursor: grabbing;
+}
+
+/* Dark mode adjustments for drag styles */
+[data-theme="dark"] .sortable-ghost {
+    background: rgba(147, 51, 234, 0.2) !important;
+    border-color: rgba(147, 51, 234, 0.6) !important;
+}
+
+[data-theme="dark"] .task-container.drag-over {
+    background: rgba(147, 51, 234, 0.1);
+}
+
+[data-theme="dark"] .task-container.can-drop {
+    background: rgba(76, 175, 80, 0.1);
+}
+
+[data-theme="dark"] .task-container.cannot-drop {
+    background: rgba(244, 67, 54, 0.1);
+}
+
+/* ======================================
    Responsive Design
    ====================================== */
 
