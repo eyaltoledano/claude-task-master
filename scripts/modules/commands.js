@@ -17,10 +17,7 @@ import ora from 'ora'; // Import ora
 import {
 	log,
 	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
+	getCurrentTag
 } from './utils.js';
 import {
 	parsePRD,

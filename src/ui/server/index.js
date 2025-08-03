@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 import { createApiRouter } from './routes/api.js';
@@ -59,7 +60,10 @@ export async function createServer(options = {}) {
 	// Apply middleware
 	app.use(cors(corsOptions));
 	app.use(express.json());
-	app.use(express.static(path.join(__dirname, '../client')));
+	
+	// Serve static files from the client directory
+	const clientPath = path.join(__dirname, '../client');
+	app.use(express.static(clientPath));
 
 	// Request logging middleware
 	app.use((req, res, next) => {
@@ -78,12 +82,34 @@ export async function createServer(options = {}) {
 
 	// Mount API routes if taskMaster is provided
 	if (taskMaster) {
+		// Load tasks data from file
+		const tasksPath = taskMaster.getTasksPath();
+		let tasksData = { tasks: [] };
+		
+		if (tasksPath && fs.existsSync(tasksPath)) {
+			try {
+				const fileContent = fs.readFileSync(tasksPath, 'utf8');
+				const allData = JSON.parse(fileContent);
+				
+				// Get the current tag (default to 'master')
+				const currentTag = taskMaster.getCurrentTag() || 'master';
+				
+				// Extract tasks for the current tag
+				if (allData[currentTag]) {
+					tasksData = allData[currentTag];
+				}
+			} catch (error) {
+				console.error('Error loading tasks:', error.message);
+			}
+		}
+		
 		// Create task sync service
 		const taskSync = new TaskSyncService(taskMaster);
 		
 		// Create an enhanced taskMaster with additional methods
 		const enhancedTaskMaster = {
 			...taskMaster,
+			tasks: tasksData, // Add tasks data
 			setTaskStatus: async (id, status) => {
 				return await taskSync.setTaskStatus(id, status);
 			},

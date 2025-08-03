@@ -25,10 +25,27 @@ export class TaskSyncService {
 			return this.cache;
 		}
 
-		// Refresh cache
-		this.cache = this.taskMaster.tasks;
-		this.cacheTimestamp = now;
+		// Refresh cache - if taskMaster has tasks property, use it
+		// Otherwise try to load from file
+		if (this.taskMaster.tasks) {
+			this.cache = this.taskMaster.tasks;
+		} else {
+			// Load tasks from file
+			const tasksPath = this.taskMaster.getTasksPath();
+			if (tasksPath && fs.existsSync(tasksPath)) {
+				try {
+					const fileContent = fs.readFileSync(tasksPath, 'utf8');
+					this.cache = JSON.parse(fileContent);
+				} catch (error) {
+					console.error('Error loading tasks:', error.message);
+					this.cache = { tasks: [] };
+				}
+			} else {
+				this.cache = { tasks: [] };
+			}
+		}
 		
+		this.cacheTimestamp = now;
 		return this.cache;
 	}
 
@@ -140,14 +157,15 @@ export class TaskSyncService {
 	 * @returns {Object|null} Task object or null
 	 */
 	getTaskById(id) {
-		const tasks = this.getTasks();
+		const tasksData = this.getTasks();
+		const tasks = tasksData.tasks || [];
 		
 		// Check main tasks
-		const mainTask = tasks.tasks.find(t => t.id === id);
+		const mainTask = tasks.find(t => t.id === id);
 		if (mainTask) return mainTask;
 
 		// Check subtasks
-		for (const task of tasks.tasks) {
+		for (const task of tasks) {
 			if (task.subtasks) {
 				const subtask = task.subtasks.find(st => st.id === id);
 				if (subtask) return subtask;
