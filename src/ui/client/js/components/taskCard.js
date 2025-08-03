@@ -422,17 +422,20 @@ class TaskCard {
     static formatTaskId(id) {
         if (!id) return '';
         
+        // Convert to string to handle numeric IDs
+        const idStr = String(id);
+        
         // If ID is a UUID or long string, show last part
-        if (id.includes('-')) {
-            return id.split('-').pop().slice(0, 6);
+        if (idStr.includes('-')) {
+            return idStr.split('-').pop().slice(0, 6);
         }
         
         // If ID starts with 'task-', remove prefix
-        if (id.startsWith('task-')) {
-            return id.replace('task-', '');
+        if (idStr.startsWith('task-')) {
+            return idStr.replace('task-', '');
         }
         
-        return id;
+        return idStr;
     }
 
     /**
@@ -524,12 +527,14 @@ class TaskCard {
 
     /**
      * Get unique color for parent task badge
-     * @param {string} taskId - Task ID
+     * @param {string|number} taskId - Task ID
      * @returns {string} - Color hex code
      */
     static getParentBadgeColor(taskId) {
         const colors = ['#6f42c1', '#dc3545', '#fd7e14', '#198754', '#0d6efd', '#6610f2'];
-        const hash = taskId.split('').reduce((a, b) => {
+        // Convert to string to handle numeric IDs
+        const idStr = String(taskId);
+        const hash = idStr.split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
         }, 0);
