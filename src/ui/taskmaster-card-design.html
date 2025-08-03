@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMaster Kanban Card Design - Subtask Focus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .kanban-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .column {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .column-header {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        /* Main Task (no subtasks) */
+        .main-task-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+            cursor: grab;
+            position: relative;
+        }
+
+        /* Subtask Card */
+        .subtask-card {
+            background: white;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+            transition: all 0.2s ease;
+            cursor: grab;
+            position: relative;
+            border-top: 2px solid;
+        }
+
+        .main-task-card:hover,
+        .subtask-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .main-task-card:active,
+        .subtask-card:active {
+            cursor: grabbing;
+        }
+
+        /* Priority Colors for left border */
+        .priority-critical { border-left-color: #e74c3c; }
+        .priority-high { border-left-color: #f39c12; }
+        .priority-medium { border-left-color: #3498db; }
+        .priority-low { border-left-color: #2ecc71; }
+
+        /* Parent task color coding for top border of subtasks */
+        .parent-task-1 { border-top-color: #9b59b6; }
+        .parent-task-2 { border-top-color: #e67e22; }
+        .parent-task-3 { border-top-color: #1abc9c; }
+        .parent-task-4 { border-top-color: #34495e; }
+
+        /* Main Task Badge - top right */
+        .main-task-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #2c3e50;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Parent Task Badge for subtasks - top left */
+        .parent-task-badge {
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 3px 6px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .parent-task-badge.parent-1 { background: #9b59b6; }
+        .parent-task-badge.parent-2 { background: #e67e22; }
+        .parent-task-badge.parent-3 { background: #1abc9c; }
+        .parent-task-badge.parent-4 { background: #34495e; }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .task-id {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            background: #ecf0f1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .task-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            padding-right: 20px; /* Space for badge */
+        }
+
+        .subtask-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            padding-left: 20px; /* Space for parent badge */
+        }
+
+        .task-description {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            line-height: 1.4;
+            margin-bottom: 12px;
+        }
+
+        .task-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .meta-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .complexity {
+            background: #e8f5e8;
+            color: #27ae60;
+        }
+
+        .ai-model {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .dependency-indicator {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .parent-context {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: #95a5a6;
+        }
+
+        .dependencies {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dependency-link {
+            width: 16px;
+            height: 16px;
+            background: #bdc3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            color: white;
+        }
+
+        .dependency-link.blocked {
+            background: #e74c3c;
+        }
+
+        .dependency-link.ready {
+            background: #2ecc71;
+        }
+
+        .time-estimate {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .parent-progress {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 8px;
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+
+        .parent-progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .parent-progress-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .parent-progress-fill.parent-1 { background: linear-gradient(90deg, #9b59b6, #8e44ad); }
+        .parent-progress-fill.parent-2 { background: linear-gradient(90deg, #e67e22, #d35400); }
+        .parent-progress-fill.parent-3 { background: linear-gradient(90deg, #1abc9c, #16a085); }
+
+        .features-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-group h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            color: #34495e;
+        }
+
+        .feature-list li::before {
+            content: "●";
+            color: #3498db;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .code-example {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .design-explanation {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .design-explanation h4 {
+            color: #2980b9;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TaskMaster Kanban - Subtask-Focused Design</h1>
+        
+        <div class="kanban-demo">
+            <!-- Backlog Column -->
+            <div class="column">
+                <div class="column-header">
+                    <span>📋 Backlog</span>
+                    <span class="task-count">4</span>
+                </div>
+
+                <!-- Main task without subtasks -->
+                <div class="main-task-card priority-medium">
+                    <div class="main-task-badge">T-002</div>
+                    <div class="task-title">Setup Database Schema</div>
+                    <div class="task-description">
+                        Design and implement the database schema for users, sessions, and application data using PostgreSQL with proper indexing and constraints.
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 5/10</span>
+                        <span class="meta-tag ai-model">Perplexity</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies"></div>
+                        <div class="time-estimate">⏱️ ~4h</div>
+                    </div>
+                </div>
+
+                <!-- Subtask from Task 1 -->
+                <div class="subtask-card priority-high parent-task-1">
+                    <div class="parent-task-badge parent-1">T-001</div>
+                    <div class="subtask-title">Setup JWT library and configuration</div>
+                    <div class="task-description">
+                        Install and configure jsonwebtoken library, set up environment variables, and create JWT utility functions.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: JWT Authentication System (1/5 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-1" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 3/10</span>
+                        <span class="meta-tag ai-model">Claude Sonnet</span>
+                        <span class="meta-tag parent-context">Part of T-001</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies"></div>
+                        <div class="time-estimate">⏱️ ~1.5h</div>
+                    </div>
+                </div>
+
+                <!-- Another subtask from Task 1 -->
+                <div class="subtask-card priority-high parent-task-1">
+                    <div class="parent-task-badge parent-1">T-001</div>
+                    <div class="subtask-title">Create user authentication middleware</div>
+                    <div class="task-description">
+                        Build Express middleware to verify JWT tokens, handle token expiration, and protect routes.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: JWT Authentication System (1/5 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-1" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 4/10</span>
+                        <span class="meta-tag ai-model">Claude Sonnet</span>
+                        <span class="meta-tag dependency-indicator">1 dep</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies">
+                            <div class="dependency-link blocked" title="Depends on JWT setup">!</div>
+                        </div>
+                        <div class="time-estimate">⏱️ ~2h</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In Progress Column -->
+            <div class="column">
+                <div class="column-header">
+                    <span>🔄 In Progress</span>
+                    <span class="task-count">2</span>
+                </div>
+
+                <!-- Subtask from Task 3 in progress -->
+                <div class="subtask-card priority-critical parent-task-3">
+                    <div class="parent-task-badge parent-3">T-003</div>
+                    <div class="subtask-title">Setup Redis connection</div>
+                    <div class="task-description">
+                        Configure Redis client, establish connection pooling, and implement connection health checks.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: API Rate Limiting (2/4 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-3" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 4/10</span>
+                        <span class="meta-tag ai-model">Claude Opus</span>
+                        <span class="meta-tag parent-context">Part of T-003</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies">
+                            <div class="dependency-link ready">✓</div>
+                        </div>
+                        <div class="time-estimate">⏱️ ~1.5h</div>
+                    </div>
+                </div>
+
+                <!-- Another subtask from different parent -->
+                <div class="subtask-card priority-medium parent-task-2">
+                    <div class="parent-task-badge parent-2">T-004</div>
+                    <div class="subtask-title">Write authentication tests</div>
+                    <div class="task-description">
+                        Create comprehensive unit tests for login, token validation, and session management functionality.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: Unit Test Coverage (3/4 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-2" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 3/10</span>
+                        <span class="meta-tag ai-model">Claude Sonnet</span>
+                        <span class="meta-tag dependency-indicator">1 dep</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies">
+                            <div class="dependency-link ready">✓</div>
+                        </div>
+                        <div class="time-estimate">⏱️ ~2h</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review Column -->
+            <div class="column">
+                <div class="column-header">
+                    <span>👀 Review</span>
+                    <span class="task-count">1</span>
+                </div>
+
+                <div class="subtask-card priority-low parent-task-2">
+                    <div class="parent-task-badge parent-2">T-004</div>
+                    <div class="subtask-title">Database integration tests</div>
+                    <div class="task-description">
+                        Test database connections, query performance, and data integrity across all models.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: Unit Test Coverage (3/4 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-2" style="width: 75%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 4/10</span>
+                        <span class="meta-tag ai-model">Claude Sonnet</span>
+                        <span class="meta-tag parent-context">Part of T-004</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies">
+                            <div class="dependency-link ready">✓</div>
+                        </div>
+                        <div class="time-estimate">⏱️ ~2.5h</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Done Column -->
+            <div class="column">
+                <div class="column-header">
+                    <span>✅ Done</span>
+                    <span class="task-count">2</span>
+                </div>
+
+                <div class="main-task-card priority-low" style="opacity: 0.8;">
+                    <div class="main-task-badge">T-005</div>
+                    <div class="task-title">Project Setup & Dependencies</div>
+                    <div class="task-description">
+                        Initialize project structure, install required dependencies, and configure development environment.
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 2/10</span>
+                        <span class="meta-tag ai-model">Claude Sonnet</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies"></div>
+                        <div class="time-estimate">⏱️ ~2h</div>
+                    </div>
+                </div>
+
+                <div class="subtask-card priority-medium parent-task-3" style="opacity: 0.8;">
+                    <div class="parent-task-badge parent-3">T-003</div>
+                    <div class="subtask-title">Create rate limiting middleware</div>
+                    <div class="task-description">
+                        Implement Express middleware with configurable rate limits per endpoint and user.
+                    </div>
+                    
+                    <div class="parent-progress">
+                        Parent: API Rate Limiting (2/4 subtasks)
+                        <div class="parent-progress-bar">
+                            <div class="parent-progress-fill parent-3" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="task-meta">
+                        <span class="meta-tag complexity">Complexity: 5/10</span>
+                        <span class="meta-tag ai-model">Claude Opus</span>
+                        <span class="meta-tag parent-context">Part of T-003</span>
+                    </div>
+
+                    <div class="task-footer">
+                        <div class="dependencies">
+                            <div class="dependency-link ready">✓</div>
+                        </div>
+                        <div class="time-estimate">⏱️ ~3h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <div class="design-explanation">
+                <h4>🎯 Key Design Changes</h4>
+                <p><strong>Subtask-First Approach:</strong> Individual subtasks become the primary cards that move through the Kanban flow. This provides much better granularity for tracking actual work progress and allows team members to pick up specific, actionable pieces of work.</p>
+                
+                <p><strong>Parent Task Context:</strong> Each subtask card maintains visual connection to its parent through color-coded badges and progress indicators, so you never lose sight of the bigger picture.</p>
+                
+                <p><strong>Mixed Card Types:</strong> Tasks without subtasks still appear as main task cards, while complex tasks are broken down into individual subtask cards - providing flexibility for different task complexities.</p>
+            </div>
+
+            <h2 style="text-align: center; margin-bottom: 30px; color: #2c3e50;">Enhanced Card System Features</h2>
+            
+            <div class="features-grid">
+                <div class="feature-group">
+                    <h3>Card Types & Hierarchy</h3>
+                    <ul class="feature-list">
+                        <li><strong>Main Task Cards:</strong> For tasks without subtasks, badge in top-right corner</li>
+                        <li><strong>Subtask Cards:</strong> Individual actionable items, parent badge in top-left</li>
+                        <li><strong>Color Coding:</strong> Parent task colors (purple, orange, teal, dark gray) for visual grouping</li>
+                        <li><strong>Progress Context:</strong> Each subtask shows parent task progress</li>
+                    </ul>
+                </div>
+
+                <div class="feature-group">
+                    <h3>Visual Hierarchy</h3>
+                    <ul class="feature-list">
+                        <li><strong>Priority Borders:</strong> Left border indicates subtask priority</li>
+                        <li><strong>Parent Grouping:</strong> Top border color groups subtasks by parent</li>
+                        <li><strong>Badge System:</strong> Clear task ID reference for CLI integration</li>
+                        <li><strong>Progress Indicators:</strong> Mini progress bars show parent completion</li>
+                    </ul>
+                </div>
+
+                <div class="feature-group">
+                    <h3>TaskMaster Integration</h3>
+                    <ul class="feature-list">
+                        <li><strong>Granular Tracking:</strong> Move individual subtasks through workflow</li>
+                        <li><strong>Dependency Management:</strong> Subtasks can depend on other subtasks</li>
+                        <li><strong>Parent Progress:</strong> Automatically calculated from subtask completion</li>
+                        <li><strong>CLI Sync:</strong> Each subtask movement syncs with TaskMaster</li>
+                    </ul>
+                </div>
+
+                <div class="feature-group">
+                    <h3>Workflow Benefits</h3>
+                    <ul class="feature-list">
+                        <li><strong>Better WIP Limits:</strong> Limit actual work items, not abstract tasks</li>
+                        <li><strong>Team Collaboration:</strong> Multiple people can work on same parent task</li>
+                        <li><strong>Clearer Progress:</strong> See exactly what's being worked on</li>
+                        <li><strong>Flexible Assignment:</strong> AI models can handle specific subtasks</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="code-example">
+                <strong>TaskMaster CLI Integration Example:</strong><br><br>
+// TaskMaster data structure<br>
+{<br>
+&nbsp;&nbsp;"id": "T-001",<br>
+&nbsp;&nbsp;"title": "JWT Authentication System",<br>
+&nbsp;&nbsp;"subtasks": [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"id": "T-001.1",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"title": "Setup JWT library",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"status": "backlog"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"id": "T-001.2",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"title": "Create auth middleware",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"status": "in-progress"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;]<br>
+}<br><br>
+// Moving subtask updates parent progress automatically<br>
+onSubtaskMove("T-001.1", "in-progress") {<br>
+&nbsp;&nbsp;// CLI: task-master set-status --id=T-001.1 --status=in-progress<br>
+&nbsp;&nbsp;// Auto-calculates parent progress: T-001 now 2/5 = 40%<br>
+&nbsp;&nbsp;// Updates all related subtask cards with new progress<br>
+}
+            </div>
+
+            <h3 style="color: #2c3e50; margin-top: 30px;">Card Interaction Patterns</h3>
+            <ul class="feature-list">
+                <li><strong>Drag & Drop:</strong> Move subtasks independently through columns</li>
+                <li><strong>Parent Context:</strong> Click parent badge to see all related subtasks</li>
+                <li><strong>Progress Updates:</strong> Real-time parent progress updates as subtasks move</li>
+                <li><strong>Dependency Chains:</strong> Visual indicators when subtasks depend on each other</li>
+                <li><strong>Smart Filtering:</strong> Filter by parent task, priority, or AI model</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity
+        document.querySelectorAll('.main-task-card, .subtask-card').forEach(card => {
+            card.addEventListener('mousedown', function() {
+                this.style.transform = 'scale(1.02)';
+                this.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.2)';
+            });
+
+            card.addEventListener('mouseup', function() {
+                this.style.transform = '';
+                this.style.boxShadow = '';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+                this.style.boxShadow = '';
+            });
+        });
+
+        // Simulate parent badge click to highlight related cards
+        document.querySelectorAll('.parent-task-badge').forEach(badge => {
+            badge.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const parentClass = this.classList[1]; // parent-1, parent-2, etc.
+                
+                // Remove previous highlights
+                document.querySelectorAll('.subtask-card').forEach(card => {
+                    card.style.boxShadow = '';
+                });
+                
+                // Highlight related cards
+                document.querySelectorAll(`.${parentClass.replace('parent-', 'parent-task-')}`).forEach(card => {
+                    card.style.boxShadow = '0 0 0 3px rgba(155, 89, 182, 0.3)';
+                    setTimeout(() => {
+                        card.style.boxShadow = '';
+                    }, 2000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -8,20 +8,47 @@ Task Master is an AI-driven task management system designed for seamless integra
 
 ## Recent Updates
 
-### Kanban Board UI (Tasks 105-109)
+### Kanban Board UI Enhancement - Subtask-First Design (2025-08-03)
+- ✅ **Implemented Subtask-First Kanban Design**: Complete redesign following the TaskMaster card design pattern
+  - Individual subtasks as primary movable cards through workflow
+  - Main tasks without subtasks appear as single cards
+  - Parent-child visual relationships with color-coded badges
+  
+- ✅ **Smart Column Assignment Logic**: Tasks automatically placed based on status AND dependencies
+  - **Backlog**: Pending/deferred tasks with unresolved dependencies
+  - **Ready**: Pending/deferred tasks with no dependencies or all dependencies done
+  - **In Progress**: Tasks actively being worked on
+  - **Completed**: Finished tasks
+  
+- ✅ **Visual Design Improvements**:
+  - Glassmorphism effects with backdrop blur
+  - Gradient background (purple to pink)
+  - Task header with ID badges in proper position
+  - Priority indicators (left border colors)
+  - Parent task indicators (top border for subtasks)
+  - Progress bars showing parent task completion
+  - Icons for each column (📋 🚀 🔄 ✅)
+  
+- ✅ **Layout & Scrolling Enhancements**:
+  - Fixed viewport height with internal column scrolling
+  - 4-column layout (removed Review column per TaskMaster spec)
+  - Horizontal scrolling on smaller screens
+  - Proper spacing to prevent card cutoff
+  - Custom scrollbar styling
+  
+- ✅ **Bug Fixes**:
+  - Fixed numeric task ID handling
+  - Fixed CSS import location for proper loading
+  - Fixed column header visibility in light/dark modes
+  - Fixed card cutoff issues in scrollable areas
+  - Added proper hover effect compensation
+
+### Previous: Kanban Board UI (Tasks 105-109)
 - ✅ **Task 105**: Express server infrastructure with CORS, error handling, and graceful shutdown
 - ✅ **Task 106**: CLI command integration - `task-master ui` command launches the server
 - ✅ **Task 107**: RESTful API endpoints for task operations
-- ✅ **Task 108**: Pure HTML/CSS/JS frontend with responsive 5-column layout
-- ✅ **Task 109**: Task card component system with:
-  - Dual card types (main task vs subtask)
-  - Color-coded priority system
-  - Badge system (parent, complexity, AI model, dependencies)
-  - Description truncation/expansion
-  - Progress bars for parent tasks
-  - Glassmorphism effects
-  - Full accessibility support (ARIA, keyboard nav)
-  - Performance optimized for 500+ cards
+- ✅ **Task 108**: Pure HTML/CSS/JS frontend with responsive layout
+- ✅ **Task 109**: Task card component system with full accessibility
 
 ## Development Commands
 

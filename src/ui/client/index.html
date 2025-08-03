@@ -54,7 +54,7 @@
                     <!-- Backlog Column -->
                     <div id="column-backlog" class="kanban-column" data-column="backlog" role="region" aria-labelledby="backlog-title">
                         <div class="column-header">
-                            <h2 id="backlog-title" class="column-title">Backlog</h2>
+                            <h2 id="backlog-title" class="column-title">📋 Backlog</h2>
                             <div class="column-header-controls">
                                 <span class="task-count" aria-label="Task count">0</span>
                                 <button type="button" class="column-menu-btn" aria-label="Column options for Backlog" aria-haspopup="menu">
@@ -77,7 +77,7 @@
                     <!-- Ready Column -->
                     <div id="column-ready" class="kanban-column" data-column="ready" role="region" aria-labelledby="ready-title">
                         <div class="column-header">
-                            <h2 id="ready-title" class="column-title">Ready</h2>
+                            <h2 id="ready-title" class="column-title">🚀 Ready</h2>
                             <div class="column-header-controls">
                                 <span class="task-count" aria-label="Task count">0</span>
                                 <button type="button" class="column-menu-btn" aria-label="Column options for Ready" aria-haspopup="menu">
@@ -100,7 +100,7 @@
                     <!-- In Progress Column -->
                     <div id="column-in-progress" class="kanban-column" data-column="in-progress" role="region" aria-labelledby="in-progress-title">
                         <div class="column-header">
-                            <h2 id="in-progress-title" class="column-title">In Progress</h2>
+                            <h2 id="in-progress-title" class="column-title">🔄 In Progress</h2>
                             <div class="column-header-controls">
                                 <span class="task-count" aria-label="Task count">0</span>
                                 <button type="button" class="column-menu-btn" aria-label="Column options for In Progress" aria-haspopup="menu">
@@ -120,48 +120,25 @@
                         </button>
                     </div>
 
-                    <!-- Review Column -->
-                    <div id="column-review" class="kanban-column" data-column="review" role="region" aria-labelledby="review-title">
+                    <!-- Completed Column -->
+                    <div id="column-completed" class="kanban-column" data-column="completed" role="region" aria-labelledby="completed-title">
                         <div class="column-header">
-                            <h2 id="review-title" class="column-title">Review</h2>
+                            <h2 id="completed-title" class="column-title">✅ Completed</h2>
                             <div class="column-header-controls">
                                 <span class="task-count" aria-label="Task count">0</span>
-                                <button type="button" class="column-menu-btn" aria-label="Column options for Review" aria-haspopup="menu">
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Completed" aria-haspopup="menu">
                                     ⋯
                                 </button>
                             </div>
                         </div>
                         <div class="task-container" 
                              role="listbox" 
-                             aria-label="Review tasks" 
+                             aria-label="Completed tasks" 
                              data-droppable="true"
                              aria-dropeffect="move">
                             <!-- Tasks will be inserted here -->
                         </div>
-                        <button type="button" class="add-task-btn" aria-label="Add new task to Review">
-                            + Add Task
-                        </button>
-                    </div>
-
-                    <!-- Done Column -->
-                    <div id="column-done" class="kanban-column" data-column="done" role="region" aria-labelledby="done-title">
-                        <div class="column-header">
-                            <h2 id="done-title" class="column-title">Done</h2>
-                            <div class="column-header-controls">
-                                <span class="task-count" aria-label="Task count">0</span>
-                                <button type="button" class="column-menu-btn" aria-label="Column options for Done" aria-haspopup="menu">
-                                    ⋯
-                                </button>
-                            </div>
-                        </div>
-                        <div class="task-container" 
-                             role="listbox" 
-                             aria-label="Done tasks" 
-                             data-droppable="true"
-                             aria-dropeffect="move">
-                            <!-- Tasks will be inserted here -->
-                        </div>
-                        <button type="button" class="add-task-btn" aria-label="Add new task to Done">
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Completed">
                             + Add Task
                         </button>
                     </div>

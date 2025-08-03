@@ -11,16 +11,19 @@
     padding: var(--spacing-md);
     overflow-x: auto;
     overflow-y: hidden;
+    height: calc(100vh - 80px); /* Adjust for header */
 }
 
 .kanban-board {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--spacing-md);
-    min-height: 600px;
-    max-width: var(--container-max-width);
-    margin: 0 auto;
-    padding-bottom: var(--spacing-md);
+    grid-template-columns: repeat(4, minmax(320px, 1fr));
+    gap: 20px;
+    height: calc(100vh - 80px); /* Adjust based on header height */
+    max-width: none;
+    margin: 0;
+    padding: 0 var(--spacing-md);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 /* ======================================
@@ -30,46 +33,19 @@
 .kanban-column {
     display: flex;
     flex-direction: column;
-    min-height: 400px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    height: 100%;
+    max-height: calc(100vh - 100px);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
     box-shadow: var(--shadow-sm);
     position: relative;
-    min-width: 250px;
+    padding: 20px 16px 20px 20px; /* Adjust right padding for scrollbar */
+    overflow: hidden;
 }
 
-.kanban-column::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    transition: background-color var(--transition-base);
-}
-
-/* Column accent colors */
-.kanban-column[data-column="backlog"]::before {
-    background-color: var(--color-backlog);
-}
-
-.kanban-column[data-column="ready"]::before {
-    background-color: var(--color-ready);
-}
-
-.kanban-column[data-column="in-progress"]::before {
-    background-color: var(--color-in-progress);
-}
-
-.kanban-column[data-column="review"]::before {
-    background-color: var(--color-review);
-}
-
-.kanban-column[data-column="done"]::before {
-    background-color: var(--color-done);
-}
+/* Removed top border accent for cleaner look */
 
 /* ======================================
    Column Header
@@ -79,11 +55,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-light);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    margin-top: 4px; /* Account for accent border */
+    margin-bottom: 15px;
 }
 
 .column-title {
@@ -91,6 +63,7 @@
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .column-header-controls {
@@ -100,10 +73,10 @@
 }
 
 .task-count {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-lg);
+    background: rgba(0, 0, 0, 0.1);
+    color: var(--text-primary);
+    padding: 2px 8px;
+    border-radius: 12px;
     font-size: 0.8rem;
     font-weight: 500;
     min-width: 1.5rem;
@@ -137,14 +110,39 @@
 
 .task-container {
     flex: 1;
-    padding: var(--spacing-sm);
-    min-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
     position: relative;
     border-radius: var(--radius-sm);
     transition: background-color var(--transition-base);
+    padding: 12px 16px 8px 4px; /* Top (for hover), Right (for scrollbar), Bottom, Left padding */
+    margin-bottom: var(--spacing-md); /* Space before Add Task button */
+}
+
+/* Custom scrollbar for task container */
+.task-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.task-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    margin: 4px 0; /* Add vertical margin to the track */
+}
+
+.task-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid transparent; /* Adds space around thumb */
+    background-clip: padding-box;
+}
+
+.task-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.35);
+    background-clip: padding-box;
 }
 
 .task-container[data-drag-over="true"] {
@@ -349,23 +347,23 @@
    ====================================== */
 
 .add-task-btn {
-    width: 100%;
+    width: calc(100% - var(--spacing-sm) * 2);
     padding: var(--spacing-md);
-    border: 2px dashed var(--border-color);
-    background: transparent;
+    border: 2px dashed rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
     transition: all var(--transition-base);
-    margin: var(--spacing-sm);
-    margin-top: 0;
+    margin: 0 var(--spacing-sm) var(--spacing-sm);
     min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--spacing-xs);
+    flex-shrink: 0; /* Prevent button from shrinking */
 }
 
 .add-task-btn:hover {
@@ -470,38 +468,25 @@
    Responsive Design
    ====================================== */
 
-/* Tablet styles (768px - 1200px) */
-@media (max-width: 1200px) {
+/* Smaller screens - maintain 4 columns with horizontal scroll */
+@media (max-width: 1400px) {
     .kanban-board {
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--spacing-sm);
+        /* Keep 4 columns, allow horizontal scroll */
+        grid-template-columns: repeat(4, minmax(280px, 1fr));
         overflow-x: auto;
-    }
-    
-    .kanban-column {
-        min-width: 280px;
-    }
-    
-    .kanban-container {
-        padding: var(--spacing-sm);
     }
 }
 
 /* Mobile styles (≤ 768px) */
 @media (max-width: 768px) {
     .kanban-board {
-        grid-template-columns: 1fr;
+        /* Still keep 4 columns on mobile with scroll */
+        grid-template-columns: repeat(4, minmax(250px, 1fr));
         gap: var(--spacing-sm);
-        overflow-x: visible;
     }
     
     .kanban-column {
-        min-width: auto;
-        min-height: 300px;
-    }
-    
-    .column-header {
-        padding: var(--spacing-sm) var(--spacing-md);
+        min-width: 250px;
     }
     
     .column-title {
@@ -576,7 +561,12 @@
 }
 
 :root[data-theme="dark"] .column-header {
-    background: var(--bg-tertiary);
+    background: transparent;
+}
+
+:root[data-theme="dark"] .column-title {
+    color: white;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme="dark"] .task-card {
@@ -590,7 +580,7 @@
 }
 
 :root[data-theme="dark"] .task-count {
-    background: var(--bg-dark);
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text-secondary);
 }
 

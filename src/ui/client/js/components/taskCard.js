@@ -1,419 +1,335 @@
 /**
- * TaskCard Component System - Comprehensive Implementation
+ * TaskCard Component - Subtask-First Design
  * 
- * Features:
- * - Component initialization and structure
- * - Priority color coding system  
- * - Badge systems (parent task, complexity, AI model)
- * - Description truncation and expansion
- * - Progress bar calculations
- * - Card type variants (main vs subtask)
- * - Dependency count display
- * - Accessibility features
- * - Performance optimization
- * - Memory cleanup
- * - Glassmorphism effects
+ * Creates both main task cards and subtask cards with parent context
+ * Supports the new TaskMaster Kanban design focusing on granular subtask tracking
  */
 class TaskCard {
     /**
-     * Create a task card element with full feature support
+     * Create a task card element (main task or subtask)
      * @param {Object} task - Task data object
+     * @param {Object} parentTask - Parent task object (for subtasks)
      * @returns {HTMLElement|null} - Task card element or null if invalid
      */
-    static create(task) {
+    static create(task, parentTask = null) {
         if (!task || !task.id) {
             console.error('Invalid task data provided to TaskCard.create');
             return null;
         }
 
-        // Validate task structure
-        const validation = this.validateTask(task);
-        if (!validation.valid) {
-            console.warn('Task validation failed:', validation.errors);
-            // Continue with creation but log issues
-        }
-
-        // Create main card element
+        const isSubtask = !!parentTask;
         const card = document.createElement('div');
-        card.className = 'task-card glassmorphism';
-        
-        // Set core attributes
+        card.className = isSubtask ? 'subtask-card' : 'main-task-card';
         card.setAttribute('data-task-id', task.id);
-        card.setAttribute('data-priority', task.priority || 'medium');
-        card.setAttribute('data-card-type', task.subtasks?.length > 0 ? 'parent' : 'main');
         card.setAttribute('draggable', 'true');
+        card.setAttribute('role', 'listitem');
         card.setAttribute('tabindex', '0');
-        card.setAttribute('role', 'option');
+        
+        // Set priority
+        const priority = task.priority || 'medium';
+        card.setAttribute('data-priority', priority);
+        card.classList.add(`priority-${priority}`);
+        
+        // For subtasks, add parent task coloring
+        if (isSubtask && parentTask) {
+            const parentColorIndex = this.getParentColorIndex(parentTask.id);
+            card.classList.add(`parent-task-${parentColorIndex}`);
+            card.setAttribute('data-parent-id', parentTask.id);
+        }
+        
+        // Create card badges
+        if (isSubtask) {
+            const parentBadge = this.createParentBadge(parentTask);
+            if (parentBadge) card.appendChild(parentBadge);
+        } else {
+            const mainBadge = this.createMainTaskBadge(task);
+            if (mainBadge) card.appendChild(mainBadge);
+        }
+        
+        // Create card content
+        const header = this.createTaskHeader(task, isSubtask);
+        const description = this.createTaskDescription(task);
+        const parentProgress = isSubtask ? this.createParentProgress(parentTask) : null;
+        const meta = this.createTaskMeta(task, parentTask);
+        const footer = this.createTaskFooter(task);
+        
+        if (header) card.appendChild(header);
+        if (description) card.appendChild(description);
+        if (parentProgress) card.appendChild(parentProgress);
+        if (meta) card.appendChild(meta);
+        if (footer) card.appendChild(footer);
+        
+        // Set ARIA attributes
+        const taskType = isSubtask ? 'Subtask' : 'Task';
+        card.setAttribute('aria-label', `${taskType}: ${task.title}`);
         card.setAttribute('aria-grabbed', 'false');
-        card.setAttribute('aria-label', `Task: ${task.title}`);
-
-        // Add priority class for styling
-        if (task.priority) {
-            card.classList.add(`priority-${task.priority}`);
-        }
-
-        // Build card content structure
-        card.appendChild(this.createTaskHeader(task));
-        card.appendChild(this.createTaskBody(task));
-        card.appendChild(this.createTaskFooter(task));
-
-        // Add progress bar for parent tasks
-        if (task.subtasks && task.subtasks.length > 0) {
-            const progressBar = this.createProgressBar(task);
-            if (progressBar) {
-                card.appendChild(progressBar);
-            }
-        }
-
-        // Add priority description for screen readers
-        const priorityText = this.getPriorityText(task.priority);
-        if (priorityText) {
-            const priorityDescription = document.createElement('span');
-            priorityDescription.id = `task-${task.id}-priority`;
-            priorityDescription.className = 'sr-only';
-            priorityDescription.textContent = `Priority: ${priorityText}`;
-            card.appendChild(priorityDescription);
-            card.setAttribute('aria-describedby', `task-${task.id}-priority`);
-        }
-
-        // Add animation class for new tasks
-        if (task.isNew) {
-            card.classList.add('slide-in');
-            setTimeout(() => {
-                card.classList.remove('slide-in');
-            }, 200);
-        }
-
+        
         return card;
     }
 
     /**
-     * Create task header with title, ID, and badges
-     * @param {Object} task - Task data object
+     * Create main task badge (top-right corner)
+     * @param {Object} task - Task data
+     * @returns {HTMLElement} - Badge element
+     */
+    static createMainTaskBadge(task) {
+        const badge = document.createElement('div');
+        badge.className = 'main-task-badge';
+        badge.textContent = `T-${this.formatTaskId(task.id)}`;
+        badge.setAttribute('title', `Task ID: ${task.id}`);
+        return badge;
+    }
+
+    /**
+     * Create parent task badge (top-left corner for subtasks)
+     * @param {Object} parentTask - Parent task data
+     * @returns {HTMLElement} - Badge element
+     */
+    static createParentBadge(parentTask) {
+        if (!parentTask) return null;
+        
+        const badge = document.createElement('div');
+        badge.className = 'parent-task-badge';
+        const colorIndex = this.getParentColorIndex(parentTask.id);
+        badge.classList.add(`parent-${colorIndex}`);
+        badge.textContent = `T-${this.formatTaskId(parentTask.id)}`;
+        badge.setAttribute('title', `Parent: ${parentTask.title}`);
+        
+        // Make badge clickable to highlight related tasks
+        badge.style.cursor = 'pointer';
+        badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.highlightRelatedTasks(parentTask.id);
+        });
+        
+        return badge;
+    }
+
+    /**
+     * Create task header with title and ID badge (matches artifact exactly)
+     * @param {Object} task - Task data
+     * @param {boolean} isSubtask - Whether this is a subtask
      * @returns {HTMLElement} - Header element
      */
-    static createTaskHeader(task) {
+    static createTaskHeader(task, isSubtask) {
         const header = document.createElement('div');
         header.className = 'task-header';
-
-        // Title and ID container
-        const titleContainer = document.createElement('div');
-        titleContainer.className = 'task-title-container';
-
+        
         // Task title
-        const title = document.createElement('h3');
-        title.className = 'task-title';
+        const title = document.createElement('div');
+        title.className = isSubtask ? 'subtask-title' : 'task-title';
         title.textContent = task.title || 'Untitled Task';
-
-        // Task ID
-        const taskId = document.createElement('span');
+        
+        // Task ID badge
+        const taskId = document.createElement('div');
         taskId.className = 'task-id';
-        taskId.textContent = `#${this.formatTaskId(task.id)}`;
-        taskId.setAttribute('aria-hidden', 'true');
-
-        titleContainer.appendChild(title);
-        titleContainer.appendChild(taskId);
-        header.appendChild(titleContainer);
-
-        // Badges container
-        const badgesContainer = document.createElement('div');
-        badgesContainer.className = 'task-badges';
-
-        // Parent task badge
-        const parentBadge = this.createParentTaskBadge(task);
-        if (parentBadge) {
-            badgesContainer.appendChild(parentBadge);
-        }
-
-        // Complexity badge
-        const complexityBadge = this.createComplexityBadge(task.complexityScore);
-        if (complexityBadge) {
-            badgesContainer.appendChild(complexityBadge);
-        }
-
-        // AI model tag
-        const aiModelTag = this.createAIModelTag(task.aiModel);
-        if (aiModelTag) {
-            badgesContainer.appendChild(aiModelTag);
-        }
-
-        // Dependency indicator
-        const dependencyIndicator = this.createDependencyIndicator(
-            task.dependencies ? task.dependencies.length : 0
-        );
-        if (dependencyIndicator) {
-            badgesContainer.appendChild(dependencyIndicator);
-        }
-
-        if (badgesContainer.children.length > 0) {
-            header.appendChild(badgesContainer);
-        }
-
+        taskId.textContent = this.formatTaskId(task.id);
+        
+        header.appendChild(title);
+        header.appendChild(taskId);
+        
         return header;
     }
 
     /**
-     * Create task body with description (with truncation support)
-     * @param {Object} task - Task data object
-     * @returns {HTMLElement} - Body element
+     * Create task description element
+     * @param {Object} task - Task data
+     * @returns {HTMLElement|null} - Description element or null
      */
-    static createTaskBody(task) {
-        const body = document.createElement('div');
-        body.className = 'task-body';
-
-        if (task.description) {
-            const description = document.createElement('p');
-            description.className = 'task-description';
+    static createTaskDescription(task) {
+        if (!task.description) return null;
+        
+        const description = document.createElement('div');
+        description.className = 'task-description';
+        
+        const truncated = this.truncateDescription(task.description, 120);
+        description.textContent = truncated.text;
+        
+        if (truncated.isTruncated) {
+            description.classList.add('truncated');
+            description.setAttribute('data-full-text', task.description);
+            description.setAttribute('data-truncated-text', truncated.text);
+            description.style.cursor = 'pointer';
+            description.setAttribute('title', 'Click to expand/collapse');
             
-            // Handle description truncation
-            const truncated = this.truncateDescription(task.description);
-            description.textContent = truncated.text;
-            
-            // Add expand functionality for truncated descriptions
-            if (truncated.isTruncated) {
-                description.classList.add('truncated');
-                description.setAttribute('data-full-text', truncated.originalText);
-                description.setAttribute('data-truncated-text', truncated.text);
-                description.style.cursor = 'pointer';
-                description.setAttribute('title', 'Click to expand/collapse');
-                
-                // Add click handler for expansion
-                description.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isExpanded = description.classList.contains('expanded');
-                    if (isExpanded) {
-                        description.textContent = description.getAttribute('data-truncated-text');
-                        description.classList.remove('expanded');
-                    } else {
-                        description.textContent = description.getAttribute('data-full-text');
-                        description.classList.add('expanded');
-                    }
-                });
-            }
-            
-            body.appendChild(description);
+            description.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isExpanded = description.classList.contains('expanded');
+                if (isExpanded) {
+                    description.textContent = truncated.text;
+                    description.classList.remove('expanded');
+                } else {
+                    description.textContent = task.description;
+                    description.classList.add('expanded');
+                }
+            });
         }
-
-        return body;
+        
+        return description;
     }
 
     /**
-     * Create task footer with metadata and tags
-     * @param {Object} task - Task data object
+     * Create parent progress indicator for subtasks
+     * @param {Object} parentTask - Parent task data
+     * @returns {HTMLElement|null} - Progress element or null
+     */
+    static createParentProgress(parentTask) {
+        if (!parentTask || !parentTask.subtasks) return null;
+        
+        const progress = document.createElement('div');
+        progress.className = 'parent-progress';
+        
+        // Calculate progress
+        const total = parentTask.subtasks.length;
+        const completed = parentTask.subtasks.filter(st => st.status === 'done').length;
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        // Progress text
+        const text = document.createElement('div');
+        text.textContent = `Parent: ${parentTask.title} (${completed}/${total} subtasks)`;
+        progress.appendChild(text);
+        
+        // Progress bar
+        const bar = document.createElement('div');
+        bar.className = 'parent-progress-bar';
+        
+        const fill = document.createElement('div');
+        fill.className = 'parent-progress-fill';
+        const colorIndex = this.getParentColorIndex(parentTask.id);
+        fill.classList.add(`parent-${colorIndex}`);
+        fill.style.width = `${percentage}%`;
+        
+        bar.appendChild(fill);
+        progress.appendChild(bar);
+        
+        return progress;
+    }
+
+    /**
+     * Create task meta information badges
+     * @param {Object} task - Task data
+     * @param {Object} parentTask - Parent task (for context)
+     * @returns {HTMLElement} - Meta container
+     */
+    static createTaskMeta(task, parentTask) {
+        const meta = document.createElement('div');
+        meta.className = 'task-meta';
+        
+        // Complexity badge
+        if (task.complexity) {
+            const complexity = document.createElement('span');
+            complexity.className = 'meta-tag complexity';
+            complexity.textContent = `Complexity: ${task.complexity}/10`;
+            meta.appendChild(complexity);
+        }
+        
+        // AI model badge
+        if (task.aiModel) {
+            const aiModel = document.createElement('span');
+            aiModel.className = 'meta-tag ai-model';
+            aiModel.textContent = task.aiModel;
+            meta.appendChild(aiModel);
+        }
+        
+        // Dependency indicator
+        if (task.dependencies && task.dependencies.length > 0) {
+            const deps = document.createElement('span');
+            deps.className = 'meta-tag dependency-indicator';
+            deps.textContent = `${task.dependencies.length} dep${task.dependencies.length > 1 ? 's' : ''}`;
+            deps.setAttribute('title', `Depends on: ${task.dependencies.join(', ')}`)
+            meta.appendChild(deps);
+        }
+        
+        // Parent context for subtasks
+        if (parentTask) {
+            const context = document.createElement('span');
+            context.className = 'meta-tag parent-context';
+            context.textContent = `Part of T-${this.formatTaskId(parentTask.id)}`;
+            meta.appendChild(context);
+        }
+        
+        return meta.children.length > 0 ? meta : null;
+    }
+
+    /**
+     * Create task footer with dependencies and time estimate
+     * @param {Object} task - Task data
      * @returns {HTMLElement} - Footer element
      */
     static createTaskFooter(task) {
         const footer = document.createElement('div');
         footer.className = 'task-footer';
-
-        // Tags section
-        if (task.tags && task.tags.length > 0) {
-            const tagsContainer = this.createTaskTags(task.tags);
-            footer.appendChild(tagsContainer);
+        
+        // Dependencies
+        const dependencies = document.createElement('div');
+        dependencies.className = 'dependencies';
+        
+        if (task.dependencies && task.dependencies.length > 0) {
+            task.dependencies.forEach(depId => {
+                const depLink = document.createElement('div');
+                depLink.className = 'dependency-link';
+                
+                // Check if dependency is completed (simplified - would need actual status)
+                const isReady = task.dependencyStatus && task.dependencyStatus[depId] === 'done';
+                if (isReady) {
+                    depLink.classList.add('ready');
+                    depLink.textContent = '✓';
+                    depLink.setAttribute('title', `Dependency ${depId} completed`);
+                } else {
+                    depLink.classList.add('blocked');
+                    depLink.textContent = '!';
+                    depLink.setAttribute('title', `Depends on ${depId}`);
+                }
+                
+                dependencies.appendChild(depLink);
+            });
         }
-
-        // Metadata section
-        const metaContainer = this.createTaskMeta(task);
-        if (metaContainer.children.length > 0) {
-            footer.appendChild(metaContainer);
-        }
-
+        
+        // Time estimate
+        const timeEstimate = document.createElement('div');
+        timeEstimate.className = 'time-estimate';
+        
+        // Calculate estimate based on complexity or use provided estimate
+        const hours = task.estimatedHours || (task.complexity ? task.complexity * 0.5 : 2);
+        timeEstimate.textContent = `⏱️ ~${hours}h`;
+        
+        footer.appendChild(dependencies);
+        footer.appendChild(timeEstimate);
+        
         return footer;
     }
 
     /**
-     * Create task tags
+     * Get parent color index for consistent coloring
+     * @param {string|number} parentId - Parent task ID
+     * @returns {number} - Color index (1-4)
      */
-    static createTaskTags(tags) {
-        const tagsContainer = document.createElement('div');
-        tagsContainer.className = 'task-tags';
-        tagsContainer.setAttribute('aria-label', 'Task tags');
+    static getParentColorIndex(parentId) {
+        // Convert to string and extract numeric part
+        const idStr = String(parentId);
+        const numericPart = parseInt(idStr.replace(/\D/g, '')) || 0;
+        
+        // Return 1-4 for parent color classes
+        return (numericPart % 4) + 1;
+    }
 
-        tags.forEach(tag => {
-            const tagElement = document.createElement('span');
-            tagElement.className = 'task-tag';
-            tagElement.textContent = tag;
-            tagElement.setAttribute('aria-label', `Tag: ${tag}`);
-            tagsContainer.appendChild(tagElement);
+    /**
+     * Highlight related tasks with same parent
+     * @param {string|number} parentId - Parent task ID
+     */
+    static highlightRelatedTasks(parentId) {
+        // Remove previous highlights
+        document.querySelectorAll('.task-highlight').forEach(card => {
+            card.classList.remove('task-highlight');
         });
-
-        return tagsContainer;
-    }
-
-    /**
-     * Create task metadata (assignee, due date, etc.)
-     */
-    static createTaskMeta(task) {
-        const metaContainer = document.createElement('div');
-        metaContainer.className = 'task-meta';
-
-        // Assignee
-        if (task.assignee) {
-            const assignee = this.createAssignee(task.assignee);
-            metaContainer.appendChild(assignee);
-        }
-
-        // Due date
-        if (task.dueDate) {
-            const dueDate = this.createDueDate(task.dueDate);
-            metaContainer.appendChild(dueDate);
-        }
-
-        // Created date (relative)
-        if (task.createdAt) {
-            const createdDate = this.createCreatedDate(task.createdAt);
-            metaContainer.appendChild(createdDate);
-        }
-
-        return metaContainer;
-    }
-
-    /**
-     * Create assignee element
-     */
-    static createAssignee(assignee) {
-        const assigneeElement = document.createElement('div');
-        assigneeElement.className = 'task-assignee';
         
-        if (typeof assignee === 'string') {
-            // Simple name assignee
-            assigneeElement.textContent = this.getInitials(assignee);
-            assigneeElement.setAttribute('aria-label', `Assigned to ${assignee}`);
-            assigneeElement.setAttribute('title', `Assigned to ${assignee}`);
-        } else if (assignee.name) {
-            // Object with name and potentially avatar
-            assigneeElement.textContent = this.getInitials(assignee.name);
-            assigneeElement.setAttribute('aria-label', `Assigned to ${assignee.name}`);
-            assigneeElement.setAttribute('title', `Assigned to ${assignee.name}`);
-            
-            if (assignee.avatar) {
-                // Replace text with image if avatar is available
-                const img = document.createElement('img');
-                img.src = assignee.avatar;
-                img.alt = assignee.name;
-                img.className = 'assignee-avatar';
-                assigneeElement.innerHTML = '';
-                assigneeElement.appendChild(img);
-            }
-        }
-
-        return assigneeElement;
-    }
-
-    /**
-     * Create due date element
-     */
-    static createDueDate(dueDate) {
-        const dueDateElement = document.createElement('span');
-        dueDateElement.className = 'task-due-date';
-        
-        const date = new Date(dueDate);
-        const now = new Date();
-        const diffTime = date.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        // Format date
-        const formattedDate = this.formatDate(date);
-        dueDateElement.textContent = formattedDate;
-        dueDateElement.setAttribute('title', `Due: ${date.toLocaleDateString()}`);
-
-        // Add status classes and screen reader text
-        if (diffDays < 0) {
-            dueDateElement.classList.add('overdue');
-            dueDateElement.setAttribute('aria-label', `Overdue: ${formattedDate}`);
-        } else if (diffDays <= 2) {
-            dueDateElement.classList.add('due-soon');
-            dueDateElement.setAttribute('aria-label', `Due soon: ${formattedDate}`);
-        } else {
-            dueDateElement.setAttribute('aria-label', `Due: ${formattedDate}`);
-        }
-
-        return dueDateElement;
-    }
-
-    /**
-     * Create created date element
-     */
-    static createCreatedDate(createdAt) {
-        const createdElement = document.createElement('span');
-        createdElement.className = 'task-created';
-        
-        const date = new Date(createdAt);
-        const relativeTime = this.getRelativeTime(date);
-        
-        createdElement.textContent = relativeTime;
-        createdElement.setAttribute('title', `Created: ${date.toLocaleString()}`);
-        createdElement.setAttribute('aria-label', `Created ${relativeTime}`);
-
-        return createdElement;
-    }
-
-    /**
-     * Update an existing task card
-     */
-    static update(cardElement, task) {
-        if (!cardElement || !task) {
-            console.error('Invalid parameters provided to TaskCard.update');
-            return;
-        }
-
-        // Update attributes
-        cardElement.setAttribute('data-task-id', task.id);
-        cardElement.setAttribute('data-priority', task.priority || 'medium');
-        cardElement.setAttribute('aria-label', `Task: ${task.title}`);
-
-        // Update content
-        const newCard = this.create(task);
-        if (newCard) {
-            cardElement.innerHTML = newCard.innerHTML;
-            
-            // Copy classes but preserve state classes
-            const preservedClasses = ['dragging', 'keyboard-selected', 'slide-in', 'slide-out'];
-            const newClasses = newCard.className.split(' ');
-            const currentClasses = cardElement.className.split(' ');
-            
-            const classesToKeep = currentClasses.filter(cls => preservedClasses.includes(cls));
-            cardElement.className = [...newClasses, ...classesToKeep].join(' ');
-        }
-    }
-
-    /**
-     * Animate card removal
-     */
-    static async remove(cardElement) {
-        if (!cardElement) return;
-
-        return new Promise((resolve) => {
-            cardElement.classList.add('slide-out');
-            
-            cardElement.addEventListener('animationend', () => {
-                if (cardElement.parentNode) {
-                    cardElement.parentNode.removeChild(cardElement);
-                }
-                resolve();
-            }, { once: true });
-
-            // Fallback if animation doesn't fire
+        // Highlight all tasks with same parent
+        document.querySelectorAll(`[data-parent-id="${parentId}"]`).forEach(card => {
+            card.classList.add('task-highlight');
             setTimeout(() => {
-                if (cardElement.parentNode) {
-                    cardElement.parentNode.removeChild(cardElement);
-                }
-                resolve();
-            }, 300);
+                card.classList.remove('task-highlight');
+            }, 2000);
         });
-    }
-
-    /**
-     * Get initials from a name
-     */
-    static getInitials(name) {
-        if (!name) return '?';
-        
-        return name
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase())
-            .slice(0, 2)
-            .join('');
     }
 
     /**
@@ -435,207 +351,20 @@ class TaskCard {
             return idStr.replace('task-', '');
         }
         
+        // Pad numeric IDs with zeros
+        const numericId = parseInt(idStr);
+        if (!isNaN(numericId)) {
+            return String(numericId).padStart(3, '0');
+        }
+        
         return idStr;
     }
 
     /**
-     * Format date for display
-     */
-    static formatDate(date) {
-        const now = new Date();
-        const diffTime = date.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) {
-            return 'Today';
-        } else if (diffDays === 1) {
-            return 'Tomorrow';
-        } else if (diffDays === -1) {
-            return 'Yesterday';
-        } else if (diffDays > 1 && diffDays <= 7) {
-            return `${diffDays} days`;
-        } else if (diffDays < -1 && diffDays >= -7) {
-            return `${Math.abs(diffDays)} days ago`;
-        } else {
-            return date.toLocaleDateString(undefined, { 
-                month: 'short', 
-                day: 'numeric',
-                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-            });
-        }
-    }
-
-    /**
-     * Get relative time string
-     */
-    static getRelativeTime(date) {
-        const now = new Date();
-        const diffTime = now.getTime() - date.getTime();
-        const diffMinutes = Math.floor(diffTime / (1000 * 60));
-        const diffHours = Math.floor(diffMinutes / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffMinutes < 1) {
-            return 'Just now';
-        } else if (diffMinutes < 60) {
-            return `${diffMinutes}m ago`;
-        } else if (diffHours < 24) {
-            return `${diffHours}h ago`;
-        } else if (diffDays < 7) {
-            return `${diffDays}d ago`;
-        } else {
-            return date.toLocaleDateString(undefined, { 
-                month: 'short', 
-                day: 'numeric'
-            });
-        }
-    }
-
-    /**
-     * Get priority color for styling
-     * @param {string} priority - Priority level
-     * @returns {string} - Color hex code
-     */
-    static getPriorityColor(priority) {
-        const colorMap = {
-            'critical': '#dc3545', // Red
-            'high': '#fd7e14',     // Orange  
-            'medium': '#0d6efd',   // Blue
-            'low': '#198754'       // Green
-        };
-        return colorMap[priority] || colorMap.medium;
-    }
-
-    /**
-     * Create parent task badge
-     * @param {Object} task - Task data object
-     * @returns {HTMLElement|null} - Badge element or null
-     */
-    static createParentTaskBadge(task) {
-        if (!task.subtasks || task.subtasks.length === 0) return null;
-        
-        const badge = document.createElement('span');
-        badge.className = 'parent-task-badge';
-        badge.textContent = `Parent (${task.subtasks.length})`;
-        badge.style.backgroundColor = this.getParentBadgeColor(task.id);
-        badge.style.color = '#fff';
-        badge.setAttribute('aria-label', `Parent task with ${task.subtasks.length} subtasks`);
-        badge.setAttribute('title', `This task has ${task.subtasks.length} subtasks`);
-        
-        return badge;
-    }
-
-    /**
-     * Get unique color for parent task badge
-     * @param {string|number} taskId - Task ID
-     * @returns {string} - Color hex code
-     */
-    static getParentBadgeColor(taskId) {
-        const colors = ['#6f42c1', '#dc3545', '#fd7e14', '#198754', '#0d6efd', '#6610f2'];
-        // Convert to string to handle numeric IDs
-        const idStr = String(taskId);
-        const hash = idStr.split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-        }, 0);
-        return colors[Math.abs(hash) % colors.length];
-    }
-
-    /**
-     * Create complexity score badge
-     * @param {number} complexityScore - Complexity score (1-10)
-     * @returns {HTMLElement|null} - Badge element or null
-     */
-    static createComplexityBadge(complexityScore) {
-        if (!complexityScore || complexityScore < 1 || complexityScore > 10) return null;
-
-        let badgeClass = 'complexity-low';
-        if (complexityScore >= 7) badgeClass = 'complexity-high';
-        else if (complexityScore >= 4) badgeClass = 'complexity-medium';
-
-        const badge = document.createElement('span');
-        badge.className = `complexity-badge ${badgeClass}`;
-        badge.textContent = complexityScore.toString();
-        badge.setAttribute('aria-label', `Complexity: ${complexityScore} out of 10`);
-        badge.setAttribute('title', `Complexity Score: ${complexityScore}/10`);
-        
-        return badge;
-    }
-
-    /**
-     * Create AI model assignment tag
-     * @param {string} aiModel - AI model name
-     * @returns {HTMLElement|null} - Tag element or null
-     */
-    static createAIModelTag(aiModel) {
-        if (!aiModel) return null;
-
-        const tag = document.createElement('span');
-        tag.className = 'ai-model-tag';
-        tag.textContent = aiModel;
-        tag.setAttribute('aria-label', `AI Model: ${aiModel}`);
-        tag.setAttribute('data-ai-model', aiModel);
-        tag.setAttribute('title', `Assigned to AI model: ${aiModel}`);
-        
-        return tag;
-    }
-
-    /**
-     * Create dependency count indicator
-     * @param {number} dependencyCount - Number of dependencies
-     * @returns {HTMLElement|null} - Indicator element or null
-     */
-    static createDependencyIndicator(dependencyCount) {
-        if (!dependencyCount || dependencyCount === 0) return null;
-
-        const indicator = document.createElement('span');
-        indicator.className = 'dependency-indicator';
-        indicator.textContent = `${dependencyCount} deps`;
-        indicator.setAttribute('aria-label', `${dependencyCount} dependencies`);
-        indicator.setAttribute('title', `This task has ${dependencyCount} dependencies`);
-        
-        return indicator;
-    }
-
-    /**
-     * Create progress bar for parent tasks
-     * @param {Object} task - Task data object
-     * @returns {HTMLElement|null} - Progress bar container or null
-     */
-    static createProgressBar(task) {
-        if (!task.subtasks || task.subtasks.length === 0) return null;
-
-        const completedSubtasks = task.subtasks.filter(st => st.status === 'done').length;
-        const progress = (completedSubtasks / task.subtasks.length) * 100;
-
-        const container = document.createElement('div');
-        container.className = 'progress-bar-container';
-        
-        const progressBar = document.createElement('div');
-        progressBar.className = 'progress-bar';
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress.toString());
-        progressBar.setAttribute('aria-valuemin', '0');
-        progressBar.setAttribute('aria-valuemax', '100');
-        progressBar.setAttribute('role', 'progressbar');
-        progressBar.setAttribute('aria-label', `Progress: ${completedSubtasks} of ${task.subtasks.length} subtasks completed`);
-        
-        const progressText = document.createElement('span');
-        progressText.className = 'progress-text';
-        progressText.textContent = `${completedSubtasks}/${task.subtasks.length}`;
-        progressText.setAttribute('aria-hidden', 'true');
-        
-        container.appendChild(progressBar);
-        container.appendChild(progressText);
-        
-        return container;
-    }
-
-    /**
-     * Truncate description text with word boundary awareness
+     * Truncate description with word boundaries
      * @param {string} description - Description text
-     * @param {number} maxLength - Maximum length (default: 120)
-     * @returns {Object} - Object with text, isTruncated, and originalText
+     * @param {number} maxLength - Maximum length
+     * @returns {Object} - Object with text and isTruncated flag
      */
     static truncateDescription(description, maxLength = 120) {
         if (description === null || description === undefined) {
@@ -667,175 +396,94 @@ class TaskCard {
     }
 
     /**
-     * Get priority text for accessibility
-     * @param {string} priority - Priority level
-     * @returns {string|null} - Priority text or null
+     * Create a task card from task data (determines type automatically)
+     * @param {Object} task - Task data
+     * @param {Array} allTasks - All tasks for finding parent
+     * @returns {HTMLElement|Array} - Card element(s)
      */
-    static getPriorityText(priority) {
-        const priorityMap = {
-            'critical': 'Critical priority',
-            'high': 'High priority',
-            'medium': 'Medium priority',
-            'low': 'Low priority'
-        };
-        
-        return priorityMap[priority] || null;
-    }
-
-    /**
-     * Get task card element by ID
-     */
-    static getById(taskId) {
-        return document.querySelector(`[data-task-id="${taskId}"]`);
-    }
-
-    /**
-     * Get all task card elements
-     */
-    static getAll() {
-        return document.querySelectorAll('.task-card');
-    }
-
-    /**
-     * Get task cards in a specific column
-     */
-    static getByColumn(columnId) {
-        const column = document.querySelector(`[data-column="${columnId}"]`);
-        return column ? column.querySelectorAll('.task-card') : [];
-    }
-
-    /**
-     * Check if task card is currently being dragged
-     */
-    static isDragging(cardElement) {
-        return cardElement && cardElement.classList.contains('dragging');
-    }
-
-    /**
-     * Check if task card is selected for keyboard navigation
-     */
-    static isSelected(cardElement) {
-        return cardElement && cardElement.classList.contains('keyboard-selected');
-    }
-
-    /**
-     * Set focus on task card
-     */
-    static focus(cardElement) {
-        if (cardElement && typeof cardElement.focus === 'function') {
-            cardElement.focus();
+    static createFromTask(task, allTasks = []) {
+        // Check if this is a main task with subtasks
+        if (task.subtasks && task.subtasks.length > 0) {
+            // Return array of subtask cards
+            return task.subtasks.map(subtask => {
+                return this.create(subtask, task);
+            });
         }
+        
+        // Check if this is a subtask by looking for parent
+        const parentTask = allTasks.find(t => 
+            t.subtasks && t.subtasks.some(st => st.id === task.id)
+        );
+        
+        if (parentTask) {
+            // This is a subtask, create with parent context
+            return this.create(task, parentTask);
+        }
+        
+        // This is a main task without subtasks
+        return this.create(task, null);
     }
 
     /**
-     * Create a placeholder card for loading states
+     * Update an existing task card
+     * @param {HTMLElement} cardElement - Existing card element
+     * @param {Object} task - Updated task data
+     * @param {Object} parentTask - Parent task (for subtasks)
      */
-    static createPlaceholder() {
-        const card = document.createElement('div');
-        card.className = 'task-card task-card-placeholder';
-        card.setAttribute('aria-hidden', 'true');
-        
-        const header = document.createElement('div');
-        header.className = 'task-header';
-        
-        const title = document.createElement('div');
-        title.className = 'task-title placeholder-text';
-        title.style.width = '70%';
-        title.style.height = '1.2em';
-        title.style.backgroundColor = '#e9ecef';
-        title.style.borderRadius = '3px';
-        
-        const id = document.createElement('div');
-        id.className = 'task-id placeholder-text';
-        id.style.width = '30px';
-        id.style.height = '1em';
-        id.style.backgroundColor = '#e9ecef';
-        id.style.borderRadius = '3px';
-        
-        header.appendChild(title);
-        header.appendChild(id);
-        
-        const body = document.createElement('div');
-        body.className = 'task-body';
-        
-        const description = document.createElement('div');
-        description.className = 'placeholder-text';
-        description.style.width = '90%';
-        description.style.height = '2.4em';
-        description.style.backgroundColor = '#e9ecef';
-        description.style.borderRadius = '3px';
-        
-        body.appendChild(description);
-        
-        card.appendChild(header);
-        card.appendChild(body);
-        
-        return card;
+    static update(cardElement, task, parentTask = null) {
+        if (!cardElement || !task) {
+            console.error('Invalid parameters provided to TaskCard.update');
+            return;
+        }
+
+        // Create new card with updated data
+        const newCard = this.create(task, parentTask);
+        if (!newCard) return;
+
+        // Preserve state classes
+        const preservedClasses = ['dragging', 'keyboard-selected', 'task-highlight'];
+        const currentClasses = cardElement.className.split(' ');
+        const classesToKeep = currentClasses.filter(cls => preservedClasses.includes(cls));
+
+        // Replace content but keep state
+        cardElement.innerHTML = newCard.innerHTML;
+        cardElement.className = newCard.className;
+        classesToKeep.forEach(cls => cardElement.classList.add(cls));
+
+        // Update attributes
+        Array.from(newCard.attributes).forEach(attr => {
+            cardElement.setAttribute(attr.name, attr.value);
+        });
     }
 
     /**
-     * Cleanup event listeners and references for memory management
-     * @param {HTMLElement} cardElement - Card element to cleanup
+     * Remove a task card with animation
+     * @param {HTMLElement} cardElement - Card to remove
+     * @returns {Promise} - Resolves when removal is complete
+     */
+    static async remove(cardElement) {
+        if (!cardElement) return;
+
+        // Add removal animation
+        cardElement.classList.add('slide-out');
+        
+        // Wait for animation
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Remove from DOM
+        cardElement.remove();
+    }
+
+    /**
+     * Clean up all event listeners and references
+     * @param {HTMLElement} cardElement - Card element to clean
      */
     static cleanup(cardElement) {
-        if (cardElement) {
-            // Clear custom properties used for memory tracking
-            cardElement._listeners = null;
-            cardElement._observers = null;
-            
-            // Remove event listeners if they exist
-            const description = cardElement.querySelector('.task-description.truncated');
-            if (description && description._clickHandler) {
-                description.removeEventListener('click', description._clickHandler);
-                description._clickHandler = null;
-            }
-        }
-    }
+        if (!cardElement) return;
 
-    /**
-     * Validate task data structure comprehensively
-     * @param {Object} task - Task data object
-     * @returns {Object} - Validation result with valid flag and errors array
-     */
-    static validateTask(task) {
-        const errors = [];
-        
-        if (!task || typeof task !== 'object') {
-            errors.push('Task must be an object');
-            return { valid: false, errors };
-        }
-
-        if (!task.id) errors.push('Task must have an ID');
-        if (!task.title || typeof task.title !== 'string' || !task.title.trim()) {
-            errors.push('Task must have a non-empty title');
-        }
-
-        const validStatuses = ['backlog', 'ready', 'in-progress', 'review', 'done'];
-        if (task.status && !validStatuses.includes(task.status)) {
-            errors.push(`Invalid status: ${task.status}`);
-        }
-
-        const validPriorities = ['low', 'medium', 'high', 'critical'];
-        if (task.priority && !validPriorities.includes(task.priority)) {
-            errors.push(`Invalid priority: ${task.priority}`);
-        }
-
-        if (task.complexityScore && (task.complexityScore < 1 || task.complexityScore > 10)) {
-            errors.push('Complexity score must be between 1 and 10');
-        }
-
-        if (task.tags && !Array.isArray(task.tags)) {
-            errors.push('Tags must be an array');
-        }
-
-        if (task.dueDate) {
-            const date = new Date(task.dueDate);
-            if (isNaN(date.getTime())) {
-                errors.push('Invalid due date format');
-            }
-        }
-
-        return { valid: errors.length === 0, errors };
+        // Remove all event listeners by cloning
+        const newCard = cardElement.cloneNode(true);
+        cardElement.parentNode?.replaceChild(newCard, cardElement);
     }
 }
 

@@ -4,6 +4,15 @@ async function testKanbanUI() {
     const browser = await chromium.launch({ headless: false });
     const page = await browser.newPage();
     
+    // Listen to console messages from the start
+    page.on('console', msg => {
+        if (msg.type() === 'error') {
+            console.error('Browser console error:', msg.text());
+        } else if (msg.type() === 'log') {
+            console.log('Browser console log:', msg.text());
+        }
+    });
+    
     try {
         console.log('Navigating to http://localhost:3456...');
         await page.goto('http://localhost:3456', { waitUntil: 'networkidle' });
@@ -30,30 +39,39 @@ async function testKanbanUI() {
             console.log(`📊 ${column}: ${tasksInColumn.length} tasks`);
         }
         
-        // Check if any task cards are rendered
-        const taskCards = await page.$$('.task-card');
-        console.log(`\n📋 Total task cards rendered: ${taskCards.length}`);
+        // Check if any task cards are rendered (new design uses different classes)
+        const mainTaskCards = await page.$$('.main-task-card');
+        const subtaskCards = await page.$$('.subtask-card');
+        const totalCards = mainTaskCards.length + subtaskCards.length;
+        console.log(`\n📋 Total cards rendered: ${totalCards}`);
+        console.log(`   Main task cards: ${mainTaskCards.length}`);
+        console.log(`   Subtask cards: ${subtaskCards.length}`);
         
-        if (taskCards.length > 0) {
+        // Get all cards for inspection
+        const allCards = [...mainTaskCards, ...subtaskCards];
+        
+        if (allCards.length > 0) {
             // Inspect first task card
-            const firstCard = taskCards[0];
+            const firstCard = allCards[0];
             const taskId = await firstCard.getAttribute('data-task-id');
-            const taskTitle = await page.textContent(`[data-task-id="${taskId}"] .task-title`);
+            
+            // Check card type and get appropriate title
+            const isSubtask = await firstCard.evaluate(el => el.classList.contains('subtask-card'));
+            const titleSelector = isSubtask ? '.subtask-title' : '.task-title';
+            const taskTitle = await firstCard.$eval(titleSelector, el => el.textContent);
+            
             console.log(`\n🎯 First task:`);
             console.log(`   ID: ${taskId}`);
+            console.log(`   Type: ${isSubtask ? 'Subtask' : 'Main Task'}`);
             console.log(`   Title: ${taskTitle}`);
             
             // Check for badges
-            const badges = await firstCard.$$('.task-badges span');
-            console.log(`   Badges: ${badges.length}`);
+            const mainBadge = await firstCard.$('.main-task-badge');
+            const parentBadge = await firstCard.$('.parent-task-badge');
+            console.log(`   Main badge: ${mainBadge ? 'Yes' : 'No'}`);
+            console.log(`   Parent badge: ${parentBadge ? 'Yes' : 'No'}`);
         }
         
-        // Check console for errors
-        page.on('console', msg => {
-            if (msg.type() === 'error') {
-                console.error('Browser console error:', msg.text());
-            }
-        });
         
         // Wait a bit to see the UI
         console.log('\n👀 Keeping browser open for inspection...');

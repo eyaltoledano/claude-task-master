@@ -1,3 +1,6 @@
+/* Task Card Component Styles */
+@import url('./components/taskCard.css');
+
 /* ======================================
    CSS Reset and Base Styles
    ====================================== */
@@ -18,9 +21,11 @@ body {
                 'Ubuntu', 'Cantarell', 'Open Sans', 'Helvetica Neue', sans-serif;
     line-height: 1.6;
     color: #212529;
-    background-color: #f8f9fa;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 100vh;
     font-size: 14px;
-    overflow-x: hidden;
+    overflow: hidden;
+    margin: 0;
 }
 
 /* ======================================
@@ -42,8 +47,7 @@ body {
     --color-backlog: #6f42c1;
     --color-ready: #007bff;
     --color-in-progress: #fd7e14;
-    --color-review: #ffc107;
-    --color-done: #28a745;
+    --color-completed: #28a745;
 
     /* Background colors */
     --bg-primary: #ffffff;
@@ -243,10 +247,10 @@ small {
    ====================================== */
 
 .app-container {
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-secondary);
+    overflow: hidden;
 }
 
 .container {
@@ -264,10 +268,12 @@ small {
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-color);
     padding: var(--spacing-md) 0;
-    position: sticky;
-    top: 0;
+    height: 80px;
+    flex-shrink: 0;
     z-index: var(--z-dropdown);
     box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
 }
 
 .header-content {
@@ -709,10 +715,3 @@ small {
         box-shadow: none !important;
     }
 }
-
-/* ======================================
-   Import Component Styles
-   ====================================== */
-
-/* Task Card Component Styles */
-@import url('./components/taskCard.css');

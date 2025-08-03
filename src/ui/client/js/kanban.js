@@ -4,7 +4,7 @@
  */
 class KanbanBoard {
     constructor() {
-        this.columns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
+        this.columns = ['backlog', 'ready', 'in-progress', 'completed'];
         this.tasks = [];
         this.isInitialized = false;
         this.isDragging = false;
@@ -104,28 +104,165 @@ class KanbanBoard {
             }
         });
 
-        // Group tasks by status
-        const tasksByStatus = this.groupTasksByStatus();
+        // Create a flat list of all cards to render
+        const cardsToRender = [];
+        
+        console.log('Processing tasks:', this.tasks.length);
 
-        // Render tasks in each column
+        // Process each task
+        this.tasks.forEach(task => {
+            if (task.subtasks && task.subtasks.length > 0) {
+                // This is a parent task - create subtask cards
+                task.subtasks.forEach(subtask => {
+                    // Create a proper subtask object with full ID
+                    const subtaskWithId = {
+                        ...subtask,
+                        id: `${task.id}.${subtask.id}`, // Create proper subtask ID
+                        status: subtask.status || task.status || 'backlog',
+                        priority: subtask.priority || task.priority || 'medium'
+                    };
+                    
+                    cardsToRender.push({
+                        task: subtaskWithId,
+                        parentTask: task,
+                        status: subtaskWithId.status
+                    });
+                });
+            } else {
+                // This is a main task without subtasks
+                cardsToRender.push({
+                    task: task,
+                    parentTask: null,
+                    status: task.status || 'backlog'
+                });
+            }
+        });
+
+        // Group cards by status
+        const cardsByStatus = {};
+        this.columns.forEach(col => cardsByStatus[col] = []);
+        
+        // Determine column based on status AND dependencies
+        console.log('Cards to render:', cardsToRender.length);
+        
+        cardsToRender.forEach(card => {
+            const columnId = this.determineColumn(card.task, this.tasks);
+            
+            if (cardsByStatus[columnId]) {
+                cardsByStatus[columnId].push(card);
+            } else {
+                cardsByStatus['backlog'].push(card);
+            }
+        });
+        
+        console.log('Cards by status:', Object.keys(cardsByStatus).map(k => `${k}: ${cardsByStatus[k].length}`));
+
+        // Render cards in each column
         this.columns.forEach(columnId => {
-            const tasks = tasksByStatus[columnId] || [];
+            const cards = cardsByStatus[columnId] || [];
             const container = this.getTaskContainer(columnId);
             
             if (container) {
-                tasks.forEach(task => {
-                    const taskElement = TaskCard.create(task);
-                    container.appendChild(taskElement);
+                console.log(`Rendering ${cards.length} cards in ${columnId}`);
+                cards.forEach(({ task, parentTask }) => {
+                    try {
+                        const taskElement = TaskCard.create(task, parentTask);
+                        if (taskElement) {
+                            container.appendChild(taskElement);
+                        } else {
+                            console.error('Failed to create card for task:', task);
+                        }
+                    } catch (error) {
+                        console.error('Error creating card:', error, task);
+                    }
                 });
                 
                 // Add empty state if no tasks
-                if (tasks.length === 0) {
+                if (cards.length === 0) {
                     this.showEmptyState(container, columnId);
                 }
+            } else {
+                console.error(`Container not found for column: ${columnId}`);
             }
         });
 
         this.updateTaskCounts();
+    }
+
+    /**
+     * Determine which column a task should be placed in based on status and dependencies
+     * @param {Object} task - The task or subtask to place
+     * @param {Array} allTasks - All tasks for dependency checking
+     * @returns {string} - The column ID
+     */
+    determineColumn(task, allTasks) {
+        const status = task.status || 'pending';
+        
+        // Status "done" always goes to completed column
+        if (status === 'done') {
+            return 'completed';
+        }
+        
+        // Status "in-progress" always goes to in-progress column
+        if (status === 'in-progress') {
+            return 'in-progress';
+        }
+        
+        // For pending or deferred tasks, check dependencies
+        if (status === 'pending' || status === 'deferred') {
+            // Check if task has dependencies
+            if (!task.dependencies || task.dependencies.length === 0) {
+                // No dependencies - ready to start
+                return 'ready';
+            }
+            
+            // Has dependencies - check if all are done
+            const allDependenciesDone = task.dependencies.every(depId => {
+                // Find the dependency task
+                const depTask = this.findTaskById(depId, allTasks);
+                return depTask && depTask.status === 'done';
+            });
+            
+            if (allDependenciesDone) {
+                return 'ready';
+            } else {
+                return 'backlog';
+            }
+        }
+        
+        // Default to backlog for any other status
+        return 'backlog';
+    }
+    
+    /**
+     * Find a task by ID, including checking subtasks
+     * @param {string|number} taskId - The task ID to find
+     * @param {Array} allTasks - All tasks to search
+     * @returns {Object|null} - The found task or null
+     */
+    findTaskById(taskId, allTasks) {
+        // Convert to string for comparison
+        const searchId = String(taskId);
+        
+        // First check main tasks
+        for (const task of allTasks) {
+            if (String(task.id) === searchId) {
+                return task;
+            }
+            
+            // Check subtasks
+            if (task.subtasks) {
+                for (const subtask of task.subtasks) {
+                    // Check both the subtask's own ID and the composite ID
+                    if (String(subtask.id) === searchId || 
+                        `${task.id}.${subtask.id}` === searchId) {
+                        return subtask;
+                    }
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**
@@ -154,12 +291,44 @@ class KanbanBoard {
      * Update task counts in column headers
      */
     updateTaskCounts() {
-        const tasksByStatus = this.groupTasksByStatus();
+        // Count cards (not tasks) per column
+        const counts = {};
+        this.columns.forEach(col => counts[col] = 0);
         
+        // Count all cards that will be rendered
+        this.tasks.forEach(task => {
+            if (task.subtasks && task.subtasks.length > 0) {
+                // Count subtasks
+                task.subtasks.forEach(subtask => {
+                    const subtaskWithId = {
+                        ...subtask,
+                        id: `${task.id}.${subtask.id}`,
+                        status: subtask.status || task.status || 'pending',
+                        dependencies: subtask.dependencies || []
+                    };
+                    const columnId = this.determineColumn(subtaskWithId, this.tasks);
+                    if (counts[columnId] !== undefined) {
+                        counts[columnId]++;
+                    } else {
+                        counts['backlog']++;
+                    }
+                });
+            } else {
+                // Count main task
+                const columnId = this.determineColumn(task, this.tasks);
+                if (counts[columnId] !== undefined) {
+                    counts[columnId]++;
+                } else {
+                    counts['backlog']++;
+                }
+            }
+        });
+        
+        // Update UI
         this.columns.forEach(columnId => {
             const countElement = document.querySelector(`[data-column="${columnId}"] .task-count`);
             if (countElement) {
-                const count = tasksByStatus[columnId]?.length || 0;
+                const count = counts[columnId] || 0;
                 countElement.textContent = count;
                 countElement.setAttribute('aria-label', `${count} tasks`);
             }
