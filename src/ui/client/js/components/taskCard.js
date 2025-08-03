@@ -215,6 +215,16 @@ class TaskCard {
         const meta = document.createElement('div');
         meta.className = 'task-meta';
         
+        // Status badge - show current status
+        const status = task.status || 'pending';
+        const statusTag = document.createElement('span');
+        statusTag.className = `meta-tag status-tag status-${status}`;
+        
+        // Format status text
+        const statusText = status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+        statusTag.textContent = statusText;
+        meta.appendChild(statusTag);
+        
         // Complexity badge
         if (task.complexity) {
             const complexity = document.createElement('span');

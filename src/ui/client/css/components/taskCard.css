@@ -222,6 +222,43 @@
     color: #6c757d;
 }
 
+/* Status tag styles */
+.meta-tag.status-tag {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.meta-tag.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.meta-tag.status-in-progress {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.meta-tag.status-done {
+    background: #d4edda;
+    color: #155724;
+}
+
+.meta-tag.status-deferred {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.meta-tag.status-blocked {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.meta-tag.status-cancelled {
+    background: #e2e3e5;
+    color: #6c757d;
+    text-decoration: line-through;
+}
+
 /* Task Footer */
 .task-footer {
     display: flex;
@@ -335,6 +372,37 @@
 
 [data-theme="dark"] .parent-progress-bar {
     background: rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode status tags */
+[data-theme="dark"] .meta-tag.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+[data-theme="dark"] .meta-tag.status-in-progress {
+    background: rgba(33, 150, 243, 0.2);
+    color: #2196f3;
+}
+
+[data-theme="dark"] .meta-tag.status-done {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+[data-theme="dark"] .meta-tag.status-deferred {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+[data-theme="dark"] .meta-tag.status-blocked {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9e9e9e;
+}
+
+[data-theme="dark"] .meta-tag.status-cancelled {
+    background: rgba(96, 125, 139, 0.2);
+    color: #607d8b;
 }
 
 /* Responsive Design */
