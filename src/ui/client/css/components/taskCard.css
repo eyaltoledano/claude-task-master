@@ -213,8 +213,11 @@
 }
 
 .meta-tag.dependency-indicator {
-    background: #fff3e0;
-    color: #f57c00;
+    background: #FFF3E0;
+    color: #E65100;
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
 }
 
 .meta-tag.parent-context {
@@ -281,12 +284,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.6rem;
+    /* font-size: 0.6rem; */
     color: white;
 }
 
 .dependency-link.blocked {
-    background: #e74c3c;
+    background: #E65100;
 }
 
 .dependency-link.ready {

@@ -241,19 +241,6 @@ class TaskCard {
             meta.appendChild(aiModel);
         }
         
-        // Dependency indicator
-        if (task.dependencies && task.dependencies.length > 0) {
-            const deps = document.createElement('span');
-            deps.className = 'meta-tag dependency-indicator';
-            
-            // Format dependencies for display with commas
-            const formattedDeps = task.dependencies.map(dep => String(dep)).join(', ');
-            
-            deps.textContent = `Depends on: ${formattedDeps}`;
-            deps.setAttribute('title', `Dependencies: ${task.dependencies.join(', ')}`);
-            meta.appendChild(deps);
-        }
-        
         // Parent context for subtasks
         if (parentTask) {
             const context = document.createElement('span');
@@ -273,6 +260,20 @@ class TaskCard {
     static createTaskFooter(task) {
         const footer = document.createElement('div');
         footer.className = 'task-footer';
+
+        // Dependency indicator
+        // if (task.dependencies && task.dependencies.length > 0) {
+        //     const deps = document.createElement('span');
+        //     deps.className = 'meta-tag dependency-indicator';
+            
+        //     // Format dependencies for display with commas
+        //     const formattedDeps = task.dependencies.map(dep => String(dep)).join(', ');
+            
+        //     deps.textContent = `Depends on: ${formattedDeps}`;
+        //     deps.setAttribute('title', `Dependencies: ${task.dependencies.join(', ')}`);
+            
+        //     footer.appendChild(deps);
+        // }
         
         // Dependencies
         const dependencies = document.createElement('div');
@@ -280,8 +281,17 @@ class TaskCard {
         
         if (task.dependencies && task.dependencies.length > 0) {
             task.dependencies.forEach(depId => {
-                const depLink = document.createElement('div');
+                const deps = document.createElement('div');
+                deps.className = 'meta-tag dependency-indicator';
+                
+                const depLink = document.createElement('span');
                 depLink.className = 'dependency-link';
+                
+                // Format dependencies for display with commas
+                // const formattedDeps = task.dependencies.map(dep => String(dep)).join(', ');
+                
+                // deps.textContent = `Depends on: ${depId}`;
+                // deps.setAttribute('title', `Dependencies: ${task.dependencies.join(', ')}`);
                 
                 // Check if dependency is completed (simplified - would need actual status)
                 const isReady = task.dependencyStatus && task.dependencyStatus[depId] === 'done';
@@ -294,8 +304,14 @@ class TaskCard {
                     depLink.textContent = '!';
                     depLink.setAttribute('title', `Depends on ${depId}`);
                 }
+
+                deps.appendChild(depLink);
+
+                const taskIdName = document.createElement('span');
+                taskIdName.textContent = `#${depId}`;
+                deps.appendChild(taskIdName);
                 
-                dependencies.appendChild(depLink);
+                dependencies.appendChild(deps);
             });
         }
         
