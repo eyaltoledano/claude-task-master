@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.23.0",
+    "extension": "0.23.0"
+  },
+  "changesets": [
+    "fuzzy-words-count",
+    "tender-trams-refuse",
+    "vast-sites-leave"
+  ]
+}

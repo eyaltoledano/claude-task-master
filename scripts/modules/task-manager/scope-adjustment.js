@@ -337,7 +337,7 @@ ${
 }
 
 Return a JSON object with a "subtasks" array. Each subtask should have:
-- id: Sequential number starting from 1
+- id: Sequential NUMBER starting from 1 (e.g., 1, 2, 3 - NOT "1", "2", "3")
 - title: Clear, specific title
 - description: Detailed description
 - dependencies: Array of dependency IDs as STRINGS (use format ["${task.id}.1", "${task.id}.2"] for siblings, or empty array [] for no dependencies)
@@ -345,7 +345,9 @@ Return a JSON object with a "subtasks" array. Each subtask should have:
 - status: "pending"
 - testStrategy: Testing approach
 
-IMPORTANT: Dependencies must be strings, not numbers!
+IMPORTANT: 
+- The 'id' field must be a NUMBER, not a string!
+- Dependencies must be strings, not numbers!
 
 Ensure the JSON is valid and properly formatted.`;
 
@@ -358,14 +360,14 @@ Ensure the JSON is valid and properly formatted.`;
 					description: z.string().min(10),
 					dependencies: z.array(z.string()),
 					details: z.string().min(20),
-					status: z.string().default('pending'),
-					testStrategy: z.string().nullable().default('')
+					status: z.string(),
+					testStrategy: z.string()
 				})
 			)
 		});
 
 		const aiResult = await generateObjectService({
-			role: 'main',
+			role: context.research ? 'research' : 'main',
 			session: context.session,
 			systemPrompt,
 			prompt,
@@ -377,14 +379,21 @@ Ensure the JSON is valid and properly formatted.`;
 
 		const generatedSubtasks = aiResult.mainResult.subtasks || [];
 
+		// Post-process generated subtasks to ensure defaults
+		const processedGeneratedSubtasks = generatedSubtasks.map((subtask) => ({
+			...subtask,
+			status: subtask.status || 'pending',
+			testStrategy: subtask.testStrategy || ''
+		}));
+
 		// Update task with preserved subtasks + newly generated ones
-		task.subtasks = [...preservedSubtasks, ...generatedSubtasks];
+		task.subtasks = [...preservedSubtasks, ...processedGeneratedSubtasks];
 
 		return {
 			updatedTask: task,
 			regenerated: true,
 			preserved: preservedSubtasks.length,
-			generated: generatedSubtasks.length
+			generated: processedGeneratedSubtasks.length
 		};
 	} catch (error) {
 		log(
@@ -457,6 +466,7 @@ ADJUSTMENT REQUIREMENTS:
 - description: Updated task description  
 - details: Updated implementation details
 - testStrategy: Updated test strategy
+- priority: Task priority ('low', 'medium', or 'high')
 
 Ensure the JSON is valid and properly formatted.`;
 
@@ -501,14 +511,11 @@ async function adjustTaskComplexity(
 			.string()
 			.min(1)
 			.describe('Updated testing approach for the adjusted scope'),
-		priority: z
-			.enum(['low', 'medium', 'high'])
-			.optional()
-			.describe('Task priority level')
+		priority: z.enum(['low', 'medium', 'high']).describe('Task priority level')
 	});
 
 	const aiResult = await generateObjectService({
-		role: 'main',
+		role: context.research ? 'research' : 'main',
 		session: context.session,
 		systemPrompt,
 		prompt,
@@ -520,10 +527,16 @@ async function adjustTaskComplexity(
 
 	const updatedTaskData = aiResult.mainResult;
 
+	// Ensure priority has a value (in case AI didn't provide one)
+	const processedTaskData = {
+		...updatedTaskData,
+		priority: updatedTaskData.priority || task.priority || 'medium'
+	};
+
 	return {
 		updatedTask: {
 			...task,
-			...updatedTaskData
+			...processedTaskData
 		},
 		telemetryData: aiResult.telemetryData
 	};

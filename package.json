@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.23.0",
+	"version": "0.23.1-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -9,7 +9,10 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": [
+		"apps/*",
+		"."
+	],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -73,6 +76,7 @@
 		"helmet": "^8.1.0",
 		"inquirer": "^12.5.0",
 		"jsonc-parser": "^3.3.1",
+		"jsonrepair": "^3.13.0",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",

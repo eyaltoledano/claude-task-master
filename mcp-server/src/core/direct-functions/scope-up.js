@@ -71,8 +71,8 @@ export async function scopeUpDirect(args, log, context = {}) {
 			};
 		}
 
-		// Parse task IDs
-		const taskIds = id.split(',').map((taskId) => taskId.trim());
+		// Parse task IDs - convert to numbers as expected by scopeUpTask
+		const taskIds = id.split(',').map((taskId) => parseInt(taskId.trim(), 10));
 
 		log.info(
 			`Scoping up tasks: ${taskIds.join(', ')}, strength: ${strength}, research: ${research}`
@@ -90,10 +90,10 @@ export async function scopeUpDirect(args, log, context = {}) {
 				projectRoot,
 				commandName: 'scope-up',
 				outputType: 'mcp',
-				tag
+				tag,
+				research
 			},
-			'json', // outputFormat
-			research
+			'json' // outputFormat
 		);
 
 		// Restore normal logging
