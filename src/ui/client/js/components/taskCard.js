@@ -246,8 +246,8 @@ class TaskCard {
             const deps = document.createElement('span');
             deps.className = 'meta-tag dependency-indicator';
             
-            // Format dependencies for display - keep them as is, no automatic sibling conversion
-            const formattedDeps = task.dependencies.map(dep => String(dep)).join(' ');
+            // Format dependencies for display with commas
+            const formattedDeps = task.dependencies.map(dep => String(dep)).join(', ');
             
             deps.textContent = `Depends on: ${formattedDeps}`;
             deps.setAttribute('title', `Dependencies: ${task.dependencies.join(', ')}`);
