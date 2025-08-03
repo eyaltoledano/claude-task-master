@@ -38,26 +38,26 @@ jobs:
         run: npm ci
         timeout-minutes: 2
 
-      - name: Exit pre-release mode and clean up
+      - name: Check pre-release mode
         run: |
-          echo "🔄 Ensuring we're not in pre-release mode for main branch..."
-          
-          # Exit pre-release mode if we're in it
-          npx changeset pre exit || echo "Not in pre-release mode"
-          
-          # Remove pre.json file if it exists (belt and suspenders approach)
-          if [ -f .changeset/pre.json ]; then
-            echo "🧹 Removing pre.json file..."
-            rm -f .changeset/pre.json
-          fi
-          
-          # Verify the file is gone
-          if [ ! -f .changeset/pre.json ]; then
-            echo "✅ pre.json successfully removed"
-          else
-            echo "❌ Failed to remove pre.json"
+          set -euo pipefail
+          echo "🔍 Checking pre-release mode status..."
+          if [[ -f .changeset/pre.json ]]; then
+            echo "❌ ERROR: Main branch is in pre-release mode!"
+            echo ""
+            echo "Pre-release mode should only be used on feature branches, not main."
+            echo ""
+            echo "To fix this, run the following commands locally:"
+            echo "  npx changeset pre exit"
+            echo "  git add -u"
+            echo "  git commit -m 'chore: exit pre-release mode'"
+            echo "  git push origin main"
+            echo ""
+            echo "Then re-run this workflow."
             exit 1
           fi
+
+          echo "✅ Not in pre-release mode - proceeding with release"
 
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1
