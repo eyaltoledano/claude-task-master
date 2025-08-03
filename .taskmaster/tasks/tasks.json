@@ -7274,11 +7274,82 @@
             "testStrategy": "Error logging accuracy tests, storage limit tests, serialization tests for complex objects, privacy filter tests, performance benchmarks for high-volume logging, export functionality tests"
           }
         ]
+      },
+      {
+        "id": 115,
+        "title": "Implement Drag-and-Drop Functionality for Kanban Board",
+        "description": "Add drag-and-drop capability to move task cards between columns, updating task status via API",
+        "details": "Implement drag-and-drop functionality using SortableJS library to allow users to drag task cards between Kanban columns. When a card is dropped in a new column, automatically update the task status via the API. Include visual feedback during drag operations and ensure proper error handling for failed updates.",
+        "testStrategy": "1. Unit tests for drag event handlers\n2. Integration tests for API status updates\n3. E2E tests for complete drag-drop workflow\n4. Visual regression tests for drag states\n5. Error handling tests for failed API calls",
+        "status": "pending",
+        "dependencies": [
+          105,
+          106,
+          107,
+          108,
+          109
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install and Configure SortableJS Library",
+            "description": "Set up SortableJS library in the Kanban board frontend and configure it for the task card drag-and-drop functionality",
+            "dependencies": [],
+            "details": "Install SortableJS via npm or include via CDN in the client HTML. Initialize SortableJS on each Kanban column container with appropriate configuration options including group settings to allow cards to move between columns, animation duration, drag handle selectors, and ghostClass for visual feedback. Configure the library to work with the existing task card structure and ensure compatibility with the current CSS framework.",
+            "status": "pending",
+            "testStrategy": "Verify SortableJS loads correctly and initializes on all column containers. Test that the library configuration options are properly applied. Ensure no conflicts with existing JavaScript libraries."
+          },
+          {
+            "id": 2,
+            "title": "Implement Drag Event Handlers and Visual Feedback",
+            "description": "Create event handlers for drag start, drag over, and drag end events with appropriate visual feedback during drag operations",
+            "dependencies": [
+              "115.1"
+            ],
+            "details": "Implement onStart handler to capture the original column and task data when dragging begins. Add visual indicators like opacity changes, cursor modifications, and placeholder elements during drag. Create onMove handler to provide real-time feedback about valid drop zones. Implement ghost element styling and drop zone highlighting. Add touch device support for mobile drag-and-drop. Ensure accessibility with proper ARIA attributes during drag operations.",
+            "status": "pending",
+            "testStrategy": "Unit test each event handler function independently. Verify visual feedback appears correctly during drag operations. Test on both desktop and mobile devices. Validate accessibility features work correctly."
+          },
+          {
+            "id": 3,
+            "title": "Create API Integration for Status Updates",
+            "description": "Implement the API call mechanism to update task status when cards are dropped in new columns",
+            "dependencies": [
+              "115.2"
+            ],
+            "details": "Create a mapping between Kanban columns and task status values (Backlog->pending/deferred with dependencies, Ready->pending without dependencies, In Progress->in-progress, Completed->done). Implement onEnd handler that captures the destination column and determines the new status. Create an async function to call the PATCH /api/tasks/:id/status endpoint with the new status. Handle the response and update the local state accordingly. Implement optimistic updates to provide immediate visual feedback before API confirmation.",
+            "status": "pending",
+            "testStrategy": "Mock API calls and test status update logic. Verify correct status mapping for each column. Test API error scenarios and retry logic. Validate optimistic updates and rollback behavior."
+          },
+          {
+            "id": 4,
+            "title": "Implement Error Handling and Rollback Mechanism",
+            "description": "Add comprehensive error handling for failed API updates and implement rollback functionality to restore cards to original positions",
+            "dependencies": [
+              "115.3"
+            ],
+            "details": "Implement try-catch blocks around API calls with specific error handling for network failures, authentication errors, and validation errors. Create a rollback mechanism that returns the card to its original position if the API update fails. Display user-friendly error messages using toast notifications or modal dialogs. Implement retry logic with exponential backoff for transient failures. Add loading states during API operations to prevent multiple simultaneous drag operations. Log errors to console for debugging.",
+            "status": "pending",
+            "testStrategy": "Test various API failure scenarios including network errors, 500 errors, and validation errors. Verify rollback correctly restores card position. Test retry mechanism with different failure types. Validate error messages display correctly."
+          },
+          {
+            "id": 5,
+            "title": "Add Drag-and-Drop Constraints and Business Logic",
+            "description": "Implement business rules and constraints for drag-and-drop operations based on task dependencies and status transitions",
+            "dependencies": [
+              "115.4"
+            ],
+            "details": "Implement validation logic to prevent invalid status transitions (e.g., moving tasks with unmet dependencies to In Progress). Add checks for task dependencies before allowing moves to certain columns. Implement visual indicators for cards that cannot be moved to specific columns. Add support for keyboard shortcuts as an alternative to drag-and-drop (e.g., Ctrl+Arrow keys). Ensure parent tasks and subtasks maintain proper relationships during moves. Add undo/redo functionality for drag operations using a command pattern.",
+            "status": "pending",
+            "testStrategy": "Test dependency validation prevents invalid moves. Verify business rules are enforced correctly. Test keyboard navigation alternatives. Validate parent-child task relationships are maintained. Test undo/redo functionality."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-03T12:02:16.293Z",
+      "updated": "2025-08-03T19:31:42.216Z",
       "description": "Tasks for master context"
     }
   },

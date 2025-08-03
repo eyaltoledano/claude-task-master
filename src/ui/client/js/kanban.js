@@ -14,6 +14,8 @@ class KanbanBoard {
         this.selectedTask = null;
         this.focusedColumn = 0;
         this.focusedTask = 0;
+        this.sortableInstances = [];
+        this.useSortableJS = typeof Sortable !== 'undefined';
         
         // Bind methods to preserve 'this' context
         this.handleDragStart = this.handleDragStart.bind(this);
@@ -27,6 +29,11 @@ class KanbanBoard {
         this.handleThemeToggle = this.handleThemeToggle.bind(this);
         this.handleResize = this.handleResize.bind(this);
         this.announceToScreenReader = this.announceToScreenReader.bind(this);
+        
+        // SortableJS handlers
+        this.handleSortableStart = this.handleSortableStart.bind(this);
+        this.handleSortableEnd = this.handleSortableEnd.bind(this);
+        this.handleSortableMove = this.handleSortableMove.bind(this);
     }
 
     /**
@@ -49,6 +56,9 @@ class KanbanBoard {
             // Render initial state
             this.renderTasks();
             this.updateTaskCounts();
+            
+            // Setup drag and drop functionality
+            this.setupDragAndDrop();
             
             // Setup accessibility features
             this.setupAccessibility();
@@ -193,6 +203,11 @@ class KanbanBoard {
         });
 
         this.updateTaskCounts();
+        
+        // Reinitialize SortableJS after rendering tasks
+        if (this.useSortableJS && this.isInitialized) {
+            this.initializeSortableJS();
+        }
     }
 
     /**
@@ -376,15 +391,215 @@ class KanbanBoard {
     }
 
     /**
+     * Setup drag and drop functionality
+     */
+    setupDragAndDrop() {
+        if (this.useSortableJS) {
+            this.initializeSortableJS();
+        } else {
+            console.warn('SortableJS not available, falling back to HTML5 drag-and-drop');
+            // HTML5 drag-and-drop will be setup via setupEventListeners()
+        }
+    }
+
+    /**
+     * Initialize SortableJS on all task containers
+     */
+    initializeSortableJS() {
+        // Clean up existing instances
+        this.destroySortableInstances();
+
+        this.columns.forEach(columnId => {
+            const container = this.getTaskContainer(columnId);
+            if (container) {
+                const sortableInstance = Sortable.create(container, {
+                    group: 'kanban-tasks', // Allow drag between columns
+                    animation: 150, // Animation duration
+                    ghostClass: 'sortable-ghost', // Ghost element class
+                    chosenClass: 'sortable-chosen', // Selected element class  
+                    dragClass: 'sortable-drag', // Dragging element class
+                    filter: '.add-task-btn, .empty-state', // Elements to ignore
+                    preventOnFilter: false,
+                    dataIdAttr: 'data-task-id',
+                    onStart: this.handleSortableStart,
+                    onEnd: this.handleSortableEnd,
+                    onMove: this.handleSortableMove
+                });
+
+                this.sortableInstances.push({
+                    columnId,
+                    instance: sortableInstance
+                });
+
+                console.log(`SortableJS initialized for column: ${columnId}`);
+            }
+        });
+    }
+
+    /**
+     * Destroy all SortableJS instances
+     */
+    destroySortableInstances() {
+        this.sortableInstances.forEach(({ instance }) => {
+            if (instance && typeof instance.destroy === 'function') {
+                instance.destroy();
+            }
+        });
+        this.sortableInstances = [];
+    }
+
+    /**
+     * Handle SortableJS drag start
+     */
+    handleSortableStart(evt) {
+        const taskCard = evt.item;
+        const taskId = taskCard.getAttribute('data-task-id');
+        this.draggedTask = this.tasks.find(task => task.id === taskId) || 
+                          this.findTaskById(taskId, this.tasks);
+        
+        if (this.draggedTask) {
+            this.isDragging = true;
+            taskCard.setAttribute('aria-grabbed', 'true');
+            this.announceToScreenReader(`${this.draggedTask.title} grabbed for moving`);
+            console.log('SortableJS drag started for task:', taskId);
+        }
+    }
+
+    /**
+     * Handle SortableJS drag end
+     */
+    async handleSortableEnd(evt) {
+        const taskCard = evt.item;
+        const taskId = taskCard.getAttribute('data-task-id');
+        const newColumn = evt.to.closest('.kanban-column');
+        const oldColumn = evt.from.closest('.kanban-column');
+        
+        if (!newColumn || !oldColumn) {
+            this.cleanupSortableState();
+            return;
+        }
+
+        const newStatus = this.mapColumnToStatus(newColumn.getAttribute('data-column'));
+        const oldStatus = this.mapColumnToStatus(oldColumn.getAttribute('data-column'));
+
+        // Reset ARIA attribute
+        taskCard.setAttribute('aria-grabbed', 'false');
+
+        if (newStatus === oldStatus) {
+            this.cleanupSortableState();
+            return;
+        }
+
+        if (!this.draggedTask) {
+            console.warn('No dragged task found for SortableJS drop');
+            this.cleanupSortableState();
+            return;
+        }
+
+        try {
+            // Optimistic update - already moved by SortableJS
+            const originalStatus = this.draggedTask.status;
+            this.draggedTask.status = newStatus;
+
+            // Update via API
+            await this.updateTaskStatus(taskId, newStatus);
+            
+            // Announce success
+            const columnNames = {
+                'backlog': 'Backlog',
+                'ready': 'Ready', 
+                'in-progress': 'In Progress',
+                'completed': 'Done'
+            };
+            
+            this.announceToScreenReader(
+                `${this.draggedTask.title} moved from ${columnNames[oldStatus]} to ${columnNames[newStatus]}`
+            );
+            
+            this.showSuccess(`Task moved to ${columnNames[newStatus]}`);
+            this.updateTaskCounts();
+            
+            console.log(`SortableJS task ${taskId} moved from ${oldStatus} to ${newStatus}`);
+            
+        } catch (error) {
+            console.error('Error updating task status via SortableJS:', error);
+            
+            // Rollback: move card back to original column
+            const originalContainer = this.getTaskContainer(this.mapStatusToColumn(this.draggedTask.status));
+            if (originalContainer && taskCard.parentNode !== originalContainer) {
+                originalContainer.appendChild(taskCard);
+            }
+            
+            // Restore original status
+            if (this.draggedTask) {
+                this.draggedTask.status = oldStatus;
+            }
+            
+            this.showError('Failed to move task');
+            this.updateTaskCounts();
+        }
+
+        this.cleanupSortableState();
+    }
+
+    /**
+     * Handle SortableJS move validation
+     */
+    handleSortableMove(evt) {
+        // You can add validation logic here to prevent certain moves
+        // Return false to cancel the move
+        return true;
+    }
+
+    /**
+     * Clean up SortableJS drag state
+     */
+    cleanupSortableState() {
+        this.isDragging = false;
+        this.draggedTask = null;
+    }
+
+    /**
+     * Map column ID to status value
+     */
+    mapColumnToStatus(columnId) {
+        const mapping = {
+            'backlog': 'backlog',
+            'ready': 'ready',
+            'in-progress': 'in-progress',
+            'completed': 'done'
+        };
+        return mapping[columnId] || 'backlog';
+    }
+
+    /**
+     * Map status value to column ID
+     */
+    mapStatusToColumn(status) {
+        const mapping = {
+            'backlog': 'backlog',
+            'ready': 'ready',
+            'in-progress': 'in-progress',
+            'done': 'completed',
+            'pending': 'ready', // Default for pending tasks
+            'deferred': 'backlog'
+        };
+        return mapping[status] || 'backlog';
+    }
+
+    /**
      * Setup all event listeners
      */
     setupEventListeners() {
-        // Drag and drop events
-        document.addEventListener('dragstart', this.handleDragStart);
-        document.addEventListener('dragover', this.handleDragOver);
-        document.addEventListener('dragleave', this.handleDragLeave);
-        document.addEventListener('drop', this.handleDrop);
-        document.addEventListener('dragend', this.handleDragEnd);
+        // Only setup HTML5 drag-and-drop if SortableJS is not available
+        if (!this.useSortableJS) {
+            // Drag and drop events
+            document.addEventListener('dragstart', this.handleDragStart);
+            document.addEventListener('dragover', this.handleDragOver);
+            document.addEventListener('dragleave', this.handleDragLeave);
+            document.addEventListener('drop', this.handleDrop);
+            document.addEventListener('dragend', this.handleDragEnd);
+        }
 
         // Keyboard navigation
         document.addEventListener('keydown', this.handleKeyboardNavigation);

@@ -701,3 +701,103 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
 }
+
+/* ======================================
+   SortableJS Drag & Drop Styles
+   ====================================== */
+
+/* Ghost element (placeholder during drag) */
+.sortable-ghost {
+    opacity: 0.3;
+    background: var(--primary-color);
+    border: 2px dashed var(--primary-color);
+    transform: rotate(2deg);
+    transition: all var(--transition-base);
+}
+
+/* Chosen element (when drag starts) */
+.sortable-chosen {
+    cursor: grabbing !important;
+    transform: scale(1.02) rotate(1deg);
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-base);
+}
+
+/* Dragging element (during drag) */
+.sortable-drag {
+    cursor: grabbing !important;
+    opacity: 0.8;
+    transform: rotate(3deg);
+    z-index: 1001;
+    box-shadow: var(--shadow-xl);
+}
+
+/* Drop zone highlighting */
+.task-container.sortable-drag-over {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border: 2px dashed var(--primary-color);
+    border-radius: 8px;
+    transition: all var(--transition-base);
+}
+
+/* Smooth animations for drag operations */
+.task-card {
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    cursor: grab;
+}
+
+.task-card:active {
+    cursor: grabbing;
+}
+
+/* Enhanced hover effect when not dragging */
+.task-card:hover:not(.sortable-chosen):not(.sortable-drag) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Column highlighting during drag */
+.kanban-column.sortable-drag-target {
+    background: rgba(var(--primary-color-rgb), 0.05);
+    border-color: var(--primary-color);
+    transition: all var(--transition-base);
+}
+
+/* Accessibility improvements for drag operations */
+.task-card[aria-grabbed="true"] {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Dark theme adjustments for SortableJS */
+:root[data-theme="dark"] .sortable-ghost {
+    background: var(--primary-color-dark);
+    border-color: var(--primary-color-dark);
+}
+
+:root[data-theme="dark"] .task-container.sortable-drag-over {
+    background: rgba(var(--primary-color-rgb), 0.2);
+    border-color: var(--primary-color-light);
+}
+
+:root[data-theme="dark"] .kanban-column.sortable-drag-target {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-color: var(--primary-color-light);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .sortable-ghost,
+    .sortable-chosen,
+    .sortable-drag,
+    .task-container.sortable-drag-over,
+    .kanban-column.sortable-drag-target {
+        transition: none;
+        transform: none;
+    }
+    
+    .task-card:hover:not(.sortable-chosen):not(.sortable-drag) {
+        transform: none;
+    }
+}
