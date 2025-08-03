@@ -86,19 +86,23 @@ if (gitResult.status !== 0) {
 	console.error('Error:', gitResult.error);
 	console.error('Stderr:', gitResult.stderr);
 	console.error('Command:', `git ls-remote ${repoUrl} ${tag}`);
-	
+
 	// For CI environments, try using origin instead of the full URL
 	if (process.env.CI) {
 		console.log('Retrying with origin remote...');
 		gitResult = spawnSync('git', ['ls-remote', 'origin', tag], {
 			encoding: 'utf8'
 		});
-		
+
 		if (gitResult.status !== 0) {
-			throw new Error(`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`);
+			throw new Error(
+				`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`
+			);
 		}
 	} else {
-		throw new Error(`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`);
+		throw new Error(
+			`Failed to check remote for tag ${tag}. Exit code: ${gitResult.status}`
+		);
 	}
 }
 

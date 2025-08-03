@@ -23,14 +23,14 @@ import { displayAiUsageSummary } from '../ui.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
-	id: z.number().int().positive(),
+	id: z.number(),
 	title: z.string().min(1),
 	description: z.string().min(1),
-	details: z.string().nullable(),
-	testStrategy: z.string().nullable(),
-	priority: z.enum(['high', 'medium', 'low']).nullable(),
-	dependencies: z.array(z.number().int().positive()).nullable(),
-	status: z.string().nullable()
+	details: z.string(),
+	testStrategy: z.string(),
+	priority: z.enum(['high', 'medium', 'low']),
+	dependencies: z.array(z.number()),
+	status: z.string()
 });
 
 // Define the Zod schema for the ENTIRE expected AI response object
@@ -257,10 +257,15 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			return {
 				...task,
 				id: newId,
-				status: 'pending',
+				status: task.status || 'pending',
 				priority: task.priority || 'medium',
 				dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
-				subtasks: []
+				subtasks: [],
+				// Ensure all required fields have values (even if empty strings)
+				title: task.title || '',
+				description: task.description || '',
+				details: task.details || '',
+				testStrategy: task.testStrategy || ''
 			};
 		});
 
