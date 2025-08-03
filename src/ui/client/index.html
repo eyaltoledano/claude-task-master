@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Task Master Kanban Board - Manage your tasks efficiently">
+    <title>Task Master Kanban Board</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/kanban.css">
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="js/kanban.js" as="script">
+    <link rel="preload" href="js/api.js" as="script">
+</head>
+<body>
+    <!-- Skip links for accessibility -->
+    <a href="#main-content" class="sr-only skip-link">Skip to main content</a>
+    <a href="#kanban-board" class="sr-only skip-link">Skip to kanban board</a>
+
+    <!-- Screen reader announcements -->
+    <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true" role="status"></div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-container" aria-live="polite" style="display: none;">
+        <div class="loading-spinner" role="status" aria-label="Loading tasks">
+            <div class="spinner"></div>
+            <span class="sr-only">Loading tasks, please wait...</span>
+        </div>
+    </div>
+
+    <!-- Main application container -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="kanban-header" role="banner">
+            <div class="header-content">
+                <h1>Task Master Kanban Board</h1>
+                <div class="header-controls">
+                    <button type="button" class="theme-toggle" aria-label="Toggle dark mode">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <button type="button" class="settings-btn" aria-label="Open settings">
+                        <span class="settings-icon">⚙️</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main id="main-content" role="main" aria-label="Kanban Board">
+            <div id="kanban-board" class="kanban-container" role="application" aria-label="Kanban task management board">
+                <div class="kanban-board">
+                    <!-- Backlog Column -->
+                    <div id="column-backlog" class="kanban-column" data-column="backlog" role="region" aria-labelledby="backlog-title">
+                        <div class="column-header">
+                            <h2 id="backlog-title" class="column-title">Backlog</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Backlog" aria-haspopup="menu">
+                                    ⋯
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-container" 
+                             role="listbox" 
+                             aria-label="Backlog tasks" 
+                             data-droppable="true"
+                             aria-dropeffect="move">
+                            <!-- Tasks will be inserted here -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Backlog">
+                            + Add Task
+                        </button>
+                    </div>
+
+                    <!-- Ready Column -->
+                    <div id="column-ready" class="kanban-column" data-column="ready" role="region" aria-labelledby="ready-title">
+                        <div class="column-header">
+                            <h2 id="ready-title" class="column-title">Ready</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Ready" aria-haspopup="menu">
+                                    ⋯
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-container" 
+                             role="listbox" 
+                             aria-label="Ready tasks" 
+                             data-droppable="true"
+                             aria-dropeffect="move">
+                            <!-- Tasks will be inserted here -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Ready">
+                            + Add Task
+                        </button>
+                    </div>
+
+                    <!-- In Progress Column -->
+                    <div id="column-in-progress" class="kanban-column" data-column="in-progress" role="region" aria-labelledby="in-progress-title">
+                        <div class="column-header">
+                            <h2 id="in-progress-title" class="column-title">In Progress</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for In Progress" aria-haspopup="menu">
+                                    ⋯
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-container" 
+                             role="listbox" 
+                             aria-label="In Progress tasks" 
+                             data-droppable="true"
+                             aria-dropeffect="move">
+                            <!-- Tasks will be inserted here -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to In Progress">
+                            + Add Task
+                        </button>
+                    </div>
+
+                    <!-- Review Column -->
+                    <div id="column-review" class="kanban-column" data-column="review" role="region" aria-labelledby="review-title">
+                        <div class="column-header">
+                            <h2 id="review-title" class="column-title">Review</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Review" aria-haspopup="menu">
+                                    ⋯
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-container" 
+                             role="listbox" 
+                             aria-label="Review tasks" 
+                             data-droppable="true"
+                             aria-dropeffect="move">
+                            <!-- Tasks will be inserted here -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Review">
+                            + Add Task
+                        </button>
+                    </div>
+
+                    <!-- Done Column -->
+                    <div id="column-done" class="kanban-column" data-column="done" role="region" aria-labelledby="done-title">
+                        <div class="column-header">
+                            <h2 id="done-title" class="column-title">Done</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Done" aria-haspopup="menu">
+                                    ⋯
+                                </button>
+                            </div>
+                        </div>
+                        <div class="task-container" 
+                             role="listbox" 
+                             aria-label="Done tasks" 
+                             data-droppable="true"
+                             aria-dropeffect="move">
+                            <!-- Tasks will be inserted here -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Done">
+                            + Add Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Error message container -->
+        <div id="error-container" class="error-container" role="alert" aria-live="assertive" style="display: none;">
+            <div class="error-content">
+                <span class="error-icon">⚠️</span>
+                <span class="error-message"></span>
+                <button type="button" class="error-close" aria-label="Close error message">×</button>
+            </div>
+        </div>
+
+        <!-- Success message container -->
+        <div id="success-container" class="success-container" role="status" aria-live="polite" style="display: none;">
+            <div class="success-content">
+                <span class="success-icon">✅</span>
+                <span class="success-message"></span>
+                <button type="button" class="success-close" aria-label="Close success message">×</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task modal template (hidden) -->
+    <template id="task-modal-template">
+        <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title" class="modal-title">Add Task</h3>
+                    <button type="button" class="modal-close" aria-label="Close modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <form class="task-form">
+                        <div class="form-group">
+                            <label for="task-title-input">Title <span class="required" aria-label="required">*</span></label>
+                            <input type="text" id="task-title-input" name="title" required aria-required="true" aria-describedby="title-help">
+                            <div id="title-help" class="form-help">Enter a descriptive title for the task</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-description-input">Description</label>
+                            <textarea id="task-description-input" name="description" rows="3" aria-describedby="description-help"></textarea>
+                            <div id="description-help" class="form-help">Optional detailed description</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="task-priority-input">Priority</label>
+                            <select id="task-priority-input" name="priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- JavaScript Files -->
+    <script src="js/components/taskCard.js"></script>
+    <script src="js/components/column.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/kanban.js"></script>
+    
+    <!-- Initialize application -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const kanban = new KanbanBoard();
+            kanban.init();
+        });
+    </script>
+</body>
+</html>

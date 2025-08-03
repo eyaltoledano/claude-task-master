@@ -194,13 +194,67 @@ When modifying Task Master:
 - `tests/` - Test suite organization
 - `docs/` - User documentation
 
-## Development Principles
+## Development Principles & Best Practices
 
 - Always follow TDD methodology when developing features or addressing bugs/issues
-
-## Development Best Practices
-
-- Always commit any pending changes before starting a task, and after marking it as done
-
-## Memories
+- Always commit changes AFTER marking a task as done
+- Always commit any pending changes before starting a task
 - Use git emoji in git commit messages
+
+## Kanban UI Development
+
+### Running the Kanban UI
+
+```bash
+# Start the Kanban board UI server
+task-master ui
+
+# Custom port
+task-master ui --port 4000
+
+# Without auto-opening browser
+task-master ui --no-browser
+```
+
+### Frontend Structure
+
+The Kanban UI is built with pure HTML/CSS/JavaScript (no build process):
+
+```
+src/ui/
+├── server/
+│   ├── index.js          # Express server
+│   ├── routes/
+│   │   └── api.js        # REST API endpoints
+│   └── services/
+│       └── taskSync.js   # Task synchronization
+└── client/
+    ├── index.html        # Main HTML (5-column Kanban board)
+    ├── css/
+    │   ├── main.css      # Base styles and layout
+    │   └── kanban.css    # Kanban-specific styles
+    └── js/
+        ├── kanban.js     # Core Kanban logic
+        ├── api.js        # API communication
+        └── components/
+            ├── taskCard.js   # Task card component
+            └── column.js     # Column management
+
+```
+
+### API Endpoints
+
+- `GET /api/tasks` - Retrieve all tasks with filtering
+- `GET /api/tasks/:id` - Get specific task
+- `PATCH /api/tasks/:id/status` - Update task status
+- `POST /api/commands/:command` - Execute safe CLI commands
+
+### Features
+
+- **5 Columns**: Backlog, Ready, In Progress, Review, Done
+- **Drag & Drop**: HTML5 drag/drop with keyboard alternatives
+- **Responsive**: Desktop (5 cols), Tablet (3 cols), Mobile (1 col)
+- **Accessibility**: Full WCAG 2.1 AA compliance
+- **Dark Mode**: System preference detection + manual toggle
+- **Priority Colors**: High (red), Medium (yellow), Low (green)
+- **Real-time Updates**: 30-second polling + immediate UI updates

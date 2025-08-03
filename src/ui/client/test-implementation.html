@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/kanban.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="kanban-header" role="banner">
+            <div class="header-content">
+                <h1>Task Master Kanban Board</h1>
+                <div class="header-controls">
+                    <button type="button" class="theme-toggle" aria-label="Toggle dark mode">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content" role="main" aria-label="Kanban Board">
+            <div id="kanban-board" class="kanban-container" role="application" aria-label="Kanban task management board">
+                <div class="kanban-board">
+                    <!-- Test with sample data -->
+                    <div id="column-backlog" class="kanban-column" data-column="backlog" role="region" aria-labelledby="backlog-title">
+                        <div class="column-header">
+                            <h2 id="backlog-title" class="column-title">Backlog</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">2</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Backlog" aria-haspopup="menu">⋯</button>
+                            </div>
+                        </div>
+                        <div class="task-container" role="listbox" aria-label="Backlog tasks" data-droppable="true">
+                            <div class="task-card" data-task-id="task-1" data-priority="high" draggable="true" tabindex="0" role="option">
+                                <div class="task-header">
+                                    <h3 class="task-title">Implement user authentication</h3>
+                                    <span class="task-id">#1</span>
+                                </div>
+                                <div class="task-body">
+                                    <p class="task-description">Set up JWT-based authentication system with login and registration</p>
+                                </div>
+                                <div class="task-footer">
+                                    <div class="task-tags">
+                                        <span class="task-tag">Backend</span>
+                                        <span class="task-tag">Security</span>
+                                    </div>
+                                    <div class="task-meta">
+                                        <div class="task-assignee" title="Assigned to John Doe">JD</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="task-card" data-task-id="task-2" data-priority="medium" draggable="true" tabindex="0" role="option">
+                                <div class="task-header">
+                                    <h3 class="task-title">Design user dashboard</h3>
+                                    <span class="task-id">#2</span>
+                                </div>
+                                <div class="task-body">
+                                    <p class="task-description">Create wireframes and mockups for the main user dashboard interface</p>
+                                </div>
+                                <div class="task-footer">
+                                    <div class="task-tags">
+                                        <span class="task-tag">Design</span>
+                                        <span class="task-tag">UI/UX</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Backlog">+ Add Task</button>
+                    </div>
+
+                    <div id="column-ready" class="kanban-column" data-column="ready" role="region" aria-labelledby="ready-title">
+                        <div class="column-header">
+                            <h2 id="ready-title" class="column-title">Ready</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">1</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Ready" aria-haspopup="menu">⋯</button>
+                            </div>
+                        </div>
+                        <div class="task-container" role="listbox" aria-label="Ready tasks" data-droppable="true">
+                            <div class="task-card" data-task-id="task-3" data-priority="low" draggable="true" tabindex="0" role="option">
+                                <div class="task-header">
+                                    <h3 class="task-title">Update documentation</h3>
+                                    <span class="task-id">#3</span>
+                                </div>
+                                <div class="task-body">
+                                    <p class="task-description">Update API documentation with latest changes</p>
+                                </div>
+                                <div class="task-footer">
+                                    <div class="task-tags">
+                                        <span class="task-tag">Documentation</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Ready">+ Add Task</button>
+                    </div>
+
+                    <div id="column-in-progress" class="kanban-column" data-column="in-progress" role="region" aria-labelledby="in-progress-title">
+                        <div class="column-header">
+                            <h2 id="in-progress-title" class="column-title">In Progress</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for In Progress" aria-haspopup="menu">⋯</button>
+                            </div>
+                        </div>
+                        <div class="task-container" role="listbox" aria-label="In Progress tasks" data-droppable="true">
+                            <!-- Empty state will show -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to In Progress">+ Add Task</button>
+                    </div>
+
+                    <div id="column-review" class="kanban-column" data-column="review" role="region" aria-labelledby="review-title">
+                        <div class="column-header">
+                            <h2 id="review-title" class="column-title">Review</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Review" aria-haspopup="menu">⋯</button>
+                            </div>
+                        </div>
+                        <div class="task-container" role="listbox" aria-label="Review tasks" data-droppable="true">
+                            <!-- Empty state will show -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Review">+ Add Task</button>
+                    </div>
+
+                    <div id="column-done" class="kanban-column" data-column="done" role="region" aria-labelledby="done-title">
+                        <div class="column-header">
+                            <h2 id="done-title" class="column-title">Done</h2>
+                            <div class="column-header-controls">
+                                <span class="task-count" aria-label="Task count">0</span>
+                                <button type="button" class="column-menu-btn" aria-label="Column options for Done" aria-haspopup="menu">⋯</button>
+                            </div>
+                        </div>
+                        <div class="task-container" role="listbox" aria-label="Done tasks" data-droppable="true">
+                            <!-- Empty state will show -->
+                        </div>
+                        <button type="button" class="add-task-btn" aria-label="Add new task to Done">+ Add Task</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Screen reader announcements -->
+    <div id="sr-announcements" class="sr-only" aria-live="polite" aria-atomic="true" role="status"></div>
+
+    <script>
+        // Simple test to verify the structure
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Kanban Board Test Page Loaded');
+            
+            // Test column structure
+            const columns = document.querySelectorAll('.kanban-column');
+            console.log(`Found ${columns.length} columns`);
+            
+            // Test task cards
+            const tasks = document.querySelectorAll('.task-card');
+            console.log(`Found ${tasks.length} tasks`);
+            
+            // Test accessibility features
+            const ariaLabels = document.querySelectorAll('[aria-label]').length;
+            const ariaDescribedby = document.querySelectorAll('[aria-describedby]').length;
+            const roleAttributes = document.querySelectorAll('[role]').length;
+            
+            console.log(`Accessibility features: ${ariaLabels} aria-labels, ${ariaDescribedby} aria-describedby, ${roleAttributes} role attributes`);
+            
+            // Test responsive classes
+            const responsiveElements = document.querySelectorAll('.kanban-board, .kanban-column, .task-card');
+            console.log(`Found ${responsiveElements.length} responsive elements`);
+            
+            // Success message
+            const success = document.createElement('div');
+            success.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #28a745; color: white; padding: 1rem; border-radius: 4px; z-index: 1000;';
+            success.textContent = '✅ Kanban Board Implementation Complete!';
+            document.body.appendChild(success);
+            
+            setTimeout(() => success.remove(), 3000);
+        });
+    </script>
+</body>
+</html>

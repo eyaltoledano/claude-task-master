@@ -4218,7 +4218,6 @@ Examples:
 	// ui command
 	programInstance
 		.command('ui')
-		.alias('kanban')
 		.description('Launch the Kanban board UI interface for visual task management')
 		.option(
 			'-p, --port <number>',

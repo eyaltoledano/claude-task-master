@@ -2571,42 +2571,42 @@
         "testStrategy": "Testing should verify both the protocol design and implementation:\n\n1. Unit tests for the adapter pattern, ensuring it correctly translates between Taskmaster's internal models and the MCP protocol.\n2. Integration tests with a mock MCP tool or server to validate the full request/response cycle.\n3. Specific tests for the reference implementation (e.g., GitHub-MCP or Postgres-MCP), including authentication flows.\n4. Error handling tests that simulate network failures, timeouts, and malformed responses.\n5. Performance tests to ensure the communication does not introduce significant latency.\n6. Security tests to verify that authentication and encryption mechanisms are functioning correctly.\n7. End-to-end tests demonstrating Taskmaster's ability to programmatically interact with external MCP tools and execute tasks.\n8. Compatibility tests with different versions of the protocol to ensure backward compatibility.\n9. Tests for mode switching:\n   - Validate that Taskmaster correctly operates in solo/local mode using the `tasks.json` file.\n   - Validate that Taskmaster correctly operates in multiplayer/remote mode with external MCP integrations (e.g., GitHub-MCP or Postgres-MCP).\n   - Ensure seamless switching between modes without data loss or corruption.\n10. A test harness should be created to simulate an MCP tool or server for testing purposes without relying on external dependencies. Test cases should be documented thoroughly to serve as examples for other implementations.",
         "subtasks": [
           {
-            "id": "42-1",
+            "id": 42,
             "title": "Define MCP-to-MCP communication protocol",
             "status": "pending"
           },
           {
-            "id": "42-2",
+            "id": 42,
             "title": "Implement adapter pattern for MCP integration",
             "status": "pending"
           },
           {
-            "id": "42-3",
+            "id": 42,
             "title": "Develop client module for MCP tool discovery and interaction",
             "status": "pending"
           },
           {
-            "id": "42-4",
+            "id": 42,
             "title": "Provide reference implementation for GitHub-MCP integration",
             "status": "pending"
           },
           {
-            "id": "42-5",
+            "id": 42,
             "title": "Add support for solo/local and multiplayer/remote modes",
             "status": "pending"
           },
           {
-            "id": "42-6",
+            "id": 42,
             "title": "Update core modules to support dynamic mode-based operations",
             "status": "pending"
           },
           {
-            "id": "42-7",
+            "id": 42,
             "title": "Document protocol and mode-switching functionality",
             "status": "pending"
           },
           {
-            "id": "42-8",
+            "id": 42,
             "title": "Update terminology to reflect MCP server-based communication",
             "status": "pending"
           }
@@ -6660,7 +6660,7 @@
         "dependencies": [
           105
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -6668,7 +6668,7 @@
             "description": "Update the TaskMaster command registration system to include both 'ui' and 'kanban' commands with proper aliases and configuration",
             "dependencies": [],
             "details": "Modify scripts/modules/commands.js to add new command entries for 'ui' and 'kanban' commands. Ensure both commands point to the same handler function. Configure command metadata including description, aliases, and available flags (--port, --no-browser). Follow existing TaskMaster command registration patterns and naming conventions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests to verify command registration, integration tests to ensure command routing works correctly, test alias functionality for both 'ui' and 'kanban' variants"
           },
           {
@@ -6679,7 +6679,7 @@
               "106.1"
             ],
             "details": "Implement handler function in appropriate module location (likely scripts/modules/ui-command.js). Parse command-line arguments for --port (default 3000) and --no-browser flags. Validate port number is within valid range (1024-65535). Handle edge cases like invalid port numbers or conflicting flags. Integrate with existing TaskMaster error handling patterns.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for argument parsing logic, edge case tests for invalid inputs, integration tests with various flag combinations, mock tests for command execution flow"
           },
           {
@@ -6690,7 +6690,7 @@
               "106.2"
             ],
             "details": "Create server initialization logic that attempts to start on specified port. Implement port availability checking before launch. Add automatic retry logic that tries next available port (up to 10 attempts). Use Node.js net module for port checking. Integrate with existing TaskMaster server infrastructure if applicable. Handle EADDRINUSE errors gracefully.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock tests for port conflict scenarios, integration tests with actual server startup, stress tests with multiple concurrent launches, error handling tests for all failure modes"
           },
           {
@@ -6701,7 +6701,7 @@
               "106.3"
             ],
             "details": "Install and configure 'open' package version 9.1.0. Implement browser launch logic that respects --no-browser flag. Create console feedback system using chalk for colored output and ora for loading spinners. Design ASCII art server information box showing port, URL, and status. Add file watching status indicators. Format output to be visually appealing and informative. Handle browser launch failures gracefully.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Mock tests for browser launch behavior, visual regression tests for console output, cross-platform compatibility tests, performance tests for spinner animations"
           },
           {
@@ -6712,7 +6712,7 @@
               "106.4"
             ],
             "details": "Write detailed help text for 'task-master ui --help' command. Include usage examples, flag descriptions, and common troubleshooting tips. Implement error handlers for: server startup failures, port binding issues, browser launch failures, missing dependencies, and file system errors. Create user-friendly error messages with actionable solutions. Add logging for debugging purposes while keeping console output clean.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Documentation tests to verify help text accuracy, error scenario simulation tests, user experience tests for error message clarity, integration tests for help command functionality"
           }
         ]
@@ -6727,7 +6727,7 @@
         "dependencies": [
           105
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -6735,7 +6735,7 @@
             "description": "Create the foundational Express router setup in src/ui/server/routes/api.js with proper middleware configuration and error handling setup",
             "dependencies": [],
             "details": "Initialize Express Router instance, configure JSON body parser middleware, set up CORS headers for cross-origin requests, implement global error handling middleware, create base route structure with versioning support (/api/v1), add request logging middleware for debugging, set up response time headers, implement 404 handler for undefined routes",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for middleware configuration, integration tests for router initialization, verify CORS headers are properly set, test error handling middleware with various error types"
           },
           {
@@ -6746,7 +6746,7 @@
               "107.1"
             ],
             "details": "Read tasks.json file using fs.promises, parse JSON data with error handling, transform flat task list into nested hierarchy structure, implement query parameter support for filtering by status/priority, add pagination support for large task lists, include subtask count and completion percentage calculations, implement response compression for large payloads, add ETag support for client-side caching",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with various tasks.json file sizes, verify subtask hierarchy is correctly nested, test filtering with different query parameters, benchmark response time with 100+ tasks, test error handling for malformed JSON files"
           },
           {
@@ -6757,7 +6757,7 @@
               "107.1"
             ],
             "details": "Validate task ID format (supports both main tasks and subtasks like 1.2), implement request body validation for status field using express-validator, verify status value is one of: pending/in-progress/done/blocked/deferred, read current tasks.json to find target task, update task status in memory, write updated data back to tasks.json atomically, implement optimistic locking to prevent race conditions, return updated task data in response",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test validation with invalid task IDs and status values, verify file system updates are atomic, test concurrent update scenarios, verify proper HTTP status codes for various error cases, test with both main tasks and subtasks"
           },
           {
@@ -6766,7 +6766,7 @@
             "description": "Create a dedicated service module for handling all file system operations with the tasks.json file, including locking, caching, and atomic updates",
             "dependencies": [],
             "details": "Implement file locking mechanism using proper-lockfile package, create in-memory cache with TTL for read operations, implement atomic write operations using temp files and rename, add file watcher for external changes detection, create retry logic for file access conflicts, implement data validation before writes, add backup creation before modifications, create methods for read/write/update operations with consistent API",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test concurrent read/write operations, verify atomic updates don't corrupt data, test cache invalidation on file changes, simulate file system errors and verify recovery, benchmark performance with frequent operations"
           },
           {
@@ -6778,7 +6778,7 @@
               "107.4"
             ],
             "details": "Whitelist allowed CLI commands for security (next, show, list, set-status), validate command parameters and sanitize inputs, spawn child process to execute task-master CLI commands, capture stdout/stderr and exit codes, implement timeout mechanism (30s default), parse CLI output into structured JSON responses, handle streaming output for long-running commands, implement command queueing to prevent overload, add rate limiting per client",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test command execution with various valid/invalid commands, verify output parsing for different command types, test timeout behavior with slow commands, verify security with command injection attempts, test concurrent command execution limits"
           }
         ]
@@ -6793,7 +6793,7 @@
         "dependencies": [
           105
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -6801,7 +6801,7 @@
             "description": "Build the foundational index.html file with proper semantic HTML5 elements, meta tags, and Kanban board layout structure",
             "dependencies": [],
             "details": "Create src/ui/client/index.html with DOCTYPE, proper head section including viewport meta tag, charset declaration, and title. Build semantic main structure using <header>, <main>, <section> elements for the 5-column layout. Each column (Backlog, Ready, In Progress, Review, Done) should use <article> tags with data attributes for column identification. Include placeholder elements for loading states and error messages. Add skip navigation links for accessibility.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Validate HTML5 markup using W3C validator, verify semantic structure with automated accessibility tools, test meta tags functionality across devices, ensure proper document outline hierarchy"
           },
           {
@@ -6812,7 +6812,7 @@
               "108.1"
             ],
             "details": "Create src/ui/client/css/kanban.css with CSS Grid for main column layout. Implement desktop-first design with 5 equal columns using grid-template-columns: repeat(5, 1fr). Add Flexbox for card containers within columns. Create responsive breakpoints at 1200px, 768px, and 480px for tablet and mobile views. Implement horizontal scrolling for mobile with snap-scroll behavior. Add CSS custom properties for spacing, colors, and transitions. Style column headers with fixed positioning during scroll.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test layout responsiveness across multiple viewport sizes (320px to 2560px), verify CSS Grid fallbacks for older browsers, validate touch-friendly spacing on mobile devices, test horizontal scroll performance"
           },
           {
@@ -6823,7 +6823,7 @@
               "108.1"
             ],
             "details": "Create src/ui/client/js/kanban.js as the main application entry point. Establish module pattern with IIFE for encapsulation. Define core application state management object. Create component registry system for dynamic component loading. Implement event delegation pattern for efficient event handling. Set up initialization sequence with DOM ready detection. Create base component class with lifecycle methods (init, render, destroy). Add error boundary wrapper functions for component isolation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test module initialization and component registry, verify proper event delegation setup, test error boundary isolation between components, validate memory cleanup on component destruction"
           },
           {
@@ -6835,7 +6835,7 @@
               "108.3"
             ],
             "details": "Include SortableJS 1.15.0 via CDN with local fallback option. Create loading state manager in src/ui/client/js/utils/loadingStates.js. Implement skeleton screens for initial card loading with CSS animations. Add spinner components for async operations. Create error boundary UI components with retry mechanisms. Implement progressive enhancement to ensure basic functionality without JavaScript. Add loading state transitions with fade effects. Create connection status indicator component.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test SortableJS CDN fallback mechanism, verify loading states appear within 100ms of async operations, test error recovery flows, validate graceful degradation without JavaScript"
           },
           {
@@ -6848,7 +6848,7 @@
               "108.3"
             ],
             "details": "Add ARIA labels and roles to all interactive elements. Implement keyboard navigation with Tab, Arrow keys, and Space/Enter for card selection. Create focus management system for modal-like interactions. Add aria-live regions for status updates. Implement high contrast mode using CSS custom properties and prefers-contrast media query. Create theme switcher component with localStorage persistence. Add skip links and landmark navigation. Ensure all interactive elements have visible focus indicators. Implement roving tabindex for card navigation within columns.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run axe-core accessibility audit for WCAG 2.1 AA compliance, test keyboard navigation flow with screen reader software (NVDA/JAWS), verify high contrast mode with Windows High Contrast, test focus management across all interactive states"
           }
         ]
@@ -7278,7 +7278,7 @@
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-02T20:58:25.016Z",
+      "updated": "2025-08-03T10:53:41.840Z",
       "description": "Tasks for master context"
     }
   },

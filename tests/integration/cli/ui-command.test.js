@@ -94,7 +94,6 @@ describe('TaskMaster UI Command', () => {
 		it('should show ui command in help', async () => {
 			const { stdout } = await runCLI(['--help']);
 			expect(stdout).toContain('ui');
-			expect(stdout).toContain('kanban');
 			expect(stdout).toContain('Launch the Kanban board UI interface');
 		});
 
@@ -104,12 +103,6 @@ describe('TaskMaster UI Command', () => {
 			expect(stdout).toContain('--no-browser');
 			expect(stdout).toContain('Port to run the server on');
 			expect(stdout).toContain('Do not automatically open the browser');
-		});
-
-		it('should accept kanban alias', async () => {
-			const { stdout } = await runCLI(['kanban', '--help']);
-			expect(stdout).toContain('--port');
-			expect(stdout).toContain('--no-browser');
 		});
 	});
 

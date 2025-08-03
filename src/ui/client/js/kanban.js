@@ -1,0 +1,1191 @@
+/**
+ * KanbanBoard - Main class for managing the Kanban board functionality
+ * Handles initialization, task management, drag & drop, and UI interactions
+ */
+class KanbanBoard {
+    constructor() {
+        this.columns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
+        this.tasks = [];
+        this.isInitialized = false;
+        this.isDragging = false;
+        this.draggedTask = null;
+        this.currentTheme = 'light';
+        this.keyboardMoveMode = false;
+        this.selectedTask = null;
+        this.focusedColumn = 0;
+        this.focusedTask = 0;
+        
+        // Bind methods to preserve 'this' context
+        this.handleDragStart = this.handleDragStart.bind(this);
+        this.handleDragOver = this.handleDragOver.bind(this);
+        this.handleDragLeave = this.handleDragLeave.bind(this);
+        this.handleDrop = this.handleDrop.bind(this);
+        this.handleDragEnd = this.handleDragEnd.bind(this);
+        this.handleKeyboardNavigation = this.handleKeyboardNavigation.bind(this);
+        this.handleTaskClick = this.handleTaskClick.bind(this);
+        this.handleAddTaskClick = this.handleAddTaskClick.bind(this);
+        this.handleThemeToggle = this.handleThemeToggle.bind(this);
+        this.handleResize = this.handleResize.bind(this);
+        this.announceToScreenReader = this.announceToScreenReader.bind(this);
+    }
+
+    /**
+     * Initialize the Kanban board
+     */
+    async init() {
+        try {
+            this.showLoading(true);
+            this.announceToScreenReader('Initializing Kanban board...');
+            
+            // Initialize theme
+            this.initializeTheme();
+            
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            // Load tasks from API
+            await this.loadTasks();
+            
+            // Render initial state
+            this.renderTasks();
+            this.updateTaskCounts();
+            
+            // Setup accessibility features
+            this.setupAccessibility();
+            
+            this.isInitialized = true;
+            this.showLoading(false);
+            this.announceToScreenReader('Kanban board loaded successfully');
+            
+            console.log('KanbanBoard initialized successfully');
+        } catch (error) {
+            console.error('Error initializing KanbanBoard:', error);
+            this.showError('Failed to initialize Kanban board: ' + error.message);
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Load tasks from the API
+     */
+    async loadTasks() {
+        try {
+            const response = await TaskAPI.getTasks();
+            this.tasks = response.tasks || [];
+            
+            // Ensure all tasks have required properties
+            this.tasks.forEach(task => {
+                if (!task.id) task.id = 'task-' + Date.now() + Math.random();
+                if (!task.status) task.status = 'backlog';
+                if (!task.priority) task.priority = 'medium';
+                if (!task.title) task.title = 'Untitled Task';
+            });
+            
+            console.log(`Loaded ${this.tasks.length} tasks`);
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+            this.showError('Failed to load tasks. Working offline with cached data.');
+            
+            // Use cached data or empty array as fallback
+            this.tasks = this.getCachedTasks() || [];
+        }
+    }
+
+    /**
+     * Render all tasks in their respective columns
+     */
+    renderTasks() {
+        // Clear all task containers
+        this.columns.forEach(columnId => {
+            const container = this.getTaskContainer(columnId);
+            if (container) {
+                container.innerHTML = '';
+                container.setAttribute('data-column', columnId);
+            }
+        });
+
+        // Group tasks by status
+        const tasksByStatus = this.groupTasksByStatus();
+
+        // Render tasks in each column
+        this.columns.forEach(columnId => {
+            const tasks = tasksByStatus[columnId] || [];
+            const container = this.getTaskContainer(columnId);
+            
+            if (container) {
+                tasks.forEach(task => {
+                    const taskElement = TaskCard.create(task);
+                    container.appendChild(taskElement);
+                });
+                
+                // Add empty state if no tasks
+                if (tasks.length === 0) {
+                    this.showEmptyState(container, columnId);
+                }
+            }
+        });
+
+        this.updateTaskCounts();
+    }
+
+    /**
+     * Group tasks by their status
+     */
+    groupTasksByStatus() {
+        const grouped = {};
+        
+        this.columns.forEach(column => {
+            grouped[column] = [];
+        });
+
+        this.tasks.forEach(task => {
+            const status = task.status || 'backlog';
+            if (grouped[status]) {
+                grouped[status].push(task);
+            } else {
+                grouped['backlog'].push(task);
+            }
+        });
+
+        return grouped;
+    }
+
+    /**
+     * Update task counts in column headers
+     */
+    updateTaskCounts() {
+        const tasksByStatus = this.groupTasksByStatus();
+        
+        this.columns.forEach(columnId => {
+            const countElement = document.querySelector(`[data-column="${columnId}"] .task-count`);
+            if (countElement) {
+                const count = tasksByStatus[columnId]?.length || 0;
+                countElement.textContent = count;
+                countElement.setAttribute('aria-label', `${count} tasks`);
+            }
+        });
+    }
+
+    /**
+     * Setup all event listeners
+     */
+    setupEventListeners() {
+        // Drag and drop events
+        document.addEventListener('dragstart', this.handleDragStart);
+        document.addEventListener('dragover', this.handleDragOver);
+        document.addEventListener('dragleave', this.handleDragLeave);
+        document.addEventListener('drop', this.handleDrop);
+        document.addEventListener('dragend', this.handleDragEnd);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', this.handleKeyboardNavigation);
+
+        // Click events
+        document.addEventListener('click', this.handleTaskClick);
+
+        // Add task button events
+        document.querySelectorAll('.add-task-btn').forEach(btn => {
+            btn.addEventListener('click', this.handleAddTaskClick);
+        });
+
+        // Theme toggle
+        const themeToggle = document.querySelector('.theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', this.handleThemeToggle);
+        }
+
+        // Window events
+        window.addEventListener('resize', this.debounce(this.handleResize, 250));
+        window.addEventListener('beforeunload', this.saveCachedTasks.bind(this));
+
+        // Touch events for mobile
+        if (this.isTouchDevice()) {
+            this.setupTouchEvents();
+        }
+    }
+
+    /**
+     * Handle drag start event
+     */
+    handleDragStart(event) {
+        const taskCard = event.target.closest('.task-card');
+        if (!taskCard) return;
+
+        const taskId = taskCard.getAttribute('data-task-id');
+        this.draggedTask = this.tasks.find(task => task.id === taskId);
+        
+        if (!this.draggedTask) return;
+
+        this.isDragging = true;
+        taskCard.classList.add('dragging');
+        taskCard.setAttribute('aria-grabbed', 'true');
+
+        // Set drag data
+        event.dataTransfer.setData('text/plain', taskId);
+        event.dataTransfer.effectAllowed = 'move';
+
+        // Announce to screen reader
+        this.announceToScreenReader(`${this.draggedTask.title} grabbed for moving`);
+
+        console.log('Drag started for task:', taskId);
+    }
+
+    /**
+     * Handle drag over event
+     */
+    handleDragOver(event) {
+        if (!this.isDragging) return;
+
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+
+        const dropTarget = event.target.closest('.task-container');
+        if (dropTarget) {
+            dropTarget.setAttribute('data-drag-over', 'true');
+            dropTarget.classList.add('drag-over');
+        }
+    }
+
+    /**
+     * Handle drag leave event
+     */
+    handleDragLeave(event) {
+        const dropTarget = event.target.closest('.task-container');
+        if (dropTarget) {
+            dropTarget.removeAttribute('data-drag-over');
+            dropTarget.classList.remove('drag-over');
+        }
+    }
+
+    /**
+     * Handle drop event
+     */
+    async handleDrop(event) {
+        event.preventDefault();
+        
+        if (!this.isDragging || !this.draggedTask) return;
+
+        const dropTarget = event.target.closest('.task-container');
+        if (!dropTarget) return;
+
+        const targetColumn = dropTarget.closest('.kanban-column');
+        if (!targetColumn) return;
+
+        const newStatus = targetColumn.getAttribute('data-column');
+        const oldStatus = this.draggedTask.status;
+
+        if (newStatus === oldStatus) {
+            this.cleanupDragState();
+            return;
+        }
+
+        try {
+            // Update task status
+            await this.updateTaskStatus(this.draggedTask.id, newStatus);
+            
+            // Announce to screen reader
+            const columnNames = {
+                'backlog': 'Backlog',
+                'ready': 'Ready',
+                'in-progress': 'In Progress',
+                'review': 'Review',
+                'done': 'Done'
+            };
+            
+            this.announceToScreenReader(
+                `${this.draggedTask.title} moved from ${columnNames[oldStatus]} to ${columnNames[newStatus]}`
+            );
+            
+            this.showSuccess(`Task moved to ${columnNames[newStatus]}`);
+            
+        } catch (error) {
+            console.error('Error updating task status:', error);
+            this.showError('Failed to move task');
+        }
+
+        this.cleanupDragState();
+    }
+
+    /**
+     * Handle drag end event
+     */
+    handleDragEnd(event) {
+        this.cleanupDragState();
+    }
+
+    /**
+     * Clean up drag state
+     */
+    cleanupDragState() {
+        this.isDragging = false;
+        this.draggedTask = null;
+
+        // Remove drag classes
+        document.querySelectorAll('.dragging').forEach(el => {
+            el.classList.remove('dragging');
+            el.setAttribute('aria-grabbed', 'false');
+        });
+
+        document.querySelectorAll('.drag-over, [data-drag-over]').forEach(el => {
+            el.classList.remove('drag-over');
+            el.removeAttribute('data-drag-over');
+        });
+    }
+
+    /**
+     * Handle keyboard navigation
+     */
+    handleKeyboardNavigation(event) {
+        const activeElement = document.activeElement;
+        
+        // Handle keyboard alternatives to drag and drop
+        if (event.ctrlKey && event.key === 'Enter') {
+            const taskCard = activeElement.closest('.task-card');
+            if (taskCard) {
+                this.enterKeyboardMoveMode(taskCard);
+                event.preventDefault();
+                return;
+            }
+        }
+
+        // Handle escape key
+        if (event.key === 'Escape') {
+            if (this.keyboardMoveMode) {
+                this.exitKeyboardMoveMode();
+                event.preventDefault();
+                return;
+            }
+        }
+
+        // Navigation in move mode
+        if (this.keyboardMoveMode) {
+            this.handleKeyboardMoveNavigation(event);
+            return;
+        }
+
+        // Regular navigation
+        switch (event.key) {
+            case 'ArrowRight':
+                this.navigateColumns(1);
+                event.preventDefault();
+                break;
+            case 'ArrowLeft':
+                this.navigateColumns(-1);
+                event.preventDefault();
+                break;
+            case 'ArrowDown':
+                this.navigateTasks(1);
+                event.preventDefault();
+                break;
+            case 'ArrowUp':
+                this.navigateTasks(-1);
+                event.preventDefault();
+                break;
+            case 'Home':
+                this.navigateToFirstTask();
+                event.preventDefault();
+                break;
+            case 'End':
+                this.navigateToLastTask();
+                event.preventDefault();
+                break;
+        }
+    }
+
+    /**
+     * Enter keyboard move mode for accessibility
+     */
+    enterKeyboardMoveMode(taskCard) {
+        this.keyboardMoveMode = true;
+        this.selectedTask = taskCard;
+        taskCard.classList.add('keyboard-selected');
+        taskCard.setAttribute('aria-grabbed', 'true');
+        
+        const taskId = taskCard.getAttribute('data-task-id');
+        const task = this.tasks.find(t => t.id === taskId);
+        
+        this.announceToScreenReader(
+            `Keyboard move mode activated for ${task.title}. Use arrow keys to navigate columns, Enter to drop, Escape to cancel.`
+        );
+    }
+
+    /**
+     * Exit keyboard move mode
+     */
+    exitKeyboardMoveMode() {
+        if (this.selectedTask) {
+            this.selectedTask.classList.remove('keyboard-selected');
+            this.selectedTask.setAttribute('aria-grabbed', 'false');
+            this.selectedTask.focus();
+        }
+        
+        this.keyboardMoveMode = false;
+        this.selectedTask = null;
+        this.announceToScreenReader('Move cancelled');
+    }
+
+    /**
+     * Handle keyboard navigation in move mode
+     */
+    async handleKeyboardMoveNavigation(event) {
+        if (!this.selectedTask) return;
+
+        const currentColumn = this.selectedTask.closest('.kanban-column');
+        const currentStatus = currentColumn.getAttribute('data-column');
+        let targetStatus = null;
+
+        switch (event.key) {
+            case 'ArrowRight':
+                targetStatus = this.getNextColumn(currentStatus);
+                break;
+            case 'ArrowLeft':
+                targetStatus = this.getPreviousColumn(currentStatus);
+                break;
+            case 'Enter':
+                // Complete the move
+                const newColumn = document.querySelector('.kanban-column.keyboard-target');
+                if (newColumn) {
+                    targetStatus = newColumn.getAttribute('data-column');
+                }
+                break;
+        }
+
+        if (targetStatus && targetStatus !== currentStatus) {
+            const taskId = this.selectedTask.getAttribute('data-task-id');
+            
+            try {
+                await this.updateTaskStatus(taskId, targetStatus);
+                this.exitKeyboardMoveMode();
+                
+                const columnNames = {
+                    'backlog': 'Backlog',
+                    'ready': 'Ready',
+                    'in-progress': 'In Progress',
+                    'review': 'Review',
+                    'done': 'Done'
+                };
+                
+                this.announceToScreenReader(
+                    `Task moved to ${columnNames[targetStatus]}`
+                );
+                
+            } catch (error) {
+                this.showError('Failed to move task');
+                this.exitKeyboardMoveMode();
+            }
+        }
+
+        // Update visual indicators
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            this.updateKeyboardMoveIndicators(targetStatus);
+            event.preventDefault();
+        }
+    }
+
+    /**
+     * Update visual indicators for keyboard move mode
+     */
+    updateKeyboardMoveIndicators(targetStatus) {
+        // Remove previous indicators
+        document.querySelectorAll('.keyboard-target').forEach(el => {
+            el.classList.remove('keyboard-target');
+        });
+
+        // Add indicator to target column
+        if (targetStatus) {
+            const targetColumn = document.querySelector(`[data-column="${targetStatus}"]`);
+            if (targetColumn) {
+                targetColumn.classList.add('keyboard-target');
+            }
+        }
+    }
+
+    /**
+     * Get next column in sequence
+     */
+    getNextColumn(currentStatus) {
+        const currentIndex = this.columns.indexOf(currentStatus);
+        return currentIndex < this.columns.length - 1 ? this.columns[currentIndex + 1] : null;
+    }
+
+    /**
+     * Get previous column in sequence
+     */
+    getPreviousColumn(currentStatus) {
+        const currentIndex = this.columns.indexOf(currentStatus);
+        return currentIndex > 0 ? this.columns[currentIndex - 1] : null;
+    }
+
+    /**
+     * Navigate between columns
+     */
+    navigateColumns(direction) {
+        const columns = document.querySelectorAll('.kanban-column');
+        this.focusedColumn = Math.max(0, Math.min(columns.length - 1, this.focusedColumn + direction));
+        
+        const targetColumn = columns[this.focusedColumn];
+        const firstTask = targetColumn.querySelector('.task-card');
+        
+        if (firstTask) {
+            firstTask.focus();
+            this.focusedTask = 0;
+        } else {
+            targetColumn.querySelector('.add-task-btn')?.focus();
+        }
+    }
+
+    /**
+     * Navigate between tasks in current column
+     */
+    navigateTasks(direction) {
+        const activeElement = document.activeElement;
+        const currentColumn = activeElement.closest('.kanban-column');
+        if (!currentColumn) return;
+
+        const tasks = currentColumn.querySelectorAll('.task-card');
+        if (tasks.length === 0) return;
+
+        this.focusedTask = Math.max(0, Math.min(tasks.length - 1, this.focusedTask + direction));
+        tasks[this.focusedTask].focus();
+    }
+
+    /**
+     * Navigate to first task in current column
+     */
+    navigateToFirstTask() {
+        const activeElement = document.activeElement;
+        const currentColumn = activeElement.closest('.kanban-column');
+        if (!currentColumn) return;
+
+        const firstTask = currentColumn.querySelector('.task-card');
+        if (firstTask) {
+            firstTask.focus();
+            this.focusedTask = 0;
+        }
+    }
+
+    /**
+     * Navigate to last task in current column
+     */
+    navigateToLastTask() {
+        const activeElement = document.activeElement;
+        const currentColumn = activeElement.closest('.kanban-column');
+        if (!currentColumn) return;
+
+        const tasks = currentColumn.querySelectorAll('.task-card');
+        if (tasks.length > 0) {
+            const lastTask = tasks[tasks.length - 1];
+            lastTask.focus();
+            this.focusedTask = tasks.length - 1;
+        }
+    }
+
+    /**
+     * Handle task card clicks
+     */
+    handleTaskClick(event) {
+        const taskCard = event.target.closest('.task-card');
+        if (!taskCard) return;
+
+        const taskId = taskCard.getAttribute('data-task-id');
+        const task = this.tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            this.openTaskModal(task);
+        }
+    }
+
+    /**
+     * Handle add task button clicks
+     */
+    handleAddTaskClick(event) {
+        const button = event.target.closest('.add-task-btn');
+        if (!button) return;
+
+        const column = button.closest('.kanban-column');
+        const columnId = column.getAttribute('data-column');
+        
+        this.openAddTaskModal(columnId);
+    }
+
+    /**
+     * Open task modal for editing
+     */
+    openTaskModal(task) {
+        const modal = this.createTaskModal(task);
+        document.body.appendChild(modal);
+        
+        // Focus management
+        const titleInput = modal.querySelector('#task-title-input');
+        if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+        }
+
+        // Trap focus in modal
+        this.trapFocus(modal);
+    }
+
+    /**
+     * Open add task modal
+     */
+    openAddTaskModal(columnId) {
+        const modal = this.createTaskModal(null, columnId);
+        document.body.appendChild(modal);
+        
+        // Focus management
+        const titleInput = modal.querySelector('#task-title-input');
+        if (titleInput) {
+            titleInput.focus();
+        }
+
+        // Trap focus in modal
+        this.trapFocus(modal);
+    }
+
+    /**
+     * Create task modal from template
+     */
+    createTaskModal(task = null, defaultColumn = 'backlog') {
+        const template = document.getElementById('task-modal-template');
+        const modal = template.content.cloneNode(true).querySelector('.modal-overlay');
+        
+        // Set modal title
+        const title = modal.querySelector('.modal-title');
+        title.textContent = task ? 'Edit Task' : 'Add Task';
+        title.id = 'modal-title-' + Date.now();
+        modal.setAttribute('aria-labelledby', title.id);
+
+        // Populate form if editing
+        if (task) {
+            modal.querySelector('#task-title-input').value = task.title || '';
+            modal.querySelector('#task-description-input').value = task.description || '';
+            modal.querySelector('#task-priority-input').value = task.priority || 'medium';
+        }
+
+        // Handle form submission
+        const form = modal.querySelector('.task-form');
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await this.handleTaskFormSubmit(event, task, defaultColumn);
+            this.closeModal(modal);
+        });
+
+        // Handle modal close
+        modal.querySelector('.modal-close').addEventListener('click', () => {
+            this.closeModal(modal);
+        });
+
+        modal.querySelector('.modal-cancel').addEventListener('click', () => {
+            this.closeModal(modal);
+        });
+
+        // Handle escape key
+        modal.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeModal(modal);
+            }
+        });
+
+        // Handle backdrop click
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                this.closeModal(modal);
+            }
+        });
+
+        return modal;
+    }
+
+    /**
+     * Handle task form submission
+     */
+    async handleTaskFormSubmit(event, existingTask, defaultColumn) {
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        const taskData = {
+            title: formData.get('title').trim(),
+            description: formData.get('description').trim(),
+            priority: formData.get('priority'),
+            status: existingTask ? existingTask.status : defaultColumn
+        };
+
+        // Validation
+        if (!taskData.title) {
+            this.showError('Task title is required');
+            return;
+        }
+
+        try {
+            if (existingTask) {
+                // Update existing task
+                await this.updateTask(existingTask.id, taskData);
+                this.showSuccess('Task updated successfully');
+            } else {
+                // Create new task
+                await this.addTask(taskData);
+                this.showSuccess('Task created successfully');
+            }
+        } catch (error) {
+            console.error('Error saving task:', error);
+            this.showError('Failed to save task');
+        }
+    }
+
+    /**
+     * Add new task
+     */
+    async addTask(taskData) {
+        try {
+            const response = await TaskAPI.createTask(taskData);
+            const newTask = response.task;
+            
+            this.tasks.push(newTask);
+            this.renderTasks();
+            this.saveCachedTasks();
+            
+            console.log('Task added:', newTask);
+        } catch (error) {
+            // Fallback to local creation
+            const newTask = {
+                id: 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                ...taskData,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            this.tasks.push(newTask);
+            this.renderTasks();
+            this.saveCachedTasks();
+            
+            throw error; // Re-throw to show error message
+        }
+    }
+
+    /**
+     * Update existing task
+     */
+    async updateTask(taskId, updates) {
+        try {
+            const response = await TaskAPI.updateTask(taskId, updates);
+            const updatedTask = response.task;
+            
+            const index = this.tasks.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                this.tasks[index] = { ...this.tasks[index], ...updatedTask };
+                this.renderTasks();
+                this.saveCachedTasks();
+            }
+            
+            console.log('Task updated:', updatedTask);
+        } catch (error) {
+            // Fallback to local update
+            const index = this.tasks.findIndex(t => t.id === taskId);
+            if (index !== -1) {
+                this.tasks[index] = { 
+                    ...this.tasks[index], 
+                    ...updates,
+                    updatedAt: new Date().toISOString()
+                };
+                this.renderTasks();
+                this.saveCachedTasks();
+            }
+            
+            throw error; // Re-throw to show error message
+        }
+    }
+
+    /**
+     * Update task status (for drag & drop)
+     */
+    async updateTaskStatus(taskId, newStatus) {
+        await this.updateTask(taskId, { status: newStatus });
+    }
+
+    /**
+     * Close modal and restore focus
+     */
+    closeModal(modal) {
+        // Restore focus to the element that opened the modal
+        const lastFocused = document.querySelector('.task-card:focus, .add-task-btn:focus') || 
+                           document.querySelector('.add-task-btn');
+        
+        modal.remove();
+        
+        if (lastFocused) {
+            lastFocused.focus();
+        }
+    }
+
+    /**
+     * Trap focus within modal for accessibility
+     */
+    trapFocus(modal) {
+        const focusableElements = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        modal.addEventListener('keydown', (event) => {
+            if (event.key === 'Tab') {
+                if (event.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        event.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        event.preventDefault();
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Handle theme toggle
+     */
+    handleThemeToggle() {
+        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        
+        // Update theme toggle icon
+        const themeToggle = document.querySelector('.theme-toggle .theme-icon');
+        if (themeToggle) {
+            themeToggle.textContent = this.currentTheme === 'light' ? '🌙' : '☀️';
+        }
+        
+        // Save preference
+        localStorage.setItem('kanban-theme', this.currentTheme);
+        
+        this.announceToScreenReader(`Switched to ${this.currentTheme} mode`);
+    }
+
+    /**
+     * Initialize theme from user preference
+     */
+    initializeTheme() {
+        // Check for saved preference
+        const savedTheme = localStorage.getItem('kanban-theme');
+        
+        // Check system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        this.currentTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        
+        // Update theme toggle icon
+        const themeToggle = document.querySelector('.theme-toggle .theme-icon');
+        if (themeToggle) {
+            themeToggle.textContent = this.currentTheme === 'light' ? '🌙' : '☀️';
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('kanban-theme')) {
+                this.currentTheme = e.matches ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', this.currentTheme);
+                
+                const themeToggle = document.querySelector('.theme-toggle .theme-icon');
+                if (themeToggle) {
+                    themeToggle.textContent = this.currentTheme === 'light' ? '🌙' : '☀️';
+                }
+            }
+        });
+    }
+
+    /**
+     * Handle window resize for responsive behavior
+     */
+    handleResize() {
+        // Update layout calculations if needed
+        this.updateTaskCounts();
+        
+        // Announce layout changes for screen readers
+        if (window.innerWidth <= 768) {
+            this.announceToScreenReader('Layout changed to mobile view');
+        } else if (window.innerWidth <= 1200) {
+            this.announceToScreenReader('Layout changed to tablet view');
+        } else {
+            this.announceToScreenReader('Layout changed to desktop view');
+        }
+    }
+
+    /**
+     * Setup accessibility features
+     */
+    setupAccessibility() {
+        // Add aria-labels to task cards
+        document.querySelectorAll('.task-card').forEach(card => {
+            const taskId = card.getAttribute('data-task-id');
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task) {
+                card.setAttribute('aria-label', `Task: ${task.title}`);
+                card.setAttribute('role', 'option');
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('aria-grabbed', 'false');
+            }
+        });
+
+        // Add live region for announcements
+        if (!document.getElementById('sr-announcements')) {
+            const liveRegion = document.createElement('div');
+            liveRegion.id = 'sr-announcements';
+            liveRegion.className = 'sr-only';
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('aria-atomic', 'true');
+            liveRegion.setAttribute('role', 'status');
+            document.body.appendChild(liveRegion);
+        }
+    }
+
+    /**
+     * Setup touch events for mobile devices
+     */
+    setupTouchEvents() {
+        let touchStartTime = 0;
+        let touchStartTarget = null;
+
+        document.addEventListener('touchstart', (event) => {
+            touchStartTime = Date.now();
+            touchStartTarget = event.target.closest('.task-card');
+        });
+
+        document.addEventListener('touchend', (event) => {
+            const touchEndTime = Date.now();
+            const touchDuration = touchEndTime - touchStartTime;
+            
+            // Long press for context menu (500ms)
+            if (touchDuration > 500 && touchStartTarget) {
+                event.preventDefault();
+                this.showTaskContextMenu(touchStartTarget, event);
+            }
+        });
+
+        // Swipe gestures for moving tasks
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+            }
+        });
+
+        document.addEventListener('touchmove', (event) => {
+            // Prevent default scrolling during swipe
+            if (Math.abs(event.touches[0].clientX - touchStartX) > 10) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', (event) => {
+            if (!touchStartTarget) return;
+
+            const touchEndX = event.changedTouches[0].clientX;
+            const touchEndY = event.changedTouches[0].clientY;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            // Check for horizontal swipe (minimum 50px, more horizontal than vertical)
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                const taskCard = touchStartTarget;
+                const currentColumn = taskCard.closest('.kanban-column');
+                const currentStatus = currentColumn.getAttribute('data-column');
+                
+                let targetStatus = null;
+                
+                if (deltaX > 0) {
+                    // Swipe right - next column
+                    targetStatus = this.getNextColumn(currentStatus);
+                } else {
+                    // Swipe left - previous column
+                    targetStatus = this.getPreviousColumn(currentStatus);
+                }
+
+                if (targetStatus) {
+                    const taskId = taskCard.getAttribute('data-task-id');
+                    this.updateTaskStatus(taskId, targetStatus).catch(error => {
+                        this.showError('Failed to move task');
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Show context menu for task (mobile)
+     */
+    showTaskContextMenu(taskCard, event) {
+        // Implementation for mobile context menu
+        const taskId = taskCard.getAttribute('data-task-id');
+        const task = this.tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            this.openTaskModal(task);
+        }
+    }
+
+    /**
+     * Check if device supports touch
+     */
+    isTouchDevice() {
+        return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    }
+
+    /**
+     * Show empty state in column
+     */
+    showEmptyState(container, columnId) {
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        
+        const emptyIcon = document.createElement('div');
+        emptyIcon.className = 'empty-icon';
+        
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'empty-message';
+        
+        const messages = {
+            'backlog': { icon: '📋', text: 'No tasks in backlog' },
+            'ready': { icon: '🚀', text: 'Ready to start' },
+            'in-progress': { icon: '⚡', text: 'Nothing in progress' },
+            'review': { icon: '👀', text: 'No tasks to review' },
+            'done': { icon: '✅', text: 'No completed tasks' }
+        };
+        
+        const message = messages[columnId] || { icon: '📝', text: 'No tasks' };
+        
+        emptyIcon.textContent = message.icon;
+        emptyMessage.textContent = message.text;
+        
+        emptyState.appendChild(emptyIcon);
+        emptyState.appendChild(emptyMessage);
+        
+        container.appendChild(emptyState);
+    }
+
+    /**
+     * Get task container element
+     */
+    getTaskContainer(columnId) {
+        return document.querySelector(`[data-column="${columnId}"] .task-container`);
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoading(show) {
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    /**
+     * Show error message
+     */
+    showError(message) {
+        const errorContainer = document.getElementById('error-container');
+        const errorMessage = document.querySelector('.error-message');
+        
+        if (errorContainer && errorMessage) {
+            errorMessage.textContent = message;
+            errorContainer.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorContainer.style.display = 'none';
+            }, 5000);
+        }
+
+        // Also announce to screen reader
+        this.announceToScreenReader('Error: ' + message);
+    }
+
+    /**
+     * Show success message
+     */
+    showSuccess(message) {
+        const successContainer = document.getElementById('success-container');
+        const successMessage = document.querySelector('.success-message');
+        
+        if (successContainer && successMessage) {
+            successMessage.textContent = message;
+            successContainer.style.display = 'block';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                successContainer.style.display = 'none';
+            }, 3000);
+        }
+
+        // Also announce to screen reader
+        this.announceToScreenReader('Success: ' + message);
+    }
+
+    /**
+     * Announce message to screen reader
+     */
+    announceToScreenReader(message) {
+        const announcements = document.getElementById('sr-announcements');
+        if (announcements) {
+            announcements.textContent = message;
+            
+            // Clear after announcement
+            setTimeout(() => {
+                announcements.textContent = '';
+            }, 1000);
+        }
+    }
+
+    /**
+     * Cache tasks in localStorage
+     */
+    saveCachedTasks() {
+        try {
+            localStorage.setItem('kanban-tasks', JSON.stringify(this.tasks));
+        } catch (error) {
+            console.warn('Failed to cache tasks:', error);
+        }
+    }
+
+    /**
+     * Get cached tasks from localStorage
+     */
+    getCachedTasks() {
+        try {
+            const cached = localStorage.getItem('kanban-tasks');
+            return cached ? JSON.parse(cached) : null;
+        } catch (error) {
+            console.warn('Failed to load cached tasks:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Debounce utility function
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+}
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = KanbanBoard;
+}
