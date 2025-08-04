@@ -510,6 +510,7 @@ async function adjustTaskComplexity(
 	const aiResult = await generateObjectService({
 		role: 'main',
 		session: context.session,
+		projectRoot: context.projectRoot,
 		systemPrompt,
 		prompt,
 		schema: taskSchema,
@@ -517,6 +518,23 @@ async function adjustTaskComplexity(
 		commandName: context.commandName || `scope-${direction}`,
 		outputType: context.outputType || 'cli'
 	});
+
+	if (aiResult.mainResult?.type === 'agent_llm_delegation') {
+		return {
+			needsAgentDelegation: true,
+			pendingInteraction: {
+				type: 'agent_llm',
+				interactionId: aiResult.mainResult.interactionId,
+				delegatedCallDetails: {
+					originalCommand: context.commandName || `scope-${direction}`,
+					role: 'main',
+					serviceType: 'generateObject',
+					requestParameters: aiResult.mainResult.details
+				}
+			},
+			telemetryData: null
+		};
+	}
 
 	const updatedTaskData = aiResult.mainResult;
 
@@ -595,6 +613,10 @@ export async function scopeUpTask(
 			customPrompt,
 			context
 		);
+
+		if (adjustResult.needsAgentDelegation) {
+			return adjustResult;
+		}
 
 		// Regenerate subtasks based on new complexity while preserving completed work
 		const subtaskResult = await regenerateSubtasksForComplexity(
@@ -746,6 +768,10 @@ export async function scopeDownTask(
 			customPrompt,
 			context
 		);
+
+		if (adjustResult.needsAgentDelegation) {
+			return adjustResult;
+		}
 
 		// Regenerate subtasks based on new complexity while preserving completed work
 		const subtaskResult = await regenerateSubtasksForComplexity(

@@ -99,6 +99,10 @@ export async function scopeUpDirect(args, log, context = {}) {
 		// Restore normal logging
 		disableSilentMode();
 
+		if (result && result.needsAgentDelegation) {
+			return result;
+		}
+
 		return {
 			success: true,
 			data: {

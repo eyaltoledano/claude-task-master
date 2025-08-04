@@ -7,7 +7,8 @@ import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { scopeUpDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -87,6 +88,13 @@ export function registerScopeUpTool(server) {
 					log,
 					{ session }
 				);
+
+				if (result && result.needsAgentDelegation) {
+					log.info(
+						`scope_up_task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
 
 				return handleApiResult(
 					result,

@@ -7,6 +7,7 @@ import { agentllmAddTaskSave } from '../core/utils/agentllm-add-task-tool-saver.
 import { agentllmUpdateSave } from '../core/utils/agentllm-update-tool-saver.js';
 import { agentllmUpdateSubtaskSave } from '../core/utils/agentllm-update-subtask-tool-saver.js';
 import { agentllmResearchSave } from '../core/utils/agentllm-research-tool-saver.js';
+import { agentllmScopeSave } from '../core/utils/agentllm-scope-tool-saver.js';
 
 async function _handlePostProcessing(
 	pendingData,
@@ -178,6 +179,46 @@ async function _handlePostProcessing(
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully processed research result.`;
+		}
+	} else if (originalToolName === 'scope_up_task' && finalLLMOutput) {
+		if (!projectRoot)
+			throw new Error('Missing projectRoot for scope_up_task');
+		log.info(
+			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_up_task'.`
+		);
+		if (originalToolArgs.id) {
+			finalLLMOutput.id = parseInt(originalToolArgs.id, 10);
+		}
+		postProcessingResult = await agentllmScopeSave(
+			[finalLLMOutput],
+			projectRoot,
+			log,
+			originalToolArgs,
+			tag,
+			'up'
+		);
+		if (postProcessingResult.success) {
+			mainResultMessage = `Successfully scoped up tasks.`;
+		}
+	} else if (originalToolName === 'scope_down_task' && finalLLMOutput) {
+		if (!projectRoot)
+			throw new Error('Missing projectRoot for scope_down_task');
+		log.info(
+			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_down_task'.`
+		);
+		if (originalToolArgs.id) {
+			finalLLMOutput.id = parseInt(originalToolArgs.id, 10);
+		}
+		postProcessingResult = await agentllmScopeSave(
+			[finalLLMOutput],
+			projectRoot,
+			log,
+			originalToolArgs,
+			tag,
+			'down'
+		);
+		if (postProcessingResult.success) {
+			mainResultMessage = `Successfully scoped down tasks.`;
 		}
 	}
 
