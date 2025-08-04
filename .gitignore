@@ -66,6 +66,7 @@ tests/**/*.sqlite3
 # Nuxt.js build / generate output
 .nuxt
 dist
+dist-bundled
 
 # Mac files
 .DS_Store

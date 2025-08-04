@@ -346,7 +346,28 @@ export function createMCPConfigFromSettings(): MCPConfig {
 	const config = vscode.workspace.getConfiguration('taskmaster');
 
 	let command = config.get<string>('mcp.command', 'npx');
-	const args = config.get<string[]>('mcp.args', ['task-master-ai']);
+	let args = config.get<string[]>('mcp.args', ['-y', 'task-master-ai']);
+	
+	// If using default npx command with task-master-ai, add version pinning
+	if (command === 'npx' && args.includes('task-master-ai')) {
+		// Get the version from package.json
+		const extensionPath = vscode.extensions.getExtension('Hamster.extension')?.extensionPath;
+		if (extensionPath) {
+			try {
+				const packageJson = require(extensionPath + '/package.json');
+				const taskMasterVersion = packageJson.taskMasterVersion;
+				if (taskMasterVersion) {
+					// Replace 'task-master-ai' with versioned package
+					args = args.map(arg => 
+						arg === 'task-master-ai' ? `task-master-ai@${taskMasterVersion}` : arg
+					);
+					logger.log(`📌 Pinning task-master-ai version to ${taskMasterVersion}`);
+				}
+			} catch (error) {
+				logger.log('⚠️ Could not read extension package.json for version pinning');
+			}
+		}
+	}
 
 	// Use proper VS Code workspace detection
 	const defaultCwd =

@@ -5,11 +5,14 @@
 	"main": "index.js",
 	"type": "module",
 	"bin": {
-		"task-master": "bin/task-master.js",
-		"task-master-mcp": "mcp-server/server.js",
-		"task-master-ai": "mcp-server/server.js"
+		"task-master": "dist-bundled/task-master.cjs",
+		"task-master-mcp": "dist-bundled/task-master-mcp.js",
+		"task-master-ai": "dist-bundled/task-master-ai.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": [
+		"apps/*",
+		"."
+	],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -17,7 +20,9 @@
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
-		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
+		"build": "tsup",
+		"build:watch": "tsup --watch",
+		"prepare": "npm run build && chmod +x dist-bundled/task-master.cjs dist-bundled/task-master-mcp.js dist-bundled/task-master-ai.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
@@ -100,14 +105,12 @@
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
 	"files": [
+		"dist-bundled/**",
 		"scripts/**",
 		"assets/**",
 		".cursor/**",
 		"README-task-master.md",
-		"index.js",
-		"bin/**",
-		"mcp-server/**",
-		"src/**"
+		"index.js"
 	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
@@ -125,6 +128,7 @@
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"supertest": "^7.1.0",
+		"tsup": "^8.5.0",
 		"tsx": "^4.16.2"
 	}
 }

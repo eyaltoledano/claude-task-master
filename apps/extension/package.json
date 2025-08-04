@@ -9,6 +9,7 @@
 	"engines": {
 		"vscode": "^1.93.0"
 	},
+	"taskMasterVersion": "0.23.1-rc.0",
 	"categories": ["AI", "Visualization", "Education", "Other"],
 	"main": "./dist/extension.js",
 	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
@@ -72,7 +73,7 @@
 					"items": {
 						"type": "string"
 					},
-					"default": ["task-master-ai"],
+					"default": ["-y", "task-master-ai"],
 					"description": "An array of arguments to pass to the MCP server command."
 				},
 				"taskmaster.mcp.cwd": {
