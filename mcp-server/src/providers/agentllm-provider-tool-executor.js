@@ -186,11 +186,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_up_task'.`
 		);
-		if (originalToolArgs.id) {
-			finalLLMOutput.id = parseInt(originalToolArgs.id, 10);
+		const taskId = originalToolArgs.id ? parseInt(originalToolArgs.id, 10) : null;
+		if (!taskId || isNaN(taskId)) {
+		    throw new Error(`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`);
 		}
+		const taskWithId = { ...finalLLMOutput, id: taskId };
 		postProcessingResult = await agentllmScopeSave(
-			[finalLLMOutput],
+			[taskWithId],
 			projectRoot,
 			log,
 			originalToolArgs,
@@ -206,11 +208,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_down_task'.`
 		);
-		if (originalToolArgs.id) {
-			finalLLMOutput.id = parseInt(originalToolArgs.id, 10);
+		const taskId = originalToolArgs.id ? parseInt(originalToolArgs.id, 10) : null;
+		if (!taskId || isNaN(taskId)) {
+		    throw new Error(`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`);
 		}
+		const taskWithId = { ...finalLLMOutput, id: taskId };
 		postProcessingResult = await agentllmScopeSave(
-			[finalLLMOutput],
+			[taskWithId],
 			projectRoot,
 			log,
 			originalToolArgs,

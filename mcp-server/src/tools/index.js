@@ -38,7 +38,7 @@ import { registerRenameTagTool } from './rename-tag.js';
 import { registerCopyTagTool } from './copy-tag.js';
 import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
-import { registerAgentLLMTool } from './agent_llm.js';
+import { registerAgentLLMTool } from './agent-llm.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
 
@@ -101,7 +101,8 @@ export function registerTaskMasterTools(server) {
 
 		// Group 8: Research Features
 		registerResearchTool(server);
-		// Group 9: Agent Integration
+		
+		//AgentLLMProvider Integration
 		registerAgentLLMTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
