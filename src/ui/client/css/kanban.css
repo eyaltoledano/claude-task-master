@@ -530,6 +530,81 @@
     cursor: grabbing;
 }
 
+/* Connection Status Indicator */
+.connection-status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+}
+
+.connection-online {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+}
+
+.connection-offline {
+    background: rgba(255, 152, 0, 0.9);
+    color: white;
+}
+
+.connection-error {
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+}
+
+/* Notification Styles */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    max-width: 300px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 1001;
+    backdrop-filter: blur(10px);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification-info {
+    background: rgba(33, 150, 243, 0.9);
+    color: white;
+}
+
+.notification-success {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+}
+
+.notification-error {
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 /* Dark mode adjustments for drag styles */
 [data-theme="dark"] .sortable-ghost {
     background: rgba(147, 51, 234, 0.2) !important;

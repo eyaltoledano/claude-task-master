@@ -100,6 +100,152 @@ class KanbanBoard {
             this.tasks = this.getCachedTasks() || [];
         }
     }
+    
+    /**
+     * Handle updates from polling manager
+     * @param {Object} data - Updated task data from polling
+     */
+    handlePollingUpdate(data) {
+        // Check if data has actually changed
+        const newTasks = data.tasks || [];
+        const hasChanges = this.detectTaskChanges(this.tasks, newTasks);
+        
+        if (hasChanges) {
+            console.log('Polling detected changes, updating tasks');
+            this.tasks = newTasks;
+            
+            // Ensure all tasks have required properties
+            this.tasks.forEach(task => {
+                if (!task.id) task.id = 'task-' + Date.now() + Math.random();
+                if (!task.status) task.status = 'backlog';
+                if (!task.priority) task.priority = 'medium';
+                if (!task.title) task.title = 'Untitled Task';
+            });
+            
+            // Re-render the board
+            this.renderTasks();
+            
+            // Show subtle notification
+            this.showNotification('Tasks updated', 'info');
+        }
+    }
+    
+    /**
+     * Detect if tasks have changed
+     * @param {Array} oldTasks - Current tasks
+     * @param {Array} newTasks - New tasks from polling
+     * @returns {boolean} True if changes detected
+     */
+    detectTaskChanges(oldTasks, newTasks) {
+        // Quick length check
+        if (oldTasks.length !== newTasks.length) {
+            return true;
+        }
+        
+        // Create maps for efficient comparison
+        const oldMap = new Map(oldTasks.map(t => [t.id, t]));
+        
+        // Check for changes in existing tasks
+        for (const newTask of newTasks) {
+            const oldTask = oldMap.get(newTask.id);
+            
+            if (!oldTask) {
+                // New task found
+                return true;
+            }
+            
+            // Check for status or title changes
+            if (oldTask.status !== newTask.status || 
+                oldTask.title !== newTask.title ||
+                oldTask.priority !== newTask.priority) {
+                return true;
+            }
+            
+            // Check subtasks if present
+            if (newTask.subtasks || oldTask.subtasks) {
+                const oldSubtasks = oldTask.subtasks || [];
+                const newSubtasks = newTask.subtasks || [];
+                
+                if (oldSubtasks.length !== newSubtasks.length) {
+                    return true;
+                }
+                
+                // Check subtask changes
+                for (let i = 0; i < newSubtasks.length; i++) {
+                    if (oldSubtasks[i].status !== newSubtasks[i].status ||
+                        oldSubtasks[i].title !== newSubtasks[i].title) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Show connection status indicator
+     * @param {string} status - Status type ('online', 'offline', 'error')
+     */
+    showConnectionStatus(status) {
+        // Remove existing status indicators
+        const existingStatus = document.querySelector('.connection-status');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+        
+        // Create status indicator
+        const statusDiv = document.createElement('div');
+        statusDiv.className = `connection-status connection-${status}`;
+        
+        const statusMessages = {
+            'online': '✓ Connected',
+            'offline': '⚠ Offline',
+            'error': '✗ Connection Error'
+        };
+        
+        statusDiv.textContent = statusMessages[status] || status;
+        
+        // Add to header
+        const header = document.querySelector('.kanban-header');
+        if (header) {
+            header.appendChild(statusDiv);
+        }
+        
+        // Auto-hide success status after 3 seconds
+        if (status === 'online') {
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 3000);
+        }
+    }
+    
+    /**
+     * Show notification message
+     * @param {string} message - Message to display
+     * @param {string} type - Type of notification ('info', 'success', 'error')
+     */
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        
+        // Add to body
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    }
 
     /**
      * Render all tasks in their respective columns
