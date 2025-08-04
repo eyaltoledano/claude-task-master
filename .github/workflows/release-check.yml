@@ -23,7 +23,10 @@ jobs:
           echo "🔍 Checking if branch is in pre-release mode..."
 
           if [[ -f .changeset/pre.json ]]; then
-            PRE_MODE=$(jq -r '.mode' .changeset/pre.json 2>/dev/null || echo '')
+            if ! PRE_MODE=$(jq -r '.mode' .changeset/pre.json 2>/dev/null); then
+              echo "❌ ERROR: Unable to parse .changeset/pre.json – aborting merge."
+              exit 1
+            fi
             if [[ "$PRE_MODE" == "pre" ]]; then
               echo "❌ ERROR: This branch is in active pre-release mode!"
               echo ""
