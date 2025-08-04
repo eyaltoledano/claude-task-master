@@ -1,0 +1,36 @@
+name: Release Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-release-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check release mode
+        run: |
+          set -euo pipefail
+          echo "🔍 Checking if branch is in pre-release mode..."
+
+          if [[ -f .changeset/pre.json ]]; then
+            echo "❌ ERROR: This branch is in pre-release mode!"
+            echo ""
+            echo "Pre-release mode must be exited before merging to main."
+            echo ""
+            echo "To fix this, run the following commands in your branch:"
+            echo "  npx changeset pre exit"
+            echo "  git add -u"
+            echo "  git commit -m 'chore: exit pre-release mode'"
+            echo "  git push"
+            echo ""
+            echo "Then update this pull request."
+            exit 1
+          fi
+
+          echo "✅ Not in pre-release mode - PR can be merged"
