@@ -6945,7 +6945,7 @@
             "description": "Set up SortableJS on all Kanban column containers with proper configuration for drag constraints, animation settings, and event handlers",
             "dependencies": [],
             "details": "Import SortableJS library (v1.15.0) and initialize on each .kanban-column element. Configure options including: group settings to allow dragging between columns, animation duration (150ms), ghostClass for drag preview styling, chosenClass for selected items, dragClass for dragging state, and filter to exclude non-draggable elements. Set up base event handlers for onStart, onEnd, onChange, and onMove events.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for SortableJS initialization, integration tests for drag start/end events, visual tests for ghost element rendering, performance tests for initialization with 100+ cards"
           },
           {
@@ -6966,8 +6966,8 @@
             "dependencies": [
               "110.2"
             ],
-            "details": "Develop src/ui/client/js/apiClient.js module with updateTaskStatus method. Implement: PATCH request to /api/tasks/:id/status with new status payload, Promise-based architecture for async handling, automatic retry with exponential backoff (max 3 attempts), proper error categorization (network vs server errors), and rollback trigger on failure. Include request queuing to handle rapid successive drops and ensure proper order of operations.",
-            "status": "pending",
+            "details": "Develop src/ui/client/js/apiClient.js module with updateTaskStatus method. Implement: PATCH request to /api/tasks/:id/status with new status payload, Promise-based architecture for async handling, automatic retry with exponential backoff (max 3 attempts), proper error categorization (network vs server errors), and rollback trigger on failure. Include request queuing to handle rapid successive drops and ensure proper order of operations.\n<info added on 2025-08-04T04:54:19.522Z>\nPartial implementation completed. API endpoint integration works correctly with proper error handling. The onEnd handler successfully captures status changes and calls PATCH /api/tasks/:id/status. However, still missing: retry logic with exponential backoff for failed requests, and request queuing system for handling rapid consecutive drops. Current implementation in src/ui/client/js/kanban.js:674-708.\n</info added on 2025-08-04T04:54:19.522Z>",
+            "status": "in-progress",
             "testStrategy": "Mock API tests for success/failure scenarios, network failure simulation tests, retry logic verification, request ordering tests with concurrent drops"
           },
           {
@@ -7037,7 +7037,7 @@
               "111.1"
             ],
             "details": "Create retry mechanism with configurable backoff (2s, 4s, 8s, 16s, 32s). Implement connection state machine (connected, disconnected, reconnecting). Add network speed detection for adaptive polling intervals. Create offline queue for user actions during disconnection. Build connection status UI component with visual indicators.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Network simulation tests for various failure scenarios, retry logic verification, offline queue persistence tests, UI indicator state transition tests"
           },
           {
@@ -7420,7 +7420,7 @@
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-03T20:05:53.886Z",
+      "updated": "2025-08-04T04:52:59.305Z",
       "description": "Tasks for master context"
     }
   },
