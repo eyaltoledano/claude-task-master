@@ -111,7 +111,9 @@ export async function createServer(options = {}) {
 		const enhancedTaskMaster = {
 			...taskMaster,
 			tasks: tasksData, // Add tasks data
+			tasksPath: tasksPath, // Add tasks path for reference
 			setTaskStatus: async (id, status) => {
+				// Delegate to taskSync which handles the proper parameter passing
 				return await taskSync.setTaskStatus(id, status);
 			},
 			executeCommand: async (command, args) => {

@@ -234,8 +234,8 @@ class TaskAPI {
         });
 
         try {
-            const response = await this.request(`/tasks/${taskId}`, {
-                method: 'PUT',
+            const response = await this.request(`/tasks/${taskId}/status`, {
+                method: 'POST',
                 body: updateData
             });
 

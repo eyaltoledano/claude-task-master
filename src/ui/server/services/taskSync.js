@@ -69,7 +69,9 @@ export class TaskSyncService {
 		
 		// Use TaskMaster's built-in method if available
 		if (this.taskMaster.setTaskStatus) {
-			return await this.taskMaster.setTaskStatus(taskId, status);
+			// Get the tasks path from taskMaster
+			const tasksPath = this.taskMaster.tasksPath || this.taskMaster.getTasksPath();
+			return await this.taskMaster.setTaskStatus(tasksPath, taskId, status);
 		}
 
 		// Fallback to CLI command execution
