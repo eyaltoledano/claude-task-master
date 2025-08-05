@@ -55,10 +55,7 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		copyRecursiveSync(claudeSourceDir, claudeDestDir);
 		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
 	} catch (err) {
-		log(
-			'error',
-			`[Claude] Failed to copy .claude directory: ${err.message}`
-		);
+		log('error', `[Claude] Failed to copy .claude directory: ${err.message}`);
 		// Continue with other operations even if this fails
 	}
 
@@ -89,10 +86,7 @@ function onAddRulesProfile(targetDir, assetsDir) {
 				`[Claude] Created Task Master instructions at ${taskMasterClaudeFile}`
 			);
 		} else {
-			log(
-				'warn',
-				`[Claude] Source file AGENTS.md not found at ${sourceFile}`
-			);
+			log('warn', `[Claude] Source file AGENTS.md not found at ${sourceFile}`);
 		}
 	} catch (err) {
 		log(
@@ -145,12 +139,12 @@ ${importLine}
 				// Create minimal CLAUDE.md with the import section
 				const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
 				fs.writeFileSync(userClaudeFile, minimalContent);
-				log('info', `[Claude] Created ${userClaudeFile} with Task Master import`);
-			} catch (err) {
 				log(
-					'error',
-					`[Claude] Failed to create new CLAUDE.md: ${err.message}`
+					'info',
+					`[Claude] Created ${userClaudeFile} with Task Master import`
 				);
+			} catch (err) {
+				log('error', `[Claude] Failed to create new CLAUDE.md: ${err.message}`);
 			}
 		}
 	} catch (err) {
@@ -322,17 +316,32 @@ const claudeProfile = ProfileBuilder.minimal('claude')
 		'AGENTS.md': '.taskmaster/CLAUDE.md'
 	})
 	.conversion({
-		// Profile name replacements
+		// Profile name replacements with more specific patterns
 		profileTerms: [
-			{ from: /cursor\.so/g, to: 'claude.ai' },
-			{ from: /\[cursor\.so\]/g, to: '[claude.ai]' },
-			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://claude.ai' },
-			{ from: /\(https:\/\/cursor\.so/g, to: '(https://claude.ai' },
+			// URL replacements - consolidated into clearer patterns
 			{
-				from: /\bcursor\b/gi,
-				to: (match) => (match === 'Cursor' ? 'Claude Code' : 'claude')
+				from: /(?:https?:\/\/)?cursor\.so(?=[\s\])">]|$)/g,
+				to: 'claude.ai'
 			},
-			{ from: /Cursor/g, to: 'Claude Code' }
+			// Markdown link format
+			{
+				from: /\[([^\]]*)\]\(https?:\/\/cursor\.so([^)]*)\)/g,
+				to: '[$1](https://claude.ai$2)'
+			},
+			// HTML href format
+			{
+				from: /href=(["'])https?:\/\/cursor\.so([^"']*)\1/g,
+				to: 'href=$1https://claude.ai$2$1'
+			},
+			// Word boundary replacements with proper case handling
+			{
+				from: /\bCursor\b/g,
+				to: 'Claude Code'
+			},
+			{
+				from: /\bcursor\b/g,
+				to: 'claude'
+			}
 		],
 		// Tool name mappings (claude uses standard tool names)
 		toolNames: {
@@ -343,21 +352,11 @@ const claudeProfile = ProfileBuilder.minimal('claude')
 			read_file: 'read_file',
 			run_terminal_cmd: 'run_terminal_cmd'
 		},
-
-		// Tool context mappings (claude uses standard contexts)
-		toolContexts: [],
-
-		// Tool group mappings (claude uses standard groups)
-		toolGroups: [],
-
-		// File reference mappings (claude uses standard file references)
-		fileReferences: [],
-
-		// Documentation URL mappings
+		// Documentation URL mappings - more specific pattern
 		docUrls: [
 			{
-				from: /docs\.cursor\.so/g,
-				to: 'docs.anthropic.com/en/docs/claude-code'
+				from: /(?:https?:\/\/)?docs\.cursor\.so(?:\/|$)/g,
+				to: 'https://docs.anthropic.com/en/docs/claude-code/'
 			}
 		]
 	})
