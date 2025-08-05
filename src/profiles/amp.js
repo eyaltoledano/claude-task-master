@@ -23,7 +23,7 @@ function transformToAmpFormat(mcpConfig) {
 async function addAmpProfile(projectRoot, assetsDir) {
 	try {
 		const taskMasterDir = path.join(projectRoot, '.taskmaster');
-		
+
 		// Ensure .taskmaster directory exists
 		if (!fs.existsSync(taskMasterDir)) {
 			fs.mkdirSync(taskMasterDir, { recursive: true });
