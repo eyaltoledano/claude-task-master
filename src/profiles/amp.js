@@ -82,14 +82,12 @@ async function removeAmpProfile(projectRoot) {
 			const config = JSON.parse(configContent);
 
 			if (config['amp.mcpServers']) {
-				config['amp.mcpServers'] = undefined;
+				delete config['amp.mcpServers'];
 
 				const remainingKeys = Object.keys(config);
-				const hasMeaningfulContent = remainingKeys.some(
-					(key) => !key.startsWith('amp.') && key !== 'mcpServers'
-				);
+				const hasMeaningfulContent = remainingKeys.length > 0;
 
-				if (!hasMeaningfulContent && remainingKeys.length === 0) {
+				if (!hasMeaningfulContent) {
 					fs.unlinkSync(mcpConfigPath);
 					const vscodeDirPath = path.join(projectRoot, '.vscode');
 					if (

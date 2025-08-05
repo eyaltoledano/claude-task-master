@@ -16,6 +16,9 @@ describe('Amp Profile Init Functionality', () => {
 		// Create temporary directory for testing
 		tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-amp-'));
 
+		// Create .taskmaster directory as init would
+		fs.mkdirSync(path.join(tempDir, '.taskmaster'), { recursive: true });
+
 		// Get the Amp profile
 		ampProfile = getRulesProfile('amp');
 	});
@@ -211,7 +214,6 @@ describe('Amp Profile Init Functionality', () => {
 				"# My Amp Instructions\n\nSome content.\n\n## Task Master AI Instructions\n**Import Task Master's development workflow commands and guidelines, treat as if import is in the main AGENT.md file.**\n@./.taskmaster/AGENT.md\n";
 			fs.writeFileSync(path.join(tempDir, 'AGENT.md'), agentContent);
 
-			fs.mkdirSync(path.join(tempDir, '.taskmaster'), { recursive: true });
 			fs.writeFileSync(
 				path.join(tempDir, '.taskmaster', 'AGENT.md'),
 				'Task Master instructions'
@@ -242,7 +244,6 @@ describe('Amp Profile Init Functionality', () => {
 				"# Amp Instructions\n\n## Task Master AI Instructions\n**Import Task Master's development workflow commands and guidelines, treat as if import is in the main AGENT.md file.**\n@./.taskmaster/AGENT.md";
 			fs.writeFileSync(path.join(tempDir, 'AGENT.md'), agentContent);
 
-			fs.mkdirSync(path.join(tempDir, '.taskmaster'), { recursive: true });
 			fs.writeFileSync(
 				path.join(tempDir, '.taskmaster', 'AGENT.md'),
 				'Task Master instructions'

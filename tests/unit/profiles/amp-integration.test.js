@@ -15,6 +15,9 @@ describe('Amp Profile Integration', () => {
 		// Create temporary directory for testing
 		tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-amp-unit-'));
 
+		// Create .taskmaster directory as init would
+		fs.mkdirSync(path.join(tempDir, '.taskmaster'), { recursive: true });
+
 		// Get the Amp profile
 		ampProfile = getRulesProfile('amp');
 	});
