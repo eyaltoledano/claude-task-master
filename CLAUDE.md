@@ -85,10 +85,14 @@ Task Master is an AI-driven task management system designed for seamless integra
 - ✅ **Task 107**: RESTful API endpoints for task operations
 - ✅ **Task 108**: Pure HTML/CSS/JS frontend with responsive layout
 - ✅ **Task 109**: Task card component system with full accessibility
-- ✅ **Task 110**: State management and optimistic UI updates
-- ✅ **Task 111**: Real-time updates with polling fallback
-- ✅ **Task 112**: WebSocket server for real-time communication
-- ✅ **Task 113**: Drag and drop with touch support
+- 🚧 **Task 110**: Drag-and-drop functionality with status sync (3/5 subtasks done)
+  - ✅ SortableJS initialization, ✅ State management, ✅ API integration
+  - ⏳ Multi-select drag, Touch device support
+- 🚧 **Task 111**: Real-time update system with polling (2/5 subtasks done)
+  - ✅ Polling module architecture, ✅ Network resilience
+  - ⏳ Diff detection, Smart caching, User action debouncing
+- ⏳ **Task 112**: File system monitoring for CLI feedback (pending)
+- ⏳ **Task 113**: Parent task visual grouping and filtering (pending)
 
 ## Development Commands
 
@@ -352,7 +356,7 @@ src/ui/
 - **Accessibility**: Full WCAG 2.1 AA compliance
 - **Dark Mode**: System preference detection + manual toggle
 - **Priority Colors**: High (red), Medium (yellow), Low (green)
-- **Real-time Updates**: WebSocket with polling fallback
+- **Real-time Updates**: WebSocket server + Polling module (partially implemented)
 - **Error Handling**: Toast notifications, error boundaries, offline mode
 - **Loading States**: Skeleton screens, progress indicators, spinners
 - **State Management**: Optimistic updates with rollback on failure
