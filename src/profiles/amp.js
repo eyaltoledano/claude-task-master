@@ -1,7 +1,6 @@
-// Resolved version without merge markers
-import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 import fs from 'fs';
 import path from 'path';
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 
 // Helper function to transform standard MCP config to amp format
 function transformToAmpFormat(mcpConfig) {
@@ -24,9 +23,6 @@ function transformToAmpFormat(mcpConfig) {
 async function addAmpProfile(projectRoot, assetsDir) {
 	try {
 		const taskMasterDir = path.join(projectRoot, '.taskmaster');
-		if (!fs.existsSync(taskMasterDir)) {
-			fs.mkdirSync(taskMasterDir, { recursive: true });
-		}
 
 		if (assetsDir && fs.existsSync(path.join(assetsDir, 'AGENTS.md'))) {
 			const sourceFile = path.join(assetsDir, 'AGENTS.md');
@@ -86,7 +82,7 @@ async function removeAmpProfile(projectRoot) {
 			const config = JSON.parse(configContent);
 
 			if (config['amp.mcpServers']) {
-				delete config['amp.mcpServers'];
+				config['amp.mcpServers'] = undefined;
 
 				const remainingKeys = Object.keys(config);
 				const hasMeaningfulContent = remainingKeys.some(
