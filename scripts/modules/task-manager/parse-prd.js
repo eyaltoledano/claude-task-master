@@ -379,8 +379,12 @@ async function parsePRDWithStreaming(
 		});
 
 		const textStream = aiServiceResponse.mainResult;
-		if (!textStream) {
-			throw new Error('No text stream received from AI service');
+		// Verify it's an async iterable
+		if (!textStream || typeof textStream[Symbol.asyncIterator] !== 'function') {
+			throw new StreamingError(
+				'Stream object is not async iterable',
+				STREAMING_ERROR_CODES.NOT_ASYNC_ITERABLE
+			);
 		}
 
 		// Get priority indicators based on context (MCP vs CLI)
