@@ -1,0 +1,382 @@
+/* ======================================
+   Loading States Styles
+   ====================================== */
+
+/* Loading spinner */
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Element loading state */
+.loading {
+    position: relative;
+    opacity: 0.7;
+    pointer-events: none;
+    user-select: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.5);
+    z-index: 1;
+}
+
+/* Button loading state */
+button.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+button.loading .button-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+button.loading:not(:disabled) {
+    cursor: not-allowed;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 9999;
+}
+
+.loading-overlay-visible {
+    opacity: 1;
+}
+
+.loading-overlay-content {
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+}
+
+.loading-overlay .loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border-width: 3px;
+}
+
+.loading-message {
+    font-size: 16px;
+    color: #374151;
+    margin: 0;
+}
+
+/* Skeleton screens */
+.skeleton-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-item {
+    margin-bottom: 16px;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-line {
+    height: 12px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-line-short {
+    width: 30%;
+}
+
+.skeleton-line-medium {
+    width: 60%;
+}
+
+.skeleton-line-long {
+    width: 90%;
+}
+
+.skeleton-line-full {
+    width: 100%;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%);
+    background-size: 200% 100%;
+    border-radius: 50%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+/* Skeleton task card */
+.skeleton-task {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Skeleton card */
+.skeleton-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes skeleton-pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Progress bar */
+.loading-progress {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
+    z-index: 1000;
+}
+
+.progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.progress-track {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-text {
+    font-size: 12px;
+    color: #6b7280;
+    text-align: right;
+    margin-top: 8px;
+}
+
+/* Indeterminate progress */
+.loading-progress.indeterminate .progress-bar {
+    width: 30% !important;
+    animation: indeterminate-progress 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate-progress {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(400%);
+    }
+}
+
+.loading-progress.progress-complete {
+    animation: progress-fade-out 0.5s ease-out forwards;
+}
+
+@keyframes progress-fade-out {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.95);
+    }
+}
+
+/* Error states */
+.error {
+    border-color: #ef4444 !important;
+    color: #dc2626;
+}
+
+.error-message {
+    font-size: 13px;
+    color: #dc2626;
+    margin-top: 8px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .loading::after {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .loading-overlay {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="dark"] .loading-overlay-content {
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+[data-theme="dark"] .loading-message {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .skeleton-line {
+    background: linear-gradient(90deg, #374151 0%, #4b5563 50%, #374151 100%);
+}
+
+[data-theme="dark"] .skeleton-avatar {
+    background: linear-gradient(90deg, #374151 0%, #4b5563 50%, #374151 100%);
+}
+
+[data-theme="dark"] .skeleton-task,
+[data-theme="dark"] .skeleton-card {
+    background: #374151;
+}
+
+[data-theme="dark"] .loading-progress {
+    background: #1f2937;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .progress-title {
+    color: #f3f4f6;
+}
+
+[data-theme="dark"] .progress-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .progress-text {
+    color: #9ca3af;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+    .loading-overlay-content {
+        padding: 24px;
+        margin: 16px;
+    }
+    
+    .loading-overlay .loading-spinner {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .loading-message {
+        font-size: 14px;
+    }
+    
+    .loading-progress {
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        transform: none;
+        min-width: auto;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner {
+        animation: none;
+        border-top-color: #6b7280;
+    }
+    
+    .skeleton-line,
+    .skeleton-avatar {
+        animation: none;
+        background: #e5e7eb;
+    }
+    
+    .loading-progress.indeterminate .progress-bar {
+        animation: none;
+    }
+}
+
+/* Accessibility - high contrast mode */
+@media (prefers-contrast: high) {
+    .loading-spinner {
+        border-color: transparent;
+        border-top-color: currentColor;
+    }
+    
+    .skeleton-line,
+    .skeleton-avatar {
+        background: currentColor;
+        opacity: 0.2;
+    }
+}

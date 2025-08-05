@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Test - Optimistic UI Updates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .kanban-board {
+            display: none;
+        }
+        .task-container {
+            min-height: 100px;
+            border: 1px dashed #ddd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .task-card {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .test-results {
+            margin-top: 20px;
+        }
+        .result-item {
+            padding: 5px 0;
+            font-family: monospace;
+        }
+        .pass {
+            color: green;
+        }
+        .fail {
+            color: red;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .progress {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Performance Test: Optimistic UI Updates</h1>
+        <p>This test verifies that optimistic UI updates complete in less than 200ms.</p>
+        
+        <button onclick="runPerformanceTest()">Run Performance Test</button>
+        
+        <div class="progress" id="progress"></div>
+        <div class="test-results" id="results"></div>
+        <div class="summary" id="summary" style="display:none;"></div>
+    </div>
+
+    <!-- Hidden Kanban Board for Testing -->
+    <div class="kanban-board" style="display:none;">
+        <div class="kanban-column" data-column="backlog">
+            <div class="task-container" data-column="backlog">
+                <div class="task-card" data-task-id="1" data-status="backlog">
+                    <div class="task-title">Task 1</div>
+                </div>
+            </div>
+        </div>
+        <div class="kanban-column" data-column="in-progress">
+            <div class="task-container" data-column="in-progress"></div>
+        </div>
+    </div>
+
+    <!-- Load the actual implementations -->
+    <script src="../../../src/ui/client/js/stateManager.js"></script>
+    <script src="../../../src/ui/client/js/apiClient.js"></script>
+    
+    <script>
+        async function runPerformanceTest() {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+            const progressDiv = document.getElementById('progress');
+            
+            resultsDiv.innerHTML = '<h3>Test Results:</h3>';
+            summaryDiv.style.display = 'none';
+            progressDiv.innerHTML = 'Running test...';
+            
+            // Initialize StateManager
+            const stateManager = new StateManager({
+                maxHistorySize: 20,
+                debounceDelay: 0,
+                enableAnimations: true
+            });
+            stateManager.init();
+            
+            // Initialize APIClient
+            const apiClient = new APIClient({
+                maxRetries: 3,
+                retryDelay: 1000,
+                backoffMultiplier: 2,
+                enableQueuing: true
+            });
+            
+            // Mock fetch for API calls
+            window.fetch = () => Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, task: { id: '1', status: 'in-progress' } })
+            });
+            
+            const measurements = [];
+            const iterations = 10;
+            
+            // Run performance tests
+            for (let i = 0; i < iterations; i++) {
+                progressDiv.innerHTML = `Running iteration ${i + 1} of ${iterations}...`;
+                
+                const startTime = performance.now();
+                
+                // Apply optimistic update
+                const change = {
+                    taskId: '1',
+                    fromStatus: i % 2 === 0 ? 'backlog' : 'in-progress',
+                    toStatus: i % 2 === 0 ? 'in-progress' : 'backlog'
+                };
+                
+                const changeId = await stateManager.applyOptimisticUpdate(change);
+                
+                // Wait for DOM update
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                
+                const endTime = performance.now();
+                const duration = endTime - startTime;
+                measurements.push(duration);
+                
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item ' + (duration < 200 ? 'pass' : 'fail');
+                resultItem.textContent = `Iteration ${i + 1}: ${duration.toFixed(2)}ms ${duration < 200 ? '✅' : '❌'}`;
+                resultsDiv.appendChild(resultItem);
+                
+                // Confirm the change
+                stateManager.confirmChange(changeId);
+                
+                // Small delay between iterations
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // Calculate statistics
+            const average = measurements.reduce((a, b) => a + b, 0) / measurements.length;
+            const min = Math.min(...measurements);
+            const max = Math.max(...measurements);
+            const under200 = measurements.filter(m => m < 200).length;
+            const allPassed = measurements.every(m => m < 200);
+            
+            // Display summary
+            summaryDiv.style.display = 'block';
+            summaryDiv.innerHTML = `
+                <h3>Performance Summary</h3>
+                <p><strong>Average:</strong> ${average.toFixed(2)}ms</p>
+                <p><strong>Min:</strong> ${min.toFixed(2)}ms</p>
+                <p><strong>Max:</strong> ${max.toFixed(2)}ms</p>
+                <p><strong>Under 200ms:</strong> ${under200}/${iterations}</p>
+                <p class="${allPassed ? 'pass' : 'fail'}">
+                    <strong>${allPassed ? '✅ PASS' : '❌ FAIL'}:</strong> 
+                    ${allPassed ? 'All updates completed in <200ms' : 'Some updates exceeded 200ms'}
+                </p>
+            `;
+            
+            // Test batching
+            progressDiv.innerHTML = 'Testing batch updates...';
+            
+            const batchDiv = document.createElement('div');
+            batchDiv.innerHTML = '<h3>Batch Update Test:</h3>';
+            resultsDiv.appendChild(batchDiv);
+            
+            const batchStart = performance.now();
+            
+            const promises = [];
+            for (let i = 0; i < 5; i++) {
+                promises.push(stateManager.applyOptimisticUpdate({
+                    taskId: `${i + 1}`,
+                    fromStatus: 'backlog',
+                    toStatus: 'in-progress'
+                }));
+            }
+            
+            await Promise.all(promises);
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            
+            const batchEnd = performance.now();
+            const batchDuration = batchEnd - batchStart;
+            
+            const batchResult = document.createElement('div');
+            batchResult.className = 'result-item ' + (batchDuration < 1000 ? 'pass' : 'fail');
+            batchResult.innerHTML = `
+                5 rapid updates completed in: ${batchDuration.toFixed(2)}ms<br>
+                Average per update: ${(batchDuration / 5).toFixed(2)}ms<br>
+                ${batchDuration < 1000 ? '✅ PASS' : '❌ FAIL'}: Batch completed efficiently
+            `;
+            batchDiv.appendChild(batchResult);
+            
+            progressDiv.innerHTML = 'Test complete!';
+        }
+    </script>
+</body>
+</html>

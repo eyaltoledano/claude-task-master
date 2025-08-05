@@ -17,6 +17,12 @@ class KanbanBoard {
         this.sortableInstances = [];
         this.useSortableJS = typeof Sortable !== 'undefined';
         
+        // Initialize StateManager for optimistic updates
+        this.stateManager = null;
+        
+        // Initialize enhanced API client with retry logic
+        this.apiClient = null;
+        
         // Bind methods to preserve 'this' context
         this.handleDragStart = this.handleDragStart.bind(this);
         this.handleDragOver = this.handleDragOver.bind(this);
@@ -43,6 +49,37 @@ class KanbanBoard {
         try {
             this.showLoading(true);
             this.announceToScreenReader('Initializing Kanban board...');
+            
+            // Initialize StateManager for optimistic updates
+            if (typeof StateManager !== 'undefined') {
+                this.stateManager = new StateManager({
+                    maxHistorySize: 20,
+                    debounceDelay: 0, // No debounce for immediate updates
+                    enableAnimations: true
+                });
+                this.stateManager.init();
+                
+                // Listen for state events
+                this.stateManager.on('rollback', (change) => {
+                    console.log('State rolled back:', change);
+                    this.showNotification('Change rolled back due to error', 'warning');
+                });
+                
+                console.log('StateManager initialized');
+            }
+            
+            // Initialize enhanced API client with retry logic
+            if (typeof APIClient !== 'undefined') {
+                this.apiClient = new APIClient({
+                    maxRetries: 3,
+                    retryDelay: 1000,
+                    backoffMultiplier: 2,
+                    maxDelay: 10000,
+                    timeout: 30000,
+                    enableQueuing: true
+                });
+                console.log('Enhanced APIClient initialized');
+            }
             
             // Initialize theme
             this.initializeTheme();
@@ -642,13 +679,35 @@ class KanbanBoard {
             return;
         }
 
-        try {
-            // Optimistic update - already moved by SortableJS
-            const originalStatus = this.draggedTask.status;
-            this.draggedTask.status = newStatus;
+        // Apply optimistic update via StateManager if available
+        let changeId = null;
+        if (this.stateManager) {
+            changeId = await this.stateManager.applyOptimisticUpdate({
+                taskId: taskId,
+                fromStatus: oldStatus,
+                toStatus: newStatus
+            });
+        }
 
-            // Update via API
-            await this.updateTaskStatus(taskId, newStatus);
+        try {
+            // Update task status immediately in memory
+            this.draggedTask.status = newStatus;
+            
+            // Use enhanced API client if available, otherwise fall back to standard API
+            if (this.apiClient) {
+                // Enhanced API with retry logic and request queuing
+                const result = await this.apiClient.updateTaskStatus(taskId, newStatus);
+                
+                // Confirm the change in StateManager
+                if (this.stateManager && changeId) {
+                    this.stateManager.confirmChange(changeId);
+                }
+                
+                console.log('Task status updated with enhanced API client:', result);
+            } else {
+                // Fallback to standard API
+                await this.updateTaskStatus(taskId, newStatus);
+            }
             
             // Announce success
             const columnNames = {
@@ -670,10 +729,15 @@ class KanbanBoard {
         } catch (error) {
             console.error('Error updating task status via SortableJS:', error);
             
-            // Rollback: move card back to original column
-            const originalContainer = this.getTaskContainer(this.mapStatusToColumn(this.draggedTask.status));
-            if (originalContainer && taskCard.parentNode !== originalContainer) {
-                originalContainer.appendChild(taskCard);
+            // Rollback optimistic update if StateManager is available
+            if (this.stateManager && changeId) {
+                this.stateManager.rollback(changeId);
+            } else {
+                // Manual rollback: move card back to original column
+                const originalContainer = this.getTaskContainer(this.mapStatusToColumn(oldStatus));
+                if (originalContainer && taskCard.parentNode !== originalContainer) {
+                    originalContainer.appendChild(taskCard);
+                }
             }
             
             // Restore original status
@@ -681,7 +745,14 @@ class KanbanBoard {
                 this.draggedTask.status = oldStatus;
             }
             
-            this.showError('Failed to move task');
+            // Show appropriate error message based on error type
+            const errorMessage = error.context?.errorType === 'timeout' 
+                ? 'Request timed out. Please try again.'
+                : error.context?.attempt > 1 
+                    ? `Failed to move task after ${error.context.attempt} attempts`
+                    : 'Failed to move task';
+            
+            this.showError(errorMessage);
             this.updateTaskCounts();
         }
 

@@ -3,6 +3,74 @@
    ====================================== */
 
 /* ======================================
+   Optimistic Update Styles
+   ====================================== */
+
+.pending-update {
+    opacity: 0.8;
+    position: relative;
+    transition: opacity 0.3s ease;
+}
+
+.pending-update::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.1) 50%, 
+        transparent 100%);
+    animation: shimmer 1.5s infinite;
+    pointer-events: none;
+}
+
+.update-loader {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    z-index: 10;
+}
+
+.update-loader .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Transition effects for card movement */
+.task-card.transitioning,
+.main-task-card.transitioning,
+.subtask-card.transitioning {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* ======================================
    Main Kanban Container
    ====================================== */
 

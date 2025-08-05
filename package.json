@@ -126,6 +126,7 @@
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
+		"jsdom": "^26.1.0",
 		"mock-fs": "^5.5.0",
 		"playwright": "^1.54.2",
 		"prettier": "^3.5.3",

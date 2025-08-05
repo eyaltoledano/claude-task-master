@@ -6956,7 +6956,7 @@
               "110.1"
             ],
             "details": "Build a lightweight state manager in src/ui/client/js/stateManager.js that tracks card positions and status. Implement optimistic update logic that: captures pre-drag state, immediately updates DOM and internal state on drop, maintains a pending changes queue, and provides rollback functionality. Ensure updates complete in <200ms by using requestAnimationFrame and batch DOM operations. Create visual feedback during pending state with subtle animations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Performance tests ensuring <200ms update time, unit tests for state rollback logic, integration tests for DOM sync accuracy, stress tests with rapid consecutive drags"
           },
           {
@@ -6967,7 +6967,7 @@
               "110.2"
             ],
             "details": "Develop src/ui/client/js/apiClient.js module with updateTaskStatus method. Implement: PATCH request to /api/tasks/:id/status with new status payload, Promise-based architecture for async handling, automatic retry with exponential backoff (max 3 attempts), proper error categorization (network vs server errors), and rollback trigger on failure. Include request queuing to handle rapid successive drops and ensure proper order of operations.\n<info added on 2025-08-04T04:54:19.522Z>\nPartial implementation completed. API endpoint integration works correctly with proper error handling. The onEnd handler successfully captures status changes and calls PATCH /api/tasks/:id/status. However, still missing: retry logic with exponential backoff for failed requests, and request queuing system for handling rapid consecutive drops. Current implementation in src/ui/client/js/kanban.js:674-708.\n</info added on 2025-08-04T04:54:19.522Z>",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Mock API tests for success/failure scenarios, network failure simulation tests, retry logic verification, request ordering tests with concurrent drops"
           },
           {
@@ -6979,7 +6979,7 @@
               "110.3"
             ],
             "details": "Extend drag functionality to support multi-select through Ctrl/Cmd+click or checkbox selection. Implement: selection state tracking in stateManager, visual indicators for selected cards (border highlight, checkbox), grouped ghost element during multi-drag, batch API calls for multiple status updates, atomic rollback if any update fails, and selection persistence across columns. Add keyboard shortcuts for select all/none within columns.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Multi-select interaction tests, batch API call verification, rollback tests for partial batch failures, keyboard shortcut tests, visual regression tests for selection states"
           },
           {
@@ -6991,7 +6991,7 @@
               "110.4"
             ],
             "details": "Implement comprehensive touch support including: touch-action CSS properties for smooth scrolling, larger hit targets for touch interaction (min 44x44px), long-press to initiate drag on mobile, and haptic feedback where supported. Add keyboard alternatives: arrow keys for moving between columns, Space to select/deselect cards, Enter to confirm moves, and Escape to cancel operations. Ensure ARIA live regions announce status changes and maintain focus management throughout drag operations.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Touch device testing on iOS/Android simulators, keyboard navigation tests with screen readers, WCAG 2.1 compliance audit, gesture recognition tests, focus management verification"
           }
         ]
@@ -7026,7 +7026,7 @@
               "111.1"
             ],
             "details": "Create deep comparison algorithm for task objects, tracking changes at field level. Implement hash-based change detection for performance. Build change queue system that batches updates. Add configurable sensitivity levels for different field types (e.g., ignore timestamp updates). Include change history tracking for debugging.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Unit tests for diff algorithms with various data scenarios, performance benchmarks for large datasets, edge case testing for nested object comparisons"
           },
           {
@@ -7048,7 +7048,7 @@
               "111.2"
             ],
             "details": "Implement LRU cache with configurable size limits. Create ETag-based validation for cache entries. Build partial update protocol using JSON Patch format. Add cache warming on initial load. Implement predictive prefetching for likely next actions. Create cache invalidation strategies based on user actions.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Cache hit/miss ratio tests, memory usage monitoring, partial update correctness verification, performance tests comparing full vs partial updates"
           },
           {
@@ -7060,7 +7060,7 @@
               "111.4"
             ],
             "details": "Create action queue with 300ms debounce window. Implement optimistic UI updates with rollback capability. Build action coalescing for rapid sequential changes. Add priority queue for critical updates. Create visual feedback system showing pending changes. Implement conflict resolution for concurrent user updates.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Debounce timing accuracy tests, action coalescing verification, rollback scenario testing, concurrent update conflict resolution tests, UI feedback timing measurements"
           }
         ]
@@ -7216,7 +7216,7 @@
           110,
           111
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -7224,7 +7224,7 @@
             "description": "Create a flexible toast notification component for displaying success, error, warning, and info messages throughout the application",
             "dependencies": [],
             "details": "Build a standalone toast notification system in src/ui/client/js/components/toast.js that supports: 1) Multiple notification types (success, error, warning, info) with distinct visual styles and icons, 2) Configurable duration with auto-dismiss and manual close options, 3) Stacking behavior for multiple simultaneous notifications with proper positioning, 4) Smooth entry/exit animations using CSS transitions, 5) Accessibility features including ARIA live regions and keyboard dismissal, 6) Queue management to prevent notification overflow, 7) Position configuration (top-right, top-center, bottom-right, etc.), 8) Action buttons for toast messages (e.g., 'Retry', 'Undo'), 9) Progress indicators for time-based dismissal, 10) Responsive design that adapts to mobile viewports",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for notification queue management, visual tests for different notification types and positions, accessibility tests for screen reader announcements, animation performance tests, mobile responsiveness tests"
           },
           {
@@ -7235,7 +7235,7 @@
               "114.1"
             ],
             "details": "Develop error boundary functionality in src/ui/client/js/errorBoundary.js that: 1) Wraps critical UI components with try-catch blocks and error event listeners, 2) Provides fallback UI when components fail (graceful degradation), 3) Logs detailed error information including stack traces and component context, 4) Offers recovery mechanisms like 'Reload Component' buttons, 5) Prevents error propagation that could crash the entire application, 6) Implements component-specific error handlers for known failure modes, 7) Creates error reporting to track component failures in production, 8) Maintains application state during component failures, 9) Shows user-friendly error messages via the toast system, 10) Includes debug mode with detailed error information for developers",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Error injection tests for various component failure scenarios, recovery mechanism tests, error propagation prevention tests, fallback UI rendering tests, state preservation tests during failures"
           },
           {
@@ -7246,7 +7246,7 @@
               "114.1"
             ],
             "details": "Implement offline capabilities in src/ui/client/js/offlineHandler.js including: 1) Network status monitoring using navigator.onLine and connection change events, 2) Visual offline indicator banner with connection status details, 3) Request queue system to store failed API calls during offline periods, 4) Automatic retry with exponential backoff when connection returns, 5) Local storage caching for critical application data, 6) Optimistic UI updates that sync when online, 7) Conflict resolution for queued changes vs server state, 8) Service Worker integration for advanced offline features, 9) Toast notifications for connection state changes, 10) Graceful degradation of features that require network access",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Network simulation tests for offline/online transitions, request queue persistence tests, conflict resolution tests, service worker functionality tests, UI indicator visibility tests"
           },
           {
@@ -7257,7 +7257,7 @@
               "114.1"
             ],
             "details": "Build loading state management in src/ui/client/js/loadingStates.js that provides: 1) Global loading state manager for tracking all async operations, 2) Component-specific loading indicators (spinners, skeleton screens, progress bars), 3) Automatic loading state injection for API calls, 4) Configurable loading delays to prevent flash of loading state, 5) Progress tracking for long-running operations like bulk updates, 6) Loading state persistence across page refreshes, 7) Accessibility announcements for loading start/end, 8) Visual feedback hierarchy (inline vs full-page loaders), 9) Request deduplication to prevent redundant loading states, 10) Performance monitoring to track loading times",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Loading state timing tests, concurrent operation tests, accessibility tests for screen reader announcements, visual regression tests for loading components, performance impact tests"
           },
           {
@@ -7270,7 +7270,7 @@
               "114.4"
             ],
             "details": "Develop error logging infrastructure in src/ui/client/js/errorLogger.js featuring: 1) Structured error logging with severity levels (debug, info, warn, error, critical), 2) Contextual information capture (user actions, browser info, timestamp), 3) Circular reference safe object serialization for complex errors, 4) Local storage persistence with size limits and rotation, 5) Error grouping and deduplication to reduce noise, 6) Export functionality for debugging (download logs as JSON), 7) Optional remote error reporting endpoint integration, 8) Performance impact monitoring of the logging system itself, 9) Privacy-conscious logging that excludes sensitive data, 10) Developer console integration with formatted output and filtering",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Error logging accuracy tests, storage limit tests, serialization tests for complex objects, privacy filter tests, performance benchmarks for high-volume logging, export functionality tests"
           }
         ]
@@ -7420,7 +7420,7 @@
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-04T05:03:45.891Z",
+      "updated": "2025-08-05T17:59:05.507Z",
       "description": "Tasks for master context"
     }
   },

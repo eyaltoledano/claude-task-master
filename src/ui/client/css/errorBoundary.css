@@ -1,0 +1,220 @@
+/* ======================================
+   Error Boundary Fallback UI Styles
+   ====================================== */
+
+/* Fallback container */
+.error-boundary-fallback {
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+    backdrop-filter: blur(10px);
+    animation: errorBoundaryFadeIn 0.3s ease-out;
+}
+
+/* Error message styling */
+.error-boundary-fallback .error-message {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.error-boundary-fallback h3 {
+    color: #dc2626;
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.error-boundary-fallback p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+/* Error details */
+.error-boundary-fallback details {
+    margin: 16px 0;
+    text-align: left;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.error-boundary-fallback summary {
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    user-select: none;
+    padding: 4px 0;
+}
+
+.error-boundary-fallback summary:hover {
+    color: #4b5563;
+}
+
+.error-boundary-fallback summary:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 3px;
+}
+
+.error-boundary-fallback pre {
+    margin-top: 12px;
+    padding: 12px;
+    background: #1f2937;
+    color: #f3f4f6;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Retry button */
+.error-boundary-fallback .retry-button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.error-boundary-fallback .retry-button:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.error-boundary-fallback .retry-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+}
+
+.error-boundary-fallback .retry-button:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Add reload icon to retry button */
+.error-boundary-fallback .retry-button::before {
+    content: '↻';
+    font-size: 1.125rem;
+    font-weight: bold;
+}
+
+/* Animation */
+@keyframes errorBoundaryFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Dark mode support */
+[data-theme="dark"] .error-boundary-fallback {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+[data-theme="dark"] .error-boundary-fallback h3 {
+    color: #f87171;
+}
+
+[data-theme="dark"] .error-boundary-fallback p {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .error-boundary-fallback details {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .error-boundary-fallback summary {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .error-boundary-fallback summary:hover {
+    color: #d1d5db;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+    .error-boundary-fallback {
+        padding: 16px;
+    }
+    
+    .error-boundary-fallback h3 {
+        font-size: 1.125rem;
+    }
+    
+    .error-boundary-fallback p {
+        font-size: 0.8125rem;
+    }
+    
+    .error-boundary-fallback .retry-button {
+        width: 100%;
+        padding: 12px;
+    }
+}
+
+/* Loading state for retry */
+.error-boundary-fallback .retry-button.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.error-boundary-fallback .retry-button.loading::before {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+/* Error severity variations */
+.error-boundary-fallback.critical {
+    border-color: rgba(220, 38, 38, 0.5);
+    background: rgba(254, 226, 226, 0.95);
+}
+
+.error-boundary-fallback.warning {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(254, 243, 199, 0.95);
+}
+
+[data-theme="dark"] .error-boundary-fallback.critical {
+    background: rgba(127, 29, 29, 0.95);
+}
+
+[data-theme="dark"] .error-boundary-fallback.warning {
+    background: rgba(120, 53, 15, 0.95);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .error-boundary-fallback {
+        animation: none;
+    }
+    
+    .error-boundary-fallback .retry-button:hover {
+        transform: none;
+    }
+}
