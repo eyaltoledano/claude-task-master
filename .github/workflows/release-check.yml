@@ -1,0 +1,46 @@
+name: Release Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: release-check-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-release-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check release mode
+        run: |
+          set -euo pipefail
+          echo "🔍 Checking if branch is in pre-release mode..."
+
+          if [[ -f .changeset/pre.json ]]; then
+            if ! PRE_MODE=$(jq -r '.mode' .changeset/pre.json 2>/dev/null); then
+              echo "❌ ERROR: Unable to parse .changeset/pre.json – aborting merge."
+              exit 1
+            fi
+            if [[ "$PRE_MODE" == "pre" ]]; then
+              echo "❌ ERROR: This branch is in active pre-release mode!"
+              echo ""
+              echo "Pre-release mode must be exited before merging to main."
+              echo ""
+              echo "To fix this, run the following commands in your branch:"
+              echo "  npx changeset pre exit"
+              echo "  git add -u"
+              echo "  git commit -m 'chore: exit pre-release mode'"
+              echo "  git push"
+              echo ""
+              echo "Then update this pull request."
+              exit 1
+            fi
+          fi
+
+          echo "✅ Not in active pre-release mode - PR can be merged"

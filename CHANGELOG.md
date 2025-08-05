@@ -1,5 +1,209 @@
 # task-master-ai
 
+## 0.23.1-rc.0
+
+### Patch Changes
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix scope-up/down prompts to include all required fields for better AI model compatibility
+  - Added missing `priority` field to scope adjustment prompts to prevent validation errors with Claude-code and other models
+  - Ensures generated JSON includes all fields required by the schema
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP scope-up/down tools not finding tasks
+  - Fixed task ID parsing in MCP layer - now correctly converts string IDs to numbers
+  - scope_up_task and scope_down_task MCP tools now work properly
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve AI provider compatibility for JSON generation
+  - Fixed schema compatibility issues between Perplexity and OpenAI o3 models
+  - Removed nullable/default modifiers from Zod schemas for broader compatibility
+  - Added automatic JSON repair for malformed AI responses (handles cases like missing array values)
+  - Perplexity now uses JSON mode for more reliable structured output
+  - Post-processing handles default values separately from schema validation
+
+## 0.23.0
+
+### Minor Changes
+
+- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
+### Patch Changes
+
+- [#1063](https://github.com/eyaltoledano/claude-task-master/pull/1063) [`2ae6e7e`](https://github.com/eyaltoledano/claude-task-master/commit/2ae6e7e6be3605c3c4d353f34666e54750dba973) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix for tasks not found when using string IDs
+
+- [#1049](https://github.com/eyaltoledano/claude-task-master/pull/1049) [`45a14c3`](https://github.com/eyaltoledano/claude-task-master/commit/45a14c323d21071c15106335e89ad1f4a20976ab) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix tag-specific complexity report detection in expand command
+
+  The expand command now correctly finds and uses tag-specific complexity reports (e.g., `task-complexity-report_feature-xyz.json`) when operating in a tag context. Previously, it would always look for the generic `task-complexity-report.json` file due to a default value in the CLI option definition.
+
+## 0.23.0-rc.2
+
+### Minor Changes
+
+- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
+## 0.22.1-rc.1
+
+### Patch Changes
+
+- [#1069](https://github.com/eyaltoledano/claude-task-master/pull/1069) [`72ca68e`](https://github.com/eyaltoledano/claude-task-master/commit/72ca68edeb870ff7a3b0d2d632e09dae921dc16a) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
+## 0.22.1-rc.0
+
+### Patch Changes
+
+- [#1063](https://github.com/eyaltoledano/claude-task-master/pull/1063) [`2ae6e7e`](https://github.com/eyaltoledano/claude-task-master/commit/2ae6e7e6be3605c3c4d353f34666e54750dba973) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix for tasks not found when using string IDs
+
+- [#1049](https://github.com/eyaltoledano/claude-task-master/pull/1049) [`45a14c3`](https://github.com/eyaltoledano/claude-task-master/commit/45a14c323d21071c15106335e89ad1f4a20976ab) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix tag-specific complexity report detection in expand command
+
+  The expand command now correctly finds and uses tag-specific complexity reports (e.g., `task-complexity-report_feature-xyz.json`) when operating in a tag context. Previously, it would always look for the generic `task-complexity-report.json` file due to a default value in the CLI option definition.
+
+## 0.22.0
+
+### Minor Changes
+
+- [#1043](https://github.com/eyaltoledano/claude-task-master/pull/1043) [`dc44ed9`](https://github.com/eyaltoledano/claude-task-master/commit/dc44ed9de8a57aca5d39d3a87565568bd0a82068) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prompt to generate a complexity report when it is missing
+
+- [#1032](https://github.com/eyaltoledano/claude-task-master/pull/1032) [`4423119`](https://github.com/eyaltoledano/claude-task-master/commit/4423119a5ec53958c9dffa8bf564da8be7a2827d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add comprehensive Kiro IDE integration with autonomous task management hooks
+  - **Kiro Profile**: Added full support for Kiro IDE with automatic installation of 7 Taskmaster agent hooks
+  - **Hook-Driven Workflow**: Introduced natural language automation hooks that eliminate manual task status updates
+  - **Automatic Hook Installation**: Hooks are now automatically copied to `.kiro/hooks/` when running `task-master rules add kiro`
+  - **Language-Agnostic Support**: All hooks support multiple programming languages (JS, Python, Go, Rust, Java, etc.)
+  - **Frontmatter Transformation**: Kiro rules use simplified `inclusion: always` format instead of Cursor's complex frontmatter
+  - **Special Rule**: Added `taskmaster_hooks_workflow.md` that guides AI assistants to prefer hook-driven completion
+
+  Key hooks included:
+  - Task Dependency Auto-Progression: Automatically starts tasks when dependencies complete
+  - Code Change Task Tracker: Updates task progress as you save files
+  - Test Success Task Completer: Marks tasks done when tests pass
+  - Daily Standup Assistant: Provides personalized task status summaries
+  - PR Readiness Checker: Validates task completion before creating pull requests
+  - Complexity Analyzer: Auto-expands complex tasks into manageable subtasks
+  - Git Commit Task Linker: Links commits to tasks for better traceability
+
+  This creates a truly autonomous development workflow where task management happens naturally as you code!
+
+### Patch Changes
+
+- [#1033](https://github.com/eyaltoledano/claude-task-master/pull/1033) [`7b90568`](https://github.com/eyaltoledano/claude-task-master/commit/7b9056832653464f934c91c22997077065d738c4) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix compatibility with @google/gemini-cli-core v0.1.12+ by updating ai-sdk-provider-gemini-cli to v0.1.1.
+
+- [#1038](https://github.com/eyaltoledano/claude-task-master/pull/1038) [`77cc5e4`](https://github.com/eyaltoledano/claude-task-master/commit/77cc5e4537397642f2664f61940a101433ee6fb4) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix 'expand --all' and 'show' commands to correctly handle tag contexts for complexity reports and task display.
+
+- [#1025](https://github.com/eyaltoledano/claude-task-master/pull/1025) [`8781794`](https://github.com/eyaltoledano/claude-task-master/commit/8781794c56d454697fc92c88a3925982d6b81205) Thanks [@joedanz](https://github.com/joedanz)! - Clean up remaining automatic task file generation calls
+
+- [#1035](https://github.com/eyaltoledano/claude-task-master/pull/1035) [`fb7d588`](https://github.com/eyaltoledano/claude-task-master/commit/fb7d588137e8c53b0d0f54bd1dd8d387648583ee) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix max_tokens limits for OpenRouter and Groq models
+  - Add special handling in config-manager.js for custom OpenRouter models to use a conservative default of 32,768 max_tokens
+  - Update qwen/qwen-turbo model max_tokens from 1,000,000 to 32,768 to match OpenRouter's actual limits
+  - Fix moonshotai/kimi-k2-instruct max_tokens to 16,384 to match Groq's actual limit (fixes #1028)
+  - This prevents "maximum context length exceeded" errors when using OpenRouter models not in our supported models list
+
+- [#1027](https://github.com/eyaltoledano/claude-task-master/pull/1027) [`6ae66b2`](https://github.com/eyaltoledano/claude-task-master/commit/6ae66b2afbfe911340fa25e0236c3db83deaa7eb) Thanks [@andreswebs](https://github.com/andreswebs)! - Fix VSCode profile generation to use correct rule file names (using `.instructions.md` extension instead of `.md`) and front-matter properties (removing the unsupported `alwaysApply` property from instructions files' front-matter).
+
+## 0.22.0-rc.1
+
+### Minor Changes
+
+- [#1043](https://github.com/eyaltoledano/claude-task-master/pull/1043) [`dc44ed9`](https://github.com/eyaltoledano/claude-task-master/commit/dc44ed9de8a57aca5d39d3a87565568bd0a82068) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Prompt to generate a complexity report when it is missing
+
 ## 0.22.0-rc.0
 
 ### Minor Changes

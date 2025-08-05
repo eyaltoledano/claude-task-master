@@ -1,16 +1,13 @@
 {
-  "mode": "pre",
+  "mode": "exit",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.21.0",
-    "extension": "0.20.0"
+    "task-master-ai": "0.23.0",
+    "extension": "0.23.0"
   },
   "changesets": [
-    "fix-gemini-cli-dependency",
-    "fresh-bugs-squashed",
-    "happy-sites-stay",
-    "orange-pots-add",
-    "quiet-rabbits-bathe",
-    "swift-otters-argue"
+    "fuzzy-words-count",
+    "tender-trams-refuse",
+    "vast-sites-leave"
   ]
 }

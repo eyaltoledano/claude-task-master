@@ -1,0 +1,143 @@
+name: Extension CI
+
+on:
+  push:
+    branches:
+      - main
+      - next
+    paths:
+      - 'apps/extension/**'
+      - '.github/workflows/extension-ci.yml'
+  pull_request:
+    branches:
+      - main
+      - next
+    paths:
+      - 'apps/extension/**'
+      - '.github/workflows/extension-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install Extension Dependencies
+        working-directory: apps/extension
+        run: npm ci
+        timeout-minutes: 5
+
+  typecheck:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install if cache miss
+        working-directory: apps/extension
+        run: npm ci
+        timeout-minutes: 3
+
+      - name: Type Check Extension
+        working-directory: apps/extension
+        run: npm run check-types
+        env:
+          FORCE_COLOR: 1
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install if cache miss
+        working-directory: apps/extension
+        run: npm ci
+        timeout-minutes: 3
+
+      - name: Build Extension
+        working-directory: apps/extension
+        run: npm run build
+        env:
+          FORCE_COLOR: 1
+
+      - name: Package Extension
+        working-directory: apps/extension
+        run: npm run package
+        env:
+          FORCE_COLOR: 1
+
+      - name: Verify Package Contents
+        working-directory: apps/extension
+        run: |
+          echo "Checking vsix-build contents..."
+          ls -la vsix-build/
+          echo "Checking dist contents..."
+          ls -la vsix-build/dist/
+          echo "Checking package.json exists..."
+          test -f vsix-build/package.json
+
+      - name: Create VSIX Package (Test)
+        working-directory: apps/extension/vsix-build
+        run: npx vsce package --no-dependencies
+        env:
+          FORCE_COLOR: 1
+
+      - name: Upload Extension Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-package
+          path: |
+            apps/extension/vsix-build/*.vsix
+            apps/extension/dist/
+          retention-days: 30
+

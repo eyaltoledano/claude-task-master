@@ -1,16 +1,281 @@
 {
 	"name": "extension",
 	"private": true,
-	"version": "0.20.0",
-	"main": "index.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
+	"displayName": "TaskMaster",
+	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
+	"version": "0.23.0",
+	"publisher": "Hamster",
+	"icon": "assets/icon.png",
+	"engines": {
+		"vscode": "^1.93.0"
 	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"description": "",
+	"categories": ["AI", "Visualization", "Education", "Other"],
+	"main": "./dist/extension.js",
+	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "taskmaster",
+					"title": "TaskMaster",
+					"icon": "assets/sidebar-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"taskmaster": [
+				{
+					"id": "taskmaster.welcome",
+					"name": "TaskMaster",
+					"type": "webview"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "tm.showKanbanBoard",
+				"title": "TaskMaster: Show Board",
+				"icon": "$(checklist)"
+			},
+			{
+				"command": "tm.checkConnection",
+				"title": "TaskMaster: Check Connection"
+			},
+			{
+				"command": "tm.reconnect",
+				"title": "TaskMaster: Reconnect"
+			},
+			{
+				"command": "tm.openSettings",
+				"title": "TaskMaster: Open Settings"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "tm.showKanbanBoard",
+					"when": "view == taskmaster.welcome",
+					"group": "navigation"
+				}
+			]
+		},
+		"configuration": {
+			"title": "TaskMaster Kanban",
+			"properties": {
+				"taskmaster.mcp.command": {
+					"type": "string",
+					"default": "npx",
+					"description": "The command or absolute path to execute for the MCP server (e.g., 'npx' or '/usr/local/bin/task-master-ai')."
+				},
+				"taskmaster.mcp.args": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": ["task-master-ai"],
+					"description": "An array of arguments to pass to the MCP server command."
+				},
+				"taskmaster.mcp.cwd": {
+					"type": "string",
+					"description": "Working directory for the TaskMaster MCP server (defaults to workspace root)"
+				},
+				"taskmaster.mcp.env": {
+					"type": "object",
+					"description": "Environment variables for the TaskMaster MCP server"
+				},
+				"taskmaster.mcp.timeout": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Connection timeout in milliseconds"
+				},
+				"taskmaster.mcp.maxReconnectAttempts": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of reconnection attempts"
+				},
+				"taskmaster.mcp.reconnectBackoffMs": {
+					"type": "number",
+					"default": 1000,
+					"minimum": 100,
+					"maximum": 10000,
+					"description": "Initial reconnection backoff delay in milliseconds"
+				},
+				"taskmaster.mcp.maxBackoffMs": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Maximum reconnection backoff delay in milliseconds"
+				},
+				"taskmaster.mcp.healthCheckIntervalMs": {
+					"type": "number",
+					"default": 15000,
+					"minimum": 5000,
+					"maximum": 60000,
+					"description": "Health check interval in milliseconds"
+				},
+				"taskmaster.mcp.requestTimeoutMs": {
+					"type": "number",
+					"default": 300000,
+					"minimum": 30000,
+					"maximum": 600000,
+					"description": "MCP request timeout in milliseconds (default: 5 minutes)"
+				},
+				"taskmaster.ui.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically refresh tasks from the server"
+				},
+				"taskmaster.ui.refreshIntervalMs": {
+					"type": "number",
+					"default": 10000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Auto-refresh interval in milliseconds"
+				},
+				"taskmaster.ui.theme": {
+					"type": "string",
+					"enum": ["auto", "light", "dark"],
+					"default": "auto",
+					"description": "UI theme preference"
+				},
+				"taskmaster.ui.showCompletedTasks": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show completed tasks in the Kanban board"
+				},
+				"taskmaster.ui.taskDisplayLimit": {
+					"type": "number",
+					"default": 100,
+					"minimum": 1,
+					"maximum": 1000,
+					"description": "Maximum number of tasks to display"
+				},
+				"taskmaster.ui.showPriority": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show task priority indicators"
+				},
+				"taskmaster.ui.showTaskIds": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show task IDs in the interface"
+				},
+				"taskmaster.performance.maxConcurrentRequests": {
+					"type": "number",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of concurrent MCP requests"
+				},
+				"taskmaster.performance.requestTimeoutMs": {
+					"type": "number",
+					"default": 30000,
+					"minimum": 1000,
+					"maximum": 300000,
+					"description": "Request timeout in milliseconds"
+				},
+				"taskmaster.performance.cacheTasksMs": {
+					"type": "number",
+					"default": 5000,
+					"minimum": 0,
+					"maximum": 60000,
+					"description": "Task cache duration in milliseconds"
+				},
+				"taskmaster.performance.lazyLoadThreshold": {
+					"type": "number",
+					"default": 50,
+					"minimum": 10,
+					"maximum": 500,
+					"description": "Number of tasks before enabling lazy loading"
+				},
+				"taskmaster.debug.enableLogging": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable debug logging"
+				},
+				"taskmaster.debug.logLevel": {
+					"type": "string",
+					"enum": ["error", "warn", "info", "debug"],
+					"default": "info",
+					"description": "Logging level"
+				},
+				"taskmaster.debug.enableConnectionMetrics": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable connection performance metrics"
+				},
+				"taskmaster.debug.saveEventLogs": {
+					"type": "boolean",
+					"default": false,
+					"description": "Save event logs to files"
+				},
+				"taskmaster.debug.maxEventLogSize": {
+					"type": "number",
+					"default": 1000,
+					"minimum": 10,
+					"maximum": 10000,
+					"description": "Maximum number of events to keep in memory"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run build",
+		"build": "npm run build:js && npm run build:css",
+		"build:js": "node ./esbuild.js --production",
+		"build:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
+		"package": "npm exec node ./package.mjs",
+		"package:direct": "node ./package.mjs",
+		"debug:env": "node ./debug-env.mjs",
+		"compile": "node ./esbuild.js",
+		"watch": "npm run watch:js & npm run watch:css",
+		"watch:js": "node ./esbuild.js --watch",
+		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
+		"check-types": "tsc --noEmit"
+	},
 	"devDependencies": {
-		"typescript": "^5.8.3"
+		"@dnd-kit/core": "^6.3.1",
+		"@dnd-kit/modifiers": "^9.0.0",
+		"@modelcontextprotocol/sdk": "1.13.3",
+		"@radix-ui/react-collapsible": "^1.1.11",
+		"@radix-ui/react-dropdown-menu": "^2.1.15",
+		"@radix-ui/react-label": "^2.1.7",
+		"@radix-ui/react-portal": "^1.1.9",
+		"@radix-ui/react-scroll-area": "^1.2.9",
+		"@radix-ui/react-separator": "^1.1.7",
+		"@radix-ui/react-slot": "^1.2.3",
+		"@tailwindcss/postcss": "^4.1.11",
+		"@types/mocha": "^10.0.10",
+		"@types/node": "20.x",
+		"@types/react": "19.1.8",
+		"@types/react-dom": "19.1.6",
+		"@types/vscode": "^1.101.0",
+		"@vscode/test-cli": "^0.0.11",
+		"@vscode/test-electron": "^2.5.2",
+		"@vscode/vsce": "^2.32.0",
+		"autoprefixer": "10.4.21",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"esbuild": "^0.25.3",
+		"esbuild-postcss": "^0.0.4",
+		"fs-extra": "^11.3.0",
+		"lucide-react": "^0.525.0",
+		"npm-run-all": "^4.1.5",
+		"postcss": "8.5.6",
+		"tailwind-merge": "^3.3.1",
+		"tailwindcss": "4.1.11",
+		"typescript": "^5.8.3",
+		"@tanstack/react-query": "^5.83.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
+	},
+	"overrides": {
+		"glob@<8": "^10.4.5",
+		"inflight": "npm:@tootallnate/once@2"
 	}
 }

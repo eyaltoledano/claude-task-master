@@ -28,6 +28,11 @@ import moveTask from './task-manager/move-task.js';
 import { migrateProject } from './task-manager/migrate.js';
 import { performResearch } from './task-manager/research.js';
 import { readComplexityReport } from './utils.js';
+import {
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
+} from './task-manager/scope-adjustment.js';
 
 // Export task manager functions
 export {
@@ -55,5 +60,8 @@ export {
 	moveTask,
 	readComplexityReport,
 	migrateProject,
-	performResearch
+	performResearch,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 };
