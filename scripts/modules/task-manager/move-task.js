@@ -1,11 +1,5 @@
 import path from 'path';
-import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	setTasksForTag
-} from '../utils.js';
+import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 
@@ -27,6 +21,7 @@ async function moveTask(
 	generateFiles = false,
 	options = {}
 ) {
+	const { projectRoot, tag } = options;
 	// Check if we have comma-separated IDs (batch move)
 	const sourceIds = sourceId.split(',').map((id) => id.trim());
 	const destinationIds = destinationId.split(',').map((id) => id.trim());
@@ -53,7 +48,10 @@ async function moveTask(
 
 		// Generate files once at the end if requested
 		if (generateFiles) {
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+				tag: tag,
+				projectRoot: projectRoot
+			});
 		}
 
 		return {
@@ -64,7 +62,7 @@ async function moveTask(
 
 	// Single move logic
 	// Read the raw data without tag resolution to preserve tagged structure
-	let rawData = readJSON(tasksPath, options.projectRoot); // No tag parameter
+	let rawData = readJSON(tasksPath, projectRoot, tag);
 
 	// Handle the case where readJSON returns resolved data with _rawTaggedData
 	if (rawData && rawData._rawTaggedData) {
@@ -72,27 +70,19 @@ async function moveTask(
 		rawData = rawData._rawTaggedData;
 	}
 
-	// Determine the current tag
-	const currentTag =
-		options.tag || getCurrentTag(options.projectRoot) || 'master';
-
 	// Ensure the tag exists in the raw data
-	if (
-		!rawData ||
-		!rawData[currentTag] ||
-		!Array.isArray(rawData[currentTag].tasks)
-	) {
+	if (!rawData || !rawData[tag] || !Array.isArray(rawData[tag].tasks)) {
 		throw new Error(
-			`Invalid tasks file or tag "${currentTag}" not found at ${tasksPath}`
+			`Invalid tasks file or tag "${tag}" not found at ${tasksPath}`
 		);
 	}
 
 	// Get the tasks for the current tag
-	const tasks = rawData[currentTag].tasks;
+	const tasks = rawData[tag].tasks;
 
 	log(
 		'info',
-		`Moving task/subtask ${sourceId} to ${destinationId} (tag: ${currentTag})`
+		`Moving task/subtask ${sourceId} to ${destinationId} (tag: ${tag})`
 	);
 
 	// Parse source and destination IDs
@@ -116,14 +106,17 @@ async function moveTask(
 	}
 
 	// Update the data structure with the modified tasks
-	rawData[currentTag].tasks = tasks;
+	rawData[tag].tasks = tasks;
 
 	// Always write the data object, never the _rawTaggedData directly
 	// The writeJSON function will filter out _rawTaggedData automatically
-	writeJSON(tasksPath, rawData, options.projectRoot, currentTag);
+	writeJSON(tasksPath, rawData, options.projectRoot, tag);
 
 	if (generateFiles) {
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+			tag: tag,
+			projectRoot: projectRoot
+		});
 	}
 
 	return result;

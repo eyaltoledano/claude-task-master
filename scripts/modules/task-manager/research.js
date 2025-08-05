@@ -12,6 +12,7 @@ import { highlight } from 'cli-highlight';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { generateTextService } from '../ai-services-unified.js';
+import { getPromptManager } from '../prompt-manager.js';
 import {
 	log as consoleLog,
 	findProjectRoot,
@@ -34,6 +35,7 @@ import {
  * @param {boolean} [options.includeProjectTree] - Include project file tree
  * @param {string} [options.detailLevel] - Detail level: 'low', 'medium', 'high'
  * @param {string} [options.projectRoot] - Project root directory
+ * @param {string} [options.tag] - Tag for the task
  * @param {boolean} [options.saveToFile] - Whether to save results to file (MCP mode)
  * @param {Object} [context] - Execution context
  * @param {Object} [context.session] - MCP session object
@@ -58,8 +60,8 @@ async function performResearch(
 		includeProjectTree = false,
 		detailLevel = 'medium',
 		projectRoot: providedProjectRoot,
-		saveToFile = false,
-		saveTo = null // Add saveTo parameter for automatic task saving
+		tag,
+		saveToFile = false
 	} = options;
 
 	const {
@@ -101,7 +103,7 @@ async function performResearch(
 
 	try {
 		// Initialize context gatherer
-		const contextGatherer = new ContextGatherer(projectRoot);
+		const contextGatherer = new ContextGatherer(projectRoot, tag);
 
 		// Auto-discover relevant tasks using fuzzy search to supplement provided tasks
 		let finalTaskIds = [...taskIds]; // Start with explicitly provided tasks
@@ -114,7 +116,7 @@ async function performResearch(
 				'tasks',
 				'tasks.json'
 			);
-			const tasksData = await readJSON(tasksPath, projectRoot);
+			const tasksData = await readJSON(tasksPath, projectRoot, tag);
 
 			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
@@ -191,14 +193,24 @@ async function performResearch(
 		const gatheredContext = contextResult.context;
 		const tokenBreakdown = contextResult.tokenBreakdown;
 
-		// Build system prompt based on detail level
-		const systemPrompt = buildResearchSystemPrompt(detailLevel, projectRoot);
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
 
-		// Build user prompt with context
-		const userPrompt = buildResearchUserPrompt(
-			query,
-			gatheredContext,
-			detailLevel
+		const promptParams = {
+			query: query,
+			gatheredContext: gatheredContext || '',
+			detailLevel: detailLevel,
+			projectInfo: {
+				root: projectRoot,
+				taskCount: finalTaskIds.length,
+				fileCount: filePaths.length
+			}
+		};
+
+		// Load prompts - the research template handles detail level internally
+		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+			'research',
+			promptParams
 		);
 
 		// Count tokens for system and user prompts
@@ -286,71 +298,6 @@ async function performResearch(
 			}
 		}
 
-		// Handle automatic save to task if saveTo is provided
-		if (saveTo && (isMCP || outputFormat === 'json')) {
-			try {
-				// Import required modules
-				const { readJSON } = await import('../utils.js');
-				const updateTaskById = (await import('./update-task-by-id.js')).default;
-				const updateSubtaskById = (await import('./update-subtask-by-id.js'))
-					.default;
-
-				// Format conversation for saving
-				const conversationHistory = [
-					{
-						question: query,
-						answer: researchResult,
-						type: 'initial',
-						timestamp: new Date().toISOString()
-					}
-				];
-				const conversationThread =
-					formatConversationForSaving(conversationHistory);
-
-				// Get tasks path
-				const tasksPath = path.join(
-					projectRoot,
-					'.taskmaster',
-					'tasks',
-					'tasks.json'
-				);
-
-				// Determine if it's a task or subtask
-				const isSubtask = saveTo.includes('.');
-
-				if (isSubtask) {
-					// Save to subtask
-					await updateSubtaskById(
-						tasksPath,
-						saveTo,
-						conversationThread,
-						false, // useResearch = false for simple append
-						{ ...context, projectRoot },
-						'json' // Use json output format for non-interactive
-					);
-				} else {
-					// Save to task
-					const taskIdNum = parseInt(saveTo, 10);
-					await updateTaskById(
-						tasksPath,
-						taskIdNum,
-						conversationThread,
-						false, // useResearch = false for simple append
-						{ ...context, projectRoot },
-						'json', // Use json output format for non-interactive
-						true // appendMode = true
-					);
-				}
-
-				logFn.info(`Research saved to task ${saveTo}`);
-			} catch (error) {
-				logFn.error(
-					`Failed to save research to task ${saveTo}: ${error.message}`
-				);
-				// Don't throw - continue with the research result even if save fails
-			}
-		}
-
 		// Handle MCP save-to-file request
 		if (saveToFile && isMCP) {
 			const conversationHistory = [
@@ -413,94 +360,6 @@ async function performResearch(
 
 		throw error;
 	}
-}
-
-/**
- * Build system prompt for research based on detail level
- * @param {string} detailLevel - Detail level: 'low', 'medium', 'high'
- * @param {string} projectRoot - Project root for context
- * @returns {string} System prompt
- */
-function buildResearchSystemPrompt(detailLevel, projectRoot) {
-	const basePrompt = `You are an expert AI research assistant helping with a software development project. You have access to project context including tasks, files, and project structure.
-
-Your role is to provide comprehensive, accurate, and actionable research responses based on the user's query and the provided project context.`;
-
-	const detailInstructions = {
-		low: `
-**Response Style: Concise & Direct**
-- Provide brief, focused answers (2-4 paragraphs maximum)
-- Focus on the most essential information
-- Use bullet points for key takeaways
-- Avoid lengthy explanations unless critical
-- Skip pleasantries, introductions, and conclusions
-- No phrases like "Based on your project context" or "I'll provide guidance"
-- No summary outros or alignment statements
-- Get straight to the actionable information
-- Use simple, direct language - users want info, not explanation`,
-
-		medium: `
-**Response Style: Balanced & Comprehensive**
-- Provide thorough but well-structured responses (4-8 paragraphs)
-- Include relevant examples and explanations
-- Balance depth with readability
-- Use headings and bullet points for organization`,
-
-		high: `
-**Response Style: Detailed & Exhaustive**
-- Provide comprehensive, in-depth analysis (8+ paragraphs)
-- Include multiple perspectives and approaches
-- Provide detailed examples, code snippets, and step-by-step guidance
-- Cover edge cases and potential pitfalls
-- Use clear structure with headings, subheadings, and lists`
-	};
-
-	return `${basePrompt}
-
-${detailInstructions[detailLevel]}
-
-**Guidelines:**
-- Always consider the project context when formulating responses
-- Reference specific tasks, files, or project elements when relevant
-- Provide actionable insights that can be applied to the project
-- If the query relates to existing project tasks, suggest how the research applies to those tasks
-- Use markdown formatting for better readability
-- Be precise and avoid speculation unless clearly marked as such
-
-**For LOW detail level specifically:**
-- Start immediately with the core information
-- No introductory phrases or context acknowledgments
-- No concluding summaries or project alignment statements
-- Focus purely on facts, steps, and actionable items`;
-}
-
-/**
- * Build user prompt with query and context
- * @param {string} query - User's research query
- * @param {string} gatheredContext - Gathered project context
- * @param {string} detailLevel - Detail level for response guidance
- * @returns {string} Complete user prompt
- */
-function buildResearchUserPrompt(query, gatheredContext, detailLevel) {
-	let prompt = `# Research Query
-
-${query}`;
-
-	if (gatheredContext && gatheredContext.trim()) {
-		prompt += `
-
-# Project Context
-
-${gatheredContext}`;
-	}
-
-	prompt += `
-
-# Instructions
-
-Please research and provide a ${detailLevel}-detail response to the query above. Consider the project context provided and make your response as relevant and actionable as possible for this specific project.`;
-
-	return prompt;
 }
 
 /**
@@ -912,10 +771,7 @@ async function handleSaveToTask(
 			return;
 		}
 
-		// Validate ID exists - use tag from context
-		const { getCurrentTag } = await import('../utils.js');
-		const tag = context.tag || getCurrentTag(projectRoot) || 'master';
-		const data = readJSON(tasksPath, projectRoot, tag);
+		const data = readJSON(tasksPath, projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return;
@@ -949,7 +805,7 @@ async function handleSaveToTask(
 				trimmedTaskId,
 				conversationThread,
 				false, // useResearch = false for simple append
-				{ ...context, tag },
+				context,
 				'text'
 			);
 
@@ -976,7 +832,7 @@ async function handleSaveToTask(
 				taskIdNum,
 				conversationThread,
 				false, // useResearch = false for simple append
-				{ ...context, tag },
+				context,
 				'text',
 				true // appendMode = true
 			);

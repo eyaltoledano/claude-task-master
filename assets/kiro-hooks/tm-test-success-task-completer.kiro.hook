@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "[TM] Test Success Task Completer",
+  "description": "Mark tasks as done when their tests pass",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*test*.{js,ts,jsx,tsx,py,go,java,rb,php,rs,cpp,cs}",
+      "**/*spec*.{js,ts,jsx,tsx,rb}",
+      "**/test_*.py",
+      "**/*_test.go",
+      "**/*Test.java",
+      "**/*Tests.cs",
+      "!**/node_modules/**",
+      "!**/vendor/**"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A test file was just saved. Please:\n\n1. Identify the test framework/language and run the appropriate test command for this file (npm test, pytest, go test, cargo test, dotnet test, mvn test, etc.)\n2. If all tests pass, check which tasks mention this functionality\n3. For any matching tasks that are 'in-progress', ask if the passing tests mean the task is complete\n4. If confirmed, mark the task as done with 'tm set-status --id=<task_id> --status=done'"
+  }
+}

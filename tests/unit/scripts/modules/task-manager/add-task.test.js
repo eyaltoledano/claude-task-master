@@ -123,6 +123,18 @@ jest.unstable_mockModule(
 	})
 );
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
 // Mock external UI libraries
 jest.unstable_mockModule('chalk', () => ({
 	default: {
@@ -225,7 +237,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -241,7 +254,8 @@ describe('addTask', () => {
 		// Assert
 		expect(readJSON).toHaveBeenCalledWith(
 			'tasks/tasks.json',
-			'/mock/project/root'
+			'/mock/project/root',
+			'master'
 		);
 		expect(generateObjectService).toHaveBeenCalledWith(expect.any(Object));
 		expect(writeJSON).toHaveBeenCalledWith(
@@ -276,7 +290,8 @@ describe('addTask', () => {
 		const validDependencies = [1, 2]; // These exist in sampleTasks
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -313,7 +328,8 @@ describe('addTask', () => {
 		const invalidDependencies = [999]; // Non-existent task ID
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -355,7 +371,8 @@ describe('addTask', () => {
 		const priority = 'high';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -384,7 +401,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -421,7 +439,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act
@@ -445,7 +464,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act & Assert
@@ -462,7 +482,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act & Assert
@@ -479,7 +500,8 @@ describe('addTask', () => {
 		const prompt = 'Create a new authentication system';
 		const context = {
 			mcpLog: createMcpLogMock(),
-			projectRoot: '/mock/project/root'
+			projectRoot: '/mock/project/root',
+			tag: 'master'
 		};
 
 		// Act & Assert

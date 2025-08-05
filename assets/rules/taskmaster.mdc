@@ -157,7 +157,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `details`: `Provide implementation notes or details for the new subtask.` (CLI: `--details <text>`)
     *   `dependencies`: `Specify IDs of other tasks or subtasks, e.g., '15' or '16.1', that must be done before this new subtask.` (CLI: `--dependencies <ids>`)
     *   `status`: `Set the initial status for the new subtask. Default is 'pending'.` (CLI: `-s, --status <status>`)
-    *   `skipGenerate`: `Prevent Taskmaster from automatically regenerating markdown task files after adding the subtask.` (CLI: `--skip-generate`)
+    *   `generate`: `Enable Taskmaster to regenerate markdown task files after adding the subtask.` (CLI: `--generate`)
     *   `tag`: `Specify which tag context to operate on. Defaults to the current active tag.` (CLI: `--tag <name>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Break down tasks manually or reorganize existing tasks.
@@ -285,7 +285,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Key Parameters/Options:**
     *   `id`: `Required. The ID(s) of the Taskmaster subtask(s) to remove, e.g., '15.2' or '16.1,16.3'.` (CLI: `-i, --id <id>`)
     *   `convert`: `If used, Taskmaster will turn the subtask into a regular top-level task instead of deleting it.` (CLI: `-c, --convert`)
-    *   `skipGenerate`: `Prevent Taskmaster from automatically regenerating markdown task files after removing the subtask.` (CLI: `--skip-generate`)
+    *   `generate`: `Enable Taskmaster to regenerate markdown task files after removing the subtask.` (CLI: `--generate`)
     *   `tag`: `Specify which tag context to operate on. Defaults to the current active tag.` (CLI: `--tag <name>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Delete unnecessary subtasks or promote a subtask to a top-level task.

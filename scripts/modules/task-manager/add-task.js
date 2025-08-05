@@ -22,13 +22,19 @@ import {
 	truncate,
 	ensureTagMetadata,
 	performCompleteTagMigration,
-	markMigrationForNotice,
-	getCurrentTag
+	markMigrationForNotice
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	TASK_PRIORITY_OPTIONS,
+	DEFAULT_TASK_PRIORITY,
+	isValidTaskPriority,
+	normalizeTaskPriority
+} from '../../../src/constants/task-priority.js';
 
 // Define Zod schema for the expected AI output object
 const AiTaskDataSchema = z.object({
@@ -86,7 +92,7 @@ function getAllTasks(rawData) {
  * @param {string} [context.projectRoot] - Project root path (for MCP/env fallback)
  * @param {string} [context.commandName] - The name of the command being executed (for telemetry)
  * @param {string} [context.outputType] - The output type ('cli' or 'mcp', for telemetry)
- * @param {string} [tag] - Tag for the task (optional)
+ * @param {string} [context.tag] - Tag for the task (optional)
  * @returns {Promise<object>} An object containing newTaskId and telemetryData
  */
 async function addTask(
@@ -97,10 +103,10 @@ async function addTask(
 	context = {},
 	outputFormat = 'text', // Default to text for CLI
 	manualTaskData = null,
-	useResearch = false,
-	tag = null
+	useResearch = false
 ) {
-	const { session, mcpLog, projectRoot, commandName, outputType } = context;
+	const { session, mcpLog, projectRoot, commandName, outputType, tag } =
+		context;
 	const isMCP = !!mcpLog;
 
 	// Create a consistent logFn object regardless of context
@@ -115,7 +121,25 @@ async function addTask(
 				success: (...args) => consoleLog('success', ...args)
 			};
 
-	const effectivePriority = priority || getDefaultPriority(projectRoot);
+	// Validate priority - only accept high, medium, or low
+	let effectivePriority =
+		priority || getDefaultPriority(projectRoot) || DEFAULT_TASK_PRIORITY;
+
+	// If priority is provided, validate and normalize it
+	if (priority) {
+		const normalizedPriority = normalizeTaskPriority(priority);
+		if (normalizedPriority) {
+			effectivePriority = normalizedPriority;
+		} else {
+			if (outputFormat === 'text') {
+				consoleLog(
+					'warn',
+					`Invalid priority "${priority}". Using default priority "${DEFAULT_TASK_PRIORITY}".`
+				);
+			}
+			effectivePriority = DEFAULT_TASK_PRIORITY;
+		}
+	}
 
 	logFn.info(
 		`Adding new task with prompt: "${prompt}", Priority: ${effectivePriority}, Dependencies: ${dependencies.join(', ') || 'None'}, Research: ${useResearch}, ProjectRoot: ${projectRoot}`
@@ -199,7 +223,7 @@ async function addTask(
 
 	try {
 		// Read the existing tasks - IMPORTANT: Read the raw data without tag resolution
-		let rawData = readJSON(tasksPath, projectRoot); // No tag parameter
+		let rawData = readJSON(tasksPath, projectRoot, tag); // No tag parameter
 
 		// Handle the case where readJSON returns resolved data with _rawTaggedData
 		if (rawData && rawData._rawTaggedData) {
@@ -254,8 +278,7 @@ async function addTask(
 		}
 
 		// Use the provided tag, or the current active tag, or default to 'master'
-		const targetTag =
-			tag || context.tag || getCurrentTag(projectRoot) || 'master';
+		const targetTag = tag;
 
 		// Ensure the target tag exists
 		if (!rawData[targetTag]) {
@@ -364,7 +387,7 @@ async function addTask(
 			report(`Generating task data with AI with prompt:\n${prompt}`, 'info');
 
 			// --- Use the new ContextGatherer ---
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const gatherResult = await contextGatherer.gather({
 				semanticQuery: prompt,
 				dependencyTasks: numericDependencies,
@@ -379,30 +402,6 @@ async function addTask(
 				displayContextAnalysis(analysisData, prompt, gatheredContext.length);
 			}
 
-			// System Prompt - Enhanced for dependency awareness
-			const systemPrompt =
-				"You are a helpful assistant that creates well-structured tasks for a software development project. Generate a single new task based on the user's description, adhering strictly to the provided JSON schema. Pay special attention to dependencies between tasks, ensuring the new task correctly references any tasks it depends on.\n\n" +
-				'When determining dependencies for a new task, follow these principles:\n' +
-				'1. Select dependencies based on logical requirements - what must be completed before this task can begin.\n' +
-				'2. Prioritize task dependencies that are semantically related to the functionality being built.\n' +
-				'3. Consider both direct dependencies (immediately prerequisite) and indirect dependencies.\n' +
-				'4. Avoid adding unnecessary dependencies - only include tasks that are genuinely prerequisite.\n' +
-				'5. Consider the current status of tasks - prefer completed tasks as dependencies when possible.\n' +
-				"6. Pay special attention to foundation tasks (1-5) but don't automatically include them without reason.\n" +
-				'7. Recent tasks (higher ID numbers) may be more relevant for newer functionality.\n\n' +
-				'The dependencies array should contain task IDs (numbers) of prerequisite tasks.\n';
-
-			// Task Structure Description (for user prompt)
-			const taskStructureDesc = `
-      {
-        "title": "Task title goes here",
-        "description": "A concise one or two sentence description of what the task involves",
-    "details": "Detailed implementation steps, considerations, code examples, or technical approach",
-    "testStrategy": "Specific steps to verify correct implementation and functionality",
-    "dependencies": [1, 3] // Example: IDs of tasks that must be completed before this task
-  }
-`;
-
 			// Add any manually provided details to the prompt for context
 			let contextFromArgs = '';
 			if (manualTaskData?.title)
@@ -414,18 +413,21 @@ async function addTask(
 			if (manualTaskData?.testStrategy)
 				contextFromArgs += `\n- Additional Test Strategy Context: "${manualTaskData.testStrategy}"`;
 
-			// User Prompt
-			const userPrompt = `You are generating the details for Task #${newTaskId}. Based on the user's request: "${prompt}", create a comprehensive new task for a software development project.
-      
-      ${gatheredContext}
-      
-      Based on the information about existing tasks provided above, include appropriate dependencies in the "dependencies" array. Only include task IDs that this new task directly depends on.
-      
-      Return your answer as a single JSON object matching the schema precisely:
-      ${taskStructureDesc}
-      
-      Make sure the details and test strategy are comprehensive and specific. DO NOT include the task ID in the title.
-      `;
+			// Load prompts using PromptManager
+			const promptManager = getPromptManager();
+			const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+				'add-task',
+				{
+					prompt,
+					newTaskId,
+					existingTasks: allTasks,
+					gatheredContext,
+					contextFromArgs,
+					useResearch,
+					priority: effectivePriority,
+					dependencies: numericDependencies
+				}
+			);
 
 			// Start the loading indicator - only for text mode
 			if (outputFormat === 'text') {
@@ -556,16 +558,6 @@ async function addTask(
 		// The writeJSON function will automatically filter out _rawTaggedData
 		writeJSON(tasksPath, rawData, projectRoot, targetTag);
 		report('DEBUG: tasks.json written.', 'debug');
-
-		// Generate markdown task files
-		report('Generating task files...', 'info');
-		report('DEBUG: Calling generateTaskFiles...', 'debug');
-		// Pass mcpLog if available to generateTaskFiles
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-			projectRoot,
-			tag: targetTag
-		});
-		report('DEBUG: generateTaskFiles finished.', 'debug');
 
 		// Show success message - only for text output (CLI)
 		if (outputFormat === 'text') {

@@ -56,6 +56,18 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
+	})
+);
+
+jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager/models.js',
 	() => ({
 		getModelConfiguration: jest.fn(() => ({
@@ -159,7 +171,7 @@ describe('updateTasks', () => {
 			mockFromId,
 			mockPrompt,
 			false, // research
-			{ projectRoot: '/mock/path' }, // context
+			{ projectRoot: '/mock/path', tag: 'master' }, // context
 			'json' // output format
 		);
 
@@ -229,7 +241,7 @@ describe('updateTasks', () => {
 			mockFromId,
 			mockPrompt,
 			false,
-			{ projectRoot: '/mock/path' },
+			{ projectRoot: '/mock/path', tag: 'master' },
 			'json'
 		);
 

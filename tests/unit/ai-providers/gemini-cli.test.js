@@ -50,7 +50,7 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 }));
 
 // Mock the log module
-jest.unstable_mockModule('../../../scripts/modules/index.js', () => ({
+jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn()
 }));
 
@@ -60,7 +60,7 @@ const { GeminiCliProvider } = await import(
 );
 const { createGeminiProvider } = await import('ai-sdk-provider-gemini-cli');
 const { generateObject, generateText, streamText } = await import('ai');
-const { log } = await import('../../../scripts/modules/index.js');
+const { log } = await import('../../../scripts/modules/utils.js');
 
 describe('GeminiCliProvider', () => {
 	let provider;

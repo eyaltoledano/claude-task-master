@@ -263,6 +263,43 @@ function hasTaggedStructure(data) {
 }
 
 /**
+ * Normalizes task IDs to ensure they are numbers instead of strings
+ * @param {Array} tasks - Array of tasks to normalize
+ */
+function normalizeTaskIds(tasks) {
+	if (!Array.isArray(tasks)) return;
+
+	tasks.forEach((task) => {
+		// Convert task ID to number with validation
+		if (task.id !== undefined) {
+			const parsedId = parseInt(task.id, 10);
+			if (!isNaN(parsedId) && parsedId > 0) {
+				task.id = parsedId;
+			}
+		}
+
+		// Convert subtask IDs to numbers with validation
+		if (Array.isArray(task.subtasks)) {
+			task.subtasks.forEach((subtask) => {
+				if (subtask.id !== undefined) {
+					// Check for dot notation (which shouldn't exist in storage)
+					if (typeof subtask.id === 'string' && subtask.id.includes('.')) {
+						// Extract the subtask part after the dot
+						const parts = subtask.id.split('.');
+						subtask.id = parseInt(parts[parts.length - 1], 10);
+					} else {
+						const parsedSubtaskId = parseInt(subtask.id, 10);
+						if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
+							subtask.id = parsedSubtaskId;
+						}
+					}
+				}
+			});
+		}
+	});
+}
+
+/**
  * Reads and parses a JSON file
  * @param {string} filepath - Path to the JSON file
  * @param {string} [projectRoot] - Optional project root for tag resolution (used by MCP)
@@ -321,6 +358,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		if (isDebug) {
 			console.log(`File is in legacy format, performing migration...`);
 		}
+
+		normalizeTaskIds(data.tasks);
 
 		// This is legacy format - migrate it to tagged format
 		const migratedData = {
@@ -401,6 +440,16 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 		// Store reference to the raw tagged data for functions that need it
 		const originalTaggedData = JSON.parse(JSON.stringify(data));
 
+		// Normalize IDs in all tags before storing as originalTaggedData
+		for (const tagName in originalTaggedData) {
+			if (
+				originalTaggedData[tagName] &&
+				Array.isArray(originalTaggedData[tagName].tasks)
+			) {
+				normalizeTaskIds(originalTaggedData[tagName].tasks);
+			}
+		}
+
 		// Check and auto-switch git tags if enabled (for existing tagged format)
 		// This needs to run synchronously BEFORE tag resolution
 		if (projectRoot) {
@@ -448,6 +497,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
+				normalizeTaskIds(tagData.tasks);
+
 				// Add the _rawTaggedData property and the resolved tag to the returned data
 				const result = {
 					...tagData,
@@ -464,6 +515,8 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
+					normalizeTaskIds(masterData.tasks);
+
 					if (isDebug) {
 						console.log(
 							`Tag '${resolvedTag}' not found, falling back to master with ${masterData.tasks.length} tasks`
@@ -493,6 +546,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// If anything goes wrong, try to return master or empty
 			const masterData = data.master;
 			if (masterData && masterData.tasks) {
+				normalizeTaskIds(masterData.tasks);
 				return {
 					...masterData,
 					_rawTaggedData: originalTaggedData
@@ -1190,6 +1244,7 @@ function aggregateTelemetry(telemetryArray, overallCommandName) {
 }
 
 /**
+ * @deprecated Use TaskMaster.getCurrentTag() instead
  * Gets the current tag from state.json or falls back to defaultTag from config
  * @param {string} projectRoot - The project root directory (required)
  * @returns {string} The current tag name
@@ -1411,5 +1466,6 @@ export {
 	createStateJson,
 	markMigrationForNotice,
 	flattenTasksWithSubtasks,
-	ensureTagMetadata
+	ensureTagMetadata,
+	normalizeTaskIds
 };

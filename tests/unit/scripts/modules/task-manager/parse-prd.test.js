@@ -48,7 +48,8 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDebugFlag: jest.fn(() => false),
-		getDefaultNumTasks: jest.fn(() => 10)
+		getDefaultNumTasks: jest.fn(() => 10),
+		getDefaultPriority: jest.fn(() => 'medium')
 	})
 );
 
@@ -67,6 +68,30 @@ jest.unstable_mockModule(
 			maxTokens: 4000,
 			temperature: 0.7
 		}))
+	})
+);
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockImplementation((templateName, params) => {
+				// Create dynamic mock prompts based on the parameters
+				const { numTasks } = params || {};
+				let numTasksText = '';
+
+				if (numTasks > 0) {
+					numTasksText = `approximately ${numTasks}`;
+				} else {
+					numTasksText = 'an appropriate number of';
+				}
+
+				return Promise.resolve({
+					systemPrompt: 'Mocked system prompt for parse-prd',
+					userPrompt: `Generate ${numTasksText} top-level development tasks from the PRD content.`
+				});
+			})
+		})
 	})
 );
 
@@ -208,7 +233,9 @@ describe('parsePRD', () => {
 		});
 
 		// Call the function
-		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			tag: 'master'
+		});
 
 		// Verify fs.readFileSync was called with the correct arguments
 		expect(fs.default.readFileSync).toHaveBeenCalledWith(
@@ -251,7 +278,7 @@ describe('parsePRD', () => {
 		});
 
 		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { tag: 'master' });
 
 		// Verify mkdir was called
 		expect(fs.default.mkdirSync).toHaveBeenCalledWith('tasks', {
@@ -274,6 +301,7 @@ describe('parsePRD', () => {
 		// Call the function with mcpLog to make it think it's in MCP mode (which throws instead of process.exit)
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				tag: 'master',
 				mcpLog: {
 					info: jest.fn(),
 					warn: jest.fn(),
@@ -294,7 +322,7 @@ describe('parsePRD', () => {
 		});
 
 		// Call the function
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { tag: 'master' });
 	});
 
 	test('should overwrite tasks.json when force flag is true', async () => {
@@ -306,7 +334,10 @@ describe('parsePRD', () => {
 		});
 
 		// Call the function with force=true to allow overwrite
-		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { force: true });
+		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			force: true,
+			tag: 'master'
+		});
 
 		// Verify prompt was NOT called (confirmation happens at CLI level, not in core function)
 		expect(promptYesNo).not.toHaveBeenCalled();
@@ -329,6 +360,7 @@ describe('parsePRD', () => {
 		// Call the function with mcpLog to make it think it's in MCP mode (which throws instead of process.exit)
 		await expect(
 			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+				tag: 'master',
 				mcpLog: {
 					info: jest.fn(),
 					warn: jest.fn(),
@@ -348,33 +380,23 @@ describe('parsePRD', () => {
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
 	});
 
-	test('should call process.exit when tasks in tag exist without force flag in CLI mode', async () => {
+	test('should throw error when tasks in tag exist without force flag in CLI mode', async () => {
 		// Setup mocks to simulate tasks.json already exists with tasks in the target tag
 		fs.default.existsSync.mockReturnValue(true);
 		fs.default.readFileSync.mockReturnValueOnce(
 			JSON.stringify(existingTasksData)
 		);
 
-		// Mock process.exit for this specific test
-		const mockProcessExit = jest
-			.spyOn(process, 'exit')
-			.mockImplementation((code) => {
-				throw new Error(`process.exit: ${code}`);
-			});
-
-		// Call the function without mcpLog (CLI mode) and expect it to throw due to mocked process.exit
+		// Call the function without mcpLog (CLI mode) and expect it to throw an error
+		// In test environment, process.exit is prevented and error is thrown instead
 		await expect(
-			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3)
-		).rejects.toThrow('process.exit: 1');
-
-		// Verify process.exit was called with code 1
-		expect(mockProcessExit).toHaveBeenCalledWith(1);
+			parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, { tag: 'master' })
+		).rejects.toThrow(
+			"Tag 'master' already contains 2 tasks. Use --force to overwrite or --append to add to existing tasks."
+		);
 
 		// Verify the file was NOT written
 		expect(fs.default.writeFileSync).not.toHaveBeenCalled();
-
-		// Restore the mock
-		mockProcessExit.mockRestore();
 	});
 
 	test('should append new tasks when append option is true', async () => {
@@ -396,6 +418,7 @@ describe('parsePRD', () => {
 
 		// Call the function with append option
 		const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 2, {
+			tag: 'master',
 			append: true
 		});
 
@@ -430,6 +453,7 @@ describe('parsePRD', () => {
 
 		// Call the function with append option
 		await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
+			tag: 'master',
 			append: true
 		});
 
@@ -447,7 +471,9 @@ describe('parsePRD', () => {
 			});
 
 			// Call the function with numTasks=0 for dynamic generation
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0, {
+				tag: 'master'
+			});
 
 			// Verify generateObjectService was called
 			expect(generateObjectService).toHaveBeenCalled();
@@ -467,7 +493,9 @@ describe('parsePRD', () => {
 			});
 
 			// Call the function with specific numTasks
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 5);
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 5, {
+				tag: 'master'
+			});
 
 			// Verify generateObjectService was called
 			expect(generateObjectService).toHaveBeenCalled();
@@ -487,7 +515,9 @@ describe('parsePRD', () => {
 			});
 
 			// Call the function with numTasks=0 - should not throw error
-			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0);
+			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 0, {
+				tag: 'master'
+			});
 
 			// Verify it completed successfully
 			expect(result).toEqual({
@@ -507,7 +537,9 @@ describe('parsePRD', () => {
 
 			// Call the function with negative numTasks
 			// Note: The main parse-prd.js module doesn't validate numTasks - validation happens at CLI/MCP level
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', -5);
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', -5, {
+				tag: 'master'
+			});
 
 			// Verify generateObjectService was called
 			expect(generateObjectService).toHaveBeenCalled();
@@ -528,7 +560,9 @@ describe('parsePRD', () => {
 			});
 
 			// Call the function with null numTasks
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', null);
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', null, {
+				tag: 'master'
+			});
 
 			// Verify generateObjectService was called with dynamic prompting
 			expect(generateObjectService).toHaveBeenCalled();
@@ -545,7 +579,9 @@ describe('parsePRD', () => {
 			});
 
 			// Call the function with invalid numTasks (string that's not a number)
-			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 'invalid');
+			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 'invalid', {
+				tag: 'master'
+			});
 
 			// Verify generateObjectService was called with dynamic prompting
 			// Note: The main module doesn't validate - it just uses the value as-is

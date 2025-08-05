@@ -10,6 +10,7 @@ export const VALIDATED_PROVIDERS = [
 	'google',
 	'perplexity',
 	'xai',
+	'groq',
 	'mistral'
 ];
 
@@ -21,6 +22,7 @@ export const CUSTOM_PROVIDERS = {
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
 	CLAUDE_CODE: 'claude-code',
+	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli'
 };
 

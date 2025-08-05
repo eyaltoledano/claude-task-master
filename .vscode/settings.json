@@ -1,0 +1,14 @@
+{
+	"json.schemas": [
+		{
+			"fileMatch": ["src/prompts/*.json"],
+			"url": "./src/prompts/schemas/prompt-template.schema.json"
+		}
+	],
+	"files.associations": {
+		"src/prompts/*.json": "json"
+	},
+
+	"json.format.enable": true,
+	"json.validate.enable": true
+}

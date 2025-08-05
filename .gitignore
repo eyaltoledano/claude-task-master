@@ -88,9 +88,9 @@ dev-debug.log
 *.sln
 *.sw?
 
-# OS specific
+# VS Code extension test files
+.vscode-test/
+apps/extension/.vscode-test/
 
-# Task files
-tasks.json
-tasks/ 
-.taskmaster/
+# apps/extension
+apps/extension/vsix-build/

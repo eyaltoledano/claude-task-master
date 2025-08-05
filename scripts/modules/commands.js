@@ -18,7 +18,6 @@ import {
 	log,
 	readJSON,
 	writeJSON,
-	findProjectRoot,
 	getCurrentTag,
 	detectCamelCaseFlags,
 	toKebabCase
@@ -43,7 +42,10 @@ import {
 	taskExists,
 	moveTask,
 	migrateProject,
-	setResponseLanguage
+	setResponseLanguage,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 } from './task-manager.js';
 
 import {
@@ -79,10 +81,11 @@ import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
 
 import {
 	COMPLEXITY_REPORT_FILE,
-	PRD_FILE,
 	TASKMASTER_TASKS_FILE,
-	TASKMASTER_CONFIG_FILE
+	TASKMASTER_DOCS_DIR
 } from '../../src/constants/paths.js';
+
+import { initTaskMaster } from '../../src/task-master.js';
 
 import {
 	displayBanner,
@@ -806,7 +809,7 @@ function registerCommands(programInstance) {
 			'-i, --input <file>',
 			'Path to the PRD file (alternative to positional argument)'
 		)
-		.option('-o, --output <file>', 'Output file path', TASKMASTER_TASKS_FILE)
+		.option('-o, --output <file>', 'Output file path')
 		.option(
 			'-n, --num-tasks <number>',
 			'Number of tasks to generate',
@@ -823,25 +826,38 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (file, options) => {
-			// Use input option if file argument not provided
-			const inputFile = file || options.input;
-			const defaultPrdPath = PRD_FILE;
+			// Initialize TaskMaster
+			let taskMaster;
+			try {
+				const initOptions = {
+					prdPath: file || options.input || true,
+					tag: options.tag
+				};
+				// Only include tasksPath if output is explicitly specified
+				if (options.output) {
+					initOptions.tasksPath = options.output;
+				}
+				taskMaster = initTaskMaster(initOptions);
+			} catch (error) {
+				console.log(
+					boxen(
+						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
+						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
+					)
+				);
+				console.error(chalk.red(`\nError: ${error.message}`));
+				process.exit(1);
+			}
+
 			const numTasks = parseInt(options.numTasks, 10);
-			const outputPath = options.output;
 			const force = options.force || false;
 			const append = options.append || false;
 			const research = options.research || false;
 			let useForce = force;
 			const useAppend = append;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -850,10 +866,11 @@ function registerCommands(programInstance) {
 			async function confirmOverwriteIfNeeded() {
 				// Check if there are existing tasks in the target tag
 				let hasExistingTasksInTag = false;
-				if (fs.existsSync(outputPath)) {
+				const tasksPath = taskMaster.getTasksPath();
+				if (fs.existsSync(tasksPath)) {
 					try {
 						// Read the entire file to check if the tag exists
-						const existingFileContent = fs.readFileSync(outputPath, 'utf8');
+						const existingFileContent = fs.readFileSync(tasksPath, 'utf8');
 						const allData = JSON.parse(existingFileContent);
 
 						// Check if the target tag exists and has tasks
@@ -872,7 +889,7 @@ function registerCommands(programInstance) {
 
 				// Only show confirmation if there are existing tasks in the target tag
 				if (hasExistingTasksInTag && !useForce && !useAppend) {
-					const overwrite = await confirmTaskOverwrite(outputPath);
+					const overwrite = await confirmTaskOverwrite(tasksPath);
 					if (!overwrite) {
 						log('info', 'Operation cancelled.');
 						return false;
@@ -887,50 +904,9 @@ function registerCommands(programInstance) {
 			let spinner;
 
 			try {
-				if (!inputFile) {
-					if (fs.existsSync(defaultPrdPath)) {
-						console.log(
-							chalk.blue(`Using default PRD file path: ${defaultPrdPath}`)
-						);
-						if (!(await confirmOverwriteIfNeeded())) return;
-
-						console.log(chalk.blue(`Generating ${numTasks} tasks...`));
-						spinner = ora('Parsing PRD and generating tasks...\n').start();
-						await parsePRD(defaultPrdPath, outputPath, numTasks, {
-							append: useAppend, // Changed key from useAppend to append
-							force: useForce, // Changed key from useForce to force
-							research: research,
-							projectRoot: projectRoot,
-							tag: tag
-						});
-						spinner.succeed('Tasks generated successfully!');
-						return;
-					}
-
-					console.log(
-						chalk.yellow(
-							`No PRD file specified and default PRD file not found at ${PRD_FILE}.`
-						)
-					);
-					console.log(
-						boxen(
-							`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: "${TASKMASTER_TASKS_FILE}")\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${PRD_FILE} by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
-							{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
-						)
-					);
-					return;
-				}
-
-				if (!fs.existsSync(inputFile)) {
-					console.error(
-						chalk.red(`Error: Input PRD file not found: ${inputFile}`)
-					);
-					process.exit(1);
-				}
-
 				if (!(await confirmOverwriteIfNeeded())) return;
 
-				console.log(chalk.blue(`Parsing PRD file: ${inputFile}`));
+				console.log(chalk.blue(`Parsing PRD file: ${taskMaster.getPrdPath()}`));
 				console.log(chalk.blue(`Generating ${numTasks} tasks...`));
 				if (append) {
 					console.log(chalk.blue('Appending to existing tasks...'));
@@ -944,11 +920,15 @@ function registerCommands(programInstance) {
 				}
 
 				spinner = ora('Parsing PRD and generating tasks...\n').start();
-				await parsePRD(inputFile, outputPath, numTasks, {
+				// Handle case where getTasksPath() returns null
+				const outputPath =
+					taskMaster.getTasksPath() ||
+					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
+				await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
 					research: research,
-					projectRoot: projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
 				spinner.succeed('Tasks generated successfully!');
@@ -988,19 +968,20 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const fromId = parseInt(options.from, 10); // Validation happens here
 			const prompt = options.prompt;
 			const useResearch = options.research || false;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			const tasksPath = taskMaster.getTasksPath();
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1052,11 +1033,11 @@ function registerCommands(programInstance) {
 
 			// Call core updateTasks, passing context for CLI
 			await updateTasks(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				fromId,
 				prompt,
 				useResearch,
-				{ projectRoot, tag } // Pass context with projectRoot and tag
+				{ projectRoot: taskMaster.getProjectRoot(), tag } // Pass context with projectRoot and tag
 			);
 		});
 
@@ -1087,16 +1068,15 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
-				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
-				const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+				const tag = taskMaster.getCurrentTag();
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1190,11 +1170,11 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateTaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					taskId,
 					prompt,
 					useResearch,
-					{ projectRoot, tag },
+					{ projectRoot: taskMaster.getProjectRoot(), tag },
 					'text',
 					options.append || false
 				);
@@ -1260,16 +1240,15 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
-				const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
-				const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+				const tag = taskMaster.getCurrentTag();
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1365,11 +1344,11 @@ function registerCommands(programInstance) {
 				}
 
 				const result = await updateSubtaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					subtaskId,
 					prompt,
 					useResearch,
-					{ projectRoot, tag }
+					{ projectRoot: taskMaster.getProjectRoot(), tag }
 				);
 
 				if (!result) {
@@ -1411,6 +1390,260 @@ function registerCommands(programInstance) {
 			}
 		});
 
+	// scope-up command
+	programInstance
+		.command('scope-up')
+		.description('Increase task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope up (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity increase strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-up --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping up ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-up',
+					outputType: 'cli',
+					research: options.research || false
+				};
+
+				const result = await scopeUpTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped up ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
+	// scope-down command
+	programInstance
+		.command('scope-down')
+		.description('Decrease task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope down (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity decrease strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-down --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping down ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-down',
+					outputType: 'cli',
+					research: options.research || false
+				};
+
+				const result = await scopeDownTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped down ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
 	// generate command
 	programInstance
 		.command('generate')
@@ -1427,20 +1660,24 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const outputDir = options.output;
-			const tag = options.tag;
+			const tag = taskMaster.getCurrentTag();
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
-			console.log(chalk.blue(`Generating task files from: ${tasksPath}`));
+			console.log(
+				chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`)
+			);
 			console.log(chalk.blue(`Output directory: ${outputDir}`));
 
-			await generateTaskFiles(tasksPath, outputDir, { projectRoot, tag });
+			await generateTaskFiles(taskMaster.getTasksPath(), outputDir, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// set-status command
@@ -1464,10 +1701,14 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const taskId = options.id;
 			const status = options.status;
-			const tag = options.tag;
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
@@ -1483,23 +1724,18 @@ function registerCommands(programInstance) {
 
 				process.exit(1);
 			}
+			const tag = taskMaster.getCurrentTag();
 
-			// Find project root for tag resolution
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
-			// Resolve tag using standard pattern and show current tag context
-			const resolvedTag = tag || getCurrentTag(projectRoot) || 'master';
-			displayCurrentTagIndicator(resolvedTag);
+			displayCurrentTagIndicator(tag);
 
 			console.log(
 				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
 			);
 
-			await setTaskStatus(tasksPath, taskId, status, { projectRoot, tag });
+			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// list command
@@ -1520,22 +1756,28 @@ function registerCommands(programInstance) {
 		.option('--with-subtasks', 'Show subtasks for each task')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
+			// Initialize TaskMaster
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			// Only pass complexityReportPath if user provided a custom path
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
 			}
 
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
+			const taskMaster = initTaskMaster(initOptions);
+
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
-
+			const tag = taskMaster.getCurrentTag();
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
-			console.log(chalk.blue(`Listing tasks from: ${tasksPath}`));
+			console.log(
+				chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
+			);
 			if (statusFilter) {
 				console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
 			}
@@ -1544,13 +1786,12 @@ function registerCommands(programInstance) {
 			}
 
 			await listTasks(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				statusFilter,
-				reportPath,
+				taskMaster.getComplexityReportPath(),
 				withSubtasks,
 				'text',
-				tag,
-				{ projectRoot }
+				{ projectRoot: taskMaster.getProjectRoot(), tag }
 			);
 		});
 
@@ -1579,18 +1820,29 @@ function registerCommands(programInstance) {
 			'Path to the tasks file (relative to project root)',
 			TASKMASTER_TASKS_FILE // Allow file override
 		) // Allow file override
+		.option(
+			'-cr, --complexity-report <file>',
+			'Path to the complexity report file (use this to specify the complexity report, not --file)'
+			// Removed default value to allow tag-specific auto-detection
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
+			// Initialize TaskMaster
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			if (options.complexityReport) {
+				initOptions.complexityReportPath = options.complexityReport;
 			}
-			const tasksPath = path.resolve(projectRoot, options.file); // Resolve tasks path
-			const tag = options.tag;
+
+			const taskMaster = initTaskMaster(initOptions);
+
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+			displayCurrentTagIndicator(tag);
 
 			if (options.all) {
 				// --- Handle expand --all ---
@@ -1598,12 +1850,16 @@ function registerCommands(programInstance) {
 				// Updated call to the refactored expandAllTasks
 				try {
 					const result = await expandAllTasks(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.num, // Pass num
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
 						options.force, // Pass force flag
-						{ projectRoot, tag } // Pass context with projectRoot and tag
+						{
+							projectRoot: taskMaster.getProjectRoot(),
+							tag,
+							complexityReportPath: taskMaster.getComplexityReportPath()
+						} // Pass context with projectRoot and tag
 						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
 				} catch (error) {
@@ -1625,12 +1881,16 @@ function registerCommands(programInstance) {
 				try {
 					// Call the refactored expandTask function
 					await expandTask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						options.id,
 						options.num,
 						options.research,
 						options.prompt,
-						{ projectRoot, tag }, // Pass context with projectRoot and tag
+						{
+							projectRoot: taskMaster.getProjectRoot(),
+							tag,
+							complexityReportPath: taskMaster.getComplexityReportPath()
+						}, // Pass context with projectRoot and tag
 						options.force // Pass the force flag down
 					);
 					// expandTask logs its own success/failure for single task
@@ -1654,11 +1914,7 @@ function registerCommands(programInstance) {
 		.description(
 			`Analyze tasks and generate expansion recommendations${chalk.reset('')}`
 		)
-		.option(
-			'-o, --output <file>',
-			'Output file path for the report',
-			COMPLEXITY_REPORT_FILE
-		)
+		.option('-o, --output <file>', 'Output file path for the report')
 		.option(
 			'-m, --model <model>',
 			'LLM model to use for analysis (defaults to configured model)'
@@ -1685,31 +1941,36 @@ function registerCommands(programInstance) {
 		.option('--to <id>', 'Ending task ID in a range to analyze')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const tag = options.tag;
+			// Initialize TaskMaster
+			const initOptions = {
+				tasksPath: options.file || true, // Tasks file is required to analyze
+				tag: options.tag
+			};
+			// Only include complexityReportPath if output is explicitly specified
+			if (options.output) {
+				initOptions.complexityReportPath = options.output;
+			}
+
+			const taskMaster = initTaskMaster(initOptions);
+
 			const modelOverride = options.model;
 			const thresholdScore = parseFloat(options.threshold);
 			const useResearch = options.research || false;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
 			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag = tag || getCurrentTag(projectRoot) || 'master';
+			const targetTag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(targetTag);
 
-			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const outputPath =
-				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
-					? options.output.replace('.json', `_${targetTag}.json`)
-					: options.output;
+			// Use user's explicit output path if provided, otherwise use tag-aware default
+			const outputPath = taskMaster.getComplexityReportPath();
 
-			console.log(chalk.blue(`Analyzing task complexity from: ${tasksPath}`));
+			console.log(
+				chalk.blue(
+					`Analyzing task complexity from: ${taskMaster.getTasksPath()}`
+				)
+			);
 			console.log(chalk.blue(`Output report will be saved to: ${outputPath}`));
 
 			if (options.id) {
@@ -1735,7 +1996,8 @@ function registerCommands(programInstance) {
 				...options,
 				output: outputPath,
 				tag: targetTag,
-				projectRoot: projectRoot
+				projectRoot: taskMaster.getProjectRoot(),
+				file: taskMaster.getTasksPath()
 			};
 
 			await analyzeTaskComplexity(updatedOptions);
@@ -1782,6 +2044,14 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
+			// Initialize TaskMaster
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			const taskMaster = initTaskMaster(initOptions);
+
 			// Parameter validation
 			if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
 				console.error(
@@ -1880,12 +2150,7 @@ function registerCommands(programInstance) {
 				}
 			}
 
-			// Determine project root and tasks file path
-			const projectRoot = findProjectRoot() || '.';
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
-			const tasksPath =
-				options.file ||
-				path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1893,11 +2158,15 @@ function registerCommands(programInstance) {
 			// Validate tasks file exists if task IDs are specified
 			if (taskIds.length > 0) {
 				try {
-					const tasksData = readJSON(tasksPath, projectRoot, tag);
+					const tasksData = readJSON(
+						taskMaster.getTasksPath(),
+						taskMaster.getProjectRoot(),
+						tag
+					);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(
-								`Error: No valid tasks found in ${tasksPath} for tag '${tag}'`
+								`Error: No valid tasks found in ${taskMaster.getTasksPath()} for tag '${tag}'`
 							)
 						);
 						process.exit(1);
@@ -1915,7 +2184,7 @@ function registerCommands(programInstance) {
 				for (const filePath of filePaths) {
 					const fullPath = path.isAbsolute(filePath)
 						? filePath
-						: path.join(projectRoot, filePath);
+						: path.join(taskMaster.getProjectRoot(), filePath);
 					if (!fs.existsSync(fullPath)) {
 						console.error(chalk.red(`Error: File not found: ${filePath}`));
 						process.exit(1);
@@ -1934,8 +2203,8 @@ function registerCommands(programInstance) {
 				saveToId: options.saveTo ? options.saveTo.trim() : null,
 				allowFollowUp: true, // Always allow follow-up in CLI
 				detailLevel: options.detail ? options.detail.toLowerCase() : 'medium',
-				tasksPath: tasksPath,
-				projectRoot: projectRoot
+				tasksPath: taskMaster.getTasksPath(),
+				projectRoot: taskMaster.getProjectRoot()
 			};
 
 			// Display what we're about to do
@@ -2112,19 +2381,19 @@ ${result.result}
 		.option('--all', 'Clear subtasks from all tasks')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const taskIds = options.id;
 			const all = options.all;
-			const tag = options.tag;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+			displayCurrentTagIndicator(tag);
 
 			if (!taskIds && !all) {
 				console.error(
@@ -2137,15 +2406,25 @@ ${result.result}
 
 			if (all) {
 				// If --all is specified, get all task IDs
-				const data = readJSON(tasksPath, projectRoot, tag);
+				const data = readJSON(
+					taskMaster.getTasksPath(),
+					taskMaster.getProjectRoot(),
+					tag
+				);
 				if (!data || !data.tasks) {
 					console.error(chalk.red('Error: No valid tasks found'));
 					process.exit(1);
 				}
 				const allIds = data.tasks.map((t) => t.id).join(',');
-				clearSubtasks(tasksPath, allIds, { projectRoot, tag });
+				clearSubtasks(taskMaster.getTasksPath(), allIds, {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				});
 			} else {
-				clearSubtasks(tasksPath, taskIds, { projectRoot, tag });
+				clearSubtasks(taskMaster.getTasksPath(), taskIds, {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				});
 			}
 		});
 
@@ -2208,16 +2487,18 @@ ${result.result}
 			}
 
 			// Correctly determine projectRoot
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
+			const projectRoot = taskMaster.getProjectRoot();
+
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
-			displayCurrentTagIndicator(
-				options.tag || getCurrentTag(projectRoot) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			let manualTaskData = null;
 			if (isManualCreation) {
@@ -2253,14 +2534,14 @@ ${result.result}
 
 			const context = {
 				projectRoot,
-				tag: options.tag,
+				tag,
 				commandName: 'add-task',
 				outputType: 'cli'
 			};
 
 			try {
 				const { newTaskId, telemetryData } = await addTask(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					options.prompt,
 					dependenciesArray,
 					options.priority,
@@ -2299,20 +2580,37 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
-			const tag = options.tag;
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
 			}
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag,
+				complexityReportPath: options.report || false
+			});
 
-			await displayNextTask(tasksPath, reportPath, { projectRoot, tag });
+			const tag = taskMaster.getCurrentTag();
+
+			const context = {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			};
+
+			// Show current tag context
+			displayCurrentTagIndicator(tag);
+
+			await displayNextTask(
+				taskMaster.getTasksPath(),
+				taskMaster.getComplexityReportPath(),
+				context
+			);
 		});
 
 	// show command
@@ -2339,26 +2637,28 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (taskId, options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
+			// Initialize TaskMaster
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+			// Only pass complexityReportPath if user provided a custom path
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
 			}
+			const taskMaster = initTaskMaster(initOptions);
 
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
-			const tag = options.tag;
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
-			displayCurrentTagIndicator(tag || getCurrentTag(projectRoot) || 'master');
+			displayCurrentTagIndicator(tag);
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
 				process.exit(1);
 			}
-
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
 
 			// Check if multiple IDs are provided (comma-separated)
 			const taskIds = idArg
@@ -2369,21 +2669,20 @@ ${result.result}
 			if (taskIds.length > 1) {
 				// Multiple tasks - use compact summary view with interactive drill-down
 				await displayMultipleTasksSummary(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					taskIds,
-					reportPath,
+					taskMaster.getComplexityReportPath(),
 					statusFilter,
-					{ projectRoot, tag }
+					{ projectRoot: taskMaster.getProjectRoot(), tag }
 				);
 			} else {
 				// Single task - use detailed view
 				await displayTaskById(
-					tasksPath,
+					taskMaster.getTasksPath(),
 					taskIds[0],
-					reportPath,
+					taskMaster.getComplexityReportPath(),
 					statusFilter,
-					tag,
-					{ projectRoot }
+					{ projectRoot: taskMaster.getProjectRoot(), tag }
 				);
 			}
 		});
@@ -2401,18 +2700,19 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(initOptions);
+
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2433,10 +2733,15 @@ ${result.result}
 				? dependencyId
 				: parseInt(dependencyId, 10);
 
-			await addDependency(tasksPath, formattedTaskId, formattedDependencyId, {
-				projectRoot,
-				tag
-			});
+			await addDependency(
+				taskMaster.getTasksPath(),
+				formattedTaskId,
+				formattedDependencyId,
+				{
+					projectRoot: taskMaster.getProjectRoot(),
+					tag
+				}
+			);
 		});
 
 	// remove-dependency command
@@ -2452,18 +2757,19 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(initOptions);
+
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2485,11 +2791,11 @@ ${result.result}
 				: parseInt(dependencyId, 10);
 
 			await removeDependency(
-				tasksPath,
+				taskMaster.getTasksPath(),
 				formattedTaskId,
 				formattedDependencyId,
 				{
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					tag
 				}
 			);
@@ -2508,20 +2814,22 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
-			await validateDependenciesCommand(options.file || TASKMASTER_TASKS_FILE, {
-				context: { projectRoot, tag }
+			await validateDependenciesCommand(taskMaster.getTasksPath(), {
+				context: { projectRoot: taskMaster.getProjectRoot(), tag }
 			});
 		});
 
@@ -2536,20 +2844,22 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
-			await fixDependenciesCommand(options.file || TASKMASTER_TASKS_FILE, {
-				context: { projectRoot, tag }
+			await fixDependenciesCommand(taskMaster.getTasksPath(), {
+				context: { projectRoot: taskMaster.getProjectRoot(), tag }
 			});
 		});
 
@@ -2564,25 +2874,21 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
+			const initOptions = {
+				tag: options.tag
+			};
+
+			if (options.file && options.file !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.file;
 			}
 
-			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag = options.tag || getCurrentTag(projectRoot) || 'master';
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Show current tag context
-			displayCurrentTagIndicator(targetTag);
+			displayCurrentTagIndicator(taskMaster.getCurrentTag());
 
-			// Tag-aware report file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const reportPath =
-				options.file === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
-					? options.file.replace('.json', `_${targetTag}.json`)
-					: options.file || COMPLEXITY_REPORT_FILE;
-
-			await displayComplexityReport(reportPath);
+			await displayComplexityReport(taskMaster.getComplexityReportPath());
 		});
 
 	// add-subtask command
@@ -2607,22 +2913,21 @@ ${result.result}
 			'Comma-separated list of dependency IDs for the new subtask'
 		)
 		.option('-s, --status <status>', 'Status for the new subtask', 'pending')
-		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--generate', 'Regenerate task files after adding subtask')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
 
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
 			const parentId = options.parent;
 			const existingTaskId = options.taskId;
-			const generateFiles = !options.skipGenerate;
+			const generateFiles = options.generate || false;
 
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2655,12 +2960,12 @@ ${result.result}
 						)
 					);
 					await addSubtask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						parentId,
 						existingTaskId,
 						null,
 						generateFiles,
-						{ projectRoot, tag }
+						{ projectRoot: taskMaster.getProjectRoot(), tag }
 					);
 					console.log(
 						chalk.green(
@@ -2682,12 +2987,12 @@ ${result.result}
 					};
 
 					const subtask = await addSubtask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						parentId,
 						null,
 						newSubtaskData,
 						generateFiles,
-						{ projectRoot, tag }
+						{ projectRoot: taskMaster.getProjectRoot(), tag }
 					);
 					console.log(
 						chalk.green(
@@ -2769,7 +3074,7 @@ ${result.result}
 	function showAddSubtaskHelp() {
 		console.log(
 			boxen(
-				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --skip-generate           Skip regenerating task files\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form"`,
+				`${chalk.white.bold('Add Subtask Command Help')}\n\n${chalk.cyan('Usage:')}\n  task-master add-subtask --parent=<id> [options]\n\n${chalk.cyan('Options:')}\n  -p, --parent <id>         Parent task ID (required)\n  -i, --task-id <id>        Existing task ID to convert to subtask\n  -t, --title <title>       Title for the new subtask\n  -d, --description <text>  Description for the new subtask\n  --details <text>          Implementation details for the new subtask\n  --dependencies <ids>      Comma-separated list of dependency IDs\n  -s, --status <status>     Status for the new subtask (default: "pending")\n  -f, --file <file>         Path to the tasks file (default: "${TASKMASTER_TASKS_FILE}")\n  --generate                Regenerate task files after adding subtask\n\n${chalk.cyan('Examples:')}\n  task-master add-subtask --parent=5 --task-id=8\n  task-master add-subtask -p 5 -t "Implement login UI" -d "Create the login form" --generate`,
 				{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 			)
 		);
@@ -2792,20 +3097,19 @@ ${result.result}
 			'-c, --convert',
 			'Convert the subtask to a standalone task instead of deleting it'
 		)
-		.option('--skip-generate', 'Skip regenerating task files')
+		.option('--generate', 'Regenerate task files after removing subtask')
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
-			const generateFiles = !options.skipGenerate;
-			const tag = options.tag;
-
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			const generateFiles = options.generate || false;
+			const tag = taskMaster.getCurrentTag();
 
 			if (!subtaskIds) {
 				console.error(
@@ -2841,11 +3145,11 @@ ${result.result}
 					}
 
 					const result = await removeSubtask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						subtaskId,
 						convertToTask,
 						generateFiles,
-						{ projectRoot, tag }
+						{ projectRoot: taskMaster.getProjectRoot(), tag }
 					);
 
 					if (convertToTask && result) {
@@ -3098,17 +3402,16 @@ ${result.result}
 		.option('-y, --yes', 'Skip confirmation prompt', false)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const taskIdsString = options.id;
 
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
-
 			// Resolve tag using standard pattern
-			const tag = options.tag || getCurrentTag(projectRoot) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -3135,7 +3438,11 @@ ${result.result}
 
 			try {
 				// Read data once for checks and confirmation
-				const data = readJSON(tasksPath, projectRoot, tag);
+				const data = readJSON(
+					taskMaster.getTasksPath(),
+					taskMaster.getProjectRoot(),
+					tag
+				);
 				if (!data || !data.tasks) {
 					console.error(
 						chalk.red(`Error: No valid tasks found in ${tasksPath}`)
@@ -3275,10 +3582,14 @@ ${result.result}
 				const existingIdsString = existingTasksToRemove
 					.map(({ id }) => id)
 					.join(',');
-				const result = await removeTask(tasksPath, existingIdsString, {
-					projectRoot,
-					tag
-				});
+				const result = await removeTask(
+					taskMaster.getTasksPath(),
+					existingIdsString,
+					{
+						projectRoot: taskMaster.getProjectRoot(),
+						tag
+					}
+				);
 
 				stopLoadingIndicator(indicator);
 
@@ -3451,11 +3762,13 @@ Examples:
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
-				process.exit(1);
-			}
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || false
+			});
+
+			const projectRoot = taskMaster.getProjectRoot();
+
 			// Validate flags: cannot use multiple provider flags simultaneously
 			const providerFlags = [
 				options.openrouter,
@@ -3484,7 +3797,7 @@ Examples:
 				// Action 1: Run Interactive Setup
 				console.log(chalk.blue('Starting interactive model setup...')); // Added feedback
 				try {
-					await runInteractiveSetup(projectRoot);
+					await runInteractiveSetup(taskMaster.getProjectRoot());
 					// runInteractiveSetup logs its own completion/error messages
 				} catch (setupError) {
 					console.error(
@@ -3670,12 +3983,10 @@ Examples:
 		.option('--response <response_language>', 'Set the response language')
 		.option('--setup', 'Run interactive setup to configure response language')
 		.action(async (options) => {
-			const projectRoot = findProjectRoot(); // Find project root for context
+			const taskMaster = initTaskMaster({});
+			const projectRoot = taskMaster.getProjectRoot(); // Find project root for context
 			const { response, setup } = options;
-			console.log(
-				chalk.blue('Response language set to:', JSON.stringify(options))
-			);
-			let responseLanguage = response || 'English';
+			let responseLanguage = response !== undefined ? response : 'English';
 			if (setup) {
 				console.log(
 					chalk.blue('Starting interactive response language setup...')
@@ -3717,6 +4028,7 @@ Examples:
 						`❌ Error setting response language: ${result.error.message}`
 					)
 				);
+				process.exit(1);
 			}
 		});
 
@@ -3739,10 +4051,15 @@ Examples:
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const sourceId = options.from;
 			const destinationId = options.to;
-			const tag = options.tag;
+			const tag = taskMaster.getCurrentTag();
 
 			if (!sourceId || !destinationId) {
 				console.error(
@@ -3753,13 +4070,6 @@ Examples:
 						'Usage: task-master move --from=<sourceId> --to=<destinationId>'
 					)
 				);
-				process.exit(1);
-			}
-
-			// Find project root for tag resolution
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(chalk.red('Error: Could not find project root.'));
 				process.exit(1);
 			}
 
@@ -3790,7 +4100,11 @@ Examples:
 
 				try {
 					// Read tasks data once to validate destination IDs
-					const tasksData = readJSON(tasksPath, projectRoot, tag);
+					const tasksData = readJSON(
+						taskMaster.getTasksPath(),
+						taskMaster.getProjectRoot(),
+						tag
+					);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
 							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
@@ -3816,11 +4130,11 @@ Examples:
 						);
 						try {
 							await moveTask(
-								tasksPath,
+								taskMaster.getTasksPath(),
 								fromId,
 								toId,
 								i === sourceIds.length - 1,
-								{ projectRoot, tag }
+								{ projectRoot: taskMaster.getProjectRoot(), tag }
 							);
 							console.log(
 								chalk.green(
@@ -3846,11 +4160,11 @@ Examples:
 
 				try {
 					const result = await moveTask(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						sourceId,
 						destinationId,
 						true,
-						{ projectRoot, tag }
+						{ projectRoot: taskMaster.getProjectRoot(), tag }
 					);
 					console.log(
 						chalk.green(
@@ -3887,7 +4201,8 @@ Examples:
 		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
 		)
 		.action(async (action, profiles, options) => {
-			const projectRoot = findProjectRoot();
+			const taskMaster = initTaskMaster({});
+			const projectRoot = taskMaster.getProjectRoot();
 			if (!projectRoot) {
 				console.error(chalk.red('Error: Could not find project root.'));
 				process.exit(1);
@@ -4018,10 +4333,6 @@ Examples:
 						projectRoot,
 						profileConfig
 					);
-					if (typeof profileConfig.onAddRulesProfile === 'function') {
-						const assetsDir = path.join(projectRoot, 'assets');
-						profileConfig.onAddRulesProfile(projectRoot, assetsDir);
-					}
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)
 					);
@@ -4051,37 +4362,27 @@ Examples:
 
 			// Print summary for additions
 			if (action === RULES_ACTIONS.ADD && addResults.length > 0) {
-				const {
-					allSuccessfulProfiles,
-					totalSuccess,
-					totalFailed,
-					simpleProfiles
-				} = categorizeProfileResults(addResults);
+				const { allSuccessfulProfiles, totalSuccess, totalFailed } =
+					categorizeProfileResults(addResults);
 
 				if (allSuccessfulProfiles.length > 0) {
 					console.log(
 						chalk.green(
-							`\nSuccessfully added rules for: ${allSuccessfulProfiles.join(', ')}`
+							`\nSuccessfully processed profiles: ${allSuccessfulProfiles.join(', ')}`
 						)
 					);
 
-					// Create a more descriptive summary
-					if (totalSuccess > 0 && simpleProfiles.length > 0) {
+					// Create a descriptive summary
+					if (totalSuccess > 0) {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed, ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${totalSuccess} files processed, ${totalFailed} failed.`
 							)
 						);
-					} else if (totalSuccess > 0) {
+					} else {
 						console.log(
 							chalk.green(
-								`Total: ${totalSuccess} rules added, ${totalFailed} failed.`
-							)
-						);
-					} else if (simpleProfiles.length > 0) {
-						console.log(
-							chalk.green(
-								`Total: ${simpleProfiles.length} integration guide(s) copied.`
+								`Total: ${allSuccessfulProfiles.length} profile(s) set up successfully.`
 							)
 						);
 					}
@@ -4186,21 +4487,18 @@ Examples:
 			'-s, --status <status>',
 			'Show only tasks matching this status (e.g., pending, done)'
 		)
+		.option('-t, --tag <tag>', 'Tag to use for the task list (default: master)')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
 			const withSubtasks = options.withSubtasks || false;
 			const status = options.status || null;
 
-			// Find project root
-			const projectRoot = findProjectRoot();
-			if (!projectRoot) {
-				console.error(
-					chalk.red(
-						'Error: Could not find project root. Make sure you are in a Task Master project directory.'
-					)
-				);
-				process.exit(1);
-			}
+			const tag = taskMaster.getCurrentTag();
 
 			console.log(
 				chalk.blue(
@@ -4208,10 +4506,11 @@ Examples:
 				)
 			);
 
-			const success = await syncTasksToReadme(projectRoot, {
+			const success = await syncTasksToReadme(taskMaster.getProjectRoot(), {
 				withSubtasks,
 				status,
-				tasksPath
+				tasksPath: taskMaster.getTasksPath(),
+				tag
 			});
 
 			if (!success) {
@@ -4250,13 +4549,11 @@ Examples:
 		.option('-d, --description <text>', 'Optional description for the tag')
 		.action(async (tagName, options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4285,7 +4582,7 @@ Examples:
 				}
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'add-tag',
 					outputType: 'cli'
 				};
@@ -4326,7 +4623,7 @@ Examples:
 					};
 
 					await createTagFromBranch(
-						tasksPath,
+						taskMaster.getTasksPath(),
 						currentBranch,
 						branchOptions,
 						context,
@@ -4340,7 +4637,13 @@ Examples:
 						description: options.description
 					};
 
-					await createTag(tasksPath, tagName, createOptions, context, 'text');
+					await createTag(
+						taskMaster.getTasksPath(),
+						tagName,
+						createOptions,
+						context,
+						'text'
+					);
 				}
 
 				// Handle auto-switch if requested
@@ -4353,7 +4656,13 @@ Examples:
 								)
 							)
 						: tagName;
-					await useTag(tasksPath, finalTagName, {}, context, 'text');
+					await useTag(
+						taskMaster.getTasksPath(),
+						finalTagName,
+						{},
+						context,
+						'text'
+					);
 				}
 			} catch (error) {
 				console.error(chalk.red(`Error creating tag: ${error.message}`));
@@ -4380,13 +4689,11 @@ Examples:
 		.option('-y, --yes', 'Skip confirmation prompts')
 		.action(async (tagName, options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4401,12 +4708,18 @@ Examples:
 				};
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'delete-tag',
 					outputType: 'cli'
 				};
 
-				await deleteTag(tasksPath, tagName, deleteOptions, context, 'text');
+				await deleteTag(
+					taskMaster.getTasksPath(),
+					tagName,
+					deleteOptions,
+					context,
+					'text'
+				);
 			} catch (error) {
 				console.error(chalk.red(`Error deleting tag: ${error.message}`));
 				showDeleteTagHelp();
@@ -4429,15 +4742,15 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.option('--show-metadata', 'Show detailed metadata for each tag')
+		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4453,12 +4766,12 @@ Examples:
 				};
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'tags',
 					outputType: 'cli'
 				};
 
-				await tags(tasksPath, listOptions, context, 'text');
+				await tags(taskMaster.getTasksPath(), listOptions, context, 'text');
 			} catch (error) {
 				console.error(chalk.red(`Error listing tags: ${error.message}`));
 				showTagsHelp();
@@ -4483,13 +4796,11 @@ Examples:
 		)
 		.action(async (tagName, options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4500,12 +4811,12 @@ Examples:
 				}
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'use-tag',
 					outputType: 'cli'
 				};
 
-				await useTag(tasksPath, tagName, {}, context, 'text');
+				await useTag(taskMaster.getTasksPath(), tagName, {}, context, 'text');
 			} catch (error) {
 				console.error(chalk.red(`Error switching tag: ${error.message}`));
 				showUseTagHelp();
@@ -4531,13 +4842,11 @@ Examples:
 		)
 		.action(async (oldName, newName, options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4548,12 +4857,19 @@ Examples:
 				}
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'rename-tag',
 					outputType: 'cli'
 				};
 
-				await renameTag(tasksPath, oldName, newName, {}, context, 'text');
+				await renameTag(
+					taskMaster.getTasksPath(),
+					oldName,
+					newName,
+					{},
+					context,
+					'text'
+				);
 			} catch (error) {
 				console.error(chalk.red(`Error renaming tag: ${error.message}`));
 				process.exit(1);
@@ -4578,13 +4894,11 @@ Examples:
 		.option('-d, --description <text>', 'Optional description for the new tag')
 		.action(async (sourceName, targetName, options) => {
 			try {
-				const projectRoot = findProjectRoot();
-				if (!projectRoot) {
-					console.error(chalk.red('Error: Could not find project root.'));
-					process.exit(1);
-				}
-
-				const tasksPath = path.resolve(projectRoot, options.file);
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true
+				});
+				const tasksPath = taskMaster.getTasksPath();
 
 				// Validate tasks file exists
 				if (!fs.existsSync(tasksPath)) {
@@ -4599,7 +4913,7 @@ Examples:
 				};
 
 				const context = {
-					projectRoot,
+					projectRoot: taskMaster.getProjectRoot(),
 					commandName: 'copy-tag',
 					outputType: 'cli'
 				};
@@ -4834,16 +5148,13 @@ async function runCLI(argv = process.argv) {
 
 		// Check if migration has occurred and show FYI notice once
 		try {
-			const projectRoot = findProjectRoot() || '.';
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
-			const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+			// Use initTaskMaster with no required fields - will only fail if no project root
+			const taskMaster = initTaskMaster({});
 
-			if (fs.existsSync(tasksPath)) {
+			const tasksPath = taskMaster.getTasksPath();
+			const statePath = taskMaster.getStatePath();
+
+			if (tasksPath && fs.existsSync(tasksPath)) {
 				// Read raw file to check if it has master key (bypassing tag resolution)
 				const rawData = fs.readFileSync(tasksPath, 'utf8');
 				const parsedData = JSON.parse(rawData);
@@ -4851,7 +5162,7 @@ async function runCLI(argv = process.argv) {
 				if (parsedData && parsedData.master) {
 					// Migration has occurred, check if we've shown the notice
 					let stateData = { migrationNoticeShown: false };
-					if (fs.existsSync(statePath)) {
+					if (statePath && fs.existsSync(statePath)) {
 						// Read state.json directly without tag resolution since it's not a tagged file
 						const rawStateData = fs.readFileSync(statePath, 'utf8');
 						stateData = JSON.parse(rawStateData) || stateData;
@@ -4863,7 +5174,9 @@ async function runCLI(argv = process.argv) {
 						// Mark as shown
 						stateData.migrationNoticeShown = true;
 						// Write state.json directly without tag resolution since it's not a tagged file
-						fs.writeFileSync(statePath, JSON.stringify(stateData, null, 2));
+						if (statePath) {
+							fs.writeFileSync(statePath, JSON.stringify(stateData, null, 2));
+						}
 					}
 				}
 			}
@@ -4925,6 +5238,33 @@ async function runCLI(argv = process.argv) {
 
 		process.exit(1);
 	}
+}
+
+/**
+ * Resolve the final complexity-report path.
+ * Rules:
+ *  1. If caller passes --output, always respect it.
+ *  2. If no explicit output AND tag === 'master' → default report file
+ *  3. If no explicit output AND tag !== 'master' → append _<tag>.json
+ *
+ * @param {string|undefined} outputOpt  --output value from CLI (may be undefined)
+ * @param {string} targetTag            resolved tag (defaults to 'master')
+ * @param {string} projectRoot          absolute project root
+ * @returns {string} absolute path for the report
+ */
+export function resolveComplexityReportPath({
+	projectRoot,
+	tag = 'master',
+	output // may be undefined
+}) {
+	// 1. user knows best
+	if (output) {
+		return path.isAbsolute(output) ? output : path.join(projectRoot, output);
+	}
+
+	// 2. default naming
+	const base = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
 export {

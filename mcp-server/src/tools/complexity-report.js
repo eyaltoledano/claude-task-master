@@ -12,6 +12,7 @@ import {
 import { complexityReportDirect } from '../core/task-master-core.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { findComplexityReportPath } from '../core/utils/path-utils.js';
+import { getCurrentTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the complexityReport tool with the MCP server
@@ -38,12 +39,16 @@ export function registerComplexityReportTool(server) {
 					`Getting complexity report with args: ${JSON.stringify(args)}`
 				);
 
+				const resolvedTag = getCurrentTag(args.projectRoot);
+
 				const pathArgs = {
 					projectRoot: args.projectRoot,
-					complexityReport: args.file
+					complexityReport: args.file,
+					tag: resolvedTag
 				};
 
 				const reportPath = findComplexityReportPath(pathArgs, log);
+				log.info('Reading complexity report from path: ', reportPath);
 
 				if (!reportPath) {
 					return createErrorResponse(

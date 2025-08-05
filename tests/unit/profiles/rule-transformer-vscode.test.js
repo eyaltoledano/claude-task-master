@@ -76,6 +76,7 @@ Also has references to .mdc files and cursor rules.`;
 		expect(transformedContent).not.toContain('cursor.so');
 		expect(transformedContent).not.toContain('Cursor rule');
 		expect(transformedContent).not.toContain('globs:');
+		expect(transformedContent).not.toContain('alwaysApply:');
 	});
 
 	it('should correctly convert tool references', () => {
@@ -132,7 +133,7 @@ Files are in the .cursor/rules directory and we should reference the rules direc
 		// Call the actual function
 		const result = convertRuleToProfileRule(
 			'source.mdc',
-			'target.md',
+			'target.instructions.md',
 			vscodeProfile
 		);
 
@@ -148,10 +149,10 @@ Files are in the .cursor/rules directory and we should reference the rules direc
 			'applyTo: ".github/instructions/*.md"'
 		); // globs -> applyTo with path transformation
 		expect(transformedContent).toContain(
-			'(.github/instructions/dev_workflow.md)'
+			'(.github/instructions/dev_workflow.instructions.md)'
 		); // File path transformation - no taskmaster subdirectory for VS Code
 		expect(transformedContent).toContain(
-			'(.github/instructions/taskmaster.md)'
+			'(.github/instructions/taskmaster.instructions.md)'
 		); // File path transformation - no taskmaster subdirectory for VS Code
 		expect(transformedContent).toContain('instructions directory'); // "rules directory" -> "instructions directory"
 		expect(transformedContent).not.toContain('(mdc:.cursor/rules/');

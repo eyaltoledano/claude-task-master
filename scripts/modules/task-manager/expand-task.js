@@ -19,6 +19,7 @@ import {
 import { generateTextService } from '../ai-services-unified.js';
 
 import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
@@ -39,8 +40,10 @@ const subtaskSchema = z
 			.min(10)
 			.describe('Detailed description of the subtask'),
 		dependencies: z
-			.array(z.number().int())
-			.describe('IDs of prerequisite subtasks within this expansion'),
+			.array(z.string())
+			.describe(
+				'Array of subtask dependencies within the same parent task. Use format ["parentTaskId.1", "parentTaskId.2"]. Subtasks can only depend on siblings, not external tasks.'
+			),
 		details: z.string().min(20).describe('Implementation details and guidance'),
 		status: z
 			.string()
@@ -59,128 +62,6 @@ const subtaskWrapperSchema = z.object({
 	subtasks: subtaskArraySchema.describe('The array of generated subtasks.')
 });
 // --- End Zod Schemas ---
-
-/**
- * Generates the system prompt for the main AI role (e.g., Claude).
- * @param {number} subtaskCount - The target number of subtasks.
- * @returns {string} The system prompt.
- */
-function generateMainSystemPrompt(subtaskCount) {
-	return `You are an AI assistant helping with task breakdown for software development.
-You need to break down a high-level task into ${subtaskCount > 0 ? subtaskCount : 'an appropriate number of'} specific subtasks that can be implemented one by one.
-
-Subtasks should:
-1. Be specific and actionable implementation steps
-2. Follow a logical sequence
-3. Each handle a distinct part of the parent task
-4. Include clear guidance on implementation approach
-5. Have appropriate dependency chains between subtasks (using the new sequential IDs)
-6. Collectively cover all aspects of the parent task
-
-For each subtask, provide:
-- id: Sequential integer starting from the provided nextSubtaskId
-- title: Clear, specific title
-- description: Detailed description
-- dependencies: Array of prerequisite subtask IDs (use the new sequential IDs)
-- details: Implementation details, the output should be in string
-- testStrategy: Optional testing approach
-
-
-Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array matching the structure described. Do not include any explanatory text, markdown formatting, or code block markers.`;
-}
-
-/**
- * Generates the user prompt for the main AI role (e.g., Claude).
- * @param {Object} task - The parent task object.
- * @param {number} subtaskCount - The target number of subtasks.
- * @param {string} additionalContext - Optional additional context.
- * @param {number} nextSubtaskId - The starting ID for the new subtasks.
- * @returns {string} The user prompt.
- */
-function generateMainUserPrompt(
-	task,
-	subtaskCount,
-	additionalContext,
-	nextSubtaskId
-) {
-	const contextPrompt = additionalContext
-		? `\n\nAdditional context: ${additionalContext}`
-		: '';
-	const schemaDescription = `
-{
-  "subtasks": [
-    {
-      "id": ${nextSubtaskId}, // First subtask ID
-      "title": "Specific subtask title",
-      "description": "Detailed description",
-      "dependencies": [], // e.g., [${nextSubtaskId + 1}] if it depends on the next
-      "details": "Implementation guidance",
-      "testStrategy": "Optional testing approach"
-    },
-    // ... (repeat for ${subtaskCount ? 'a total of ' + subtaskCount : 'each of the'} subtasks with sequential IDs)
-  ]
-}`;
-
-	return `Break down this task into ${subtaskCount > 0 ? 'exactly ' + subtaskCount : 'an appropriate number of'} specific subtasks:
-
-Task ID: ${task.id}
-Title: ${task.title}
-Description: ${task.description}
-Current details: ${task.details || 'None'}
-${contextPrompt}
-
-Return ONLY the JSON object containing the "subtasks" array, matching this structure:
-${schemaDescription}`;
-}
-
-/**
- * Generates the user prompt for the research AI role (e.g., Perplexity).
- * @param {Object} task - The parent task object.
- * @param {number} subtaskCount - The target number of subtasks.
- * @param {string} additionalContext - Optional additional context.
- * @param {number} nextSubtaskId - The starting ID for the new subtasks.
- * @returns {string} The user prompt.
- */
-function generateResearchUserPrompt(
-	task,
-	subtaskCount,
-	additionalContext,
-	nextSubtaskId
-) {
-	const contextPrompt = additionalContext
-		? `\n\nConsider this context: ${additionalContext}`
-		: '';
-	const schemaDescription = `
-{
-  "subtasks": [
-    {
-      "id": <number>, // Sequential ID starting from ${nextSubtaskId}
-      "title": "<string>",
-      "description": "<string>",
-      "dependencies": [<number>], // e.g., [${nextSubtaskId + 1}]. If no dependencies, use an empty array [].
-      "details": "<string>",
-      "testStrategy": "<string>" // Optional
-    },
-    // ... (repeat for ${subtaskCount} subtasks)
-  ]
-}`;
-
-	return `Analyze the following task and break it down into ${subtaskCount > 0 ? 'exactly ' + subtaskCount : 'an appropriate number of'} specific subtasks using your research capabilities. Assign sequential IDs starting from ${nextSubtaskId}.
-
-Parent Task:
-ID: ${task.id}
-Title: ${task.title}
-Description: ${task.description}
-Current details: ${task.details || 'None'}
-${contextPrompt}
-
-CRITICAL: Respond ONLY with a valid JSON object containing a single key "subtasks". The value must be an array of the generated subtasks, strictly matching this structure:
-${schemaDescription}
-
-Important: For the 'dependencies' field, if a subtask has no dependencies, you MUST use an empty array, for example: "dependencies": []. Do not use null or omit the field.
-
-Do not include ANY explanatory text, markdown, or code block markers. Just the JSON object.`;
-}
 
 /**
  * Parse subtasks from AI's text response. Includes basic cleanup.
@@ -356,12 +237,10 @@ function parseSubtasksFromText(
 			...rawSubtask,
 			id: currentId,
 			dependencies: Array.isArray(rawSubtask.dependencies)
-				? rawSubtask.dependencies
-						.map((dep) => (typeof dep === 'string' ? parseInt(dep, 10) : dep))
-						.filter(
-							(depId) =>
-								!Number.isNaN(depId) && depId >= startId && depId < currentId
-						)
+				? rawSubtask.dependencies.filter(
+						(dep) =>
+							typeof dep === 'string' && dep.startsWith(`${parentTaskId}.`)
+					)
 				: [],
 			status: 'pending'
 		};
@@ -411,6 +290,8 @@ function parseSubtasksFromText(
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
@@ -424,7 +305,13 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: contextProjectRoot,
+		tag,
+		complexityReportPath
+	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
@@ -471,7 +358,7 @@ async function expandTask(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
 			const searchQuery = `${task.title} ${task.description}`;
@@ -490,7 +377,7 @@ async function expandTask(
 					tasks: finalTaskIds,
 					format: 'research'
 				});
-				gatheredContext = contextResult;
+				gatheredContext = contextResult.context || '';
 			}
 		} catch (contextError) {
 			logger.warn(`Could not gather context: ${contextError.message}`);
@@ -499,20 +386,11 @@ async function expandTask(
 
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
-		let promptContent = '';
 		let complexityReasoningContext = '';
-		let systemPrompt; // Declare systemPrompt here
-
-		// Use tag-aware complexity report path
-		const complexityReportPath = getTagAwareFilePath(
-			COMPLEXITY_REPORT_FILE,
-			tag,
-			projectRoot
-		);
 		let taskAnalysis = null;
 
 		logger.info(
-			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+			`Looking for complexity report at: ${complexityReportPath}${tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
 		);
 
 		try {
@@ -570,52 +448,71 @@ async function expandTask(
 		// Determine prompt content AND system prompt
 		const nextSubtaskId = (task.subtasks?.length || 0) + 1;
 
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
+
+		// Combine all context sources into a single additionalContext parameter
+		let combinedAdditionalContext = '';
+		if (additionalContext || complexityReasoningContext) {
+			combinedAdditionalContext =
+				`\n\n${additionalContext}${complexityReasoningContext}`.trim();
+		}
+		if (gatheredContext) {
+			combinedAdditionalContext =
+				`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
+		}
+
+		// Ensure expansionPrompt is a string (handle both string and object formats)
+		let expansionPromptText = undefined;
 		if (taskAnalysis?.expansionPrompt) {
-			// Use prompt from complexity report
-			promptContent = taskAnalysis.expansionPrompt;
-			// Append additional context and reasoning
-			promptContent += `\n\n${additionalContext}`.trim();
-			promptContent += `${complexityReasoningContext}`.trim();
-			if (gatheredContext) {
-				promptContent += `\n\n# Project Context\n\n${gatheredContext}`;
+			if (typeof taskAnalysis.expansionPrompt === 'string') {
+				expansionPromptText = taskAnalysis.expansionPrompt;
+			} else if (
+				typeof taskAnalysis.expansionPrompt === 'object' &&
+				taskAnalysis.expansionPrompt.text
+			) {
+				expansionPromptText = taskAnalysis.expansionPrompt.text;
 			}
+		}
 
-			// --- Use Simplified System Prompt for Report Prompts ---
-			systemPrompt = `You are an AI assistant helping with task breakdown. Generate ${finalSubtaskCount > 0 ? 'exactly ' + finalSubtaskCount : 'an appropriate number of'} subtasks based on the provided prompt and context. Respond ONLY with a valid JSON object containing a single key "subtasks" whose value is an array of the generated subtask objects. Each subtask object in the array must have keys: "id", "title", "description", "dependencies", "details", "status". Ensure the 'id' starts from ${nextSubtaskId} and is sequential. Ensure 'dependencies' only reference valid prior subtask IDs generated in this response (starting from ${nextSubtaskId}). Ensure 'status' is 'pending'. Do not include any other text or explanation.`;
-			logger.info(
-				`Using expansion prompt from complexity report and simplified system prompt for task ${task.id}.`
-			);
-			// --- End Simplified System Prompt ---
-		} else {
-			// Use standard prompt generation
-			let combinedAdditionalContext =
-				`${additionalContext}${complexityReasoningContext}`.trim();
-			if (gatheredContext) {
-				combinedAdditionalContext =
-					`${combinedAdditionalContext}\n\n# Project Context\n\n${gatheredContext}`.trim();
-			}
-
-			if (useResearch) {
-				promptContent = generateResearchUserPrompt(
-					task,
-					finalSubtaskCount,
-					combinedAdditionalContext,
-					nextSubtaskId
-				);
-				// Use the specific research system prompt if needed, or a standard one
-				systemPrompt = `You are an AI assistant that responds ONLY with valid JSON objects as requested. The object should contain a 'subtasks' array.`; // Or keep generateResearchSystemPrompt if it exists
+		// Ensure gatheredContext is a string (handle both string and object formats)
+		let gatheredContextText = gatheredContext;
+		if (typeof gatheredContext === 'object' && gatheredContext !== null) {
+			if (gatheredContext.data) {
+				gatheredContextText = gatheredContext.data;
+			} else if (gatheredContext.text) {
+				gatheredContextText = gatheredContext.text;
 			} else {
-				promptContent = generateMainUserPrompt(
-					task,
-					finalSubtaskCount,
-					combinedAdditionalContext,
-					nextSubtaskId
-				);
-				// Use the original detailed system prompt for standard generation
-				systemPrompt = generateMainSystemPrompt(finalSubtaskCount);
+				gatheredContextText = JSON.stringify(gatheredContext);
 			}
+		}
+
+		const promptParams = {
+			task: task,
+			subtaskCount: finalSubtaskCount,
+			nextSubtaskId: nextSubtaskId,
+			additionalContext: additionalContext,
+			complexityReasoningContext: complexityReasoningContext,
+			gatheredContext: gatheredContextText || '',
+			useResearch: useResearch,
+			expansionPrompt: expansionPromptText || undefined
+		};
+
+		let variantKey = 'default';
+		if (expansionPromptText) {
+			variantKey = 'complexity-report';
+			logger.info(
+				`Using expansion prompt from complexity report for task ${task.id}.`
+			);
+		} else if (useResearch) {
+			variantKey = 'research';
+			logger.info(`Using research variant for task ${task.id}.`);
+		} else {
 			logger.info(`Using standard prompt generation for task ${task.id}.`);
 		}
+
+		const { systemPrompt, userPrompt: promptContent } =
+			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
 		// --- End Complexity Report / Prompt Logic ---
 
 		// --- AI Subtask Generation using generateTextService ---

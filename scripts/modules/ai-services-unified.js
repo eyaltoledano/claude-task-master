@@ -8,48 +8,52 @@
 
 // --- Core Dependencies ---
 import {
-	getMainProvider,
-	getMainModelId,
-	getResearchProvider,
-	getResearchModelId,
-	getFallbackProvider,
+	MODEL_MAP,
+	getAzureBaseURL,
+	getBaseUrlForRole,
+	getBedrockBaseURL,
+	getDebugFlag,
 	getFallbackModelId,
+	getFallbackProvider,
+	getMainModelId,
+	getMainProvider,
+	getOllamaBaseURL,
 	getParametersForRole,
+	getResearchModelId,
+	getResearchProvider,
 	getResponseLanguage,
 	getUserId,
-	MODEL_MAP,
-	getDebugFlag,
-	getBaseUrlForRole,
-	isApiKeySet,
-	getOllamaBaseURL,
-	getAzureBaseURL,
-	getBedrockBaseURL,
-	getVertexProjectId,
 	getVertexLocation,
+	getVertexProjectId,
+	isApiKeySet,
 	providersWithoutApiKeys
 } from './config-manager.js';
 import {
-	log,
 	findProjectRoot,
-	resolveEnvVariable,
-	getCurrentTag
+	getCurrentTag,
+	log,
+	resolveEnvVariable
 } from './utils.js';
 
 // Import provider classes
 import {
 	AnthropicAIProvider,
-	PerplexityAIProvider,
-	GoogleAIProvider,
-	OpenAIProvider,
-	XAIProvider,
-	OpenRouterAIProvider,
-	OllamaAIProvider,
-	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider,
+	BedrockAIProvider,
 	ClaudeCodeProvider,
-	GeminiCliProvider
+	GeminiCliProvider,
+	GoogleAIProvider,
+	GroqProvider,
+	OllamaAIProvider,
+	OpenAIProvider,
+	OpenRouterAIProvider,
+	PerplexityAIProvider,
+	VertexAIProvider,
+	XAIProvider
 } from '../../src/ai-providers/index.js';
+
+// Import the provider registry
+import ProviderRegistry from '../../src/provider-registry/index.js';
 
 // Create provider instances
 const PROVIDERS = {
@@ -58,6 +62,7 @@ const PROVIDERS = {
 	google: new GoogleAIProvider(),
 	openai: new OpenAIProvider(),
 	xai: new XAIProvider(),
+	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
@@ -66,6 +71,23 @@ const PROVIDERS = {
 	'claude-code': new ClaudeCodeProvider(),
 	'gemini-cli': new GeminiCliProvider()
 };
+
+function _getProvider(providerName) {
+	// First check the static PROVIDERS object
+	if (PROVIDERS[providerName]) {
+		return PROVIDERS[providerName];
+	}
+
+	// If not found, check the provider registry
+	const providerRegistry = ProviderRegistry.getInstance();
+	if (providerRegistry.hasProvider(providerName)) {
+		log('debug', `Provider "${providerName}" found in dynamic registry`);
+		return providerRegistry.getProvider(providerName);
+	}
+
+	// Provider not found in either location
+	return null;
+}
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
@@ -231,44 +253,26 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
-	// Claude Code doesn't require an API key
-	if (providerName === 'claude-code') {
-		return 'claude-code-no-key-required';
-	}
-
-	// Gemini CLI can work without an API key (uses CLI auth)
-	if (providerName === 'gemini-cli') {
-		const apiKey = resolveEnvVariable('GEMINI_API_KEY', session, projectRoot);
-		return apiKey || 'gemini-cli-no-key-required';
-	}
-
-	const keyMap = {
-		openai: 'OPENAI_API_KEY',
-		anthropic: 'ANTHROPIC_API_KEY',
-		google: 'GOOGLE_API_KEY',
-		perplexity: 'PERPLEXITY_API_KEY',
-		mistral: 'MISTRAL_API_KEY',
-		azure: 'AZURE_OPENAI_API_KEY',
-		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY',
-		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY',
-		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		'gemini-cli': 'GEMINI_API_KEY'
-	};
-
-	const envVarName = keyMap[providerName];
-	if (!envVarName) {
+	// Get provider instance
+	const provider = _getProvider(providerName);
+	if (!provider) {
 		throw new Error(
 			`Unknown provider '${providerName}' for API key resolution.`
 		);
 	}
 
+	// All providers must implement getRequiredApiKeyName()
+	const envVarName = provider.getRequiredApiKeyName();
+
+	// If envVarName is null (like for MCP), return null directly
+	if (envVarName === null) {
+		return null;
+	}
+
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
-	// Special handling for providers that can use alternative auth
-	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
+	// Special handling for providers that can use alternative auth or no API key
+	if (!provider.isRequiredApiKey()) {
 		return apiKey || null;
 	}
 
@@ -455,7 +459,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Get provider instance
-			provider = PROVIDERS[providerName?.toLowerCase()];
+			provider = _getProvider(providerName?.toLowerCase());
 			if (!provider) {
 				log(
 					'warn',
