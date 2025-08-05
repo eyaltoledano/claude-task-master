@@ -44,4 +44,21 @@ export class PerplexityAIProvider extends BaseAIProvider {
 			this.handleError('client initialization', error);
 		}
 	}
+
+	/**
+	 * Override generateObject to use JSON mode for Perplexity
+	 *
+	 * NOTE: Perplexity models (especially sonar models) have known issues
+	 * generating valid JSON, particularly with array fields. They often
+	 * generate malformed JSON like "dependencies": , instead of "dependencies": []
+	 *
+	 * The base provider now handles JSON repair automatically for all providers.
+	 */
+	async generateObject(params) {
+		// Force JSON mode for Perplexity as it may help with reliability
+		return super.generateObject({
+			...params,
+			mode: 'json'
+		});
+	}
 }
