@@ -50,18 +50,37 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		return;
 	}
 
+	// Copy the entire .claude directory structure
 	try {
-		// Copy the entire .claude directory structure
 		copyRecursiveSync(claudeSourceDir, claudeDestDir);
 		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
-
-		// Copy AGENTS.md to .taskmaster/CLAUDE.md
-		const sourceFile = path.join(assetsDir, 'AGENTS.md');
-		const taskMasterClaudeFile = path.join(
-			targetDir,
-			'.taskmaster',
-			'CLAUDE.md'
+	} catch (err) {
+		log(
+			'error',
+			`[Claude] Failed to copy .claude directory: ${err.message}`
 		);
+		// Continue with other operations even if this fails
+	}
+
+	// Ensure .taskmaster directory exists
+	const taskMasterDir = path.join(targetDir, '.taskmaster');
+	try {
+		if (!fs.existsSync(taskMasterDir)) {
+			fs.mkdirSync(taskMasterDir, { recursive: true });
+			log('debug', `[Claude] Created .taskmaster directory`);
+		}
+	} catch (err) {
+		log(
+			'error',
+			`[Claude] Failed to create .taskmaster directory: ${err.message}`
+		);
+		return; // Cannot continue without this directory
+	}
+
+	// Copy AGENTS.md to .taskmaster/CLAUDE.md
+	try {
+		const sourceFile = path.join(assetsDir, 'AGENTS.md');
+		const taskMasterClaudeFile = path.join(taskMasterDir, 'CLAUDE.md');
 
 		if (fs.existsSync(sourceFile)) {
 			fs.copyFileSync(sourceFile, taskMasterClaudeFile);
@@ -69,9 +88,22 @@ function onAddRulesProfile(targetDir, assetsDir) {
 				'debug',
 				`[Claude] Created Task Master instructions at ${taskMasterClaudeFile}`
 			);
+		} else {
+			log(
+				'warn',
+				`[Claude] Source file AGENTS.md not found at ${sourceFile}`
+			);
 		}
+	} catch (err) {
+		log(
+			'error',
+			`[Claude] Failed to copy AGENTS.md to .taskmaster: ${err.message}`
+		);
+		// Continue with other operations even if this fails
+	}
 
-		// Setup CLAUDE.md import system
+	// Setup CLAUDE.md import system
+	try {
 		const userClaudeFile = path.join(targetDir, 'CLAUDE.md');
 		const importLine = '@./.taskmaster/CLAUDE.md';
 
@@ -86,31 +118,45 @@ ${importLine}
 
 		// Check if user already has a CLAUDE.md file
 		if (fs.existsSync(userClaudeFile)) {
-			const content = fs.readFileSync(userClaudeFile, 'utf8');
-			if (!content.includes(importLine)) {
-				// Add our import section to the beginning
-				const updatedContent = `${content.trim()}\n\n${importSection}\n`;
-				fs.writeFileSync(userClaudeFile, updatedContent);
+			try {
+				const content = fs.readFileSync(userClaudeFile, 'utf8');
+				if (!content.includes(importLine)) {
+					// Add our import section to the beginning
+					const updatedContent = `${content.trim()}\n\n${importSection}\n`;
+					fs.writeFileSync(userClaudeFile, updatedContent);
+					log(
+						'info',
+						`[Claude] Added Task Master import to existing ${userClaudeFile}`
+					);
+				} else {
+					log(
+						'debug',
+						`[Claude] Task Master import already present in ${userClaudeFile}`
+					);
+				}
+			} catch (err) {
 				log(
-					'info',
-					`[Claude] Added Task Master import to existing ${userClaudeFile}`
-				);
-			} else {
-				log(
-					'debug',
-					`[Claude] Task Master import already present in ${userClaudeFile}`
+					'error',
+					`[Claude] Failed to update existing CLAUDE.md: ${err.message}`
 				);
 			}
 		} else {
-			// Create minimal CLAUDE.md with the import section
-			const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
-			fs.writeFileSync(userClaudeFile, minimalContent);
-			log('info', `[Claude] Created ${userClaudeFile} with Task Master import`);
+			try {
+				// Create minimal CLAUDE.md with the import section
+				const minimalContent = `# Claude Code Instructions\n${importSection}\n`;
+				fs.writeFileSync(userClaudeFile, minimalContent);
+				log('info', `[Claude] Created ${userClaudeFile} with Task Master import`);
+			} catch (err) {
+				log(
+					'error',
+					`[Claude] Failed to create new CLAUDE.md: ${err.message}`
+				);
+			}
 		}
 	} catch (err) {
 		log(
 			'error',
-			`[Claude] Failed to set up Claude instructions: ${err.message}`
+			`[Claude] Unexpected error setting up CLAUDE.md: ${err.message}`
 		);
 	}
 }
