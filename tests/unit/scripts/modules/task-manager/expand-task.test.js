@@ -123,7 +123,9 @@ jest.unstable_mockModule(
 	() => ({
 		getDefaultSubtasks: jest.fn(() => 3),
 		getDebugFlag: jest.fn(() => false),
-		getDefaultNumTasks: jest.fn(() => 10)
+		getDefaultNumTasks: jest.fn(() => 10),
+		getMainProvider: jest.fn(() => 'openai'),
+		getResearchProvider: jest.fn(() => 'perplexity')
 	})
 );
 

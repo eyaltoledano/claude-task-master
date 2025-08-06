@@ -49,7 +49,9 @@ jest.unstable_mockModule(
 	() => ({
 		getDebugFlag: jest.fn(() => false),
 		getDefaultNumTasks: jest.fn(() => 10),
-		getDefaultPriority: jest.fn(() => 'medium')
+		getDefaultPriority: jest.fn(() => 'medium'),
+		getMainProvider: jest.fn(() => 'openai'),
+		getResearchProvider: jest.fn(() => 'perplexity')
 	})
 );
 

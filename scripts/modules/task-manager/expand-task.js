@@ -18,7 +18,12 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
+import {
+	getDefaultSubtasks,
+	getDebugFlag,
+	getMainProvider,
+	getResearchProvider
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
@@ -453,9 +458,6 @@ async function expandTask(
 		const promptManager = getPromptManager();
 
 		// Check if Claude Code is being used as the provider
-		const { getMainProvider, getResearchProvider } = await import(
-			'../config-manager.js'
-		);
 		const currentProvider = useResearch
 			? getResearchProvider(projectRoot)
 			: getMainProvider(projectRoot);

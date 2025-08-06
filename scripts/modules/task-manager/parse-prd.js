@@ -17,7 +17,12 @@ import {
 } from '../utils.js';
 
 import { generateObjectService } from '../ai-services-unified.js';
-import { getDebugFlag } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getMainProvider,
+	getResearchProvider,
+	getDefaultPriority
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { displayAiUsageSummary } from '../ui.js';
 import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
@@ -175,8 +180,6 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		const promptManager = getPromptManager();
 
 		// Get defaultTaskPriority from config
-		const { getDefaultPriority, getMainProvider, getResearchProvider } =
-			await import('../config-manager.js');
 		const defaultTaskPriority = getDefaultPriority(projectRoot) || 'medium';
 
 		// Check if Claude Code is being used as the provider
