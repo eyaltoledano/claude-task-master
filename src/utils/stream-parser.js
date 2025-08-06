@@ -299,7 +299,7 @@ async function attemptFallbackParsing(
 	expectedTotal,
 	config
 ) {
-	const { onProgress, estimateTokens, fallbackItemExtractor } = config;
+	const { onProgress, estimateTokens, fallbackItemExtractor, itemValidator, onError } = config;
 	const newItems = [];
 
 	try {
@@ -329,10 +329,10 @@ async function attemptFallbackParsing(
 						try {
 							onProgress(item, metadata);
 						} catch (progressError) {
-							// Log but don't break the flow
-							console.warn(
-								`Progress callback failed: ${progressError.message}`
-							);
+							// Report error but don't break the flow
+							if (onError) {
+								onError(new Error(`Progress callback failed: ${progressError.message}`));
+							}
 						}
 					}
 				}
