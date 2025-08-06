@@ -317,11 +317,11 @@ describe('parsePRD', () => {
 			telemetryData: {}
 		});
 		streamTextService.mockResolvedValue({
-			mainResult: async function* () {
+			mainResult: (async function* () {
 				yield '{"tasks":[';
 				yield '{"id":1,"title":"Test Task","priority":"high"}';
 				yield ']}';
-			},
+			})(),
 			telemetryData: {}
 		});
 		// generateTaskFiles.mockResolvedValue(undefined);
