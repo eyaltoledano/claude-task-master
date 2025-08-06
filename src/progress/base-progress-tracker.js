@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { newMultiBar } from './cli-progress-factory.js';
 
 /**
