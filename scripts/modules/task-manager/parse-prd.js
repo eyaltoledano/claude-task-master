@@ -372,9 +372,10 @@ async function parsePRDWithStreaming(
 			'debug'
 		);
 
-		// Create timeout promise
+		// Create timeout promise with cleanup
+		let timeoutHandle;
 		const timeoutPromise = new Promise((_, reject) => {
-			setTimeout(() => {
+			timeoutHandle = setTimeout(() => {
 				reject(
 					new StreamingError(
 						`Streaming operation timed out after ${streamingTimeout / 1000} seconds`,
@@ -398,7 +399,11 @@ async function parsePRDWithStreaming(
 				}),
 				timeoutPromise
 			]);
+			// Clear timeout if service completed successfully
+			clearTimeout(timeoutHandle);
 		} catch (timeoutError) {
+			// Clear timeout in case of any error
+			clearTimeout(timeoutHandle);
 			// If it's our timeout error, log and re-throw to trigger fallback
 			if (
 				timeoutError instanceof StreamingError &&
@@ -468,9 +473,10 @@ async function parsePRDWithStreaming(
 			return fullResponse.tasks || [];
 		};
 
-		// Create another timeout promise for parsing
+		// Create another timeout promise for parsing with cleanup
+		let parseTimeoutHandle;
 		const parseTimeoutPromise = new Promise((_, reject) => {
-			setTimeout(() => {
+			parseTimeoutHandle = setTimeout(() => {
 				reject(
 					new StreamingError(
 						`Stream parsing timed out after ${streamingTimeout / 1000} seconds`,
@@ -496,7 +502,11 @@ async function parsePRDWithStreaming(
 				}),
 				parseTimeoutPromise
 			]);
+			// Clear timeout if parsing completed successfully
+			clearTimeout(parseTimeoutHandle);
 		} catch (parseTimeoutError) {
+			// Clear timeout in case of any error
+			clearTimeout(parseTimeoutHandle);
 			// If it's our timeout error, log and re-throw to trigger fallback
 			if (
 				parseTimeoutError instanceof StreamingError &&
