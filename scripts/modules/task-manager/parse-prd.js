@@ -20,6 +20,7 @@ import { generateObjectService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { displayAiUsageSummary } from '../ui.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -174,8 +175,15 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 		const promptManager = getPromptManager();
 
 		// Get defaultTaskPriority from config
-		const { getDefaultPriority } = await import('../config-manager.js');
+		const { getDefaultPriority, getMainProvider, getResearchProvider } =
+			await import('../config-manager.js');
 		const defaultTaskPriority = getDefaultPriority(projectRoot) || 'medium';
+
+		// Check if Claude Code is being used as the provider
+		const currentProvider = research
+			? getResearchProvider(projectRoot)
+			: getMainProvider(projectRoot);
+		const isClaudeCode = currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
 
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'parse-prd',
@@ -185,7 +193,9 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				nextId,
 				prdContent,
 				prdPath,
-				defaultTaskPriority
+				defaultTaskPriority,
+				isClaudeCode,
+				projectRoot: projectRoot || ''
 			}
 		);
 

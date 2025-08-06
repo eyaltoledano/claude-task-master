@@ -22,6 +22,7 @@ import { getDefaultSubtasks, getDebugFlag } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
@@ -451,6 +452,15 @@ async function expandTask(
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Check if Claude Code is being used as the provider
+		const { getMainProvider, getResearchProvider } = await import(
+			'../config-manager.js'
+		);
+		const currentProvider = useResearch
+			? getResearchProvider(projectRoot)
+			: getMainProvider(projectRoot);
+		const isClaudeCode = currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
+
 		// Combine all context sources into a single additionalContext parameter
 		let combinedAdditionalContext = '';
 		if (additionalContext || complexityReasoningContext) {
@@ -495,7 +505,9 @@ async function expandTask(
 			complexityReasoningContext: complexityReasoningContext,
 			gatheredContext: gatheredContextText || '',
 			useResearch: useResearch,
-			expansionPrompt: expansionPromptText || undefined
+			expansionPrompt: expansionPromptText || undefined,
+			isClaudeCode: isClaudeCode,
+			projectRoot: projectRoot || ''
 		};
 
 		let variantKey = 'default';
