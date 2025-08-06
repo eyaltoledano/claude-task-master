@@ -527,6 +527,18 @@ async function expandTask(
 
 		const { systemPrompt, userPrompt: promptContent } =
 			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
+
+		// Debug logging to identify the issue
+		logger.debug(`Selected variant: ${variantKey}`);
+		logger.debug(
+			`Prompt params passed: ${JSON.stringify(promptParams, null, 2)}`
+		);
+		logger.debug(
+			`System prompt (first 500 chars): ${systemPrompt.substring(0, 500)}...`
+		);
+		logger.debug(
+			`User prompt (first 500 chars): ${promptContent.substring(0, 500)}...`
+		);
 		// --- End Complexity Report / Prompt Logic ---
 
 		// --- AI Subtask Generation using generateTextService ---
