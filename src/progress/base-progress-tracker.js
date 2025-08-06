@@ -179,10 +179,8 @@ export class BaseProgressTracker {
 			this.bestAvgTimePerUnit = avgTimePerUnit;
 		}
 
-		const remainingProgress = this.numUnits - progress;
-		let estimatedSeconds = Math.ceil(
-			remainingProgress * this.bestAvgTimePerUnit
-		);
+		const remainingUnits = this.numUnits * (1 - progress);
+		let estimatedSeconds = Math.ceil(remainingUnits * this.bestAvgTimePerUnit);
 
 		// Stabilization logic
 		if (this.lastEstimateTime) {
