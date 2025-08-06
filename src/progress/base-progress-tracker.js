@@ -246,4 +246,45 @@ export class BaseProgressTracker {
 			// Subclasses should extend this
 		};
 	}
+
+	/**
+	 * Cleanup method to ensure proper resource disposal and prevent memory leaks.
+	 * Should be called when the progress tracker is no longer needed.
+	 */
+	cleanup() {
+		// Stop any active timers
+		if (this._timerInterval) {
+			clearInterval(this._timerInterval);
+			this._timerInterval = null;
+		}
+
+		// Stop and clear multibar
+		if (this.multibar) {
+			try {
+				this.multibar.stop();
+			} catch (error) {
+				// Ignore errors during cleanup
+			}
+			this.multibar = null;
+		}
+
+		// Clear progress bar references
+		this.timeTokensBar = null;
+		this.progressBar = null;
+
+		// Reset state
+		this.isStarted = false;
+		this.isFinished = true;
+
+		// Allow subclasses to perform custom cleanup
+		this._performCustomCleanup();
+	}
+
+	/**
+	 * Protected method for subclasses to perform custom cleanup.
+	 * @protected
+	 */
+	_performCustomCleanup() {
+		// Subclasses can override this
+	}
 }

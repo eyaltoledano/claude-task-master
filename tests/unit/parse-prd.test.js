@@ -85,9 +85,16 @@ jest.unstable_mockModule('../../scripts/modules/prompt-manager.js', () => ({
 jest.unstable_mockModule('../../src/progress/parse-prd-tracker.js', () => ({
 	createParsePrdTracker: jest.fn(() => ({
 		start: jest.fn(),
+		stop: jest.fn(),
+		cleanup: jest.fn(),
 		addTaskLine: jest.fn(),
 		updateTokens: jest.fn(),
-		complete: jest.fn()
+		complete: jest.fn(),
+		getSummary: jest.fn().mockReturnValue({
+			taskPriorities: { high: 0, medium: 0, low: 0 },
+			elapsedTime: 0,
+			actionVerb: 'generated'
+		})
 	}))
 }));
 
