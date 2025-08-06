@@ -191,6 +191,7 @@ jest.unstable_mockModule(
 		createParsePrdTracker: jest.fn().mockReturnValue({
 			start: jest.fn(),
 			stop: jest.fn(),
+			cleanup: jest.fn(),
 			updateTokens: jest.fn(),
 			addTaskLine: jest.fn(),
 			trackTaskPriority: jest.fn(),
@@ -953,6 +954,7 @@ describe('parsePRD', () => {
 			const mockProgressTracker = {
 				start: jest.fn(),
 				stop: jest.fn(),
+				cleanup: jest.fn(),
 				addTaskLine: jest.fn(),
 				updateTokens: jest.fn(),
 				getSummary: jest.fn().mockReturnValue({
@@ -973,7 +975,7 @@ describe('parsePRD', () => {
 				append: false
 			});
 			expect(mockProgressTracker.start).toHaveBeenCalled();
-			expect(mockProgressTracker.stop).toHaveBeenCalled();
+			expect(mockProgressTracker.cleanup).toHaveBeenCalled();
 
 			// Verify UI display functions were called
 			expect(displayParsePrdStart).toHaveBeenCalled();

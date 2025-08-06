@@ -561,12 +561,12 @@ async function parsePRDWithStreaming(
 			});
 		}
 
-		// Complete and stop progress tracker for CLI mode
+		// Complete and cleanup progress tracker for CLI mode
 		if (progressTracker) {
-			// Get summary before stopping
+			// Get summary before cleanup
 			const summary = progressTracker.getSummary();
 
-			progressTracker.stop();
+			progressTracker.cleanup();
 
 			// Display summary
 			const taskFilesGenerated = (() => {
@@ -624,9 +624,9 @@ async function parsePRDWithStreaming(
 			telemetryData: aiServiceResponse?.telemetryData
 		};
 	} catch (error) {
-		// Stop progress tracker on error
+		// Cleanup progress tracker on error
 		if (progressTracker) {
-			progressTracker.stop();
+			progressTracker.cleanup();
 		}
 		report(`Error parsing PRD: ${error.message}`, 'error');
 		throw error;
