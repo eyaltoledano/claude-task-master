@@ -319,7 +319,7 @@ async function attemptFallbackParsing(
 
 			for (const item of itemsToAdd) {
 				// Use the same validation helper function
-				if (isValidItem(item)) {
+				if (isValidItem(item, itemValidator)) {
 					newItems.push(item);
 
 					if (onProgress) {
