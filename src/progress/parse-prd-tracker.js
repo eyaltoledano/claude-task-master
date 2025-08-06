@@ -27,6 +27,10 @@ class ParsePrdTracker extends BaseProgressTracker {
 		this.taskPriorities = { high: 0, medium: 0, low: 0 };
 		// Time tracking for stable estimates (now in base)
 		// Removed: lastTaskTime, bestAvgTimePerTask, lastEstimateTime, lastEstimateSeconds
+
+		// Debounce configuration
+		this._pendingUpdate = null;
+		this._debounceDelay = 100; // 100ms debounce delay
 	}
 
 	_getTimeTokensBarFormat() {
@@ -69,38 +73,60 @@ class ParsePrdTracker extends BaseProgressTracker {
 		this.taskPriorities[normalizedPriority]++;
 		this.completedUnits = taskNumber; // Use base completedUnits
 
-		// Update progress bar
-		this.progressBar.update(this.completedUnits, {
-			tasks: `${this.completedUnits}/${this.numUnits}`
-		});
+		// Clear any pending update
+		if (this._pendingUpdate) {
+			clearTimeout(this._pendingUpdate);
+			this._pendingUpdate = null;
+		}
 
-		// Create individual task display
-		const displayTitle =
-			title && title.length > 57
-				? title.substring(0, 54) + '...'
-				: title || `Task ${taskNumber}`;
-		const priorityDisplay = getPriorityIndicator(
-			normalizedPriority,
-			false
-		).padEnd(3, ' ');
-		const taskIdCentered = taskNumber
-			.toString()
-			.padStart(3, ' ')
-			.padEnd(4, ' ');
+		// Debounce the progress bar update
+		this._pendingUpdate = setTimeout(() => {
+			// Update progress bar
+			this.progressBar.update(this.completedUnits, {
+				tasks: `${this.completedUnits}/${this.numUnits}`
+			});
 
-		createProgressRow(
-			this.multibar,
-			` ${taskIdCentered} | ${priorityDisplay} | {title}`,
-			{ title: displayTitle }
-		);
+			// Create individual task display
+			const displayTitle =
+				title && title.length > 57
+					? title.substring(0, 54) + '...'
+					: title || `Task ${taskNumber}`;
+			const priorityDisplay = getPriorityIndicator(
+				normalizedPriority,
+				false
+			).padEnd(3, ' ');
+			const taskIdCentered = taskNumber
+				.toString()
+				.padStart(3, ' ')
+				.padEnd(4, ' ');
 
-		// Add border line after each task using UI utility
-		createBorder(
-			this.multibar,
-			'------+-----+----------------------------------------------------------------'
-		);
+			createProgressRow(
+				this.multibar,
+				` ${taskIdCentered} | ${priorityDisplay} | {title}`,
+				{ title: displayTitle }
+			);
 
-		this._updateTimeTokensBar();
+			// Add border line after each task using UI utility
+			createBorder(
+				this.multibar,
+				'------+-----+----------------------------------------------------------------'
+			);
+
+			this._updateTimeTokensBar();
+
+			this._pendingUpdate = null;
+		}, this._debounceDelay);
+	}
+
+	finish() {
+		// Flush any pending updates before finishing
+		if (this._pendingUpdate) {
+			clearTimeout(this._pendingUpdate);
+			this._pendingUpdate = null;
+			// Force immediate update of any pending progress
+			this._updateTimeTokensBar();
+		}
+		super.finish();
 	}
 
 	getSummary() {
