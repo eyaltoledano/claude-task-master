@@ -345,8 +345,25 @@ export function createMCPConfigFromSettings(): MCPConfig {
 	);
 	const config = vscode.workspace.getConfiguration('taskmaster');
 
-	let command = config.get<string>('mcp.command', 'npx');
-	const args = config.get<string[]>('mcp.args', ['task-master-ai']);
+	let command = config.get<string>('mcp.command', 'node');
+	let args = config.get<string[]>('mcp.args', []);
+
+	// If using default settings, use the bundled MCP server
+	if (command === 'node' && args.length === 0) {
+		try {
+			// Get the path to the bundled task-master-ai MCP server
+			const mcpServerPath = require.resolve(
+				'task-master-ai/mcp-server/server.js'
+			);
+			args = [mcpServerPath];
+			logger.log(`📦 Using bundled MCP server at: ${mcpServerPath}`);
+		} catch (error) {
+			logger.error('❌ Could not find bundled task-master-ai server:', error);
+			// Fallback to npx
+			command = 'npx';
+			args = ['-y', 'task-master-ai'];
+		}
+	}
 
 	// Use proper VS Code workspace detection
 	const defaultCwd =
