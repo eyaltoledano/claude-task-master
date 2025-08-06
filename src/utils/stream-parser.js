@@ -87,7 +87,7 @@ function isValidItem(item, customValidator) {
 
 /**
  * Parse a streaming JSON response with progress tracking
- * 
+ *
  * Example with custom buffer size:
  * ```js
  * const result = await parseStream(stream, {
@@ -95,7 +95,7 @@ function isValidItem(item, customValidator) {
  *   maxBufferSize: 2 * 1024 * 1024 // 2MB
  * });
  * ```
- * 
+ *
  * @param {Object} textStream - The AI service text stream object
  * @param {StreamParserConfig} config - Configuration options
  * @returns {Promise<StreamParseResult>} Parsed result with metadata
