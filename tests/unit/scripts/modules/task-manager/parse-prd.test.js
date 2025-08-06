@@ -125,10 +125,8 @@ jest.unstable_mockModule('fs', () => ({
 	readFileSync: jest.fn(),
 	existsSync: jest.fn(),
 	mkdirSync: jest.fn(),
-	writeFileSync: jest.fn(),
-	promises: {
-		readFile: jest.fn()
-	}
+	writeFileSync: jest.fn()
+
 }));
 
 // Mock path module
