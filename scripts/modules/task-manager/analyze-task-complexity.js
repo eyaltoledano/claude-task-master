@@ -13,12 +13,18 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getProjectName,
+	getMainProvider,
+	getResearchProvider
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_TASKS_FILE
 } from '../../../src/constants/paths.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
@@ -408,10 +414,18 @@ async function analyzeTaskComplexity(options, context = {}) {
 		// Load prompts using PromptManager
 		const promptManager = getPromptManager();
 
+		// Check if Claude Code is being used as the provider
+		const currentProvider = useResearch
+			? getResearchProvider(projectRoot)
+			: getMainProvider(projectRoot);
+		const isClaudeCode = currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
+
 		const promptParams = {
 			tasks: tasksData.tasks,
 			gatheredContext: gatheredContext || '',
-			useResearch: useResearch
+			useResearch: useResearch,
+			isClaudeCode: isClaudeCode,
+			projectRoot: projectRoot || ''
 		};
 
 		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(

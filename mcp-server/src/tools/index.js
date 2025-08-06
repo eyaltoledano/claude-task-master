@@ -38,6 +38,8 @@ import { registerRenameTagTool } from './rename-tag.js';
 import { registerCopyTagTool } from './copy-tag.js';
 import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
+import { registerScopeUpTool } from './scope-up.js';
+import { registerScopeDownTool } from './scope-down.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -57,6 +59,8 @@ export function registerTaskMasterTools(server) {
 		registerAnalyzeProjectComplexityTool(server);
 		registerExpandTaskTool(server);
 		registerExpandAllTool(server);
+		registerScopeUpTool(server);
+		registerScopeDownTool(server);
 
 		// Group 3: Task Listing & Viewing
 		registerListTasksTool(server);

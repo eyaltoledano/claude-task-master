@@ -1,4 +1,12 @@
-import { generateObject, generateText, streamText } from 'ai';
+import {
+	generateObject,
+	generateText,
+	streamText,
+	zodSchema,
+	JSONParseError,
+	NoObjectGeneratedError
+} from 'ai';
+import { jsonrepair } from 'jsonrepair';
 import { log } from '../../scripts/modules/utils.js';
 
 /**
@@ -206,8 +214,8 @@ export class BaseAIProvider {
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: params.schema,
-				mode: 'auto',
+				schema: zodSchema(params.schema),
+				mode: params.mode || 'auto',
 				maxTokens: params.maxTokens,
 				temperature: params.temperature
 			});
@@ -226,6 +234,43 @@ export class BaseAIProvider {
 				}
 			};
 		} catch (error) {
+			// Check if this is a JSON parsing error that we can potentially fix
+			if (
+				NoObjectGeneratedError.isInstance(error) &&
+				JSONParseError.isInstance(error.cause) &&
+				error.cause.text
+			) {
+				log(
+					'warn',
+					`${this.name} generated malformed JSON, attempting to repair...`
+				);
+
+				try {
+					// Use jsonrepair to fix the malformed JSON
+					const repairedJson = jsonrepair(error.cause.text);
+					const parsed = JSON.parse(repairedJson);
+
+					log('info', `Successfully repaired ${this.name} JSON output`);
+
+					// Return in the expected format
+					return {
+						object: parsed,
+						usage: {
+							// Extract usage information from the error if available
+							inputTokens: error.usage?.promptTokens || 0,
+							outputTokens: error.usage?.completionTokens || 0,
+							totalTokens: error.usage?.totalTokens || 0
+						}
+					};
+				} catch (repairError) {
+					log(
+						'error',
+						`Failed to repair ${this.name} JSON: ${repairError.message}`
+					);
+					// Fall through to handleError with original error
+				}
+			}
+
 			this.handleError('object generation', error);
 		}
 	}

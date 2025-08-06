@@ -1,0 +1,343 @@
+# Product Requirements Document: tm-core Package - Parse PRD Feature
+
+## Project Overview
+Create a TypeScript package named `tm-core` at `packages/tm-core` that implements parse-prd functionality using class-based architecture similar to the existing AI providers pattern.
+
+## Design Patterns & Architecture
+
+### Patterns to Apply
+1. **Factory Pattern**: Use for `ProviderFactory` to create AI provider instances
+2. **Strategy Pattern**: Use for `IAIProvider` implementations and `IStorage` implementations
+3. **Facade Pattern**: Use for `TaskMasterCore` as the main API entry point
+4. **Template Method Pattern**: Use for `BaseProvider` abstract class
+5. **Dependency Injection**: Use throughout for testability (pass dependencies via constructor)
+6. **Repository Pattern**: Use for `FileStorage` to abstract data persistence
+
+### Naming Conventions
+- **Files**: kebab-case (e.g., `task-parser.ts`, `file-storage.ts`)
+- **Classes**: PascalCase (e.g., `TaskParser`, `FileStorage`)
+- **Interfaces**: PascalCase with 'I' prefix (e.g., `IStorage`, `IAIProvider`)
+- **Methods**: camelCase (e.g., `parsePRD`, `loadTasks`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `DEFAULT_MODEL`)
+- **Type aliases**: PascalCase (e.g., `TaskStatus`, `ParseOptions`)
+
+## Exact Folder Structure Required
+```
+packages/tm-core/
+├── src/
+│   ├── index.ts
+│   ├── types/
+│   │   └── index.ts
+│   ├── interfaces/
+│   │   ├── index.ts              # Barrel export
+│   │   ├── storage.interface.ts
+│   │   ├── ai-provider.interface.ts
+│   │   └── configuration.interface.ts
+│   ├── tasks/
+│   │   ├── index.ts              # Barrel export
+│   │   └── task-parser.ts
+│   ├── ai/
+│   │   ├── index.ts              # Barrel export
+│   │   ├── base-provider.ts
+│   │   ├── provider-factory.ts
+│   │   ├── prompt-builder.ts
+│   │   └── providers/
+│   │       ├── index.ts          # Barrel export
+│   │       ├── anthropic-provider.ts
+│   │       ├── openai-provider.ts
+│   │       └── google-provider.ts
+│   ├── storage/
+│   │   ├── index.ts              # Barrel export
+│   │   └── file-storage.ts
+│   ├── config/
+│   │   ├── index.ts              # Barrel export
+│   │   └── config-manager.ts
+│   ├── utils/
+│   │   ├── index.ts              # Barrel export
+│   │   └── id-generator.ts
+│   └── errors/
+│       ├── index.ts              # Barrel export
+│       └── task-master-error.ts
+├── tests/
+│   ├── task-parser.test.ts
+│   ├── integration/
+│   │   └── parse-prd.test.ts
+│   └── mocks/
+│       └── mock-provider.ts
+├── package.json
+├── tsconfig.json
+├── tsup.config.js
+└── jest.config.js
+```
+
+## Specific Implementation Requirements
+
+### 1. Create types/index.ts
+Define these exact TypeScript interfaces:
+- `Task` interface with fields: id, title, description, status, priority, complexity, dependencies, subtasks, metadata, createdAt, updatedAt, source
+- `Subtask` interface with fields: id, title, description, completed
+- `TaskMetadata` interface with fields: parsedFrom, aiProvider, version, tags (optional)
+- Type literals: `TaskStatus` = 'pending' | 'in-progress' | 'completed' | 'blocked'
+- Type literals: `TaskPriority` = 'low' | 'medium' | 'high' | 'critical'
+- Type literals: `TaskComplexity` = 'simple' | 'moderate' | 'complex'
+- `ParseOptions` interface with fields: dryRun (optional), additionalContext (optional), tag (optional), maxTasks (optional)
+
+### 2. Create interfaces/storage.interface.ts
+Define `IStorage` interface with these exact methods:
+- `loadTasks(tag?: string): Promise<Task[]>`
+- `saveTasks(tasks: Task[], tag?: string): Promise<void>`
+- `appendTasks(tasks: Task[], tag?: string): Promise<void>`
+- `updateTask(id: string, task: Partial<Task>, tag?: string): Promise<void>`
+- `deleteTask(id: string, tag?: string): Promise<void>`
+- `exists(tag?: string): Promise<boolean>`
+
+### 3. Create interfaces/ai-provider.interface.ts
+Define `IAIProvider` interface with these exact methods:
+- `generateCompletion(prompt: string, options?: AIOptions): Promise<string>`
+- `calculateTokens(text: string): number`
+- `getName(): string`
+- `getModel(): string`
+
+Define `AIOptions` interface with fields: temperature (optional), maxTokens (optional), systemPrompt (optional)
+
+### 4. Create interfaces/configuration.interface.ts
+Define `IConfiguration` interface with fields:
+- `projectPath: string`
+- `aiProvider: string`
+- `apiKey?: string`
+- `aiOptions?: AIOptions`
+- `mainModel?: string`
+- `researchModel?: string`
+- `fallbackModel?: string`
+- `tasksPath?: string`
+- `enableTags?: boolean`
+
+### 5. Create tasks/task-parser.ts
+Create class `TaskParser` with:
+- Constructor accepting `aiProvider: IAIProvider` and `config: IConfiguration`
+- Private property `promptBuilder: PromptBuilder`
+- Public method `parsePRD(prdPath: string, options: ParseOptions = {}): Promise<Task[]>`
+- Private method `readPRD(prdPath: string): Promise<string>`
+- Private method `extractTasks(aiResponse: string): Partial<Task>[]`
+- Private method `enrichTasks(rawTasks: Partial<Task>[], prdPath: string): Task[]`
+- Apply **Dependency Injection** pattern via constructor
+
+### 6. Create ai/base-provider.ts
+Copy existing base-provider.js and convert to TypeScript abstract class:
+- Abstract class `BaseProvider` implementing `IAIProvider`
+- Protected properties: `apiKey: string`, `model: string`
+- Constructor accepting `apiKey: string` and `options: { model?: string }`
+- Abstract methods matching IAIProvider interface
+- Abstract method `getDefaultModel(): string`
+- Apply **Template Method** pattern for common provider logic
+
+### 7. Create ai/provider-factory.ts
+Create class `ProviderFactory` with:
+- Static method `create(config: { provider: string; apiKey?: string; model?: string }): Promise<IAIProvider>`
+- Switch statement for providers: 'anthropic', 'openai', 'google'
+- Dynamic imports for each provider
+- Throw error for unknown providers
+- Apply **Factory** pattern for creating provider instances
+
+Example implementation structure:
+```typescript
+switch (provider.toLowerCase()) {
+  case 'anthropic':
+    const { AnthropicProvider } = await import('./providers/anthropic-provider.js');
+    return new AnthropicProvider(apiKey, { model });
+}
+```
+
+### 8. Create ai/providers/anthropic-provider.ts
+Create class `AnthropicProvider` extending `BaseProvider`:
+- Import Anthropic SDK: `import { Anthropic } from '@anthropic-ai/sdk'`
+- Private property `client: Anthropic`
+- Implement all abstract methods from BaseProvider
+- Default model: 'claude-3-sonnet-20240229'
+- Handle API errors and wrap with meaningful messages
+
+### 9. Create ai/providers/openai-provider.ts (placeholder)
+Create class `OpenAIProvider` extending `BaseProvider`:
+- Import OpenAI SDK when implemented
+- For now, throw error: "OpenAI provider not yet implemented"
+
+### 10. Create ai/providers/google-provider.ts (placeholder)
+Create class `GoogleProvider` extending `BaseProvider`:
+- Import Google Generative AI SDK when implemented
+- For now, throw error: "Google provider not yet implemented"
+
+### 11. Create ai/prompt-builder.ts
+Create class `PromptBuilder` with:
+- Method `buildParsePrompt(prdContent: string, options: ParseOptions = {}): string`
+- Method `buildExpandPrompt(task: string, context?: string): string`
+- Use template literals for prompt construction
+- Include specific JSON format instructions in prompts
+
+### 9. Create storage/file-storage.ts
+Create class `FileStorage` implementing `IStorage`:
+- Private property `basePath: string` set to `{projectPath}/.taskmaster`
+- Constructor accepting `projectPath: string`
+- Private method `getTasksPath(tag?: string): string` returning correct path based on tag
+- Private method `ensureDirectory(dir: string): Promise<void>`
+- Implement all IStorage methods
+- Handle ENOENT errors by returning empty arrays
+- Use JSON format with structure: `{ tasks: Task[], metadata: { version: string, lastModified: string } }`
+- Apply **Repository** pattern for data access abstraction
+
+### 10. Create config/config-manager.ts
+Create class `ConfigManager`:
+- Private property `config: IConfiguration`
+- Constructor accepting `options: Partial<IConfiguration>`
+- Use Zod for validation with schema matching IConfiguration
+- Method `get<K extends keyof IConfiguration>(key: K): IConfiguration[K]`
+- Method `getAll(): IConfiguration`
+- Method `validate(): boolean`
+- Default values: projectPath = process.cwd(), aiProvider = 'anthropic', enableTags = true
+
+### 11. Create utils/id-generator.ts
+Export functions:
+- `generateTaskId(index: number = 0): string` returning format `task_{timestamp}_{index}_{random}`
+- `generateSubtaskId(parentId: string, index: number = 0): string` returning format `{parentId}_sub_{index}_{random}`
+
+### 16. Create src/index.ts
+Create main class `TaskMasterCore`:
+- Private properties: `config: ConfigManager`, `storage: IStorage`, `aiProvider?: IAIProvider`, `parser?: TaskParser`
+- Constructor accepting `options: Partial<IConfiguration>`
+- Method `initialize(): Promise<void>` for lazy loading
+- Method `parsePRD(prdPath: string, options: ParseOptions = {}): Promise<Task[]>`
+- Method `getTasks(tag?: string): Promise<Task[]>`
+- Apply **Facade** pattern to provide simple API over complex subsystems
+
+Export:
+- Class `TaskMasterCore`
+- Function `createTaskMaster(options: Partial<IConfiguration>): TaskMasterCore`
+- All types from './types'
+- All interfaces from './interfaces/*'
+
+Import statements should use kebab-case:
+```typescript
+import { TaskParser } from './tasks/task-parser';
+import { FileStorage } from './storage/file-storage';
+import { ConfigManager } from './config/config-manager';
+import { ProviderFactory } from './ai/provider-factory';
+```
+
+### 17. Configure package.json
+Create package.json with:
+- name: "@task-master/core"
+- version: "0.1.0"
+- type: "module"
+- main: "./dist/index.js"
+- module: "./dist/index.mjs"
+- types: "./dist/index.d.ts"
+- exports map for proper ESM/CJS support
+- scripts: build (tsup), dev (tsup --watch), test (jest), typecheck (tsc --noEmit)
+- dependencies: zod@^3.23.8
+- peerDependencies: @anthropic-ai/sdk, openai, @google/generative-ai
+- devDependencies: typescript, tsup, jest, ts-jest, @types/node, @types/jest
+
+### 18. Configure TypeScript
+Create tsconfig.json with:
+- target: "ES2022"
+- module: "ESNext"
+- strict: true (with all strict flags enabled)
+- declaration: true
+- outDir: "./dist"
+- rootDir: "./src"
+
+### 19. Configure tsup
+Create tsup.config.js with:
+- entry: ['src/index.ts']
+- format: ['cjs', 'esm']
+- dts: true
+- sourcemap: true
+- clean: true
+- external: AI provider SDKs
+
+### 20. Configure Jest
+Create jest.config.js with:
+- preset: 'ts-jest'
+- testEnvironment: 'node'
+- Coverage threshold: 80% for all metrics
+
+## Build Process
+1. Use tsup to compile TypeScript to both CommonJS and ESM
+2. Generate .d.ts files for TypeScript consumers
+3. Output to dist/ directory
+4. Ensure tree-shaking works properly
+
+## Testing Requirements
+- Create unit tests for TaskParser in tests/task-parser.test.ts
+- Create MockProvider class in tests/mocks/mock-provider.ts for testing without API calls
+- Test error scenarios (file not found, invalid JSON, etc.)
+- Create integration test in tests/integration/parse-prd.test.ts
+- Follow kebab-case naming for all test files
+
+## Success Criteria
+- TypeScript compilation with zero errors
+- No use of 'any' type
+- All interfaces properly exported
+- Compatible with existing tasks.json format
+- Feature flag support via USE_TM_CORE environment variable
+
+## Import/Export Conventions
+- Use named exports for all classes and interfaces
+- Use barrel exports (index.ts) in each directory
+- Import types/interfaces with type-only imports: `import type { Task } from '../types'`
+- Group imports in order: Node built-ins, external packages, internal packages, relative imports
+- Use .js extension in import paths for ESM compatibility
+
+## Error Handling Patterns
+- Create custom error classes in `src/errors/` directory
+- All public methods should catch and wrap errors with context
+- Use error codes for different error types (e.g., 'FILE_NOT_FOUND', 'PARSE_ERROR')
+- Never expose internal implementation details in error messages
+- Log errors to console.error only in development mode
+
+## Barrel Exports Content
+
+### interfaces/index.ts
+```typescript
+export type { IStorage } from './storage.interface';
+export type { IAIProvider, AIOptions } from './ai-provider.interface';
+export type { IConfiguration } from './configuration.interface';
+```
+
+### tasks/index.ts
+```typescript
+export { TaskParser } from './task-parser';
+```
+
+### ai/index.ts
+```typescript
+export { BaseProvider } from './base-provider';
+export { ProviderFactory } from './provider-factory';
+export { PromptBuilder } from './prompt-builder';
+```
+
+### ai/providers/index.ts
+```typescript
+export { AnthropicProvider } from './anthropic-provider';
+export { OpenAIProvider } from './openai-provider';
+export { GoogleProvider } from './google-provider';
+```
+
+### storage/index.ts
+```typescript
+export { FileStorage } from './file-storage';
+```
+
+### config/index.ts
+```typescript
+export { ConfigManager } from './config-manager';
+```
+
+### utils/index.ts
+```typescript
+export { generateTaskId, generateSubtaskId } from './id-generator';
+```
+
+### errors/index.ts
+```typescript
+export { TaskMasterError } from './task-master-error';
+```
