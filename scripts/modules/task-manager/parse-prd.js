@@ -761,7 +761,6 @@ async function parsePRDWithoutStreaming(
 		const promptManager = getPromptManager();
 
 		// Get defaultTaskPriority from config
-		const { getDefaultPriority } = await import('../config-manager.js');
 		const defaultTaskPriority = getDefaultPriority(projectRoot) || 'medium';
 
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
