@@ -4,9 +4,7 @@ import boxen from 'boxen';
 import chalk from 'chalk';
 import ora from 'ora';
 import { z } from 'zod';
-import {
-	TASK_PRIORITY_OPTIONS
-} from '../../../src/constants/task-priority.js';
+import { TASK_PRIORITY_OPTIONS } from '../../../src/constants/task-priority.js';
 import { getPriorityIndicators } from '../../../src/ui/indicators.js';
 
 import {
