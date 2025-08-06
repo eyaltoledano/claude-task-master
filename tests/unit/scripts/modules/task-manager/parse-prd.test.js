@@ -63,7 +63,9 @@ jest.unstable_mockModule(
 			modelId: 'claude-3-5-sonnet'
 		})),
 		getDefaultNumTasks: jest.fn(() => 10),
-		getDefaultPriority: jest.fn(() => 'medium')
+		getDefaultPriority: jest.fn(() => 'medium'),
+		getMainProvider: jest.fn(() => 'openai'),
+		getResearchProvider: jest.fn(() => 'perplexity')
 	})
 );
 

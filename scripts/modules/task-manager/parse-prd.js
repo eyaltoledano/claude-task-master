@@ -5,7 +5,6 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { z } from 'zod';
 import {
-	DEFAULT_TASK_PRIORITY,
 	TASK_PRIORITY_OPTIONS
 } from '../../../src/constants/task-priority.js';
 import { getPriorityIndicators } from '../../../src/ui/indicators.js';
@@ -38,10 +37,14 @@ import {
 	getDebugFlag,
 	getMainModelId,
 	getParametersForRole,
-	getResearchModelId
+	getResearchModelId,
+	getMainProvider,
+	getResearchProvider,
+	getDefaultPriority
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { displayAiUsageSummary } from '../ui.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 
 // Define the Zod schema for a SINGLE task object
 const prdSingleTaskSchema = z.object({
@@ -326,8 +329,13 @@ async function parsePRDWithStreaming(
 		const promptManager = getPromptManager();
 
 		// Get defaultTaskPriority from config
-		const { getDefaultPriority } = await import('../config-manager.js');
 		const defaultTaskPriority = getDefaultPriority(projectRoot) || 'medium';
+
+		// Check if Claude Code is being used as the provider
+		const currentProvider = research
+			? getResearchProvider(projectRoot)
+			: getMainProvider(projectRoot);
+		const isClaudeCode = currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
 
 		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 			'parse-prd',
@@ -337,7 +345,9 @@ async function parsePRDWithStreaming(
 				nextId,
 				prdContent,
 				prdPath,
-				defaultTaskPriority
+				defaultTaskPriority,
+				isClaudeCode,
+				projectRoot: projectRoot || ''
 			}
 		);
 
@@ -384,7 +394,7 @@ async function parsePRDWithStreaming(
 		// Create a simple progress callback that handles both CLI and MCP progress
 		const onProgress = async (task, metadata) => {
 			const { currentCount, estimatedTokens } = metadata;
-			const priority = task.priority || DEFAULT_TASK_PRIORITY;
+			const priority = task.priority || defaultTaskPriority;
 
 			// Get priority indicator for this task
 			const priorityIndicator = priorityMap[priority] || priorityMap.medium;
@@ -462,7 +472,7 @@ async function parsePRDWithStreaming(
 				...task,
 				id: newId,
 				status: 'pending',
-				priority: task.priority || DEFAULT_TASK_PRIORITY,
+				priority: task.priority || defaultTaskPriority,
 				dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
 				subtasks: []
 			};
@@ -840,7 +850,7 @@ async function parsePRDWithoutStreaming(
 				...task,
 				id: newId,
 				status: task.status || 'pending',
-				priority: task.priority || DEFAULT_TASK_PRIORITY,
+				priority: task.priority || defaultTaskPriority,
 				dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
 				subtasks: [],
 				// Ensure all required fields have values (even if empty strings)
