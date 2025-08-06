@@ -23,8 +23,14 @@ export class StreamingError extends Error {
 export const STREAMING_ERROR_CODES = {
 	NOT_ASYNC_ITERABLE: 'STREAMING_NOT_SUPPORTED',
 	STREAM_PROCESSING_FAILED: 'STREAM_PROCESSING_FAILED',
-	STREAM_NOT_ITERABLE: 'STREAM_NOT_ITERABLE'
+	STREAM_NOT_ITERABLE: 'STREAM_NOT_ITERABLE',
+	BUFFER_SIZE_EXCEEDED: 'BUFFER_SIZE_EXCEEDED'
 };
+
+/**
+ * Default maximum buffer size (1MB)
+ */
+export const DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024; // 1MB in bytes
 
 /**
  * Default validation function for parsed items
@@ -58,6 +64,7 @@ function isValidItem(item, customValidator) {
  * @property {number} [expectedTotal] - Expected total number of items for progress calculation
  * @property {Function} [fallbackItemExtractor] - Function to extract items from complete JSON: (jsonObj) => Array
  * @property {Function} [itemValidator] - Function to validate parsed items: (item) => boolean
+ * @property {number} [maxBufferSize] - Maximum buffer size in bytes (default: 1MB)
  */
 
 /**
@@ -80,6 +87,15 @@ function isValidItem(item, customValidator) {
 
 /**
  * Parse a streaming JSON response with progress tracking
+ * 
+ * Example with custom buffer size:
+ * ```js
+ * const result = await parseStream(stream, {
+ *   jsonPaths: ['$.tasks.*'],
+ *   maxBufferSize: 2 * 1024 * 1024 // 2MB
+ * });
+ * ```
+ * 
  * @param {Object} textStream - The AI service text stream object
  * @param {StreamParserConfig} config - Configuration options
  * @returns {Promise<StreamParseResult>} Parsed result with metadata
@@ -92,7 +108,8 @@ export async function parseStream(textStream, config = {}) {
 		estimateTokens = (text) => Math.ceil(text.length / 4),
 		expectedTotal = 0,
 		fallbackItemExtractor,
-		itemValidator
+		itemValidator,
+		maxBufferSize = DEFAULT_MAX_BUFFER_SIZE
 	} = config;
 
 	if (!textStream) {
@@ -157,10 +174,22 @@ export async function parseStream(textStream, config = {}) {
 	// Process the stream - handle different possible stream structures
 	try {
 		await processTextStream(textStream, (chunk) => {
+			// Check buffer size before adding chunk
+			const newSize = Buffer.byteLength(accumulatedText + chunk, 'utf8');
+			if (newSize > maxBufferSize) {
+				throw new StreamingError(
+					`Buffer size exceeded: ${newSize} bytes > ${maxBufferSize} bytes maximum`,
+					STREAMING_ERROR_CODES.BUFFER_SIZE_EXCEEDED
+				);
+			}
 			accumulatedText += chunk;
 			parser.write(chunk);
 		});
 	} catch (streamError) {
+		// Re-throw StreamingError as-is, wrap other errors
+		if (streamError instanceof StreamingError) {
+			throw streamError;
+		}
 		throw new StreamingError(
 			`Failed to process AI text stream: ${streamError.message}`,
 			STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
@@ -187,7 +216,8 @@ export async function parseStream(textStream, config = {}) {
 				{
 					onProgress,
 					estimateTokens,
-					fallbackItemExtractor
+					fallbackItemExtractor,
+					maxBufferSize
 				}
 			);
 
