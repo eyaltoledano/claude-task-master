@@ -29,31 +29,35 @@ function findRootDir(startDir) {
 
 function checkPreReleaseMode() {
 	console.log('🔍 Checking if branch is in pre-release mode...');
-	
+
 	const rootDir = findRootDir(__dirname);
 	const preJsonPath = join(rootDir, '.changeset', 'pre.json');
-	
+
 	// Check if pre.json exists
 	if (!existsSync(preJsonPath)) {
 		console.log('✅ Not in active pre-release mode - safe to proceed');
 		process.exit(0);
 	}
-	
+
 	try {
 		// Read and parse pre.json
 		const preJsonContent = readFileSync(preJsonPath, 'utf8');
 		const preJson = JSON.parse(preJsonContent);
-		
+
 		// Check if we're in active pre-release mode
 		if (preJson.mode === 'pre') {
 			console.error('❌ ERROR: This branch is in active pre-release mode!');
 			console.error('');
-			
+
 			// Provide context-specific error messages
 			if (context === 'Release Check' || context === 'pull_request') {
-				console.error('Pre-release mode must be exited before merging to main.');
+				console.error(
+					'Pre-release mode must be exited before merging to main.'
+				);
 				console.error('');
-				console.error('To fix this, run the following commands in your branch:');
+				console.error(
+					'To fix this, run the following commands in your branch:'
+				);
 				console.error('  npx changeset pre exit');
 				console.error('  git add -u');
 				console.error('  git commit -m "chore: exit pre-release mode"');
@@ -61,7 +65,9 @@ function checkPreReleaseMode() {
 				console.error('');
 				console.error('Then update this pull request.');
 			} else if (context === 'Release' || context === 'main') {
-				console.error('Pre-release mode should only be used on feature branches, not main.');
+				console.error(
+					'Pre-release mode should only be used on feature branches, not main.'
+				);
 				console.error('');
 				console.error('To fix this, run the following commands locally:');
 				console.error('  npx changeset pre exit');
@@ -79,13 +85,12 @@ function checkPreReleaseMode() {
 				console.error('  git commit -m "chore: exit pre-release mode"');
 				console.error('  git push');
 			}
-			
+
 			process.exit(1);
 		}
-		
+
 		console.log('✅ Not in active pre-release mode - safe to proceed');
 		process.exit(0);
-		
 	} catch (error) {
 		console.error(`❌ ERROR: Unable to parse .changeset/pre.json – aborting.`);
 		console.error(`Error details: ${error.message}`);
