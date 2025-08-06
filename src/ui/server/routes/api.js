@@ -93,10 +93,10 @@ export function createApiRouter(taskMaster) {
 	});
 
 	/**
-	 * POST /api/tasks/:id/status
+	 * PATCH /api/tasks/:id/status
 	 * Update task status
 	 */
-	router.post('/tasks/:id/status', async (req, res, next) => {
+	router.patch('/tasks/:id/status', async (req, res, next) => {
 		try {
 			const { id } = req.params;
 			const { status } = req.body;

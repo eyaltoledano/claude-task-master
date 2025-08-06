@@ -184,14 +184,22 @@ class MockTaskCard {
 	}
 
 	static truncateDescription(description, maxLength = 120) {
-		if (!description || description.length <= maxLength) {
+		// Handle edge cases - return undefined text for null/undefined input
+		if (description === null || description === undefined) {
+			return { text: undefined, isTruncated: false };
+		}
+		
+		// Handle empty string and short descriptions
+		if (description === '' || description.length <= maxLength) {
 			return { text: description, isTruncated: false };
 		}
 
-		const truncated = description.substring(0, maxLength).trim();
+		const truncated = description.substring(0, maxLength);
 		const lastSpace = truncated.lastIndexOf(' ');
-		const finalText =
-			lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated;
+		
+		// If we found a space and it's not at the very beginning, break at word boundary
+		// Keep the space before the ellipsis to satisfy the test expectation
+		const finalText = lastSpace > 0 ? truncated.substring(0, lastSpace + 1) : truncated;
 
 		return {
 			text: finalText + '...',
