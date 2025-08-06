@@ -126,7 +126,6 @@ jest.unstable_mockModule('fs', () => ({
 	existsSync: jest.fn(),
 	mkdirSync: jest.fn(),
 	writeFileSync: jest.fn()
-
 }));
 
 // Mock path module
