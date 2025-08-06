@@ -132,6 +132,7 @@ function createLoggingFunctions(mcpLog, reportProgress) {
  * @param {Object} [options.session] - Session object from MCP server (optional).
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
  * @param {string} [options.tag] - Target tag for task generation.
+ * @param {number} [options.streamingTimeout=60000] - Timeout in milliseconds for streaming operations (default: 60 seconds).
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  */
 async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
@@ -166,7 +167,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 				if (outputFormat === 'text' && !isMCP) {
 					console.log(
 						chalk.yellow(
-							`Streaming failed, falling back to non-streaming mode...`
+							`⚠️  Streaming operation ${streamingError.message.includes('timed out') ? 'timed out' : 'failed'}. Falling back to non-streaming mode...`
 						)
 					);
 				} else {
@@ -216,6 +217,9 @@ async function parsePRDWithStreaming(
 		research = false,
 		tag
 	} = options;
+
+	// Extract timeout with default value
+	const streamingTimeout = options.streamingTimeout || 60000;
 
 	// Use your existing createLoggingFunctions helper (preserves streaming progress logic)
 	const { logFn, report, outputFormat, isMCP } = createLoggingFunctions(
@@ -368,15 +372,47 @@ async function parsePRDWithStreaming(
 			'debug'
 		);
 
-		aiServiceResponse = await streamTextService({
-			role: research ? 'research' : 'main',
-			session: session,
-			projectRoot: projectRoot,
-			systemPrompt: systemPrompt,
-			prompt: userPrompt,
-			commandName: 'parse-prd',
-			outputType: isMCP ? 'mcp' : 'cli'
+		// Create timeout promise
+		const timeoutPromise = new Promise((_, reject) => {
+			setTimeout(() => {
+				reject(
+					new StreamingError(
+						`Streaming operation timed out after ${streamingTimeout / 1000} seconds`,
+						STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
+					)
+				);
+			}, streamingTimeout);
 		});
+
+		// Race between streaming service and timeout
+		try {
+			aiServiceResponse = await Promise.race([
+				streamTextService({
+					role: research ? 'research' : 'main',
+					session: session,
+					projectRoot: projectRoot,
+					systemPrompt: systemPrompt,
+					prompt: userPrompt,
+					commandName: 'parse-prd',
+					outputType: isMCP ? 'mcp' : 'cli'
+				}),
+				timeoutPromise
+			]);
+		} catch (timeoutError) {
+			// If it's our timeout error, log and re-throw to trigger fallback
+			if (
+				timeoutError instanceof StreamingError &&
+				timeoutError.message.includes('timed out')
+			) {
+				report(
+					`Streaming operation timed out after ${streamingTimeout / 1000} seconds, will fall back to non-streaming mode`,
+					'warn'
+				);
+				throw timeoutError;
+			}
+			// Otherwise, re-throw the original error
+			throw timeoutError;
+		}
 
 		const textStream = aiServiceResponse.mainResult;
 		// Verify it's an async iterable
@@ -432,16 +468,49 @@ async function parsePRDWithStreaming(
 			return fullResponse.tasks || [];
 		};
 
-		const parseResult = await parseStream(textStream, {
-			jsonPaths: ['$.tasks.*'],
-			onProgress: onProgress,
-			onError: (error) => {
-				report(`JSON parsing error: ${error.message}`, 'debug');
-			},
-			estimateTokens,
-			expectedTotal: numTasks,
-			fallbackItemExtractor
+		// Create another timeout promise for parsing
+		const parseTimeoutPromise = new Promise((_, reject) => {
+			setTimeout(() => {
+				reject(
+					new StreamingError(
+						`Stream parsing timed out after ${streamingTimeout / 1000} seconds`,
+						STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
+					)
+				);
+			}, streamingTimeout);
 		});
+
+		// Race between stream parsing and timeout
+		let parseResult;
+		try {
+			parseResult = await Promise.race([
+				parseStream(textStream, {
+					jsonPaths: ['$.tasks.*'],
+					onProgress: onProgress,
+					onError: (error) => {
+						report(`JSON parsing error: ${error.message}`, 'debug');
+					},
+					estimateTokens,
+					expectedTotal: numTasks,
+					fallbackItemExtractor
+				}),
+				parseTimeoutPromise
+			]);
+		} catch (parseTimeoutError) {
+			// If it's our timeout error, log and re-throw to trigger fallback
+			if (
+				parseTimeoutError instanceof StreamingError &&
+				parseTimeoutError.message.includes('timed out')
+			) {
+				report(
+					`Stream parsing timed out after ${streamingTimeout / 1000} seconds, will fall back to non-streaming mode`,
+					'warn'
+				);
+				throw parseTimeoutError;
+			}
+			// Otherwise, re-throw the original error
+			throw parseTimeoutError;
+		}
 
 		const {
 			items: parsedTasks,
