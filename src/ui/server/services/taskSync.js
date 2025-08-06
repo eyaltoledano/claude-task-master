@@ -19,9 +19,9 @@ export class TaskSyncService {
 	 */
 	getTasks() {
 		const now = Date.now();
-		
+
 		// Return cached data if still valid
-		if (this.cache && (now - this.cacheTimestamp) < this.cacheTTL) {
+		if (this.cache && now - this.cacheTimestamp < this.cacheTTL) {
 			return this.cache;
 		}
 
@@ -44,7 +44,7 @@ export class TaskSyncService {
 				this.cache = { tasks: [] };
 			}
 		}
-		
+
 		this.cacheTimestamp = now;
 		return this.cache;
 	}
@@ -66,16 +66,22 @@ export class TaskSyncService {
 	async setTaskStatus(taskId, status) {
 		// Invalidate cache since we're modifying data
 		this.invalidateCache();
-		
+
 		// Use TaskMaster's built-in method if available
 		if (this.taskMaster.setTaskStatus) {
 			// Get the tasks path from taskMaster
-			const tasksPath = this.taskMaster.tasksPath || this.taskMaster.getTasksPath();
+			const tasksPath =
+				this.taskMaster.tasksPath || this.taskMaster.getTasksPath();
 			return await this.taskMaster.setTaskStatus(tasksPath, taskId, status);
 		}
 
 		// Fallback to CLI command execution
-		return await this.executeCommand('set-status', ['--id', taskId, '--status', status]);
+		return await this.executeCommand('set-status', [
+			'--id',
+			taskId,
+			'--status',
+			status
+		]);
 	}
 
 	/**
@@ -130,7 +136,7 @@ export class TaskSyncService {
 	 */
 	watchTasks(onChange) {
 		const tasksPath = this.taskMaster.tasksPath;
-		
+
 		if (!tasksPath || !fs.existsSync(tasksPath)) {
 			console.warn('Tasks file not found for watching:', tasksPath);
 			return () => {};
@@ -161,15 +167,15 @@ export class TaskSyncService {
 	getTaskById(id) {
 		const tasksData = this.getTasks();
 		const tasks = tasksData.tasks || [];
-		
+
 		// Check main tasks
-		const mainTask = tasks.find(t => t.id === id);
+		const mainTask = tasks.find((t) => t.id === id);
 		if (mainTask) return mainTask;
 
 		// Check subtasks
 		for (const task of tasks) {
 			if (task.subtasks) {
-				const subtask = task.subtasks.find(st => st.id === id);
+				const subtask = task.subtasks.find((st) => st.id === id);
 				if (subtask) return subtask;
 			}
 		}

@@ -1,11 +1,18 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+	describe,
+	test,
+	expect,
+	beforeEach,
+	afterEach,
+	jest
+} from '@jest/globals';
 
 /**
  * Comprehensive Test Suite for TaskCard Component System
- * 
+ *
  * Tests the complete TaskCard component implementation including:
  * - Component initialization and structure
- * - Priority color coding system  
+ * - Priority color coding system
  * - Badge systems (parent task, complexity, AI model)
  * - Description truncation and expansion
  * - Progress bar calculations
@@ -14,7 +21,7 @@ import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globa
  * - Accessibility features
  * - Performance with many cards
  * - Memory cleanup
- * 
+ *
  * Following TDD methodology with comprehensive coverage
  */
 
@@ -33,9 +40,9 @@ class MockTaskCard {
 				'data-task-id': task.id,
 				'data-priority': task.priority || 'medium',
 				'data-card-type': task.subtasks?.length > 0 ? 'parent' : 'main',
-				'draggable': 'true',
-				'tabindex': '0',
-				'role': 'option',
+				draggable: 'true',
+				tabindex: '0',
+				role: 'option',
 				'aria-grabbed': 'false',
 				'aria-label': `Task: ${task.title}`
 			},
@@ -62,17 +69,17 @@ class MockTaskCard {
 
 	static getPriorityColor(priority) {
 		const colorMap = {
-			'critical': '#dc3545', // Red
-			'high': '#fd7e14',     // Orange  
-			'medium': '#0d6efd',   // Blue
-			'low': '#198754'       // Green
+			critical: '#dc3545', // Red
+			high: '#fd7e14', // Orange
+			medium: '#0d6efd', // Blue
+			low: '#198754' // Green
 		};
 		return colorMap[priority] || colorMap.medium;
 	}
 
 	static createParentTaskBadge(task) {
 		if (!task.subtasks || task.subtasks.length === 0) return null;
-		
+
 		return {
 			tagName: 'SPAN',
 			className: 'parent-task-badge',
@@ -86,16 +93,24 @@ class MockTaskCard {
 
 	static getParentBadgeColor(taskId) {
 		// Generate unique color based on task ID
-		const colors = ['#6f42c1', '#dc3545', '#fd7e14', '#198754', '#0d6efd', '#6610f2'];
+		const colors = [
+			'#6f42c1',
+			'#dc3545',
+			'#fd7e14',
+			'#198754',
+			'#0d6efd',
+			'#6610f2'
+		];
 		const hash = taskId.split('').reduce((a, b) => {
-			a = ((a << 5) - a) + b.charCodeAt(0);
+			a = (a << 5) - a + b.charCodeAt(0);
 			return a & a;
 		}, 0);
 		return colors[Math.abs(hash) % colors.length];
 	}
 
 	static createComplexityBadge(complexityScore) {
-		if (!complexityScore || complexityScore < 1 || complexityScore > 10) return null;
+		if (!complexityScore || complexityScore < 1 || complexityScore > 10)
+			return null;
 
 		let badgeClass = 'complexity-low';
 		if (complexityScore >= 7) badgeClass = 'complexity-high';
@@ -107,7 +122,7 @@ class MockTaskCard {
 			textContent: complexityScore.toString(),
 			attributes: {
 				'aria-label': `Complexity: ${complexityScore} out of 10`,
-				'title': `Complexity Score: ${complexityScore}/10`
+				title: `Complexity Score: ${complexityScore}/10`
 			}
 		};
 	}
@@ -135,7 +150,7 @@ class MockTaskCard {
 			textContent: `${dependencyCount} deps`,
 			attributes: {
 				'aria-label': `${dependencyCount} dependencies`,
-				'title': `This task has ${dependencyCount} dependencies`
+				title: `This task has ${dependencyCount} dependencies`
 			}
 		};
 	}
@@ -143,7 +158,9 @@ class MockTaskCard {
 	static createProgressBar(task) {
 		if (!task.subtasks || task.subtasks.length === 0) return null;
 
-		const completedSubtasks = task.subtasks.filter(st => st.status === 'done').length;
+		const completedSubtasks = task.subtasks.filter(
+			(st) => st.status === 'done'
+		).length;
 		const progress = (completedSubtasks / task.subtasks.length) * 100;
 
 		return {
@@ -158,7 +175,7 @@ class MockTaskCard {
 						'aria-valuenow': progress,
 						'aria-valuemin': '0',
 						'aria-valuemax': '100',
-						'role': 'progressbar',
+						role: 'progressbar',
 						'aria-label': `Progress: ${completedSubtasks} of ${task.subtasks.length} subtasks completed`
 					}
 				}
@@ -173,10 +190,11 @@ class MockTaskCard {
 
 		const truncated = description.substring(0, maxLength).trim();
 		const lastSpace = truncated.lastIndexOf(' ');
-		const finalText = lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated;
+		const finalText =
+			lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated;
 
-		return { 
-			text: finalText + '...', 
+		return {
+			text: finalText + '...',
 			isTruncated: true,
 			originalText: description
 		};
@@ -184,7 +202,7 @@ class MockTaskCard {
 
 	static validateTask(task) {
 		const errors = [];
-		
+
 		if (!task || typeof task !== 'object') {
 			errors.push('Task must be an object');
 			return { valid: false, errors };
@@ -205,7 +223,10 @@ class MockTaskCard {
 			errors.push(`Invalid priority: ${task.priority}`);
 		}
 
-		if (task.complexityScore && (task.complexityScore < 1 || task.complexityScore > 10)) {
+		if (
+			task.complexityScore &&
+			(task.complexityScore < 1 || task.complexityScore > 10)
+		) {
 			errors.push('Complexity score must be between 1 and 10');
 		}
 
@@ -275,7 +296,8 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 		mockTask = {
 			id: 'task-123',
 			title: 'Implement authentication system',
-			description: 'Create a comprehensive authentication system with JWT tokens, password hashing, and user session management.',
+			description:
+				'Create a comprehensive authentication system with JWT tokens, password hashing, and user session management.',
 			status: 'in-progress',
 			priority: 'high',
 			complexityScore: 7,
@@ -283,9 +305,21 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 			dependencies: ['task-100', 'task-101'],
 			subtasks: [
 				{ id: 'task-123-1', title: 'Setup JWT middleware', status: 'done' },
-				{ id: 'task-123-2', title: 'Implement password hashing', status: 'done' },
-				{ id: 'task-123-3', title: 'Create user session management', status: 'in-progress' },
-				{ id: 'task-123-4', title: 'Add password reset functionality', status: 'ready' }
+				{
+					id: 'task-123-2',
+					title: 'Implement password hashing',
+					status: 'done'
+				},
+				{
+					id: 'task-123-3',
+					title: 'Create user session management',
+					status: 'in-progress'
+				},
+				{
+					id: 'task-123-4',
+					title: 'Add password reset functionality',
+					status: 'ready'
+				}
 			],
 			tags: ['backend', 'security'],
 			assignee: 'john.doe',
@@ -331,7 +365,9 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 			expect(card.attributes.role).toBe('option');
 			expect(card.attributes['aria-grabbed']).toBe('false');
-			expect(card.attributes['aria-label']).toBe('Task: Implement authentication system');
+			expect(card.attributes['aria-label']).toBe(
+				'Task: Implement authentication system'
+			);
 			expect(card.attributes.tabindex).toBe('0');
 		});
 
@@ -354,9 +390,9 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 	describe('2. Priority Color Coding Logic', () => {
 		test('should return correct colors for all priority levels', () => {
 			expect(TaskCard.getPriorityColor('critical')).toBe('#dc3545'); // Red
-			expect(TaskCard.getPriorityColor('high')).toBe('#fd7e14');     // Orange
-			expect(TaskCard.getPriorityColor('medium')).toBe('#0d6efd');   // Blue
-			expect(TaskCard.getPriorityColor('low')).toBe('#198754');      // Green
+			expect(TaskCard.getPriorityColor('high')).toBe('#fd7e14'); // Orange
+			expect(TaskCard.getPriorityColor('medium')).toBe('#0d6efd'); // Blue
+			expect(TaskCard.getPriorityColor('low')).toBe('#198754'); // Green
 		});
 
 		test('should default to medium priority color for invalid priorities', () => {
@@ -468,8 +504,8 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 			test('should handle various AI model names', () => {
 				const models = ['gpt-4', 'claude-3-opus', 'gemini-pro', 'llama-2'];
-				
-				models.forEach(model => {
+
+				models.forEach((model) => {
 					const tag = TaskCard.createAIModelTag(model);
 					expect(tag.textContent).toBe(model);
 					expect(tag.attributes['data-ai-model']).toBe(model);
@@ -486,7 +522,8 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 	describe('4. Description Truncation and Expansion', () => {
 		test('should truncate long descriptions properly', () => {
-			const longDescription = 'This is a very long description that should be truncated because it exceeds the maximum allowed length for display in the task card interface.';
+			const longDescription =
+				'This is a very long description that should be truncated because it exceeds the maximum allowed length for display in the task card interface.';
 			const result = TaskCard.truncateDescription(longDescription, 50);
 
 			expect(result.isTruncated).toBe(true);
@@ -505,7 +542,8 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 		});
 
 		test('should truncate at word boundaries', () => {
-			const description = 'This is a test description with multiple words that should break at word boundaries';
+			const description =
+				'This is a test description with multiple words that should break at word boundaries';
 			const result = TaskCard.truncateDescription(description, 30);
 
 			expect(result.text).not.toMatch(/\w+\.\.\.$/); // Should not end with partial word
@@ -533,7 +571,7 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 			expect(progressBar).not.toBeNull();
 			expect(progressBar.className).toBe('progress-bar-container');
-			
+
 			// 2 of 4 subtasks are done = 50%
 			const bar = progressBar.children[0];
 			expect(bar.style.width).toBe('50%');
@@ -585,7 +623,9 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 			expect(bar.attributes.role).toBe('progressbar');
 			expect(bar.attributes['aria-valuemin']).toBe('0');
 			expect(bar.attributes['aria-valuemax']).toBe('100');
-			expect(bar.attributes['aria-label']).toBe('Progress: 2 of 4 subtasks completed');
+			expect(bar.attributes['aria-label']).toBe(
+				'Progress: 2 of 4 subtasks completed'
+			);
 		});
 	});
 
@@ -670,7 +710,9 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 		test('should include screen reader friendly labels', () => {
 			const card = TaskCard.create(mockTask);
 
-			expect(card.attributes['aria-label']).toBe('Task: Implement authentication system');
+			expect(card.attributes['aria-label']).toBe(
+				'Task: Implement authentication system'
+			);
 		});
 
 		test('should support focus management', () => {
@@ -682,7 +724,7 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 		test('should handle focus on non-focusable elements gracefully', () => {
 			const nonFocusableElement = {};
-			
+
 			expect(() => TaskCard.focus(nonFocusableElement)).not.toThrow();
 			expect(() => TaskCard.focus(null)).not.toThrow();
 		});
@@ -722,7 +764,7 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 			expect(cards).toHaveLength(100);
 			expect(duration).toBeLessThan(1000); // Should complete in under 1 second
-			expect(cards.every(card => card !== null)).toBe(true);
+			expect(cards.every((card) => card !== null)).toBe(true);
 		});
 
 		test('should maintain memory efficiency with large datasets', () => {
@@ -733,11 +775,11 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 				description: `Description for task ${i}`.repeat(10) // Larger descriptions
 			}));
 
-			const cards = tasks.map(task => TaskCard.create(task));
+			const cards = tasks.map((task) => TaskCard.create(task));
 
 			expect(cards).toHaveLength(500);
-			expect(cards.every(card => card !== null)).toBe(true);
-			
+			expect(cards.every((card) => card !== null)).toBe(true);
+
 			// Verify structure is maintained for random sample
 			const randomCard = cards[Math.floor(Math.random() * cards.length)];
 			expect(randomCard.className).toContain('task-card');
@@ -746,18 +788,20 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 		test('should handle rapid successive operations', () => {
 			const operations = [];
-			
+
 			// Simulate rapid creation and validation
 			for (let i = 0; i < 50; i++) {
 				const task = { ...mockTask, id: `rapid-task-${i}` };
 				const card = TaskCard.create(task);
 				const validation = TaskCard.validateTask(task);
-				
+
 				operations.push({ card, validation });
 			}
 
 			expect(operations).toHaveLength(50);
-			expect(operations.every(op => op.card !== null && op.validation.valid)).toBe(true);
+			expect(
+				operations.every((op) => op.card !== null && op.validation.valid)
+			).toBe(true);
 		});
 
 		test('should optimize badge creation for bulk operations', () => {
@@ -766,9 +810,13 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 
 			// Create many badges of different types
 			for (let i = 0; i < 200; i++) {
-				badges.push(TaskCard.createComplexityBadge(Math.floor(Math.random() * 10) + 1));
+				badges.push(
+					TaskCard.createComplexityBadge(Math.floor(Math.random() * 10) + 1)
+				);
 				badges.push(TaskCard.createAIModelTag(`model-${i}`));
-				badges.push(TaskCard.createDependencyIndicator(Math.floor(Math.random() * 5) + 1));
+				badges.push(
+					TaskCard.createDependencyIndicator(Math.floor(Math.random() * 5) + 1)
+				);
 			}
 
 			const endTime = Date.now();
@@ -836,7 +884,7 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 			}
 
 			// Verify all elements are cleaned up
-			elements.forEach(element => {
+			elements.forEach((element) => {
 				expect(element._listeners).toBeNull();
 				expect(element._observers).toBeNull();
 			});
@@ -872,7 +920,9 @@ describe('TaskCard Component System - Comprehensive Test Suite', () => {
 			const validation = TaskCard.validateTask(invalidComplexityTask);
 
 			expect(validation.valid).toBe(false);
-			expect(validation.errors).toContain('Complexity score must be between 1 and 10');
+			expect(validation.errors).toContain(
+				'Complexity score must be between 1 and 10'
+			);
 		});
 
 		test('should handle multiple validation errors', () => {

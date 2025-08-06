@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 // Simple test framework mock
 const jest = {
 	fn: () => () => {},
-	clearAllMocks: () => {},
+	clearAllMocks: () => {}
 };
 
 const describe = (name, fn) => {
@@ -68,7 +68,9 @@ const expect = (actual) => ({
 	},
 	toHaveLength: (expected) => {
 		if (!actual || actual.length !== expected) {
-			throw new Error(`Expected length ${expected}, got ${actual ? actual.length : 'undefined'}`);
+			throw new Error(
+				`Expected length ${expected}, got ${actual ? actual.length : 'undefined'}`
+			);
 		}
 	},
 	toBeTruthy: () => {
@@ -119,10 +121,10 @@ class MockTaskCard {
 
 	static getPriorityColor(priority) {
 		const colors = {
-			'critical': '#dc3545',
-			'high': '#fd7e14', 
-			'medium': '#0d6efd',
-			'low': '#198754'
+			critical: '#dc3545',
+			high: '#fd7e14',
+			medium: '#0d6efd',
+			low: '#198754'
 		};
 		return colors[priority] || colors.medium;
 	}
@@ -140,7 +142,7 @@ describe('TaskCard Test Validation', () => {
 	test('should create a valid task card', () => {
 		const task = { id: 'test-1', title: 'Test Task' };
 		const card = MockTaskCard.create(task);
-		
+
 		expect(card).not.toBeNull();
 		expect(card.tagName).toBe('DIV');
 		expect(card.attributes['data-task-id']).toBe('test-1');
@@ -193,10 +195,11 @@ try {
 	console.log('  - Performance & memory testing');
 	console.log('  - Accessibility validation');
 	console.log('  - Error handling & edge cases');
-	
-	console.log('\n🚀 TaskCard test file is ready for implementation!');
-	console.log('   Run with: npm test tests/unit/ui/client/components/taskCard.test.js');
 
+	console.log('\n🚀 TaskCard test file is ready for implementation!');
+	console.log(
+		'   Run with: npm test tests/unit/ui/client/components/taskCard.test.js'
+	);
 } catch (error) {
 	console.error('❌ Validation failed:', error.message);
 	process.exit(1);

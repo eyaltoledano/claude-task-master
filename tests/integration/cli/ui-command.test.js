@@ -1,4 +1,11 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	expect,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,7 +23,7 @@ describe('TaskMaster UI Command', () => {
 		// Clean up any running processes
 		if (cliProcess) {
 			cliProcess.kill('SIGTERM');
-			await new Promise(resolve => setTimeout(resolve, 1000));
+			await new Promise((resolve) => setTimeout(resolve, 1000));
 		}
 		serverStarted = false;
 	});
@@ -25,7 +32,7 @@ describe('TaskMaster UI Command', () => {
 	function runCLI(args = [], timeout = 10000) {
 		return new Promise((resolve, reject) => {
 			const output = { stdout: '', stderr: '', exitCode: null };
-			
+
 			cliProcess = spawn('node', [CLI_PATH, ...args], {
 				env: { ...process.env, NODE_ENV: 'test' }
 			});
@@ -85,7 +92,7 @@ describe('TaskMaster UI Command', () => {
 			if (await isPortInUse(port)) {
 				return true;
 			}
-			await new Promise(resolve => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
 		return false;
 	}
@@ -110,15 +117,15 @@ describe('TaskMaster UI Command', () => {
 		it('should start server on default port', async () => {
 			// Start server in background
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Wait for server to start
 			const serverReady = await waitForServer(3000);
 			expect(serverReady).toBe(true);
-			
+
 			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Check output
 			expect(result.stdout).toContain('TaskMaster UI started successfully');
 			expect(result.stdout).toContain('http://localhost:3000');
@@ -127,18 +134,23 @@ describe('TaskMaster UI Command', () => {
 
 		it('should start server on custom port', async () => {
 			const customPort = 4567;
-			
+
 			// Start server in background
-			const cliPromise = runCLI(['ui', '--port', customPort.toString(), '--no-browser']);
-			
+			const cliPromise = runCLI([
+				'ui',
+				'--port',
+				customPort.toString(),
+				'--no-browser'
+			]);
+
 			// Wait for server to start
 			const serverReady = await waitForServer(customPort);
 			expect(serverReady).toBe(true);
-			
+
 			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Check output
 			expect(result.stdout).toContain(`http://localhost:${customPort}`);
 			expect(result.stdout).toContain(`Port: ${customPort}`);
@@ -147,11 +159,11 @@ describe('TaskMaster UI Command', () => {
 		it('should show loading spinner', async () => {
 			// Start server and immediately kill it
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Give it a moment to show spinner
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			cliProcess.kill('SIGINT');
-			
+
 			const result = await cliPromise;
 			expect(result.stdout).toContain('Starting TaskMaster UI');
 		});
@@ -161,14 +173,14 @@ describe('TaskMaster UI Command', () => {
 		it('should display formatted server information', async () => {
 			// Start server
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Wait for server to start
 			await waitForServer(3000);
-			
+
 			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Check for formatted output
 			expect(result.stdout).toContain('🎯 TaskMaster Kanban UI');
 			expect(result.stdout).toContain('🌐 URL:');
@@ -180,14 +192,14 @@ describe('TaskMaster UI Command', () => {
 		it('should show file watching message', async () => {
 			// Start server
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Wait for server to start
 			await waitForServer(3000);
-			
+
 			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Check for file watching message
 			expect(result.stdout).toContain('Watching for file changes');
 			expect(result.stdout).toContain('Polling for updates every 30 seconds');
@@ -199,32 +211,34 @@ describe('TaskMaster UI Command', () => {
 			// Mock open to prevent actual browser launch
 			const openMock = jest.fn().mockResolvedValue();
 			jest.doMock('open', () => ({ default: openMock }));
-			
+
 			// Start server WITHOUT --no-browser
 			const cliPromise = runCLI(['ui']);
-			
+
 			// Wait for server to start
 			await waitForServer(3000);
-			
+
 			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Should try to open browser
-			expect(result.stdout).toMatch(/Browser opened automatically|Could not open browser/);
+			expect(result.stdout).toMatch(
+				/Browser opened automatically|Could not open browser/
+			);
 		});
 
 		it('should not launch browser with --no-browser flag', async () => {
 			// Start server
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Wait for server to start
 			await waitForServer(3000);
-			
-			// Kill the process  
+
+			// Kill the process
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Should not mention browser launch
 			expect(result.stdout).not.toContain('Browser opened automatically');
 		});
@@ -234,14 +248,14 @@ describe('TaskMaster UI Command', () => {
 		it('should handle SIGINT gracefully', async () => {
 			// Start server
 			const cliPromise = runCLI(['ui', '--no-browser']);
-			
+
 			// Wait for server to start
 			await waitForServer(3000);
-			
+
 			// Send SIGINT
 			cliProcess.kill('SIGINT');
 			const result = await cliPromise;
-			
+
 			// Check shutdown messages
 			expect(result.stdout).toContain('Shutting down TaskMaster UI');
 			expect(result.exitCode).toBe(0);
@@ -251,8 +265,13 @@ describe('TaskMaster UI Command', () => {
 	describe('Error Handling', () => {
 		it('should handle missing tasks file gracefully', async () => {
 			// Use a non-existent tasks file
-			const result = await runCLI(['ui', '--no-browser', '-f', '/non/existent/tasks.json']);
-			
+			const result = await runCLI([
+				'ui',
+				'--no-browser',
+				'-f',
+				'/non/existent/tasks.json'
+			]);
+
 			// Should show error
 			expect(result.stderr).toContain('Error');
 			expect(result.exitCode).toBe(1);
@@ -260,7 +279,7 @@ describe('TaskMaster UI Command', () => {
 
 		it('should handle invalid port numbers', async () => {
 			const result = await runCLI(['ui', '--no-browser', '--port', 'invalid']);
-			
+
 			// Should show error for invalid port
 			expect(result.exitCode).toBe(1);
 		});

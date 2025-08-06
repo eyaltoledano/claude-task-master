@@ -1,4 +1,11 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	expect,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import request from 'supertest';
 import { createServer } from '../../../../src/ui/server/index.js';
 
@@ -73,9 +80,7 @@ describe('TaskMaster UI Server', () => {
 		});
 
 		it('should have a health check endpoint', async () => {
-			const response = await request(app)
-				.get('/api/health')
-				.expect(200);
+			const response = await request(app).get('/api/health').expect(200);
 
 			expect(response.body).toEqual({
 				status: 'ok',
@@ -85,9 +90,7 @@ describe('TaskMaster UI Server', () => {
 		});
 
 		it('should handle 404 for unknown routes', async () => {
-			const response = await request(app)
-				.get('/api/unknown')
-				.expect(404);
+			const response = await request(app).get('/api/unknown').expect(404);
 
 			expect(response.body).toHaveProperty('error');
 		});
@@ -98,7 +101,9 @@ describe('TaskMaster UI Server', () => {
 				.set('Origin', 'http://localhost:3000')
 				.expect(200);
 
-			expect(response.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+			expect(response.headers['access-control-allow-origin']).toBe(
+				'http://localhost:3000'
+			);
 		});
 
 		it('should reject non-localhost CORS requests', async () => {
@@ -119,11 +124,11 @@ describe('TaskMaster UI Server', () => {
 		});
 
 		it('should have request logging middleware', async () => {
-			const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+			const consoleSpy = jest
+				.spyOn(console, 'log')
+				.mockImplementation(() => {});
 
-			await request(app)
-				.get('/api/health')
-				.expect(200);
+			await request(app).get('/api/health').expect(200);
 
 			expect(consoleSpy).toHaveBeenCalledWith('GET /api/health');
 
@@ -135,39 +140,37 @@ describe('TaskMaster UI Server', () => {
 			const result = await createServer();
 			const testApp = result.app;
 			const testServer = result.server;
-			
+
 			// Add a route that throws an error - do this by manipulating the app
 			// Since we can't add routes after error handler, we'll test differently
 			// by creating a request that will trigger an error in existing routes
-			
+
 			// Instead, let's verify error handling exists by checking the app's stack
-			const errorHandler = testApp._router.stack.find(layer => 
-				layer.handle && layer.handle.length === 4 // Error handlers have 4 params
+			const errorHandler = testApp._router.stack.find(
+				(layer) => layer.handle && layer.handle.length === 4 // Error handlers have 4 params
 			);
-			
+
 			expect(errorHandler).toBeDefined();
-			
+
 			// Close the test server
-			await new Promise(resolve => testServer.close(resolve));
+			await new Promise((resolve) => testServer.close(resolve));
 		});
 
 		it('should serve static files from client directory', async () => {
 			// This will be tested once we have the client directory set up
 			// For now, we'll just ensure the static middleware is configured
-			const response = await request(app)
-				.get('/index.html')
-				.expect(404); // Expected until we create the client files
+			const response = await request(app).get('/index.html').expect(404); // Expected until we create the client files
 		});
 	});
 
 	describe('Graceful Shutdown', () => {
 		let processExitSpy;
-		
+
 		beforeEach(() => {
 			// Mock process.exit to prevent test from exiting
 			processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
 		});
-		
+
 		afterEach(() => {
 			// Restore process.exit
 			processExitSpy.mockRestore();
@@ -222,7 +225,7 @@ describe('TaskMaster UI Server', () => {
 				req.connection.on('close', () => {
 					connectionDestroyed = true;
 				});
-				
+
 				setTimeout(() => {
 					if (!res.headersSent) {
 						res.json({ done: true });
@@ -237,7 +240,7 @@ describe('TaskMaster UI Server', () => {
 				.catch(() => 'aborted');
 
 			// Give the request time to start
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Trigger shutdown
 			const shutdownPromise = new Promise((resolve) => {
@@ -251,7 +254,7 @@ describe('TaskMaster UI Server', () => {
 			// Connection should have been destroyed
 			expect(connectionDestroyed).toBe(true);
 			expect(processExitSpy).toHaveBeenCalledWith(0);
-			
+
 			// Clean up the promise
 			await requestPromise.catch(() => {});
 		});
@@ -268,7 +271,9 @@ describe('TaskMaster UI Server', () => {
 		});
 
 		it('should track and report startup metrics', async () => {
-			const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+			const consoleSpy = jest
+				.spyOn(console, 'log')
+				.mockImplementation(() => {});
 
 			const result = await createServer({ verbose: true });
 			server = result.server;

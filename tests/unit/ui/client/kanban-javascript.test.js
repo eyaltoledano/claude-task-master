@@ -1,4 +1,11 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+	describe,
+	test,
+	expect,
+	beforeEach,
+	afterEach,
+	jest
+} from '@jest/globals';
 
 describe('Kanban Board JavaScript Initialization Tests', () => {
 	let mockKanbanBoard;
@@ -33,7 +40,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 	describe('Module Loading and Initialization', () => {
 		test('should initialize KanbanBoard class properly', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			expect(global.KanbanBoard).toHaveBeenCalled();
 			expect(kanban).toBe(mockKanbanBoard);
 			expect(typeof kanban.init).toBe('function');
@@ -41,29 +48,35 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 
 		test('should have all required columns defined', () => {
 			const kanban = new global.KanbanBoard();
-			const expectedColumns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
-			
+			const expectedColumns = [
+				'backlog',
+				'ready',
+				'in-progress',
+				'review',
+				'done'
+			];
+
 			expect(kanban.columns).toEqual(expectedColumns);
 			expect(kanban.columns).toHaveLength(5);
 		});
 
 		test('should initialize with empty tasks array', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			expect(kanban.tasks).toEqual([]);
 			expect(Array.isArray(kanban.tasks)).toBe(true);
 		});
 
 		test('should start as not initialized', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			expect(kanban.isInitialized).toBe(false);
 		});
 
 		test('should call init method on instantiation', () => {
 			const kanban = new global.KanbanBoard();
 			kanban.init();
-			
+
 			expect(kanban.init).toHaveBeenCalled();
 		});
 	});
@@ -71,7 +84,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 	describe('Event Listener Setup', () => {
 		test('should setup drag and drop event listeners', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			expect(typeof kanban.handleDragStart).toBe('function');
 			expect(typeof kanban.handleDragOver).toBe('function');
 			expect(typeof kanban.handleDrop).toBe('function');
@@ -80,7 +93,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should setup event listeners method', () => {
 			const kanban = new global.KanbanBoard();
 			kanban.setupEventListeners();
-			
+
 			expect(kanban.setupEventListeners).toHaveBeenCalled();
 		});
 
@@ -90,9 +103,9 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 				target: { getAttribute: () => 'task-1' },
 				dataTransfer: { setData: jest.fn() }
 			};
-			
+
 			kanban.handleDragStart(mockEvent);
-			
+
 			expect(kanban.handleDragStart).toHaveBeenCalledWith(mockEvent);
 		});
 
@@ -102,9 +115,9 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 				preventDefault: jest.fn(),
 				target: { classList: { add: jest.fn() } }
 			};
-			
+
 			kanban.handleDragOver(mockEvent);
-			
+
 			expect(kanban.handleDragOver).toHaveBeenCalledWith(mockEvent);
 		});
 
@@ -115,9 +128,9 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 				dataTransfer: { getData: () => 'task-1' },
 				target: { closest: () => ({ getAttribute: () => 'ready' }) }
 			};
-			
+
 			kanban.handleDrop(mockEvent);
-			
+
 			expect(kanban.handleDrop).toHaveBeenCalledWith(mockEvent);
 		});
 	});
@@ -158,7 +171,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should load tasks on initialization', () => {
 			const kanban = new global.KanbanBoard();
 			kanban.loadTasks();
-			
+
 			expect(kanban.loadTasks).toHaveBeenCalled();
 		});
 	});
@@ -167,33 +180,33 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should provide task creation functionality', () => {
 			const kanban = new global.KanbanBoard();
 			const mockTask = { id: 'task-1', title: 'Test Task', status: 'backlog' };
-			
+
 			kanban.addTask(mockTask);
-			
+
 			expect(kanban.addTask).toHaveBeenCalledWith(mockTask);
 		});
 
 		test('should update task status', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			kanban.updateTaskStatus('task-1', 'ready');
-			
+
 			expect(kanban.updateTaskStatus).toHaveBeenCalledWith('task-1', 'ready');
 		});
 
 		test('should update task counts', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			kanban.updateTaskCounts();
-			
+
 			expect(kanban.updateTaskCounts).toHaveBeenCalled();
 		});
 
 		test('should render tasks', () => {
 			const kanban = new global.KanbanBoard();
-			
+
 			kanban.renderTasks();
-			
+
 			expect(kanban.renderTasks).toHaveBeenCalled();
 		});
 
@@ -209,7 +222,9 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 			expect(validTask.id).toBeTruthy();
 			expect(validTask.title).toBeTruthy();
 			expect(validTask.status).toBeTruthy();
-			expect(['backlog', 'ready', 'in-progress', 'review', 'done']).toContain(validTask.status);
+			expect(['backlog', 'ready', 'in-progress', 'review', 'done']).toContain(
+				validTask.status
+			);
 		});
 	});
 
@@ -217,25 +232,35 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should maintain task state in memory', () => {
 			const TaskState = {
 				tasks: new Map(),
-				addTask: function(task) {
+				addTask: function (task) {
 					this.tasks.set(task.id, task);
 				},
-				updateTask: function(id, updates) {
+				updateTask: function (id, updates) {
 					if (this.tasks.has(id)) {
 						this.tasks.set(id, { ...this.tasks.get(id), ...updates });
 					}
 				},
-				getTask: function(id) {
+				getTask: function (id) {
 					return this.tasks.get(id);
 				},
-				getTasksByStatus: function(status) {
-					return Array.from(this.tasks.values()).filter(task => task.status === status);
+				getTasksByStatus: function (status) {
+					return Array.from(this.tasks.values()).filter(
+						(task) => task.status === status
+					);
 				}
 			};
 
 			// Test adding tasks
-			TaskState.addTask({ id: 'task-1', title: 'Test Task', status: 'backlog' });
-			TaskState.addTask({ id: 'task-2', title: 'Another Task', status: 'ready' });
+			TaskState.addTask({
+				id: 'task-1',
+				title: 'Test Task',
+				status: 'backlog'
+			});
+			TaskState.addTask({
+				id: 'task-2',
+				title: 'Another Task',
+				status: 'ready'
+			});
 
 			expect(TaskState.tasks.size).toBe(2);
 			expect(TaskState.getTask('task-1').title).toBe('Test Task');
@@ -245,7 +270,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should handle loading states', () => {
 			const LoadingState = {
 				isLoading: false,
-				setLoading: function(loading) {
+				setLoading: function (loading) {
 					this.isLoading = loading;
 				}
 			};
@@ -262,10 +287,10 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 				currentView: 'kanban',
 				selectedTask: null,
 				filters: {},
-				setCurrentView: function(view) {
+				setCurrentView: function (view) {
 					this.currentView = view;
 				},
-				setSelectedTask: function(taskId) {
+				setSelectedTask: function (taskId) {
 					this.selectedTask = taskId;
 				}
 			};
@@ -294,7 +319,10 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 			const result = handleDragStart(mockEvent);
 
 			expect(result).toBe('task-1');
-			expect(mockEvent.dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'task-1');
+			expect(mockEvent.dataTransfer.setData).toHaveBeenCalledWith(
+				'text/plain',
+				'task-1'
+			);
 		});
 
 		test('should provide drag over handler', () => {
@@ -323,7 +351,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 				const dropTarget = event.target.closest('.task-container');
 				const column = dropTarget.closest('.kanban-column');
 				const newStatus = column.getAttribute('data-column');
-				
+
 				return { taskId, newStatus };
 			};
 
@@ -413,7 +441,7 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 
 			const networkError = new TypeError('Failed to fetch');
 			const result = handleNetworkError(networkError);
-			
+
 			expect(result).toBe('Network connection failed');
 		});
 	});
@@ -426,15 +454,23 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 					className: 'task-card',
 					attributes: {
 						'data-task-id': task.id,
-						'draggable': 'true'
+						draggable: 'true'
 					},
 					children: [
 						{
 							element: 'div',
 							className: 'task-header',
 							children: [
-								{ element: 'h3', className: 'task-title', textContent: task.title },
-								{ element: 'span', className: 'task-id', textContent: `#${task.id}` }
+								{
+									element: 'h3',
+									className: 'task-title',
+									textContent: task.title
+								},
+								{
+									element: 'span',
+									className: 'task-id',
+									textContent: `#${task.id}`
+								}
 							]
 						}
 					]
@@ -532,18 +568,20 @@ describe('Kanban Board JavaScript Initialization Tests', () => {
 		test('should handle keyboard navigation', () => {
 			const handleKeyboardNavigation = (event) => {
 				const actions = {
-					'ArrowRight': 'next-column',
-					'ArrowLeft': 'prev-column', 
-					'ArrowDown': 'next-task',
-					'ArrowUp': 'prev-task',
-					'Enter': 'select-task',
-					'Escape': 'deselect'
+					ArrowRight: 'next-column',
+					ArrowLeft: 'prev-column',
+					ArrowDown: 'next-task',
+					ArrowUp: 'prev-task',
+					Enter: 'select-task',
+					Escape: 'deselect'
 				};
 
 				return actions[event.key] || null;
 			};
 
-			expect(handleKeyboardNavigation({ key: 'ArrowRight' })).toBe('next-column');
+			expect(handleKeyboardNavigation({ key: 'ArrowRight' })).toBe(
+				'next-column'
+			);
 			expect(handleKeyboardNavigation({ key: 'Enter' })).toBe('select-task');
 			expect(handleKeyboardNavigation({ key: 'Tab' })).toBe(null);
 		});

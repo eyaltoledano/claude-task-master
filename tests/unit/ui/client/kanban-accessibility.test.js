@@ -36,7 +36,7 @@ describe('Kanban Board Accessibility Requirements', () => {
 
 			const requiredLandmarks = ['banner', 'main'];
 
-			requiredLandmarks.forEach(landmark => {
+			requiredLandmarks.forEach((landmark) => {
 				expect(landmarkRoles).toContain(landmark);
 			});
 		});
@@ -44,7 +44,10 @@ describe('Kanban Board Accessibility Requirements', () => {
 		test('should have logical heading hierarchy', () => {
 			const headingHierarchy = {
 				h1: { count: 1, content: 'Task Master Kanban Board' },
-				h2: { count: 5, content: ['Backlog', 'Ready', 'In Progress', 'Review', 'Done'] },
+				h2: {
+					count: 5,
+					content: ['Backlog', 'Ready', 'In Progress', 'Review', 'Done']
+				},
 				h3: { variable: true, content: 'Task titles' },
 				skipLevels: false
 			};
@@ -74,7 +77,13 @@ describe('Kanban Board Accessibility Requirements', () => {
 				role: 'region',
 				ariaLabelledby: true,
 				uniqueLabels: true,
-				descriptiveLabels: ['Backlog tasks', 'Ready tasks', 'In Progress tasks', 'Review tasks', 'Done tasks']
+				descriptiveLabels: [
+					'Backlog tasks',
+					'Ready tasks',
+					'In Progress tasks',
+					'Review tasks',
+					'Done tasks'
+				]
 			};
 
 			expect(columnLabeling.role).toBe('region');
@@ -225,7 +234,9 @@ describe('Kanban Board Accessibility Requirements', () => {
 				timing: 'immediate'
 			};
 
-			expect(taskMovementAnnouncements.moveStart).toContain('grabbed for moving');
+			expect(taskMovementAnnouncements.moveStart).toContain(
+				'grabbed for moving'
+			);
 			expect(taskMovementAnnouncements.moveComplete).toContain('moved from');
 		});
 

@@ -4,242 +4,243 @@
 
 /* Offline indicator bar */
 .offline-indicator {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: #ef4444;
-    color: white;
-    padding: 8px 16px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 9999;
-    transform: translateY(-100%);
-    transition: transform 0.3s ease;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	background: #ef4444;
+	color: white;
+	padding: 8px 16px;
+	text-align: center;
+	font-size: 14px;
+	font-weight: 500;
+	z-index: 9999;
+	transform: translateY(-100%);
+	transition: transform 0.3s ease;
+	box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
 }
 
 .offline-indicator-visible {
-    transform: translateY(0);
+	transform: translateY(0);
 }
 
 .offline-icon {
-    font-size: 18px;
-    animation: pulse-icon 2s infinite;
+	font-size: 18px;
+	animation: pulse-icon 2s infinite;
 }
 
 .offline-text {
-    line-height: 1;
+	line-height: 1;
 }
 
 @keyframes pulse-icon {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.6;
-    }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 
 /* Body offline state */
 body.offline {
-    position: relative;
+	position: relative;
 }
 
 body.offline::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.05);
-    pointer-events: none;
-    z-index: 999;
+	content: "";
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.05);
+	pointer-events: none;
+	z-index: 999;
 }
 
 /* Offline mode adjustments for UI elements */
 body.offline .btn-primary,
 body.offline .btn-secondary {
-    opacity: 0.7;
-    cursor: not-allowed;
+	opacity: 0.7;
+	cursor: not-allowed;
 }
 
 body.offline .btn-primary:hover,
 body.offline .btn-secondary:hover {
-    transform: none;
-    box-shadow: none;
+	transform: none;
+	box-shadow: none;
 }
 
 /* Offline badge for cards */
 body.offline .task-card::before {
-    content: '📵';
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    font-size: 16px;
-    opacity: 0.5;
-    z-index: 10;
+	content: "📵";
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	font-size: 16px;
+	opacity: 0.5;
+	z-index: 10;
 }
 
 /* Disable form submissions when offline */
 body.offline form {
-    position: relative;
+	position: relative;
 }
 
 body.offline form::after {
-    content: 'Currently offline - changes will be queued';
-    position: absolute;
-    bottom: -20px;
-    left: 0;
-    font-size: 12px;
-    color: #ef4444;
-    font-style: italic;
+	content: "Currently offline - changes will be queued";
+	position: absolute;
+	bottom: -20px;
+	left: 0;
+	font-size: 12px;
+	color: #ef4444;
+	font-style: italic;
 }
 
 /* Offline queue indicator */
 .offline-queue-badge {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #f59e0b;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 1000;
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	background: #f59e0b;
+	color: white;
+	padding: 8px 16px;
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	z-index: 1000;
 }
 
 .offline-queue-badge:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
 .offline-queue-badge:empty {
-    display: none;
+	display: none;
 }
 
 /* Dark mode adjustments */
 [data-theme="dark"] .offline-indicator {
-    background: #dc2626;
-    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.5);
+	background: #dc2626;
+	box-shadow: 0 2px 8px rgba(220, 38, 38, 0.5);
 }
 
 [data-theme="dark"] body.offline::after {
-    background: rgba(0, 0, 0, 0.1);
+	background: rgba(0, 0, 0, 0.1);
 }
 
 [data-theme="dark"] .offline-queue-badge {
-    background: #d97706;
-    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.5);
+	background: #d97706;
+	box-shadow: 0 2px 8px rgba(217, 119, 6, 0.5);
 }
 
 /* Mobile responsiveness */
 @media (max-width: 640px) {
-    .offline-indicator {
-        font-size: 13px;
-        padding: 6px 12px;
-    }
-    
-    .offline-icon {
-        font-size: 16px;
-    }
-    
-    .offline-queue-badge {
-        bottom: 60px;
-        right: 16px;
-        font-size: 12px;
-        padding: 6px 12px;
-    }
+	.offline-indicator {
+		font-size: 13px;
+		padding: 6px 12px;
+	}
+
+	.offline-icon {
+		font-size: 16px;
+	}
+
+	.offline-queue-badge {
+		bottom: 60px;
+		right: 16px;
+		font-size: 12px;
+		padding: 6px 12px;
+	}
 }
 
 /* Animation for offline transition */
 @keyframes offline-pulse {
-    0% {
-        opacity: 0;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        opacity: 0;
-    }
+	0% {
+		opacity: 0;
+	}
+	50% {
+		opacity: 0.5;
+	}
+	100% {
+		opacity: 0;
+	}
 }
 
 .offline-transition {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(239, 68, 68, 0.1);
-    pointer-events: none;
-    animation: offline-pulse 0.6s ease-out;
-    z-index: 9998;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(239, 68, 68, 0.1);
+	pointer-events: none;
+	animation: offline-pulse 0.6s ease-out;
+	z-index: 9998;
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .offline-indicator {
-        transition: none;
-    }
-    
-    .offline-icon {
-        animation: none;
-    }
-    
-    .offline-transition {
-        animation: none;
-    }
+	.offline-indicator {
+		transition: none;
+	}
+
+	.offline-icon {
+		animation: none;
+	}
+
+	.offline-transition {
+		animation: none;
+	}
 }
 
 /* Loading spinner for connectivity checks */
 .connectivity-check {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    text-align: center;
-    z-index: 10000;
-    display: none;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(255, 255, 255, 0.95);
+	padding: 20px;
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	text-align: center;
+	z-index: 10000;
+	display: none;
 }
 
 .connectivity-check.checking {
-    display: block;
+	display: block;
 }
 
 .connectivity-check-spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid #e5e7eb;
-    border-top: 2px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 12px;
+	width: 24px;
+	height: 24px;
+	border: 2px solid #e5e7eb;
+	border-top: 2px solid #3b82f6;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	margin: 0 auto 12px;
 }
 
 .connectivity-check-text {
-    font-size: 14px;
-    color: #6b7280;
+	font-size: 14px;
+	color: #6b7280;
 }
 
 [data-theme="dark"] .connectivity-check {
-    background: rgba(31, 41, 55, 0.95);
+	background: rgba(31, 41, 55, 0.95);
 }
 
 [data-theme="dark"] .connectivity-check-text {
-    color: #d1d5db;
+	color: #d1d5db;
 }

@@ -22,7 +22,7 @@ let startTime;
  */
 export async function createServer(options = {}) {
 	startTime = Date.now();
-	
+
 	const app = express();
 	const preferredPort = options.port || 3000;
 	const taskMaster = options.taskMaster;
@@ -32,7 +32,7 @@ export async function createServer(options = {}) {
 		origin: (origin, callback) => {
 			// Allow requests with no origin (like mobile apps or curl requests)
 			if (!origin) return callback(null, true);
-			
+
 			// Check if origin is localhost
 			const allowedOrigins = [
 				'http://localhost:3000',
@@ -48,7 +48,7 @@ export async function createServer(options = {}) {
 				'http://127.0.0.1:3004',
 				'http://127.0.0.1:3005'
 			];
-			
+
 			if (allowedOrigins.includes(origin)) {
 				callback(null, true);
 			} else {
@@ -61,7 +61,7 @@ export async function createServer(options = {}) {
 	// Apply middleware
 	app.use(cors(corsOptions));
 	app.use(express.json());
-	
+
 	// Serve static files from the client directory
 	const clientPath = path.join(__dirname, '../client');
 	app.use(express.static(clientPath));
@@ -86,15 +86,15 @@ export async function createServer(options = {}) {
 		// Load tasks data from file
 		const tasksPath = taskMaster.getTasksPath();
 		let tasksData = { tasks: [] };
-		
+
 		if (tasksPath && fs.existsSync(tasksPath)) {
 			try {
 				const fileContent = fs.readFileSync(tasksPath, 'utf8');
 				const allData = JSON.parse(fileContent);
-				
+
 				// Get the current tag (default to 'master')
 				const currentTag = taskMaster.getCurrentTag() || 'master';
-				
+
 				// Extract tasks for the current tag
 				if (allData[currentTag]) {
 					tasksData = allData[currentTag];
@@ -103,10 +103,10 @@ export async function createServer(options = {}) {
 				console.error('Error loading tasks:', error.message);
 			}
 		}
-		
+
 		// Create task sync service
 		const taskSync = new TaskSyncService(taskMaster);
-		
+
 		// Create an enhanced taskMaster with additional methods
 		const enhancedTaskMaster = {
 			...taskMaster,
@@ -123,7 +123,7 @@ export async function createServer(options = {}) {
 				return taskSync.getTaskById(id);
 			}
 		};
-		
+
 		// Mount API router
 		const apiRouter = createApiRouter(enhancedTaskMaster);
 		app.use('/api', apiRouter);
@@ -152,7 +152,7 @@ export async function createServer(options = {}) {
 
 	// Create HTTP server
 	const server = http.createServer(app);
-	
+
 	// Initialize WebSocket server
 	let wsServer = null;
 	if (options.enableWebSocket !== false) {
@@ -214,7 +214,9 @@ async function findAvailablePort(preferredPort) {
 		}
 	}
 
-	throw new Error(`Could not find available port after ${maxAttempts} attempts`);
+	throw new Error(
+		`Could not find available port after ${maxAttempts} attempts`
+	);
 }
 
 /**
@@ -225,7 +227,7 @@ async function findAvailablePort(preferredPort) {
 function checkPortAvailable(port) {
 	return new Promise((resolve, reject) => {
 		const testServer = http.createServer();
-		
+
 		testServer.once('error', (err) => {
 			if (err.code === 'EADDRINUSE') {
 				reject(new Error(`Port ${port} is already in use`));
@@ -267,10 +269,12 @@ function setupGracefulShutdown(server, wsServer) {
 
 		// Force shutdown after 10 seconds
 		const forceShutdownTimer = setTimeout(() => {
-			console.error('Could not close connections in time, forcefully shutting down');
+			console.error(
+				'Could not close connections in time, forcefully shutting down'
+			);
 			process.exit(1);
 		}, 10000);
-		
+
 		// Shutdown WebSocket server if exists
 		if (wsServer) {
 			wsServer.shutdown();

@@ -1,4 +1,11 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	expect,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createApiRouter } from '../../../../../src/ui/server/routes/api.js';
@@ -56,9 +63,9 @@ describe('Task API Endpoints', () => {
 			getTaskById: jest.fn((id) => {
 				const allTasks = [
 					...mockTaskMaster.tasks.tasks,
-					...mockTaskMaster.tasks.tasks.flatMap(t => t.subtasks || [])
+					...mockTaskMaster.tasks.tasks.flatMap((t) => t.subtasks || [])
 				];
-				return allTasks.find(t => t.id === id);
+				return allTasks.find((t) => t.id === id);
 			})
 		};
 
@@ -80,9 +87,7 @@ describe('Task API Endpoints', () => {
 
 	describe('GET /api/tasks', () => {
 		it('should return all tasks with subtask hierarchy', async () => {
-			const response = await request(app)
-				.get('/api/tasks')
-				.expect(200);
+			const response = await request(app).get('/api/tasks').expect(200);
 
 			expect(response.body).toHaveProperty('tasks');
 			expect(response.body.tasks).toHaveLength(2);
@@ -92,9 +97,7 @@ describe('Task API Endpoints', () => {
 		});
 
 		it('should include metadata in response', async () => {
-			const response = await request(app)
-				.get('/api/tasks')
-				.expect(200);
+			const response = await request(app).get('/api/tasks').expect(200);
 
 			expect(response.body).toHaveProperty('metadata');
 			expect(response.body.metadata).toHaveProperty('total', 2);
@@ -122,12 +125,12 @@ describe('Task API Endpoints', () => {
 		it('should handle errors gracefully', async () => {
 			// Override the tasks getter to throw an error
 			Object.defineProperty(mockTaskMaster, 'tasks', {
-				get: () => { throw new Error('File read error'); }
+				get: () => {
+					throw new Error('File read error');
+				}
 			});
 
-			const response = await request(app)
-				.get('/api/tasks')
-				.expect(500);
+			const response = await request(app).get('/api/tasks').expect(500);
 
 			expect(response.body).toHaveProperty('error');
 		});
@@ -142,7 +145,10 @@ describe('Task API Endpoints', () => {
 
 			expect(response.body).toHaveProperty('success', true);
 			expect(response.body).toHaveProperty('message');
-			expect(mockTaskMaster.setTaskStatus).toHaveBeenCalledWith('1', 'in-progress');
+			expect(mockTaskMaster.setTaskStatus).toHaveBeenCalledWith(
+				'1',
+				'in-progress'
+			);
 		});
 
 		it('should validate status values', async () => {
@@ -199,12 +205,14 @@ describe('Task API Endpoints', () => {
 
 			expect(response.body).toHaveProperty('success', true);
 			expect(response.body).toHaveProperty('output');
-			expect(mockTaskMaster.executeCommand).toHaveBeenCalledWith('list', ['--status=pending']);
+			expect(mockTaskMaster.executeCommand).toHaveBeenCalledWith('list', [
+				'--status=pending'
+			]);
 		});
 
 		it('should reject dangerous commands', async () => {
 			const dangerousCommands = ['rm', 'delete', 'drop'];
-			
+
 			for (const cmd of dangerousCommands) {
 				const response = await request(app)
 					.post(`/api/commands/${cmd}`)
@@ -217,8 +225,14 @@ describe('Task API Endpoints', () => {
 		});
 
 		it('should whitelist safe commands', async () => {
-			const safeCommands = ['list', 'show', 'next', 'expand', 'analyze-complexity'];
-			
+			const safeCommands = [
+				'list',
+				'show',
+				'next',
+				'expand',
+				'analyze-complexity'
+			];
+
 			for (const cmd of safeCommands) {
 				const response = await request(app)
 					.post(`/api/commands/${cmd}`)
@@ -255,9 +269,7 @@ describe('Task API Endpoints', () => {
 
 	describe('GET /api/tasks/:id', () => {
 		it('should return specific task by ID', async () => {
-			const response = await request(app)
-				.get('/api/tasks/1')
-				.expect(200);
+			const response = await request(app).get('/api/tasks/1').expect(200);
 
 			expect(response.body).toHaveProperty('task');
 			expect(response.body.task.id).toBe('1');
@@ -265,9 +277,7 @@ describe('Task API Endpoints', () => {
 		});
 
 		it('should return subtask by ID', async () => {
-			const response = await request(app)
-				.get('/api/tasks/1.1')
-				.expect(200);
+			const response = await request(app).get('/api/tasks/1.1').expect(200);
 
 			expect(response.body).toHaveProperty('task');
 			expect(response.body.task.id).toBe('1.1');
@@ -275,9 +285,7 @@ describe('Task API Endpoints', () => {
 		});
 
 		it('should return 404 for non-existent task', async () => {
-			const response = await request(app)
-				.get('/api/tasks/999')
-				.expect(404);
+			const response = await request(app).get('/api/tasks/999').expect(404);
 
 			expect(response.body).toHaveProperty('error');
 			expect(response.body.error).toContain('Task not found');
@@ -300,9 +308,7 @@ describe('Task API Endpoints', () => {
 			mockTaskMaster.tasks.tasks = largeTasks;
 
 			const startTime = Date.now();
-			const response = await request(app)
-				.get('/api/tasks')
-				.expect(200);
+			const response = await request(app).get('/api/tasks').expect(200);
 
 			const responseTime = Date.now() - startTime;
 

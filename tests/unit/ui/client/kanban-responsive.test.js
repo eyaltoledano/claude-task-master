@@ -96,7 +96,7 @@ describe('Kanban Board Responsive Design Requirements', () => {
 				},
 				tablet: {
 					columns: 3,
-					layout: 'horizontal', 
+					layout: 'horizontal',
 					scrollDirection: 'horizontal'
 				},
 				mobile: {
@@ -174,7 +174,9 @@ describe('Kanban Board Responsive Design Requirements', () => {
 
 			expect(parseInt(touchTargets.minimum)).toBeGreaterThanOrEqual(44);
 			expect(parseInt(touchTargets.preferred)).toBeGreaterThanOrEqual(44);
-			expect(parseInt(touchTargets.addTaskButton.minHeight)).toBeGreaterThanOrEqual(44);
+			expect(
+				parseInt(touchTargets.addTaskButton.minHeight)
+			).toBeGreaterThanOrEqual(44);
 		});
 
 		test('should support touch gestures', () => {
@@ -272,14 +274,13 @@ describe('Kanban Board Responsive Design Requirements', () => {
 					'window.orientation',
 					'matchMedia("(orientation: landscape)")'
 				],
-				eventListeners: [
-					'orientationchange',
-					'resize'
-				]
+				eventListeners: ['orientationchange', 'resize']
 			};
 
 			expect(orientationDetection.methods).toHaveLength(3);
-			expect(orientationDetection.eventListeners).toContain('orientationchange');
+			expect(orientationDetection.eventListeners).toContain(
+				'orientationchange'
+			);
 		});
 	});
 
@@ -306,7 +307,9 @@ describe('Kanban Board Responsive Design Requirements', () => {
 				supportToggle: true
 			};
 
-			expect(darkModeSupport.mediaQuery).toBe('@media (prefers-color-scheme: dark)');
+			expect(darkModeSupport.mediaQuery).toBe(
+				'@media (prefers-color-scheme: dark)'
+			);
 			expect(darkModeSupport.contrastRatio).toBe(4.5);
 		});
 
@@ -318,7 +321,9 @@ describe('Kanban Board Responsive Design Requirements', () => {
 				keepEssentialMotion: true
 			};
 
-			expect(reducedMotionSupport.mediaQuery).toBe('@media (prefers-reduced-motion: reduce)');
+			expect(reducedMotionSupport.mediaQuery).toBe(
+				'@media (prefers-reduced-motion: reduce)'
+			);
 			expect(reducedMotionSupport.disableAnimations).toBe(true);
 		});
 
@@ -330,7 +335,9 @@ describe('Kanban Board Responsive Design Requirements', () => {
 				enhanceFocusIndicators: true
 			};
 
-			expect(highContrastSupport.mediaQuery).toBe('@media (prefers-contrast: high)');
+			expect(highContrastSupport.mediaQuery).toBe(
+				'@media (prefers-contrast: high)'
+			);
 			expect(highContrastSupport.enhanceFocusIndicators).toBe(true);
 		});
 	});

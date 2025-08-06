@@ -7,7 +7,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 		// Mock DOM structure for testing
 		mockDOM = {
 			elements: new Map(),
-			createElement: function(tagName) {
+			createElement: function (tagName) {
 				const element = {
 					tagName: tagName.toUpperCase(),
 					className: '',
@@ -17,38 +17,55 @@ describe('Kanban Board HTML Structure Tests', () => {
 					textContent: '',
 					innerHTML: '',
 					classList: {
-						add: function(className) { 
+						add: function (className) {
 							if (!this.className.includes(className)) {
 								this.className = (this.className + ' ' + className).trim();
 							}
 						},
-						remove: function(className) { 
-							this.className = this.className.replace(new RegExp('\\b' + className + '\\b', 'g'), '').replace(/\s+/g, ' ').trim();
+						remove: function (className) {
+							this.className = this.className
+								.replace(new RegExp('\\b' + className + '\\b', 'g'), '')
+								.replace(/\s+/g, ' ')
+								.trim();
 						},
-						contains: function(className) { 
+						contains: function (className) {
 							return this.className.split(' ').includes(className);
 						}
 					},
-					setAttribute: function(name, value) { this.attributes.set(name, value); },
-					getAttribute: function(name) { return this.attributes.get(name) || null; },
-					appendChild: function(child) { this.children.push(child); },
-					querySelector: function(selector) { return null; },
-					querySelectorAll: function(selector) { return []; },
-					addEventListener: function() {},
-					focus: function() {},
-					remove: function() {}
+					setAttribute: function (name, value) {
+						this.attributes.set(name, value);
+					},
+					getAttribute: function (name) {
+						return this.attributes.get(name) || null;
+					},
+					appendChild: function (child) {
+						this.children.push(child);
+					},
+					querySelector: function (selector) {
+						return null;
+					},
+					querySelectorAll: function (selector) {
+						return [];
+					},
+					addEventListener: function () {},
+					focus: function () {},
+					remove: function () {}
 				};
 				this.elements.set(element, true);
 				return element;
 			},
-			getElementById: function(id) {
+			getElementById: function (id) {
 				for (let [element] of this.elements) {
 					if (element.id === id) return element;
 				}
 				return null;
 			},
-			querySelector: function(selector) { return null; },
-			querySelectorAll: function(selector) { return []; }
+			querySelector: function (selector) {
+				return null;
+			},
+			querySelectorAll: function (selector) {
+				return [];
+			}
 		};
 	});
 
@@ -91,10 +108,16 @@ describe('Kanban Board HTML Structure Tests', () => {
 			board.className = 'kanban-board';
 			board.id = 'kanban-board';
 
-			const expectedColumns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
+			const expectedColumns = [
+				'backlog',
+				'ready',
+				'in-progress',
+				'review',
+				'done'
+			];
 			const columns = [];
 
-			expectedColumns.forEach(columnId => {
+			expectedColumns.forEach((columnId) => {
 				const column = mockDOM.createElement('div');
 				column.className = 'kanban-column';
 				column.setAttribute('data-column', columnId);
@@ -155,7 +178,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 			const columns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
 			const taskContainers = [];
 
-			columns.forEach(columnId => {
+			columns.forEach((columnId) => {
 				const column = mockDOM.createElement('div');
 				column.className = 'kanban-column';
 				column.setAttribute('data-column', columnId);
@@ -169,7 +192,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 			});
 
 			expect(taskContainers).toHaveLength(5);
-			taskContainers.forEach(container => {
+			taskContainers.forEach((container) => {
 				expect(container.className).toContain('task-container');
 				expect(container.getAttribute('data-droppable')).toBe('true');
 			});
@@ -222,7 +245,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 		test('should create task cards with required elements', () => {
 			const requiredClasses = [
 				'task-header',
-				'task-title', 
+				'task-title',
 				'task-id',
 				'task-body',
 				'task-description',
@@ -232,14 +255,16 @@ describe('Kanban Board HTML Structure Tests', () => {
 			const taskCard = mockDOM.createElement('div');
 			const elements = {};
 
-			requiredClasses.forEach(className => {
-				const element = mockDOM.createElement(className.includes('title') ? 'h3' : 'div');
+			requiredClasses.forEach((className) => {
+				const element = mockDOM.createElement(
+					className.includes('title') ? 'h3' : 'div'
+				);
 				element.className = className;
 				elements[className] = element;
 				taskCard.appendChild(element);
 			});
 
-			requiredClasses.forEach(className => {
+			requiredClasses.forEach((className) => {
 				expect(elements[className].className).toContain(className);
 			});
 		});
@@ -322,7 +347,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 		test('should support grid layout properties', () => {
 			const board = mockDOM.createElement('div');
 			board.className = 'kanban-board';
-			
+
 			// Mock style properties
 			board.style = {
 				display: 'grid',
@@ -338,7 +363,7 @@ describe('Kanban Board HTML Structure Tests', () => {
 		test('should support column flex layout', () => {
 			const column = mockDOM.createElement('div');
 			column.className = 'kanban-column';
-			
+
 			// Mock style properties
 			column.style = {
 				display: 'flex',
@@ -372,14 +397,28 @@ describe('Kanban Board HTML Structure Tests', () => {
 
 			expect(elements).toHaveLength(requiredElements.length);
 			elements.forEach((element, index) => {
-				expect(element.tagName).toBe(requiredElements[index].type.toUpperCase());
+				expect(element.tagName).toBe(
+					requiredElements[index].type.toUpperCase()
+				);
 				expect(element.className).toContain(requiredElements[index].class);
 			});
 		});
 
 		test('should validate column count and naming', () => {
-			const expectedColumns = ['backlog', 'ready', 'in-progress', 'review', 'done'];
-			const expectedTitles = ['Backlog', 'Ready', 'In Progress', 'Review', 'Done'];
+			const expectedColumns = [
+				'backlog',
+				'ready',
+				'in-progress',
+				'review',
+				'done'
+			];
+			const expectedTitles = [
+				'Backlog',
+				'Ready',
+				'In Progress',
+				'Review',
+				'Done'
+			];
 
 			expect(expectedColumns).toHaveLength(5);
 			expect(expectedTitles).toHaveLength(5);
@@ -387,10 +426,10 @@ describe('Kanban Board HTML Structure Tests', () => {
 			expectedColumns.forEach((columnId, index) => {
 				const column = mockDOM.createElement('div');
 				column.setAttribute('data-column', columnId);
-				
+
 				const title = mockDOM.createElement('h2');
 				title.textContent = expectedTitles[index];
-				
+
 				expect(column.getAttribute('data-column')).toBe(columnId);
 				expect(title.textContent).toBe(expectedTitles[index]);
 			});

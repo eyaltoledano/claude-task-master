@@ -35,10 +35,10 @@ export function createApiRouter(taskMaster) {
 
 			// Apply filters if provided
 			if (status) {
-				tasks = tasks.filter(task => task.status === status);
+				tasks = tasks.filter((task) => task.status === status);
 			}
 			if (priority) {
-				tasks = tasks.filter(task => task.priority === priority);
+				tasks = tasks.filter((task) => task.priority === priority);
 			}
 
 			// Return tasks with metadata
@@ -61,7 +61,7 @@ export function createApiRouter(taskMaster) {
 	router.get('/tasks/:id', (req, res, next) => {
 		try {
 			const { id } = req.params;
-			
+
 			// Use taskMaster's getTaskById if available, otherwise search manually
 			let task;
 			if (taskMaster.getTaskById) {
@@ -69,13 +69,13 @@ export function createApiRouter(taskMaster) {
 			} else {
 				// Search in main tasks and subtasks
 				const allTasks = taskMaster.tasks.tasks || [];
-				task = allTasks.find(t => t.id === id);
-				
+				task = allTasks.find((t) => t.id === id);
+
 				if (!task) {
 					// Search in subtasks
 					for (const mainTask of allTasks) {
 						if (mainTask.subtasks) {
-							task = mainTask.subtasks.find(st => st.id === id);
+							task = mainTask.subtasks.find((st) => st.id === id);
 							if (task) break;
 						}
 					}
@@ -108,8 +108,8 @@ export function createApiRouter(taskMaster) {
 
 			// Validate status value
 			if (!validStatuses.includes(status)) {
-				return res.status(400).json({ 
-					error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+				return res.status(400).json({
+					error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
 				});
 			}
 
@@ -119,7 +119,10 @@ export function createApiRouter(taskMaster) {
 				res.json(result);
 			} catch (error) {
 				// Check if it's a "task not found" error
-				if (error.message.includes('not found') || error.message.includes('Task not found')) {
+				if (
+					error.message.includes('not found') ||
+					error.message.includes('Task not found')
+				) {
 					return res.status(404).json({ error: 'Task not found' });
 				}
 				throw error;
@@ -140,8 +143,8 @@ export function createApiRouter(taskMaster) {
 
 			// Validate command is in whitelist
 			if (!safeCommands.includes(command)) {
-				return res.status(403).json({ 
-					error: `Command '${command}' is forbidden. Only safe read operations are allowed.` 
+				return res.status(403).json({
+					error: `Command '${command}' is forbidden. Only safe read operations are allowed.`
 				});
 			}
 
@@ -161,10 +164,10 @@ export function createApiRouter(taskMaster) {
 	// Error handling middleware
 	router.use((err, req, res, next) => {
 		console.error('API Error:', err.message);
-		
+
 		// Default to 500 if no status set
 		const status = err.status || 500;
-		
+
 		res.status(status).json({
 			error: err.message || 'Internal server error'
 		});

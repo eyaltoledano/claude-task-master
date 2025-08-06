@@ -14,11 +14,7 @@ import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
-import {
-	log,
-	readJSON,
-	getCurrentTag
-} from './utils.js';
+import { log, readJSON, getCurrentTag } from './utils.js';
 import {
 	parsePRD,
 	updateTasks,
@@ -4215,17 +4211,16 @@ Examples:
 	// ui command
 	programInstance
 		.command('ui')
-		.description('Launch the Kanban board UI interface for visual task management')
+		.description(
+			'Launch the Kanban board UI interface for visual task management'
+		)
 		.option(
 			'-p, --port <number>',
 			'Port to run the server on',
 			(value) => parseInt(value, 10),
 			3000
 		)
-		.option(
-			'--no-browser',
-			'Do not automatically open the browser'
-		)
+		.option('--no-browser', 'Do not automatically open the browser')
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -4237,60 +4232,77 @@ Examples:
 				// Import the server module dynamically
 				const { createServer } = await import('../../src/ui/server/index.js');
 				const { default: open } = await import('open');
-				
+
 				// Initialize loading indicator
 				const spinner = ora({
 					text: 'Starting TaskMaster UI...',
 					color: 'cyan'
 				}).start();
-				
+
 				// Initialize TaskMaster for accessing tasks
 				const taskMaster = initTaskMaster({
 					tasksPath: options.file || true,
 					tag: options.tag || getCurrentTag(process.cwd())
 				});
-				
+
 				// Create and start the server
 				const { server, port } = await createServer({
 					port: options.port,
 					taskMaster // Pass taskMaster instance to server
 				});
-				
+
 				spinner.succeed('TaskMaster UI started successfully!');
-				
+
 				// Display server information
-				console.log(boxen(
-					chalk.cyan.bold('🎯 TaskMaster Kanban UI\n') +
-					chalk.dim('══════════════════════════════════════════════════\n') +
-					chalk.white('🌐 URL: ') + chalk.green.bold(`http://localhost:${port}\n`) +
-					chalk.white('📝 Port: ') + chalk.yellow(`${port}\n`) +
-					chalk.white('📊 Status: ') + chalk.green('Running\n') +
-					chalk.dim('══════════════════════════════════════════════════\n') +
-					chalk.cyan('💡 Press ') + chalk.yellow.bold('Ctrl+C') + chalk.cyan(' to stop the server'),
-					{
-						padding: 1,
-						margin: 1,
-						borderColor: 'cyan',
-						borderStyle: 'round'
-					}
-				));
-				
+				console.log(
+					boxen(
+						chalk.cyan.bold('🎯 TaskMaster Kanban UI\n') +
+							chalk.dim(
+								'══════════════════════════════════════════════════\n'
+							) +
+							chalk.white('🌐 URL: ') +
+							chalk.green.bold(`http://localhost:${port}\n`) +
+							chalk.white('📝 Port: ') +
+							chalk.yellow(`${port}\n`) +
+							chalk.white('📊 Status: ') +
+							chalk.green('Running\n') +
+							chalk.dim(
+								'══════════════════════════════════════════════════\n'
+							) +
+							chalk.cyan('💡 Press ') +
+							chalk.yellow.bold('Ctrl+C') +
+							chalk.cyan(' to stop the server'),
+						{
+							padding: 1,
+							margin: 1,
+							borderColor: 'cyan',
+							borderStyle: 'round'
+						}
+					)
+				);
+
 				// Additional info
-				console.log(chalk.gray('\n👀 Watching for file changes (console feedback)'));
-				
+				console.log(
+					chalk.gray('\n👀 Watching for file changes (console feedback)')
+				);
+
 				// Open browser if not disabled
 				if (options.browser !== false) {
 					try {
 						await open(`http://localhost:${port}`);
 						console.log(chalk.gray('🚀 Browser opened automatically'));
 					} catch (err) {
-						console.log(chalk.yellow('⚠️  Could not open browser automatically'));
-						console.log(chalk.gray(`   Please open http://localhost:${port} manually`));
+						console.log(
+							chalk.yellow('⚠️  Could not open browser automatically')
+						);
+						console.log(
+							chalk.gray(`   Please open http://localhost:${port} manually`)
+						);
 					}
 				}
-				
+
 				console.log(chalk.gray('📊 Polling for updates every 30 seconds\n'));
-				
+
 				// Keep the process running
 				process.on('SIGINT', () => {
 					console.log(chalk.yellow('\n\n👋 Shutting down TaskMaster UI...'));
@@ -4299,7 +4311,6 @@ Examples:
 						process.exit(0);
 					});
 				});
-				
 			} catch (error) {
 				console.error(chalk.red('Error starting UI server:'), error.message);
 				if (getDebugFlag()) {
