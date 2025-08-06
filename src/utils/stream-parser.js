@@ -217,6 +217,7 @@ export async function parseStream(textStream, config = {}) {
 					onProgress,
 					estimateTokens,
 					fallbackItemExtractor,
+					itemValidator,
 					maxBufferSize
 				}
 			);
@@ -299,7 +300,13 @@ async function attemptFallbackParsing(
 	expectedTotal,
 	config
 ) {
-	const { onProgress, estimateTokens, fallbackItemExtractor, itemValidator, onError } = config;
+	const {
+		onProgress,
+		estimateTokens,
+		fallbackItemExtractor,
+		itemValidator,
+		onError
+	} = config;
 	const newItems = [];
 
 	try {
@@ -331,7 +338,11 @@ async function attemptFallbackParsing(
 						} catch (progressError) {
 							// Report error but don't break the flow
 							if (onError) {
-								onError(new Error(`Progress callback failed: ${progressError.message}`));
+								onError(
+									new Error(
+										`Progress callback failed: ${progressError.message}`
+									)
+								);
 							}
 						}
 					}
