@@ -41,6 +41,14 @@ export class BaseProgressTracker {
 		// Subclasses can override this
 	}
 
+	/**
+	 * Get the pluralized form of the unit name for safe property keys.
+	 * @returns {string} Pluralized unit name
+	 */
+	get unitNamePlural() {
+		return `${this.unitName}s`;
+	}
+
 	start() {
 		if (this.isStarted || this.isFinished) return;
 
@@ -75,7 +83,7 @@ export class BaseProgressTracker {
 		);
 
 		this._updateTimeTokensBar();
-		this.progressBar.update(0, { [this.unitName + 's']: `0/${this.numUnits}` });
+		this.progressBar.update(0, { [this.unitNamePlural]: `0/${this.numUnits}` });
 
 		// Start timer
 		this._timerInterval = setInterval(() => this._updateTimeTokensBar(), 1000);
@@ -107,7 +115,7 @@ export class BaseProgressTracker {
 	 * @returns {string} Format string for the progress bar.
 	 */
 	_getProgressBarFormat() {
-		return `${this.unitName.charAt(0).toUpperCase() + this.unitName.slice(1)}s {${this.unitName}s} |{bar}| {percentage}%`;
+		return `${this.unitName.charAt(0).toUpperCase() + this.unitName.slice(1)}s {${this.unitNamePlural}} |{bar}| {percentage}%`;
 	}
 
 	updateTokens(tokensIn, tokensOut, isEstimate = false) {
