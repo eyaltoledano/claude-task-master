@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { logger } from './logger';
 
 export interface MCPConfig {
@@ -143,7 +144,7 @@ export class MCPClientManager {
 			// Create the client
 			this.client = new Client(
 				{
-					name: 'taskr-vscode-extension',
+					name: 'task-master-vscode-extension',
 					version: '1.0.0'
 				},
 				{
@@ -211,6 +212,30 @@ export class MCPClientManager {
 			};
 
 			logger.log('MCP client connected successfully');
+
+			// Log Task Master version information after successful connection
+			try {
+				const versionResult = await this.callTool('get_tasks', {});
+				if (versionResult?.content?.[0]?.text) {
+					const response = JSON.parse(versionResult.content[0].text);
+					if (response?.version) {
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+						logger.log('✅ Task Master MCP Server Connected');
+						logger.log(`   Version: ${response.version.version || 'unknown'}`);
+						logger.log(
+							`   Package: ${response.version.name || 'task-master-ai'}`
+						);
+						if (response.tag) {
+							logger.log(
+								`   Current Tag: ${response.tag.currentTag || 'master'}`
+							);
+						}
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+					}
+				}
+			} catch (versionError) {
+				logger.log('Note: Could not retrieve Task Master version information');
+			}
 		} catch (error) {
 			logger.error('Failed to connect to MCP server:', error);
 			this.status = {
@@ -312,6 +337,34 @@ export class MCPClientManager {
 				'Available MCP tools:',
 				result.tools?.map((t) => t.name) || []
 			);
+
+			// Try to get version information by calling a simple tool
+			// The get_tasks tool is lightweight and returns version info
+			try {
+				const versionResult = await this.callTool('get_tasks', {});
+				if (versionResult?.content?.[0]?.text) {
+					// Parse the response to extract version info
+					const response = JSON.parse(versionResult.content[0].text);
+					if (response?.version) {
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+						logger.log('📦 Task Master MCP Server Connected');
+						logger.log(`   Version: ${response.version.version || 'unknown'}`);
+						logger.log(
+							`   Package: ${response.version.name || 'task-master-ai'}`
+						);
+						if (response.tag) {
+							logger.log(
+								`   Current Tag: ${response.tag.currentTag || 'master'}`
+							);
+						}
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+					}
+				}
+			} catch (versionError) {
+				// Don't fail the connection test if we can't get version info
+				logger.log('Could not retrieve Task Master version information');
+			}
+
 			return true;
 		} catch (error) {
 			logger.error('Connection test failed:', error);
@@ -345,8 +398,34 @@ export function createMCPConfigFromSettings(): MCPConfig {
 	);
 	const config = vscode.workspace.getConfiguration('taskmaster');
 
-	let command = config.get<string>('mcp.command', 'npx');
-	const args = config.get<string[]>('mcp.args', ['task-master-ai']);
+	let command = config.get<string>('mcp.command', 'node');
+	let args = config.get<string[]>('mcp.args', []);
+
+	// If using default settings, use the bundled MCP server
+	if (command === 'node' && args.length === 0) {
+		try {
+			// Try to resolve the bundled MCP server
+			const taskMasterPath = require.resolve('task-master-ai');
+			const mcpServerPath = path.resolve(
+				path.dirname(taskMasterPath),
+				'mcp-server/server.js'
+			);
+
+			// Verify the server file exists
+			const fs = require('fs');
+			if (!fs.existsSync(mcpServerPath)) {
+				throw new Error('MCP server file not found at: ' + mcpServerPath);
+			}
+
+			args = [mcpServerPath];
+			logger.log(`📦 Using bundled MCP server at: ${mcpServerPath}`);
+		} catch (error) {
+			logger.error('❌ Could not find bundled task-master-ai server:', error);
+			// Fallback to npx
+			command = 'npx';
+			args = ['-y', 'task-master-ai'];
+		}
+	}
 
 	// Use proper VS Code workspace detection
 	const defaultCwd =

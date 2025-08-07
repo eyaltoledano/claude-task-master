@@ -64,16 +64,16 @@
 			"properties": {
 				"taskmaster.mcp.command": {
 					"type": "string",
-					"default": "npx",
-					"description": "The command or absolute path to execute for the MCP server (e.g., 'npx' or '/usr/local/bin/task-master-ai')."
+					"default": "node",
+					"description": "The command to execute for the MCP server (e.g., 'node' for bundled server or 'npx' for remote)."
 				},
 				"taskmaster.mcp.args": {
 					"type": "array",
 					"items": {
 						"type": "string"
 					},
-					"default": ["task-master-ai"],
-					"description": "An array of arguments to pass to the MCP server command."
+					"default": [],
+					"description": "Arguments for the MCP server (leave empty to use bundled server)."
 				},
 				"taskmaster.mcp.cwd": {
 					"type": "string",
@@ -237,6 +237,9 @@
 		"watch:js": "node ./esbuild.js --watch",
 		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
 		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"task-master-ai": "*"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",
