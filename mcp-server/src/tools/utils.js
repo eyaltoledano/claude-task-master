@@ -778,6 +778,77 @@ function withNormalizedProjectRoot(executeFn) {
 	};
 }
 
+/**
+ * Checks progress reporting capability and returns the validated function or undefined.
+ *
+ * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
+ *
+ * This helper should be used as the first step in any MCP tool that performs long-running
+ * AI operations. It validates the availability of progress reporting and provides consistent
+ * logging about the capability status.
+ *
+ * Operations that should use this pattern:
+ * - parse-prd: Parsing PRD documents with AI
+ * - expand-task: Expanding tasks into subtasks
+ * - expand-all: Expanding all tasks in batch
+ * - analyze-complexity: Analyzing task complexity
+ * - update-task: Updating tasks with AI assistance
+ * - add-task: Creating new tasks with AI
+ * - Any operation that makes AI service calls
+ *
+ * @example Basic usage in a tool's execute function:
+ * ```javascript
+ * import { checkProgressCapability } from './utils.js';
+ *
+ * async execute(args, context) {
+ *   const { log, reportProgress, session } = context;
+ *
+ *   // Always validate progress capability first
+ *   const progressCapability = checkProgressCapability(reportProgress, log);
+ *
+ *   // Pass to direct function - it handles undefined gracefully
+ *   const result = await expandTask(taskId, numSubtasks, {
+ *     session,
+ *     reportProgress: progressCapability,
+ *     mcpLog: log
+ *   });
+ * }
+ * ```
+ *
+ * @example With progress reporting available:
+ * ```javascript
+ * // When reportProgress is available, users see real-time updates:
+ * // "Starting PRD analysis (Input: 5432 tokens)..."
+ * // "Task 1/10 - Implement user authentication"
+ * // "Task 2/10 - Create database schema"
+ * // "Task Generation Completed | Tokens: 5432/1234"
+ * ```
+ *
+ * @example Without progress reporting (graceful degradation):
+ * ```javascript
+ * // When reportProgress is not available:
+ * // - Operation runs normally without progress updates
+ * // - Debug log: "reportProgress not available - operation will run without progress updates"
+ * // - User gets final result after completion
+ * ```
+ *
+ * @param {Function|undefined} reportProgress - The reportProgress function from MCP context.
+ *                                             Expected signature: async (progress: {progress: number, total: number, message: string}) => void
+ * @param {Object} log - Logger instance with debug, info, warn, error methods
+ * @returns {Function|undefined} The validated reportProgress function or undefined if not available
+ */
+function checkProgressCapability(reportProgress, log) {
+	// Validate that reportProgress is available for long-running operations
+	if (typeof reportProgress !== 'function') {
+		log.debug(
+			'reportProgress not available - operation will run without progress updates'
+		);
+		return undefined;
+	}
+
+	return reportProgress;
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
@@ -792,5 +863,6 @@ export {
 	createLogWrapper,
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 };
