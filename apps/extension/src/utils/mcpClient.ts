@@ -143,7 +143,7 @@ export class MCPClientManager {
 			// Create the client
 			this.client = new Client(
 				{
-					name: 'taskr-vscode-extension',
+					name: 'task-master-vscode-extension',
 					version: '1.0.0'
 				},
 				{
@@ -211,6 +211,30 @@ export class MCPClientManager {
 			};
 
 			logger.log('MCP client connected successfully');
+
+			// Log Task Master version information after successful connection
+			try {
+				const versionResult = await this.callTool('get_tasks', {});
+				if (versionResult?.content?.[0]?.text) {
+					const response = JSON.parse(versionResult.content[0].text);
+					if (response?.version) {
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+						logger.log('✅ Task Master MCP Server Connected');
+						logger.log(`   Version: ${response.version.version || 'unknown'}`);
+						logger.log(
+							`   Package: ${response.version.name || 'task-master-ai'}`
+						);
+						if (response.tag) {
+							logger.log(
+								`   Current Tag: ${response.tag.currentTag || 'master'}`
+							);
+						}
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+					}
+				}
+			} catch (versionError) {
+				logger.log('Note: Could not retrieve Task Master version information');
+			}
 		} catch (error) {
 			logger.error('Failed to connect to MCP server:', error);
 			this.status = {
@@ -312,6 +336,34 @@ export class MCPClientManager {
 				'Available MCP tools:',
 				result.tools?.map((t) => t.name) || []
 			);
+
+			// Try to get version information by calling a simple tool
+			// The get_tasks tool is lightweight and returns version info
+			try {
+				const versionResult = await this.callTool('get_tasks', {});
+				if (versionResult?.content?.[0]?.text) {
+					// Parse the response to extract version info
+					const response = JSON.parse(versionResult.content[0].text);
+					if (response?.version) {
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+						logger.log('📦 Task Master MCP Server Connected');
+						logger.log(`   Version: ${response.version.version || 'unknown'}`);
+						logger.log(
+							`   Package: ${response.version.name || 'task-master-ai'}`
+						);
+						if (response.tag) {
+							logger.log(
+								`   Current Tag: ${response.tag.currentTag || 'master'}`
+							);
+						}
+						logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+					}
+				}
+			} catch (versionError) {
+				// Don't fail the connection test if we can't get version info
+				logger.log('Could not retrieve Task Master version information');
+			}
+
 			return true;
 		} catch (error) {
 			logger.error('Connection test failed:', error);
