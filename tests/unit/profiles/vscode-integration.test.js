@@ -3,7 +3,22 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 // Mock the schema integration functions to avoid chalk issues
-const mockSetupSchemaIntegration = jest.fn();
+const mockSetupSchemaIntegration = jest.fn().mockResolvedValue();
+
+// Mock the VS Code profile module before importing
+jest.mock('../../../src/profiles/vscode.js', () => {
+	const actualModule = jest.requireActual('../../../src/profiles/vscode.js');
+	return {
+		...actualModule,
+		vscodeProfile: {
+			...actualModule.vscodeProfile,
+			hooks: {
+				...actualModule.vscodeProfile.hooks,
+				onAdd: mockSetupSchemaIntegration
+			}
+		}
+	};
+});
 
 import { vscodeProfile } from '../../../src/profiles/vscode.js';
 
@@ -307,37 +322,79 @@ Task Master specific VS Code instruction.`;
 	describe('Schema Integration', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();
-			// Replace the onAddRulesProfile function with our mock
-			vscodeProfile.onAddRulesProfile = mockSetupSchemaIntegration;
 		});
 
-		test('setupSchemaIntegration is called with project root', async () => {
-			// Arrange
-			mockSetupSchemaIntegration.mockResolvedValue();
+		test('setupSchemaIntegration completes successfully', async () => {
+			// Arrange - mock file system operations
+			const consoleSpy = jest
+				.spyOn(console, 'log')
+				.mockImplementation(() => {});
+			const mockMkdirSync = jest
+				.spyOn(fs, 'mkdirSync')
+				.mockImplementation(() => {});
+			const mockExistsSync = jest
+				.spyOn(fs, 'existsSync')
+				.mockReturnValue(false);
+			const mockWriteFileSync = jest
+				.spyOn(fs, 'writeFileSync')
+				.mockImplementation(() => {});
 
-			// Act
-			await vscodeProfile.onAddRulesProfile(tempDir);
+			try {
+				// Act - call the actual profile function
+				await vscodeProfile.hooks.onAdd(tempDir);
 
-			// Assert
-			expect(mockSetupSchemaIntegration).toHaveBeenCalledWith(tempDir);
+				// Assert - verify the schema integration completed successfully
+				expect(mockMkdirSync).toHaveBeenCalledWith(
+					expect.stringContaining('.vscode'),
+					{ recursive: true }
+				);
+				expect(mockWriteFileSync).toHaveBeenCalledWith(
+					expect.stringContaining('settings.json'),
+					expect.any(String),
+					'utf8'
+				);
+				expect(consoleSpy).toHaveBeenCalledWith(
+					'VS Code schema integration complete'
+				);
+			} finally {
+				// Clean up
+				consoleSpy.mockRestore();
+				mockMkdirSync.mockRestore();
+				mockExistsSync.mockRestore();
+				mockWriteFileSync.mockRestore();
+			}
 		});
 
 		test('schema integration function exists and is callable', () => {
 			// Assert that the VS Code profile has the schema integration function
-			expect(vscodeProfile.onAddRulesProfile).toBeDefined();
-			expect(typeof vscodeProfile.onAddRulesProfile).toBe('function');
+			expect(vscodeProfile.hooks.onAdd).toBeDefined();
+			expect(typeof vscodeProfile.hooks.onAdd).toBe('function');
 		});
 
 		test('schema integration handles errors gracefully', async () => {
-			// Arrange
-			mockSetupSchemaIntegration.mockRejectedValue(
-				new Error('Schema setup failed')
-			);
+			// Arrange - mock file system to throw an error
+			const consoleWarnSpy = jest
+				.spyOn(console, 'warn')
+				.mockImplementation(() => {});
+			const mockMkdirSync = jest
+				.spyOn(fs, 'mkdirSync')
+				.mockImplementation(() => {
+					throw new Error('Permission denied');
+				});
 
-			// Act & Assert - Should propagate the error
-			await expect(vscodeProfile.onAddRulesProfile(tempDir)).rejects.toThrow(
-				'Schema setup failed'
-			);
+			try {
+				// Act - call with an error condition
+				await vscodeProfile.hooks.onAdd(tempDir);
+
+				// Assert - verify the error was handled gracefully
+				expect(consoleWarnSpy).toHaveBeenCalledWith(
+					expect.stringContaining('Could not create .vscode directory')
+				);
+			} finally {
+				// Clean up
+				consoleWarnSpy.mockRestore();
+				mockMkdirSync.mockRestore();
+			}
 		});
 	});
 });

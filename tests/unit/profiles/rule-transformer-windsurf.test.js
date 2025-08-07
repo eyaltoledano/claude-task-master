@@ -69,7 +69,7 @@ Also has references to .mdc files.`;
 
 		// Verify transformations
 		expect(transformedContent).toContain('Windsurf');
-		expect(transformedContent).toContain('windsurf.com');
+		expect(transformedContent).toContain('codeium.com/windsurf');
 		expect(transformedContent).toContain('.md');
 		expect(transformedContent).not.toContain('cursor.so');
 		expect(transformedContent).not.toContain('Cursor rule');

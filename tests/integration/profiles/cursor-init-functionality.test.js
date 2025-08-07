@@ -16,12 +16,12 @@ describe('Cursor Profile Initialization Functionality', () => {
 	});
 
 	test('cursor.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(cursorProfileContent).toContain("name: 'cursor'");
-		expect(cursorProfileContent).toContain("displayName: 'Cursor'");
-		expect(cursorProfileContent).toContain("url: 'cursor.so'");
-		expect(cursorProfileContent).toContain("docsUrl: 'docs.cursor.com'");
-		expect(cursorProfileContent).toContain("targetExtension: '.mdc'"); // non-default
+		// Check for ProfileBuilder syntax in the source file
+		expect(cursorProfileContent).toContain("ProfileBuilder.minimal('cursor')");
+		expect(cursorProfileContent).toContain(".display('Cursor')");
+		expect(cursorProfileContent).toContain(".profileDir('.cursor')");
+		expect(cursorProfileContent).toContain(".rulesDir('.cursor/rules')");
+		expect(cursorProfileContent).toContain('.includeDefaultRules(false)'); // Cursor explicitly defines its own fileMap
 
 		// Check the final computed properties on the profile object
 		expect(cursorProfile.profileName).toBe('cursor');
@@ -35,10 +35,12 @@ describe('Cursor Profile Initialization Functionality', () => {
 	test('cursor.js preserves .mdc extension in both input and output', () => {
 		// Check that the profile object has the correct file mapping behavior (cursor keeps .mdc)
 		expect(cursorProfile.fileMap['rules/cursor_rules.mdc']).toBe(
-			'cursor_rules.mdc'
+			'taskmaster/cursor_rules.mdc' // Cursor uses taskmaster subdirectory
 		);
-		// Also check that targetExtension is explicitly set in the file
-		expect(cursorProfileContent).toContain("targetExtension: '.mdc'");
+		// Cursor maintains .mdc extension through explicit fileMap rather than targetExtension setting
+		expect(cursorProfile.fileMap['rules/dev_workflow.mdc']).toBe(
+			'taskmaster/dev_workflow.mdc'
+		);
 	});
 
 	test('cursor.js uses standard tool mappings (no tool renaming)', () => {
