@@ -55,7 +55,7 @@ export function tagExistsOnRemote(tag, remote = 'origin') {
 	const result = spawnSync('git', ['ls-remote', remote, tag], {
 		encoding: 'utf8'
 	});
-	
+
 	return result.status === 0 && result.stdout.trim() !== '';
 }
 
@@ -66,23 +66,23 @@ export function createAndPushTag(tag, remote = 'origin') {
 		console.log(`Tag ${tag} already exists on remote, skipping`);
 		return false;
 	}
-	
+
 	console.log(`Creating new tag: ${tag}`);
-	
+
 	// Create the tag locally
 	const tagResult = spawnSync('git', ['tag', tag]);
 	if (tagResult.status !== 0) {
 		console.error('Failed to create tag:', tagResult.error || tagResult.stderr);
 		process.exit(1);
 	}
-	
+
 	// Push the tag to remote
 	const pushResult = spawnSync('git', ['push', remote, tag]);
 	if (pushResult.status !== 0) {
 		console.error('Failed to push tag:', pushResult.error || pushResult.stderr);
 		process.exit(1);
 	}
-	
+
 	console.log(`✅ Successfully created and pushed tag: ${tag}`);
 	return true;
 }
