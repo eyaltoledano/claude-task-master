@@ -407,16 +407,16 @@ export function createMCPConfigFromSettings(): MCPConfig {
 			// Try to resolve the bundled MCP server
 			const taskMasterPath = require.resolve('task-master-ai');
 			const mcpServerPath = path.resolve(
-				path.dirname(taskMasterPath), 
+				path.dirname(taskMasterPath),
 				'mcp-server/server.js'
 			);
-			
+
 			// Verify the server file exists
 			const fs = require('fs');
 			if (!fs.existsSync(mcpServerPath)) {
 				throw new Error('MCP server file not found at: ' + mcpServerPath);
 			}
-			
+
 			args = [mcpServerPath];
 			logger.log(`📦 Using bundled MCP server at: ${mcpServerPath}`);
 		} catch (error) {
