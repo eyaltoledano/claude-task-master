@@ -621,23 +621,25 @@ describe('Dependency Manager Module', () => {
 	describe('validateAndFixDependencies function', () => {
 		test('should fix multiple dependency issues and return true if changes made', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [1, 1, 99], // Self-dependency and duplicate and invalid dependency
-						subtasks: [
-							{ id: 1, dependencies: [2, 2] }, // Duplicate dependencies
-							{ id: 2, dependencies: [1] }
-						]
-					},
-					{
-						id: 2,
-						dependencies: [1],
-						subtasks: [
-							{ id: 1, dependencies: [99] } // Invalid dependency
-						]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [1, 1, 99], // Self-dependency and duplicate and invalid dependency
+							subtasks: [
+								{ id: 1, dependencies: [2, 2] }, // Duplicate dependencies
+								{ id: 2, dependencies: [1] }
+							]
+						},
+						{
+							id: 2,
+							dependencies: [1],
+							subtasks: [
+								{ id: 1, dependencies: [99] } // Invalid dependency
+							]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists for validating dependencies
@@ -672,17 +674,17 @@ describe('Dependency Manager Module', () => {
 
 			// Check specific changes
 			// 1. Self-dependency removed
-			expect(tasksData.tasks[0].dependencies).not.toContain(1);
+			expect(tasksData.master.tasks[0].dependencies).not.toContain(1);
 			// 2. Invalid dependency removed
-			expect(tasksData.tasks[0].dependencies).not.toContain(99);
+			expect(tasksData.master.tasks[0].dependencies).not.toContain(99);
 			// 3. Dependencies have been deduplicated
-			if (tasksData.tasks[0].subtasks[0].dependencies.length > 0) {
-				expect(tasksData.tasks[0].subtasks[0].dependencies).toEqual(
+			if (tasksData.master.tasks[0].subtasks[0].dependencies.length > 0) {
+				expect(tasksData.master.tasks[0].subtasks[0].dependencies).toEqual(
 					expect.arrayContaining([])
 				);
 			}
 			// 4. Invalid subtask dependency removed
-			expect(tasksData.tasks[1].subtasks[0].dependencies).toEqual([]);
+			expect(tasksData.master.tasks[1].subtasks[0].dependencies).toEqual([]);
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
@@ -693,20 +695,22 @@ describe('Dependency Manager Module', () => {
 
 		test('should return false if no changes needed', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [],
-						subtasks: [
-							{ id: 1, dependencies: [] }, // Already has an independent subtask
-							{ id: 2, dependencies: ['1.1'] }
-						]
-					},
-					{
-						id: 2,
-						dependencies: [1]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [],
+							subtasks: [
+								{ id: 1, dependencies: [] }, // Already has an independent subtask
+								{ id: 2, dependencies: ['1.1'] }
+							]
+						},
+						{
+							id: 2,
+							dependencies: [1]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists to validate all dependencies as valid
@@ -745,10 +749,18 @@ describe('Dependency Manager Module', () => {
 		});
 
 		test('should handle invalid input', () => {
-			expect(validateAndFixDependencies(null)).toBe(false);
-			expect(validateAndFixDependencies({})).toBe(false);
-			expect(validateAndFixDependencies({ tasks: null })).toBe(false);
-			expect(validateAndFixDependencies({ tasks: 'not an array' })).toBe(false);
+			expect(() => validateAndFixDependencies(null)).toThrowError(
+				'Invalid tasks data'
+			);
+			expect(() => validateAndFixDependencies({})).toThrowError(
+				'Invalid tasks data'
+			);
+			expect(() =>
+				validateAndFixDependencies({ master: { tasks: null } })
+			).toThrowError('Invalid tasks data');
+			expect(() =>
+				validateAndFixDependencies({ master: { tasks: 'not an array' } })
+			).toThrowError('Invalid tasks data');
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
@@ -759,15 +771,17 @@ describe('Dependency Manager Module', () => {
 
 		test('should save changes when tasksPath is provided', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [1, 1], // Self-dependency and duplicate
-						subtasks: [
-							{ id: 1, dependencies: [99] } // Invalid dependency
-						]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [1, 1], // Self-dependency and duplicate
+							subtasks: [
+								{ id: 1, dependencies: [99] } // Invalid dependency
+							]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists for this specific test

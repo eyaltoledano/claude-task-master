@@ -7,6 +7,7 @@ import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
+import { AgentLLMProviderToolExecutor } from './providers/agentllm-provider-tool-executor.js';
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +32,8 @@ class TaskMasterMCPServer {
 
 		this.server = new FastMCP(this.options);
 		this.initialized = false;
+		this.pendingAgentLLMInteractions = new Map(); // For managing paused states
+		this.registeredTools = new Map(); // Internal tool registry
 
 		// Bind methods
 		this.init = this.init.bind(this);
@@ -47,8 +50,35 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
-		// Pass the manager instance to the tool registration function
-		registerTaskMasterTools(this.server, this.asyncManager);
+		// Create a custom tool registrar that wraps execute methods
+		// AND populates our internal registry
+		const customToolRegistrar = {
+			addTool: ({ name, description, parameters, execute }) => {
+				const wrappedExecute = AgentLLMProviderToolExecutor(name, execute, this);
+
+				// Add to FastMCP's registry (as before)
+				this.server.addTool({
+					name,
+					description,
+					parameters,
+					execute: wrappedExecute
+				});
+
+				// Add to our internal registry
+				this.registeredTools.set(name, {
+					name,
+					description,
+					parameters,
+					execute: wrappedExecute
+				});
+				this.logger.debug(
+					`TaskMasterMCPServer: Tool '${name}' registered internally and with FastMCP.`
+				);
+			}
+		};
+
+		// Pass the custom registrar to the tool registration function
+		registerTaskMasterTools(customToolRegistrar, this.asyncManager);
 
 		this.initialized = true;
 
@@ -137,6 +167,7 @@ class TaskMasterMCPServer {
 			await this.server.stop();
 		}
 	}
+
 }
 
 export default TaskMasterMCPServer;

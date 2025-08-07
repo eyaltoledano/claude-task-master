@@ -221,6 +221,32 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 			outputType: isMCP ? 'mcp' : 'cli'
 		});
 
+		// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+		if (
+			aiServiceResponse &&
+			aiServiceResponse.mainResult &&
+			aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+		) {
+			logFn.debug('parsePRD: Detected agent_llm_delegation signal.');
+			return {
+				success: true,
+				needsAgentDelegation: true,
+				pendingInteraction: {
+					type: 'agent_llm',
+					interactionId: aiServiceResponse.mainResult.interactionId,
+					delegatedCallDetails: {
+						originalCommand: options.commandName || 'parse_prd', // options.commandName might be from MCP call
+						role: research ? 'research' : 'main',
+						serviceType: 'generateObject',
+						requestParameters: aiServiceResponse.mainResult.details
+					}
+				},
+				message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
+				telemetryData: null // No direct LLM call was completed by this function
+			};
+		}
+		// === END AGENT_LLM_DELEGATION HANDLING ===
+
 		// Create the directory if it doesn't exist
 		const tasksDir = path.dirname(tasksPath);
 		if (!fs.existsSync(tasksDir)) {

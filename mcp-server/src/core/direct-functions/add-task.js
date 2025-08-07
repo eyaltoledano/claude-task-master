@@ -136,6 +136,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		} else {
 			// AI-driven task creation
 			log.info(
+				// Use log from direct function args for direct function's own logging
 				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${taskPriority}, research: ${research}`
 			);
 
@@ -147,7 +148,7 @@ export async function addTaskDirect(args, log, context = {}) {
 				taskPriority,
 				{
 					session,
-					mcpLog,
+					mcpLog, // This is the logWrapper passed to core addTask
 					projectRoot,
 					commandName: 'add-task',
 					outputType: 'mcp',
@@ -157,6 +158,17 @@ export async function addTaskDirect(args, log, context = {}) {
 				null, // manualTaskData is null for AI creation
 				research // Pass the research flag
 			);
+
+			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
+			if (result && result.needsAgentDelegation === true) {
+				log.debug(
+					'addTaskDirect: Propagating agent_llm_delegation signal from core addTask.'
+				);
+				disableSilentMode(); // Ensure silent mode is disabled before returning
+				return result; // Propagate the signal object
+			}
+			// === END AGENT_LLM_DELEGATION PROPAGATION ===
+
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
 			tagInfo = result.tagInfo;
