@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { logger } from './logger';
 
 export interface MCPConfig {
@@ -403,10 +404,19 @@ export function createMCPConfigFromSettings(): MCPConfig {
 	// If using default settings, use the bundled MCP server
 	if (command === 'node' && args.length === 0) {
 		try {
-			// Get the path to the bundled task-master-ai MCP server
-			const mcpServerPath = require.resolve(
-				'task-master-ai/mcp-server/server.js'
+			// Try to resolve the bundled MCP server
+			const taskMasterPath = require.resolve('task-master-ai');
+			const mcpServerPath = path.resolve(
+				path.dirname(taskMasterPath), 
+				'mcp-server/server.js'
 			);
+			
+			// Verify the server file exists
+			const fs = require('fs');
+			if (!fs.existsSync(mcpServerPath)) {
+				throw new Error('MCP server file not found at: ' + mcpServerPath);
+			}
+			
 			args = [mcpServerPath];
 			logger.log(`📦 Using bundled MCP server at: ${mcpServerPath}`);
 		} catch (error) {
