@@ -1,13 +1,17 @@
 {
-  "mode": "exit",
+  "mode": "pre",
   "tag": "rc",
   "initialVersions": {
     "task-master-ai": "0.23.0",
     "extension": "0.23.0"
   },
   "changesets": [
+    "fuzzy-brooms-mate",
     "fuzzy-words-count",
+    "honest-steaks-check",
     "tender-trams-refuse",
-    "vast-sites-leave"
+    "upset-ants-return",
+    "vast-sites-leave",
+    "wide-actors-report"
   ]
 }

@@ -64,23 +64,49 @@ try {
 		fs.readFileSync(publishPackagePath, 'utf8')
 	);
 
-	// Check if versions are in sync
-	if (devPackage.version !== publishPackage.version) {
+	// Handle RC versions for VS Code Marketplace
+	let finalVersion = devPackage.version;
+	if (finalVersion.includes('-rc.')) {
 		console.log(
-			`  - Version sync needed: ${publishPackage.version} → ${devPackage.version}`
+			'  - Detected RC version, transforming for VS Code Marketplace...'
 		);
-		publishPackage.version = devPackage.version;
 
-		// Update the source package.publish.json file
+		// Extract base version and RC number
+		const baseVersion = finalVersion.replace(/-rc\.\d+$/, '');
+		const rcMatch = finalVersion.match(/rc\.(\d+)/);
+		const rcNumber = rcMatch ? parseInt(rcMatch[1]) : 0;
+
+		// For each RC iteration, increment the patch version
+		// This ensures unique versions in VS Code Marketplace
+		if (rcNumber > 0) {
+			const [major, minor, patch] = baseVersion.split('.').map(Number);
+			finalVersion = `${major}.${minor}.${patch + rcNumber}`;
+			console.log(
+				`  - RC version mapping: ${devPackage.version} → ${finalVersion}`
+			);
+		} else {
+			finalVersion = baseVersion;
+			console.log(
+				`  - RC version mapping: ${devPackage.version} → ${finalVersion}`
+			);
+		}
+	}
+
+	// Check if versions need updating
+	if (publishPackage.version !== finalVersion) {
+		console.log(
+			`  - Version sync needed: ${publishPackage.version} → ${finalVersion}`
+		);
+		publishPackage.version = finalVersion;
+
+		// Update the source package.publish.json file with the final version
 		fs.writeFileSync(
 			publishPackagePath,
 			JSON.stringify(publishPackage, null, '\t') + '\n'
 		);
-		console.log(
-			`  - Updated package.publish.json version to ${devPackage.version}`
-		);
+		console.log(`  - Updated package.publish.json version to ${finalVersion}`);
 	} else {
-		console.log(`  - Versions already in sync: ${devPackage.version}`);
+		console.log(`  - Versions already in sync: ${finalVersion}`);
 	}
 
 	// Copy the (now synced) package.publish.json as package.json
@@ -124,8 +150,7 @@ try {
 		`cd vsix-build && npx vsce package --no-dependencies`
 	);
 
-	// Use the synced version for output
-	const finalVersion = devPackage.version;
+	// Use the transformed version for output
 	console.log(
 		`\nYour extension will be packaged to: vsix-build/task-master-${finalVersion}.vsix`
 	);

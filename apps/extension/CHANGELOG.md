@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.23.1-rc.0
+
+### Patch Changes
+
+- [#1090](https://github.com/eyaltoledano/claude-task-master/pull/1090) [`a464e55`](https://github.com/eyaltoledano/claude-task-master/commit/a464e550b886ef81b09df80588fe5881bce83d93) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix issues with some users not being able to connect to Taskmaster MCP server while using the extension
+
+- Updated dependencies [[`4357af3`](https://github.com/eyaltoledano/claude-task-master/commit/4357af3f13859d90bca8795215e5d5f1d94abde5), [`36468f3`](https://github.com/eyaltoledano/claude-task-master/commit/36468f3c93faf4035a5c442ccbc501077f3440f1), [`4bb6370`](https://github.com/eyaltoledano/claude-task-master/commit/4bb63706b80c28d1b2d782ba868a725326f916c7)]:
+  - task-master-ai@0.24.0-rc.1
+
 ## 0.23.0
 
 ### Minor Changes

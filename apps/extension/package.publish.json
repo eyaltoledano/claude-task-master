@@ -2,7 +2,7 @@
 	"name": "task-master-hamster",
 	"displayName": "Taskmaster AI",
 	"description": "A visual Kanban board interface for Taskmaster projects in VS Code",
-	"version": "0.23.0",
+	"version": "0.23.1",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
