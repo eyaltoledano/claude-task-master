@@ -1,17 +1,17 @@
-name: Extension Release
+name: Extension Pre-Release
 
 on:
   push:
     tags:
-      - "extension@*"
+      - "extension-rc@*"
 
 permissions:
   contents: write
 
-concurrency: extension-release-${{ github.ref }}
+concurrency: extension-pre-release-${{ github.ref }}
 
 jobs:
-  publish-extension:
+  publish-extension-rc:
     runs-on: ubuntu-latest
     environment: extension-release
     steps:
@@ -54,9 +54,9 @@ jobs:
         env:
           FORCE_COLOR: 1
 
-      - name: Create VSIX Package
+      - name: Create VSIX Package (Pre-Release)
         working-directory: apps/extension/vsix-build
-        run: npx vsce package --no-dependencies
+        run: npx vsce package --no-dependencies --pre-release
         env:
           FORCE_COLOR: 1
 
@@ -72,9 +72,9 @@ jobs:
           echo "vsix-filename=$VSIX_FILE" >> "$GITHUB_OUTPUT"
           echo "Found VSIX: $VSIX_FILE"
 
-      - name: Publish to VS Code Marketplace
+      - name: Publish to VS Code Marketplace (Pre-Release)
         working-directory: apps/extension/vsix-build
-        run: npx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
+        run: npx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}" --pre-release
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           FORCE_COLOR: 1
@@ -82,9 +82,9 @@ jobs:
       - name: Install Open VSX CLI
         run: npm install -g ovsx
 
-      - name: Publish to Open VSX Registry
+      - name: Publish to Open VSX Registry (Pre-Release)
         working-directory: apps/extension/vsix-build
-        run: ovsx publish "${{ steps.vsix-info.outputs.vsix-filename }}"
+        run: ovsx publish "${{ steps.vsix-info.outputs.vsix-filename }}" --pre-release
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
           FORCE_COLOR: 1
@@ -92,20 +92,19 @@ jobs:
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: extension-release-${{ github.ref_name }}
+          name: extension-pre-release-${{ github.ref_name }}
           path: |
             apps/extension/vsix-build/*.vsix
             apps/extension/dist/
-          retention-days: 90
+          retention-days: 30
 
   notify-success:
-    needs: publish-extension
+    needs: publish-extension-rc
     if: success()
     runs-on: ubuntu-latest
     steps:
       - name: Success Notification
         run: |
-          echo "🎉 Extension ${{ github.ref_name }} successfully published!"
-          echo "📦 Available on VS Code Marketplace"
-          echo "🌍 Available on Open VSX Registry"
-          echo "🏷️ GitHub release created: ${{ github.ref_name }}"
+          echo "🚀 Extension ${{ github.ref_name }} successfully published as pre-release!"
+          echo "📦 Available on VS Code Marketplace (Pre-Release)"
+          echo "🌍 Available on Open VSX Registry (Pre-Release)"

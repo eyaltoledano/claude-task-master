@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only allow pre-releases on non-main branches
     if: github.ref != 'refs/heads/main'
+    environment: extension-release
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,10 +51,12 @@ jobs:
       - name: Create Release Candidate Pull Request or Publish Release Candidate to npm
         uses: changesets/action@v1
         with:
-          publish: npm run release
+          publish: node ./.github/scripts/pre-release.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
 
       - name: Commit & Push changes
         uses: actions-js/push@master
