@@ -135,7 +135,7 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 								<BreadcrumbSeparator />
 								<BreadcrumbItem>
 									<span className="text-vscode-foreground">
-										{currentTask.title}
+										{`#${currentTask.id} `} {currentTask.title}
 									</span>
 								</BreadcrumbItem>
 							</BreadcrumbList>
@@ -152,9 +152,9 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 						</button>
 					</div>
 
-					{/* Task title */}
+					{/* Task ID and title */}
 					<h1 className="text-2xl font-bold tracking-tight text-vscode-foreground">
-						{currentTask.title}
+						{`#${currentTask.id} `} {currentTask.title}
 					</h1>
 
 					{/* Description */}
