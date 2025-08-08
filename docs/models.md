@@ -1,4 +1,4 @@
-# Available Models as of July 23, 2025
+# Available Models as of August 8, 2025
 
 ## Main Models
 
@@ -24,6 +24,7 @@
 | openai      | gpt-4-1-mini                                   | —         | 0.4        | 1.6         |
 | openai      | gpt-4-1-nano                                   | —         | 0.1        | 0.4         |
 | openai      | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
+| openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
@@ -134,6 +135,7 @@
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
 | openai      | o4-mini                                        | 0.45      | 1.1        | 4.4         |
+| openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
