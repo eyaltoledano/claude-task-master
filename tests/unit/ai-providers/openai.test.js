@@ -71,10 +71,14 @@ describe('OpenAIProvider', () => {
 			// String float
 			const result3 = provider.prepareTokenParam('gpt-5', '1000.7');
 			expect(result3).toEqual({ max_completion_tokens: 1000 });
-			
+
 			// String integers (common CLI input path)
-			expect(provider.prepareTokenParam('gpt-5', '1000')).toEqual({ max_completion_tokens: 1000 });
-			expect(provider.prepareTokenParam('gpt-4', '1000')).toEqual({ maxTokens: 1000 });
+			expect(provider.prepareTokenParam('gpt-5', '1000')).toEqual({
+				max_completion_tokens: 1000
+			});
+			expect(provider.prepareTokenParam('gpt-4', '1000')).toEqual({
+				maxTokens: 1000
+			});
 		});
 
 		it('should return empty object for undefined maxTokens', () => {
@@ -111,9 +115,15 @@ describe('OpenAIProvider', () => {
 		});
 
 		it('should reject invalid maxTokens values', () => {
-			expect(() => provider.validateOptionalParams({ maxTokens: 0 })).toThrow(Error);
-			expect(() => provider.validateOptionalParams({ maxTokens: -1 })).toThrow(Error);
-			expect(() => provider.validateOptionalParams({ maxTokens: NaN })).toThrow(Error);
+			expect(() => provider.validateOptionalParams({ maxTokens: 0 })).toThrow(
+				Error
+			);
+			expect(() => provider.validateOptionalParams({ maxTokens: -1 })).toThrow(
+				Error
+			);
+			expect(() => provider.validateOptionalParams({ maxTokens: NaN })).toThrow(
+				Error
+			);
 			expect(() =>
 				provider.validateOptionalParams({ maxTokens: Infinity })
 			).toThrow(Error);
@@ -159,11 +169,11 @@ describe('OpenAIProvider', () => {
 			const params = {
 				apiKey: 'sk-test-123'
 			};
-			
+
 			// The getClient method should return a function
 			const client = provider.getClient(params);
 			expect(typeof client).toBe('function');
-			
+
 			// The client function should be callable and return a model object
 			const model = client('gpt-4');
 			expect(model).toBeDefined();
@@ -175,11 +185,11 @@ describe('OpenAIProvider', () => {
 				apiKey: 'sk-test-456',
 				baseURL: 'https://api.openai.example'
 			};
-			
+
 			// Should not throw when baseURL is provided
 			const client = provider.getClient(params);
 			expect(typeof client).toBe('function');
-			
+
 			// The client function should be callable and return a model object
 			const model = client('gpt-5');
 			expect(model).toBeDefined();
@@ -190,14 +200,14 @@ describe('OpenAIProvider', () => {
 			const params = {
 				apiKey: 'sk-test-789'
 			};
-			
+
 			// Multiple calls with same params should work
 			const client1 = provider.getClient(params);
 			const client2 = provider.getClient(params);
-			
+
 			expect(typeof client1).toBe('function');
 			expect(typeof client2).toBe('function');
-			
+
 			// Both clients should be able to create models
 			const model1 = client1('gpt-4');
 			const model2 = client2('gpt-4');
@@ -207,14 +217,14 @@ describe('OpenAIProvider', () => {
 
 		it('should handle different model IDs correctly', () => {
 			const client = provider.getClient({ apiKey: 'sk-test-models' });
-			
+
 			// Test with different models
 			const gpt4 = client('gpt-4');
 			expect(gpt4.modelId).toBe('gpt-4');
-			
+
 			const gpt5 = client('gpt-5');
 			expect(gpt5.modelId).toBe('gpt-5');
-			
+
 			const gpt35 = client('gpt-3.5-turbo');
 			expect(gpt35.modelId).toBe('gpt-3.5-turbo');
 		});
