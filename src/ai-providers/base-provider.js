@@ -123,6 +123,34 @@ export class BaseAIProvider {
 	}
 
 	/**
+	 * Determines if a model requires max_completion_tokens instead of maxTokens
+	 * Can be overridden by providers to specify their model requirements
+	 * @param {string} modelId - The model ID to check
+	 * @returns {boolean} True if the model requires max_completion_tokens
+	 */
+	requiresMaxCompletionTokens(modelId) {
+		return false; // Default behavior - most models use maxTokens
+	}
+
+	/**
+	 * Prepares token limit parameter based on model requirements
+	 * @param {string} modelId - The model ID
+	 * @param {number} maxTokens - The maximum tokens value
+	 * @returns {object} Object with either maxTokens or max_completion_tokens
+	 */
+	prepareTokenParam(modelId, maxTokens) {
+		if (maxTokens === undefined) {
+			return {};
+		}
+		
+		if (this.requiresMaxCompletionTokens(modelId)) {
+			return { max_completion_tokens: maxTokens };
+		} else {
+			return { maxTokens };
+		}
+	}
+
+	/**
 	 * Generates text using the provider's model
 	 */
 	async generateText(params) {
@@ -139,7 +167,7 @@ export class BaseAIProvider {
 			const result = await generateText({
 				model: client(params.modelId),
 				messages: params.messages,
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 
@@ -175,7 +203,7 @@ export class BaseAIProvider {
 			const stream = await streamText({
 				model: client(params.modelId),
 				messages: params.messages,
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 
@@ -216,7 +244,7 @@ export class BaseAIProvider {
 				messages: params.messages,
 				schema: zodSchema(params.schema),
 				mode: params.mode || 'auto',
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				temperature: params.temperature
 			});
 

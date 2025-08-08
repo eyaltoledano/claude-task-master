@@ -21,6 +21,16 @@ export class OpenAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Determines if a model requires max_completion_tokens instead of maxTokens
+	 * GPT-5 models require max_completion_tokens parameter
+	 * @param {string} modelId - The model ID to check
+	 * @returns {boolean} True if the model requires max_completion_tokens
+	 */
+	requiresMaxCompletionTokens(modelId) {
+		return modelId && modelId.startsWith('gpt-5');
+	}
+
+	/**
 	 * Creates and returns an OpenAI client instance.
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - OpenAI API key
