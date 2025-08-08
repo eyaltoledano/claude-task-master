@@ -10,16 +10,31 @@
 
 import { jest } from '@jest/globals';
 
+// Mock OpenAI SDK client to prevent real client initialization
+jest.mock('@ai-sdk/openai', () => ({
+	createOpenAI: jest.fn(() => {
+		return jest.fn((modelId) => ({
+			modelId,
+			provider: 'openai'
+		}));
+	})
+}));
+
+// Mock core AI helpers to prevent real network calls
+jest.mock('ai', () => ({
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	zodSchema: jest.fn((schema) => schema)
+}));
+
 // Mock the utils module to prevent logging during tests
 jest.mock('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn()
 }));
 
-// Import the OpenAI provider and BaseAIProvider to test
-const { OpenAIProvider } = await import('../../../src/ai-providers/openai.js');
-const { BaseAIProvider } = await import(
-	'../../../src/ai-providers/base-provider.js'
-);
+// Import the provider after all mocks are set up
+import { OpenAIProvider } from '../../../src/ai-providers/openai.js';
 
 describe('OpenAIProvider', () => {
 	let provider;
