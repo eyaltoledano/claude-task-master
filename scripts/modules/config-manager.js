@@ -557,6 +557,7 @@ function getParametersForRole(role, explicitRoot = null) {
 	const providerName = roleConfig.provider;
 
 	let effectiveMaxTokens = roleMaxTokens; // Start with the role's default
+	let effectiveTemperature = roleTemperature; // Start with the role's default
 
 	try {
 		// Find the model definition in MODEL_MAP
@@ -583,6 +584,20 @@ function getParametersForRole(role, explicitRoot = null) {
 					`No valid model-specific max_tokens override found for ${modelId}. Using role default: ${roleMaxTokens}`
 				);
 			}
+
+			// Check if a model-specific temperature is defined
+			if (
+				modelDefinition &&
+				typeof modelDefinition.temperature === 'number' &&
+				modelDefinition.temperature >= 0 &&
+				modelDefinition.temperature <= 1
+			) {
+				effectiveTemperature = modelDefinition.temperature;
+				log(
+					'debug',
+					`Applying model-specific temperature (${modelDefinition.temperature}) for ${modelId}`
+				);
+			}
 		} else {
 			// Special handling for custom OpenRouter models
 			if (providerName === CUSTOM_PROVIDERS.OPENROUTER) {
@@ -603,15 +618,16 @@ function getParametersForRole(role, explicitRoot = null) {
 	} catch (lookupError) {
 		log(
 			'warn',
-			`Error looking up model-specific max_tokens for ${modelId}: ${lookupError.message}. Using role default: ${roleMaxTokens}`
+			`Error looking up model-specific parameters for ${modelId}: ${lookupError.message}. Using role defaults.`
 		);
-		// Fallback to role default on error
+		// Fallback to role defaults on error
 		effectiveMaxTokens = roleMaxTokens;
+		effectiveTemperature = roleTemperature;
 	}
 
 	return {
 		maxTokens: effectiveMaxTokens,
-		temperature: roleTemperature
+		temperature: effectiveTemperature
 	};
 }
 

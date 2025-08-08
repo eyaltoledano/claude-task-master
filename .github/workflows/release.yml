@@ -39,30 +39,12 @@ jobs:
         timeout-minutes: 2
 
       - name: Check pre-release mode
-        run: |
-          set -euo pipefail
-          echo "🔍 Checking pre-release mode status..."
-          if [[ -f .changeset/pre.json ]]; then
-            echo "❌ ERROR: Main branch is in pre-release mode!"
-            echo ""
-            echo "Pre-release mode should only be used on feature branches, not main."
-            echo ""
-            echo "To fix this, run the following commands locally:"
-            echo "  npx changeset pre exit"
-            echo "  git add -u"
-            echo "  git commit -m 'chore: exit pre-release mode'"
-            echo "  git push origin main"
-            echo ""
-            echo "Then re-run this workflow."
-            exit 1
-          fi
-
-          echo "✅ Not in pre-release mode - proceeding with release"
+        run: node ./.github/scripts/check-pre-release-mode.mjs "main"
 
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1
         with:
-          publish: ./.github/scripts/release.sh
+          publish: node ./.github/scripts/release.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

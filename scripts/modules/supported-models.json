@@ -239,6 +239,18 @@
 			},
 			"allowed_roles": ["research"],
 			"supported": true
+		},
+		{
+			"id": "gpt-5",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": {
+				"input": 5.0,
+				"output": 20.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000,
+			"temperature": 1,
+			"supported": true
 		}
 	],
 	"google": [
