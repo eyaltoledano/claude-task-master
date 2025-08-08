@@ -1,5 +1,12 @@
 # task-master-ai
 
+## 0.24.0-rc.2
+
+### Minor Changes
+
+- [#1105](https://github.com/eyaltoledano/claude-task-master/pull/1105) [`75c514c`](https://github.com/eyaltoledano/claude-task-master/commit/75c514cf5b2ca47f95c0ad7fa92654a4f2a6be4b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add GPT-5 support with proper parameter handling
+  - Added GPT-5 model to supported models configuration with SWE score of 0.749
+
 ## 0.24.0-rc.1
 
 ### Minor Changes
