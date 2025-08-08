@@ -142,7 +142,7 @@ export class BaseAIProvider {
 		if (maxTokens === undefined) {
 			return {};
 		}
-		
+
 		if (this.requiresMaxCompletionTokens(modelId)) {
 			return { max_completion_tokens: maxTokens };
 		} else {
