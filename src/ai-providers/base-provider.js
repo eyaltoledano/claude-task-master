@@ -61,8 +61,11 @@ export class BaseAIProvider {
 		) {
 			throw new Error('Temperature must be between 0 and 1');
 		}
-		if (params.maxTokens !== undefined && params.maxTokens <= 0) {
-			throw new Error('maxTokens must be greater than 0');
+		if (params.maxTokens !== undefined) {
+			const maxTokens = Number(params.maxTokens);
+			if (!Number.isFinite(maxTokens) || maxTokens <= 0) {
+				throw new Error('maxTokens must be a finite number greater than 0');
+			}
 		}
 	}
 
@@ -143,10 +146,13 @@ export class BaseAIProvider {
 			return {};
 		}
 
+		// Ensure maxTokens is an integer
+		const tokenValue = Math.floor(Number(maxTokens));
+
 		if (this.requiresMaxCompletionTokens(modelId)) {
-			return { max_completion_tokens: maxTokens };
+			return { max_completion_tokens: tokenValue };
 		} else {
-			return { maxTokens };
+			return { maxTokens: tokenValue };
 		}
 	}
 
