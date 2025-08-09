@@ -15,6 +15,7 @@ import {
 	VALIDATED_PROVIDERS
 } from '../../src/constants/providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
+import { parse as parseJSONC } from 'jsonc-parser';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM
@@ -126,13 +127,19 @@ function _loadAndValidateConfig(explicitRoot = null) {
 		configPath = findConfigPath(null, { projectRoot: rootToUse });
 	}
 
-	if (configPath) {
+if (configPath) {
 		configExists = true;
 		const isLegacy = configPath.endsWith(LEGACY_CONFIG_FILE);
 
 		try {
 			const rawData = fs.readFileSync(configPath, 'utf-8');
-			const parsedConfig = JSON.parse(rawData);
+			let parsedConfig;
+
+			if (configPath.endsWith('.jsonc')) {
+				parsedConfig = parseJSONC(rawData);
+			} else {
+				parsedConfig = JSON.parse(rawData);
+			}
 
 			// Deep merge parsed config onto defaults
 			config = {
