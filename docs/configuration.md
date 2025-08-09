@@ -235,6 +235,78 @@ node scripts/init.js
    - "MCP provider requires session context" → Ensure running in MCP environment
    - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
 
+### MCP Timeout Configuration
+
+Long-running AI operations in taskmaster-ai can exceed the default 60-second MCP timeout. Operations like `parse_prd`, `expand_task`, `research`, and `analyze_project_complexity` may take 2-5 minutes to complete.
+
+#### Adding Timeout Configuration
+
+Add a `timeout` parameter to your MCP configuration to extend the timeout limit:
+
+**Cursor & Windsurf:**
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "timeout": 300,
+      "env": {
+        "ANTHROPIC_API_KEY": "your-anthropic-api-key"
+      }
+    }
+  }
+}
+```
+
+**VS Code:**
+```json
+{
+  "servers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "timeout": 300,
+      "type": "stdio",
+      "env": {
+        "ANTHROPIC_API_KEY": "your-anthropic-api-key"
+      }
+    }
+  }
+}
+```
+
+**Configuration Details:**
+- **`timeout: 300`** - Sets timeout to 300 seconds (5 minutes)
+- **Value range**: 1-3600 seconds (1 second to 1 hour)
+- **Recommended**: 300 seconds provides sufficient time for most AI operations
+- **Format**: Integer value in seconds (not milliseconds)
+
+#### Automatic Setup
+
+When adding taskmaster rules for supported editors, the timeout configuration is automatically included:
+
+```bash
+# Automatically includes timeout configuration
+task-master rules add cursor
+task-master rules add roo
+task-master rules add windsurf
+task-master rules add vscode
+```
+
+#### Troubleshooting Timeouts
+
+If you're still experiencing timeout errors:
+
+1. **Verify configuration**: Check that `timeout: 300` is present in your MCP config
+2. **Restart editor**: Restart your editor after making configuration changes
+3. **Increase timeout**: For very complex operations, try `timeout: 600` (10 minutes)
+4. **Check API keys**: Ensure required API keys are properly configured
+
+**Expected behavior:**
+- **Before fix**: Operations fail after 60 seconds with `MCP request timed out after 60000ms`
+- **After fix**: Operations complete successfully within the configured timeout limit
+
 ### Google Vertex AI Configuration
 
 Google Vertex AI is Google Cloud's enterprise AI platform and requires specific configuration:
