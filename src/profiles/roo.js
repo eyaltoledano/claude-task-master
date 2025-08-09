@@ -136,6 +136,7 @@ export const rooProfile = createProfile({
 	url: 'roocode.com',
 	docsUrl: 'docs.roocode.com',
 	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
+	mcpConfig: false, // Disable base profile MCP handling - we manage it manually
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile
