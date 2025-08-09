@@ -1,7 +1,65 @@
 import path from 'path';
-import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
-import { isTaskDependentOn } from '../task-manager.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	setTasksForTag,
+	traverseDependencies
+} from '../utils.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	findCrossTagDependencies,
+	getDependentTaskIds,
+	validateSubtaskMove
+} from '../dependency-manager.js';
+
+/**
+ * Find all dependencies recursively for a set of source tasks with depth limiting
+ * @param {Array} sourceTasks - The source tasks to find dependencies for
+ * @param {Array} allTasks - All available tasks from all tags
+ * @param {Object} options - Options object
+ * @param {number} options.maxDepth - Maximum recursion depth (default: 50)
+ * @param {boolean} options.includeSelf - Whether to include self-references (default: false)
+ * @returns {Array} Array of all dependency task IDs
+ */
+function findAllDependenciesRecursively(sourceTasks, allTasks, options = {}) {
+	return traverseDependencies(sourceTasks, allTasks, {
+		...options,
+		direction: 'forward',
+		logger: { warn: console.warn }
+	});
+}
+
+/**
+ * Structured error class for move operations
+ */
+class MoveTaskError extends Error {
+	constructor(code, message, data = {}) {
+		super(message);
+		this.name = 'MoveTaskError';
+		this.code = code;
+		this.data = data;
+	}
+}
+
+/**
+ * Error codes for move operations
+ */
+const MOVE_ERROR_CODES = {
+	CROSS_TAG_DEPENDENCY_CONFLICTS: 'CROSS_TAG_DEPENDENCY_CONFLICTS',
+	CANNOT_MOVE_SUBTASK: 'CANNOT_MOVE_SUBTASK',
+	SOURCE_TARGET_TAGS_SAME: 'SOURCE_TARGET_TAGS_SAME',
+	TASK_NOT_FOUND: 'TASK_NOT_FOUND',
+	SUBTASK_NOT_FOUND: 'SUBTASK_NOT_FOUND',
+	PARENT_TASK_NOT_FOUND: 'PARENT_TASK_NOT_FOUND',
+	PARENT_TASK_NO_SUBTASKS: 'PARENT_TASK_NO_SUBTASKS',
+	DESTINATION_TASK_NOT_FOUND: 'DESTINATION_TASK_NOT_FOUND',
+	TASK_ALREADY_EXISTS: 'TASK_ALREADY_EXISTS',
+	INVALID_TASKS_FILE: 'INVALID_TASKS_FILE',
+	ID_COUNT_MISMATCH: 'ID_COUNT_MISMATCH',
+	INVALID_SOURCE_TAG: 'INVALID_SOURCE_TAG',
+	INVALID_TARGET_TAG: 'INVALID_TARGET_TAG'
+};
 
 /**
  * Move one or more tasks/subtasks to new positions
@@ -27,7 +85,8 @@ async function moveTask(
 	const destinationIds = destinationId.split(',').map((id) => id.trim());
 
 	if (sourceIds.length !== destinationIds.length) {
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.ID_COUNT_MISMATCH,
 			`Number of source IDs (${sourceIds.length}) must match number of destination IDs (${destinationIds.length})`
 		);
 	}
@@ -72,7 +131,8 @@ async function moveTask(
 
 	// Ensure the tag exists in the raw data
 	if (!rawData || !rawData[tag] || !Array.isArray(rawData[tag].tasks)) {
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.INVALID_TASKS_FILE,
 			`Invalid tasks file or tag "${tag}" not found at ${tasksPath}`
 		);
 	}
@@ -137,10 +197,14 @@ function moveSubtaskToSubtask(tasks, sourceId, destinationId) {
 	const destParentTask = tasks.find((t) => t.id === destParentId);
 
 	if (!sourceParentTask) {
-		throw new Error(`Source parent task with ID ${sourceParentId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.PARENT_TASK_NOT_FOUND,
+			`Source parent task with ID ${sourceParentId} not found`
+		);
 	}
 	if (!destParentTask) {
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.PARENT_TASK_NOT_FOUND,
 			`Destination parent task with ID ${destParentId} not found`
 		);
 	}
@@ -158,7 +222,10 @@ function moveSubtaskToSubtask(tasks, sourceId, destinationId) {
 		(st) => st.id === sourceSubtaskId
 	);
 	if (sourceSubtaskIndex === -1) {
-		throw new Error(`Source subtask ${sourceId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.SUBTASK_NOT_FOUND,
+			`Source subtask ${sourceId} not found`
+		);
 	}
 
 	const sourceSubtask = sourceParentTask.subtasks[sourceSubtaskIndex];
@@ -216,10 +283,16 @@ function moveSubtaskToTask(tasks, sourceId, destinationId) {
 	const sourceParentTask = tasks.find((t) => t.id === sourceParentId);
 
 	if (!sourceParentTask) {
-		throw new Error(`Source parent task with ID ${sourceParentId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.PARENT_TASK_NOT_FOUND,
+			`Source parent task with ID ${sourceParentId} not found`
+		);
 	}
 	if (!sourceParentTask.subtasks) {
-		throw new Error(`Source parent task ${sourceParentId} has no subtasks`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.PARENT_TASK_NO_SUBTASKS,
+			`Source parent task ${sourceParentId} has no subtasks`
+		);
 	}
 
 	// Find source subtask
@@ -227,7 +300,10 @@ function moveSubtaskToTask(tasks, sourceId, destinationId) {
 		(st) => st.id === sourceSubtaskId
 	);
 	if (sourceSubtaskIndex === -1) {
-		throw new Error(`Source subtask ${sourceId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.SUBTASK_NOT_FOUND,
+			`Source subtask ${sourceId} not found`
+		);
 	}
 
 	const sourceSubtask = sourceParentTask.subtasks[sourceSubtaskIndex];
@@ -235,7 +311,8 @@ function moveSubtaskToTask(tasks, sourceId, destinationId) {
 	// Check if destination task exists
 	const existingDestTask = tasks.find((t) => t.id === destTaskId);
 	if (existingDestTask) {
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
 			`Cannot move to existing task ID ${destTaskId}. Choose a different ID or use subtask destination.`
 		);
 	}
@@ -282,10 +359,14 @@ function moveTaskToSubtask(tasks, sourceId, destinationId) {
 	const destParentTask = tasks.find((t) => t.id === destParentId);
 
 	if (sourceTaskIndex === -1) {
-		throw new Error(`Source task with ID ${sourceTaskId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.TASK_NOT_FOUND,
+			`Source task with ID ${sourceTaskId} not found`
+		);
 	}
 	if (!destParentTask) {
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.PARENT_TASK_NOT_FOUND,
 			`Destination parent task with ID ${destParentId} not found`
 		);
 	}
@@ -340,7 +421,10 @@ function moveTaskToTask(tasks, sourceId, destinationId) {
 	// Find source task
 	const sourceTaskIndex = tasks.findIndex((t) => t.id === sourceTaskId);
 	if (sourceTaskIndex === -1) {
-		throw new Error(`Source task with ID ${sourceTaskId} not found`);
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.TASK_NOT_FOUND,
+			`Source task with ID ${sourceTaskId} not found`
+		);
 	}
 
 	const sourceTask = tasks[sourceTaskIndex];
@@ -353,7 +437,8 @@ function moveTaskToTask(tasks, sourceId, destinationId) {
 		const destTask = tasks[destTaskIndex];
 
 		// For now, throw an error to avoid accidental overwrites
-		throw new Error(
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
 			`Task with ID ${destTaskId} already exists. Use a different destination ID.`
 		);
 	} else {
@@ -478,4 +563,434 @@ function moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId) {
 	};
 }
 
+/**
+ * Get all tasks from all tags with tag information
+ * @param {Object} rawData - The raw tagged data object
+ * @returns {Array} A flat array of all task objects with tag property
+ */
+function getAllTasksWithTags(rawData) {
+	let allTasks = [];
+	for (const tagName in rawData) {
+		if (
+			Object.prototype.hasOwnProperty.call(rawData, tagName) &&
+			rawData[tagName] &&
+			Array.isArray(rawData[tagName].tasks)
+		) {
+			const tasksWithTag = rawData[tagName].tasks.map((task) => ({
+				...task,
+				tag: tagName
+			}));
+			allTasks = allTasks.concat(tasksWithTag);
+		}
+	}
+	return allTasks;
+}
+
+/**
+ * Validate move operation parameters and data
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Array} taskIds - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} context - Context object
+ * @returns {Object} Validation result with rawData and sourceTasks
+ */
+async function validateMove(tasksPath, taskIds, sourceTag, targetTag, context) {
+	const { projectRoot } = context;
+
+	// Read the raw data without tag resolution to preserve tagged structure
+	let rawData = readJSON(tasksPath, projectRoot, sourceTag);
+
+	// Handle the case where readJSON returns resolved data with _rawTaggedData
+	if (rawData && rawData._rawTaggedData) {
+		rawData = rawData._rawTaggedData;
+	}
+
+	// Validate source tag exists
+	if (
+		!rawData ||
+		!rawData[sourceTag] ||
+		!Array.isArray(rawData[sourceTag].tasks)
+	) {
+		throw new MoveTaskError(
+			MOVE_ERROR_CODES.INVALID_SOURCE_TAG,
+			`Source tag "${sourceTag}" not found or invalid`
+		);
+	}
+
+	// Create target tag if it doesn't exist
+	if (!rawData[targetTag]) {
+		rawData[targetTag] = { tasks: [] };
+		log('info', `Created new tag "${targetTag}"`);
+	}
+
+	// Normalize all IDs to strings once for consistent comparison
+	const normalizedSearchIds = taskIds.map((id) => String(id));
+
+	const sourceTasks = rawData[sourceTag].tasks.filter((t) => {
+		const normalizedTaskId = String(t.id);
+		return normalizedSearchIds.includes(normalizedTaskId);
+	});
+
+	// Validate subtask movement
+	taskIds.forEach((taskId) => {
+		validateSubtaskMove(taskId, sourceTag, targetTag);
+	});
+
+	return { rawData, sourceTasks };
+}
+
+/**
+ * Load and prepare task data for move operation
+ * @param {Object} validation - Validation result from validateMove
+ * @returns {Object} Prepared data with rawData, sourceTasks, and allTasks
+ */
+async function prepareTaskData(validation) {
+	const { rawData, sourceTasks } = validation;
+
+	// Get all tasks for validation
+	const allTasks = getAllTasksWithTags(rawData);
+
+	return { rawData, sourceTasks, allTasks };
+}
+
+/**
+ * Resolve dependencies and determine tasks to move
+ * @param {Array} sourceTasks - Source tasks to move
+ * @param {Array} allTasks - All available tasks from all tags
+ * @param {Object} options - Move options
+ * @param {Array} taskIds - Original task IDs
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Tasks to move and dependency resolution info
+ */
+async function resolveDependencies(
+	sourceTasks,
+	allTasks,
+	options,
+	taskIds,
+	sourceTag,
+	targetTag
+) {
+	const { withDependencies = false, ignoreDependencies = false } = options;
+
+	// Handle --with-dependencies flag first (regardless of cross-tag dependencies)
+	if (withDependencies) {
+		// Move dependent tasks along with main tasks
+		// Find ALL dependencies recursively within the same tag
+		const allDependentTaskIds = findAllDependenciesRecursively(
+			sourceTasks,
+			allTasks,
+			{ maxDepth: 100, includeSelf: false }
+		);
+		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
+
+		log(
+			'info',
+			`Moving ${allTaskIdsToMove.length} tasks (including dependencies): ${allTaskIdsToMove.join(', ')}`
+		);
+
+		return {
+			tasksToMove: allTaskIdsToMove,
+			dependencyResolution: {
+				type: 'with-dependencies',
+				dependentTasks: allDependentTaskIds
+			}
+		};
+	}
+
+	// Find cross-tag dependencies (these shouldn't exist since dependencies are only within tags)
+	const crossTagDependencies = findCrossTagDependencies(
+		sourceTasks,
+		sourceTag,
+		targetTag,
+		allTasks
+	);
+
+	if (crossTagDependencies.length > 0) {
+		if (ignoreDependencies) {
+			// Break cross-tag dependencies (edge case - shouldn't normally happen)
+			sourceTasks.forEach((task) => {
+				task.dependencies = task.dependencies.filter((depId) => {
+					// Handle both task IDs and subtask IDs (e.g., "1.2")
+					let depTask = null;
+					if (typeof depId === 'string' && depId.includes('.')) {
+						// It's a subtask ID - extract parent task ID and find the parent task
+						const [parentId, subtaskId] = depId
+							.split('.')
+							.map((id) => parseInt(id, 10));
+						depTask = allTasks.find((t) => t.id === parentId);
+					} else {
+						// It's a regular task ID - normalize to number for comparison
+						const normalizedDepId =
+							typeof depId === 'string' ? parseInt(depId, 10) : depId;
+						depTask = allTasks.find((t) => t.id === normalizedDepId);
+					}
+					return !depTask || depTask.tag === targetTag;
+				});
+			});
+
+			log(
+				'warn',
+				`Removed ${crossTagDependencies.length} cross-tag dependencies`
+			);
+
+			return {
+				tasksToMove: taskIds,
+				dependencyResolution: {
+					type: 'ignored-dependencies',
+					conflicts: crossTagDependencies
+				}
+			};
+		} else {
+			// Block move and show error
+			throw new MoveTaskError(
+				MOVE_ERROR_CODES.CROSS_TAG_DEPENDENCY_CONFLICTS,
+				`Cannot move tasks: ${crossTagDependencies.length} cross-tag dependency conflicts found`,
+				{
+					conflicts: crossTagDependencies,
+					sourceTag,
+					targetTag,
+					taskIds
+				}
+			);
+		}
+	}
+
+	return {
+		tasksToMove: taskIds,
+		dependencyResolution: { type: 'no-conflicts' }
+	};
+}
+
+/**
+ * Execute the actual move operation
+ * @param {Array} tasksToMove - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} rawData - Raw data object
+ * @param {Object} context - Context object
+ * @param {string} tasksPath - Path to tasks.json file
+ * @returns {Object} Move operation result
+ */
+async function executeMoveOperation(
+	tasksToMove,
+	sourceTag,
+	targetTag,
+	rawData,
+	context,
+	tasksPath
+) {
+	const { projectRoot } = context;
+	const movedTasks = [];
+
+	// Move each task from source to target tag
+	for (const taskId of tasksToMove) {
+		// Normalize taskId to number for comparison
+		const normalizedTaskId =
+			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+
+		const sourceTaskIndex = rawData[sourceTag].tasks.findIndex(
+			(t) => t.id === normalizedTaskId
+		);
+
+		if (sourceTaskIndex === -1) {
+			throw new MoveTaskError(
+				MOVE_ERROR_CODES.TASK_NOT_FOUND,
+				`Task ${taskId} not found in source tag "${sourceTag}"`
+			);
+		}
+
+		const taskToMove = rawData[sourceTag].tasks[sourceTaskIndex];
+
+		// Check for ID conflicts in target tag
+		const existingTaskIndex = rawData[targetTag].tasks.findIndex(
+			(t) => t.id === normalizedTaskId
+		);
+		if (existingTaskIndex !== -1) {
+			throw new MoveTaskError(
+				MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
+				`Task ${taskId} already exists in target tag "${targetTag}"`
+			);
+		}
+
+		// Remove from source tag
+		rawData[sourceTag].tasks.splice(sourceTaskIndex, 1);
+
+		// Preserve task metadata and add to target tag
+		const taskWithPreservedMetadata = preserveTaskMetadata(
+			taskToMove,
+			sourceTag,
+			targetTag
+		);
+		rawData[targetTag].tasks.push(taskWithPreservedMetadata);
+
+		movedTasks.push({
+			id: taskId,
+			fromTag: sourceTag,
+			toTag: targetTag
+		});
+
+		log('info', `Moved task ${taskId} from "${sourceTag}" to "${targetTag}"`);
+	}
+
+	return { rawData, movedTasks };
+}
+
+/**
+ * Finalize the move operation by saving data and returning result
+ * @param {Object} moveResult - Result from executeMoveOperation
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Object} context - Context object
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Final result object
+ */
+async function finalizeMove(
+	moveResult,
+	tasksPath,
+	context,
+	sourceTag,
+	targetTag
+) {
+	const { projectRoot } = context;
+	const { rawData, movedTasks } = moveResult;
+
+	// Write the updated data
+	writeJSON(tasksPath, rawData, projectRoot, null);
+
+	return {
+		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
+		movedTasks
+	};
+}
+
+/**
+ * Move tasks between different tags with dependency handling
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Array} taskIds - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} options - Move options
+ * @param {boolean} options.withDependencies - Move dependent tasks along with main task
+ * @param {boolean} options.ignoreDependencies - Break cross-tag dependencies during move
+ * @param {Object} context - Context object containing projectRoot and tag information
+ * @returns {Object} Result object with moved task details
+ */
+async function moveTasksBetweenTags(
+	tasksPath,
+	taskIds,
+	sourceTag,
+	targetTag,
+	options = {},
+	context = {}
+) {
+	// 1. Validation phase
+	const validation = await validateMove(
+		tasksPath,
+		taskIds,
+		sourceTag,
+		targetTag,
+		context
+	);
+
+	// 2. Load and prepare data
+	const { rawData, sourceTasks, allTasks } = await prepareTaskData(validation);
+
+	// 3. Handle dependencies
+	const { tasksToMove } = await resolveDependencies(
+		sourceTasks,
+		allTasks,
+		options,
+		taskIds,
+		sourceTag,
+		targetTag
+	);
+
+	// 4. Execute move
+	const moveResult = await executeMoveOperation(
+		tasksToMove,
+		sourceTag,
+		targetTag,
+		rawData,
+		context,
+		tasksPath
+	);
+
+	// 5. Save and return
+	return await finalizeMove(
+		moveResult,
+		tasksPath,
+		context,
+		sourceTag,
+		targetTag
+	);
+}
+
+/**
+ * Detect ID conflicts in target tag
+ * @param {Array} taskIds - Array of task IDs to check
+ * @param {string} targetTag - Target tag name
+ * @param {Object} rawData - Raw data object
+ * @returns {Array} Array of conflicting task IDs
+ */
+function detectIdConflicts(taskIds, targetTag, rawData) {
+	const conflicts = [];
+
+	if (!rawData[targetTag] || !Array.isArray(rawData[targetTag].tasks)) {
+		return conflicts;
+	}
+
+	taskIds.forEach((taskId) => {
+		// Normalize taskId to number for comparison
+		const normalizedTaskId =
+			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+		const existingTask = rawData[targetTag].tasks.find(
+			(t) => t.id === normalizedTaskId
+		);
+		if (existingTask) {
+			conflicts.push(taskId);
+		}
+	});
+
+	return conflicts;
+}
+
+/**
+ * Preserve task metadata during cross-tag moves
+ * @param {Object} task - Task object
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Task object with preserved metadata
+ */
+function preserveTaskMetadata(task, sourceTag, targetTag) {
+	// Update the tag property to reflect the new location
+	task.tag = targetTag;
+
+	// Add move history to task metadata
+	if (!task.metadata) {
+		task.metadata = {};
+	}
+
+	if (!task.metadata.moveHistory) {
+		task.metadata.moveHistory = [];
+	}
+
+	task.metadata.moveHistory.push({
+		fromTag: sourceTag,
+		toTag: targetTag,
+		timestamp: new Date().toISOString()
+	});
+
+	return task;
+}
+
 export default moveTask;
+export {
+	moveTasksBetweenTags,
+	getAllTasksWithTags,
+	detectIdConflicts,
+	preserveTaskMetadata,
+	MoveTaskError,
+	MOVE_ERROR_CODES
+};

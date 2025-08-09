@@ -9,7 +9,8 @@ import {
 	removeDuplicateDependencies,
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
-	validateAndFixDependencies
+	validateAndFixDependencies,
+	canMoveWithDependencies
 } from '../../scripts/modules/dependency-manager.js';
 import * as utils from '../../scripts/modules/utils.js';
 import { sampleTasks } from '../fixtures/sample-tasks.js';
@@ -808,6 +809,115 @@ describe('Dependency Manager Module', () => {
 				'tasks/tasks.json',
 				expect.anything()
 			);
+		});
+	});
+
+	describe('canMoveWithDependencies', () => {
+		it('should return canMove: false when conflicts exist', () => {
+			const allTasks = [
+				{
+					id: 1,
+					tag: 'source',
+					dependencies: [2],
+					title: 'Task 1'
+				},
+				{
+					id: 2,
+					tag: 'other',
+					dependencies: [],
+					title: 'Task 2'
+				}
+			];
+
+			const result = canMoveWithDependencies('1', 'source', 'target', allTasks);
+
+			expect(result.canMove).toBe(false);
+			expect(result.conflicts).toBeDefined();
+			expect(result.conflicts.length).toBeGreaterThan(0);
+			expect(result.dependentTaskIds).toBeDefined();
+		});
+
+		it('should return canMove: true when no conflicts exist', () => {
+			const allTasks = [
+				{
+					id: 1,
+					tag: 'source',
+					dependencies: [],
+					title: 'Task 1'
+				},
+				{
+					id: 2,
+					tag: 'target',
+					dependencies: [],
+					title: 'Task 2'
+				}
+			];
+
+			const result = canMoveWithDependencies('1', 'source', 'target', allTasks);
+
+			expect(result.canMove).toBe(true);
+			expect(result.conflicts).toBeDefined();
+			expect(result.conflicts.length).toBe(0);
+			expect(result.dependentTaskIds).toBeDefined();
+			expect(result.dependentTaskIds.length).toBe(0);
+		});
+
+		it('should handle subtask lookup correctly', () => {
+			const allTasks = [
+				{
+					id: 1,
+					tag: 'source',
+					dependencies: [],
+					title: 'Parent Task',
+					subtasks: [
+						{
+							id: 1,
+							dependencies: [2],
+							title: 'Subtask 1'
+						}
+					]
+				},
+				{
+					id: 2,
+					tag: 'other',
+					dependencies: [],
+					title: 'Task 2'
+				}
+			];
+
+			const result = canMoveWithDependencies(
+				'1.1',
+				'source',
+				'target',
+				allTasks
+			);
+
+			expect(result.canMove).toBe(false);
+			expect(result.conflicts).toBeDefined();
+			expect(result.conflicts.length).toBeGreaterThan(0);
+		});
+
+		it('should return error when task not found', () => {
+			const allTasks = [
+				{
+					id: 1,
+					tag: 'source',
+					dependencies: [],
+					title: 'Task 1'
+				}
+			];
+
+			const result = canMoveWithDependencies(
+				'999',
+				'source',
+				'target',
+				allTasks
+			);
+
+			expect(result.canMove).toBe(false);
+			expect(result.error).toBe('Task not found');
+			expect(result.dependentTaskIds).toEqual([]);
+			expect(result.conflicts).toEqual([]);
 		});
 	});
 });

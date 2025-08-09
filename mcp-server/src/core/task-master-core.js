@@ -31,6 +31,7 @@ import { removeTaskDirect } from './direct-functions/remove-task.js';
 import { initializeProjectDirect } from './direct-functions/initialize-project.js';
 import { modelsDirect } from './direct-functions/models.js';
 import { moveTaskDirect } from './direct-functions/move-task.js';
+import { moveTaskCrossTagDirect } from './direct-functions/move-task-cross-tag.js';
 import { researchDirect } from './direct-functions/research.js';
 import { addTagDirect } from './direct-functions/add-tag.js';
 import { deleteTagDirect } from './direct-functions/delete-tag.js';
@@ -72,6 +73,7 @@ export const directFunctions = new Map([
 	['initializeProjectDirect', initializeProjectDirect],
 	['modelsDirect', modelsDirect],
 	['moveTaskDirect', moveTaskDirect],
+	['moveTaskCrossTagDirect', moveTaskCrossTagDirect],
 	['researchDirect', researchDirect],
 	['addTagDirect', addTagDirect],
 	['deleteTagDirect', deleteTagDirect],
@@ -111,6 +113,7 @@ export {
 	initializeProjectDirect,
 	modelsDirect,
 	moveTaskDirect,
+	moveTaskCrossTagDirect,
 	researchDirect,
 	addTagDirect,
 	deleteTagDirect,

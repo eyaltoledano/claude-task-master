@@ -20,17 +20,27 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	taskExists: jest.fn(() => true),
 	formatTaskId: jest.fn((id) => id),
 	findCycles: jest.fn(() => []),
+	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => []),
 	isSilentMode: jest.fn(() => true),
 	resolveTag: jest.fn(() => 'master'),
 	getTasksForTag: jest.fn(() => []),
 	setTasksForTag: jest.fn(),
 	enableSilentMode: jest.fn(),
-	disableSilentMode: jest.fn()
+	disableSilentMode: jest.fn(),
+	isEmpty: jest.fn((value) => {
+		if (value === null || value === undefined) return true;
+		if (Array.isArray(value)) return value.length === 0;
+		if (typeof value === 'object' && value !== null)
+			return Object.keys(value).length === 0;
+		return false; // Not an array or object
+	}),
+	resolveEnvVariable: jest.fn()
 }));
 
 // Mock ui.js
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
-	displayBanner: jest.fn()
+	displayBanner: jest.fn(),
+	formatDependenciesWithStatus: jest.fn()
 }));
 
 // Mock task-manager.js
