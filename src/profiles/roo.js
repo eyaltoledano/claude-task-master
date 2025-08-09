@@ -32,6 +32,20 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		}
 	}
 
+	// Copy MCP configuration to project root
+	const mcpSrc = path.join(rooModesDir, 'mcp.json');
+	const mcpDest = path.join(targetDir, '.roo', 'mcp.json');
+	if (fs.existsSync(mcpSrc)) {
+		try {
+			const mcpDestDir = path.dirname(mcpDest);
+			if (!fs.existsSync(mcpDestDir)) fs.mkdirSync(mcpDestDir, { recursive: true });
+			fs.copyFileSync(mcpSrc, mcpDest);
+			log('debug', `[Roo] Copied MCP configuration to ${mcpDest}`);
+		} catch (err) {
+			log('error', `[Roo] Failed to copy MCP configuration: ${err.message}`);
+		}
+	}
+
 	for (const mode of ROO_MODES) {
 		const src = path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`);
 		const dest = path.join(targetDir, '.roo', `rules-${mode}`, `${mode}-rules`);
@@ -78,6 +92,17 @@ function onRemoveRulesProfile(targetDir) {
 
 	const rooDir = path.join(targetDir, '.roo');
 	if (fs.existsSync(rooDir)) {
+		// Remove MCP configuration
+		const mcpPath = path.join(rooDir, 'mcp.json');
+		if (fs.existsSync(mcpPath)) {
+			try {
+				fs.rmSync(mcpPath, { force: true });
+				log('debug', `[Roo] Removed MCP configuration from ${mcpPath}`);
+			} catch (err) {
+				log('error', `[Roo] Failed to remove MCP configuration: ${err.message}`);
+			}
+		}
+
 		fs.readdirSync(rooDir).forEach((entry) => {
 			if (entry.startsWith('rules-')) {
 				const modeDir = path.join(rooDir, entry);
