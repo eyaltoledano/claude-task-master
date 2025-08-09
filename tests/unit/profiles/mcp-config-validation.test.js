@@ -54,10 +54,10 @@ describe('MCP Configuration Validation', () => {
 				expectedPath: 'opencode.json'
 			},
 			roo: {
-				shouldHaveMcp: true,
+				shouldHaveMcp: false,
 				expectedDir: '.roo',
-				expectedConfigName: 'mcp.json',
-				expectedPath: '.roo/mcp.json'
+				expectedConfigName: null,
+				expectedPath: null
 			},
 			trae: {
 				shouldHaveMcp: false,
@@ -266,12 +266,12 @@ describe('MCP Configuration Validation', () => {
 			expect(mcpEnabledProfiles).toContain('cursor');
 			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('opencode');
-			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
 			expect(mcpEnabledProfiles).toContain('zed');
 			expect(mcpEnabledProfiles).not.toContain('cline');
 			expect(mcpEnabledProfiles).not.toContain('codex');
+			expect(mcpEnabledProfiles).not.toContain('roo');
 			expect(mcpEnabledProfiles).not.toContain('trae');
 		});
 
@@ -385,12 +385,11 @@ describe('MCP Configuration Validation', () => {
 			'cursor',
 			'gemini',
 			'opencode',
-			'roo',
 			'windsurf',
 			'vscode',
 			'zed'
 		];
-		const nonMcpProfiles = ['codex', 'cline', 'trae'];
+		const nonMcpProfiles = ['codex', 'cline', 'roo', 'trae'];
 		const profilesWithLifecycle = ['claude'];
 		const profilesWithoutLifecycle = ['codex'];
 

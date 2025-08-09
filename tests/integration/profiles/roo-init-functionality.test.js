@@ -26,7 +26,7 @@ describe('Roo Profile Initialization Functionality', () => {
 		expect(rooProfile.displayName).toBe('Roo Code');
 		expect(rooProfile.profileDir).toBe('.roo'); // default
 		expect(rooProfile.rulesDir).toBe('.roo/rules'); // default
-		expect(rooProfile.mcpConfig).toBe(true); // default
+		expect(rooProfile.mcpConfig).toBe(false); // explicitly disabled to prevent base profile conflicts
 	});
 
 	test('roo.js uses custom ROO_STYLE tool mappings', () => {
