@@ -273,18 +273,21 @@ const program = new Command();
 program
 	.name('task-master')
 	.description('Claude Task Master CLI')
-	.version(version)
-	.addHelpText('afterAll', () => {
-		// Use the same help display function as dev.js for consistency
-		displayHelp();
-		return ''; // Return empty string to prevent commander's default help
-	});
+	.version(version);
 
-// Add custom help option to directly call our help display
-program.helpOption('-h, --help', 'Display help information');
-program.on('--help', () => {
+// Override help rendering to avoid duplicate output on --help
+const originalHelpInformation = program.helpInformation.bind(program);
+program.helpInformation = function () {
+	// For subcommands, use default help; for top-level, show custom help once
+	if (this.parent && this.parent !== program) {
+		return originalHelpInformation();
+	}
 	displayHelp();
-});
+	return '';
+};
+
+// Add custom help option (rendering handled by helpInformation override)
+program.helpOption('-h, --help', 'Display help information');
 
 // // Add special case commands
 // registerInitCommand(program);
