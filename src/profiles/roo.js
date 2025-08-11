@@ -5,6 +5,98 @@ import { isSilentMode, log } from '../../scripts/modules/utils.js';
 import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
 import { ROO_MODES } from '../constants/profiles.js';
 
+// Import the shared MCP configuration helper
+import { setupMCPConfiguration } from '../utils/create-mcp-config.js';
+
+// Format JSON with tabs to match existing style (copied from create-mcp-config.js)
+function formatJSONWithTabs(obj) {
+	let json = JSON.stringify(obj, null, '\t');
+	
+	json = json.replace(
+		/(\[\n\t+)([^[\]]+?)(\n\t+\])/g,
+		(match, openBracket, content, closeBracket) => {
+			// Only convert to single line if content doesn't contain nested objects/arrays
+			if (!content.includes('{') && !content.includes('[')) {
+				const singleLineContent = content
+					.replace(/\n\t+/g, ' ')
+					.replace(/\s+/g, ' ')
+					.trim();
+				return `[${singleLineContent}]`;
+			}
+			return match;
+		}
+	);
+	
+	return json;
+}
+
+// Roo-specific MCP configuration enhancements
+function enhanceRooMCPConfiguration(mcpPath) {
+	if (!fs.existsSync(mcpPath)) {
+		log('warn', `[Roo] MCP configuration file not found at ${mcpPath}`);
+		return;
+	}
+	
+	try {
+		// Read the existing configuration
+		const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
+		
+		if (mcpConfig.mcpServers && mcpConfig.mcpServers['task-master-ai']) {
+			const server = mcpConfig.mcpServers['task-master-ai'];
+			
+			// Add Roo-specific enhancements: timeout and alwaysAllow
+			server.disabled = false;
+			server.timeout = 300;
+			server.alwaysAllow = [
+				'get_task',
+				'set_task_status',
+				'update_task',
+				'get_tasks',
+				'add_task',
+				'expand_task',
+				'remove_task',
+				'next_task',
+				'add_subtask',
+				'update_subtask',
+				'parse_prd',
+				'initialize_project',
+				'research',
+				'analyze_project_complexity',
+				'expand_all',
+				'models',
+				'complexity_report',
+				'generate',
+				'list_tags',
+				'add_tag',
+				'delete_tag',
+				'use_tag',
+				'rename_tag',
+				'copy_tag',
+				'move_task',
+				'add_dependency',
+				'remove_dependency',
+				'validate_dependencies',
+				'fix_dependencies',
+				'clear_subtasks',
+				'remove_subtask'
+			];
+			
+			// Update env to use Roo-specific values
+			server.env = {
+				AWS_REGION: 'us-east-1'
+			};
+			
+			// Write the enhanced configuration back
+			fs.writeFileSync(mcpPath, formatJSONWithTabs(mcpConfig) + '\n');
+			log('debug', `[Roo] Enhanced MCP configuration with timeout and alwaysAllow at ${mcpPath}`);
+		} else {
+			log('warn', `[Roo] task-master-ai server not found in MCP configuration`);
+		}
+	} catch (error) {
+		log('error', `[Roo] Failed to enhance MCP configuration: ${error.message}`);
+	}
+}
+
 // Lifecycle functions for Roo profile
 function onAddRulesProfile(targetDir, assetsDir) {
 	// Use the provided assets directory to find the roocode directory
@@ -32,19 +124,8 @@ function onAddRulesProfile(targetDir, assetsDir) {
 		}
 	}
 
-	// Copy MCP configuration to project root
-	const mcpSrc = path.join(rooModesDir, 'mcp.json');
-	const mcpDest = path.join(targetDir, '.roo', 'mcp.json');
-	if (fs.existsSync(mcpSrc)) {
-		try {
-			const mcpDestDir = path.dirname(mcpDest);
-			if (!fs.existsSync(mcpDestDir)) fs.mkdirSync(mcpDestDir, { recursive: true });
-			fs.copyFileSync(mcpSrc, mcpDest);
-			log('debug', `[Roo] Copied MCP configuration to ${mcpDest}`);
-		} catch (err) {
-			log('error', `[Roo] Failed to copy MCP configuration: ${err.message}`);
-		}
-	}
+	// Note: MCP configuration is now handled by the base profile system
+	// The base profile will call setupMCPConfiguration, and we enhance it in onPostConvert
 
 	for (const mode of ROO_MODES) {
 		const src = path.join(rooModesDir, `rules-${mode}`, `${mode}-rules`);
@@ -126,7 +207,13 @@ function onRemoveRulesProfile(targetDir) {
 }
 
 function onPostConvertRulesProfile(targetDir, assetsDir) {
-	onAddRulesProfile(targetDir, assetsDir);
+	// Enhance the MCP configuration with Roo-specific features after base setup
+	const mcpPath = path.join(targetDir, '.roo', 'mcp.json');
+	try {
+		enhanceRooMCPConfiguration(mcpPath);
+	} catch (err) {
+		log('error', `[Roo] Failed to enhance MCP configuration: ${err.message}`);
+	}
 }
 
 // Create and export roo profile using the base factory
@@ -136,7 +223,7 @@ export const rooProfile = createProfile({
 	url: 'roocode.com',
 	docsUrl: 'docs.roocode.com',
 	toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE,
-	mcpConfig: false, // Disable base profile MCP handling - we manage it manually
+	mcpConfig: true, // Enable MCP config - we enhance it with Roo-specific features
 	onAdd: onAddRulesProfile,
 	onRemove: onRemoveRulesProfile,
 	onPostConvert: onPostConvertRulesProfile
