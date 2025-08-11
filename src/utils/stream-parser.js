@@ -33,57 +33,380 @@ export const STREAMING_ERROR_CODES = {
 export const DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024; // 1MB in bytes
 
 /**
- * Default validation function for parsed items
- * Checks if item exists, has a title property of type string, and that the trimmed title is not empty
- * @param {Object} item - The item to validate
- * @returns {boolean} True if item is valid, false otherwise
- */
-function defaultItemValidator(item) {
-	return (
-		item && item.title && typeof item.title === 'string' && item.title.trim()
-	);
-}
-
-/**
- * Validates an item using either a custom validator or the default validator
- * @param {Object} item - The item to validate
- * @param {Function} [customValidator] - Optional custom validation function
- * @returns {boolean} True if item is valid, false otherwise
- */
-function isValidItem(item, customValidator) {
-	return customValidator ? customValidator(item) : defaultItemValidator(item);
-}
-
-/**
  * Configuration options for the streaming JSON parser
- * @typedef {Object} StreamParserConfig
- * @property {string[]} jsonPaths - JSONPath expressions to extract specific objects (required)
- * @property {Function} [onProgress] - Callback for progress updates: (item, metadata) => void
- * @property {Function} [onError] - Callback for parsing errors: (error) => void
- * @property {Function} [estimateTokens] - Function to estimate tokens from text: (text) => number
- * @property {number} [expectedTotal] - Expected total number of items for progress calculation
- * @property {Function} [fallbackItemExtractor] - Function to extract items from complete JSON: (jsonObj) => Array
- * @property {Function} [itemValidator] - Function to validate parsed items: (item) => boolean
- * @property {number} [maxBufferSize] - Maximum buffer size in bytes (default: 1MB)
  */
+class StreamParserConfig {
+	constructor(config = {}) {
+		this.jsonPaths = config.jsonPaths;
+		this.onProgress = config.onProgress;
+		this.onError = config.onError;
+		this.estimateTokens =
+			config.estimateTokens || ((text) => Math.ceil(text.length / 4));
+		this.expectedTotal = config.expectedTotal || 0;
+		this.fallbackItemExtractor = config.fallbackItemExtractor;
+		this.itemValidator =
+			config.itemValidator || StreamParserConfig.defaultItemValidator;
+		this.maxBufferSize = config.maxBufferSize || DEFAULT_MAX_BUFFER_SIZE;
+
+		this.validate();
+	}
+
+	validate() {
+		if (!this.jsonPaths || !Array.isArray(this.jsonPaths)) {
+			throw new Error('jsonPaths is required and must be an array');
+		}
+		if (this.jsonPaths.length === 0) {
+			throw new Error('jsonPaths array cannot be empty');
+		}
+		if (this.maxBufferSize <= 0) {
+			throw new Error('maxBufferSize must be positive');
+		}
+		if (this.expectedTotal < 0) {
+			throw new Error('expectedTotal cannot be negative');
+		}
+		if (this.estimateTokens && typeof this.estimateTokens !== 'function') {
+			throw new Error('estimateTokens must be a function');
+		}
+		if (this.onProgress && typeof this.onProgress !== 'function') {
+			throw new Error('onProgress must be a function');
+		}
+		if (this.onError && typeof this.onError !== 'function') {
+			throw new Error('onError must be a function');
+		}
+		if (
+			this.fallbackItemExtractor &&
+			typeof this.fallbackItemExtractor !== 'function'
+		) {
+			throw new Error('fallbackItemExtractor must be a function');
+		}
+		if (this.itemValidator && typeof this.itemValidator !== 'function') {
+			throw new Error('itemValidator must be a function');
+		}
+	}
+
+	static defaultItemValidator(item) {
+		return (
+			item && item.title && typeof item.title === 'string' && item.title.trim()
+		);
+	}
+}
 
 /**
- * Metadata object passed to progress callbacks
- * @typedef {Object} ProgressMetadata
- * @property {number} currentCount - Current number of parsed items
- * @property {number} expectedTotal - Expected total number of items
- * @property {string} accumulatedText - All text accumulated so far
- * @property {number} estimatedTokens - Estimated token count of accumulated text
+ * Manages progress tracking and metadata
  */
+class ProgressTracker {
+	constructor(config) {
+		this.onProgress = config.onProgress;
+		this.onError = config.onError;
+		this.estimateTokens = config.estimateTokens;
+		this.expectedTotal = config.expectedTotal;
+		this.parsedItems = [];
+		this.accumulatedText = '';
+	}
+
+	addItem(item) {
+		this.parsedItems.push(item);
+		this.reportProgress(item);
+	}
+
+	addText(chunk) {
+		this.accumulatedText += chunk;
+	}
+
+	getMetadata() {
+		return {
+			currentCount: this.parsedItems.length,
+			expectedTotal: this.expectedTotal,
+			accumulatedText: this.accumulatedText,
+			estimatedTokens: this.estimateTokens(this.accumulatedText)
+		};
+	}
+
+	reportProgress(item) {
+		if (!this.onProgress) return;
+
+		try {
+			this.onProgress(item, this.getMetadata());
+		} catch (progressError) {
+			this.handleProgressError(progressError);
+		}
+	}
+
+	handleProgressError(error) {
+		if (this.onError) {
+			this.onError(new Error(`Progress callback failed: ${error.message}`));
+		}
+	}
+}
 
 /**
- * Result object returned by the stream parser
- * @typedef {Object} StreamParseResult
- * @property {Array} items - Array of parsed items
- * @property {string} accumulatedText - Complete accumulated text
- * @property {number} estimatedTokens - Final estimated token count
- * @property {boolean} usedFallback - Whether fallback parsing was used
+ * Handles stream processing with different stream types
  */
+class StreamProcessor {
+	constructor(onChunk) {
+		this.onChunk = onChunk;
+	}
+
+	async process(textStream) {
+		const streamHandler = this.detectStreamType(textStream);
+		await streamHandler(textStream);
+	}
+
+	detectStreamType(textStream) {
+		// Check for textStream property
+		if (this.hasAsyncIterator(textStream?.textStream)) {
+			return (stream) => this.processTextStream(stream.textStream);
+		}
+
+		// Check for fullStream property
+		if (this.hasAsyncIterator(textStream?.fullStream)) {
+			return (stream) => this.processFullStream(stream.fullStream);
+		}
+
+		// Check if stream itself is iterable
+		if (this.hasAsyncIterator(textStream)) {
+			return (stream) => this.processDirectStream(stream);
+		}
+
+		throw new StreamingError(
+			'Stream object is not iterable - no textStream, fullStream, or direct async iterator found',
+			STREAMING_ERROR_CODES.STREAM_NOT_ITERABLE
+		);
+	}
+
+	hasAsyncIterator(obj) {
+		return obj && typeof obj[Symbol.asyncIterator] === 'function';
+	}
+
+	async processTextStream(stream) {
+		for await (const chunk of stream) {
+			this.onChunk(chunk);
+		}
+	}
+
+	async processFullStream(stream) {
+		for await (const chunk of stream) {
+			if (chunk.type === 'text-delta' && chunk.textDelta) {
+				this.onChunk(chunk.textDelta);
+			}
+		}
+	}
+
+	async processDirectStream(stream) {
+		for await (const chunk of stream) {
+			this.onChunk(chunk);
+		}
+	}
+}
+
+/**
+ * Manages JSON parsing with the streaming parser
+ */
+class JSONStreamParser {
+	constructor(config, progressTracker) {
+		this.config = config;
+		this.progressTracker = progressTracker;
+		this.parser = new JSONParser({ paths: config.jsonPaths });
+		this.setupHandlers();
+	}
+
+	setupHandlers() {
+		this.parser.onValue = (value, key, parent, stack) => {
+			this.handleParsedValue(value);
+		};
+
+		this.parser.onError = (error) => {
+			this.handleParseError(error);
+		};
+	}
+
+	handleParsedValue(value) {
+		// Extract the actual item object from the parser's nested structure
+		const item = value.value || value;
+
+		if (this.config.itemValidator(item)) {
+			this.progressTracker.addItem(item);
+		}
+	}
+
+	handleParseError(error) {
+		if (this.config.onError) {
+			this.config.onError(new Error(`JSON parsing error: ${error.message}`));
+		}
+		// Don't throw here - we'll handle this in the fallback logic
+	}
+
+	write(chunk) {
+		this.parser.write(chunk);
+	}
+
+	end() {
+		this.parser.end();
+	}
+}
+
+/**
+ * Handles fallback parsing when streaming fails
+ */
+class FallbackParser {
+	constructor(config, progressTracker) {
+		this.config = config;
+		this.progressTracker = progressTracker;
+	}
+
+	async attemptParsing() {
+		if (!this.shouldAttemptFallback()) {
+			return [];
+		}
+
+		try {
+			return await this.parseFallbackItems();
+		} catch (parseError) {
+			this.handleFallbackError(parseError);
+			return [];
+		}
+	}
+
+	shouldAttemptFallback() {
+		return (
+			this.config.expectedTotal > 0 &&
+			this.progressTracker.parsedItems.length < this.config.expectedTotal &&
+			this.progressTracker.accumulatedText &&
+			this.config.fallbackItemExtractor
+		);
+	}
+
+	async parseFallbackItems() {
+		const fullResponse = JSON.parse(this.progressTracker.accumulatedText);
+		const fallbackItems = this.config.fallbackItemExtractor(fullResponse);
+
+		if (!Array.isArray(fallbackItems)) {
+			return [];
+		}
+
+		// Only add items we haven't already parsed
+		const itemsToAdd = fallbackItems.slice(
+			this.progressTracker.parsedItems.length
+		);
+		const newItems = [];
+
+		for (const item of itemsToAdd) {
+			if (this.config.itemValidator(item)) {
+				newItems.push(item);
+				this.progressTracker.addItem(item);
+			}
+		}
+
+		return newItems;
+	}
+
+	handleFallbackError(error) {
+		if (this.progressTracker.parsedItems.length === 0) {
+			throw new Error(`Failed to parse AI response as JSON: ${error.message}`);
+		}
+		// If we have some items from streaming, continue with those
+	}
+}
+
+/**
+ * Buffer size validator
+ */
+class BufferSizeValidator {
+	constructor(maxSize) {
+		this.maxSize = maxSize;
+		this.currentSize = 0;
+	}
+
+	validateChunk(existingText, newChunk) {
+		const newSize = Buffer.byteLength(existingText + newChunk, 'utf8');
+
+		if (newSize > this.maxSize) {
+			throw new StreamingError(
+				`Buffer size exceeded: ${newSize} bytes > ${this.maxSize} bytes maximum`,
+				STREAMING_ERROR_CODES.BUFFER_SIZE_EXCEEDED
+			);
+		}
+
+		this.currentSize = newSize;
+	}
+}
+
+/**
+ * Main orchestrator for stream parsing
+ */
+class StreamParserOrchestrator {
+	constructor(config) {
+		this.config = new StreamParserConfig(config);
+		this.progressTracker = new ProgressTracker(this.config);
+		this.bufferValidator = new BufferSizeValidator(this.config.maxBufferSize);
+		this.jsonParser = new JSONStreamParser(this.config, this.progressTracker);
+		this.fallbackParser = new FallbackParser(this.config, this.progressTracker);
+	}
+
+	async parse(textStream) {
+		if (!textStream) {
+			throw new Error('No text stream provided');
+		}
+
+		await this.processStream(textStream);
+		await this.waitForParsingCompletion();
+
+		const usedFallback = await this.attemptFallbackIfNeeded();
+
+		return this.buildResult(usedFallback);
+	}
+
+	async processStream(textStream) {
+		const processor = new StreamProcessor((chunk) => {
+			this.bufferValidator.validateChunk(
+				this.progressTracker.accumulatedText,
+				chunk
+			);
+			this.progressTracker.addText(chunk);
+			this.jsonParser.write(chunk);
+		});
+
+		try {
+			await processor.process(textStream);
+		} catch (streamError) {
+			this.handleStreamError(streamError);
+		}
+
+		this.jsonParser.end();
+	}
+
+	handleStreamError(error) {
+		// Re-throw StreamingError as-is, wrap other errors
+		if (error instanceof StreamingError) {
+			throw error;
+		}
+		throw new StreamingError(
+			`Failed to process AI text stream: ${error.message}`,
+			STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
+		);
+	}
+
+	async waitForParsingCompletion() {
+		// Wait for final parsing to complete (JSON parser may still be processing)
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
+
+	async attemptFallbackIfNeeded() {
+		const fallbackItems = await this.fallbackParser.attemptParsing();
+		return fallbackItems.length > 0;
+	}
+
+	buildResult(usedFallback) {
+		const metadata = this.progressTracker.getMetadata();
+
+		return {
+			items: this.progressTracker.parsedItems,
+			accumulatedText: metadata.accumulatedText,
+			estimatedTokens: metadata.estimatedTokens,
+			usedFallback
+		};
+	}
+}
 
 /**
  * Parse a streaming JSON response with progress tracking
@@ -97,154 +420,12 @@ function isValidItem(item, customValidator) {
  * ```
  *
  * @param {Object} textStream - The AI service text stream object
- * @param {StreamParserConfig} config - Configuration options
- * @returns {Promise<StreamParseResult>} Parsed result with metadata
+ * @param {Object} config - Configuration options
+ * @returns {Promise<Object>} Parsed result with metadata
  */
 export async function parseStream(textStream, config = {}) {
-	const {
-		jsonPaths,
-		onProgress,
-		onError,
-		estimateTokens = (text) => Math.ceil(text.length / 4),
-		expectedTotal = 0,
-		fallbackItemExtractor,
-		itemValidator,
-		maxBufferSize = DEFAULT_MAX_BUFFER_SIZE
-	} = config;
-
-	if (!textStream) {
-		throw new Error('No text stream provided');
-	}
-
-	if (!jsonPaths || !Array.isArray(jsonPaths)) {
-		throw new Error('jsonPaths is required and must be an array');
-	}
-
-	const parsedItems = [];
-	let accumulatedText = '';
-	let estimatedTokens = 0;
-	let usedFallback = false;
-
-	// Create JSON parser with specified paths
-	const parser = new JSONParser({ paths: jsonPaths });
-
-	// Set up parser event handlers
-	parser.onValue = (value, key, parent, stack) => {
-		// Extract the actual item object from the parser's nested structure
-		const item = value.value || value;
-
-		// Use helper function to validate item with custom or default validator
-		if (isValidItem(item, itemValidator)) {
-			parsedItems.push(item);
-
-			if (onProgress) {
-				const currentCount = parsedItems.length;
-
-				// Re-estimate tokens based on accumulated text
-				estimatedTokens = estimateTokens(accumulatedText);
-
-				const metadata = {
-					currentCount,
-					expectedTotal,
-					accumulatedText,
-					estimatedTokens
-				};
-
-				// Call progress callback
-				try {
-					onProgress(item, metadata);
-				} catch (progressError) {
-					if (onError) {
-						onError(
-							new Error(`Progress callback failed: ${progressError.message}`)
-						);
-					}
-				}
-			}
-		}
-	};
-
-	parser.onError = (error) => {
-		if (onError) {
-			onError(new Error(`JSON parsing error: ${error.message}`));
-		}
-		// Don't throw here - we'll handle this in the fallback logic
-	};
-
-	// Process the stream - handle different possible stream structures
-	try {
-		await processTextStream(textStream, (chunk) => {
-			// Check buffer size before adding chunk
-			const newSize = Buffer.byteLength(accumulatedText + chunk, 'utf8');
-			if (newSize > maxBufferSize) {
-				throw new StreamingError(
-					`Buffer size exceeded: ${newSize} bytes > ${maxBufferSize} bytes maximum`,
-					STREAMING_ERROR_CODES.BUFFER_SIZE_EXCEEDED
-				);
-			}
-			accumulatedText += chunk;
-			parser.write(chunk);
-		});
-	} catch (streamError) {
-		// Re-throw StreamingError as-is, wrap other errors
-		if (streamError instanceof StreamingError) {
-			throw streamError;
-		}
-		throw new StreamingError(
-			`Failed to process AI text stream: ${streamError.message}`,
-			STREAMING_ERROR_CODES.STREAM_PROCESSING_FAILED
-		);
-	}
-
-	parser.end();
-
-	// Wait for final parsing to complete (JSON parser may still be processing)
-	await new Promise((resolve) => setTimeout(resolve, 100));
-
-	// If streaming parser didn't get all expected items, try fallback parsing
-	if (
-		expectedTotal > 0 &&
-		parsedItems.length < expectedTotal &&
-		accumulatedText &&
-		fallbackItemExtractor
-	) {
-		try {
-			const fallbackItems = await attemptFallbackParsing(
-				accumulatedText,
-				parsedItems,
-				expectedTotal,
-				{
-					onProgress,
-					estimateTokens,
-					fallbackItemExtractor,
-					itemValidator,
-					maxBufferSize
-				}
-			);
-
-			if (fallbackItems.length > 0) {
-				parsedItems.push(...fallbackItems);
-				usedFallback = true;
-			}
-		} catch (parseError) {
-			// If we have some items from streaming, continue with those
-			if (parsedItems.length === 0) {
-				throw new Error(
-					`Failed to parse AI response as JSON: ${parseError.message}`
-				);
-			}
-		}
-	}
-
-	// Final token estimation
-	estimatedTokens = estimateTokens(accumulatedText);
-
-	return {
-		items: parsedItems,
-		accumulatedText,
-		estimatedTokens,
-		usedFallback
-	};
+	const orchestrator = new StreamParserOrchestrator(config);
+	return orchestrator.parse(textStream);
 }
 
 /**
@@ -253,37 +434,8 @@ export async function parseStream(textStream, config = {}) {
  * @param {Function} onChunk - Callback for each text chunk
  */
 export async function processTextStream(textStream, onChunk) {
-	// Try textStream property first (most common)
-	if (
-		textStream.textStream &&
-		typeof textStream.textStream[Symbol.asyncIterator] === 'function'
-	) {
-		for await (const chunk of textStream.textStream) {
-			onChunk(chunk);
-		}
-	}
-	// Try fullStream property as fallback
-	else if (
-		textStream.fullStream &&
-		typeof textStream.fullStream[Symbol.asyncIterator] === 'function'
-	) {
-		for await (const chunk of textStream.fullStream) {
-			if (chunk.type === 'text-delta' && chunk.textDelta) {
-				onChunk(chunk.textDelta);
-			}
-		}
-	}
-	// Try iterating the stream object directly
-	else if (typeof textStream[Symbol.asyncIterator] === 'function') {
-		for await (const chunk of textStream) {
-			onChunk(chunk);
-		}
-	} else {
-		throw new StreamingError(
-			'Stream object is not iterable - no textStream, fullStream, or direct async iterator found',
-			STREAMING_ERROR_CODES.STREAM_NOT_ITERABLE
-		);
-	}
+	const processor = new StreamProcessor(onChunk);
+	await processor.process(textStream);
 }
 
 /**
@@ -294,64 +446,32 @@ export async function processTextStream(textStream, onChunk) {
  * @param {Object} config - Configuration for progress reporting
  * @returns {Promise<Array>} Additional items found via fallback parsing
  */
-async function attemptFallbackParsing(
+export async function attemptFallbackParsing(
 	accumulatedText,
 	existingItems,
 	expectedTotal,
 	config
 ) {
-	const {
-		onProgress,
-		estimateTokens,
-		fallbackItemExtractor,
-		itemValidator,
-		onError
-	} = config;
-	const newItems = [];
+	// Create a temporary progress tracker for backward compatibility
+	const progressTracker = new ProgressTracker({
+		onProgress: config.onProgress,
+		onError: config.onError,
+		estimateTokens: config.estimateTokens,
+		expectedTotal
+	});
 
-	try {
-		const fullResponse = JSON.parse(accumulatedText);
-		const fallbackItems = fallbackItemExtractor(fullResponse);
+	progressTracker.parsedItems = existingItems;
+	progressTracker.accumulatedText = accumulatedText;
 
-		if (Array.isArray(fallbackItems)) {
-			// Only add items we haven't already parsed
-			const itemsToAdd = fallbackItems.slice(existingItems.length);
+	const fallbackParser = new FallbackParser(
+		{
+			...config,
+			expectedTotal,
+			itemValidator:
+				config.itemValidator || StreamParserConfig.defaultItemValidator
+		},
+		progressTracker
+	);
 
-			for (const item of itemsToAdd) {
-				// Use the same validation helper function
-				if (isValidItem(item, itemValidator)) {
-					newItems.push(item);
-
-					if (onProgress) {
-						const currentCount = existingItems.length + newItems.length;
-						const estimatedTokens = estimateTokens(accumulatedText);
-
-						const metadata = {
-							currentCount,
-							expectedTotal,
-							accumulatedText,
-							estimatedTokens
-						};
-
-						try {
-							onProgress(item, metadata);
-						} catch (progressError) {
-							// Report error but don't break the flow
-							if (onError) {
-								onError(
-									new Error(
-										`Progress callback failed: ${progressError.message}`
-									)
-								);
-							}
-						}
-					}
-				}
-			}
-		}
-	} catch (parseError) {
-		throw new Error(`Fallback JSON parsing failed: ${parseError.message}`);
-	}
-
-	return newItems;
+	return fallbackParser.attemptParsing();
 }

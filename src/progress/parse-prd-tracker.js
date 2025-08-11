@@ -18,19 +18,82 @@ const PRIORITY_INDICATORS = getCliPriorityIndicators();
 const PRIORITY_DOTS = getStatusBarPriorityIndicators();
 const PRIORITY_COLORS = getPriorityColors();
 
+// Constants
+const CONSTANTS = {
+	DEBOUNCE_DELAY: 100,
+	MAX_TITLE_LENGTH: 57,
+	TRUNCATED_LENGTH: 54,
+	TASK_ID_PAD_START: 3,
+	TASK_ID_PAD_END: 4,
+	PRIORITY_PAD_END: 3,
+	VALID_PRIORITIES: ['high', 'medium', 'low'],
+	DEFAULT_PRIORITY: 'medium'
+};
+
+/**
+ * Helper class to manage update debouncing
+ */
+class UpdateDebouncer {
+	constructor(delay = CONSTANTS.DEBOUNCE_DELAY) {
+		this.delay = delay;
+		this.pendingTimeout = null;
+	}
+
+	debounce(callback) {
+		this.clear();
+		this.pendingTimeout = setTimeout(() => {
+			callback();
+			this.pendingTimeout = null;
+		}, this.delay);
+	}
+
+	clear() {
+		if (this.pendingTimeout) {
+			clearTimeout(this.pendingTimeout);
+			this.pendingTimeout = null;
+		}
+	}
+
+	hasPending() {
+		return this.pendingTimeout !== null;
+	}
+}
+
+/**
+ * Helper class to manage priority counts
+ */
+class PriorityManager {
+	constructor() {
+		this.priorities = { high: 0, medium: 0, low: 0 };
+	}
+
+	increment(priority) {
+		const normalized = this.normalize(priority);
+		this.priorities[normalized]++;
+		return normalized;
+	}
+
+	normalize(priority) {
+		const lowercased = priority ? priority.toLowerCase() : CONSTANTS.DEFAULT_PRIORITY;
+		return CONSTANTS.VALID_PRIORITIES.includes(lowercased) 
+			? lowercased 
+			: CONSTANTS.DEFAULT_PRIORITY;
+	}
+
+	getCounts() {
+		return { ...this.priorities };
+	}
+}
+
 /**
  * Tracks progress for PRD parsing operations with multibar display
  */
 class ParsePrdTracker extends BaseProgressTracker {
 	_initializeCustomProperties(options) {
 		this.append = options.append;
-		this.taskPriorities = { high: 0, medium: 0, low: 0 };
-		// Time tracking for stable estimates (now in base)
-		// Removed: lastTaskTime, bestAvgTimePerTask, lastEstimateTime, lastEstimateSeconds
-
-		// Debounce configuration
-		this._pendingUpdate = null;
-		this._debounceDelay = 100; // 100ms debounce delay
+		this.priorityManager = new PriorityManager();
+		this.debouncer = new UpdateDebouncer();
+		this.headerShown = false;
 	}
 
 	_getTimeTokensBarFormat() {
@@ -42,17 +105,21 @@ class ParsePrdTracker extends BaseProgressTracker {
 	}
 
 	_getCustomTimeTokensPayload() {
-		return {
-			high: this.taskPriorities.high,
-			medium: this.taskPriorities.medium,
-			low: this.taskPriorities.low
-		};
+		return this.priorityManager.getCounts();
 	}
 
 	addTaskLine(taskNumber, title, priority = 'medium') {
 		if (!this.multibar || this.isFinished) return;
 
-		// Show header on first task using UI utility
+		this._ensureHeaderShown();
+		const normalizedPriority = this._updateTaskCounters(taskNumber, priority);
+		
+		this.debouncer.debounce(() => {
+			this._updateProgressDisplay(taskNumber, title, normalizedPriority);
+		});
+	}
+
+	_ensureHeaderShown() {
 		if (!this.headerShown) {
 			this.headerShown = true;
 			createProgressHeader(
@@ -61,78 +128,76 @@ class ParsePrdTracker extends BaseProgressTracker {
 				'------+-----+----------------------------------------------------------------'
 			);
 		}
+	}
 
-		// Normalize priority
-		const normalizedPriority = ['high', 'medium', 'low'].includes(
-			priority.toLowerCase()
-		)
-			? priority.toLowerCase()
-			: 'medium';
+	_updateTaskCounters(taskNumber, priority) {
+		const normalizedPriority = this.priorityManager.increment(priority);
+		this.completedUnits = taskNumber;
+		return normalizedPriority;
+	}
 
-		// Update counters
-		this.taskPriorities[normalizedPriority]++;
-		this.completedUnits = taskNumber; // Use base completedUnits
+	_updateProgressDisplay(taskNumber, title, normalizedPriority) {
+		this.progressBar.update(this.completedUnits, {
+			tasks: `${this.completedUnits}/${this.numUnits}`
+		});
 
-		// Clear any pending update
-		if (this._pendingUpdate) {
-			clearTimeout(this._pendingUpdate);
-			this._pendingUpdate = null;
-		}
+		const displayTitle = this._formatTitle(title, taskNumber);
+		const priorityDisplay = this._formatPriority(normalizedPriority);
+		const taskIdCentered = this._formatTaskId(taskNumber);
 
-		// Debounce the progress bar update
-		this._pendingUpdate = setTimeout(() => {
-			// Update progress bar
-			this.progressBar.update(this.completedUnits, {
-				tasks: `${this.completedUnits}/${this.numUnits}`
-			});
+		createProgressRow(
+			this.multibar,
+			` ${taskIdCentered} | ${priorityDisplay} | {title}`,
+			{ title: displayTitle }
+		);
 
-			// Create individual task display
-			const displayTitle =
-				title && title.length > 57
-					? title.substring(0, 54) + '...'
-					: title || `Task ${taskNumber}`;
-			const priorityDisplay = getPriorityIndicator(
-				normalizedPriority,
-				false
-			).padEnd(3, ' ');
-			const taskIdCentered = taskNumber
-				.toString()
-				.padStart(3, ' ')
-				.padEnd(4, ' ');
+		createBorder(
+			this.multibar,
+			'------+-----+----------------------------------------------------------------'
+		);
 
-			createProgressRow(
-				this.multibar,
-				` ${taskIdCentered} | ${priorityDisplay} | {title}`,
-				{ title: displayTitle }
-			);
+		this._updateTimeTokensBar();
+	}
 
-			// Add border line after each task using UI utility
-			createBorder(
-				this.multibar,
-				'------+-----+----------------------------------------------------------------'
-			);
+	_formatTitle(title, taskNumber) {
+		if (!title) return `Task ${taskNumber}`;
+		return title.length > CONSTANTS.MAX_TITLE_LENGTH
+			? title.substring(0, CONSTANTS.TRUNCATED_LENGTH) + '...'
+			: title;
+	}
 
-			this._updateTimeTokensBar();
+	_formatPriority(priority) {
+		return getPriorityIndicator(priority, false).padEnd(CONSTANTS.PRIORITY_PAD_END, ' ');
+	}
 
-			this._pendingUpdate = null;
-		}, this._debounceDelay);
+	_formatTaskId(taskNumber) {
+		return taskNumber
+			.toString()
+			.padStart(CONSTANTS.TASK_ID_PAD_START, ' ')
+			.padEnd(CONSTANTS.TASK_ID_PAD_END, ' ');
 	}
 
 	finish() {
 		// Flush any pending updates before finishing
-		if (this._pendingUpdate) {
-			clearTimeout(this._pendingUpdate);
-			this._pendingUpdate = null;
-			// Force immediate update of any pending progress
+		if (this.debouncer.hasPending()) {
+			this.debouncer.clear();
 			this._updateTimeTokensBar();
 		}
+		this.cleanup();
 		super.finish();
+	}
+
+	/**
+	 * Override cleanup to handle pending updates
+	 */
+	_performCustomCleanup() {
+		this.debouncer.clear();
 	}
 
 	getSummary() {
 		return {
 			...super.getSummary(),
-			taskPriorities: { ...this.taskPriorities },
+			taskPriorities: this.priorityManager.getCounts(),
 			actionVerb: this.append ? 'appended' : 'generated'
 		};
 	}

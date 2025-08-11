@@ -17,7 +17,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import parsePRD from '../../../scripts/modules/task-manager/parse-prd.js';
+import parsePRD from '../../../scripts/modules/task-manager/parse-prd/index.js';
 
 // Use the same project root as the main test file
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');

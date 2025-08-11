@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
 
 // Import the parse-prd function
-import parsePRD from '../../../scripts/modules/task-manager/parse-prd.js';
+import parsePRD from '../../../scripts/modules/task-manager/parse-prd/index.js';
 
 /**
  * Mock Progress Reporter for testing

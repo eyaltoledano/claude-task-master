@@ -242,6 +242,9 @@ export class BaseProgressTracker {
 			this._updateTimeTokensBar();
 			this.multibar.stop();
 		}
+
+		// Ensure cleanup is called to prevent memory leaks
+		this.cleanup();
 	}
 
 	getSummary() {

@@ -8,6 +8,54 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import { formatElapsedTime } from '../utils/format.js';
 
+// Constants
+const CONSTANTS = {
+	BAR_WIDTH: 40,
+	TABLE_COL_WIDTHS: [28, 50],
+	DEFAULT_MODEL: 'Default',
+	DEFAULT_TEMPERATURE: 0.7
+};
+
+const PRIORITIES = {
+	HIGH: 'high',
+	MEDIUM: 'medium',
+	LOW: 'low'
+};
+
+const PRIORITY_COLORS = {
+	[PRIORITIES.HIGH]: '#CC0000',
+	[PRIORITIES.MEDIUM]: '#FF8800',
+	[PRIORITIES.LOW]: '#FFCC00'
+};
+
+// Reusable box styles
+const BOX_STYLES = {
+	main: {
+		padding: { top: 1, bottom: 1, left: 2, right: 2 },
+		margin: { top: 0, bottom: 0 },
+		borderColor: 'blue',
+		borderStyle: 'round'
+	},
+	summary: {
+		padding: { top: 1, right: 1, bottom: 1, left: 1 },
+		borderColor: 'blue',
+		borderStyle: 'round',
+		margin: { top: 1, right: 1, bottom: 1, left: 0 }
+	},
+	warning: {
+		padding: 1,
+		borderColor: 'yellow',
+		borderStyle: 'round',
+		margin: { top: 1, bottom: 1 }
+	},
+	nextSteps: {
+		padding: 1,
+		borderColor: 'cyan',
+		borderStyle: 'round',
+		margin: { top: 1, right: 0, bottom: 1, left: 0 }
+	}
+};
+
 /**
  * Helper function for building main message content
  * @param {Object} params - Message parameters
@@ -54,14 +102,7 @@ function buildMainMessage({
  * @param {string} message - The message content to display in the box
  */
 function displayMainMessageBox(message) {
-	console.log(
-		boxen(message, {
-			padding: { top: 1, bottom: 1, left: 2, right: 2 },
-			margin: { top: 0, bottom: 0 },
-			borderColor: 'blue',
-			borderStyle: 'round'
-		})
-	);
+	console.log(boxen(message, BOX_STYLES.main));
 }
 
 /**
@@ -106,8 +147,8 @@ function displayParsePrdStart({
 	prdFilePath,
 	outputPath,
 	numTasks,
-	model = 'Default',
-	temperature = 0.7,
+	model = CONSTANTS.DEFAULT_MODEL,
+	temperature = CONSTANTS.DEFAULT_TEMPERATURE,
 	append = false,
 	research = false,
 	force = false,
@@ -160,6 +201,138 @@ function displayParsePrdStart({
 }
 
 /**
+ * Calculate priority statistics
+ * @param {Object} taskPriorities - Priority counts object
+ * @param {number} totalTasks - Total number of tasks
+ * @returns {Object} Priority statistics with counts and percentages
+ */
+function calculatePriorityStats(taskPriorities, totalTasks) {
+	const stats = {};
+
+	Object.values(PRIORITIES).forEach((priority) => {
+		const count = taskPriorities[priority] || 0;
+		stats[priority] = {
+			count,
+			percentage: totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0
+		};
+	});
+
+	return stats;
+}
+
+/**
+ * Calculate bar character distribution for priorities
+ * @param {Object} priorityStats - Priority statistics
+ * @param {number} totalTasks - Total number of tasks
+ * @returns {Object} Character counts for each priority
+ */
+function calculateBarDistribution(priorityStats, totalTasks) {
+	const barWidth = CONSTANTS.BAR_WIDTH;
+	const distribution = {};
+
+	if (totalTasks === 0) {
+		Object.values(PRIORITIES).forEach((priority) => {
+			distribution[priority] = 0;
+		});
+		return distribution;
+	}
+
+	// Calculate raw proportions
+	const rawChars = {};
+	Object.values(PRIORITIES).forEach((priority) => {
+		rawChars[priority] =
+			(priorityStats[priority].count / totalTasks) * barWidth;
+	});
+
+	// Initial distribution - floor values
+	Object.values(PRIORITIES).forEach((priority) => {
+		distribution[priority] = Math.floor(rawChars[priority]);
+	});
+
+	// Ensure non-zero priorities get at least 1 character
+	Object.values(PRIORITIES).forEach((priority) => {
+		if (priorityStats[priority].count > 0 && distribution[priority] === 0) {
+			distribution[priority] = 1;
+		}
+	});
+
+	// Distribute remaining characters based on decimal parts
+	const currentTotal = Object.values(distribution).reduce(
+		(sum, val) => sum + val,
+		0
+	);
+	const remainingChars = barWidth - currentTotal;
+
+	if (remainingChars > 0) {
+		const decimals = Object.values(PRIORITIES)
+			.map((priority) => ({
+				priority,
+				decimal: rawChars[priority] - Math.floor(rawChars[priority])
+			}))
+			.sort((a, b) => b.decimal - a.decimal);
+
+		for (let i = 0; i < remainingChars && i < decimals.length; i++) {
+			distribution[decimals[i].priority]++;
+		}
+	}
+
+	return distribution;
+}
+
+/**
+ * Create priority distribution bar visual
+ * @param {Object} barDistribution - Character distribution for priorities
+ * @returns {string} Visual bar string
+ */
+function createPriorityBar(barDistribution) {
+	let bar = '';
+
+	bar += chalk.hex(PRIORITY_COLORS[PRIORITIES.HIGH])(
+		'█'.repeat(barDistribution[PRIORITIES.HIGH])
+	);
+	bar += chalk.hex(PRIORITY_COLORS[PRIORITIES.MEDIUM])(
+		'█'.repeat(barDistribution[PRIORITIES.MEDIUM])
+	);
+	bar += chalk.yellow('█'.repeat(barDistribution[PRIORITIES.LOW]));
+
+	const totalChars = Object.values(barDistribution).reduce(
+		(sum, val) => sum + val,
+		0
+	);
+	if (totalChars < CONSTANTS.BAR_WIDTH) {
+		bar += chalk.gray('░'.repeat(CONSTANTS.BAR_WIDTH - totalChars));
+	}
+
+	return bar;
+}
+
+/**
+ * Build priority distribution row for table
+ * @param {Object} priorityStats - Priority statistics
+ * @returns {Array} Table row for priority distribution
+ */
+function buildPriorityRow(priorityStats) {
+	const parts = [];
+
+	Object.entries(PRIORITIES).forEach(([key, priority]) => {
+		const stats = priorityStats[priority];
+		const color =
+			priority === PRIORITIES.HIGH
+				? chalk.hex(PRIORITY_COLORS[PRIORITIES.HIGH])
+				: priority === PRIORITIES.MEDIUM
+					? chalk.hex(PRIORITY_COLORS[PRIORITIES.MEDIUM])
+					: chalk.yellow;
+
+		const label = key.charAt(0) + key.slice(1).toLowerCase();
+		parts.push(
+			`${color.bold(stats.count)} ${color(label)} (${stats.percentage}%)`
+		);
+	});
+
+	return [chalk.cyan('Priority distribution:'), parts.join(' · ')];
+}
+
+/**
  * Display a summary of the PRD parsing results
  * @param {Object} summary - Summary of the parsing results
  * @param {number} summary.totalTasks - Total number of tasks generated
@@ -171,7 +344,6 @@ function displayParsePrdStart({
  * @param {string} summary.actionVerb - Whether tasks were 'generated' or 'appended'
  */
 function displayParsePrdSummary(summary) {
-	// Calculate task category percentages
 	const {
 		totalTasks,
 		taskPriorities = {},
@@ -179,7 +351,7 @@ function displayParsePrdSummary(summary) {
 		outputPath,
 		elapsedTime,
 		usedFallback = false,
-		actionVerb = 'generated' // Default to 'generated' if not provided
+		actionVerb = 'generated'
 	} = summary;
 
 	// Format the elapsed time
@@ -205,7 +377,7 @@ function displayParsePrdSummary(summary) {
 			middle: ' '
 		},
 		style: { border: [], 'padding-left': 2 },
-		colWidths: [28, 50]
+		colWidths: CONSTANTS.TABLE_COL_WIDTHS
 	});
 
 	// Basic info
@@ -217,135 +389,13 @@ function displayParsePrdSummary(summary) {
 
 	// Priority distribution if available
 	if (taskPriorities && Object.keys(taskPriorities).length > 0) {
-		// Count tasks by priority
-		const highPriority = taskPriorities.high || 0;
-		const mediumPriority = taskPriorities.medium || 0;
-		const lowPriority = taskPriorities.low || 0;
-
-		// Calculate percentages - handle division by zero
-		const percentHigh =
-			totalTasks > 0 ? Math.round((highPriority / totalTasks) * 100) : 0;
-		const percentMedium =
-			totalTasks > 0 ? Math.round((mediumPriority / totalTasks) * 100) : 0;
-		const percentLow =
-			totalTasks > 0 ? Math.round((lowPriority / totalTasks) * 100) : 0;
-
-		// Priority distribution row
-		const priorityRow = [
-			chalk.cyan('Priority distribution:'),
-			`${chalk.hex('#CC0000').bold(highPriority)} ${chalk.hex('#CC0000')('High')} (${percentHigh}%) · ` +
-				`${chalk.hex('#FF8800').bold(mediumPriority)} ${chalk.hex('#FF8800')('Medium')} (${percentMedium}%) · ` +
-				`${chalk.yellow.bold(lowPriority)} ${chalk.yellow('Low')} (${percentLow}%)`
-		];
+		const priorityStats = calculatePriorityStats(taskPriorities, totalTasks);
+		const priorityRow = buildPriorityRow(priorityStats);
 		table.push(priorityRow);
 
-		// Visual bar representation of priority distribution
-		const barWidth = 40; // Total width of the bar
-
-		// Calculate proportional bar lengths while maintaining consistent total width
-		let highChars = 0;
-		let mediumChars = 0;
-		let lowChars = 0;
-
-		if (totalTasks > 0) {
-			// Step 1: Calculate raw proportional lengths without minimum constraints
-			const rawHighChars = (highPriority / totalTasks) * barWidth;
-			const rawMediumChars = (mediumPriority / totalTasks) * barWidth;
-			const rawLowChars = (lowPriority / totalTasks) * barWidth;
-
-			// Step 2: Round down initially to get base lengths
-			highChars = Math.floor(rawHighChars);
-			mediumChars = Math.floor(rawMediumChars);
-			lowChars = Math.floor(rawLowChars);
-
-			// Step 3: Identify priorities with tasks but no representation yet
-			const nonZeroPriorities = [];
-			if (highPriority > 0 && highChars === 0) nonZeroPriorities.push('high');
-			if (mediumPriority > 0 && mediumChars === 0)
-				nonZeroPriorities.push('medium');
-			if (lowPriority > 0 && lowChars === 0) nonZeroPriorities.push('low');
-
-			// Step 4: Ensure non-zero priorities get at least 1 character
-			for (const priority of nonZeroPriorities) {
-				if (priority === 'high') highChars = 1;
-				else if (priority === 'medium') mediumChars = 1;
-				else if (priority === 'low') lowChars = 1;
-			}
-
-			// Step 5: Calculate remaining characters to distribute
-			let currentTotal = highChars + mediumChars + lowChars;
-			const remainingChars = barWidth - currentTotal;
-
-			// Step 6: Distribute remaining characters proportionally based on decimal parts
-			if (remainingChars > 0) {
-				const decimals = [
-					{
-						priority: 'high',
-						decimal: rawHighChars - Math.floor(rawHighChars),
-						current: highChars
-					},
-					{
-						priority: 'medium',
-						decimal: rawMediumChars - Math.floor(rawMediumChars),
-						current: mediumChars
-					},
-					{
-						priority: 'low',
-						decimal: rawLowChars - Math.floor(rawLowChars),
-						current: lowChars
-					}
-				];
-
-				// Sort by decimal part (largest first) to distribute remaining characters
-				decimals.sort((a, b) => b.decimal - a.decimal);
-
-				for (let i = 0; i < remainingChars && i < decimals.length; i++) {
-					const priorityToIncrement = decimals[i].priority;
-					if (priorityToIncrement === 'high') highChars++;
-					else if (priorityToIncrement === 'medium') mediumChars++;
-					else if (priorityToIncrement === 'low') lowChars++;
-				}
-			}
-
-			// Step 7: Handle case where we still exceed barWidth (should be rare)
-			currentTotal = highChars + mediumChars + lowChars;
-			if (currentTotal > barWidth) {
-				const excess = currentTotal - barWidth;
-				// Remove excess from the priority with the largest representation first
-				const priorities = [
-					{ name: 'low', chars: lowChars },
-					{ name: 'medium', chars: mediumChars },
-					{ name: 'high', chars: highChars }
-				].sort((a, b) => b.chars - a.chars);
-
-				let toRemove = excess;
-				for (const priority of priorities) {
-					if (toRemove <= 0) break;
-					const canRemove = Math.min(
-						toRemove,
-						priority.chars - (priority.chars > 1 ? 1 : 0)
-					);
-					if (priority.name === 'high') highChars -= canRemove;
-					else if (priority.name === 'medium') mediumChars -= canRemove;
-					else if (priority.name === 'low') lowChars -= canRemove;
-					toRemove -= canRemove;
-				}
-			}
-		}
-
-		// Calculate actual bar width for any remaining empty space
-		const actualBarWidth = highChars + mediumChars + lowChars;
-
-		// Use the same colors as formatComplexitySummary
-		const distributionBar =
-			chalk.hex('#CC0000')('█'.repeat(highChars)) +
-			chalk.hex('#FF8800')('█'.repeat(mediumChars)) +
-			chalk.yellow('█'.repeat(lowChars)) +
-			// Add empty space if actual bar is shorter than expected
-			(actualBarWidth < barWidth
-				? chalk.gray('░'.repeat(barWidth - actualBarWidth))
-				: '');
-
+		// Visual bar representation
+		const barDistribution = calculateBarDistribution(priorityStats, totalTasks);
+		const distributionBar = createPriorityBar(barDistribution);
 		table.push([chalk.cyan('Distribution:'), distributionBar]);
 	}
 
@@ -372,65 +422,56 @@ function displayParsePrdSummary(summary) {
 		table.toString()
 	].join('\n');
 
-	// Return a boxed version
-	console.log(
-		boxen(output, {
-			padding: { top: 1, right: 1, bottom: 1, left: 1 },
-			borderColor: 'blue',
-			borderStyle: 'round',
-			margin: { top: 1, right: 1, bottom: 1, left: 0 }
-		})
-	);
+	// Display the summary box
+	console.log(boxen(output, BOX_STYLES.summary));
 
 	// Show fallback parsing warning if needed
 	if (usedFallback) {
-		console.log(
-			boxen(
-				chalk.yellow.bold('⚠️ Fallback Parsing Used') +
-					'\n\n' +
-					chalk.white(
-						'The system used fallback parsing to complete task generation.'
-					) +
-					'\n' +
-					chalk.white(
-						'This typically happens when streaming JSON parsing is incomplete.'
-					) +
-					'\n' +
-					chalk.white('Your tasks were successfully generated, but consider:') +
-					'\n' +
-					chalk.white('• Reviewing task completeness') +
-					'\n' +
-					chalk.white('• Checking for any missing details') +
-					'\n\n' +
-					chalk.white(
-						"This is normal and usually doesn't indicate any issues."
-					),
-				{
-					padding: 1,
-					borderColor: 'yellow',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				}
-			)
-		);
+		displayFallbackWarning();
 	}
 
 	// Show next steps
-	console.log(
-		boxen(
-			chalk.white.bold('Next Steps:') +
-				'\n\n' +
-				`${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
-				`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks\n` +
-				`${chalk.cyan('3.')} Run ${chalk.yellow('task-master analyze-complexity')} to analyze task complexity`,
-			{
-				padding: 1,
-				borderColor: 'cyan',
-				borderStyle: 'round',
-				margin: { top: 1, right: 0, bottom: 1, left: 0 }
-			}
-		)
-	);
+	displayNextSteps();
+}
+
+/**
+ * Display fallback parsing warning
+ */
+function displayFallbackWarning() {
+	const warningContent =
+		chalk.yellow.bold('⚠️ Fallback Parsing Used') +
+		'\n\n' +
+		chalk.white(
+			'The system used fallback parsing to complete task generation.'
+		) +
+		'\n' +
+		chalk.white(
+			'This typically happens when streaming JSON parsing is incomplete.'
+		) +
+		'\n' +
+		chalk.white('Your tasks were successfully generated, but consider:') +
+		'\n' +
+		chalk.white('• Reviewing task completeness') +
+		'\n' +
+		chalk.white('• Checking for any missing details') +
+		'\n\n' +
+		chalk.white("This is normal and usually doesn't indicate any issues.");
+
+	console.log(boxen(warningContent, BOX_STYLES.warning));
+}
+
+/**
+ * Display next steps after parsing
+ */
+function displayNextSteps() {
+	const stepsContent =
+		chalk.white.bold('Next Steps:') +
+		'\n\n' +
+		`${chalk.cyan('1.')} Run ${chalk.yellow('task-master list')} to view all tasks\n` +
+		`${chalk.cyan('2.')} Run ${chalk.yellow('task-master expand --id=<id>')} to break down a task into subtasks\n` +
+		`${chalk.cyan('3.')} Run ${chalk.yellow('task-master analyze-complexity')} to analyze task complexity`;
+
+	console.log(boxen(stepsContent, BOX_STYLES.nextSteps));
 }
 
 export { displayParsePrdStart, displayParsePrdSummary, formatElapsedTime };

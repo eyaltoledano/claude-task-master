@@ -9,16 +9,112 @@ import { TASK_PRIORITY_OPTIONS } from '../constants/task-priority.js';
 // Extract priority values for cleaner object keys
 const [HIGH, MEDIUM, LOW] = TASK_PRIORITY_OPTIONS;
 
+// Cache for generated indicators
+const INDICATOR_CACHE = new Map();
+
+/**
+ * Base configuration for indicator systems
+ */
+class IndicatorConfig {
+	constructor(name, levels, colors, thresholds = null) {
+		this.name = name;
+		this.levels = levels;
+		this.colors = colors;
+		this.thresholds = thresholds;
+	}
+
+	getColor(level) {
+		return this.colors[level] || chalk.gray;
+	}
+
+	getLevelFromScore(score) {
+		if (!this.thresholds) {
+			throw new Error(`${this.name} does not support score-based levels`);
+		}
+		
+		if (score >= 7) return this.levels[0]; // high
+		if (score <= 3) return this.levels[2]; // low
+		return this.levels[1]; // medium
+	}
+}
+
+/**
+ * Visual style definitions
+ */
+const VISUAL_STYLES = {
+	cli: {
+		filled: '●',  // ●
+		empty: '○'   // ○
+	},
+	statusBar: {
+		high: '⋮',   // ⋮
+		medium: ':',  // :
+		low: '.'      // .
+	},
+	mcp: {
+		high: '🔴',    // 🔴
+		medium: '🟠', // 🟠
+		low: '🟢'     // 🟢
+	}
+};
+
+/**
+ * Priority configuration
+ */
+const PRIORITY_CONFIG = new IndicatorConfig(
+	'priority',
+	[HIGH, MEDIUM, LOW],
+	{
+		[HIGH]: chalk.hex('#CC0000'),
+		[MEDIUM]: chalk.hex('#FF8800'),
+		[LOW]: chalk.yellow
+	}
+);
+
+/**
+ * Generates CLI indicator with intensity
+ */
+function generateCliIndicator(intensity, color) {
+	const filled = VISUAL_STYLES.cli.filled;
+	const empty = VISUAL_STYLES.cli.empty;
+	
+	let indicator = '';
+	for (let i = 0; i < 3; i++) {
+		if (i < intensity) {
+			indicator += color(filled);
+		} else {
+			indicator += chalk.white(empty);
+		}
+	}
+	return indicator;
+}
+
+/**
+ * Get intensity level from priority/complexity level
+ */
+function getIntensityFromLevel(level, levels) {
+	const index = levels.indexOf(level);
+	return 3 - index; // high=3, medium=2, low=1
+}
+
 /**
  * Get priority indicators for MCP context (single emojis)
  * @returns {Object} Priority to emoji mapping
  */
 export function getMcpPriorityIndicators() {
-	return {
-		[HIGH]: '🔴',
-		[MEDIUM]: '🟠',
-		[LOW]: '🟢'
+	const cacheKey = 'mcp-priority-all';
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+	
+	const indicators = {
+		[HIGH]: VISUAL_STYLES.mcp.high,
+		[MEDIUM]: VISUAL_STYLES.mcp.medium,
+		[LOW]: VISUAL_STYLES.mcp.low
 	};
+	
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
 }
 
 /**
@@ -26,12 +122,20 @@ export function getMcpPriorityIndicators() {
  * @returns {Object} Priority to colored dot string mapping
  */
 export function getCliPriorityIndicators() {
-	return {
-		[HIGH]: chalk.red('●') + chalk.red('●') + chalk.red('●'), // ●●● (all filled)
-		[MEDIUM]:
-			chalk.hex('#FF8800')('●') + chalk.hex('#FF8800')('●') + chalk.white('○'), // ●●○ (two filled, one empty)
-		[LOW]: chalk.yellow('●') + chalk.white('○') + chalk.white('○') // ●○○ (one filled, two empty)
-	};
+	const cacheKey = 'cli-priority-all';
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+	
+	const indicators = {};
+	PRIORITY_CONFIG.levels.forEach(level => {
+		const intensity = getIntensityFromLevel(level, PRIORITY_CONFIG.levels);
+		const color = PRIORITY_CONFIG.getColor(level);
+		indicators[level] = generateCliIndicator(intensity, color);
+	});
+	
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
 }
 
 /**
@@ -39,11 +143,22 @@ export function getCliPriorityIndicators() {
  * @returns {Object} Priority to single character indicator mapping
  */
 export function getStatusBarPriorityIndicators() {
-	return {
-		[HIGH]: chalk.red('⋮'),
-		[MEDIUM]: chalk.hex('#FF8800')(':'),
-		[LOW]: chalk.yellow('.')
-	};
+	const cacheKey = 'statusbar-priority-all';
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+	
+	const indicators = {};
+	PRIORITY_CONFIG.levels.forEach((level, index) => {
+		const style = index === 0 ? VISUAL_STYLES.statusBar.high :
+					  index === 1 ? VISUAL_STYLES.statusBar.medium :
+					  VISUAL_STYLES.statusBar.low;
+		const color = PRIORITY_CONFIG.getColor(level);
+		indicators[level] = color(style);
+	});
+	
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
 }
 
 /**
@@ -52,9 +167,9 @@ export function getStatusBarPriorityIndicators() {
  */
 export function getPriorityColors() {
 	return {
-		[HIGH]: chalk.hex('#CC0000'),
-		[MEDIUM]: chalk.hex('#FF8800'),
-		[LOW]: chalk.yellow
+		[HIGH]: PRIORITY_CONFIG.colors[HIGH],
+		[MEDIUM]: PRIORITY_CONFIG.colors[MEDIUM],
+		[LOW]: PRIORITY_CONFIG.colors[LOW]
 	};
 }
 
@@ -75,7 +190,7 @@ export function getPriorityIndicators(isMcp = false) {
  */
 export function getPriorityIndicator(priority, isMcp = false) {
 	const indicators = getPriorityIndicators(isMcp);
-	return indicators[priority] || indicators[MEDIUM]; // Default to medium if invalid priority
+	return indicators[priority] || indicators[MEDIUM];
 }
 
 // ============================================================================
@@ -83,17 +198,43 @@ export function getPriorityIndicator(priority, isMcp = false) {
 // ============================================================================
 
 /**
+ * Complexity configuration
+ */
+const COMPLEXITY_CONFIG = new IndicatorConfig(
+	'complexity',
+	['high', 'medium', 'low'],
+	{
+		high: chalk.hex('#CC0000'),
+		medium: chalk.hex('#FF8800'),
+		low: chalk.green
+	},
+	{
+		high: (score) => score >= 7,
+		medium: (score) => score >= 4 && score <= 6,
+		low: (score) => score <= 3
+	}
+);
+
+/**
  * Get complexity indicators for CLI context (colored dots with visual hierarchy)
  * Complexity scores: 1-3 (low), 4-6 (medium), 7-10 (high)
  * @returns {Object} Complexity level to colored dot string mapping
  */
 export function getCliComplexityIndicators() {
-	return {
-		high: chalk.red('●') + chalk.red('●') + chalk.red('●'), // ●●● (7+)
-		medium:
-			chalk.hex('#FF8800')('●') + chalk.hex('#FF8800')('●') + chalk.white('○'), // ●●○ (4-6)
-		low: chalk.green('●') + chalk.white('○') + chalk.white('○') // ●○○ (1-3)
-	};
+	const cacheKey = 'cli-complexity-all';
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+	
+	const indicators = {};
+	COMPLEXITY_CONFIG.levels.forEach(level => {
+		const intensity = getIntensityFromLevel(level, COMPLEXITY_CONFIG.levels);
+		const color = COMPLEXITY_CONFIG.getColor(level);
+		indicators[level] = generateCliIndicator(intensity, color);
+	});
+	
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
 }
 
 /**
@@ -101,11 +242,22 @@ export function getCliComplexityIndicators() {
  * @returns {Object} Complexity level to single character indicator mapping
  */
 export function getStatusBarComplexityIndicators() {
-	return {
-		high: chalk.red('⋮'),
-		medium: chalk.hex('#FF8800')(':'),
-		low: chalk.green('.')
-	};
+	const cacheKey = 'statusbar-complexity-all';
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+	
+	const indicators = {};
+	COMPLEXITY_CONFIG.levels.forEach((level, index) => {
+		const style = index === 0 ? VISUAL_STYLES.statusBar.high :
+					  index === 1 ? VISUAL_STYLES.statusBar.medium :
+					  VISUAL_STYLES.statusBar.low;
+		const color = COMPLEXITY_CONFIG.getColor(level);
+		indicators[level] = color(style);
+	});
+	
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
 }
 
 /**
@@ -113,11 +265,7 @@ export function getStatusBarComplexityIndicators() {
  * @returns {Object} Complexity level to chalk color function mapping
  */
 export function getComplexityColors() {
-	return {
-		high: chalk.hex('#CC0000'),
-		medium: chalk.hex('#FF8800'),
-		low: chalk.green
-	};
+	return { ...COMPLEXITY_CONFIG.colors };
 }
 
 /**
@@ -127,11 +275,9 @@ export function getComplexityColors() {
  * @returns {string} The indicator string for the complexity level
  */
 export function getComplexityIndicator(score, statusBar = false) {
+	const level = COMPLEXITY_CONFIG.getLevelFromScore(score);
 	const indicators = statusBar
 		? getStatusBarComplexityIndicators()
 		: getCliComplexityIndicators();
-
-	if (score >= 7) return indicators.high;
-	if (score <= 3) return indicators.low;
-	return indicators.medium;
+	return indicators[level];
 }
