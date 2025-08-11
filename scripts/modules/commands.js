@@ -3759,6 +3759,25 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--filter-provider <provider>',
+			'Filter available models by provider (e.g., anthropic, openai, google, claude-code)'
+		)
+		.option(
+			'--exclude-provider <provider>',
+			'Exclude models from specific provider(s). Can be used multiple times',
+			(value, previous) => {
+				return previous ? [...previous, value] : [value];
+			}
+		)
+		.option(
+			'--only-free',
+			'Show only free models'
+		)
+		.option(
+			'--only-paid',
+			'Show only paid models'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3774,7 +3793,14 @@ Examples:
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
-  $ task-master models --setup                            # Run interactive setup`
+  $ task-master models --setup                            # Run interactive setup
+
+Filtering examples:
+  $ task-master models --filter-provider anthropic        # Show only Anthropic models
+  $ task-master models --filter-provider openai           # Show only OpenAI models
+  $ task-master models --exclude-provider bedrock         # Hide Bedrock models
+  $ task-master models --only-free                        # Show only free models
+  $ task-master models --only-paid                        # Show only paid models`
 		)
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -3966,9 +3992,51 @@ Examples:
 							configResult.data.activeModels.fallback?.modelId
 						].filter(Boolean)
 					: [];
-				const displayableAvailable = availableResult.data.models.filter(
+				let displayableAvailable = availableResult.data.models.filter(
 					(m) => !activeIds.includes(m.modelId) && !m.modelId.startsWith('[')
 				);
+
+				// Apply provider filters if specified
+				if (options.filterProvider) {
+					displayableAvailable = displayableAvailable.filter(
+						(m) => m.provider === options.filterProvider
+					);
+					console.log(chalk.blue(`\nFiltering to show only ${options.filterProvider} models:`));
+				}
+
+				if (options.excludeProvider) {
+					const excludeProviders = Array.isArray(options.excludeProvider) 
+						? options.excludeProvider 
+						: [options.excludeProvider];
+					displayableAvailable = displayableAvailable.filter(
+						(m) => !excludeProviders.includes(m.provider)
+					);
+					console.log(chalk.blue(`\nExcluding ${excludeProviders.join(', ')} models:`));
+				}
+
+				// Apply cost filters if specified
+				if (options.onlyFree) {
+					displayableAvailable = displayableAvailable.filter(
+						(m) => m.cost && (
+							(m.cost.input === 0 && m.cost.output === 0) ||
+							m.cost === 'Free' ||
+							(typeof m.cost === 'string' && m.cost.toLowerCase().includes('free'))
+						)
+					);
+					console.log(chalk.blue('\nShowing only free models:'));
+				}
+
+				if (options.onlyPaid) {
+					displayableAvailable = displayableAvailable.filter(
+						(m) => m.cost && !(
+							(m.cost.input === 0 && m.cost.output === 0) ||
+							m.cost === 'Free' ||
+							(typeof m.cost === 'string' && m.cost.toLowerCase().includes('free'))
+						)
+					);
+					console.log(chalk.blue('\nShowing only paid models:'));
+				}
+
 				displayAvailableModels(displayableAvailable);
 			} else {
 				console.error(

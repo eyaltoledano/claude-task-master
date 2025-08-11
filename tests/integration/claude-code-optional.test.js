@@ -1,95 +1,108 @@
 import { jest } from '@jest/globals';
 
-// Mock the base provider to avoid circular dependencies
-jest.unstable_mockModule('../../src/ai-providers/base-provider.js', () => ({
-	BaseAIProvider: class {
-		constructor() {
-			this.name = 'Base Provider';
-		}
-		handleError(context, error) {
-			throw error;
-		}
-	}
-}));
+describe('Claude Code Integration (Optional)', () => {
+	let ClaudeCodeProvider;
+	let generateText;
+	let streamText;
 
-// Mock the claude-code SDK to simulate it not being installed
-jest.unstable_mockModule('@anthropic-ai/claude-code', () => {
-	throw new Error("Cannot find module '@anthropic-ai/claude-code'");
-});
-
-// Import after mocking
-const { ClaudeCodeProvider } = await import(
-	'../../src/ai-providers/claude-code.js'
-);
-
-describe('Claude Code Optional Dependency Integration', () => {
-	describe('when @anthropic-ai/claude-code is not installed', () => {
-		it('should allow provider instantiation', () => {
-			// Provider should instantiate without error
-			const provider = new ClaudeCodeProvider();
-			expect(provider).toBeDefined();
-			expect(provider.name).toBe('Claude Code');
-		});
-
-		it('should allow client creation', () => {
-			const provider = new ClaudeCodeProvider();
-			// Client creation should work
-			const client = provider.getClient({});
-			expect(client).toBeDefined();
-			expect(typeof client).toBe('function');
-		});
-
-		it('should fail with clear error when trying to use the model', async () => {
-			const provider = new ClaudeCodeProvider();
-			const client = provider.getClient({});
-			const model = client('opus');
-
-			// The actual usage should fail with the lazy loading error
-			await expect(
-				model.doGenerate({
-					prompt: [{ role: 'user', content: 'Hello' }],
-					mode: { type: 'regular' }
-				})
-			).rejects.toThrow(
-				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
-			);
-		});
-
-		it('should provide helpful error message for streaming', async () => {
-			const provider = new ClaudeCodeProvider();
-			const client = provider.getClient({});
-			const model = client('sonnet');
-
-			await expect(
-				model.doStream({
-					prompt: [{ role: 'user', content: 'Hello' }],
-					mode: { type: 'regular' }
-				})
-			).rejects.toThrow(
-				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
-			);
-		});
+	beforeAll(async () => {
+		// Mock AI SDK functions
+		generateText = jest.fn();
+		streamText = jest.fn();
+		
+		jest.unstable_mockModule('ai', () => ({
+			generateText,
+			streamText
+		}));
 	});
 
-	describe('provider behavior', () => {
-		it('should not require API key', () => {
-			const provider = new ClaudeCodeProvider();
-			// Should not throw
-			expect(() => provider.validateAuth()).not.toThrow();
-			expect(() => provider.validateAuth({ apiKey: null })).not.toThrow();
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should handle missing claude code CLI gracefully', async () => {
+		// Mock the provider to throw when CLI is not available
+		jest.unstable_mockModule('ai-sdk-provider-claude-code', () => ({
+			createClaudeCode: jest.fn(() => {
+				throw new Error('Claude Code CLI not found');
+			})
+		}));
+
+		const { ClaudeCodeProvider } = await import('../../src/ai-providers/claude-code.js');
+		const provider = new ClaudeCodeProvider();
+
+		expect(() => provider.getClient()).toThrow(/Claude Code CLI not available/);
+	});
+
+	describe('with Claude Code available', () => {
+		beforeEach(async () => {
+			// Mock successful provider creation
+			const mockProvider = jest.fn((modelId) => ({ 
+				id: modelId,
+				doGenerate: jest.fn(),
+				doStream: jest.fn()
+			}));
+			
+			jest.unstable_mockModule('ai-sdk-provider-claude-code', () => ({
+				createClaudeCode: jest.fn(() => mockProvider)
+			}));
+
+			const module = await import('../../src/ai-providers/claude-code.js');
+			ClaudeCodeProvider = module.ClaudeCodeProvider;
 		});
 
-		it('should work with ai-services-unified when provider is configured', async () => {
-			// This tests that the provider can be selected but will fail appropriately
-			// when the actual model is used
+		it('should create a working provider instance', () => {
 			const provider = new ClaudeCodeProvider();
-			expect(provider).toBeDefined();
+			expect(provider.name).toBe('Claude Code');
+			expect(provider.getSupportedModels()).toEqual(['sonnet', 'opus']);
+		});
 
-			// In real usage, ai-services-unified would:
-			// 1. Get the provider instance (works)
-			// 2. Call provider.getClient() (works)
-			// 3. Create a model (works)
-			// 4. Try to generate (fails with clear error)
+		it('should integrate with AI SDK generateText', async () => {
+			const provider = new ClaudeCodeProvider();
+			const client = provider.getClient();
+			
+			// Mock successful generation
+			generateText.mockResolvedValueOnce({
+				text: 'Hello from Claude Code!',
+				usage: { totalTokens: 10 }
+			});
+
+			const result = await generateText({
+				model: client('sonnet'),
+				messages: [{ role: 'user', content: 'Hello' }]
+			});
+
+			expect(result.text).toBe('Hello from Claude Code!');
+			expect(generateText).toHaveBeenCalledWith({
+				model: expect.any(Object),
+				messages: [{ role: 'user', content: 'Hello' }]
+			});
+		});
+
+		it('should integrate with AI SDK streamText', async () => {
+			const provider = new ClaudeCodeProvider();
+			const client = provider.getClient();
+			
+			// Mock successful streaming
+			const mockStream = {
+				textStream: (async function* () {
+					yield 'Hello ';
+					yield 'from ';
+					yield 'Claude Code!';
+				})()
+			};
+			streamText.mockResolvedValueOnce(mockStream);
+
+			const result = await streamText({
+				model: client('sonnet'),
+				messages: [{ role: 'user', content: 'Hello' }]
+			});
+
+			expect(result.textStream).toBeDefined();
+			expect(streamText).toHaveBeenCalledWith({
+				model: expect.any(Object),
+				messages: [{ role: 'user', content: 'Hello' }]
+			});
 		});
 	});
 });

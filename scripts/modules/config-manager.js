@@ -844,6 +844,28 @@ function getAvailableModels() {
 }
 
 /**
+ * Gets all available models including dynamic models from models.dev
+ * @returns {Promise<Array>} Promise that resolves to array of all available models
+ */
+async function getAllAvailableModels() {
+	try {
+		// Dynamically import services to avoid circular dependencies
+		const { modelsDevService } = await import('../../src/services/models-dev-service.js');
+		const { modelMerger } = await import('../../src/services/model-merger.js');
+		
+		// Load static and dynamic models
+		const staticModels = getAvailableModels();
+		const dynamicModels = await modelsDevService.searchModels();
+		
+		// Merge intelligently (prefers models.dev over static)
+		return modelMerger.mergeStaticAndDynamic(staticModels, dynamicModels);
+	} catch (error) {
+		// Fallback to static models if dynamic loading fails
+		return getAvailableModels();
+	}
+}
+
+/**
  * Writes the configuration object to the file.
  * @param {Object} config The configuration object to write.
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
@@ -1007,5 +1029,7 @@ export {
 	// ADD: Function to get all provider names
 	getAllProviders,
 	getVertexProjectId,
-	getVertexLocation
+	getVertexLocation,
+	// Dynamic models
+	getAllAvailableModels
 };

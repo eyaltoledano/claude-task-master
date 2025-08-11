@@ -94,3 +94,6 @@ apps/extension/.vscode-test/
 
 # apps/extension
 apps/extension/vsix-build/
+
+# models-cache
+.taskmaster/models-cache.json

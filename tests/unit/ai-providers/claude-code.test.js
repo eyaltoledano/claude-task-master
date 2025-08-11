@@ -1,21 +1,20 @@
 import { jest } from '@jest/globals';
 
-// Mock the claude-code SDK module
-jest.unstable_mockModule(
-	'../../../src/ai-providers/custom-sdk/claude-code/index.js',
-	() => ({
-		createClaudeCode: jest.fn(() => {
-			const provider = (modelId, settings) => ({
-				// Mock language model
-				id: modelId,
-				settings
-			});
-			provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
-			provider.chat = provider.languageModel;
-			return provider;
-		})
-	})
-);
+// Mock the ai-sdk-provider-claude-code package
+jest.unstable_mockModule('ai-sdk-provider-claude-code', () => ({
+  createClaudeCode: jest.fn(() => {
+    const provider = (modelId, settings) => ({
+      // Minimal mock language model surface
+      id: modelId,
+      settings,
+      doGenerate: jest.fn(async () => ({ text: 'ok', usage: {} })),
+      doStream: jest.fn(async () => ({ stream: true }))
+    });
+    provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
+    provider.chat = provider.languageModel;
+    return provider;
+  })
+}));
 
 // Mock the base provider
 jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
@@ -74,15 +73,14 @@ describe('ClaudeCodeProvider', () => {
 			expect(typeof client).toBe('function');
 		});
 
-		it('should create client without API key or base URL', () => {
-			const client = provider.getClient({});
+		it('should create client without parameters', () => {
+			const client = provider.getClient();
 			expect(client).toBeDefined();
 		});
 
-		it('should handle params even though they are not used', () => {
-			const client = provider.getClient({
-				baseURL: 'https://example.com',
-				apiKey: 'unused-key'
+		it('should handle commandName parameter', () => {
+			const client = provider.getClient({ 
+				commandName: 'test-command' 
 			});
 			expect(client).toBeDefined();
 		});
@@ -95,11 +93,25 @@ describe('ClaudeCodeProvider', () => {
 		});
 	});
 
+	describe('model support', () => {
+		it('should return supported models', () => {
+			const models = provider.getSupportedModels();
+			expect(models).toEqual(['sonnet', 'opus']);
+		});
+
+		it('should check if model is supported', () => {
+			expect(provider.isModelSupported('sonnet')).toBe(true);
+			expect(provider.isModelSupported('opus')).toBe(true);
+			expect(provider.isModelSupported('haiku')).toBe(false);
+			expect(provider.isModelSupported('unknown')).toBe(false);
+		});
+	});
+
 	describe('error handling', () => {
 		it('should handle client initialization errors', async () => {
 			// Force an error by making createClaudeCode throw
 			const { createClaudeCode } = await import(
-				'../../../src/ai-providers/custom-sdk/claude-code/index.js'
+				'ai-sdk-provider-claude-code'
 			);
 			createClaudeCode.mockImplementationOnce(() => {
 				throw new Error('Mock initialization error');
@@ -107,9 +119,7 @@ describe('ClaudeCodeProvider', () => {
 
 			// Create a new provider instance to use the mocked createClaudeCode
 			const errorProvider = new ClaudeCodeProvider();
-			expect(() => errorProvider.getClient({})).toThrow(
-				'Mock initialization error'
-			);
+			expect(() => errorProvider.getClient({})).toThrow('Mock initialization error');
 		});
 	});
 });

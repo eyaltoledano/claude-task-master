@@ -10,6 +10,7 @@ import {
 	getResearchModelId,
 	getFallbackModelId,
 	getAvailableModels,
+	getAllAvailableModels,
 	getMainProvider,
 	getResearchProvider,
 	getFallbackProvider,
@@ -304,8 +305,15 @@ async function getAvailableModelsList(options = {}) {
 	}
 
 	try {
-		// Get all available models
-		const allAvailableModels = getAvailableModels(projectRoot);
+		// Try dynamic models first, fallback to static models
+		let allAvailableModels;
+		try {
+			allAvailableModels = await getAllAvailableModels();
+			report('info', `Using dynamic model data (${allAvailableModels.length} models)`);
+		} catch (error) {
+			allAvailableModels = getAvailableModels(projectRoot);
+			report('info', `Using static model data (${allAvailableModels.length} models)`);
+		}
 
 		if (!allAvailableModels || allAvailableModels.length === 0) {
 			return {
