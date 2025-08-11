@@ -22,7 +22,10 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	),
 	addComplexityToTask: jest.fn(),
 	readComplexityReport: jest.fn(() => null),
-	getTagAwareFilePath: jest.fn((tag, path) => '/mock/tagged/report.json')
+	getTagAwareFilePath: jest.fn((tag, path) => '/mock/tagged/report.json'),
+	stripAnsiCodes: jest.fn((text) =>
+		text ? text.replace(/\x1b\[[0-9;]*m/g, '') : text
+	)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
@@ -45,8 +48,13 @@ jest.unstable_mockModule(
 );
 
 // Import the mocked modules
-const { readJSON, log, readComplexityReport, addComplexityToTask } =
-	await import('../../../../../scripts/modules/utils.js');
+const {
+	readJSON,
+	log,
+	readComplexityReport,
+	addComplexityToTask,
+	stripAnsiCodes
+} = await import('../../../../../scripts/modules/utils.js');
 const { displayTaskList } = await import(
 	'../../../../../scripts/modules/ui.js'
 );
@@ -582,6 +590,142 @@ describe('listTasks', () => {
 			const taskIds = result.tasks.map((task) => task.id);
 			expect(taskIds).toContain(4); // cancelled task
 			expect(taskIds).toContain(5); // review task
+		});
+	});
+
+	describe('Compact output format', () => {
+		test('should output compact format when outputFormat is compact', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should contain compact format elements: ID status title (priority) [→ dependencies]
+			expect(cleanOutput).toContain('1 done Setup Project (high)');
+			expect(cleanOutput).toContain(
+				'2 pending Implement Core Features (high) → 1'
+			);
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should format single task compactly', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+
+			// Should be compact (no verbose headers)
+			expect(output).not.toContain('Project Dashboard');
+			expect(output).not.toContain('Progress:');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should handle compact format with subtasks', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(
+				tasksPath,
+				null,
+				null,
+				true, // withSubtasks = true
+				'compact',
+				{ tag: 'master' }
+			);
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should handle both tasks and subtasks
+			expect(cleanOutput).toContain('1 done Setup Project (high)');
+			expect(cleanOutput).toContain('3.1 done Create Header Component');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should handle empty task list in compact format', async () => {
+			readJSON.mockReturnValue({ tasks: [] });
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalledWith('No tasks found');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should format dependencies correctly with shared helper', async () => {
+			// Create mock tasks with various dependency scenarios
+			const tasksWithDeps = {
+				tasks: [
+					{
+						id: 1,
+						title: 'Task with no dependencies',
+						status: 'pending',
+						priority: 'medium',
+						dependencies: []
+					},
+					{
+						id: 2,
+						title: 'Task with few dependencies',
+						status: 'pending',
+						priority: 'high',
+						dependencies: [1, 3]
+					},
+					{
+						id: 3,
+						title: 'Task with many dependencies',
+						status: 'pending',
+						priority: 'low',
+						dependencies: [1, 2, 4, 5, 6, 7, 8, 9]
+					}
+				]
+			};
+
+			readJSON.mockReturnValue(tasksWithDeps);
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should format tasks correctly with compact output including priority
+			expect(cleanOutput).toContain(
+				'1 pending Task with no dependencies (medium)'
+			);
+			expect(cleanOutput).toContain('Task with few dependencies');
+			expect(cleanOutput).toContain('Task with many dependencies');
+			// Should show dependencies with arrow when they exist
+			expect(cleanOutput).toMatch(/2.*→.*1,3/);
+			// Should truncate many dependencies with "+X more" format
+			expect(cleanOutput).toMatch(/3.*→.*1,2,4,5,6.*\(\+\d+ more\)/);
+
+			consoleSpy.mockRestore();
 		});
 	});
 });
