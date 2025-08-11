@@ -55,8 +55,8 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 
 	const displayId =
 		isSubtask && parentTask
-			? `${parentTask.id}.${currentTask.id}`
-			: currentTask.id;
+			? `${parentTask.id}.${currentTask?.id}`
+			: currentTask?.id;
 
 	const handleStatusChange = async (newStatus: TaskMasterTask['status']) => {
 		if (!currentTask) return;
