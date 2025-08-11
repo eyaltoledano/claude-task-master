@@ -57,7 +57,7 @@ export class PrdParseConfig {
 		this.projectRoot = options.projectRoot;
 		this.tag = options.tag;
 		this.streamingTimeout =
-			options.streamingTimeout || Duration.seconds(60).milliseconds;
+			options.streamingTimeout || Duration.seconds(180).milliseconds;
 
 		// Derived values
 		this.targetTag = this.tag || getCurrentTag(this.projectRoot) || 'master';
