@@ -1133,6 +1133,139 @@ function findCycles(
 }
 
 /**
+ * Unified dependency traversal utility that supports both forward and reverse dependency traversal
+ * @param {Array} sourceTasks - Array of source tasks to start traversal from
+ * @param {Array} allTasks - Array of all tasks to search within
+ * @param {Object} options - Configuration options
+ * @param {number} options.maxDepth - Maximum recursion depth (default: 50)
+ * @param {boolean} options.includeSelf - Whether to include self-references (default: false)
+ * @param {'forward'|'reverse'} options.direction - Direction of traversal (default: 'forward')
+ * @param {Function} options.logger - Optional logger function for warnings
+ * @returns {Array} Array of all dependency task IDs found through traversal
+ */
+function traverseDependencies(sourceTasks, allTasks, options = {}) {
+	const {
+		maxDepth = 50,
+		includeSelf = false,
+		direction = 'forward',
+		logger = null
+	} = options;
+
+	const dependentTaskIds = new Set();
+	const processedIds = new Set();
+
+	// Helper function to normalize dependency IDs while preserving subtask format
+	function normalizeDependencyId(depId) {
+		if (typeof depId === 'string') {
+			// Preserve string format for subtask IDs like "1.2"
+			if (depId.includes('.')) {
+				return depId;
+			}
+			// Convert simple string numbers to numbers for consistency
+			const parsed = parseInt(depId, 10);
+			return isNaN(parsed) ? depId : parsed;
+		}
+		return depId;
+	}
+
+	// Helper function for forward dependency traversal
+	function findForwardDependencies(taskId, currentDepth = 0) {
+		// Check depth limit
+		if (currentDepth >= maxDepth) {
+			const warnMsg = `Maximum recursion depth (${maxDepth}) reached for task ${taskId}`;
+			if (logger && typeof logger.warn === 'function') {
+				logger.warn(warnMsg);
+			} else if (typeof log !== 'undefined' && log.warn) {
+				log.warn(warnMsg);
+			} else {
+				console.warn(warnMsg);
+			}
+			return;
+		}
+
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		const task = allTasks.find((t) => t.id === taskId);
+		if (!task || !Array.isArray(task.dependencies)) {
+			return;
+		}
+
+		task.dependencies.forEach((depId) => {
+			const normalizedDepId = normalizeDependencyId(depId);
+
+			// Skip invalid dependencies and optionally skip self-references
+			if (
+				normalizedDepId == null ||
+				(!includeSelf && normalizedDepId === taskId)
+			) {
+				return;
+			}
+
+			dependentTaskIds.add(normalizedDepId);
+			// Recursively find dependencies of this dependency
+			findForwardDependencies(normalizedDepId, currentDepth + 1);
+		});
+	}
+
+	// Helper function for reverse dependency traversal
+	function findReverseDependencies(taskId, currentDepth = 0) {
+		// Check depth limit
+		if (currentDepth >= maxDepth) {
+			const warnMsg = `Maximum recursion depth (${maxDepth}) reached for task ${taskId}`;
+			if (logger && typeof logger.warn === 'function') {
+				logger.warn(warnMsg);
+			} else if (typeof log !== 'undefined' && log.warn) {
+				log.warn(warnMsg);
+			} else {
+				console.warn(warnMsg);
+			}
+			return;
+		}
+
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		allTasks.forEach((task) => {
+			if (task.dependencies && Array.isArray(task.dependencies)) {
+				const dependsOnTaskId = task.dependencies.some((depId) => {
+					const normalizedDepId = normalizeDependencyId(depId);
+					return normalizedDepId === taskId;
+				});
+
+				if (dependsOnTaskId) {
+					// Skip invalid dependencies and optionally skip self-references
+					if (task.id == null || (!includeSelf && task.id === taskId)) {
+						return;
+					}
+
+					dependentTaskIds.add(task.id);
+					// Recursively find tasks that depend on this task
+					findReverseDependencies(task.id, currentDepth + 1);
+				}
+			}
+		});
+	}
+
+	// Choose traversal function based on direction
+	const traversalFunc =
+		direction === 'reverse' ? findReverseDependencies : findForwardDependencies;
+
+	// Start traversal from each source task
+	sourceTasks.forEach((sourceTask) => {
+		if (sourceTask && sourceTask.id) {
+			traversalFunc(sourceTask.id);
+		}
+	});
+
+	return Array.from(dependentTaskIds);
+}
+
+/**
  * Convert a string from camelCase to kebab-case
  * @param {string} str - The string to convert
  * @returns {string} The kebab-case version of the string
@@ -1459,6 +1592,7 @@ export {
 	truncate,
 	isEmpty,
 	findCycles,
+	traverseDependencies,
 	toKebabCase,
 	detectCamelCaseFlags,
 	disableSilentMode,

@@ -255,6 +255,11 @@ task-master show 1,3,5
 # Research fresh information with project context
 task-master research "What are the latest best practices for JWT authentication?"
 
+# Move tasks between tags (cross-tag movement)
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress
+task-master move --from=5,6,7 --from-tag=backlog --to-tag=done --with-dependencies
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
+
 # Generate task files
 task-master generate
 

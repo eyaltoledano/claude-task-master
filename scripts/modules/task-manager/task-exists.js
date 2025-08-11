@@ -7,7 +7,15 @@
 function taskExists(tasks, taskId) {
 	// Handle subtask IDs (e.g., "1.2")
 	if (typeof taskId === 'string' && taskId.includes('.')) {
-		const [parentIdStr, subtaskIdStr] = taskId.split('.');
+		const parts = taskId.split('.');
+		// Validate that it's a proper subtask format (parentId.subtaskId)
+		if (parts.length !== 2 || !parts[0] || !parts[1]) {
+			// Invalid format - treat as regular task ID
+			const id = parseInt(taskId, 10);
+			return tasks.some((t) => t.id === id);
+		}
+
+		const [parentIdStr, subtaskIdStr] = parts;
 		const parentId = parseInt(parentIdStr, 10);
 		const subtaskId = parseInt(subtaskIdStr, 10);
 
