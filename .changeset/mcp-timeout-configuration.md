@@ -2,12 +2,12 @@
 "task-master-ai": minor
 ---
 
-Add MCP timeout configuration for long-running operations
+Enhanced Roo Code profile with MCP timeout configuration for improved reliability during long-running AI operations. The Roo profile now automatically configures a 300-second timeout for MCP server operations, preventing timeouts during complex tasks like `parse-prd`, `expand-all`, `analyze-complexity`, and `research` operations. This change also adds comprehensive tool permissions via `alwaysAllow` configuration and replaces static MCP configuration files with programmatic generation for better maintainability.
 
-- Add timeout, disabled, and alwaysAllow configuration options to Roo Code MCP server setup
-- Replace static mcp.json asset file with programmatic MCP configuration generation
-- Enhance Roo profile to use standard MCP configuration creation with Roo-specific enhancements
-- Update tests to reflect the new programmatic approach
-- Remove duplicate static asset file to avoid code duplication
+**What's New:**
+- 300-second timeout for MCP operations (up from default 30 seconds)
+- Comprehensive `alwaysAllow` permissions for all Task Master tools
+- Programmatic MCP configuration generation (replaces static asset files)
+- Enhanced reliability for AI-powered operations
 
-This change improves the reliability of MCP server operations by allowing configuration of timeout values for long-running AI operations, while maintaining consistency with other coding assistant profiles.
+**Migration:** No user action required - existing Roo Code installations will automatically receive the enhanced MCP configuration on next initialization.

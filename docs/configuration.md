@@ -244,6 +244,7 @@ Long-running AI operations in taskmaster-ai can exceed the default 60-second MCP
 Add a `timeout` parameter to your MCP configuration to extend the timeout limit:
 
 **Cursor & Windsurf:**
+
 ```json
 {
   "mcpServers": {
@@ -260,6 +261,7 @@ Add a `timeout` parameter to your MCP configuration to extend the timeout limit:
 ```
 
 **VS Code:**
+
 ```json
 {
   "servers": {

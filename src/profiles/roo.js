@@ -6,29 +6,7 @@ import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
 import { ROO_MODES } from '../constants/profiles.js';
 
 // Import the shared MCP configuration helper
-import { setupMCPConfiguration } from '../utils/create-mcp-config.js';
-
-// Format JSON with tabs to match existing style (copied from create-mcp-config.js)
-function formatJSONWithTabs(obj) {
-	let json = JSON.stringify(obj, null, '\t');
-	
-	json = json.replace(
-		/(\[\n\t+)([^[\]]+?)(\n\t+\])/g,
-		(match, openBracket, content, closeBracket) => {
-			// Only convert to single line if content doesn't contain nested objects/arrays
-			if (!content.includes('{') && !content.includes('[')) {
-				const singleLineContent = content
-					.replace(/\n\t+/g, ' ')
-					.replace(/\s+/g, ' ')
-					.trim();
-				return `[${singleLineContent}]`;
-			}
-			return match;
-		}
-	);
-	
-	return json;
-}
+import { formatJSONWithTabs } from '../utils/create-mcp-config.js';
 
 // Roo-specific MCP configuration enhancements
 function enhanceRooMCPConfiguration(mcpPath) {
@@ -78,7 +56,13 @@ function enhanceRooMCPConfiguration(mcpPath) {
 				'validate_dependencies',
 				'fix_dependencies',
 				'clear_subtasks',
-				'remove_subtask'
+				'remove_subtask',
+				'get_operation_status',
+				'response_language',
+				'rules',
+				'scope_down_task',
+				'scope_up_task',
+				'update'
 			];
 			
 			// Update env to use Roo-specific values
@@ -175,13 +159,11 @@ function onRemoveRulesProfile(targetDir) {
 	if (fs.existsSync(rooDir)) {
 		// Remove MCP configuration
 		const mcpPath = path.join(rooDir, 'mcp.json');
-		if (fs.existsSync(mcpPath)) {
-			try {
-				fs.rmSync(mcpPath, { force: true });
-				log('debug', `[Roo] Removed MCP configuration from ${mcpPath}`);
-			} catch (err) {
-				log('error', `[Roo] Failed to remove MCP configuration: ${err.message}`);
-			}
+		try {
+			fs.rmSync(mcpPath, { force: true });
+			log('debug', `[Roo] Removed MCP configuration from ${mcpPath}`);
+		} catch (err) {
+			log('error', `[Roo] Failed to remove MCP configuration: ${err.message}`);
 		}
 
 		fs.readdirSync(rooDir).forEach((entry) => {
