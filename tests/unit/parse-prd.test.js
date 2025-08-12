@@ -417,7 +417,7 @@ Build a simple task management application.
 			// Create a unique subdirectory for each test to isolate them
 			const testSubDir = path.join(tempDir, `test-${ext}`);
 			fs.mkdirSync(testSubDir, { recursive: true });
-			
+
 			const outputPath = path.join(testSubDir, `tasks.json`);
 
 			await parsePRD(filePath, outputPath, 2, {
