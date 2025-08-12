@@ -128,7 +128,12 @@ export function validateFileOperations({
  * @param {string} defaultPriority - Default priority for tasks
  * @returns {Array} Processed tasks with remapped IDs
  */
-export function processTasks(rawTasks, startId, existingTasks, defaultPriority) {
+export function processTasks(
+	rawTasks,
+	startId,
+	existingTasks,
+	defaultPriority
+) {
 	let currentId = startId;
 	const taskMap = new Map();
 

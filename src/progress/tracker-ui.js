@@ -23,14 +23,14 @@ class ProgressBarFactory {
 			1, // total
 			1, // current
 			{},
-			{ 
-				format, 
+			{
+				format,
 				barsize: 1,
 				hideCursor: true,
 				clearOnComplete: false
 			}
 		);
-		
+
 		bar.update(1, payload);
 		return bar;
 	}
@@ -119,8 +119,8 @@ export class ProgressTableBuilder {
 		];
 
 		const cols = columns || defaultColumns;
-		const headerText = ' ' + cols.map(c => c.text).join(' | ') + ' ';
-		const borderLine = this.createBorderLine(cols.map(c => c.width));
+		const headerText = ' ' + cols.map((c) => c.text).join(' | ') + ' ';
+		const borderLine = this.createBorderLine(cols.map((c) => c.width));
 
 		this.factory.createHeader(headerText, borderLine);
 		return this;
@@ -131,7 +131,7 @@ export class ProgressTableBuilder {
 	 */
 	createBorderLine(columnWidths) {
 		return columnWidths
-			.map(width => this.borderStyle.repeat(width))
+			.map((width) => this.borderStyle.repeat(width))
 			.join('─┼─');
 	}
 
@@ -141,7 +141,7 @@ export class ProgressTableBuilder {
 	addTaskRow(taskId, priority, title) {
 		const format = ` ${taskId} | ${priority} | {title}`;
 		this.factory.createRow(format, { title });
-		
+
 		// Add separator after each row
 		const borderLine = '------+-----+' + '─'.repeat(64);
 		this.factory.createBorder(borderLine);

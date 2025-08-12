@@ -85,7 +85,7 @@ class ProgressTracker {
 		this.isActive = true;
 		this.startTime = Date.now();
 		this.current = 0;
-		
+
 		if (this.config.spinnerFrames) {
 			this._startSpinner();
 		}
@@ -93,47 +93,50 @@ class ProgressTracker {
 
 	update(data = {}) {
 		if (!this.isActive) return;
-		
+
 		if (data.current !== undefined) {
 			this.current = data.current;
 		}
-		
+
 		const progress = this._buildProgressData(data);
 		return progress;
 	}
 
 	finish() {
 		this.isActive = false;
-		
+
 		if (this.spinnerInterval) {
 			clearInterval(this.spinnerInterval);
 			this.spinnerInterval = null;
 		}
-		
+
 		return this._buildSummary();
 	}
 
 	_startSpinner() {
 		this.spinnerInterval = setInterval(() => {
-			this.spinnerIndex = (this.spinnerIndex + 1) % this.config.spinnerFrames.length;
+			this.spinnerIndex =
+				(this.spinnerIndex + 1) % this.config.spinnerFrames.length;
 		}, 100);
 	}
 
 	_buildProgressData(data) {
 		const progress = { ...data };
-		
+
 		if (this.config.hasFeature('percent')) {
-			progress.percentage = Math.round((this.current / this.config.totalUnits) * 100);
+			progress.percentage = Math.round(
+				(this.current / this.config.totalUnits) * 100
+			);
 		}
-		
+
 		if (this.config.hasFeature('tasks')) {
 			progress.tasks = `${this.current}/${this.config.totalUnits}`;
 		}
-		
+
 		if (this.config.spinnerFrames) {
 			progress.spinner = this.config.spinnerFrames[this.spinnerIndex];
 		}
-		
+
 		return progress;
 	}
 

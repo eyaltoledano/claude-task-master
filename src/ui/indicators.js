@@ -31,7 +31,7 @@ class IndicatorConfig {
 		if (!this.thresholds) {
 			throw new Error(`${this.name} does not support score-based levels`);
 		}
-		
+
 		if (score >= 7) return this.levels[0]; // high
 		if (score <= 3) return this.levels[2]; // low
 		return this.levels[1]; // medium
@@ -43,33 +43,29 @@ class IndicatorConfig {
  */
 const VISUAL_STYLES = {
 	cli: {
-		filled: '●',  // ●
-		empty: '○'   // ○
+		filled: '●', // ●
+		empty: '○' // ○
 	},
 	statusBar: {
-		high: '⋮',   // ⋮
-		medium: ':',  // :
-		low: '.'      // .
+		high: '⋮', // ⋮
+		medium: ':', // :
+		low: '.' // .
 	},
 	mcp: {
-		high: '🔴',    // 🔴
+		high: '🔴', // 🔴
 		medium: '🟠', // 🟠
-		low: '🟢'     // 🟢
+		low: '🟢' // 🟢
 	}
 };
 
 /**
  * Priority configuration
  */
-const PRIORITY_CONFIG = new IndicatorConfig(
-	'priority',
-	[HIGH, MEDIUM, LOW],
-	{
-		[HIGH]: chalk.hex('#CC0000'),
-		[MEDIUM]: chalk.hex('#FF8800'),
-		[LOW]: chalk.yellow
-	}
-);
+const PRIORITY_CONFIG = new IndicatorConfig('priority', [HIGH, MEDIUM, LOW], {
+	[HIGH]: chalk.hex('#CC0000'),
+	[MEDIUM]: chalk.hex('#FF8800'),
+	[LOW]: chalk.yellow
+});
 
 /**
  * Generates CLI indicator with intensity
@@ -77,7 +73,7 @@ const PRIORITY_CONFIG = new IndicatorConfig(
 function generateCliIndicator(intensity, color) {
 	const filled = VISUAL_STYLES.cli.filled;
 	const empty = VISUAL_STYLES.cli.empty;
-	
+
 	let indicator = '';
 	for (let i = 0; i < 3; i++) {
 		if (i < intensity) {
@@ -98,23 +94,31 @@ function getIntensityFromLevel(level, levels) {
 }
 
 /**
+ * Generic cached indicator getter
+ * @param {string} cacheKey - Cache key for the indicators
+ * @param {Function} generator - Function to generate the indicators
+ * @returns {Object} Cached or newly generated indicators
+ */
+function getCachedIndicators(cacheKey, generator) {
+	if (INDICATOR_CACHE.has(cacheKey)) {
+		return INDICATOR_CACHE.get(cacheKey);
+	}
+
+	const indicators = generator();
+	INDICATOR_CACHE.set(cacheKey, indicators);
+	return indicators;
+}
+
+/**
  * Get priority indicators for MCP context (single emojis)
  * @returns {Object} Priority to emoji mapping
  */
 export function getMcpPriorityIndicators() {
-	const cacheKey = 'mcp-priority-all';
-	if (INDICATOR_CACHE.has(cacheKey)) {
-		return INDICATOR_CACHE.get(cacheKey);
-	}
-	
-	const indicators = {
+	return getCachedIndicators('mcp-priority-all', () => ({
 		[HIGH]: VISUAL_STYLES.mcp.high,
 		[MEDIUM]: VISUAL_STYLES.mcp.medium,
 		[LOW]: VISUAL_STYLES.mcp.low
-	};
-	
-	INDICATOR_CACHE.set(cacheKey, indicators);
-	return indicators;
+	}));
 }
 
 /**
@@ -122,20 +126,15 @@ export function getMcpPriorityIndicators() {
  * @returns {Object} Priority to colored dot string mapping
  */
 export function getCliPriorityIndicators() {
-	const cacheKey = 'cli-priority-all';
-	if (INDICATOR_CACHE.has(cacheKey)) {
-		return INDICATOR_CACHE.get(cacheKey);
-	}
-	
-	const indicators = {};
-	PRIORITY_CONFIG.levels.forEach(level => {
-		const intensity = getIntensityFromLevel(level, PRIORITY_CONFIG.levels);
-		const color = PRIORITY_CONFIG.getColor(level);
-		indicators[level] = generateCliIndicator(intensity, color);
+	return getCachedIndicators('cli-priority-all', () => {
+		const indicators = {};
+		PRIORITY_CONFIG.levels.forEach((level) => {
+			const intensity = getIntensityFromLevel(level, PRIORITY_CONFIG.levels);
+			const color = PRIORITY_CONFIG.getColor(level);
+			indicators[level] = generateCliIndicator(intensity, color);
+		});
+		return indicators;
 	});
-	
-	INDICATOR_CACHE.set(cacheKey, indicators);
-	return indicators;
 }
 
 /**
@@ -143,22 +142,20 @@ export function getCliPriorityIndicators() {
  * @returns {Object} Priority to single character indicator mapping
  */
 export function getStatusBarPriorityIndicators() {
-	const cacheKey = 'statusbar-priority-all';
-	if (INDICATOR_CACHE.has(cacheKey)) {
-		return INDICATOR_CACHE.get(cacheKey);
-	}
-	
-	const indicators = {};
-	PRIORITY_CONFIG.levels.forEach((level, index) => {
-		const style = index === 0 ? VISUAL_STYLES.statusBar.high :
-					  index === 1 ? VISUAL_STYLES.statusBar.medium :
-					  VISUAL_STYLES.statusBar.low;
-		const color = PRIORITY_CONFIG.getColor(level);
-		indicators[level] = color(style);
+	return getCachedIndicators('statusbar-priority-all', () => {
+		const indicators = {};
+		PRIORITY_CONFIG.levels.forEach((level, index) => {
+			const style =
+				index === 0
+					? VISUAL_STYLES.statusBar.high
+					: index === 1
+						? VISUAL_STYLES.statusBar.medium
+						: VISUAL_STYLES.statusBar.low;
+			const color = PRIORITY_CONFIG.getColor(level);
+			indicators[level] = color(style);
+		});
+		return indicators;
 	});
-	
-	INDICATOR_CACHE.set(cacheKey, indicators);
-	return indicators;
 }
 
 /**
@@ -221,20 +218,15 @@ const COMPLEXITY_CONFIG = new IndicatorConfig(
  * @returns {Object} Complexity level to colored dot string mapping
  */
 export function getCliComplexityIndicators() {
-	const cacheKey = 'cli-complexity-all';
-	if (INDICATOR_CACHE.has(cacheKey)) {
-		return INDICATOR_CACHE.get(cacheKey);
-	}
-	
-	const indicators = {};
-	COMPLEXITY_CONFIG.levels.forEach(level => {
-		const intensity = getIntensityFromLevel(level, COMPLEXITY_CONFIG.levels);
-		const color = COMPLEXITY_CONFIG.getColor(level);
-		indicators[level] = generateCliIndicator(intensity, color);
+	return getCachedIndicators('cli-complexity-all', () => {
+		const indicators = {};
+		COMPLEXITY_CONFIG.levels.forEach((level) => {
+			const intensity = getIntensityFromLevel(level, COMPLEXITY_CONFIG.levels);
+			const color = COMPLEXITY_CONFIG.getColor(level);
+			indicators[level] = generateCliIndicator(intensity, color);
+		});
+		return indicators;
 	});
-	
-	INDICATOR_CACHE.set(cacheKey, indicators);
-	return indicators;
 }
 
 /**
@@ -242,22 +234,20 @@ export function getCliComplexityIndicators() {
  * @returns {Object} Complexity level to single character indicator mapping
  */
 export function getStatusBarComplexityIndicators() {
-	const cacheKey = 'statusbar-complexity-all';
-	if (INDICATOR_CACHE.has(cacheKey)) {
-		return INDICATOR_CACHE.get(cacheKey);
-	}
-	
-	const indicators = {};
-	COMPLEXITY_CONFIG.levels.forEach((level, index) => {
-		const style = index === 0 ? VISUAL_STYLES.statusBar.high :
-					  index === 1 ? VISUAL_STYLES.statusBar.medium :
-					  VISUAL_STYLES.statusBar.low;
-		const color = COMPLEXITY_CONFIG.getColor(level);
-		indicators[level] = color(style);
+	return getCachedIndicators('statusbar-complexity-all', () => {
+		const indicators = {};
+		COMPLEXITY_CONFIG.levels.forEach((level, index) => {
+			const style =
+				index === 0
+					? VISUAL_STYLES.statusBar.high
+					: index === 1
+						? VISUAL_STYLES.statusBar.medium
+						: VISUAL_STYLES.statusBar.low;
+			const color = COMPLEXITY_CONFIG.getColor(level);
+			indicators[level] = color(style);
+		});
+		return indicators;
 	});
-	
-	INDICATOR_CACHE.set(cacheKey, indicators);
-	return indicators;
 }
 
 /**

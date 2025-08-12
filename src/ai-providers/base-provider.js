@@ -2,6 +2,7 @@ import {
 	generateObject,
 	generateText,
 	streamText,
+	streamObject,
 	zodSchema,
 	JSONParseError,
 	NoObjectGeneratedError
@@ -221,6 +222,46 @@ export class BaseAIProvider {
 			return stream;
 		} catch (error) {
 			this.handleError('text streaming', error);
+		}
+	}
+
+	/**
+	 * Streams a structured object using the provider's model
+	 */
+	async streamObject(params) {
+		try {
+			this.validateParams(params);
+			this.validateMessages(params.messages);
+
+			if (!params.schema) {
+				throw new Error('Schema is required for object streaming');
+			}
+
+			log(
+				'debug',
+				`Streaming ${this.name} object with model: ${params.modelId}`
+			);
+
+			const client = await this.getClient(params);
+			const result = await streamObject({
+				model: client(params.modelId),
+				messages: params.messages,
+				schema: zodSchema(params.schema),
+				mode: params.mode || 'auto',
+				maxTokens: params.maxTokens,
+				temperature: params.temperature
+			});
+
+			log(
+				'debug',
+				`${this.name} streamObject initiated successfully for model: ${params.modelId}`
+			);
+
+			// Return the stream result directly
+			// The stream result contains partialObjectStream and other properties
+			return result;
+		} catch (error) {
+			this.handleError('object streaming', error);
 		}
 	}
 

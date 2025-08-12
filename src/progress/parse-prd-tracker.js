@@ -74,14 +74,42 @@ class PriorityManager {
 	}
 
 	normalize(priority) {
-		const lowercased = priority ? priority.toLowerCase() : CONSTANTS.DEFAULT_PRIORITY;
-		return CONSTANTS.VALID_PRIORITIES.includes(lowercased) 
-			? lowercased 
+		const lowercased = priority
+			? priority.toLowerCase()
+			: CONSTANTS.DEFAULT_PRIORITY;
+		return CONSTANTS.VALID_PRIORITIES.includes(lowercased)
+			? lowercased
 			: CONSTANTS.DEFAULT_PRIORITY;
 	}
 
 	getCounts() {
 		return { ...this.priorities };
+	}
+}
+
+/**
+ * Helper class for formatting task display elements
+ */
+class TaskFormatter {
+	static formatTitle(title, taskNumber) {
+		if (!title) return `Task ${taskNumber}`;
+		return title.length > CONSTANTS.MAX_TITLE_LENGTH
+			? title.substring(0, CONSTANTS.TRUNCATED_LENGTH) + '...'
+			: title;
+	}
+
+	static formatPriority(priority) {
+		return getPriorityIndicator(priority, false).padEnd(
+			CONSTANTS.PRIORITY_PAD_END,
+			' '
+		);
+	}
+
+	static formatTaskId(taskNumber) {
+		return taskNumber
+			.toString()
+			.padStart(CONSTANTS.TASK_ID_PAD_START, ' ')
+			.padEnd(CONSTANTS.TASK_ID_PAD_END, ' ');
 	}
 }
 
@@ -113,7 +141,10 @@ class ParsePrdTracker extends BaseProgressTracker {
 
 		this._ensureHeaderShown();
 		const normalizedPriority = this._updateTaskCounters(taskNumber, priority);
-		
+
+		// Immediately update the time/tokens bar to show the new priority count
+		this._updateTimeTokensBar();
+
 		this.debouncer.debounce(() => {
 			this._updateProgressDisplay(taskNumber, title, normalizedPriority);
 		});
@@ -141,9 +172,9 @@ class ParsePrdTracker extends BaseProgressTracker {
 			tasks: `${this.completedUnits}/${this.numUnits}`
 		});
 
-		const displayTitle = this._formatTitle(title, taskNumber);
-		const priorityDisplay = this._formatPriority(normalizedPriority);
-		const taskIdCentered = this._formatTaskId(taskNumber);
+		const displayTitle = TaskFormatter.formatTitle(title, taskNumber);
+		const priorityDisplay = TaskFormatter.formatPriority(normalizedPriority);
+		const taskIdCentered = TaskFormatter.formatTaskId(taskNumber);
 
 		createProgressRow(
 			this.multibar,
@@ -157,24 +188,6 @@ class ParsePrdTracker extends BaseProgressTracker {
 		);
 
 		this._updateTimeTokensBar();
-	}
-
-	_formatTitle(title, taskNumber) {
-		if (!title) return `Task ${taskNumber}`;
-		return title.length > CONSTANTS.MAX_TITLE_LENGTH
-			? title.substring(0, CONSTANTS.TRUNCATED_LENGTH) + '...'
-			: title;
-	}
-
-	_formatPriority(priority) {
-		return getPriorityIndicator(priority, false).padEnd(CONSTANTS.PRIORITY_PAD_END, ' ');
-	}
-
-	_formatTaskId(taskNumber) {
-		return taskNumber
-			.toString()
-			.padStart(CONSTANTS.TASK_ID_PAD_START, ' ')
-			.padEnd(CONSTANTS.TASK_ID_PAD_END, ' ');
 	}
 
 	finish() {

@@ -277,13 +277,26 @@ class FallbackParser {
 	}
 
 	async parseFallbackItems() {
-		const fullResponse = JSON.parse(this.progressTracker.accumulatedText);
+		const jsonText = this._cleanJsonText(this.progressTracker.accumulatedText);
+		const fullResponse = JSON.parse(jsonText);
 		const fallbackItems = this.config.fallbackItemExtractor(fullResponse);
 
 		if (!Array.isArray(fallbackItems)) {
 			return [];
 		}
 
+		return this._processNewItems(fallbackItems);
+	}
+
+	_cleanJsonText(text) {
+		// Remove markdown code block wrappers and trim whitespace
+		return text
+			.replace(/^```(?:json)?\s*\n?/i, '')
+			.replace(/\n?```\s*$/i, '')
+			.trim();
+	}
+
+	_processNewItems(fallbackItems) {
 		// Only add items we haven't already parsed
 		const itemsToAdd = fallbackItems.slice(
 			this.progressTracker.parsedItems.length

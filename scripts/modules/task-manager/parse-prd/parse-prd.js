@@ -1,5 +1,8 @@
 import chalk from 'chalk';
-import { StreamingError, STREAMING_ERROR_CODES } from '../../../../src/utils/stream-parser.js';
+import {
+	StreamingError,
+	STREAMING_ERROR_CODES
+} from '../../../../src/utils/stream-parser.js';
 import { TimeoutManager } from '../../../../src/utils/timeout-manager.js';
 import { getDebugFlag, getDefaultPriority } from '../../config-manager.js';
 
@@ -21,7 +24,6 @@ import {
 // Import handlers
 import { handleStreamingService } from './parse-prd-streaming.js';
 import { handleNonStreamingService } from './parse-prd-non-streaming.js';
-
 
 // ============================================================================
 // MAIN PARSING FUNCTIONS (Simplified after refactoring)
@@ -64,7 +66,11 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 		const prompts = await buildPrompts(config, prdContent, nextId);
 
 		// Call the appropriate service handler
-		const serviceResult = await serviceHandler(config, prompts, config.numTasks);
+		const serviceResult = await serviceHandler(
+			config,
+			prompts,
+			config.numTasks
+		);
 
 		// Process tasks
 		const defaultPriority = getDefaultPriority(config.projectRoot) || 'medium';
@@ -129,7 +135,8 @@ async function handleCompletionReporting(
 	nextId,
 	isStreaming
 ) {
-	const { aiServiceResponse, estimatedInputTokens, estimatedOutputTokens } = serviceResult;
+	const { aiServiceResponse, estimatedInputTokens, estimatedOutputTokens } =
+		serviceResult;
 
 	// MCP progress reporting
 	if (config.reportProgress) {
@@ -182,7 +189,12 @@ async function handleCompletionReporting(
 /**
  * Parse PRD with streaming progress reporting
  */
-async function parsePRDWithStreaming(prdPath, tasksPath, numTasks, options = {}) {
+async function parsePRDWithStreaming(
+	prdPath,
+	tasksPath,
+	numTasks,
+	options = {}
+) {
 	const config = new PrdParseConfig(prdPath, tasksPath, numTasks, options);
 	return parsePRDCore(config, handleStreamingService, true);
 }
@@ -190,7 +202,12 @@ async function parsePRDWithStreaming(prdPath, tasksPath, numTasks, options = {})
 /**
  * Parse PRD without streaming (fallback)
  */
-async function parsePRDWithoutStreaming(prdPath, tasksPath, numTasks, options = {}) {
+async function parsePRDWithoutStreaming(
+	prdPath,
+	tasksPath,
+	numTasks,
+	options = {}
+) {
 	const config = new PrdParseConfig(prdPath, tasksPath, numTasks, options);
 	return parsePRDCore(config, handleNonStreamingService, false);
 }
