@@ -56,18 +56,11 @@ jest.unstable_mockModule(
 				}
 			]
 		}),
-		streamTextService: jest.fn().mockResolvedValue({
-			mainResult: async function* () {
-				yield '{"tasks":[';
-				yield '{"id":1,"title":"Test Task","priority":"high"}';
-				yield ']}';
-			},
-			telemetryData: {}
-		}),
 		streamObjectService: jest.fn().mockImplementation(async () => {
 			// Return an object with partialObjectStream as a getter that returns the async generator
 			return {
-				get partialObjectStream() {
+				mainResult: {
+					get partialObjectStream() {
 					return (async function* () {
 						yield { tasks: [] };
 						yield {
@@ -131,8 +124,13 @@ jest.unstable_mockModule(
 							]
 						};
 					})();
-				},
-				object: Promise.resolve({
+					},
+					usage: Promise.resolve({
+						promptTokens: 100,
+						completionTokens: 200,
+						totalTokens: 300
+					}),
+					object: Promise.resolve({
 					tasks: [
 						{
 							id: 1,
@@ -160,6 +158,10 @@ jest.unstable_mockModule(
 						}
 					]
 				})
+				},
+				providerName: 'anthropic',
+				modelId: 'claude-3-5-sonnet-20241022',
+				telemetryData: {}
 			};
 		})
 	})
@@ -332,7 +334,7 @@ const { readJSON, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateObjectService, streamTextService, streamObjectService } =
+const { generateObjectService, streamObjectService } =
 	await import('../../../../../scripts/modules/ai-services-unified.js');
 
 const { JSONParser } = await import('@streamparser/json');
@@ -433,17 +435,10 @@ describe('parsePRD', () => {
 			mainResult: sampleClaudeResponse,
 			telemetryData: {}
 		});
-		streamTextService.mockResolvedValue({
-			mainResult: (async function* () {
-				yield '{"tasks":[';
-				yield '{"id":1,"title":"Test Task","priority":"high"}';
-				yield ']}';
-			})(),
-			telemetryData: {}
-		});
 		// Reset streamObjectService mock to working implementation
 		streamObjectService.mockImplementation(async () => {
 			return {
+				mainResult: {
 				get partialObjectStream() {
 					return (async function* () {
 						yield { tasks: [] };
@@ -456,8 +451,17 @@ describe('parsePRD', () => {
 						};
 						yield sampleClaudeResponse;
 					})();
+					},
+					usage: Promise.resolve({
+						promptTokens: 100,
+						completionTokens: 200,
+						totalTokens: 300
+					}),
+					object: Promise.resolve(sampleClaudeResponse)
 				},
-				object: Promise.resolve(sampleClaudeResponse)
+				providerName: 'anthropic',
+				modelId: 'claude-3-5-sonnet-20241022',
+				telemetryData: {}
 			};
 		});
 		// generateTaskFiles.mockResolvedValue(undefined);
@@ -846,9 +850,22 @@ describe('parsePRD', () => {
 			// Mock progress reporting function
 			const mockReportProgress = jest.fn(() => Promise.resolve());
 
-			// Mock streamObjectService to fail with a streaming-specific error
+			// Mock streamObjectService to return a stream that fails during processing
 			streamObjectService.mockImplementationOnce(async () => {
-				throw new Error('Stream failed');
+				return {
+					mainResult: {
+						get partialObjectStream() {
+							return (async function* () {
+								throw new Error('Stream processing failed');
+							})();
+						},
+						usage: Promise.resolve(null),
+						object: Promise.resolve(null)
+					},
+					providerName: 'anthropic',
+					modelId: 'claude-3-5-sonnet-20241022',
+					telemetryData: {}
+				};
 			});
 
 			// Ensure generateObjectService returns tasks for fallback
@@ -925,8 +942,8 @@ describe('parsePRD', () => {
 			// Verify generateObjectService was called (non-streaming path)
 			expect(generateObjectService).toHaveBeenCalled();
 
-			// Verify streamTextService was NOT called (streaming path)
-			expect(streamTextService).not.toHaveBeenCalled();
+			// Verify streamObjectService was NOT called (streaming path)
+			expect(streamObjectService).not.toHaveBeenCalled();
 
 			// Verify result structure
 			expect(result).toEqual({
@@ -954,7 +971,7 @@ describe('parsePRD', () => {
 			});
 
 			// Verify streaming path was used with research role
-			expect(streamTextService).toHaveBeenCalledWith(
+			expect(streamObjectService).toHaveBeenCalledWith(
 				expect.objectContaining({
 					role: 'research'
 				})
@@ -988,7 +1005,7 @@ describe('parsePRD', () => {
 					role: 'research'
 				})
 			);
-			expect(streamTextService).not.toHaveBeenCalled();
+			expect(streamObjectService).not.toHaveBeenCalled();
 		});
 
 		test('should use streaming for CLI text mode even without reportProgress', async () => {
