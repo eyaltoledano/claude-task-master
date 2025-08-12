@@ -228,6 +228,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfigName: 'mcp.json',
 					expectedPath: '.roo/mcp.json'
 				},
+				kilo: {
+					mcpConfig: true,
+					mcpConfigName: 'mcp.json',
+					expectedPath: '.kilo/mcp.json'
+				},
 				trae: {
 					mcpConfig: false,
 					mcpConfigName: null,
