@@ -114,11 +114,12 @@ describe('BaseProgressTracker', () => {
 	});
 
 	describe('stop vs cleanup', () => {
-		it('stop should preserve multibar reference for getSummary', () => {
+		it('stop should call cleanup and null multibar reference', () => {
 			tracker.start();
 			tracker.stop();
 
-			expect(tracker.multibar).toBeTruthy();
+			// stop() now calls cleanup() which nulls the multibar
+			expect(tracker.multibar).toBeNull();
 			expect(tracker.isFinished).toBe(true);
 		});
 

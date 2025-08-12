@@ -703,7 +703,9 @@ async function _unifiedServiceRunner(serviceType, params) {
 			return {
 				mainResult: finalMainResult,
 				telemetryData: telemetryData,
-				tagInfo: tagInfo
+				tagInfo: tagInfo,
+				providerName: providerName,
+				modelId: modelId
 			};
 		} catch (error) {
 			const cleanMessage = _extractErrorMessage(error);

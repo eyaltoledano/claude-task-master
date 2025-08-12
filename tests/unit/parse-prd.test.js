@@ -15,7 +15,20 @@ jest.unstable_mockModule(
 	'../../scripts/modules/ai-services-unified.js',
 	() => ({
 		streamTextService: jest.fn(),
-		generateObjectService: jest.fn()
+		generateObjectService: jest.fn(),
+		streamObjectService: jest.fn().mockImplementation(async () => {
+			return {
+				get partialObjectStream() {
+					return (async function* () {
+						yield { tasks: [] };
+						yield { tasks: [{ id: 1, title: 'Test Task', priority: 'high' }] };
+					})();
+				},
+				object: Promise.resolve({
+					tasks: [{ id: 1, title: 'Test Task', priority: 'high' }]
+				})
+			};
+		})
 	})
 );
 
@@ -196,7 +209,7 @@ const { generateObjectService } = await import(
 	'../../scripts/modules/ai-services-unified.js'
 );
 const parsePRD = (
-	await import('../../scripts/modules/task-manager/parse-prd.js')
+	await import('../../scripts/modules/task-manager/parse-prd/parse-prd.js')
 ).default;
 
 describe('parse-prd file extension compatibility', () => {

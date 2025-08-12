@@ -98,6 +98,19 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
+		}),
+		streamObjectService: jest.fn().mockImplementation(async () => {
+			return {
+				get partialObjectStream() {
+					return (async function* () {
+						yield { tasks: [] };
+						yield { tasks: [{ id: 1, title: 'Test Task', priority: 'high' }] };
+					})();
+				},
+				object: Promise.resolve({
+					tasks: [{ id: 1, title: 'Test Task', priority: 'high' }]
+				})
+			};
 		})
 	})
 );
