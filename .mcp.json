@@ -3,9 +3,7 @@
 		"task-master-ai": {
 			"type": "stdio",
 			"command": "npx",
-			"args": ["-y", "task-master-ai"],
-			"disabled": true,
-			"alwaysAllow": []
+			"args": ["-y", "task-master-ai"]
 		}
 	}
 }
