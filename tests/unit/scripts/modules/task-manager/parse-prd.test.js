@@ -61,69 +61,69 @@ jest.unstable_mockModule(
 			return {
 				mainResult: {
 					get partialObjectStream() {
-					return (async function* () {
-						yield { tasks: [] };
-						yield {
-							tasks: [
-								{
-									id: 1,
-									title: 'Test Task 1',
-									priority: 'high',
-									description: 'Test description 1',
-									status: 'pending',
-									dependencies: []
-								}
-							]
-						};
-						yield {
-							tasks: [
-								{
-									id: 1,
-									title: 'Test Task 1',
-									priority: 'high',
-									description: 'Test description 1',
-									status: 'pending',
-									dependencies: []
-								},
-								{
-									id: 2,
-									title: 'Test Task 2',
-									priority: 'medium',
-									description: 'Test description 2',
-									status: 'pending',
-									dependencies: []
-								}
-							]
-						};
-						yield {
-							tasks: [
-								{
-									id: 1,
-									title: 'Test Task 1',
-									priority: 'high',
-									description: 'Test description 1',
-									status: 'pending',
-									dependencies: []
-								},
-								{
-									id: 2,
-									title: 'Test Task 2',
-									priority: 'medium',
-									description: 'Test description 2',
-									status: 'pending',
-									dependencies: []
-								},
-								{
-									id: 3,
-									title: 'Test Task 3',
-									priority: 'low',
-									description: 'Test description 3',
-									status: 'pending',
-									dependencies: []
-								}
-							]
-						};
-					})();
+						return (async function* () {
+							yield { tasks: [] };
+							yield {
+								tasks: [
+									{
+										id: 1,
+										title: 'Test Task 1',
+										priority: 'high',
+										description: 'Test description 1',
+										status: 'pending',
+										dependencies: []
+									}
+								]
+							};
+							yield {
+								tasks: [
+									{
+										id: 1,
+										title: 'Test Task 1',
+										priority: 'high',
+										description: 'Test description 1',
+										status: 'pending',
+										dependencies: []
+									},
+									{
+										id: 2,
+										title: 'Test Task 2',
+										priority: 'medium',
+										description: 'Test description 2',
+										status: 'pending',
+										dependencies: []
+									}
+								]
+							};
+							yield {
+								tasks: [
+									{
+										id: 1,
+										title: 'Test Task 1',
+										priority: 'high',
+										description: 'Test description 1',
+										status: 'pending',
+										dependencies: []
+									},
+									{
+										id: 2,
+										title: 'Test Task 2',
+										priority: 'medium',
+										description: 'Test description 2',
+										status: 'pending',
+										dependencies: []
+									},
+									{
+										id: 3,
+										title: 'Test Task 3',
+										priority: 'low',
+										description: 'Test description 3',
+										status: 'pending',
+										dependencies: []
+									}
+								]
+							};
+						})();
 					},
 					usage: Promise.resolve({
 						promptTokens: 100,
@@ -131,33 +131,33 @@ jest.unstable_mockModule(
 						totalTokens: 300
 					}),
 					object: Promise.resolve({
-					tasks: [
-						{
-							id: 1,
-							title: 'Test Task 1',
-							priority: 'high',
-							description: 'Test description 1',
-							status: 'pending',
-							dependencies: []
-						},
-						{
-							id: 2,
-							title: 'Test Task 2',
-							priority: 'medium',
-							description: 'Test description 2',
-							status: 'pending',
-							dependencies: []
-						},
-						{
-							id: 3,
-							title: 'Test Task 3',
-							priority: 'low',
-							description: 'Test description 3',
-							status: 'pending',
-							dependencies: []
-						}
-					]
-				})
+						tasks: [
+							{
+								id: 1,
+								title: 'Test Task 1',
+								priority: 'high',
+								description: 'Test description 1',
+								status: 'pending',
+								dependencies: []
+							},
+							{
+								id: 2,
+								title: 'Test Task 2',
+								priority: 'medium',
+								description: 'Test description 2',
+								status: 'pending',
+								dependencies: []
+							},
+							{
+								id: 3,
+								title: 'Test Task 3',
+								priority: 'low',
+								description: 'Test description 3',
+								status: 'pending',
+								dependencies: []
+							}
+						]
+					})
 				},
 				providerName: 'anthropic',
 				modelId: 'claude-3-5-sonnet-20241022',
@@ -334,8 +334,9 @@ const { readJSON, promptYesNo } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateObjectService, streamObjectService } =
-	await import('../../../../../scripts/modules/ai-services-unified.js');
+const { generateObjectService, streamObjectService } = await import(
+	'../../../../../scripts/modules/ai-services-unified.js'
+);
 
 const { JSONParser } = await import('@streamparser/json');
 
@@ -439,18 +440,18 @@ describe('parsePRD', () => {
 		streamObjectService.mockImplementation(async () => {
 			return {
 				mainResult: {
-				get partialObjectStream() {
-					return (async function* () {
-						yield { tasks: [] };
-						yield { tasks: [sampleClaudeResponse.tasks[0]] };
-						yield {
-							tasks: [
-								sampleClaudeResponse.tasks[0],
-								sampleClaudeResponse.tasks[1]
-							]
-						};
-						yield sampleClaudeResponse;
-					})();
+					get partialObjectStream() {
+						return (async function* () {
+							yield { tasks: [] };
+							yield { tasks: [sampleClaudeResponse.tasks[0]] };
+							yield {
+								tasks: [
+									sampleClaudeResponse.tasks[0],
+									sampleClaudeResponse.tasks[1]
+								]
+							};
+							yield sampleClaudeResponse;
+						})();
 					},
 					usage: Promise.resolve({
 						promptTokens: 100,
