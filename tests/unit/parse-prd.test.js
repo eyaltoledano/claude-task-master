@@ -412,9 +412,13 @@ Build a simple task management application.
 	test('should produce identical results regardless of file extension', async () => {
 		const outputs = {};
 
-		// Parse each file type
+		// Parse each file type with a unique project root to avoid ID conflicts
 		for (const [ext, filePath] of Object.entries(testFiles)) {
-			const outputPath = path.join(tempDir, `tasks-${ext}.json`);
+			// Create a unique subdirectory for each test to isolate them
+			const testSubDir = path.join(tempDir, `test-${ext}`);
+			fs.mkdirSync(testSubDir, { recursive: true });
+			
+			const outputPath = path.join(testSubDir, `tasks.json`);
 
 			await parsePRD(filePath, outputPath, 2, {
 				force: true,
@@ -425,7 +429,7 @@ Build a simple task management application.
 					debug: jest.fn(),
 					success: jest.fn()
 				},
-				projectRoot: tempDir
+				projectRoot: testSubDir
 			});
 
 			const tasksData = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
