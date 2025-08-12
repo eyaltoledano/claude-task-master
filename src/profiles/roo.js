@@ -22,57 +22,12 @@ function enhanceRooMCPConfiguration(mcpPath) {
 		if (mcpConfig.mcpServers && mcpConfig.mcpServers['task-master-ai']) {
 			const server = mcpConfig.mcpServers['task-master-ai'];
 			
-			// Add Roo-specific enhancements: timeout and alwaysAllow
-			server.disabled = false;
+			// Add Roo-specific timeout enhancement for long-running AI operations
 			server.timeout = 300;
-			server.alwaysAllow = [
-				'get_task',
-				'set_task_status',
-				'update_task',
-				'get_tasks',
-				'add_task',
-				'expand_task',
-				'remove_task',
-				'next_task',
-				'add_subtask',
-				'update_subtask',
-				'parse_prd',
-				'initialize_project',
-				'research',
-				'analyze_project_complexity',
-				'expand_all',
-				'models',
-				'complexity_report',
-				'generate',
-				'list_tags',
-				'add_tag',
-				'delete_tag',
-				'use_tag',
-				'rename_tag',
-				'copy_tag',
-				'move_task',
-				'add_dependency',
-				'remove_dependency',
-				'validate_dependencies',
-				'fix_dependencies',
-				'clear_subtasks',
-				'remove_subtask',
-				'get_operation_status',
-				'response_language',
-				'rules',
-				'scope_down_task',
-				'scope_up_task',
-				'update'
-			];
-			
-			// Update env to use Roo-specific values
-			server.env = {
-				AWS_REGION: 'us-east-1'
-			};
 			
 			// Write the enhanced configuration back
 			fs.writeFileSync(mcpPath, formatJSONWithTabs(mcpConfig) + '\n');
-			log('debug', `[Roo] Enhanced MCP configuration with timeout and alwaysAllow at ${mcpPath}`);
+			log('debug', `[Roo] Enhanced MCP configuration with timeout at ${mcpPath}`);
 		} else {
 			log('warn', `[Roo] task-master-ai server not found in MCP configuration`);
 		}
