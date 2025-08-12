@@ -129,7 +129,7 @@ export async function handleStreamingService(config, prompts, numTasks) {
 		const { logAiUsage } = await import('../../ai-services-unified.js');
 		const { getUserId } = await import('../../config-manager.js');
 		const userId = getUserId(config.projectRoot);
-		
+
 		if (userId && aiServiceResponse.providerName && aiServiceResponse.modelId) {
 			try {
 				const telemetryData = await logAiUsage({
@@ -141,7 +141,7 @@ export async function handleStreamingService(config, prompts, numTasks) {
 					outputTokens: streamingResult.usage.completionTokens || 0,
 					outputType: config.isMCP ? 'mcp' : 'cli'
 				});
-				
+
 				// Add telemetry to the response
 				if (telemetryData) {
 					aiServiceResponse.telemetryData = telemetryData;
@@ -299,7 +299,7 @@ async function processStreamResponse(
 			streamingState,
 			context
 		);
-		
+
 		// Wait for usage data if available
 		if (streamResult.usage) {
 			try {
@@ -311,7 +311,7 @@ async function processStreamResponse(
 				);
 			}
 		}
-		
+
 		return finalizeStreamingResults(streamingState, context);
 	} catch (error) {
 		logger.report(
@@ -586,21 +586,19 @@ async function processWithGenerateObject(context, logger) {
 			}
 
 			// Final token update - use actual telemetry if available
-			const outputTokens = result.telemetryData?.outputTokens || 
+			const outputTokens =
+				result.telemetryData?.outputTokens ||
 				estimateTokens(JSON.stringify(tasks));
-			const inputTokens = result.telemetryData?.inputTokens ||
-				context.estimatedInputTokens;
-			
-			context.progressTracker.updateTokens(
-				inputTokens,
-				outputTokens,
-				false
-			);
+			const inputTokens =
+				result.telemetryData?.inputTokens || context.estimatedInputTokens;
+
+			context.progressTracker.updateTokens(inputTokens, outputTokens, false);
 		}
 
 		return {
 			parsedTasks: tasks.tasks,
-			estimatedOutputTokens: result.telemetryData?.outputTokens || 
+			estimatedOutputTokens:
+				result.telemetryData?.outputTokens ||
 				estimateTokens(JSON.stringify(tasks)),
 			actualInputTokens: result.telemetryData?.inputTokens,
 			telemetryData: result.telemetryData,
@@ -637,7 +635,7 @@ function prepareFinalResult(
 				totalTokens: usage.totalTokens || 0
 			};
 		}
-		
+
 		// The telemetry should have been logged in the unified service runner
 		// but if not, the usage is now available for telemetry calculation
 	}
@@ -645,7 +643,8 @@ function prepareFinalResult(
 	return {
 		parsedTasks: streamingResult.parsedTasks,
 		aiServiceResponse,
-		estimatedInputTokens: streamingResult.actualInputTokens || estimatedInputTokens,
+		estimatedInputTokens:
+			streamingResult.actualInputTokens || estimatedInputTokens,
 		estimatedOutputTokens: streamingResult.estimatedOutputTokens,
 		usedFallback: streamingResult.usedFallback,
 		progressTracker,
