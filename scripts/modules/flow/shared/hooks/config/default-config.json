@@ -1,0 +1,257 @@
+{
+	"enabled": true,
+	"version": "1.0.0",
+	"hooks": {
+		"pre-launch-validation": {
+			"enabled": true,
+			"config": {
+				"checkGitStatus": true,
+				"validateDependencies": true,
+				"checkConflicts": true,
+				"strictMode": false,
+				"timeout": 10000
+			}
+		},
+		"research-integration": {
+			"enabled": true,
+			"config": {
+				"autoDetectExisting": true,
+				"confidenceThreshold": 0.7,
+				"maxSuggestedQueries": 3,
+				"cacheResults": true,
+				"timeout": 30000
+			}
+		},
+		"progress-tracking": {
+			"enabled": true,
+			"config": {
+				"updateTaskDetails": true,
+				"trackFileChanges": true,
+				"logInterval": 5000,
+				"maxLogEntries": 100,
+				"timeout": 5000
+			}
+		},
+		"worktree-management": {
+			"enabled": true,
+			"config": {
+				"autoCleanup": false,
+				"validateBranches": true,
+				"trackChanges": true,
+				"timeout": 15000
+			}
+		},
+		"session-completion": {
+			"enabled": true,
+			"config": {
+				"updateTaskStatus": true,
+				"generateSummary": true,
+				"saveMetrics": true,
+				"autoUpdateTaskStatus": true,
+				"autoCreatePR": true,
+				"enableQualityAnalysis": true,
+				"timeout": 10000
+			}
+		},
+		"pr-automation": {
+			"enabled": true,
+			"config": {
+				"useGlobalSetting": true,
+				"defaultTemplate": "claude-code",
+				"autoLabels": ["claude-code", "auto-generated"],
+				"timeout": 20000
+			}
+		},
+		"pr-lifecycle-management": {
+			"enabled": true,
+			"config": {
+				"autoMerge": {
+					"enabled": true,
+					"strictMode": false,
+					"recentActivityWindow": "30 minutes ago",
+					"maxRetries": 5,
+					"retryDelay": 60000,
+					"safetyChecks": {
+						"validatePRState": true,
+						"validateRequiredChecks": true,
+						"validateBranchProtection": true,
+						"validateNoConflicts": true,
+						"validateRecentActivity": true,
+						"customValidationHooks": []
+					}
+				},
+				"requiredChecks": ["continuous-integration"],
+				"emergencyStop": {
+					"enabled": true,
+					"conditions": [
+						"multiple_failed_merges",
+						"security_alert",
+						"manual_intervention_required"
+					]
+				},
+				"rollback": {
+					"enabled": true,
+					"createIncidentReport": true,
+					"notifyStakeholders": false,
+					"preserveEvidence": true
+				},
+				"cleanupAfterMerge": true,
+				"cleanupWorktree": true,
+				"updateASTCache": true,
+				"updateTaskStatus": true,
+				"archiveSession": true,
+				"mergeMethod": "squash",
+				"monitoringInterval": 30000,
+				"maxRetries": 3,
+				"timeout": 30000
+			}
+		},
+		"claude-code-stop": {
+			"enabled": true,
+			"config": {
+				"defaultSafetyMode": "standard",
+				"allowModeOverride": true,
+				"enableAutoCommit": true,
+				"enableAutoPR": true,
+				"safetyModes": {
+					"vibe": {
+						"autoLint": false,
+						"autoBuild": false,
+						"requireTests": false,
+						"skipConflictCheck": true,
+						"description": "Fast mode - minimal checks"
+					},
+					"standard": {
+						"autoLint": true,
+						"autoBuild": false,
+						"requireTests": false,
+						"skipConflictCheck": false,
+						"description": "Balanced mode - basic safety checks"
+					},
+					"strict": {
+						"autoLint": true,
+						"autoBuild": true,
+						"requireTests": true,
+						"skipConflictCheck": false,
+						"description": "Safe mode - comprehensive checks"
+					}
+				},
+				"timeout": 60000
+			}
+		},
+		"builtIn": {
+			"claudeCodeStop": {
+				"enabled": true,
+				"safetyMode": "standard",
+				"autoCreatePR": true,
+				"safetyChecks": {
+					"gitStatus": true,
+					"linting": true,
+					"build": true,
+					"tests": false,
+					"conflictDetection": true
+				},
+				"buildValidation": {
+					"enabled": true,
+					"commands": {
+						"npm": "npm run build",
+						"yarn": "yarn build",
+						"pnpm": "pnpm build"
+					},
+					"timeout": 120000,
+					"failOnError": true
+				},
+				"lintValidation": {
+					"enabled": true,
+					"tools": {
+						"biome": {
+							"command": "npx biome check .",
+							"fixCommand": "npx biome check . --fix",
+							"enabled": true
+						},
+						"eslint": {
+							"command": "npx eslint .",
+							"fixCommand": "npx eslint . --fix",
+							"enabled": true
+						}
+					},
+					"timeout": 30000,
+					"failOnError": false,
+					"autoFix": false
+				},
+				"modes": {
+					"vibe": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": false,
+							"build": false,
+							"tests": false,
+							"conflictDetection": false
+						},
+						"autoCreatePR": true,
+						"requireManualApproval": false
+					},
+					"standard": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": true,
+							"build": true,
+							"tests": false,
+							"conflictDetection": true
+						},
+						"autoCreatePR": true,
+						"requireManualApproval": false
+					},
+					"strict": {
+						"safetyChecks": {
+							"gitStatus": true,
+							"linting": true,
+							"build": true,
+							"tests": true,
+							"conflictDetection": true
+						},
+						"autoCreatePR": false,
+						"requireManualApproval": true
+					}
+				}
+			},
+			"prLifecycleManagement": {
+				"enabled": true,
+				"autoMerge": false,
+				"cleanupAfterMerge": true,
+				"requiredChecks": [],
+				"notifications": {
+					"enabled": true,
+					"channels": ["app", "slack"],
+					"escalateAfter": "15min",
+					"criticalEvents": ["checks-failed", "merge-conflicts"]
+				}
+			},
+			"preLaunchValidation": {
+				"enabled": true,
+				"checkGitStatus": true,
+				"validateDependencies": true,
+				"checkConflicts": true,
+				"buildValidation": {
+					"enabled": true,
+					"respectSafetyMode": true
+				},
+				"lintValidation": {
+					"enabled": true,
+					"respectSafetyMode": true
+				}
+			}
+		}
+	},
+	"global": {
+		"maxConcurrentHooks": 5,
+		"defaultTimeout": 30000,
+		"logLevel": "info",
+		"enableMetrics": true,
+		"storage": {
+			"maxAge": 2592000000,
+			"backupInterval": 86400000,
+			"maxBackups": 10
+		}
+	}
+}

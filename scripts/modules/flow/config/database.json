@@ -1,0 +1,44 @@
+{
+  "enabled": true,
+  "dialect": "sqlite",
+  "autoSync": "bidirectional",
+  "syncOnCommand": true,
+  "conflictResolution": "timestamp",
+  "backupBeforeSync": true,
+  "maxBackups": 5,
+  "connection": {
+    "sqlite": {
+      "pragmas": {
+        "journal_mode": "WAL",
+        "foreign_keys": "ON",
+        "synchronous": "NORMAL",
+        "cache_size": -64000,
+        "temp_store": "memory"
+      },
+      "timeout": 5000
+    }
+  },
+  "migrations": {
+    "autoRun": true,
+    "path": "./migrations"
+  },
+  "sync": {
+    "batchSize": 100,
+    "logOperations": true,
+    "validateIntegrity": true,
+    "retryAttempts": 3,
+    "retryDelay": 1000
+  },
+  "performance": {
+    "enableWAL": true,
+    "enableForeignKeys": true,
+    "connectionPool": false,
+    "queryTimeout": 30000
+  },
+  "backup": {
+    "directory": ".taskmaster/backups",
+    "filenamePattern": "tasks-backup-{timestamp}.db",
+    "compression": false,
+    "retentionDays": 30
+  }
+} 
