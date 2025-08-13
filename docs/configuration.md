@@ -241,9 +241,7 @@ Long-running AI operations in taskmaster-ai can exceed the default 60-second MCP
 
 #### Adding Timeout Configuration
 
-Add a `timeout` parameter to your MCP configuration to extend the timeout limit:
-
-**Cursor & Windsurf:**
+Add a `timeout` parameter to your MCP configuration to extend the timeout limit. The timeout configuration works identically across MCP clients including Cursor, Windsurf, and RooCode:
 
 ```json
 {
@@ -252,24 +250,6 @@ Add a `timeout` parameter to your MCP configuration to extend the timeout limit:
       "command": "npx",
       "args": ["-y", "--package=task-master-ai", "task-master-ai"],
       "timeout": 300,
-      "env": {
-        "ANTHROPIC_API_KEY": "your-anthropic-api-key"
-      }
-    }
-  }
-}
-```
-
-**VS Code:**
-
-```json
-{
-  "servers": {
-    "task-master-ai": {
-      "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
-      "timeout": 300,
-      "type": "stdio",
       "env": {
         "ANTHROPIC_API_KEY": "your-anthropic-api-key"
       }
