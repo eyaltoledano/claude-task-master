@@ -262,3 +262,6 @@ export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 
 	return result;
 }
+
+// Export the formatting function for use by other modules
+export { formatJSONWithTabs };

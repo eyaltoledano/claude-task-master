@@ -266,10 +266,10 @@ describe('MCP Configuration Validation', () => {
 			expect(mcpEnabledProfiles).toContain('cursor');
 			expect(mcpEnabledProfiles).toContain('gemini');
 			expect(mcpEnabledProfiles).toContain('opencode');
-			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).toContain('vscode');
 			expect(mcpEnabledProfiles).toContain('windsurf');
 			expect(mcpEnabledProfiles).toContain('zed');
+			expect(mcpEnabledProfiles).toContain('roo');
 			expect(mcpEnabledProfiles).not.toContain('cline');
 			expect(mcpEnabledProfiles).not.toContain('codex');
 			expect(mcpEnabledProfiles).not.toContain('trae');
@@ -384,6 +384,7 @@ describe('MCP Configuration Validation', () => {
 			'claude',
 			'cursor',
 			'gemini',
+			'kiro',
 			'opencode',
 			'roo',
 			'windsurf',
