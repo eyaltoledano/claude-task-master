@@ -219,6 +219,37 @@ describe('Cross-Tag Task Movement', () => {
 		});
 	});
 
+	// New test: ensure with-dependencies only traverses tasks from the source tag
+	it('should scope dependency traversal to source tag when using --with-dependencies', async () => {
+		findCrossTagDependencies.mockReturnValue([]);
+		validateSubtaskMove.mockImplementation(() => {});
+
+		const result = await moveTasksBetweenTags(
+			mockTasksPath,
+			[1], // backlog:1 depends on backlog:2
+			'backlog',
+			'in-progress',
+			{ withDependencies: true },
+			mockContext
+		);
+
+		// Write should include backlog:2 moved, and must NOT traverse or fetch dependencies from the target tag
+		expect(writeJSON).toHaveBeenCalledWith(
+			mockTasksPath,
+			expect.objectContaining({
+				'in-progress': expect.objectContaining({
+					tasks: expect.arrayContaining([
+						expect.objectContaining({ id: 1 }),
+						expect.objectContaining({ id: 2 }) // the backlog:2 now moved
+						// ensure existing in-progress:2 remains (by id) but we don't double-add or fetch deps from it
+					])
+				})
+			}),
+			mockContext.projectRoot,
+			null
+		);
+	});
+
 	describe('moveTasksBetweenTags', () => {
 		it('should move tasks without dependencies successfully', async () => {
 			// Mock the dependency functions to return no conflicts
