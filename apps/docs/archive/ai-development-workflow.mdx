@@ -1,0 +1,180 @@
+---
+title: "AI Development Workflow"
+description: "Learn how Task Master and Cursor AI work together to streamline your development workflow"
+---
+
+<Tip>The Cursor agent is pre-configured (via the rules file) to follow this workflow</Tip>
+
+<AccordionGroup>
+  <Accordion title="1. Task Discovery and Selection">
+    Ask the agent to list available tasks:
+
+    ```
+    What tasks are available to work on next?
+    ```
+
+    The agent will:
+
+    - Run `task-master list` to see all tasks
+    - Run `task-master next` to determine the next task to work on
+    - Analyze dependencies to determine which tasks are ready to be worked on
+    - Prioritize tasks based on priority level and ID order
+    - Suggest the next task(s) to implement
+  </Accordion>
+
+  <Accordion title="2. Task Implementation">
+    When implementing a task, the agent will:
+
+    - Reference the task's details section for implementation specifics
+    - Consider dependencies on previous tasks
+    - Follow the project's coding standards
+    - Create appropriate tests based on the task's testStrategy
+
+    You can ask:
+
+    ```
+    Let's implement task 3. What does it involve?
+    ```
+  </Accordion>
+
+  <Accordion title="3. Task Verification">
+    Before marking a task as complete, verify it according to:
+
+    - The task's specified testStrategy
+    - Any automated tests in the codebase
+    - Manual verification if required
+  </Accordion>
+
+  <Accordion title="4. Task Completion">
+    When a task is completed, tell the agent:
+
+    ```
+    Task 3 is now complete. Please update its status.
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master set-status --id=3 --status=done
+    ```
+  </Accordion>
+
+  <Accordion title="5. Handling Implementation Drift">
+    If during implementation, you discover that:
+
+    - The current approach differs significantly from what was planned
+    - Future tasks need to be modified due to current implementation choices
+    - New dependencies or requirements have emerged
+
+    Tell the agent:
+
+    ```
+    We've changed our approach. We're now using Express instead of Fastify. Please update all future tasks to reflect this change.
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master update --from=4 --prompt="Now we are using Express instead of Fastify."
+    ```
+
+    This will rewrite or re-scope subsequent tasks in tasks.json while preserving completed work.
+  </Accordion>
+
+  <Accordion title="6. Breaking Down Complex Tasks">
+    For complex tasks that need more granularity:
+
+    ```
+    Task 5 seems complex. Can you break it down into subtasks?
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master expand --id=5 --num=3
+    ```
+
+    You can provide additional context:
+
+    ```
+    Please break down task 5 with a focus on security considerations.
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master expand --id=5 --prompt="Focus on security aspects"
+    ```
+
+    You can also expand all pending tasks:
+
+    ```
+    Please break down all pending tasks into subtasks.
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master expand --all
+    ```
+
+    For research-backed subtask generation using Perplexity AI:
+
+    ```
+    Please break down task 5 using research-backed generation.
+    ```
+
+    The agent will execute:
+
+    ```bash
+    task-master expand --id=5 --research
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Example Cursor AI Interactions
+
+<AccordionGroup>
+  <Accordion title="Starting a new project">
+    ```
+    I've just initialized a new project with Claude Task Master. I have a PRD at scripts/prd.txt.
+    Can you help me parse it and set up the initial tasks?
+    ```
+  </Accordion>
+  <Accordion title="Working on tasks">
+    ```
+    What's the next task I should work on? Please consider dependencies and priorities.
+    ```
+  </Accordion>
+  <Accordion title="Implementing a specific task">
+    ```
+    I'd like to implement task 4. Can you help me understand what needs to be done and how to approach it?
+    ```
+  </Accordion>
+  <Accordion title="Managing subtasks">
+    ```
+    I need to regenerate the subtasks for task 3 with a different approach. Can you help me clear and regenerate them?
+    ```
+  </Accordion>
+  <Accordion title="Handling changes">
+    ```
+    We've decided to use MongoDB instead of PostgreSQL. Can you update all future tasks to reflect this change?
+    ```
+  </Accordion>
+  <Accordion title="Completing work">
+    ```
+    I've finished implementing the authentication system described in task 2. All tests are passing.
+    Please mark it as complete and tell me what I should work on next.
+    ```
+  </Accordion>
+  <Accordion title="Analyzing complexity">
+    ```
+    Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
+    ```
+  </Accordion>
+  <Accordion title="Viewing complexity report">
+    ```
+    Can you show me the complexity report in a more readable format?
+    ```
+  </Accordion>
+</AccordionGroup>

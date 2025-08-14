@@ -1,0 +1,163 @@
+---
+title: "Task Structure"
+sidebarTitle: "Task Structure"
+description: "Tasks in Task Master follow a specific format designed to provide comprehensive information for both humans and AI assistants."
+---
+
+## Task Fields in tasks.json
+
+Tasks in tasks.json have the following structure:
+
+| Field          | Description                                    | Example                                                |
+| -------------- | ---------------------------------------------- | ------------------------------------------------------ |
+| `id`           | Unique identifier for the task.                | `1`                                                    |
+| `title`        | Brief, descriptive title.                      | `"Initialize Repo"`                                    |
+| `description`  | What the task involves.                        | `"Create a new repository, set up initial structure."` |
+| `status`       | Current state.                                 | `"pending"`, `"done"`, `"deferred"`                    |
+| `dependencies` | Prerequisite task IDs. ✅ Completed, ⏱️ Pending | `[1, 2]`                                               |
+| `priority`     | Task importance.                               | `"high"`, `"medium"`, `"low"`                          |
+| `details`      | Implementation instructions.                   | `"Use GitHub client ID/secret, handle callback..."`    |
+| `testStrategy` | How to verify success.                         | `"Deploy and confirm 'Hello World' response."`         |
+| `subtasks`     | Nested subtasks related to the main task.      | `[{"id": 1, "title": "Configure OAuth", ...}]`         |
+
+## Task File Format
+
+Individual task files follow this format:
+
+```
+# Task ID: <id>
+# Title: <title>
+# Status: <status>
+# Dependencies: <comma-separated list of dependency IDs>
+# Priority: <priority>
+# Description: <brief description>
+# Details:
+<detailed implementation notes>
+
+# Test Strategy:
+<verification approach>
+```
+
+## Features in Detail
+
+<AccordionGroup>
+<Accordion title="Analyzing Task Complexity">
+The `analyze-complexity` command:
+
+- Analyzes each task using AI to assess its complexity on a scale of 1-10
+- Recommends optimal number of subtasks based on configured DEFAULT_SUBTASKS
+- Generates tailored prompts for expanding each task
+- Creates a comprehensive JSON report with ready-to-use commands
+- Saves the report to scripts/task-complexity-report.json by default
+
+The generated report contains:
+
+- Complexity analysis for each task (scored 1-10)
+- Recommended number of subtasks based on complexity
+- AI-generated expansion prompts customized for each task
+- Ready-to-run expansion commands directly within each task analysis
+</Accordion>
+
+<Accordion title="Viewing Complexity Report">
+The `complexity-report` command:
+
+- Displays a formatted, easy-to-read version of the complexity analysis report
+- Shows tasks organized by complexity score (highest to lowest)
+- Provides complexity distribution statistics (low, medium, high)
+- Highlights tasks recommended for expansion based on threshold score
+- Includes ready-to-use expansion commands for each complex task
+- If no report exists, offers to generate one on the spot
+</Accordion>
+
+<Accordion title="Smart Task Expansion">
+The `expand` command automatically checks for and uses the complexity report:
+
+When a complexity report exists:
+
+- Tasks are automatically expanded using the recommended subtask count and prompts
+- When expanding all tasks, they're processed in order of complexity (highest first)
+- Research-backed generation is preserved from the complexity analysis
+- You can still override recommendations with explicit command-line options
+
+Example workflow:
+
+```bash
+# Generate the complexity analysis report with research capabilities
+task-master analyze-complexity --research
+
+# Review the report in a readable format
+task-master complexity-report
+
+# Expand tasks using the optimized recommendations
+task-master expand --id=8
+# or expand all tasks
+task-master expand --all
+```
+</Accordion>
+
+<Accordion title="Finding the Next Task">
+The `next` command:
+
+- Identifies tasks that are pending/in-progress and have all dependencies satisfied
+- Prioritizes tasks by priority level, dependency count, and task ID
+- Displays comprehensive information about the selected task:
+  - Basic task details (ID, title, priority, dependencies)
+  - Implementation details
+  - Subtasks (if they exist)
+- Provides contextual suggested actions:
+  - Command to mark the task as in-progress
+  - Command to mark the task as done
+  - Commands for working with subtasks
+</Accordion>
+
+<Accordion title="Viewing Specific Task Details">
+The `show` command:
+
+- Displays comprehensive details about a specific task or subtask
+- Shows task status, priority, dependencies, and detailed implementation notes
+- For parent tasks, displays all subtasks and their status
+- For subtasks, shows parent task relationship
+- Provides contextual action suggestions based on the task's state
+- Works with both regular tasks and subtasks (using the format taskId.subtaskId)
+</Accordion>
+</AccordionGroup>
+
+## Best Practices for AI-Driven Development
+
+<CardGroup cols={2}>
+  <Card title="📝 Detailed PRD" icon="lightbulb">
+    The more detailed your PRD, the better the generated tasks will be.
+  </Card>
+  
+  <Card title="👀 Review Tasks" icon="magnifying-glass">
+    After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
+  </Card>
+  
+  <Card title="📊 Analyze Complexity" icon="chart-line">
+    Use the complexity analysis feature to identify which tasks should be broken down further.
+  </Card>
+  
+  <Card title="⛓️ Follow Dependencies" icon="link">
+    Always respect task dependencies - the Cursor agent will help with this.
+  </Card>
+  
+  <Card title="🔄 Update As You Go" icon="arrows-rotate">
+    If your implementation diverges from the plan, use the update command to keep future tasks aligned.
+  </Card>
+  
+  <Card title="📦 Break Down Tasks" icon="boxes-stacked">
+    Use the expand command to break down complex tasks into manageable subtasks.
+  </Card>
+  
+  <Card title="🔄 Regenerate Files" icon="file-arrow-up">
+    After any updates to tasks.json, regenerate the task files to keep them in sync.
+  </Card>
+  
+  <Card title="💬 Provide Context" icon="comment">
+    When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
+  </Card>
+  
+  <Card title="✅ Validate Dependencies" icon="circle-check">
+    Periodically run the validate-dependencies command to check for invalid or circular dependencies.
+  </Card>
+</CardGroup>

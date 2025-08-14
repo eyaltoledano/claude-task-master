@@ -53,6 +53,11 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 		refreshComplexityAfterAI
 	} = useTaskDetails({ taskId, sendMessage, tasks: allTasks });
 
+	const displayId =
+		isSubtask && parentTask
+			? `${parentTask.id}.${currentTask?.id}`
+			: currentTask?.id;
+
 	const handleStatusChange = async (newStatus: TaskMasterTask['status']) => {
 		if (!currentTask) return;
 
@@ -60,10 +65,7 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 			await sendMessage({
 				type: 'updateTaskStatus',
 				data: {
-					taskId:
-						isSubtask && parentTask
-							? `${parentTask.id}.${currentTask.id}`
-							: currentTask.id,
+					taskId: displayId,
 					newStatus: newStatus
 				}
 			});
@@ -135,7 +137,7 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 								<BreadcrumbSeparator />
 								<BreadcrumbItem>
 									<span className="text-vscode-foreground">
-										{currentTask.title}
+										#{displayId} {currentTask.title}
 									</span>
 								</BreadcrumbItem>
 							</BreadcrumbList>
@@ -152,9 +154,9 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 						</button>
 					</div>
 
-					{/* Task title */}
+					{/* Task ID and title */}
 					<h1 className="text-2xl font-bold tracking-tight text-vscode-foreground">
-						{currentTask.title}
+						#{displayId} {currentTask.title}
 					</h1>
 
 					{/* Description */}

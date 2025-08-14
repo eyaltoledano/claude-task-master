@@ -1,13 +1,13 @@
 import { jest } from '@jest/globals';
 
 // --- Mocks ---
+// Only mock the specific functions that move-task actually uses
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
 	log: jest.fn(),
 	setTasksForTag: jest.fn(),
-	truncate: jest.fn((t) => t),
-	isSilentMode: jest.fn(() => false)
+	traverseDependencies: jest.fn(() => [])
 }));
 
 jest.unstable_mockModule(
@@ -18,13 +18,20 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager.js',
+	'../../../../../scripts/modules/task-manager/is-task-dependent.js',
 	() => ({
-		isTaskDependentOn: jest.fn(() => false)
+		default: jest.fn(() => false)
 	})
 );
 
-// fs not needed since move-task uses writeJSON
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/dependency-manager.js',
+	() => ({
+		findCrossTagDependencies: jest.fn(() => []),
+		getDependentTaskIds: jest.fn(() => []),
+		validateSubtaskMove: jest.fn()
+	})
+);
 
 const { readJSON, writeJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'

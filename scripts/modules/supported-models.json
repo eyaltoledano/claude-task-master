@@ -787,6 +787,39 @@
 	],
 	"ollama": [
 		{
+			"id": "gpt-oss:latest",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:20b",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:120b",
+			"swe_score": 0.624,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
 			"id": "devstral:latest",
 			"swe_score": 0,
 			"cost_per_1m_tokens": {

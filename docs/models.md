@@ -1,4 +1,4 @@
-# Available Models as of August 8, 2025
+# Available Models as of August 12, 2025
 
 ## Main Models
 
@@ -68,6 +68,9 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -174,6 +177,9 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |

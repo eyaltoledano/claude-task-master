@@ -68,12 +68,10 @@ jobs:
       - name: Create Release Candidate Pull Request or Publish Release Candidate to npm
         uses: changesets/action@v1
         with:
-          publish: node ./.github/scripts/pre-release.mjs
+          publish: npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
 
       - name: Commit & Push changes
         uses: actions-js/push@master

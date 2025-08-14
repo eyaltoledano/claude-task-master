@@ -1,0 +1,20 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.24.0",
+    "docs": "0.0.0",
+    "extension": "0.23.1"
+  },
+  "changesets": [
+    "crazy-meals-hope",
+    "curly-poets-move",
+    "cute-files-pay",
+    "cute-files-read",
+    "floppy-starts-find",
+    "light-crabs-warn",
+    "rude-moments-search",
+    "slow-readers-deny",
+    "wet-seas-float"
+  ]
+}

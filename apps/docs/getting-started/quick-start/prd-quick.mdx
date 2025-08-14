@@ -1,0 +1,81 @@
+---
+title: PRD Creation and Parsing
+sidebarTitle: "PRD Creation and Parsing"
+---
+
+# Writing a PRD
+
+A PRD (Product Requirements Document) is the starting point of every task flow in Task Master. It defines what you're building and why. A clear PRD dramatically improves the quality of your tasks, your model outputs, and your final product — so it’s worth taking the time to get it right.
+
+<Tip>
+You don’t need to define your whole app up front. You can write a focused PRD just for the next feature or module you’re working on.
+</Tip>
+
+<Tip>
+You can start with an empty project or you can start with a feature PRD on an existing project.
+</Tip>
+
+<Tip>
+You can add and parse multiple PRDs per project using the --append flag
+</Tip>
+
+## What Makes a Good PRD?
+
+- Clear objective — what’s the outcome or feature?
+- Context — what’s already in place or assumed?
+- Constraints — what limits or requirements need to be respected?
+- Reasoning — why are you building it this way?
+
+The more context you give the model, the better the breakdown and results.
+
+---
+
+## Writing a PRD for Task Master
+
+<Note>An example PRD can be found in .taskmaster/templates/example_prd.txt</Note>
+
+
+You can co-write your PRD with an LLM model using the following workflow:
+
+1. **Chat about requirements** — explain what you want to build.
+2. **Show an example PRD** — share the example PRD so the model understands the expected format. The example uses formatting that work well with Task Master's code. Following the example will yield better results.
+3. **Iterate and refine** — work with the model to shape the draft into a clear and well-structured PRD.
+
+This approach works great in Cursor, or anywhere you use a chat-based LLM.
+
+---
+
+## Where to Save Your PRD
+
+Place your PRD file in the `.taskmaster/docs` folder in your project.
+
+- You can have **multiple PRDs** per project.
+- Name your PRDs clearly so they’re easy to reference later.
+  - Examples: `dashboard_redesign.txt`, `user_onboarding.txt`
+
+---
+
+# Parse your PRD into Tasks
+
+This is where the Task Master magic begins.
+
+In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
+
+```
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at .taskmaster/docs/<prd-name>.txt.
+```
+
+The agent will execute the following command which you can alternatively paste into the CLI:
+
+```bash
+task-master parse-prd .taskmaster/docs/<prd-name>.txt
+```
+
+This will:
+
+- Parse your PRD document
+- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+
+Now that you have written and parsed a PRD, you are ready to start setting up your tasks.
+
+

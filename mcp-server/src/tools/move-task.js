@@ -9,7 +9,10 @@ import {
 	createErrorResponse,
 	withNormalizedProjectRoot
 } from './utils.js';
-import { moveTaskDirect } from '../core/task-master-core.js';
+import {
+	moveTaskDirect,
+	moveTaskCrossTagDirect
+} from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 
@@ -29,8 +32,9 @@ export function registerMoveTaskTool(server) {
 				),
 			to: z
 				.string()
+				.optional()
 				.describe(
-					'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
+					'ID of the destination (e.g., "7" or "7.3"). Required for within-tag moves. For cross-tag moves, if omitted, task will be moved to the target tag maintaining its ID'
 				),
 			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
@@ -38,101 +42,180 @@ export function registerMoveTaskTool(server) {
 				.describe(
 					'Root directory of the project (typically derived from session)'
 				),
-			tag: z.string().optional().describe('Tag context to operate on')
+			tag: z.string().optional().describe('Tag context to operate on'),
+			fromTag: z.string().optional().describe('Source tag for cross-tag moves'),
+			toTag: z.string().optional().describe('Target tag for cross-tag moves'),
+			withDependencies: z
+				.boolean()
+				.optional()
+				.describe('Move dependent tasks along with main task'),
+			ignoreDependencies: z
+				.boolean()
+				.optional()
+				.describe('Break cross-tag dependencies during move')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				// Find tasks.json path if not provided
-				let tasksJsonPath = args.file;
+				// Check if this is a cross-tag move
+				const isCrossTagMove =
+					args.fromTag && args.toTag && args.fromTag !== args.toTag;
 
-				if (!tasksJsonPath) {
-					tasksJsonPath = findTasksPath(args, log);
-				}
-
-				// Parse comma-separated IDs
-				const fromIds = args.from.split(',').map((id) => id.trim());
-				const toIds = args.to.split(',').map((id) => id.trim());
-
-				// Validate matching IDs count
-				if (fromIds.length !== toIds.length) {
-					return createErrorResponse(
-						'The number of source and destination IDs must match',
-						'MISMATCHED_ID_COUNT'
-					);
-				}
-
-				// If moving multiple tasks
-				if (fromIds.length > 1) {
-					const results = [];
-					// Move tasks one by one, only generate files on the last move
-					for (let i = 0; i < fromIds.length; i++) {
-						const fromId = fromIds[i];
-						const toId = toIds[i];
-
-						// Skip if source and destination are the same
-						if (fromId === toId) {
-							log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
-							continue;
-						}
-
-						const shouldGenerateFiles = i === fromIds.length - 1;
-						const result = await moveTaskDirect(
-							{
-								sourceId: fromId,
-								destinationId: toId,
-								tasksJsonPath,
-								projectRoot: args.projectRoot,
-								tag: resolvedTag
-							},
-							log,
-							{ session }
+				if (isCrossTagMove) {
+					// Cross-tag move logic
+					if (!args.from) {
+						return createErrorResponse(
+							'Source IDs are required for cross-tag moves',
+							'MISSING_SOURCE_IDS'
 						);
-
-						if (!result.success) {
-							log.error(
-								`Failed to move ${fromId} to ${toId}: ${result.error.message}`
-							);
-						} else {
-							results.push(result.data);
-						}
 					}
 
+					// Warn if 'to' parameter is provided for cross-tag moves
+					if (args.to) {
+						log.warn(
+							'The "to" parameter is not used for cross-tag moves and will be ignored. Tasks retain their original IDs in the target tag.'
+						);
+					}
+
+					// Find tasks.json path if not provided
+					let tasksJsonPath = args.file;
+					if (!tasksJsonPath) {
+						tasksJsonPath = findTasksPath(args, log);
+					}
+
+					// Use cross-tag move function
 					return handleApiResult(
-						{
-							success: true,
-							data: {
-								moves: results,
-								message: `Successfully moved ${results.length} tasks`
-							}
-						},
-						log,
-						'Error moving multiple tasks',
-						undefined,
-						args.projectRoot
-					);
-				} else {
-					// Moving a single task
-					return handleApiResult(
-						await moveTaskDirect(
+						await moveTaskCrossTagDirect(
 							{
-								sourceId: args.from,
-								destinationId: args.to,
+								sourceIds: args.from,
+								sourceTag: args.fromTag,
+								targetTag: args.toTag,
+								withDependencies: args.withDependencies || false,
+								ignoreDependencies: args.ignoreDependencies || false,
 								tasksJsonPath,
-								projectRoot: args.projectRoot,
-								tag: resolvedTag
+								projectRoot: args.projectRoot
 							},
 							log,
 							{ session }
 						),
 						log,
-						'Error moving task',
+						'Error moving tasks between tags',
 						undefined,
 						args.projectRoot
 					);
+				} else {
+					// Within-tag move logic (existing functionality)
+					if (!args.to) {
+						return createErrorResponse(
+							'Destination ID is required for within-tag moves',
+							'MISSING_DESTINATION_ID'
+						);
+					}
+
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+
+					// Find tasks.json path if not provided
+					let tasksJsonPath = args.file;
+					if (!tasksJsonPath) {
+						tasksJsonPath = findTasksPath(args, log);
+					}
+
+					// Parse comma-separated IDs
+					const fromIds = args.from.split(',').map((id) => id.trim());
+					const toIds = args.to.split(',').map((id) => id.trim());
+
+					// Validate matching IDs count
+					if (fromIds.length !== toIds.length) {
+						if (fromIds.length > 1) {
+							const results = [];
+							const skipped = [];
+							// Move tasks one by one, only generate files on the last move
+							for (let i = 0; i < fromIds.length; i++) {
+								const fromId = fromIds[i];
+								const toId = toIds[i];
+
+								// Skip if source and destination are the same
+								if (fromId === toId) {
+									log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
+									skipped.push({ fromId, toId, reason: 'same ID' });
+									continue;
+								}
+
+								const shouldGenerateFiles = i === fromIds.length - 1;
+								const result = await moveTaskDirect(
+									{
+										sourceId: fromId,
+										destinationId: toId,
+										tasksJsonPath,
+										projectRoot: args.projectRoot,
+										tag: resolvedTag,
+										generateFiles: shouldGenerateFiles
+									},
+									log,
+									{ session }
+								);
+
+								if (!result.success) {
+									log.error(
+										`Failed to move ${fromId} to ${toId}: ${result.error.message}`
+									);
+								} else {
+									results.push(result.data);
+								}
+							}
+
+							return handleApiResult(
+								{
+									success: true,
+									data: {
+										moves: results,
+										skipped: skipped.length > 0 ? skipped : undefined,
+										message: `Successfully moved ${results.length} tasks${skipped.length > 0 ? `, skipped ${skipped.length}` : ''}`
+									}
+								},
+								log,
+								'Error moving multiple tasks',
+								undefined,
+								args.projectRoot
+							);
+						}
+						return handleApiResult(
+							{
+								success: true,
+								data: {
+									moves: results,
+									skippedMoves: skippedMoves,
+									message: `Successfully moved ${results.length} tasks${skippedMoves.length > 0 ? `, skipped ${skippedMoves.length} moves` : ''}`
+								}
+							},
+							log,
+							'Error moving multiple tasks',
+							undefined,
+							args.projectRoot
+						);
+					} else {
+						// Moving a single task
+						return handleApiResult(
+							await moveTaskDirect(
+								{
+									sourceId: args.from,
+									destinationId: args.to,
+									tasksJsonPath,
+									projectRoot: args.projectRoot,
+									tag: resolvedTag,
+									generateFiles: true
+								},
+								log,
+								{ session }
+							),
+							log,
+							'Error moving task',
+							undefined,
+							args.projectRoot
+						);
+					}
 				}
 			} catch (error) {
 				return createErrorResponse(
