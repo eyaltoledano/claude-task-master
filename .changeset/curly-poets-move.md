@@ -1,5 +1,4 @@
 ---
-"extension": minor
 "task-master-ai": minor
 ---
 
