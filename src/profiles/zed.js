@@ -1,178 +1,146 @@
-// Zed profile for rule-transformer
+// Zed profile using ProfileBuilder
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
 import path from 'path';
 import fs from 'fs';
-import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile } from './base-profile.js';
 
-/**
- * Transform standard MCP config format to Zed format
- * @param {Object} mcpConfig - Standard MCP configuration object
- * @returns {Object} - Transformed Zed configuration object
- */
-function transformToZedFormat(mcpConfig) {
-	const zedConfig = {};
+// Helper function to manage Zed's context servers configuration
+async function addZedContextServers(projectRoot) {
+	const configPath = path.join(projectRoot, '.zed/context_servers.json');
+	const settingsDir = path.dirname(configPath);
 
-	// Transform mcpServers to context_servers
-	if (mcpConfig.mcpServers) {
-		zedConfig['context_servers'] = mcpConfig.mcpServers;
+	// Ensure .zed directory exists
+	if (!fs.existsSync(settingsDir)) {
+		fs.mkdirSync(settingsDir, { recursive: true });
 	}
 
-	// Preserve any other existing settings
-	for (const [key, value] of Object.entries(mcpConfig)) {
-		if (key !== 'mcpServers') {
-			zedConfig[key] = value;
+	// Define context servers configuration
+	const contextServers = {
+		taskmaster: {
+			command: 'npx',
+			args: ['task-master-ai', 'mcp-server'],
+			description: 'Task Master MCP Server for intelligent task management'
+		}
+	};
+
+	// Read existing configuration or create new
+	let existingConfig = {};
+	if (fs.existsSync(configPath)) {
+		try {
+			const content = fs.readFileSync(configPath, 'utf8');
+			existingConfig = JSON.parse(content);
+		} catch (error) {
+			console.warn(
+				`Warning: Could not parse existing ${configPath}:`,
+				error.message
+			);
 		}
 	}
 
-	return zedConfig;
+	// Merge configurations
+	const mergedConfig = { ...existingConfig, ...contextServers };
+
+	// Write updated configuration
+	fs.writeFileSync(configPath, JSON.stringify(mergedConfig, null, 2));
+	console.log(`Zed context servers configuration updated: ${configPath}`);
 }
 
-// Lifecycle functions for Zed profile
-function onAddRulesProfile(targetDir, assetsDir) {
-	// MCP transformation will be handled in onPostConvertRulesProfile
-	// File copying is handled by the base profile via fileMap
-}
+async function removeZedContextServers(projectRoot) {
+	const configPath = path.join(projectRoot, '.zed/context_servers.json');
 
-function onRemoveRulesProfile(targetDir) {
-	// Clean up .rules (Zed uses .rules directly in root)
-	const userRulesFile = path.join(targetDir, '.rules');
+	if (fs.existsSync(configPath)) {
+		try {
+			const content = fs.readFileSync(configPath, 'utf8');
+			const config = JSON.parse(content);
 
-	try {
-		// Remove Task Master .rules
-		if (fs.existsSync(userRulesFile)) {
-			fs.rmSync(userRulesFile, { force: true });
-			log('debug', `[Zed] Removed ${userRulesFile}`);
-		}
-	} catch (err) {
-		log('error', `[Zed] Failed to remove Zed instructions: ${err.message}`);
-	}
-
-	// MCP Removal: Remove context_servers section
-	const mcpConfigPath = path.join(targetDir, '.zed', 'settings.json');
-
-	if (!fs.existsSync(mcpConfigPath)) {
-		log('debug', '[Zed] No .zed/settings.json found to clean up');
-		return;
-	}
-
-	try {
-		// Read the current config
-		const configContent = fs.readFileSync(mcpConfigPath, 'utf8');
-		const config = JSON.parse(configContent);
-
-		// Check if it has the context_servers section and task-master-ai server
-		if (
-			config['context_servers'] &&
-			config['context_servers']['task-master-ai']
-		) {
-			// Remove task-master-ai server
-			delete config['context_servers']['task-master-ai'];
-
-			// Check if there are other MCP servers in context_servers
-			const remainingServers = Object.keys(config['context_servers']);
-
-			if (remainingServers.length === 0) {
-				// No other servers, remove entire context_servers section
-				delete config['context_servers'];
-				log('debug', '[Zed] Removed empty context_servers section');
-			}
+			// Remove taskmaster entry
+			delete config.taskmaster;
 
 			// Check if config is now empty
-			const remainingKeys = Object.keys(config);
-
-			if (remainingKeys.length === 0) {
-				// Config is empty, remove entire file
-				fs.rmSync(mcpConfigPath, { force: true });
-				log('info', '[Zed] Removed empty settings.json file');
-
-				// Check if .zed directory is empty
-				const zedDirPath = path.join(targetDir, '.zed');
-				if (fs.existsSync(zedDirPath)) {
-					const remainingContents = fs.readdirSync(zedDirPath);
-					if (remainingContents.length === 0) {
-						fs.rmSync(zedDirPath, { recursive: true, force: true });
-						log('debug', '[Zed] Removed empty .zed directory');
-					}
-				}
-			} else {
-				// Write back the modified config
-				fs.writeFileSync(
-					mcpConfigPath,
-					JSON.stringify(config, null, '\t') + '\n'
+			if (Object.keys(config).length === 0) {
+				// Remove the empty file
+				fs.unlinkSync(configPath);
+				console.log(
+					`Removed empty context servers configuration: ${configPath}`
 				);
-				log(
-					'info',
-					'[Zed] Removed TaskMaster from settings.json, preserved other configurations'
+			} else {
+				// Write back the updated config
+				fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+				console.log(
+					`Taskmaster context server removed from Zed configuration: ${configPath}`
 				);
 			}
-		} else {
-			log('debug', '[Zed] TaskMaster not found in context_servers');
+		} catch (error) {
+			console.warn(`Warning: Could not update ${configPath}:`, error.message);
 		}
-	} catch (error) {
-		log('error', `[Zed] Failed to clean up settings.json: ${error.message}`);
 	}
 }
 
-function onPostConvertRulesProfile(targetDir, assetsDir) {
-	// Handle .rules setup (same as onAddRulesProfile)
-	onAddRulesProfile(targetDir, assetsDir);
+// Create zed profile using ProfileBuilder
+const zedProfile = ProfileBuilder.minimal('zed')
+	.display('Zed')
+	.profileDir('.zed')
+	.rulesDir('.zed/rules')
+	.mcpConfig({
+		configName: 'settings.json' // Use settings.json as expected by tests
+	})
+	.includeDefaultRules(false) // Zed has its own complex rules management
+	.fileMap({
+		'AGENTS.md': '.rules' // Zed-specific file mapping
+	})
+	.onAdd(addZedContextServers)
+	.onRemove(removeZedContextServers)
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'zed.dev' },
+			{ from: /\[cursor\.so\]/g, to: '[zed.dev]' },
+			{ from: /href="https:\/\/cursor\.so/g, to: 'href="https://zed.dev' },
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://zed.dev' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'Zed' : 'zed')
+			},
+			{ from: /Cursor/g, to: 'Zed' }
+		],
+		// Documentation URL replacements
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'zed.dev/docs' }],
+		// File extension mappings (.mdc to .md)
+		fileExtensions: [{ from: /\.mdc/g, to: '.md' }],
+		// Tool name mappings (standard - no custom tools)
+		toolNames: {
+			edit_file: 'edit_file',
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
+		},
 
-	// Transform MCP config to Zed format
-	const mcpConfigPath = path.join(targetDir, '.zed', 'settings.json');
+		// Tool context mappings (zed uses standard contexts)
+		toolContexts: [],
 
-	if (!fs.existsSync(mcpConfigPath)) {
-		log('debug', '[Zed] No .zed/settings.json found to transform');
-		return;
-	}
+		// Tool group mappings (zed uses standard groups)
+		toolGroups: [],
 
-	try {
-		// Read the generated standard MCP config
-		const mcpConfigContent = fs.readFileSync(mcpConfigPath, 'utf8');
-		const mcpConfig = JSON.parse(mcpConfigContent);
+		// File reference mappings (zed uses standard file references)
+		fileReferences: []
+	})
+	.globalReplacements([
+		// Core Zed directory structure changes
+		{ from: /\.cursor\/rules/g, to: '.zed/rules' },
+		{ from: /\.cursor\/mcp\.json/g, to: '.zed/context_servers.json' },
 
-		// Check if it's already in Zed format (has context_servers)
-		if (mcpConfig['context_servers']) {
-			log(
-				'info',
-				'[Zed] settings.json already in Zed format, skipping transformation'
-			);
-			return;
-		}
+		// Essential markdown link transformations for Zed structure
+		{
+			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.zed/rules/$2.md)'
+		},
 
-		// Transform to Zed format
-		const zedConfig = transformToZedFormat(mcpConfig);
+		// Zed specific terminology
+		{ from: /rules directory/g, to: 'zed rules directory' },
+		{ from: /cursor rules/gi, to: 'Zed rules' }
+	])
+	.build();
 
-		// Write back the transformed config with proper formatting
-		fs.writeFileSync(
-			mcpConfigPath,
-			JSON.stringify(zedConfig, null, '\t') + '\n'
-		);
-
-		log('info', '[Zed] Transformed settings.json to Zed format');
-		log('debug', '[Zed] Renamed mcpServers to context_servers');
-	} catch (error) {
-		log('error', `[Zed] Failed to transform settings.json: ${error.message}`);
-	}
-}
-
-// Create and export zed profile using the base factory
-export const zedProfile = createProfile({
-	name: 'zed',
-	displayName: 'Zed',
-	url: 'zed.dev',
-	docsUrl: 'zed.dev/docs',
-	profileDir: '.zed',
-	rulesDir: '.',
-	mcpConfig: true,
-	mcpConfigName: 'settings.json',
-	includeDefaultRules: false,
-	fileMap: {
-		'AGENTS.md': '.rules'
-	},
-	onAdd: onAddRulesProfile,
-	onRemove: onRemoveRulesProfile,
-	onPostConvert: onPostConvertRulesProfile
-});
-
-// Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };
+// Export the zed profile
+export { zedProfile };

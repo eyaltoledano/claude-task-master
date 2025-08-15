@@ -22,9 +22,9 @@ describe('Rule Transformer - Gemini Profile', () => {
 
 	test('should have minimal profile implementation', () => {
 		// Verify that gemini.js is minimal (no lifecycle functions)
-		expect(geminiProfile.onAddRulesProfile).toBeUndefined();
-		expect(geminiProfile.onRemoveRulesProfile).toBeUndefined();
-		expect(geminiProfile.onPostConvertRulesProfile).toBeUndefined();
+		expect(geminiProfile.hooks.onAdd).toBeUndefined();
+		expect(geminiProfile.hooks.onRemove).toBeUndefined();
+		expect(geminiProfile.hooks.onPost).toBeUndefined();
 	});
 
 	test('should use settings.json instead of mcp.json', () => {
