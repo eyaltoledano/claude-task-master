@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.24.0
+
+### Minor Changes
+
+- [#1100](https://github.com/eyaltoledano/claude-task-master/pull/1100) [`30ca144`](https://github.com/eyaltoledano/claude-task-master/commit/30ca144231c36a6c63911f20adc225d38fb15a2f) Thanks [@vedovelli](https://github.com/vedovelli)! - Display current task ID on task details page
+
+### Patch Changes
+
+- Updated dependencies [[`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8), [`fc47714`](https://github.com/eyaltoledano/claude-task-master/commit/fc477143400fd11d953727bf1b4277af5ad308d1), [`782728f`](https://github.com/eyaltoledano/claude-task-master/commit/782728ff95aa2e3b766d48273b57f6c6753e8573), [`3dee60d`](https://github.com/eyaltoledano/claude-task-master/commit/3dee60dc3d566e3cff650accb30f994b8bb3a15e), [`e3ed4d7`](https://github.com/eyaltoledano/claude-task-master/commit/e3ed4d7c14b56894d7da675eb2b757423bea8f9d), [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8), [`95640dc`](https://github.com/eyaltoledano/claude-task-master/commit/95640dcde87ce7879858c0a951399fb49f3b6397), [`311b243`](https://github.com/eyaltoledano/claude-task-master/commit/311b2433e23c771c8d3a4d3f5ac577302b8321e5)]:
+  - task-master-ai@0.25.0
+
 ## 0.24.0-rc.0
 
 ### Minor Changes

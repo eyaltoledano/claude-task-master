@@ -1,5 +1,59 @@
 # task-master-ai
 
+## 0.25.0
+
+### Minor Changes
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Add cross-tag task movement functionality for organizing tasks across different contexts.
+
+  This feature enables moving tasks between different tags (contexts) in your project, making it easier to organize work across different branches, environments, or project phases.
+
+  ## CLI Usage Examples
+
+  Move a single task from one tag to another:
+
+  ```bash
+  # Move task 5 from backlog tag to in-progress tag
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-1
+
+  # Move task with its dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-2 --with-dependencies
+
+  # Move task without checking dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=bug-3 --ignore-dependencies
+  ```
+
+  Move multiple tasks at once:
+
+  ```bash
+  # Move multiple tasks between tags
+  task-master move --from=5,6,7 --from-tag=backlog --to-tag=bug-4 --with-dependencies
+  ```
+
+- [#1040](https://github.com/eyaltoledano/claude-task-master/pull/1040) [`fc47714`](https://github.com/eyaltoledano/claude-task-master/commit/fc477143400fd11d953727bf1b4277af5ad308d1) Thanks [@DomVidja](https://github.com/DomVidja)! - "Add Kilo Code profile integration with custom modes and MCP configuration"
+
+- [#1054](https://github.com/eyaltoledano/claude-task-master/pull/1054) [`782728f`](https://github.com/eyaltoledano/claude-task-master/commit/782728ff95aa2e3b766d48273b57f6c6753e8573) Thanks [@martincik](https://github.com/martincik)! - Add compact mode --compact / -c flag to the `tm list` CLI command
+  - outputs tasks in a minimal, git-style one-line format. This reduces verbose output from ~30+ lines of dashboards and tables to just 1 line per task, making it much easier to quickly scan available tasks.
+    - Git-style format: ID STATUS TITLE (PRIORITY) → DEPS
+    - Color-coded status, priority, and dependencies
+    - Smart title truncation and dependency abbreviation
+    - Subtask support with indentation
+    - Full backward compatibility with existing list options
+
+- [#1048](https://github.com/eyaltoledano/claude-task-master/pull/1048) [`e3ed4d7`](https://github.com/eyaltoledano/claude-task-master/commit/e3ed4d7c14b56894d7da675eb2b757423bea8f9d) Thanks [@joedanz](https://github.com/joedanz)! - Add CLI & MCP progress tracking for parse-prd command.
+
+- [#1124](https://github.com/eyaltoledano/claude-task-master/pull/1124) [`95640dc`](https://github.com/eyaltoledano/claude-task-master/commit/95640dcde87ce7879858c0a951399fb49f3b6397) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for ollama `gpt-oss:20b` and `gpt-oss:120b`
+
+- [#1123](https://github.com/eyaltoledano/claude-task-master/pull/1123) [`311b243`](https://github.com/eyaltoledano/claude-task-master/commit/311b2433e23c771c8d3a4d3f5ac577302b8321e5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Remove `clear` Taskmaster claude code commands since they were too close to the claude-code clear command
+
+### Patch Changes
+
+- [#1131](https://github.com/eyaltoledano/claude-task-master/pull/1131) [`3dee60d`](https://github.com/eyaltoledano/claude-task-master/commit/3dee60dc3d566e3cff650accb30f994b8bb3a15e) Thanks [@joedanz](https://github.com/joedanz)! - Update Cursor one-click install link to new URL format
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Fix `add-tag --from-branch` command error where `projectRoot` was not properly referenced
+
+  The command was failing with "projectRoot is not defined" error because the code was directly referencing `projectRoot` instead of `context.projectRoot` in the git repository checks. This fix corrects the variable references to use the proper context object.
+
 ## 0.25.0-rc.0
 
 ### Minor Changes
