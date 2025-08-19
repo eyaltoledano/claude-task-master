@@ -33,6 +33,6 @@ This issue will be automatically closed as a duplicate in 3 days.
 - If your issue is a duplicate, please close it and 👍 the existing issue instead
 - To prevent auto-closure, add a comment or 👎 this comment
 
-🤖 Generated with [Claude Code](https://claude.ai/code)
+🤖 Generated with \[Task Master Bot\]
 
 ---
