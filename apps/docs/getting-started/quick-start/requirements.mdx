@@ -1,0 +1,50 @@
+---
+title: Requirements
+sidebarTitle: "Requirements"
+---
+Before you can start using TaskMaster AI, you'll need to install Node.js and set up at least one model API Key.
+
+## 1. Node.js
+
+TaskMaster AI is built with Node.js and requires it to run. npm (Node Package Manager) comes bundled with Node.js.
+
+<Accordion title="Install Node.js">
+
+### Installation
+
+**Option 1: Download from official website**
+1. Visit [nodejs.org](https://nodejs.org)
+2. Download the **LTS (Long Term Support)** version for your operating system
+3. Run the installer and follow the setup wizard
+
+**Option 2: Use a package manager**
+
+<CodeGroup>
+
+```bash Windows (Chocolatey)
+choco install nodejs
+```
+
+```bash Windows (winget)
+winget install OpenJS.NodeJS
+```
+
+</CodeGroup>
+
+</Accordion>
+
+## 2. Model API Key
+
+Taskmaster utilizes AI across several commands, and those require a separate API key. For the purpose of a Quick Start we recommend setting up an API Key with Anthropic for your main model and Perplexity for your research model (optional but recommended).
+
+<Tip>Task Master shows API costs per command used. Most users load $5-10 on their keys and don't have to top it off for a few months.</Tip>
+
+At least one (1) of the following is required:
+
+1. Anthropic API key (Claude API) - **recommended for Quick Start**
+2. OpenAI API key
+3. Google Gemini API key
+4. Perplexity API key (for research model)
+5. xAI API Key (for research or main model)
+6. OpenRouter API Key (for research or main model)
+7. Claude Code (no API key required - requires Claude Code CLI)

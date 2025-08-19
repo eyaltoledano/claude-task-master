@@ -1,0 +1,83 @@
+{
+	"$schema": "https://mintlify.com/docs.json",
+	"theme": "mint",
+	"name": "Task Master",
+	"colors": {
+		"primary": "#3366CC",
+		"light": "#6699FF",
+		"dark": "#24478F"
+	},
+	"favicon": "/favicon.svg",
+	"navigation": {
+		"tabs": [
+			{
+				"tab": "Task Master Documentation",
+				"groups": [
+					{
+						"group": "Welcome",
+						"pages": ["introduction"]
+					},
+					{
+						"group": "Getting Started",
+						"pages": [
+							{
+								"group": "Quick Start",
+								"pages": [
+									"getting-started/quick-start/quick-start",
+									"getting-started/quick-start/requirements",
+									"getting-started/quick-start/installation",
+									"getting-started/quick-start/configuration-quick",
+									"getting-started/quick-start/prd-quick",
+									"getting-started/quick-start/tasks-quick",
+									"getting-started/quick-start/execute-quick"
+								]
+							},
+							"getting-started/faq",
+							"getting-started/contribute"
+						]
+					},
+					{
+						"group": "Best Practices",
+						"pages": [
+							"best-practices/index",
+							"best-practices/configuration-advanced",
+							"best-practices/advanced-tasks"
+						]
+					},
+					{
+						"group": "Technical Capabilities",
+						"pages": [
+							"capabilities/mcp",
+							"capabilities/cli-root-commands",
+							"capabilities/task-structure"
+						]
+					}
+				]
+			}
+		],
+		"global": {
+			"anchors": [
+				{
+					"anchor": "Github",
+					"href": "https://github.com/eyaltoledano/claude-task-master",
+					"icon": "github"
+				},
+				{
+					"anchor": "Discord",
+					"href": "https://discord.gg/fWJkU7rf",
+					"icon": "discord"
+				}
+			]
+		}
+	},
+	"logo": {
+		"light": "/logo/task-master-logo.png",
+		"dark": "/logo/task-master-logo.png"
+	},
+	"footer": {
+		"socials": {
+			"x": "https://x.com/TaskmasterAI",
+			"github": "https://github.com/eyaltoledano/claude-task-master"
+		}
+	}
+}

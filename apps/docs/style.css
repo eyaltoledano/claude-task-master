@@ -1,0 +1,10 @@
+/*
+ * This file is used to override the default logo style of the docs theme.
+ * It is not used for the actual documentation content.
+ */
+
+#navbar img {
+	height: auto !important; /* Let intrinsic SVG size determine height */
+	width: 200px !important; /* Control width */
+	margin-top: 5px !important; /* Add some space above the logo */
+}

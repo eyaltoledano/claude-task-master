@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.24.0",
+	"version": "0.25.0-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -9,10 +9,7 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"."
-	],
+	"workspaces": ["apps/*", "."],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -57,12 +54,14 @@
 		"@aws-sdk/credential-providers": "^3.817.0",
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
+		"@streamparser/json": "^0.0.22",
 		"ai": "^4.3.10",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"cli-highlight": "^2.1.11",
+		"cli-progress": "^3.12.0",
 		"cli-table3": "^0.6.5",
 		"commander": "^11.1.0",
 		"cors": "^2.8.5",

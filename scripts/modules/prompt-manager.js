@@ -36,7 +36,7 @@ export class PromptManager {
 			const schema = JSON.parse(schemaContent);
 
 			this.validatePrompt = this.ajv.compile(schema);
-			log('info', '✓ JSON schema validation enabled');
+			log('debug', '✓ JSON schema validation enabled');
 		} catch (error) {
 			log('warn', `⚠ Schema validation disabled: ${error.message}`);
 			this.validatePrompt = () => true; // Fallback to no validation
