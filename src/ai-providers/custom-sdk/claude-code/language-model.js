@@ -169,6 +169,11 @@ export class ClaudeCodeLanguageModel {
 		const warnings = this.generateUnsupportedWarnings(options);
 
 		try {
+			if (!query) {
+				throw new Error(
+					"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+				);
+			}
 			const response = query({
 				prompt: messagesPrompt,
 				options: queryOptions
@@ -227,7 +232,7 @@ export class ClaudeCodeLanguageModel {
 				finishReason = 'truncated';
 				// Skip re-throwing: fall through so the caller receives usable data
 			} else {
-				if (error instanceof AbortError) {
+				if (AbortError && error instanceof AbortError) {
 					throw options.abortSignal?.aborted
 						? options.abortSignal.reason
 						: error;
@@ -335,6 +340,11 @@ export class ClaudeCodeLanguageModel {
 		const stream = new ReadableStream({
 			start: async (controller) => {
 				try {
+					if (!query) {
+						throw new Error(
+							"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
+						);
+					}
 					const response = query({
 						prompt: messagesPrompt,
 						options: queryOptions
@@ -478,7 +488,7 @@ export class ClaudeCodeLanguageModel {
 				} catch (error) {
 					let errorToEmit;
 
-					if (error instanceof AbortError) {
+					if (AbortError && error instanceof AbortError) {
 						errorToEmit = options.abortSignal?.aborted
 							? options.abortSignal.reason
 							: error;
