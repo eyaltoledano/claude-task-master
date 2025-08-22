@@ -63,8 +63,15 @@ export class PrdParseConfig {
 		this.targetTag = this.tag || getCurrentTag(this.projectRoot) || 'master';
 		this.isMCP = !!this.mcpLog;
 		this.outputFormat = this.isMCP && !this.reportProgress ? 'json' : 'text';
+
+		// Feature flag: Temporarily disable streaming, use generateObject instead
+		// TODO: Re-enable streaming once issues are resolved
+		const ENABLE_STREAMING = false;
+
 		this.useStreaming =
-			typeof this.reportProgress === 'function' || this.outputFormat === 'text';
+			ENABLE_STREAMING &&
+			(typeof this.reportProgress === 'function' ||
+				this.outputFormat === 'text');
 	}
 
 	/**

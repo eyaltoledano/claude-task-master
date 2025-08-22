@@ -795,7 +795,7 @@ describe('parsePRD', () => {
 	});
 
 	describe('Streaming vs Non-Streaming Modes', () => {
-		test('should use streaming when reportProgress function is provided', async () => {
+		test('should use non-streaming when reportProgress function is provided (streaming disabled)', async () => {
 			// Setup mocks to simulate normal conditions (no existing output file)
 			fs.default.existsSync.mockImplementation((path) => {
 				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
@@ -815,22 +815,19 @@ describe('parsePRD', () => {
 			};
 			JSONParser.mockReturnValue(mockParser);
 
-			// Call the function with reportProgress to trigger streaming path
+			// Call the function with reportProgress - with streaming disabled, should use non-streaming
 			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
 				reportProgress: mockReportProgress
 			});
 
-			// Verify streamObjectService was called (streaming path)
-			expect(streamObjectService).toHaveBeenCalled();
+			// With streaming disabled, should use generateObjectService instead
+			expect(generateObjectService).toHaveBeenCalled();
 
-			// Verify generateObjectService was NOT called (non-streaming path)
-			expect(generateObjectService).not.toHaveBeenCalled();
+			// Verify streamObjectService was NOT called (streaming is disabled)
+			expect(streamObjectService).not.toHaveBeenCalled();
 
-			// Verify progress reporting was called
+			// Verify progress reporting was still called
 			expect(mockReportProgress).toHaveBeenCalled();
-
-			// We no longer use parseStream with streamObject
-			// expect(parseStream).toHaveBeenCalled();
 
 			// Verify result structure
 			expect(result).toEqual({
@@ -840,7 +837,7 @@ describe('parsePRD', () => {
 			});
 		});
 
-		test('should fallback to non-streaming when streaming fails with specific errors', async () => {
+		test.skip('should fallback to non-streaming when streaming fails with specific errors (streaming disabled)', async () => {
 			// Setup mocks to simulate normal conditions (no existing output file)
 			fs.default.existsSync.mockImplementation((path) => {
 				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
@@ -954,7 +951,7 @@ describe('parsePRD', () => {
 			});
 		});
 
-		test('should handle research flag with streaming', async () => {
+		test('should handle research flag with non-streaming (streaming disabled)', async () => {
 			// Setup mocks to simulate normal conditions
 			fs.default.existsSync.mockImplementation((path) => {
 				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
@@ -965,19 +962,19 @@ describe('parsePRD', () => {
 			// Mock progress reporting function
 			const mockReportProgress = jest.fn(() => Promise.resolve());
 
-			// Call with streaming + research
+			// Call with reportProgress + research - with streaming disabled, should use non-streaming
 			await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3, {
 				reportProgress: mockReportProgress,
 				research: true
 			});
 
-			// Verify streaming path was used with research role
-			expect(streamObjectService).toHaveBeenCalledWith(
+			// With streaming disabled, should use generateObjectService with research role
+			expect(generateObjectService).toHaveBeenCalledWith(
 				expect.objectContaining({
 					role: 'research'
 				})
 			);
-			expect(generateObjectService).not.toHaveBeenCalled();
+			expect(streamObjectService).not.toHaveBeenCalled();
 		});
 
 		test('should handle research flag with non-streaming', async () => {
@@ -1009,7 +1006,7 @@ describe('parsePRD', () => {
 			expect(streamObjectService).not.toHaveBeenCalled();
 		});
 
-		test('should use streaming for CLI text mode even without reportProgress', async () => {
+		test('should use non-streaming for CLI text mode (streaming disabled)', async () => {
 			// Setup mocks to simulate normal conditions
 			fs.default.existsSync.mockImplementation((path) => {
 				if (path === 'tasks/tasks.json') return false; // Output file doesn't exist
@@ -1020,13 +1017,12 @@ describe('parsePRD', () => {
 			// Call without mcpLog and without reportProgress (CLI text mode)
 			const result = await parsePRD('path/to/prd.txt', 'tasks/tasks.json', 3);
 
-			// Verify streaming path was used (no mcpLog means CLI text mode, which should use streaming)
-			expect(streamObjectService).toHaveBeenCalled();
-			expect(generateObjectService).not.toHaveBeenCalled();
+			// With streaming disabled, should use generateObjectService even in CLI text mode
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(streamObjectService).not.toHaveBeenCalled();
 
-			// Verify progress tracker components were called for CLI mode
-			expect(createParsePrdTracker).toHaveBeenCalled();
-			expect(displayParsePrdStart).toHaveBeenCalled();
+			// Progress tracker components may still be called for CLI mode display
+			// but the actual parsing uses non-streaming
 
 			expect(result).toEqual({
 				success: true,
