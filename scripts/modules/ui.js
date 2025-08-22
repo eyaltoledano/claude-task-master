@@ -2876,9 +2876,6 @@ export function displayCrossTagDependencyError(
 			`  4. Move dependencies first: task-master move --from=${conflicts.map((c) => c.dependencyId).join(',')} --from-tag=${conflicts[0].dependencyTag} --to-tag=${targetTag}`
 		);
 	}
-	console.log(
-		`  5. Force move (may break dependencies): task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --force`
-	);
 }
 
 /**
