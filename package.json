@@ -9,10 +9,7 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"."
-	],
+	"workspaces": ["apps/*", "."],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
@@ -89,7 +86,7 @@
 		"zod-to-json-schema": "^3.24.5"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.25",
+		"@anthropic-ai/claude-code": "^1.0.88",
 		"@biomejs/cli-linux-x64": "^1.9.4",
 		"ai-sdk-provider-gemini-cli": "^0.1.1"
 	},
