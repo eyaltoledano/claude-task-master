@@ -3,15 +3,23 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.24.0",
+	"version": "0.24.1",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
 		"vscode": "^1.93.0"
 	},
-	"categories": ["AI", "Visualization", "Education", "Other"],
+	"categories": [
+		"AI",
+		"Visualization",
+		"Education",
+		"Other"
+	],
 	"main": "./dist/extension.js",
-	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
+	"activationEvents": [
+		"onStartupFinished",
+		"workspaceContains:.taskmaster/**"
+	],
 	"contributes": {
 		"viewsContainers": {
 			"activitybar": [
@@ -139,7 +147,11 @@
 				},
 				"taskmaster.ui.theme": {
 					"type": "string",
-					"enum": ["auto", "light", "dark"],
+					"enum": [
+						"auto",
+						"light",
+						"dark"
+					],
 					"default": "auto",
 					"description": "UI theme preference"
 				},
@@ -200,7 +212,12 @@
 				},
 				"taskmaster.debug.logLevel": {
 					"type": "string",
-					"enum": ["error", "warn", "info", "debug"],
+					"enum": [
+						"error",
+						"warn",
+						"info",
+						"debug"
+					],
 					"default": "info",
 					"description": "Logging level"
 				},
@@ -239,7 +256,7 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
-		"task-master-ai": "0.25.0"
+		"task-master-ai": "0.25.1"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",

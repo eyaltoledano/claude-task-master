@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.24.1
+
+### Patch Changes
+
+- Updated dependencies [[`8933557`](https://github.com/eyaltoledano/claude-task-master/commit/89335578ffffc65504b2055c0c85aa7521e5e79b), [`db720a9`](https://github.com/eyaltoledano/claude-task-master/commit/db720a954d390bb44838cd021b8813dde8f3d8de)]:
+  - task-master-ai@0.25.1
+
 ## 0.24.0
 
 ### Minor Changes
