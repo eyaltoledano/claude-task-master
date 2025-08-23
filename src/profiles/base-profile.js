@@ -47,7 +47,7 @@ export function createProfile(editorConfig) {
 	} = editorConfig;
 
 	const mcpConfigPath = mcpConfigName
-		? path.join(profileDir, mcpConfigName)
+		? path.posix.join(profileDir, mcpConfigName)
 		: null;
 
 	// Standard file mapping with custom overrides

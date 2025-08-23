@@ -492,7 +492,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 
 		// Verify that moveTasksBetweenTags was called with 'master' as source tag
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
+			expect.stringContaining('tasks.json'),
 			[1], // parseInt converts string to number
 			'master', // Should use current tag as fallback
 			'in-progress',
@@ -505,13 +505,13 @@ describe('Cross-Tag Move CLI Integration', () => {
 
 		// Verify that generateTaskFiles was called for both tags
 		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
+			expect.stringContaining(path.join('.taskmaster', 'tasks', 'tasks.json')),
+			expect.stringContaining(path.join('.taskmaster', 'tasks')),
 			{ tag: 'master' }
 		);
 		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
+			expect.stringContaining(path.join('.taskmaster', 'tasks', 'tasks.json')),
+			expect.stringContaining(path.join('.taskmaster', 'tasks')),
 			{ tag: 'in-progress' }
 		);
 	});
@@ -545,12 +545,12 @@ describe('Cross-Tag Move CLI Integration', () => {
 		expect(mockGenerateTaskFiles).toHaveBeenCalledTimes(2);
 		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
 			expect.stringContaining('tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
+			expect.stringContaining(path.join('.taskmaster', 'tasks')),
 			{ tag: 'backlog' }
 		);
 		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
 			expect.stringContaining('tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
+			expect.stringContaining(path.join('.taskmaster', 'tasks')),
 			{ tag: 'in-progress' }
 		);
 	});

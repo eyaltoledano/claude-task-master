@@ -720,28 +720,43 @@ test('getTagAwareFilePath should use slugified tags in file paths', () => {
 
 	// Master tag should not be slugified
 	expect(getTagAwareFilePath(basePath, 'master', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report.json'
+		path.posix.join(
+			'/test/project',
+			'.taskmaster/reports/complexity-report.json'
+		)
 	);
 
 	// Null/undefined tags should use base path
 	expect(getTagAwareFilePath(basePath, null, projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report.json'
+		path.posix.join(
+			'/test/project',
+			'.taskmaster/reports/complexity-report.json'
+		)
 	);
 
 	// Regular tag should be slugified
 	expect(getTagAwareFilePath(basePath, 'feature-branch', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-branch.json'
+		path.posix.join(
+			'/test/project',
+			'.taskmaster/reports/complexity-report_feature-branch.json'
+		)
 	);
 
 	// Tag with special characters should be slugified
 	expect(getTagAwareFilePath(basePath, 'feature/user-auth', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-user-auth.json'
+		path.posix.join(
+			'/test/project',
+			'.taskmaster/reports/complexity-report_feature-user-auth.json'
+		)
 	);
 
 	// Tag with spaces and special characters
 	expect(
 		getTagAwareFilePath(basePath, 'Feature Branch @Test', projectRoot)
 	).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-branch-test.json'
+		path.posix.join(
+			'/test/project',
+			'.taskmaster/reports/complexity-report_feature-branch-test.json'
+		)
 	);
 });

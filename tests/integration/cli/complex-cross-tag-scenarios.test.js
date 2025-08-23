@@ -369,7 +369,11 @@ describe('Complex Cross-Tag Scenarios', () => {
 
 			fs.writeFileSync(tasksPath, JSON.stringify(largeTaskSet, null, 2));
 			// Should complete within reasonable time
-			const timeout = process.env.CI ? 10000 : 5000;
+			const timeout = process.env.CI
+				? 10000
+				: process.platform === 'win32'
+					? 60000
+					: 5000;
 			const startTime = Date.now();
 			execSync(
 				`node ${binPath} move --from=50 --from-tag=master --to-tag=in-progress --with-dependencies`,

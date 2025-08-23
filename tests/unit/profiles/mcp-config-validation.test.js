@@ -330,11 +330,14 @@ describe('MCP Configuration Validation', () => {
 				if (profile.mcpConfig !== false) {
 					// Test that path.join works correctly with the mcpConfigPath
 					const testProjectRoot = '/test/project';
-					const fullPath = path.join(testProjectRoot, profile.mcpConfigPath);
+					const fullPath = path.posix.join(
+						testProjectRoot,
+						profile.mcpConfigPath
+					);
 
 					// Should result in a proper absolute path
-					// Note: path.join normalizes paths, so './opencode.json' becomes 'opencode.json'
-					const normalizedExpectedPath = path.join(
+					// Note: path.posix.join normalizes paths, so './opencode.json' becomes 'opencode.json'
+					const normalizedExpectedPath = path.posix.join(
 						testProjectRoot,
 						profile.mcpConfigPath
 					);

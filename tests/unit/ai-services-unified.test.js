@@ -476,9 +476,7 @@ describe('Unified AI Services', () => {
 			expect(mockAnthropicProvider.generateText).toHaveBeenCalledTimes(2); // Initial + 1 retry
 			expect(mockLog).toHaveBeenCalledWith(
 				'info',
-				expect.stringContaining(
-					'Something went wrong on the provider side. Retrying'
-				)
+				expect.stringContaining('Retryable error detected. Retrying')
 			);
 		});
 

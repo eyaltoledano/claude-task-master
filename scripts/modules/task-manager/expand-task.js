@@ -94,6 +94,7 @@ function parseSubtasksFromText(
 	}
 
 	if (!text || text.trim() === '') {
+		logger.error('AI response text is empty after trimming.');
 		throw new Error('AI response text is empty after trimming.');
 	}
 
@@ -101,8 +102,47 @@ function parseSubtasksFromText(
 	let jsonToParse = originalTrimmedResponse; // Initialize jsonToParse with it
 
 	logger.debug(
-		`Original AI Response for parsing (full length: ${jsonToParse.length}): ${jsonToParse.substring(0, 1000)}...`
+		`Starting parseSubtasksFromText with startId=${startId}, expectedCount=${expectedCount}, parentTaskId=${parentTaskId}`
 	);
+
+	// --- NEW: Handle Claude Code CLI text responses ---
+	// Claude Code CLI often returns plain text instead of JSON
+	// Check if the response looks like plain text (no JSON structure)
+	const hasJsonStructure =
+		jsonToParse.includes('"subtasks"') ||
+		jsonToParse.includes('```json') ||
+		(jsonToParse.trim().startsWith('{') && jsonToParse.trim().endsWith('}'));
+
+	logger.debug(
+		`JSON structure check: hasJsonStructure=${hasJsonStructure}, contains subtasks: ${jsonToParse.includes('"subtasks"')}`
+	);
+
+	if (!hasJsonStructure) {
+		logger.debug(
+			'Response appears to be plain text from Claude Code CLI. Attempting to extract subtasks from text format.'
+		);
+
+		// Try to extract subtasks from plain text format
+		const extractedSubtasks = extractSubtasksFromPlainText(
+			jsonToParse,
+			startId,
+			expectedCount,
+			parentTaskId,
+			logger
+		);
+		if (extractedSubtasks && extractedSubtasks.length > 0) {
+			logger.warn(
+				`SUCCESS: Successfully extracted ${extractedSubtasks.length} subtasks from plain text response.`
+			);
+			return extractedSubtasks;
+		} else {
+			logger.debug(
+				'Failed to extract subtasks from plain text. Falling back to JSON parsing.'
+			);
+		}
+	} else {
+		logger.debug('JSON structure detected, proceeding with JSON parsing.');
+	}
 
 	// --- Pre-emptive cleanup for known AI JSON issues ---
 	// Fix for "dependencies": , or "dependencies":,
@@ -156,7 +196,7 @@ function parseSubtasksFromText(
 		}
 		// If it IS the correct structure, we'll skip advanced extraction.
 	} catch (e) {
-		logger.warn(
+		logger.debug(
 			`Simple parse failed: ${e.message}. Proceeding to advanced extraction logic.`
 		);
 		primaryParseAttemptFailed = true;
@@ -170,28 +210,79 @@ function parseSubtasksFromText(
 		// Reset jsonToParse to the original full trimmed response for advanced logic
 		jsonToParse = originalTrimmedResponse;
 
-		// (Insert the more complex extraction logic here - the one we worked on with:
-		//  - targetPattern = '{"subtasks":';
-		//  - careful brace counting for that targetPattern
-		//  - fallbacks to last '{' and '}' if targetPattern logic fails)
-		//  This was the logic from my previous message. Let's assume it's here.
-		//  This block should ultimately set `jsonToParse` to the best candidate string.
-
-		// Example snippet of that advanced logic's start:
+		// Advanced JSON extraction logic
 		const targetPattern = '{"subtasks":';
 		const patternStartIndex = jsonToParse.indexOf(targetPattern);
 
 		if (patternStartIndex !== -1) {
-			const openBraces = 0;
-			const firstBraceFound = false;
-			const extractedJsonBlock = '';
-			// ... (loop for brace counting as before) ...
-			// ... (if successful, jsonToParse = extractedJsonBlock) ...
-			// ... (if that fails, fallbacks as before) ...
+			let openBraces = 0;
+			let firstBraceFound = false;
+			let extractedJsonBlock = '';
+
+			for (let i = patternStartIndex; i < jsonToParse.length; i++) {
+				const char = jsonToParse[i];
+				if (char === '{') {
+					if (!firstBraceFound) {
+						firstBraceFound = true;
+					}
+					openBraces++;
+				} else if (char === '}') {
+					openBraces--;
+				}
+
+				extractedJsonBlock += char;
+
+				if (firstBraceFound && openBraces === 0) {
+					break;
+				}
+			}
+
+			if (openBraces === 0 && extractedJsonBlock.length > 0) {
+				jsonToParse = extractedJsonBlock;
+				logger.debug(
+					'Advanced extraction: Successfully extracted JSON block using target pattern.'
+				);
+			} else {
+				logger.debug(
+					'Advanced extraction: Target pattern found but brace counting failed. Trying fallback extraction.'
+				);
+				// Fallback: try to find the last complete JSON object
+				const lastOpenBrace = jsonToParse.lastIndexOf('{');
+				const lastCloseBrace = jsonToParse.lastIndexOf('}');
+
+				if (
+					lastOpenBrace !== -1 &&
+					lastCloseBrace !== -1 &&
+					lastCloseBrace > lastOpenBrace
+				) {
+					jsonToParse = jsonToParse.substring(
+						lastOpenBrace,
+						lastCloseBrace + 1
+					);
+					logger.debug(
+						'Advanced extraction: Using fallback extraction (last complete JSON object).'
+					);
+				}
+			}
 		} else {
-			// ... (fallback to last '{' and '}' if targetPattern not found) ...
+			logger.debug(
+				'Advanced extraction: Target pattern not found. Trying fallback extraction.'
+			);
+			// Fallback: try to find the last complete JSON object
+			const lastOpenBrace = jsonToParse.lastIndexOf('{');
+			const lastCloseBrace = jsonToParse.lastIndexOf('}');
+
+			if (
+				lastOpenBrace !== -1 &&
+				lastCloseBrace !== -1 &&
+				lastCloseBrace > lastOpenBrace
+			) {
+				jsonToParse = jsonToParse.substring(lastOpenBrace, lastCloseBrace + 1);
+				logger.debug(
+					'Advanced extraction: Using fallback extraction (last complete JSON object).'
+				);
+			}
 		}
-		// End of advanced logic excerpt
 
 		logger.debug(
 			`Advanced extraction: JSON string that will be parsed: ${jsonToParse.substring(0, 500)}...`
@@ -200,16 +291,70 @@ function parseSubtasksFromText(
 			parsedObject = JSON.parse(jsonToParse);
 			logger.debug('Advanced extraction parse successful!');
 		} catch (parseError) {
-			logger.error(
+			logger.debug(
 				`Advanced extraction: Failed to parse JSON object: ${parseError.message}`
 			);
-			logger.error(
-				`Advanced extraction: Problematic JSON string for parse (first 500 chars): ${jsonToParse.substring(0, 500)}`
+
+			// --- FORCED PLAIN TEXT EXTRACTION FOR TESTING ---
+			logger.debug('Attempting to extract subtasks from plain text response.');
+			logger.debug(
+				`Original response for text extraction: ${originalTrimmedResponse.substring(0, 500)}...`
 			);
-			throw new Error(
-				// Re-throw a more specific error if advanced also fails
-				`Failed to parse JSON response object after both simple and advanced attempts: ${parseError.message}`
+
+			try {
+				const extractedSubtasks = extractSubtasksFromPlainText(
+					originalTrimmedResponse,
+					startId,
+					expectedCount,
+					parentTaskId,
+					logger
+				);
+				if (extractedSubtasks && extractedSubtasks.length > 0) {
+					logger.info(
+						`SUCCESS: Extracted ${extractedSubtasks.length} subtasks from plain text response.`
+					);
+					return extractedSubtasks;
+				} else {
+					logger.debug('Plain text extraction returned empty array.');
+				}
+			} catch (extractError) {
+				logger.error(
+					`Error in extractSubtasksFromPlainText: ${extractError.message}`
+				);
+			}
+
+			// --- NEW: Enhanced fallback for mixed text+JSON responses ---
+			logger.debug(
+				'JSON parsing failed. Attempting to extract JSON from mixed text+JSON response.'
 			);
+
+			// Try to extract JSON from the original response (might contain text + JSON)
+			const jsonMatch = originalTrimmedResponse.match(
+				/\{[\s\S]*"subtasks"[\s\S]*\}/
+			);
+			if (jsonMatch) {
+				try {
+					const extractedJson = jsonMatch[0];
+					logger.debug(
+						`Found JSON block in mixed response: ${extractedJson.substring(0, 200)}...`
+					);
+					parsedObject = JSON.parse(extractedJson);
+					logger.info(
+						'Successfully parsed JSON from mixed text+JSON response.'
+					);
+				} catch (jsonParseError) {
+					logger.warn(
+						`Failed to parse extracted JSON: ${jsonParseError.message}`
+					);
+				}
+			}
+
+			if (!parsedObject) {
+				throw new Error(
+					// Re-throw a more specific error if all attempts fail
+					`Failed to parse JSON response object after all attempts (JSON parsing + forced plain text extraction + JSON extraction): ${parseError.message}`
+				);
+			}
 		}
 	}
 
@@ -284,6 +429,114 @@ function parseSubtasksFromText(
 }
 
 /**
+ * Extract subtasks from plain text response (for Claude Code CLI compatibility)
+ * @param {string} text - Plain text response from AI
+ * @param {number} startId - Starting subtask ID
+ * @param {number} expectedCount - Expected number of subtasks
+ * @param {number} parentTaskId - Parent task ID
+ * @param {Object} logger - Logging object
+ * @returns {Array} Array of extracted subtasks
+ */
+function extractSubtasksFromPlainText(
+	text,
+	startId,
+	expectedCount,
+	parentTaskId,
+	logger
+) {
+	logger.debug('Extracting subtasks from plain text response');
+	logger.debug(`Input text length: ${text.length}`);
+
+	const subtasks = [];
+	let currentId = startId;
+
+	// Split text into lines and look for numbered items or bullet points
+	const lines = text.split('\n');
+	logger.debug(`Split into ${lines.length} lines`);
+	let currentSubtask = null;
+
+	for (const line of lines) {
+		const trimmedLine = line.trim();
+
+		// Skip empty lines
+		if (!trimmedLine) continue;
+
+		// Look for numbered items (e.g., "1.", "2.", "1)", "2)", etc.)
+		const numberedMatch = trimmedLine.match(/^(\d+)[\.\)]\s*(.+)$/);
+		// Look for bullet points (e.g., "- ", "* ", "• ")
+		const bulletMatch = trimmedLine.match(/^[\-\*•]\s*(.+)$/);
+		// Look for "Subtask X:" format
+		const subtaskMatch = trimmedLine.match(/^Subtask\s+(\d+):\s*(.+)$/i);
+
+		let title = null;
+
+		if (numberedMatch) {
+			title = numberedMatch[2].trim();
+			logger.debug(`Found numbered item: ${title}`);
+		} else if (bulletMatch) {
+			title = bulletMatch[1].trim();
+			logger.debug(`Found bullet item: ${title}`);
+		} else if (subtaskMatch) {
+			title = subtaskMatch[2].trim();
+			logger.debug(`Found subtask item: ${title}`);
+		}
+
+		if (title) {
+			// If we have a previous subtask, save it
+			if (currentSubtask) {
+				subtasks.push(currentSubtask);
+			}
+
+			// Start a new subtask
+			currentSubtask = {
+				id: currentId,
+				title: title,
+				description: title, // Use title as description initially
+				details: `Implementation details for: ${title}. This subtask was extracted from plain text response and requires manual review for specific implementation approach.`,
+				dependencies: [],
+				status: 'pending',
+				testStrategy: `Test strategy for: ${title}. Verify implementation works as expected.`
+			};
+			currentId++;
+		} else if (currentSubtask) {
+			// This line is part of the current subtask's details
+			if (currentSubtask.details) {
+				currentSubtask.details += '\n' + trimmedLine;
+			} else {
+				currentSubtask.details = trimmedLine;
+			}
+		}
+	}
+
+	// Don't forget the last subtask
+	if (currentSubtask) {
+		subtasks.push(currentSubtask);
+	}
+
+	// Validate extracted subtasks
+	const validatedSubtasks = [];
+	for (const rawSubtask of subtasks) {
+		const result = subtaskSchema.safeParse(rawSubtask);
+		if (result.success) {
+			validatedSubtasks.push(result.data);
+		} else {
+			logger.warn(
+				`Plain text subtask validation failed: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
+			);
+			logger.warn(
+				`Plain text subtask validation failed: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
+			);
+		}
+	}
+
+	logger.debug(
+		`Extracted ${subtasks.length} raw subtasks, validated ${validatedSubtasks.length} subtasks`
+	);
+
+	return validatedSubtasks.slice(0, expectedCount || validatedSubtasks.length);
+}
+
+/**
  * Expand a task into subtasks using the unified AI service (generateTextService).
  * Appends new subtasks by default. Replaces existing subtasks if force=true.
  * Integrates complexity report to determine subtask count and prompt if available,
@@ -336,6 +589,10 @@ async function expandTask(
 		logger.info(`expandTask called with context: session=${!!session}`);
 	}
 
+	// Declare task variable outside try block so it's accessible in catch block
+	let task = null;
+	let finalSubtaskCount = 0; // Declare finalSubtaskCount variable
+
 	try {
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
@@ -346,7 +603,7 @@ async function expandTask(
 			(t) => t.id === parseInt(taskId, 10)
 		);
 		if (taskIndex === -1) throw new Error(`Task ${taskId} not found`);
-		const task = data.tasks[taskIndex];
+		task = data.tasks[taskIndex];
 		logger.info(
 			`Expanding task ${taskId}: ${task.title}${useResearch ? ' with research' : ''}`
 		);
@@ -391,7 +648,6 @@ async function expandTask(
 		// --- End Context Gathering ---
 
 		// --- Complexity Report Integration ---
-		let finalSubtaskCount;
 		let complexityReasoningContext = '';
 		let taskAnalysis = null;
 
@@ -581,10 +837,25 @@ async function expandTask(
 			);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+
+			// Enhanced error logging with more context
 			logger.error(
-				`Error during AI call or parsing for task ${taskId}: ${error.message}`, // Added task ID context
+				`Error during AI call or parsing for task ${taskId}: ${error.message}`,
 				'error'
 			);
+
+			// Log additional error context
+			logger.error(`Error details for task ${taskId}:`, {
+				errorType: error.constructor.name,
+				errorCode: error.code,
+				exitCode: error.exitCode,
+				hasResponseText: !!responseText,
+				responseTextLength: responseText ? responseText.length : 0,
+				useResearch,
+				finalSubtaskCount,
+				role: useResearch ? 'research' : 'main'
+			});
+
 			// Log raw response in debug mode if parsing failed
 			if (
 				error.message.includes('Failed to parse valid subtasks') &&
@@ -592,6 +863,27 @@ async function expandTask(
 			) {
 				logger.error(`Raw AI Response that failed parsing:\n${responseText}`);
 			}
+
+			// Special handling for Claude Code API errors
+			if (
+				error.message &&
+				error.message.includes('Claude Code process exited with code')
+			) {
+				logger.error(
+					`Claude Code CLI error detected for task ${taskId}. This may be due to Ink interface issues on Windows.`
+				);
+				logger.error(
+					`Suggested solutions: Use PowerShell instead of Git Bash, or set environment variables FORCE_COLOR=0 CI=true`
+				);
+			}
+
+			// Special handling for instanceof errors
+			if (error.message && error.message.includes('instanceof')) {
+				logger.error(
+					`Type checking error detected for task ${taskId}. This may be due to undefined classes or modules not being properly loaded.`
+				);
+			}
+
 			throw error;
 		} finally {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
@@ -628,9 +920,50 @@ async function expandTask(
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
+
+		// Enhanced error context logging
+		logger.error(`Expand task error context for task ${taskId}:`, {
+			errorType: error.constructor.name,
+			errorCode: error.code,
+			exitCode: error.exitCode,
+			taskTitle: task?.title || 'task not found',
+			taskStatus: task?.status || 'unknown',
+			hasSubtasks: task?.subtasks ? task.subtasks.length : 0,
+			useResearch,
+			finalSubtaskCount: finalSubtaskCount || 0,
+			projectRoot: projectRoot || 'not set',
+			tag: tag || 'master'
+		});
+
+		// Special error handling for common issues
+		if (
+			error.message &&
+			error.message.includes('Claude Code process exited with code')
+		) {
+			logger.error(
+				`Claude Code CLI error in expand-task for task ${taskId}. This is a known issue on Windows with Git Bash.`
+			);
+			logger.error(
+				`Solutions: Use PowerShell, set FORCE_COLOR=0 CI=true, or try a different AI provider.`
+			);
+		}
+
+		if (error.message && error.message.includes('instanceof')) {
+			logger.error(
+				`Type checking error in expand-task for task ${taskId}. This may indicate a module loading issue.`
+			);
+		}
+
+		if (error.message && error.message.includes('not found')) {
+			logger.error(
+				`Task or file not found error in expand-task for task ${taskId}. Check if the task exists and file paths are correct.`
+			);
+		}
+
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.error(error); // Log full stack in debug CLI mode
 		}
+
 		throw error; // Re-throw for the caller
 	}
 }

@@ -326,11 +326,9 @@ async function updateSubtaskById(
 		}
 
 		if (outputFormat === 'text' && getDebugFlag(session)) {
-			console.log('>>> DEBUG: About to call writeJSON with updated data...');
 		}
 		writeJSON(tasksPath, data, projectRoot, tag);
 		if (outputFormat === 'text' && getDebugFlag(session)) {
-			console.log('>>> DEBUG: writeJSON call completed.');
 		}
 
 		report('success', `Successfully updated subtask ${subtaskId}`);

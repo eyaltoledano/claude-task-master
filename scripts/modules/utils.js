@@ -94,10 +94,10 @@ function slugifyTagForFilePath(tagName) {
  * @returns {string} The resolved file path
  */
 function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
-	// Use path.parse and format for clean tag insertion
-	const parsedPath = path.parse(basePath);
+	// Use path.posix.parse and path.posix.format for cross-platform path generation
+	const parsedPath = path.posix.parse(basePath);
 	if (!tag || tag === 'master') {
-		return path.join(projectRoot, basePath);
+		return path.posix.join(projectRoot, basePath);
 	}
 
 	// Slugify the tag for filesystem safety
@@ -105,8 +105,8 @@ function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
 
 	// Append slugified tag before file extension
 	parsedPath.base = `${parsedPath.name}_${slugifiedTag}${parsedPath.ext}`;
-	const relativePath = path.format(parsedPath);
-	return path.join(projectRoot, relativePath);
+	const relativePath = path.posix.format(parsedPath);
+	return path.posix.join(projectRoot, relativePath);
 }
 
 // --- Project Root Finding Utility ---
@@ -653,7 +653,10 @@ function createStateJson(statePath) {
 
 		fs.writeFileSync(statePath, JSON.stringify(initialState, null, 2), 'utf8');
 		if (process.env.TASKMASTER_DEBUG === 'true') {
+<<<<<<< HEAD
 			console.log('[DEBUG] Created initial state.json for tagged task system');
+=======
+>>>>>>> 658c4b0 (fix: Windows compatibility issues and test failures)
 		}
 	} catch (error) {
 		if (process.env.TASKMASTER_DEBUG === 'true') {

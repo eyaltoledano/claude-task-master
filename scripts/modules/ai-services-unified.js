@@ -209,6 +209,18 @@ const INITIAL_RETRY_DELAY_MS = 1000;
 // Helper function to check if an error is retryable
 function isRetryableError(error) {
 	const errorMessage = error.message?.toLowerCase() || '';
+
+	// Check for Claude Code CLI specific errors that should not be retried
+	if (
+		errorMessage.includes('raw mode is not supported') ||
+		errorMessage.includes('ink') ||
+		errorMessage.includes('claude code process exited with code 143') ||
+		errorMessage.includes('authentication failed') ||
+		errorMessage.includes('not logged in')
+	) {
+		return false;
+	}
+
 	return (
 		errorMessage.includes('rate limit') ||
 		errorMessage.includes('overloaded') ||
@@ -221,6 +233,110 @@ function isRetryableError(error) {
 }
 
 /**
+ * Helper function to check if an error is related to instanceof issues
+ * @param {Error} error - The error to check
+ * @returns {boolean} - True if it's an instanceof error
+ */
+function isInstanceofError(error) {
+	const errorMessage = error.message?.toLowerCase() || '';
+	return (
+		errorMessage.includes('right-hand side of instanceof is not an object') ||
+		errorMessage.includes('instanceof') ||
+		errorMessage.includes('type error')
+	);
+}
+
+/**
+ * Extracts detailed error information from Claude Code API errors
+ * @param {Error | object | any} error - The error object from Claude Code API
+ * @returns {string} A detailed and user-friendly error message
+ */
+function _extractClaudeCodeErrorMessage(error) {
+	try {
+		let message = 'Claude Code API error';
+		let details = [];
+		let exitCode = null;
+
+		// Extract exit code from error message
+		const exitCodeMatch = error.message.match(/exited with code (\d+)/);
+		if (exitCodeMatch) {
+			exitCode = parseInt(exitCodeMatch[1]);
+			details.push(`Exit code: ${exitCode}`);
+		}
+
+		// Extract stderr information if available
+		if (error?.data?.stderr) {
+			const stderr = error.data.stderr.trim();
+			if (stderr) {
+				// Clean up stderr and extract meaningful information
+				const cleanStderr = stderr
+					.split('\n')
+					.map((line) => line.trim())
+					.filter((line) => line && !line.startsWith('Error: Error:')) // Remove duplicate "Error:" prefixes
+					.join('\n');
+
+				if (cleanStderr) {
+					details.push(`Details: ${cleanStderr}`);
+				}
+			}
+		}
+
+		// Extract additional error information
+		if (error?.data?.code) {
+			details.push(`Error code: ${error.data.code}`);
+		}
+
+		// Provide specific guidance based on exit code
+		if (exitCode) {
+			switch (exitCode) {
+				case 1:
+					message += ': General error occurred';
+					if (!details.some((d) => d.includes('Details:'))) {
+						details.push(
+							'Details: Check if Claude Code CLI is properly installed and authenticated'
+						);
+					}
+					break;
+				case 401:
+					message += ': Authentication failed';
+					details.push('Solution: Run "claude auth" to authenticate');
+					break;
+				case 403:
+					message += ': Access denied';
+					details.push('Solution: Check your API key and permissions');
+					break;
+				case 429:
+					message += ': Rate limit exceeded';
+					details.push('Solution: Wait before retrying or upgrade your plan');
+					break;
+				case 500:
+					message += ': Internal server error';
+					details.push('Solution: Try again later or contact support');
+					break;
+				case 143:
+					message += ': Process interrupted (Ink interface error)';
+					details.push(
+						'Solution: Use PowerShell instead of Git Bash or set FORCE_COLOR=0 CI=true'
+					);
+					break;
+				default:
+					message += `: Process exited with code ${exitCode}`;
+			}
+		}
+
+		// Combine message and details
+		if (details.length > 0) {
+			return `${message}\n${details.join('\n')}`;
+		}
+
+		return message;
+	} catch (e) {
+		// Fallback to original message if extraction fails
+		return error.message || 'Claude Code API error occurred';
+	}
+}
+
+/**
  * Extracts a user-friendly error message from a potentially complex AI error object.
  * Prioritizes nested messages and falls back to the top-level message.
  * @param {Error | object | any} error - The error object.
@@ -228,6 +344,29 @@ function isRetryableError(error) {
  */
 function _extractErrorMessage(error) {
 	try {
+		// Special handling for Claude Code CLI errors with detailed error information
+		if (
+			error?.message &&
+			error.message.includes('Claude Code process exited with code')
+		) {
+			return _extractClaudeCodeErrorMessage(error);
+		}
+
+		// Special handling for Claude Code CLI Ink errors
+		if (
+			error?.message &&
+			(error.message.includes('Raw mode is not supported') ||
+				error.message.includes('Ink') ||
+				error.message.includes('Claude Code process exited with code 143'))
+		) {
+			return `Claude Code CLI error: ${error.message}. This is a known issue on Windows with Git Bash. Please try using PowerShell or set environment variables FORCE_COLOR=0 CI=true.`;
+		}
+
+		// Special handling for instanceof errors
+		if (error?.message && isInstanceofError(error)) {
+			return `Type checking error: ${error.message}. This may be due to undefined classes or modules not being properly loaded.`;
+		}
+
 		// Attempt 1: Look for Vercel SDK specific nested structure (common)
 		if (error?.data?.error?.message) {
 			return error.data.error.message;
@@ -409,23 +548,37 @@ async function _attemptProviderCallWithRetries(
 			}
 			return result;
 		} catch (error) {
+			const cleanMessage = _extractErrorMessage(error);
 			log(
 				'warn',
-				`Attempt ${retries + 1} failed for role ${attemptRole} (${fnName} / ${providerName}): ${error.message}`
+				`Attempt ${retries + 1} failed for role ${attemptRole} (${fnName} / ${providerName}): ${cleanMessage}`
 			);
+
+			// Enhanced error handling for specific error types
+			if (
+				cleanMessage.includes('Raw mode is not supported') ||
+				cleanMessage.includes('Ink') ||
+				cleanMessage.includes('Claude Code process exited with code 143')
+			) {
+				log(
+					'error',
+					`[Claude Code CLI Error] Non-retryable error detected: ${cleanMessage}`
+				);
+				throw error; // Don't retry Claude Code CLI errors
+			}
 
 			if (isRetryableError(error) && retries < MAX_RETRIES) {
 				retries++;
 				const delay = INITIAL_RETRY_DELAY_MS * 2 ** (retries - 1);
 				log(
 					'info',
-					`Something went wrong on the provider side. Retrying in ${delay / 1000}s...`
+					`Retryable error detected. Retrying in ${delay / 1000}s... (Attempt ${retries}/${MAX_RETRIES + 1})`
 				);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			} else {
 				log(
 					'error',
-					`Something went wrong on the provider side. Max retries reached for role ${attemptRole} (${fnName} / ${providerName}).`
+					`Non-retryable error or max retries reached for role ${attemptRole} (${fnName} / ${providerName}): ${cleanMessage}`
 				);
 				throw error;
 			}
@@ -709,12 +862,94 @@ async function _unifiedServiceRunner(serviceType, params) {
 			};
 		} catch (error) {
 			const cleanMessage = _extractErrorMessage(error);
+
+			// Enhanced error logging with more context
 			log(
 				'error',
 				`Service call failed for role ${currentRole} (Provider: ${providerName || 'unknown'}, Model: ${modelId || 'unknown'}): ${cleanMessage}`
 			);
+
+			// Log additional error details for debugging
+			if (getDebugFlag()) {
+				log('debug', `Error details:`, {
+					errorType: error.constructor.name,
+					errorStack: error.stack,
+					providerName,
+					modelId,
+					serviceType,
+					currentRole
+				});
+			}
+
 			lastError = error;
 			lastCleanErrorMessage = cleanMessage;
+
+			// Handle Claude Code CLI specific errors with enhanced logging
+			if (providerName?.toLowerCase() === 'claude-code') {
+				if (
+					cleanMessage.includes('Raw mode is not supported') ||
+					cleanMessage.includes('Ink') ||
+					cleanMessage.includes('Claude Code process exited with code 143')
+				) {
+					log(
+						'warn',
+						`[Claude Code CLI Error] Detected Ink interface error. This is a known issue on Windows with Git Bash.`
+					);
+					log(
+						'info',
+						`[Claude Code CLI Error] Solutions: 1) Use PowerShell instead of Git Bash, 2) Set FORCE_COLOR=0 CI=true environment variables`
+					);
+				} else if (
+					cleanMessage.includes('Claude Code process exited with code')
+				) {
+					// Log detailed Claude Code API error information
+					log('error', `[Claude Code API Error] ${cleanMessage}`);
+
+					// Log additional debugging information if available
+					if (error?.data?.stderr) {
+						log(
+							'debug',
+							`[Claude Code API Error] Raw stderr: ${error.data.stderr}`
+						);
+					}
+					if (error?.data?.exitCode) {
+						log(
+							'debug',
+							`[Claude Code API Error] Exit code: ${error.data.exitCode}`
+						);
+					}
+					if (error?.data?.code) {
+						log(
+							'debug',
+							`[Claude Code API Error] Error code: ${error.data.code}`
+						);
+					}
+				}
+			}
+
+			// Handle instanceof errors
+			if (isInstanceofError(error)) {
+				log(
+					'error',
+					`[Instanceof Error] Detected type checking error in provider '${providerName}'. This may indicate a module loading issue.`
+				);
+				log(
+					'info',
+					`[Instanceof Error] Check if all required modules are properly imported and initialized.`
+				);
+			}
+
+			// Handle authentication errors
+			if (
+				cleanMessage.toLowerCase().includes('authentication') ||
+				cleanMessage.toLowerCase().includes('not logged in') ||
+				cleanMessage.toLowerCase().includes('api key')
+			) {
+				log(
+					'error',
+					`[Authentication Error] Provider '${providerName}' authentication failed. Please check your API key configuration.`
+				);
+			}
 
 			if (serviceType === 'generateObject') {
 				const lowerCaseMessage = cleanMessage.toLowerCase();

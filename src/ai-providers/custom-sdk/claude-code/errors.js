@@ -90,8 +90,16 @@ export function createTimeoutError({ message, promptExcerpt, timeoutMs }) {
  * @returns {boolean}
  */
 export function isAuthenticationError(error) {
-	if (error instanceof LoadAPIKeyError) return true;
+	// Safe instanceof checks for error classes
 	if (
+		typeof LoadAPIKeyError !== 'undefined' &&
+		LoadAPIKeyError &&
+		error instanceof LoadAPIKeyError
+	)
+		return true;
+	if (
+		typeof APICallError !== 'undefined' &&
+		APICallError &&
 		error instanceof APICallError &&
 		/** @type {ClaudeCodeErrorMetadata} */ (error.data)?.exitCode === 401
 	)
@@ -105,7 +113,10 @@ export function isAuthenticationError(error) {
  * @returns {boolean}
  */
 export function isTimeoutError(error) {
+	// Safe instanceof check for APICallError
 	if (
+		typeof APICallError !== 'undefined' &&
+		APICallError &&
 		error instanceof APICallError &&
 		/** @type {ClaudeCodeErrorMetadata} */ (error.data)?.code === 'TIMEOUT'
 	)
@@ -119,7 +130,13 @@ export function isTimeoutError(error) {
  * @returns {ClaudeCodeErrorMetadata|undefined}
  */
 export function getErrorMetadata(error) {
-	if (error instanceof APICallError && error.data) {
+	// Safe instanceof check for APICallError
+	if (
+		typeof APICallError !== 'undefined' &&
+		APICallError &&
+		error instanceof APICallError &&
+		error.data
+	) {
 		return /** @type {ClaudeCodeErrorMetadata} */ (error.data);
 	}
 	return undefined;
