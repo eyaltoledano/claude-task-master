@@ -14,30 +14,40 @@ describe('Roo Profile Initialization Functionality', () => {
 	});
 
 	test('roo.js uses factory pattern with correct configuration', () => {
-		// Check for explicit, non-default values in the source file
-		expect(rooProfileContent).toContain("name: 'roo'");
-		expect(rooProfileContent).toContain("displayName: 'Roo Code'");
-		expect(rooProfileContent).toContain(
-			'toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE'
-		);
+		// Check for ProfileBuilder syntax in the source file
+		expect(rooProfileContent).toContain("ProfileBuilder.minimal('roo')");
+		expect(rooProfileContent).toContain(".display('Roo Code')");
+		expect(rooProfileContent).toContain(".profileDir('.roo')");
+		expect(rooProfileContent).toContain(".rulesDir('.roo')");
+		expect(rooProfileContent).toContain('.mcpConfig(true)');
+		expect(rooProfileContent).toContain('.includeDefaultRules(false)'); // Roo manages its own complex fileMap
 
 		// Check the final computed properties on the profile object
 		expect(rooProfile.profileName).toBe('roo');
 		expect(rooProfile.displayName).toBe('Roo Code');
-		expect(rooProfile.profileDir).toBe('.roo'); // default
-		expect(rooProfile.rulesDir).toBe('.roo/rules'); // default
+		expect(rooProfile.profileDir).toBe('.roo'); // non-default
+		expect(rooProfile.rulesDir).toBe('.roo'); // non-default
 		expect(rooProfile.mcpConfig).toBe(true); // default
+		expect(rooProfile.mcpConfigName).toBe('mcp.json'); // default
+		expect(rooProfile.includeDefaultRules).toBe(false); // Roo manages complex fileMap
 	});
 
 	test('roo.js uses custom ROO_STYLE tool mappings', () => {
-		// Check that the profile uses the correct, non-standard tool mappings
-		expect(rooProfileContent).toContain(
-			'toolMappings: COMMON_TOOL_MAPPINGS.ROO_STYLE'
-		);
+		// Check that the profile uses custom tool mappings in conversion config
+		expect(rooProfileContent).toContain("edit_file: 'apply_diff'");
+		expect(rooProfileContent).toContain("search: 'search_files'");
+		expect(rooProfileContent).toContain("run_terminal_cmd: 'execute_command'");
+		expect(rooProfileContent).toContain("create_file: 'write_to_file'");
 
-		// Verify the result: roo uses custom tool names
+		// Verify the actual profile object has the correct tool mappings
 		expect(rooProfile.conversionConfig.toolNames.edit_file).toBe('apply_diff');
 		expect(rooProfile.conversionConfig.toolNames.search).toBe('search_files');
+		expect(rooProfile.conversionConfig.toolNames.run_terminal_cmd).toBe(
+			'execute_command'
+		);
+		expect(rooProfile.conversionConfig.toolNames.create_file).toBe(
+			'write_to_file'
+		);
 	});
 
 	test('roo.js profile ensures Roo directory structure via onAddRulesProfile', () => {
