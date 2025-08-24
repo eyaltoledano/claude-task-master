@@ -531,7 +531,16 @@ function extractSubtasksFromPlainText(
 		} else if (currentSubtask) {
 			// This line is part of the current subtask's details
 			if (currentSubtask.details) {
-				currentSubtask.details += '\n' + trimmedLine;
+				const newDetails = currentSubtask.details + '\n' + trimmedLine;
+				// Limit details to 2KB to prevent bloating
+				if (newDetails.length > 2048) {
+					currentSubtask.details =
+						newDetails.substring(0, 2048) +
+						'\n[Details truncated due to length limit]';
+					logger.debug('Details truncated due to length limit (2KB)');
+				} else {
+					currentSubtask.details = newDetails;
+				}
 			} else {
 				currentSubtask.details = trimmedLine;
 			}

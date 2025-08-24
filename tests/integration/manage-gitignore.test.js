@@ -396,11 +396,11 @@ tasks/ `;
 
 			if (os.platform() === 'win32') {
 				// On Windows, test against a known protected path
-				const systemDir = path.join(
+				const systemDir = path.win32.join(
 					process.env.SYSTEMROOT || 'C:\\Windows',
 					'System32'
 				);
-				const systemGitignorePath = path.join(systemDir, '.gitignore');
+				const systemGitignorePath = path.win32.join(systemDir, '.gitignore');
 
 				expect(() => {
 					manageGitignoreFile(
@@ -429,8 +429,8 @@ tasks/ `;
 						'.gitignore'
 					);
 
-					// Remove write permissions from the directory
-					fs.chmodSync(tempProtectedDir, 0o444); // Read-only
+					// Remove write permissions from the directory but keep execute/traverse bits
+					fs.chmodSync(tempProtectedDir, 0o555); // Read and execute, no write
 
 					expect(() => {
 						manageGitignoreFile(

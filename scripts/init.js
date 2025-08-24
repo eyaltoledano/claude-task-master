@@ -159,21 +159,41 @@ function addShellAliases() {
 		}
 	}
 
-	// Method 2: Check ComSpec for Windows
-	if (shellType === 'unknown' && process.env.ComSpec) {
-		if (process.env.ComSpec.includes('cmd.exe')) {
-			shellType = 'cmd';
-			shellName = 'Command Prompt';
-			shellConfigFile = path.join(homeDir, 'cmd_aliases.bat');
-		} else if (process.env.ComSpec.includes('powershell')) {
+	// Method 2: Check for PowerShell profiles (modern PowerShell 7+ first, then WindowsPowerShell)
+	if (shellType === 'unknown' && process.platform === 'win32') {
+		// Check for modern PowerShell 7+ profile first
+		const modernPowerShellProfile = path.join(
+			homeDir,
+			'Documents',
+			'PowerShell',
+			'Microsoft.PowerShell_profile.ps1'
+		);
+
+		if (fs.existsSync(modernPowerShellProfile)) {
 			shellType = 'powershell';
-			shellName = 'PowerShell';
-			shellConfigFile = path.join(
+			shellName = 'PowerShell 7+';
+			shellConfigFile = modernPowerShellProfile;
+		} else {
+			// Fallback to WindowsPowerShell
+			const legacyPowerShellProfile = path.join(
 				homeDir,
 				'Documents',
 				'WindowsPowerShell',
 				'Microsoft.PowerShell_profile.ps1'
 			);
+
+			if (fs.existsSync(legacyPowerShellProfile)) {
+				shellType = 'powershell';
+				shellName = 'PowerShell';
+				shellConfigFile = legacyPowerShellProfile;
+			} else if (
+				process.env.ComSpec &&
+				process.env.ComSpec.includes('cmd.exe')
+			) {
+				shellType = 'cmd';
+				shellName = 'Command Prompt';
+				shellConfigFile = path.join(homeDir, 'cmd_aliases.bat');
+			}
 		}
 	}
 

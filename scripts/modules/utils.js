@@ -94,10 +94,14 @@ function slugifyTagForFilePath(tagName) {
  * @returns {string} The resolved file path
  */
 function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
+	// Normalize inputs to POSIX format to handle Windows backslashes
+	const normalizedProjectRoot = projectRoot.replace(/\\/g, '/');
+	const normalizedBasePath = basePath.replace(/\\/g, '/');
+
 	// Use path.posix.parse and path.posix.format for cross-platform path generation
-	const parsedPath = path.posix.parse(basePath);
+	const parsedPath = path.posix.parse(normalizedBasePath);
 	if (!tag || tag === 'master') {
-		return path.posix.join(projectRoot, basePath);
+		return path.posix.join(normalizedProjectRoot, normalizedBasePath);
 	}
 
 	// Slugify the tag for filesystem safety
@@ -106,7 +110,7 @@ function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
 	// Append slugified tag before file extension
 	parsedPath.base = `${parsedPath.name}_${slugifiedTag}${parsedPath.ext}`;
 	const relativePath = path.posix.format(parsedPath);
-	return path.posix.join(projectRoot, relativePath);
+	return path.posix.join(normalizedProjectRoot, relativePath);
 }
 
 // --- Project Root Finding Utility ---

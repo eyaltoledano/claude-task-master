@@ -245,9 +245,8 @@ function isInstanceofError(error) {
 
 	const errorMessage = error.message?.toLowerCase() || '';
 
-	// Check for specific instanceof error patterns with word boundaries
+	// Check for specific engine instanceof error messages (avoid broad regex to prevent false positives)
 	const instanceofPatterns = [
-		/\binstanceof\b/, // Word boundary for "instanceof"
 		'right-hand side of instanceof is not an object',
 		'right hand side of instanceof is not an object',
 		'right-hand side of instanceof is not callable',

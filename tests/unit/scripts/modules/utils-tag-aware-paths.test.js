@@ -81,4 +81,19 @@ describe('getTagAwareFilePath utility function', () => {
 		);
 		expect(result).toBe(expected);
 	});
+
+	it('should normalize Windows-style projectRoot with backslashes to POSIX format', () => {
+		const windowsProjectRoot = 'C:\\some\\path';
+		const tag = 'feature-tag';
+		const result = getTagAwareFilePath(basePath, tag, windowsProjectRoot);
+
+		// Ensure the result uses POSIX separators
+		const normalizedResult = result.replace(/\\/g, '/');
+		expect(normalizedResult).toMatch(
+			/\.taskmaster\/reports\/task-complexity-report_feature-tag\.json$/
+		);
+
+		// Verify the path is POSIX-normalized
+		expect(path.posix.normalize(normalizedResult)).toBe(normalizedResult);
+	});
 });
