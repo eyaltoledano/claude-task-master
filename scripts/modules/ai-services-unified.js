@@ -238,12 +238,30 @@ function isRetryableError(error) {
  * @returns {boolean} - True if it's an instanceof error
  */
 function isInstanceofError(error) {
+	// First check if it's actually a TypeError
+	if (error.name !== 'TypeError') {
+		return false;
+	}
+
 	const errorMessage = error.message?.toLowerCase() || '';
-	return (
-		errorMessage.includes('right-hand side of instanceof is not an object') ||
-		errorMessage.includes('instanceof') ||
-		errorMessage.includes('type error')
-	);
+
+	// Check for specific instanceof error patterns with word boundaries
+	const instanceofPatterns = [
+		/\binstanceof\b/, // Word boundary for "instanceof"
+		'right-hand side of instanceof is not an object',
+		'right hand side of instanceof is not an object',
+		'right-hand side of instanceof is not callable',
+		'right hand side of instanceof is not callable',
+		'right-hand side of instanceof is not a constructor',
+		'right hand side of instanceof is not a constructor'
+	];
+
+	return instanceofPatterns.some((pattern) => {
+		if (typeof pattern === 'string') {
+			return errorMessage.includes(pattern);
+		}
+		return pattern.test(errorMessage);
+	});
 }
 
 /**
@@ -929,13 +947,33 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Handle instanceof errors
 			if (isInstanceofError(error)) {
+				// Enhanced instanceof error logging with detailed diagnostics
+				const errorDetails = {
+					message: error.message || 'No error message',
+					stack: error.stack
+						? error.stack.split('\n').slice(0, 3).join('\n')
+						: 'No stack trace',
+					providerName: providerName || 'unknown',
+					role: currentRole || 'unknown',
+					modelId: modelId || 'unknown'
+				};
+
 				log(
 					'error',
-					`[Instanceof Error] Detected type checking error in provider '${providerName}'. This may indicate a module loading issue.`
+					`[Instanceof Error] Type checking error in provider '${errorDetails.providerName}' (role: ${errorDetails.role}, model: ${errorDetails.modelId}): ${errorDetails.message}`
 				);
+
+				// Diagnostic checks and remediation hints
+				const diagnosticInfo = [
+					`Provider: ${errorDetails.providerName}`,
+					`Error: ${errorDetails.message}`,
+					`Stack: ${errorDetails.stack}`,
+					`Remediation: Ensure provider module exports default or named export, install matching package version, and reinitialize with correct config`
+				];
+
 				log(
 					'info',
-					`[Instanceof Error] Check if all required modules are properly imported and initialized.`
+					`[Instanceof Error] Diagnostics: ${diagnosticInfo.join(' | ')}`
 				);
 			}
 

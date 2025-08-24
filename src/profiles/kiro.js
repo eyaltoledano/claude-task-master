@@ -53,8 +53,16 @@ export const kiroProfile = createProfile({
 
 	// Add lifecycle hook to copy Kiro hooks
 	onPostConvert: (projectRoot, assetsDir) => {
-		const hooksSourceDir = path.posix.join(assetsDir, 'kiro-hooks');
-		const hooksTargetDir = path.posix.join(projectRoot, '.kiro', 'hooks');
+		// Normalize paths to ensure consistent POSIX separators
+		const normalizedProjectRoot = projectRoot.replace(/\\/g, '/');
+		const normalizedAssetsDir = assetsDir.replace(/\\/g, '/');
+
+		const hooksSourceDir = path.posix.join(normalizedAssetsDir, 'kiro-hooks');
+		const hooksTargetDir = path.posix.join(
+			normalizedProjectRoot,
+			'.kiro',
+			'hooks'
+		);
 
 		// Create hooks directory if it doesn't exist
 		if (!fs.existsSync(hooksTargetDir)) {

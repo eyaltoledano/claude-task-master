@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import path from 'path';
 
 // Mock fs module before importing anything that uses it
 jest.mock('fs', () => ({

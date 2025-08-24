@@ -653,10 +653,7 @@ function createStateJson(statePath) {
 
 		fs.writeFileSync(statePath, JSON.stringify(initialState, null, 2), 'utf8');
 		if (process.env.TASKMASTER_DEBUG === 'true') {
-<<<<<<< HEAD
-			console.log('[DEBUG] Created initial state.json for tagged task system');
-=======
->>>>>>> 658c4b0 (fix: Windows compatibility issues and test failures)
+			log('debug', '[DEBUG] Created initial state.json for tagged task system');
 		}
 	} catch (error) {
 		if (process.env.TASKMASTER_DEBUG === 'true') {

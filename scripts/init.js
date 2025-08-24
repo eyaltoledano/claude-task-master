@@ -146,7 +146,7 @@ function addShellAliases() {
 	let shellConfigFile = null;
 	let shellName = 'unknown';
 
-	// Метод 1: Проверка SHELL переменной (Unix/Linux/WSL)
+	// Method 1: Check SHELL variable (Unix/Linux/WSL)
 	if (process.env.SHELL) {
 		if (process.env.SHELL.includes('zsh')) {
 			shellType = 'zsh';
@@ -159,7 +159,7 @@ function addShellAliases() {
 		}
 	}
 
-	// Метод 2: Проверка ComSpec для Windows
+	// Method 2: Check ComSpec for Windows
 	if (shellType === 'unknown' && process.env.ComSpec) {
 		if (process.env.ComSpec.includes('cmd.exe')) {
 			shellType = 'cmd';
@@ -177,7 +177,7 @@ function addShellAliases() {
 		}
 	}
 
-	// Метод 3: Проверка TERM для Git Bash
+	// Method 3: Check TERM for Git Bash
 	if (shellType === 'unknown' && process.env.TERM) {
 		if (process.env.TERM.includes('xterm') && process.platform === 'win32') {
 			// Git Bash на Windows
@@ -187,7 +187,7 @@ function addShellAliases() {
 		}
 	}
 
-	// Метод 4: Проверка доступных конфигурационных файлов
+	// Method 4: Check for available shell config files
 	if (shellType === 'unknown') {
 		const possibleConfigs = [
 			{ type: 'bash', name: 'Bash', file: '.bashrc' },
@@ -222,7 +222,7 @@ function addShellAliases() {
 
 	log('info', `Detected shell: ${shellName}`);
 
-	// Обработка различных типов shell
+	// Handle different shell types
 	switch (shellType) {
 		case 'bash':
 		case 'gitbash':
@@ -238,24 +238,24 @@ function addShellAliases() {
 	}
 }
 
-// Обработка Unix-подобных shell (Bash, Zsh, Git Bash)
+// Handle Unix-like shells (Bash, Zsh, Git Bash)
 function handleUnixShell(configFile, shellName) {
 	try {
-		// Проверяем существование файла
+		// Check if file exists
 		if (!fs.existsSync(configFile)) {
 			log('info', `Creating new ${shellName} config file: ${configFile}`);
-			// Создаем файл если он не существует
+			// Create file if it doesn't exist
 			fs.writeFileSync(configFile, '');
 		}
 
-		// Проверяем существующие алиасы
+		// Check existing aliases
 		const configContent = fs.readFileSync(configFile, 'utf8');
 		if (configContent.includes("alias tm='task-master'")) {
 			log('info', 'Task Master aliases already exist in shell config.');
 			return true;
 		}
 
-		// Добавляем алиасы
+		// Add aliases
 		const aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
 alias tm='task-master'
@@ -276,16 +276,16 @@ alias taskmaster='task-master'
 	}
 }
 
-// Обработка PowerShell
+// Handle PowerShell
 function handlePowerShell(configFile, homeDir) {
 	try {
-		// Создаем директорию если не существует
+		// Create directory if it doesn't exist
 		const configDir = path.dirname(configFile);
 		if (!fs.existsSync(configDir)) {
 			fs.mkdirSync(configDir, { recursive: true });
 		}
 
-		// Проверяем существующие алиасы
+		// Check existing aliases
 		let configContent = '';
 		if (fs.existsSync(configFile)) {
 			configContent = fs.readFileSync(configFile, 'utf8');
@@ -296,7 +296,7 @@ function handlePowerShell(configFile, homeDir) {
 			return true;
 		}
 
-		// Добавляем алиасы для PowerShell
+		// Add aliases for PowerShell
 		const aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
 Set-Alias tm task-master
@@ -320,10 +320,10 @@ Set-Alias taskmaster task-master
 	}
 }
 
-// Обработка CMD
+// Handle CMD
 function handleCmd(configFile, homeDir) {
 	try {
-		// Проверяем существующие алиасы
+		// Check existing aliases
 		let configContent = '';
 		if (fs.existsSync(configFile)) {
 			configContent = fs.readFileSync(configFile, 'utf8');
@@ -334,7 +334,7 @@ function handleCmd(configFile, homeDir) {
 			return true;
 		}
 
-		// Добавляем алиасы для CMD
+		// Add aliases for CMD
 		const aliasBlock = `
 @REM Task Master aliases added on ${new Date().toLocaleDateString()}
 doskey tm=task-master $*

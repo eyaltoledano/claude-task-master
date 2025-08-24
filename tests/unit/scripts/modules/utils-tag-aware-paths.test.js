@@ -68,7 +68,8 @@ describe('getTagAwareFilePath utility function', () => {
 			'.',
 			'.taskmaster/reports/task-complexity-report_feature-tag.json'
 		);
-		expect(result).toBe(expected);
+		// Normalize both expected and actual for resilient comparison
+		expect(path.posix.normalize(result)).toBe(path.posix.normalize(expected));
 	});
 
 	it('should handle complex tag names with special characters', () => {

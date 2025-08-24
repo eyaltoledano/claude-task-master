@@ -384,30 +384,23 @@ tasks/ `;
 
 	describe('Error Handling', () => {
 		test('should handle permission errors gracefully', () => {
-			// Try to write to a system directory that should be protected
-			const systemDir = path.join(
-				process.env.SYSTEMROOT || 'C:\\Windows',
-				'System32'
-			);
-			const systemGitignorePath = path.join(systemDir, '.gitignore');
-
-			// Test if we can actually write to system directory (should fail)
-			try {
-				fs.writeFileSync(systemGitignorePath, 'test');
-				// If we get here, we can write to system directory, so skip test
-				console.log('Skipping permission test - can write to system directory');
-				return;
-			} catch (writeError) {
-				// This is what we want - use this path for the test
-				const templateContent = `# Test
+			const templateContent = `# Test
 test.txt
 
 # Task files
 tasks.json
 tasks/ `;
 
-				const logs = [];
-				const mockLog = (level, message) => logs.push({ level, message });
+			const logs = [];
+			const mockLog = (level, message) => logs.push({ level, message });
+
+			if (os.platform() === 'win32') {
+				// On Windows, test against a known protected path
+				const systemDir = path.join(
+					process.env.SYSTEMROOT || 'C:\\Windows',
+					'System32'
+				);
+				const systemGitignorePath = path.join(systemDir, '.gitignore');
 
 				expect(() => {
 					manageGitignoreFile(
@@ -423,6 +416,47 @@ tasks/ `;
 					level: 'error',
 					message: expect.stringContaining('Failed to create')
 				});
+			} else {
+				// On POSIX systems, create a temporary directory and remove write permissions
+				let tempProtectedDir;
+				try {
+					// Create a temporary directory
+					tempProtectedDir = fs.mkdtempSync(
+						path.join(os.tmpdir(), 'gitignore-protected-')
+					);
+					const protectedGitignorePath = path.join(
+						tempProtectedDir,
+						'.gitignore'
+					);
+
+					// Remove write permissions from the directory
+					fs.chmodSync(tempProtectedDir, 0o444); // Read-only
+
+					expect(() => {
+						manageGitignoreFile(
+							protectedGitignorePath,
+							templateContent,
+							false,
+							mockLog
+						);
+					}).toThrow();
+
+					// Verify error was logged
+					expect(logs).toContainEqual({
+						level: 'error',
+						message: expect.stringContaining('Failed to create')
+					});
+				} finally {
+					// Always clean up: restore permissions and remove temp directory
+					if (tempProtectedDir && fs.existsSync(tempProtectedDir)) {
+						try {
+							fs.chmodSync(tempProtectedDir, 0o755); // Restore permissions
+							fs.rmSync(tempProtectedDir, { recursive: true, force: true });
+						} catch (cleanupError) {
+							// Ignore cleanup errors
+						}
+					}
+				}
 			}
 		});
 

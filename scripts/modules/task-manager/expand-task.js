@@ -123,7 +123,7 @@ function parseSubtasksFromText(
 		);
 
 		// Try to extract subtasks from plain text format
-		const extractedSubtasks = extractSubtasksFromPlainText(
+		const extractedSubtasks = attemptPlainTextExtraction(
 			jsonToParse,
 			startId,
 			expectedCount,
@@ -302,7 +302,7 @@ function parseSubtasksFromText(
 			);
 
 			try {
-				const extractedSubtasks = extractSubtasksFromPlainText(
+				const extractedSubtasks = attemptPlainTextExtraction(
 					originalTrimmedResponse,
 					startId,
 					expectedCount,
@@ -319,7 +319,7 @@ function parseSubtasksFromText(
 				}
 			} catch (extractError) {
 				logger.error(
-					`Error in extractSubtasksFromPlainText: ${extractError.message}`
+					`Error in attemptPlainTextExtraction: ${extractError.message}`
 				);
 			}
 
@@ -429,6 +429,36 @@ function parseSubtasksFromText(
 }
 
 /**
+ * Attempt to extract subtasks from plain text response
+ * @param {string} text - Plain text response from AI
+ * @param {number} startId - Starting subtask ID
+ * @param {number} expectedCount - Expected number of subtasks
+ * @param {number} parentTaskId - Parent task ID
+ * @param {Object} logger - Logging object
+ * @returns {Array|null} Array of extracted subtasks or null if extraction fails
+ */
+function attemptPlainTextExtraction(
+	text,
+	startId,
+	expectedCount,
+	parentTaskId,
+	logger
+) {
+	try {
+		return extractSubtasksFromPlainText(
+			text,
+			startId,
+			expectedCount,
+			parentTaskId,
+			logger
+		);
+	} catch (error) {
+		logger.debug(`Plain text extraction failed: ${error.message}`);
+		return null;
+	}
+}
+
+/**
  * Extract subtasks from plain text response (for Claude Code CLI compatibility)
  * @param {string} text - Plain text response from AI
  * @param {number} startId - Starting subtask ID
@@ -520,9 +550,6 @@ function extractSubtasksFromPlainText(
 		if (result.success) {
 			validatedSubtasks.push(result.data);
 		} else {
-			logger.warn(
-				`Plain text subtask validation failed: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
-			);
 			logger.warn(
 				`Plain text subtask validation failed: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
 			);
