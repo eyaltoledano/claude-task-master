@@ -872,12 +872,9 @@ async function expandTask(
 				`Successfully parsed ${generatedSubtasks.length} subtasks from AI response.`
 			);
 		} catch (error) {
-			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-
 			// Enhanced error logging with more context
 			logger.error(
-				`Error during AI call or parsing for task ${taskId}: ${error.message}`,
-				'error'
+				`Error during AI call or parsing for task ${taskId}: ${error.message}`
 			);
 
 			// Log additional error context
@@ -955,7 +952,7 @@ async function expandTask(
 		};
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
-		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
+		logger.error(`Error expanding task ${taskId}: ${error.message}`);
 
 		// Enhanced error context logging
 		logger.error(`Expand task error context for task ${taskId}:`, {

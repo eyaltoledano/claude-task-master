@@ -305,9 +305,12 @@ function handlePowerShell(configFile, homeDir) {
 			fs.mkdirSync(configDir, { recursive: true });
 		}
 
+		// Check if profile file exists before we start
+		const profileExisted = fs.existsSync(configFile);
+
 		// Check existing aliases
 		let configContent = '';
-		if (fs.existsSync(configFile)) {
+		if (profileExisted) {
 			configContent = fs.readFileSync(configFile, 'utf8');
 		}
 
@@ -324,6 +327,12 @@ Set-Alias taskmaster task-master
 `;
 
 		fs.appendFileSync(configFile, aliasBlock);
+
+		// Log if this was a new profile file
+		if (!profileExisted) {
+			log('info', `Created new PowerShell profile at: ${configFile}`);
+		}
+
 		log(
 			'success',
 			`Added Task Master aliases to PowerShell profile: ${configFile}`
@@ -1028,16 +1037,7 @@ function createProjectStructure(
 	}
 	// ====================================
 
-	// Add shell aliases if requested
-	if (addAliases && !dryRun) {
-		log('info', 'Adding shell aliases...');
-		const aliasResult = addShellAliases();
-		if (aliasResult) {
-			log('success', 'Shell aliases added successfully');
-		}
-	} else if (addAliases && dryRun) {
-		log('info', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
-	}
+	// Shell aliases were already added earlier in the process
 
 	// Display success message
 	if (!isSilentMode()) {

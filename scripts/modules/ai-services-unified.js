@@ -211,13 +211,10 @@ function isRetryableError(error) {
 	const errorMessage = error.message?.toLowerCase() || '';
 
 	// Check for Claude Code CLI specific errors that should not be retried
-	if (
-		errorMessage.includes('raw mode is not supported') ||
-		errorMessage.includes('ink') ||
-		errorMessage.includes('claude code process exited with code 143') ||
-		errorMessage.includes('authentication failed') ||
-		errorMessage.includes('not logged in')
-	) {
+	// Use case-insensitive regex with word boundaries to avoid false positives
+	const nonRetryablePattern =
+		/\b(raw mode is not supported|ink|claude code process exited with code 143|authentication failed|not logged in)\b/i;
+	if (nonRetryablePattern.test(errorMessage)) {
 		return false;
 	}
 
@@ -275,7 +272,11 @@ function _extractClaudeCodeErrorMessage(error) {
 		let exitCode = null;
 
 		// Extract exit code from error message
-		const exitCodeMatch = error.message.match(/exited with code (\d+)/);
+		const msg =
+			typeof error?.message === 'string'
+				? error.message
+				: String(error?.message || '');
+		const exitCodeMatch = msg.match(/exited with code (\d+)/);
 		if (exitCodeMatch) {
 			exitCode = parseInt(exitCodeMatch[1]);
 			details.push(`Exit code: ${exitCode}`);

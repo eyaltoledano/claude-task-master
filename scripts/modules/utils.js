@@ -94,9 +94,16 @@ function slugifyTagForFilePath(tagName) {
  * @returns {string} The resolved file path
  */
 function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
-	// Normalize inputs to POSIX format to handle Windows backslashes
-	const normalizedProjectRoot = projectRoot.replace(/\\/g, '/');
-	const normalizedBasePath = basePath.replace(/\\/g, '/');
+	// Input type guards and normalization
+	if (typeof basePath !== 'string' || typeof projectRoot !== 'string') {
+		throw new TypeError('basePath and projectRoot must be strings');
+	}
+
+	// Normalize inputs to POSIX format and collapse duplicate slashes
+	const normalizedProjectRoot = projectRoot
+		.replace(/\\/g, '/')
+		.replace(/\/+/g, '/');
+	const normalizedBasePath = basePath.replace(/\\/g, '/').replace(/\/+/g, '/');
 
 	// Use path.posix.parse and path.posix.format for cross-platform path generation
 	const parsedPath = path.posix.parse(normalizedBasePath);
