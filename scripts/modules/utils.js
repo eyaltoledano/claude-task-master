@@ -94,10 +94,49 @@ function slugifyTagForFilePath(tagName) {
  * @returns {string} The resolved file path
  */
 function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
-	// Use path.parse and format for clean tag insertion
-	const parsedPath = path.parse(basePath);
+	// Input type guards and validation
+	if (typeof basePath !== 'string') {
+		const error = new TypeError('basePath must be a string');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	if (typeof projectRoot !== 'string') {
+		const error = new TypeError('projectRoot must be a string');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	// Check for empty or whitespace-only strings
+	const trimmedBasePath = basePath.trim();
+	const trimmedProjectRoot = projectRoot.trim();
+
+	if (!trimmedBasePath) {
+		const error = new TypeError('basePath cannot be empty or whitespace-only');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	if (!trimmedProjectRoot) {
+		const error = new TypeError(
+			'projectRoot cannot be empty or whitespace-only'
+		);
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	// Normalize inputs to POSIX format and collapse duplicate slashes
+	const normalizedProjectRoot = trimmedProjectRoot
+		.replace(/\\/g, '/')
+		.replace(/\/+/g, '/');
+	const normalizedBasePath = trimmedBasePath
+		.replace(/\\/g, '/')
+		.replace(/\/+/g, '/');
+
+	// Use path.posix.parse and path.posix.format for cross-platform path generation
+	const parsedPath = path.posix.parse(normalizedBasePath);
 	if (!tag || tag === 'master') {
-		return path.join(projectRoot, basePath);
+		return path.posix.join(normalizedProjectRoot, normalizedBasePath);
 	}
 
 	// Slugify the tag for filesystem safety
@@ -105,8 +144,8 @@ function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
 
 	// Append slugified tag before file extension
 	parsedPath.base = `${parsedPath.name}_${slugifiedTag}${parsedPath.ext}`;
-	const relativePath = path.format(parsedPath);
-	return path.join(projectRoot, relativePath);
+	const relativePath = path.posix.format(parsedPath);
+	return path.posix.join(normalizedProjectRoot, relativePath);
 }
 
 // --- Project Root Finding Utility ---
@@ -653,7 +692,7 @@ function createStateJson(statePath) {
 
 		fs.writeFileSync(statePath, JSON.stringify(initialState, null, 2), 'utf8');
 		if (process.env.TASKMASTER_DEBUG === 'true') {
-			console.log('[DEBUG] Created initial state.json for tagged task system');
+			log('debug', '[DEBUG] Created initial state.json for tagged task system');
 		}
 	} catch (error) {
 		if (process.env.TASKMASTER_DEBUG === 'true') {

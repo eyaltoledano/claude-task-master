@@ -384,12 +384,6 @@ tasks/ `;
 
 	describe('Error Handling', () => {
 		test('should handle permission errors gracefully', () => {
-			// Create a directory where we would create the file, then remove write permissions
-			const readOnlyDir = path.join(tempDir, 'readonly');
-			fs.mkdirSync(readOnlyDir);
-			fs.chmodSync(readOnlyDir, 0o444); // Read-only
-
-			const readOnlyGitignorePath = path.join(readOnlyDir, '.gitignore');
 			const templateContent = `# Test
 test.txt
 
@@ -400,29 +394,82 @@ tasks/ `;
 			const logs = [];
 			const mockLog = (level, message) => logs.push({ level, message });
 
-			expect(() => {
-				manageGitignoreFile(
-					readOnlyGitignorePath,
-					templateContent,
-					false,
-					mockLog
+			if (os.platform() === 'win32') {
+				// On Windows, test against a known protected path
+				const systemDir = path.win32.join(
+					process.env.SYSTEMROOT || 'C:\\Windows',
+					'System32'
 				);
-			}).toThrow();
+				const systemGitignorePath = path.win32.join(systemDir, '.gitignore');
 
-			// Verify error was logged
-			expect(logs).toContainEqual({
-				level: 'error',
-				message: expect.stringContaining('Failed to create')
-			});
+				expect(() => {
+					manageGitignoreFile(
+						systemGitignorePath,
+						templateContent,
+						false,
+						mockLog
+					);
+				}).toThrow();
 
-			// Restore permissions for cleanup
-			fs.chmodSync(readOnlyDir, 0o755);
+				// Verify error was logged
+				expect(logs).toContainEqual({
+					level: 'error',
+					message: expect.stringContaining('Failed to create')
+				});
+			} else {
+				// On POSIX systems, create a temporary directory and remove write permissions
+				let tempProtectedDir;
+				try {
+					// Create a temporary directory
+					tempProtectedDir = fs.mkdtempSync(
+						path.join(os.tmpdir(), 'gitignore-protected-')
+					);
+					const protectedGitignorePath = path.join(
+						tempProtectedDir,
+						'.gitignore'
+					);
+
+					// Remove write permissions from the directory but keep execute/traverse bits
+					fs.chmodSync(tempProtectedDir, 0o555); // Read and execute, no write
+
+					expect(() => {
+						manageGitignoreFile(
+							protectedGitignorePath,
+							templateContent,
+							false,
+							mockLog
+						);
+					}).toThrow();
+
+					// Verify error was logged
+					expect(logs).toContainEqual({
+						level: 'error',
+						message: expect.stringContaining('Failed to create')
+					});
+				} finally {
+					// Always clean up: restore permissions and remove temp directory
+					if (tempProtectedDir && fs.existsSync(tempProtectedDir)) {
+						try {
+							fs.chmodSync(tempProtectedDir, 0o755); // Restore permissions
+							fs.rmSync(tempProtectedDir, { recursive: true, force: true });
+						} catch (cleanupError) {
+							// Ignore cleanup errors
+						}
+					}
+				}
+			}
 		});
 
 		test('should handle read errors on existing files', () => {
 			// Create a file then remove read permissions
 			fs.writeFileSync(testGitignorePath, 'existing content');
-			fs.chmodSync(testGitignorePath, 0o000); // No permissions
+			try {
+				fs.chmodSync(testGitignorePath, 0o000); // No permissions
+			} catch (error) {
+				// On Windows, chmod might fail, so we'll skip this test
+				console.log('Skipping read permission test on Windows');
+				return;
+			}
 
 			const templateContent = `# Test
 test.txt
@@ -445,7 +492,11 @@ tasks/ `;
 			});
 
 			// Restore permissions for cleanup
-			fs.chmodSync(testGitignorePath, 0o644);
+			try {
+				fs.chmodSync(testGitignorePath, 0o644);
+			} catch (error) {
+				// Ignore cleanup errors
+			}
 		});
 	});
 

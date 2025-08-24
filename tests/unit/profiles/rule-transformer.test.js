@@ -172,7 +172,7 @@ describe('Rule Transformer - General', () => {
 
 				if (profileConfig.mcpConfig !== false) {
 					// Check that mcpConfigPath is properly constructed
-					const expectedPath = path.join(
+					const expectedPath = path.posix.join(
 						profileConfig.profileDir,
 						profileConfig.mcpConfigName
 					);

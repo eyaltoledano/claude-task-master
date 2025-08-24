@@ -34,6 +34,9 @@ tests/e2e/log/
 tests/**/*.log
 tests/**/coverage/
 
+# Test result files
+test-results*.txt
+
 # Test database files (if any)
 tests/**/*.db
 tests/**/*.sqlite

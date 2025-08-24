@@ -51,10 +51,10 @@ describe('Gemini Profile Integration', () => {
 	function mockCreateGeminiStructure() {
 		// Gemini profile copies AGENTS.md to GEMINI.md in project root
 		const sourceContent = 'Sample AGENTS.md content for Gemini integration';
-		fs.writeFileSync(path.join(tempDir, 'GEMINI.md'), sourceContent);
+		fs.writeFileSync(path.posix.join(tempDir, 'GEMINI.md'), sourceContent);
 
 		// Gemini profile creates .gemini directory
-		fs.mkdirSync(path.join(tempDir, '.gemini'), { recursive: true });
+		fs.mkdirSync(path.posix.join(tempDir, '.gemini'), { recursive: true });
 
 		// Gemini profile creates settings.json in .gemini directory
 		const settingsContent = JSON.stringify(
@@ -86,7 +86,7 @@ describe('Gemini Profile Integration', () => {
 			2
 		);
 		fs.writeFileSync(
-			path.join(tempDir, '.gemini', 'settings.json'),
+			path.posix.join(tempDir, '.gemini', 'settings.json'),
 			settingsContent
 		);
 	}
@@ -97,7 +97,7 @@ describe('Gemini Profile Integration', () => {
 
 		// Assert
 		expect(fs.writeFileSync).toHaveBeenCalledWith(
-			path.join(tempDir, 'GEMINI.md'),
+			path.posix.join(tempDir, 'GEMINI.md'),
 			'Sample AGENTS.md content for Gemini integration'
 		);
 	});
@@ -107,9 +107,12 @@ describe('Gemini Profile Integration', () => {
 		mockCreateGeminiStructure();
 
 		// Assert
-		expect(fs.mkdirSync).toHaveBeenCalledWith(path.join(tempDir, '.gemini'), {
-			recursive: true
-		});
+		expect(fs.mkdirSync).toHaveBeenCalledWith(
+			path.posix.join(tempDir, '.gemini'),
+			{
+				recursive: true
+			}
+		);
 	});
 
 	test('creates MCP configuration as settings.json', () => {
@@ -151,6 +154,6 @@ describe('Gemini Profile Integration', () => {
 			call[0].toString().includes('GEMINI.md')
 		);
 		expect(geminiMdCall).toBeDefined();
-		expect(geminiMdCall[0]).toBe(path.join(tempDir, 'GEMINI.md'));
+		expect(geminiMdCall[0]).toBe(path.posix.join(tempDir, 'GEMINI.md'));
 	});
 });

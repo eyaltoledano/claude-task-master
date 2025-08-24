@@ -15,6 +15,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -139,55 +140,302 @@ function ensureDirectoryExists(dirPath) {
 	}
 }
 
+// Function to normalize HOME directory path on Windows
+function normalizeHomeDir() {
+	// Prefer os.homedir() as the primary source
+	let homeDir = os.homedir();
+
+	// Fall back to environment variables if os.homedir() fails
+	if (!homeDir) {
+		homeDir = process.env.USERPROFILE || process.env.HOME;
+	}
+
+	// On Windows, normalize MSYS-style paths to Windows form
+	if (process.platform === 'win32' && homeDir) {
+		// Tighten MSYS regex to only convert paths that match /^\/([a-zA-Z])\/Users\/(.+)$/
+		// This ensures WSL /home/... paths are not touched
+		const msysMatch = homeDir.match(/^\/([a-zA-Z])\/Users\/(.+)$/);
+		if (msysMatch) {
+			const [, driveLetter, rest] = msysMatch;
+			homeDir = `${driveLetter.toUpperCase()}:\\Users\\${rest.replace(/\//g, '\\')}`;
+		}
+	}
+
+	// Return null if no home directory can be resolved
+	if (!homeDir) {
+		log(
+			'warn',
+			'Could not determine home directory from os.homedir(), USERPROFILE, or HOME environment variables.'
+		);
+		return null;
+	}
+
+	return homeDir;
+}
+
 // Function to add shell aliases to the user's shell configuration
 function addShellAliases() {
-	const homeDir = process.env.HOME || process.env.USERPROFILE;
-	let shellConfigFile;
+	const homeDir = normalizeHomeDir();
 
-	// Determine which shell config file to use
-	if (process.env.SHELL?.includes('zsh')) {
-		shellConfigFile = path.join(homeDir, '.zshrc');
-	} else if (process.env.SHELL?.includes('bash')) {
-		shellConfigFile = path.join(homeDir, '.bashrc');
-	} else {
-		log('warn', 'Could not determine shell type. Aliases not added.');
+	// Guard against undefined/null homeDir
+	if (!homeDir) {
+		log('error', 'Could not determine home directory. Aliases not added.');
+		log(
+			'info',
+			'Please ensure USERPROFILE (Windows) or HOME (Unix) environment variables are set.'
+		);
 		return false;
 	}
 
+	let shellType = 'unknown';
+	let shellConfigFile = null;
+	let shellName = 'unknown';
+
+	// Method 1: Check SHELL variable (Unix/Linux/WSL)
+	if (process.env.SHELL) {
+		if (process.env.SHELL.includes('zsh')) {
+			shellType = 'zsh';
+			shellName = 'Zsh';
+			shellConfigFile = path.join(homeDir, '.zshrc');
+		} else if (process.env.SHELL.includes('bash')) {
+			shellType = 'bash';
+			shellName = 'Bash';
+			shellConfigFile = path.join(homeDir, '.bashrc');
+		}
+	}
+
+	// Method 2: Check for PowerShell (use PSModulePath as strong indicator, prefer PS 7+)
+	if (shellType === 'unknown' && process.platform === 'win32') {
+		// Use PSModulePath as a strong indicator of PowerShell environment
+		const hasPSModulePath =
+			process.env.PSModulePath && process.env.PSModulePath.length > 0;
+
+		// Check for modern PowerShell 7+ profile first
+		const modernPowerShellProfile = path.join(
+			homeDir,
+			'Documents',
+			'PowerShell',
+			'Microsoft.PowerShell_profile.ps1'
+		);
+
+		if (fs.existsSync(modernPowerShellProfile)) {
+			shellType = 'powershell';
+			shellName = 'PowerShell 7+';
+			shellConfigFile = modernPowerShellProfile;
+		} else {
+			// Fallback to WindowsPowerShell
+			const legacyPowerShellProfile = path.join(
+				homeDir,
+				'Documents',
+				'WindowsPowerShell',
+				'Microsoft.PowerShell_profile.ps1'
+			);
+
+			if (fs.existsSync(legacyPowerShellProfile)) {
+				shellType = 'powershell';
+				shellName = 'PowerShell';
+				shellConfigFile = legacyPowerShellProfile;
+			} else if (hasPSModulePath) {
+				// If PSModulePath exists but no profile, prefer PowerShell and create the profile
+				shellType = 'powershell';
+				shellName = 'PowerShell';
+				shellConfigFile = modernPowerShellProfile; // Default to modern PS 7+ path
+			} else if (
+				process.env.ComSpec &&
+				process.env.ComSpec.toLowerCase().includes('cmd.exe')
+			) {
+				shellType = 'cmd';
+				shellName = 'Command Prompt';
+				shellConfigFile = path.join(homeDir, 'cmd_aliases.bat');
+			}
+		}
+	}
+
+	// Method 3: Check TERM for Git Bash
+	if (shellType === 'unknown' && process.env.TERM) {
+		if (process.env.TERM.includes('xterm') && process.platform === 'win32') {
+			// Git Bash на Windows
+			shellType = 'gitbash';
+			shellName = 'Git Bash';
+			shellConfigFile = path.join(homeDir, '.bashrc');
+		}
+	}
+
+	// Method 4: Check for available shell config files
+	if (shellType === 'unknown') {
+		const possibleConfigs = [
+			{ type: 'bash', name: 'Bash', file: '.bashrc' },
+			{ type: 'zsh', name: 'Zsh', file: '.zshrc' },
+			{ type: 'bash', name: 'Bash', file: '.bash_profile' },
+			{ type: 'zsh', name: 'Zsh', file: '.zsh_profile' },
+			{ type: 'sh', name: 'Profile', file: '.profile' },
+			{ type: 'zsh', name: 'Zsh', file: '.zprofile' }
+		];
+
+		for (const config of possibleConfigs) {
+			const configPath = path.join(homeDir, config.file);
+			if (fs.existsSync(configPath)) {
+				shellType = config.type;
+				shellName = config.name;
+				shellConfigFile = configPath;
+				break;
+			}
+		}
+	}
+
+	if (shellType === 'unknown') {
+		log('warn', 'Could not determine shell type. Aliases not added.');
+		log(
+			'info',
+			'Supported shells: Bash, Zsh, Git Bash, PowerShell, Command Prompt'
+		);
+		log(
+			'info',
+			'You can manually add aliases to your shell configuration file.'
+		);
+		return false;
+	}
+
+	log('info', `Detected shell: ${shellName}`);
+
+	// Handle different shell types
+	switch (shellType) {
+		case 'bash':
+		case 'gitbash':
+		case 'zsh':
+			return handleUnixShell(shellConfigFile, shellName);
+		case 'powershell':
+			return handlePowerShell(shellConfigFile, homeDir);
+		case 'cmd':
+			return handleCmd(shellConfigFile);
+		default:
+			log('error', `Unsupported shell type: ${shellType}`);
+			return false;
+	}
+}
+
+// Handle Unix-like shells (Bash, Zsh, Git Bash)
+function handleUnixShell(configFile, shellName) {
 	try {
 		// Check if file exists
-		if (!fs.existsSync(shellConfigFile)) {
-			log(
-				'warn',
-				`Shell config file ${shellConfigFile} not found. Aliases not added.`
-			);
-			return false;
+		if (!fs.existsSync(configFile)) {
+			log('info', `Creating new ${shellName} config file: ${configFile}`);
+			// Create file if it doesn't exist
+			fs.writeFileSync(configFile, '');
 		}
 
-		// Check if aliases already exist
-		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
+		// Check existing aliases
+		const configContent = fs.readFileSync(configFile, 'utf8');
 		if (configContent.includes("alias tm='task-master'")) {
 			log('info', 'Task Master aliases already exist in shell config.');
 			return true;
 		}
 
-		// Add aliases to the shell config file
+		// Add aliases
 		const aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
 alias tm='task-master'
 alias taskmaster='task-master'
 `;
 
-		fs.appendFileSync(shellConfigFile, aliasBlock);
-		log('success', `Added Task Master aliases to ${shellConfigFile}`);
+		fs.appendFileSync(configFile, aliasBlock);
+		log('success', `Added Task Master aliases to ${configFile}`);
 		log(
 			'info',
-			`To use the aliases in your current terminal, run: source ${shellConfigFile}`
+			`To use the aliases in your current terminal, run: source ${configFile}`
 		);
 
 		return true;
 	} catch (error) {
 		log('error', `Failed to add aliases: ${error.message}`);
+		return false;
+	}
+}
+
+// Handle PowerShell
+function handlePowerShell(configFile, homeDir) {
+	try {
+		// Create directory if it doesn't exist
+		const configDir = path.dirname(configFile);
+		if (!fs.existsSync(configDir)) {
+			fs.mkdirSync(configDir, { recursive: true });
+		}
+
+		// Check if profile file exists before we start
+		const profileExisted = fs.existsSync(configFile);
+
+		// Check existing aliases
+		let configContent = '';
+		if (profileExisted) {
+			configContent = fs.readFileSync(configFile, 'utf8');
+		}
+
+		// Use case-insensitive regex to check for existing aliases
+		const aliasPattern = /^Set-Alias\s+(tm|taskmaster)\s+task-master/im;
+		if (aliasPattern.test(configContent)) {
+			log('info', 'Task Master aliases already exist in PowerShell profile.');
+			return true;
+		}
+
+		// Add aliases for PowerShell
+		const aliasBlock = `
+# Task Master aliases added on ${new Date().toLocaleDateString()}
+Set-Alias tm task-master
+Set-Alias taskmaster task-master
+`;
+
+		fs.appendFileSync(configFile, aliasBlock);
+
+		// Log if this was a new profile file
+		if (!profileExisted) {
+			log('info', `Created new PowerShell profile at: ${configFile}`);
+		}
+
+		log(
+			'success',
+			`Added Task Master aliases to PowerShell profile: ${configFile}`
+		);
+		log(
+			'info',
+			'To use the aliases in your current PowerShell session, run: . $PROFILE'
+		);
+
+		return true;
+	} catch (error) {
+		log('error', `Failed to add PowerShell aliases: ${error.message}`);
+		return false;
+	}
+}
+
+// Handle CMD
+function handleCmd(configFile) {
+	try {
+		// Check existing aliases with case-insensitive regex
+		let configContent = '';
+		if (fs.existsSync(configFile)) {
+			configContent = fs.readFileSync(configFile, 'utf8');
+		}
+
+		// Check for existing aliases case-insensitively with multiline anchor
+		const aliasPattern = /^doskey\s+(tm|taskmaster)\s*=\s*task-master/im;
+		if (aliasPattern.test(configContent)) {
+			log('info', 'Task Master aliases already exist in CMD config.');
+			return true;
+		}
+
+		// Add aliases for CMD using Windows EOL (CRLF) for better tooling compatibility
+		const aliasBlock = `@REM Task Master aliases added on ${new Date().toLocaleDateString()}\r\ndoskey tm=task-master $*\r\ndoskey taskmaster=task-master $*\r\n`;
+
+		fs.appendFileSync(configFile, aliasBlock);
+		log('success', `Added Task Master aliases to CMD config: ${configFile}`);
+		log(
+			'info',
+			`To use the aliases in your current CMD session, run: call "${configFile}"`
+		);
+
+		return true;
+	} catch (error) {
+		log('error', `Failed to add CMD aliases: ${error.message}`);
 		return false;
 	}
 }
@@ -845,16 +1093,7 @@ function createProjectStructure(
 	}
 	// ====================================
 
-	// Add shell aliases if requested
-	if (addAliases && !dryRun) {
-		log('info', 'Adding shell aliases...');
-		const aliasResult = addShellAliases();
-		if (aliasResult) {
-			log('success', 'Shell aliases added successfully');
-		}
-	} else if (addAliases && dryRun) {
-		log('info', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
-	}
+	// Shell aliases were already added earlier in the process
 
 	// Display success message
 	if (!isSilentMode()) {
