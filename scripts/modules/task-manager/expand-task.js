@@ -108,13 +108,16 @@ function parseSubtasksFromText(
 	// --- NEW: Handle Claude Code CLI text responses ---
 	// Claude Code CLI often returns plain text instead of JSON
 	// Check if the response looks like plain text (no JSON structure)
-	const hasJsonStructure =
-		jsonToParse.includes('"subtasks"') ||
-		jsonToParse.includes('```json') ||
-		(jsonToParse.trim().startsWith('{') && jsonToParse.trim().endsWith('}'));
+	// Use case-insensitive detection and handle arbitrary whitespace
+	const normalizedResponse = jsonToParse.toLowerCase();
+	const hasJsonFence = /```(?:json)?\s*\{[\s\S]*\}\s*```/i.test(jsonToParse);
+	const hasSubtasks = /"subtasks"/i.test(jsonToParse);
+	const isJsonObject = /^\s*\{[\s\S]*\}\s*$/i.test(jsonToParse.trim());
+
+	const hasJsonStructure = hasJsonFence || hasSubtasks || isJsonObject;
 
 	logger.debug(
-		`JSON structure check: hasJsonStructure=${hasJsonStructure}, contains subtasks: ${jsonToParse.includes('"subtasks"')}`
+		`JSON structure check: hasJsonStructure=${hasJsonStructure}, hasJsonFence=${hasJsonFence}, hasSubtasks=${hasSubtasks}, isJsonObject=${isJsonObject}`
 	);
 
 	if (!hasJsonStructure) {
@@ -329,15 +332,30 @@ function parseSubtasksFromText(
 			);
 
 			// Try to extract JSON from the original response (might contain text + JSON)
-			const jsonMatch = originalTrimmedResponse.match(
-				/\{[\s\S]*"subtasks"[\s\S]*\}/
+			// First look for fenced JSON blocks (triple backticks with optional "json" marker)
+			let jsonMatch = originalTrimmedResponse.match(
+				/```(?:json)?\s*(\{[\s\S]*?\})\s*```/
 			);
+			let extractedJson = null;
+
 			if (jsonMatch) {
+				// Found fenced JSON block, use the captured group
+				extractedJson = jsonMatch[1];
+				logger.debug('Found fenced JSON block in response');
+			} else {
+				// Fall back to non-greedy regex that captures the smallest {...} containing "subtasks"
+				jsonMatch = originalTrimmedResponse.match(
+					/\{([^{}]*(?:\{[^{}]*\}[^{}]*)*"subtasks"[^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/
+				);
+				if (jsonMatch) {
+					extractedJson = `{${jsonMatch[1]}}`;
+					logger.debug('Found JSON object with subtasks in response');
+				}
+			}
+
+			if (extractedJson) {
 				try {
-					const extractedJson = jsonMatch[0];
-					logger.debug(
-						`Found JSON block in mixed response: ${extractedJson.substring(0, 200)}...`
-					);
+					logger.debug(`Extracted JSON: ${extractedJson.substring(0, 200)}...`);
 					parsedObject = JSON.parse(extractedJson);
 					logger.info(
 						'Successfully parsed JSON from mixed text+JSON response.'
@@ -518,10 +536,16 @@ function extractSubtasksFromPlainText(
 			}
 
 			// Start a new subtask
+			// Ensure description meets minimum length requirement
+			let description = title.trim();
+			if (description.length < 10) {
+				description = `${description} - needs more detail`;
+			}
+
 			currentSubtask = {
 				id: currentId,
 				title: title,
-				description: title, // Use title as description initially
+				description: description,
 				details: `Implementation details for: ${title}. This subtask was extracted from plain text response and requires manual review for specific implementation approach.`,
 				dependencies: [],
 				status: 'pending',

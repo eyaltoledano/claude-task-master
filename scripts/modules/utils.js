@@ -94,16 +94,44 @@ function slugifyTagForFilePath(tagName) {
  * @returns {string} The resolved file path
  */
 function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
-	// Input type guards and normalization
-	if (typeof basePath !== 'string' || typeof projectRoot !== 'string') {
-		throw new TypeError('basePath and projectRoot must be strings');
+	// Input type guards and validation
+	if (typeof basePath !== 'string') {
+		const error = new TypeError('basePath must be a string');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	if (typeof projectRoot !== 'string') {
+		const error = new TypeError('projectRoot must be a string');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	// Check for empty or whitespace-only strings
+	const trimmedBasePath = basePath.trim();
+	const trimmedProjectRoot = projectRoot.trim();
+
+	if (!trimmedBasePath) {
+		const error = new TypeError('basePath cannot be empty or whitespace-only');
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
+	}
+
+	if (!trimmedProjectRoot) {
+		const error = new TypeError(
+			'projectRoot cannot be empty or whitespace-only'
+		);
+		error.code = 'ERR_INVALID_ARG';
+		throw error;
 	}
 
 	// Normalize inputs to POSIX format and collapse duplicate slashes
-	const normalizedProjectRoot = projectRoot
+	const normalizedProjectRoot = trimmedProjectRoot
 		.replace(/\\/g, '/')
 		.replace(/\/+/g, '/');
-	const normalizedBasePath = basePath.replace(/\\/g, '/').replace(/\/+/g, '/');
+	const normalizedBasePath = trimmedBasePath
+		.replace(/\\/g, '/')
+		.replace(/\/+/g, '/');
 
 	// Use path.posix.parse and path.posix.format for cross-platform path generation
 	const parsedPath = path.posix.parse(normalizedBasePath);

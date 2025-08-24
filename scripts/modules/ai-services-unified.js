@@ -373,9 +373,11 @@ function _extractErrorMessage(error) {
 		// Special handling for Claude Code CLI Ink errors
 		if (
 			error?.message &&
-			(error.message.includes('Raw mode is not supported') ||
-				error.message.includes('Ink') ||
-				error.message.includes('Claude Code process exited with code 143'))
+			(error.message.toLowerCase().includes('raw mode is not supported') ||
+				error.message.toLowerCase().includes('ink') ||
+				error.message
+					.toLowerCase()
+					.includes('claude code process exited with code 143'))
 		) {
 			return `Claude Code CLI error: ${error.message}. This is a known issue on Windows with Git Bash. Please try using PowerShell or set environment variables FORCE_COLOR=0 CI=true.`;
 		}
@@ -573,10 +575,12 @@ async function _attemptProviderCallWithRetries(
 			);
 
 			// Enhanced error handling for specific error types
+			// Use case-insensitive comparison to catch all variants
+			const lowerCleanMessage = cleanMessage.toLowerCase();
 			if (
-				cleanMessage.includes('Raw mode is not supported') ||
-				cleanMessage.includes('Ink') ||
-				cleanMessage.includes('Claude Code process exited with code 143')
+				lowerCleanMessage.includes('raw mode is not supported') ||
+				lowerCleanMessage.includes('ink') ||
+				lowerCleanMessage.includes('claude code process exited with code 143')
 			) {
 				log(
 					'error',

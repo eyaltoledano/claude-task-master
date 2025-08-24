@@ -139,9 +139,29 @@ function ensureDirectoryExists(dirPath) {
 	}
 }
 
+// Function to normalize HOME directory path on Windows
+function normalizeHomeDir() {
+	let homeDir = process.env.USERPROFILE || process.env.HOME;
+
+	// On Windows, normalize MSYS-style paths to Windows form
+	if (process.platform === 'win32' && homeDir) {
+		// Convert MSYS-style paths like "/c/Users/..." to Windows form
+		if (homeDir.startsWith('/') && homeDir.includes('/Users/')) {
+			// Extract the drive letter and path
+			const match = homeDir.match(/^\/([a-zA-Z])\/(.+)$/);
+			if (match) {
+				const [, driveLetter, rest] = match;
+				homeDir = `${driveLetter.toUpperCase()}:\\${rest.replace(/\//g, '\\')}`;
+			}
+		}
+	}
+
+	return homeDir;
+}
+
 // Function to add shell aliases to the user's shell configuration
 function addShellAliases() {
-	const homeDir = process.env.HOME || process.env.USERPROFILE;
+	const homeDir = normalizeHomeDir();
 	let shellType = 'unknown';
 	let shellConfigFile = null;
 	let shellName = 'unknown';
@@ -159,8 +179,12 @@ function addShellAliases() {
 		}
 	}
 
-	// Method 2: Check for PowerShell profiles (modern PowerShell 7+ first, then WindowsPowerShell)
+	// Method 2: Check for PowerShell (use PSModulePath as strong indicator, prefer PS 7+)
 	if (shellType === 'unknown' && process.platform === 'win32') {
+		// Use PSModulePath as a strong indicator of PowerShell environment
+		const hasPSModulePath =
+			process.env.PSModulePath && process.env.PSModulePath.length > 0;
+
 		// Check for modern PowerShell 7+ profile first
 		const modernPowerShellProfile = path.join(
 			homeDir,
@@ -186,6 +210,11 @@ function addShellAliases() {
 				shellType = 'powershell';
 				shellName = 'PowerShell';
 				shellConfigFile = legacyPowerShellProfile;
+			} else if (hasPSModulePath) {
+				// If PSModulePath exists but no profile, prefer PowerShell and create the profile
+				shellType = 'powershell';
+				shellName = 'PowerShell';
+				shellConfigFile = modernPowerShellProfile; // Default to modern PS 7+ path
 			} else if (
 				process.env.ComSpec &&
 				process.env.ComSpec.includes('cmd.exe')
