@@ -157,7 +157,7 @@ function normalizeHomeDir() {
 		const msysMatch = homeDir.match(/^\/([a-zA-Z])\/Users\/(.+)$/);
 		if (msysMatch) {
 			const [, driveLetter, rest] = msysMatch;
-			homeDir = `${driveLetter.toUpperCase()}:\\${rest.replace(/\//g, '\\')}`;
+			homeDir = `${driveLetter.toUpperCase()}:\\Users\\${rest.replace(/\//g, '\\')}`;
 		}
 	}
 
@@ -242,7 +242,7 @@ function addShellAliases() {
 				shellConfigFile = modernPowerShellProfile; // Default to modern PS 7+ path
 			} else if (
 				process.env.ComSpec &&
-				process.env.ComSpec.includes('cmd.exe')
+				process.env.ComSpec.toLowerCase().includes('cmd.exe')
 			) {
 				shellType = 'cmd';
 				shellName = 'Command Prompt';
@@ -370,7 +370,9 @@ function handlePowerShell(configFile, homeDir) {
 			configContent = fs.readFileSync(configFile, 'utf8');
 		}
 
-		if (configContent.includes('Set-Alias tm task-master')) {
+		// Use case-insensitive regex to check for existing aliases
+		const aliasPattern = /^Set-Alias\s+(tm|taskmaster)\s+task-master/im;
+		if (aliasPattern.test(configContent)) {
 			log('info', 'Task Master aliases already exist in PowerShell profile.');
 			return true;
 		}
@@ -414,8 +416,8 @@ function handleCmd(configFile) {
 			configContent = fs.readFileSync(configFile, 'utf8');
 		}
 
-		// Check for existing aliases case-insensitively
-		const aliasPattern = /doskey\s+(tm|taskmaster)\s*=\s*task-master/i;
+		// Check for existing aliases case-insensitively with multiline anchor
+		const aliasPattern = /^doskey\s+(tm|taskmaster)\s*=\s*task-master/im;
 		if (aliasPattern.test(configContent)) {
 			log('info', 'Task Master aliases already exist in CMD config.');
 			return true;
@@ -428,7 +430,7 @@ function handleCmd(configFile) {
 		log('success', `Added Task Master aliases to CMD config: ${configFile}`);
 		log(
 			'info',
-			`To use the aliases in your current CMD session, run: call ${configFile}`
+			`To use the aliases in your current CMD session, run: call "${configFile}"`
 		);
 
 		return true;

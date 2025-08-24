@@ -133,7 +133,7 @@ function parseSubtasksFromText(
 			logger
 		);
 		if (extractedSubtasks && extractedSubtasks.length > 0) {
-			logger.warn(
+			logger.info(
 				`SUCCESS: Successfully extracted ${extractedSubtasks.length} subtasks from plain text response.`
 			);
 			return extractedSubtasks;
