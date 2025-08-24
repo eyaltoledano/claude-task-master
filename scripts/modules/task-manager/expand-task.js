@@ -109,7 +109,6 @@ function parseSubtasksFromText(
 	// Claude Code CLI often returns plain text instead of JSON
 	// Check if the response looks like plain text (no JSON structure)
 	// Use case-insensitive detection and handle arbitrary whitespace
-	const normalizedResponse = jsonToParse.toLowerCase();
 	const hasJsonFence = /```(?:json)?\s*\{[\s\S]*\}\s*```/i.test(jsonToParse);
 	const hasSubtasks = /"subtasks"/i.test(jsonToParse);
 	const isJsonObject = /^\s*\{[\s\S]*\}\s*$/i.test(jsonToParse.trim());
@@ -902,7 +901,7 @@ async function expandTask(
 			);
 
 			// Log additional error context
-			logger.error(`Error details for task ${taskId}:`, {
+			const errorMetadata = {
 				errorType: error.constructor.name,
 				errorCode: error.code,
 				exitCode: error.exitCode,
@@ -911,7 +910,10 @@ async function expandTask(
 				useResearch,
 				finalSubtaskCount,
 				role: useResearch ? 'research' : 'main'
-			});
+			};
+			logger.error(
+				`Error details for task ${taskId}: ${JSON.stringify(errorMetadata)}`
+			);
 
 			// Log raw response in debug mode if parsing failed
 			if (
@@ -979,7 +981,7 @@ async function expandTask(
 		logger.error(`Error expanding task ${taskId}: ${error.message}`);
 
 		// Enhanced error context logging
-		logger.error(`Expand task error context for task ${taskId}:`, {
+		const expandErrorMetadata = {
 			errorType: error.constructor.name,
 			errorCode: error.code,
 			exitCode: error.exitCode,
@@ -990,7 +992,10 @@ async function expandTask(
 			finalSubtaskCount: finalSubtaskCount || 0,
 			projectRoot: projectRoot || 'not set',
 			tag: tag || 'master'
-		});
+		};
+		logger.error(
+			`Expand task error context for task ${taskId}: ${JSON.stringify(expandErrorMetadata)}`
+		);
 
 		// Special error handling for common issues
 		if (

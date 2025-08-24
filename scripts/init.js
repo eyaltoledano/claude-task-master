@@ -15,6 +15,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -141,19 +142,32 @@ function ensureDirectoryExists(dirPath) {
 
 // Function to normalize HOME directory path on Windows
 function normalizeHomeDir() {
-	let homeDir = process.env.USERPROFILE || process.env.HOME;
+	// Prefer os.homedir() as the primary source
+	let homeDir = os.homedir();
+
+	// Fall back to environment variables if os.homedir() fails
+	if (!homeDir) {
+		homeDir = process.env.USERPROFILE || process.env.HOME;
+	}
 
 	// On Windows, normalize MSYS-style paths to Windows form
 	if (process.platform === 'win32' && homeDir) {
-		// Convert MSYS-style paths like "/c/Users/..." to Windows form
-		if (homeDir.startsWith('/') && homeDir.includes('/Users/')) {
-			// Extract the drive letter and path
-			const match = homeDir.match(/^\/([a-zA-Z])\/(.+)$/);
-			if (match) {
-				const [, driveLetter, rest] = match;
-				homeDir = `${driveLetter.toUpperCase()}:\\${rest.replace(/\//g, '\\')}`;
-			}
+		// Tighten MSYS regex to only convert paths that match /^\/([a-zA-Z])\/Users\/(.+)$/
+		// This ensures WSL /home/... paths are not touched
+		const msysMatch = homeDir.match(/^\/([a-zA-Z])\/Users\/(.+)$/);
+		if (msysMatch) {
+			const [, driveLetter, rest] = msysMatch;
+			homeDir = `${driveLetter.toUpperCase()}:\\${rest.replace(/\//g, '\\')}`;
 		}
+	}
+
+	// Return null if no home directory can be resolved
+	if (!homeDir) {
+		log(
+			'warn',
+			'Could not determine home directory from os.homedir(), USERPROFILE, or HOME environment variables.'
+		);
+		return null;
 	}
 
 	return homeDir;
@@ -162,6 +176,17 @@ function normalizeHomeDir() {
 // Function to add shell aliases to the user's shell configuration
 function addShellAliases() {
 	const homeDir = normalizeHomeDir();
+
+	// Guard against undefined/null homeDir
+	if (!homeDir) {
+		log('error', 'Could not determine home directory. Aliases not added.');
+		log(
+			'info',
+			'Please ensure USERPROFILE (Windows) or HOME (Unix) environment variables are set.'
+		);
+		return false;
+	}
+
 	let shellType = 'unknown';
 	let shellConfigFile = null;
 	let shellName = 'unknown';
@@ -242,7 +267,9 @@ function addShellAliases() {
 			{ type: 'bash', name: 'Bash', file: '.bashrc' },
 			{ type: 'zsh', name: 'Zsh', file: '.zshrc' },
 			{ type: 'bash', name: 'Bash', file: '.bash_profile' },
-			{ type: 'zsh', name: 'Zsh', file: '.zsh_profile' }
+			{ type: 'zsh', name: 'Zsh', file: '.zsh_profile' },
+			{ type: 'sh', name: 'Profile', file: '.profile' },
+			{ type: 'zsh', name: 'Zsh', file: '.zprofile' }
 		];
 
 		for (const config of possibleConfigs) {
@@ -280,7 +307,7 @@ function addShellAliases() {
 		case 'powershell':
 			return handlePowerShell(shellConfigFile, homeDir);
 		case 'cmd':
-			return handleCmd(shellConfigFile, homeDir);
+			return handleCmd(shellConfigFile);
 		default:
 			log('error', `Unsupported shell type: ${shellType}`);
 			return false;
@@ -379,25 +406,23 @@ Set-Alias taskmaster task-master
 }
 
 // Handle CMD
-function handleCmd(configFile, homeDir) {
+function handleCmd(configFile) {
 	try {
-		// Check existing aliases
+		// Check existing aliases with case-insensitive regex
 		let configContent = '';
 		if (fs.existsSync(configFile)) {
 			configContent = fs.readFileSync(configFile, 'utf8');
 		}
 
-		if (configContent.includes('doskey tm=task-master')) {
+		// Check for existing aliases case-insensitively
+		const aliasPattern = /doskey\s+(tm|taskmaster)\s*=\s*task-master/i;
+		if (aliasPattern.test(configContent)) {
 			log('info', 'Task Master aliases already exist in CMD config.');
 			return true;
 		}
 
-		// Add aliases for CMD
-		const aliasBlock = `
-@REM Task Master aliases added on ${new Date().toLocaleDateString()}
-doskey tm=task-master $*
-doskey taskmaster=task-master $*
-`;
+		// Add aliases for CMD using Windows EOL (CRLF) for better tooling compatibility
+		const aliasBlock = `@REM Task Master aliases added on ${new Date().toLocaleDateString()}\r\ndoskey tm=task-master $*\r\ndoskey taskmaster=task-master $*\r\n`;
 
 		fs.appendFileSync(configFile, aliasBlock);
 		log('success', `Added Task Master aliases to CMD config: ${configFile}`);
