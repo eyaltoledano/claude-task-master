@@ -106,6 +106,20 @@
 			"supported": true
 		}
 	],
+	"chatgpt-oauth": [
+		{
+			"id": "gpt-5",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0,
+				"currency": "USD"
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000,
+			"supported": true
+		}
+	],
 	"openai": [
 		{
 			"id": "gpt-4o",

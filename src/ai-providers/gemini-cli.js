@@ -9,6 +9,7 @@ import { generateObject, generateText, streamText } from 'ai';
 import { parse } from 'jsonc-parser';
 import { BaseAIProvider } from './base-provider.js';
 import { log } from '../../scripts/modules/utils.js';
+import { extractJsonTolerant } from '../utils/json-extract.js';
 
 let createGeminiProvider;
 
@@ -251,132 +252,26 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 	 * @returns {string} A valid JSON string if extraction succeeds, otherwise the original text
 	 */
 	extractJson(text) {
-		if (!text || typeof text !== 'string') {
-			return text;
-		}
-
-		let content = text.trim();
-
-		// Early exit for very short content
-		if (content.length < 2) {
-			return text;
-		}
-
-		// Strip common wrappers in a single pass
-		content = content
-			// Remove markdown fences
-			.replace(/^.*?```(?:json)?\s*([\s\S]*?)\s*```.*$/i, '$1')
-			// Remove variable declarations
-			.replace(/^\s*(?:const|let|var)\s+\w+\s*=\s*([\s\S]*?)(?:;|\s*)$/i, '$1')
-			// Remove common prefixes
-			.replace(/^(?:Here's|The)\s+(?:the\s+)?JSON.*?[:]\s*/i, '')
-			.trim();
-
-		// Find the first JSON-like structure
-		const firstObj = content.indexOf('{');
-		const firstArr = content.indexOf('[');
-
-		if (firstObj === -1 && firstArr === -1) {
-			return text;
-		}
-
-		const start =
-			firstArr === -1
-				? firstObj
-				: firstObj === -1
-					? firstArr
-					: Math.min(firstObj, firstArr);
-		content = content.slice(start);
-
-		// Optimized parsing function with error collection
-		const tryParse = (value) => {
-			if (!value || value.length < 2) return undefined;
-
-			const errors = [];
-			try {
-				const result = parse(value, errors, {
-					allowTrailingComma: true,
-					allowEmptyContent: false
-				});
-				if (errors.length === 0 && result !== undefined) {
-					return JSON.stringify(result, null, 2);
-				}
-			} catch {
-				// Parsing failed completely
-			}
-			return undefined;
-		};
-
-		// Try parsing the full content first
-		const fullParse = tryParse(content);
-		if (fullParse !== undefined) {
-			return fullParse;
-		}
-
-		// Smart boundary detection - single pass with optimizations
-		const openChar = content[0];
-		const closeChar = openChar === '{' ? '}' : ']';
-
-		let depth = 0;
-		let inString = false;
-		let escapeNext = false;
-		let lastValidEnd = -1;
-
-		// Single-pass boundary detection with early termination
-		for (let i = 0; i < content.length && i < 10000; i++) {
-			// Limit scan for performance
-			const char = content[i];
-
-			if (escapeNext) {
-				escapeNext = false;
-				continue;
-			}
-
-			if (char === '\\') {
-				escapeNext = true;
-				continue;
-			}
-
-			if (char === '"') {
-				inString = !inString;
-				continue;
-			}
-
-			if (inString) continue;
-
-			if (char === openChar) {
-				depth++;
-			} else if (char === closeChar) {
-				depth--;
-				if (depth === 0) {
-					lastValidEnd = i + 1;
-					// Try parsing immediately on first valid boundary
-					const candidate = content.slice(0, lastValidEnd);
-					const parsed = tryParse(candidate);
-					if (parsed !== undefined) {
-						return parsed;
-					}
-				}
+		const result = extractJsonTolerant(text);
+		// Preserve previous behavior for clearly incomplete JSON inputs
+		// If no closing bracket is present after the first opening, return original text
+		if (typeof text === 'string' && result !== text) {
+			const trimmed = text.trim();
+			const firstObj = trimmed.indexOf('{');
+			const firstArr = trimmed.indexOf('[');
+			if (firstObj === -1 && firstArr === -1) return text; // no json-like start
+			const start =
+				firstArr === -1
+					? firstObj
+					: firstObj === -1
+						? firstArr
+						: Math.min(firstObj, firstArr);
+			const closeChar = trimmed[start] === '{' ? '}' : ']';
+			if (trimmed.indexOf(closeChar, start + 1) === -1) {
+				return text; // incomplete structure, keep original per legacy behavior
 			}
 		}
-
-		// If we found valid boundaries but parsing failed, try limited fallback
-		if (lastValidEnd > 0) {
-			const maxAttempts = Math.min(5, Math.floor(lastValidEnd / 100)); // Limit attempts
-			for (let i = 0; i < maxAttempts; i++) {
-				const testEnd = Math.max(
-					lastValidEnd - i * 50,
-					Math.floor(lastValidEnd * 0.8)
-				);
-				const candidate = content.slice(0, testEnd);
-				const parsed = tryParse(candidate);
-				if (parsed !== undefined) {
-					return parsed;
-				}
-			}
-		}
-
-		return text;
+		return result;
 	}
 
 	/**

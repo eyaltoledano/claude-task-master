@@ -75,6 +75,7 @@ At least one (1) of the following is required:
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
 - Claude Code (no API key required - requires Claude Code CLI)
+- ChatGPT OAuth (no API key required - uses ChatGPT Plus/Pro/Teams subscription)
 
 Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
 
@@ -275,7 +276,8 @@ Task Master now supports Claude models through the Claude Code CLI, which requir
 - **Requirements**: Claude Code CLI installed
 - **Benefits**: No API key needed, uses your local Claude instance
 
-[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+- [Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+- [Learn more about ChatGPT OAuth setup](docs/examples/chatgpt-oauth-usage.md)
 
 ## Troubleshooting
 

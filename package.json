@@ -80,6 +80,7 @@
 		"lru-cache": "^10.2.0",
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
+		"ai-sdk-provider-chatgpt-oauth": "1.0.0-ai-sdk-v4",
 		"ora": "^8.2.0",
 		"uuid": "^11.1.0",
 		"zod": "^3.23.8",
