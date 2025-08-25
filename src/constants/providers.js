@@ -23,7 +23,8 @@ export const CUSTOM_PROVIDERS = {
 	OLLAMA: 'ollama',
 	CLAUDE_CODE: 'claude-code',
 	MCP: 'mcp',
-	GEMINI_CLI: 'gemini-cli'
+	GEMINI_CLI: 'gemini-cli',
+	CHATGPT_OAUTH: 'chatgpt-oauth'
 };
 
 // Custom providers array (for backward compatibility and iteration)

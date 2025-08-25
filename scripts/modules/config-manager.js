@@ -647,7 +647,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.GEMINI_CLI
+		CUSTOM_PROVIDERS.GEMINI_CLI,
+		CUSTOM_PROVIDERS.CHATGPT_OAUTH
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -953,7 +954,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
-	CUSTOM_PROVIDERS.MCP
+	CUSTOM_PROVIDERS.MCP,
+	CUSTOM_PROVIDERS.CHATGPT_OAUTH
 ];
 
 export {

@@ -41,6 +41,7 @@ import {
 	AzureProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
+	ChatGPTOAuthProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GroqProvider,
@@ -69,7 +70,8 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
-	'gemini-cli': new GeminiCliProvider()
+	'gemini-cli': new GeminiCliProvider(),
+	'chatgpt-oauth': new ChatGPTOAuthProvider()
 };
 
 function _getProvider(providerName) {
@@ -642,6 +644,14 @@ async function _unifiedServiceRunner(serviceType, params) {
 				temperature: roleParams.temperature,
 				messages,
 				...(baseURL && { baseURL }),
+				// Pass through optional provider-specific options for chatgpt-oauth
+				// If present in roleConfig, they will be forwarded to the provider's getClient.
+				...(roleConfig?.reasoningEffort !== undefined && {
+					reasoningEffort: roleConfig.reasoningEffort
+				}),
+				...(roleConfig?.reasoningSummary !== undefined && {
+					reasoningSummary: roleConfig.reasoningSummary
+				}),
 				...((serviceType === 'generateObject' ||
 					serviceType === 'streamObject') && { schema, objectName }),
 				...providerSpecificParams,

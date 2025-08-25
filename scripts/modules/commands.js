@@ -3751,6 +3751,10 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--chatgpt-oauth',
+			'Allow setting a ChatGPT OAuth model ID (use with --set-*)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3766,6 +3770,7 @@ Examples:
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
+  $ task-master models --set-main gpt-5 --chatgpt-oauth       # Set ChatGPT OAuth model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3782,12 +3787,13 @@ Examples:
 				options.ollama,
 				options.bedrock,
 				options.claudeCode,
-				options.geminiCli
+				options.geminiCli,
+				options.chatgptOauth
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --chatgpt-oauth) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3833,7 +3839,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.chatgptOauth
+												? 'chatgpt-oauth'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3859,7 +3867,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.chatgptOauth
+												? 'chatgpt-oauth'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3887,7 +3897,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.chatgptOauth
+												? 'chatgpt-oauth'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

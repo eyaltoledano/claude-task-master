@@ -539,6 +539,22 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Gemini CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.CHATGPT_OAUTH) {
+					// ChatGPT OAuth provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.CHATGPT_OAUTH;
+					const chatgptOAuthModels = availableModels.filter(
+						(m) => m.provider === 'chatgpt-oauth'
+					);
+					const chatgptOAuthModelData = chatgptOAuthModels.find(
+						(m) => m.id === modelId
+					);
+					if (chatgptOAuthModelData) {
+						modelData = chatgptOAuthModelData;
+						report('info', `Setting ChatGPT OAuth model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: ChatGPT OAuth model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -586,9 +602,24 @@ async function setModel(role, modelId, options = {}) {
 			modelId: modelId
 		};
 
-		// If model data is available, update maxTokens from supported-models.json
-		if (modelData && modelData.max_tokens) {
-			currentConfig.models[role].maxTokens = modelData.max_tokens;
+		// Handle provider-specific parameter configuration
+		if (determinedProvider === CUSTOM_PROVIDERS.CHATGPT_OAUTH) {
+			// ChatGPT OAuth doesn't support maxTokens or temperature - remove them
+			delete currentConfig.models[role].maxTokens;
+			delete currentConfig.models[role].temperature;
+
+			// Add supported reasoning controls with defaults if not already present
+			if (typeof currentConfig.models[role].reasoningEffort === 'undefined') {
+				currentConfig.models[role].reasoningEffort = 'medium'; // provider default
+			}
+			if (typeof currentConfig.models[role].reasoningSummary === 'undefined') {
+				currentConfig.models[role].reasoningSummary = 'auto'; // provider default
+			}
+		} else {
+			// For other providers, handle maxTokens from supported-models.json
+			if (modelData && modelData.max_tokens) {
+				currentConfig.models[role].maxTokens = modelData.max_tokens;
+			}
 		}
 
 		// Write updated configuration
