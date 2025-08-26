@@ -92,10 +92,11 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 |              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
 | **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
 | **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
+| **Q CLI**    | Global  | `~/.aws/amazonq/mcp.json`             |                                                   | `mcpServers` |
 
 ##### Manual Configuration
 
-###### Cursor & Windsurf (`mcpServers`)
+###### Cursor & Windsurf & Q Developer CLI (`mcpServers`)
 
 ```json
 {
