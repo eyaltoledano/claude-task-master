@@ -19,7 +19,7 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { getDebugFlag, isClaudeCode } from '../config-manager.js';
+import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
@@ -436,7 +436,7 @@ async function updateTasks(
 				updatePrompt: prompt,
 				useResearch,
 				projectContext: gatheredContext,
-				isClaudeCode: isClaudeCode(useResearch, projectRoot),
+				hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
 				projectRoot: projectRoot
 			}
 		);

@@ -428,16 +428,19 @@ function getResearchProvider(explicitRoot = null) {
 }
 
 /**
- * Check if Claude Code is being used as the provider
+ * Check if a codebase analysis provider is being used (Claude Code or Gemini CLI)
  * @param {boolean} useResearch - Whether to check research provider or main provider
  * @param {string|null} projectRoot - Project root path (optional)
- * @returns {boolean} True if Claude Code is the current provider
+ * @returns {boolean} True if a codebase analysis provider is the current provider
  */
-function isClaudeCode(useResearch = false, projectRoot = null) {
+function hasCodebaseAnalysis(useResearch = false, projectRoot = null) {
 	const currentProvider = useResearch
 		? getResearchProvider(projectRoot)
 		: getMainProvider(projectRoot);
-	return currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
+	return (
+		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI
+	);
 }
 
 function getResearchModelId(explicitRoot = null) {
@@ -996,7 +999,7 @@ export {
 	getResearchModelId,
 	getResearchMaxTokens,
 	getResearchTemperature,
-	isClaudeCode,
+	hasCodebaseAnalysis,
 	getFallbackProvider,
 	getFallbackModelId,
 	getFallbackMaxTokens,

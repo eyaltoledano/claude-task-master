@@ -52,7 +52,7 @@ jest.unstable_mockModule(
 	() => ({
 		getDebugFlag: jest.fn(() => false),
 		isApiKeySet: jest.fn(() => true),
-		isClaudeCode: jest.fn(() => false)
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 

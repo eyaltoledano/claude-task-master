@@ -31,10 +31,10 @@
 			"default": false,
 			"description": "Use research mode for deeper analysis"
 		},
-		"isClaudeCode": {
+		"hasCodebaseAnalysis": {
 			"type": "boolean",
 			"default": false,
-			"description": "Whether Claude Code is being used as the provider"
+			"description": "Whether codebase analysis is available"
 		},
 		"projectRoot": {
 			"type": "string",
@@ -45,7 +45,7 @@
 	"prompts": {
 		"default": {
 			"system": "You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.",
-			"user": "{{#if isClaudeCode}}## IMPORTANT: Codebase Analysis Required\n\nYou have access to powerful codebase analysis tools. Before analyzing task complexity:\n\n1. Use the Glob tool to explore the project structure and understand the codebase size\n2. Use the Grep tool to search for existing implementations related to each task\n3. Use the Read tool to examine key files that would be affected by these tasks\n4. Understand the current implementation state, patterns used, and technical debt\n\nBased on your codebase analysis:\n- Assess complexity based on ACTUAL code that needs to be modified/created\n- Consider existing abstractions and patterns that could simplify implementation\n- Identify tasks that require refactoring vs. greenfield development\n- Factor in dependencies between existing code and new features\n- Provide more accurate subtask recommendations based on real code structure\n\nProject Root: {{projectRoot}}\n\n{{/if}}Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.{{#if useResearch}} Consider current best practices, common implementation patterns, and industry standards in your analysis.{{/if}}\n\nTasks:\n{{{json tasks}}}\n{{#if gatheredContext}}\n\n# Project Context\n\n{{gatheredContext}}\n{{/if}}\n\nRespond ONLY with a valid JSON array matching the schema:\n[\n  {\n    \"taskId\": <number>,\n    \"taskTitle\": \"<string>\",\n    \"complexityScore\": <number 1-10>,\n    \"recommendedSubtasks\": <number>,\n    \"expansionPrompt\": \"<string>\",\n    \"reasoning\": \"<string>\"\n  },\n  ...\n]\n\nDo not include any explanatory text, markdown formatting, or code block markers before or after the JSON array."
+			"user": "{{#if hasCodebaseAnalysis}}## IMPORTANT: Codebase Analysis Required\n\nYou have access to powerful codebase analysis tools. Before analyzing task complexity:\n\n1. Use the Glob tool to explore the project structure and understand the codebase size\n2. Use the Grep tool to search for existing implementations related to each task\n3. Use the Read tool to examine key files that would be affected by these tasks\n4. Understand the current implementation state, patterns used, and technical debt\n\nBased on your codebase analysis:\n- Assess complexity based on ACTUAL code that needs to be modified/created\n- Consider existing abstractions and patterns that could simplify implementation\n- Identify tasks that require refactoring vs. greenfield development\n- Factor in dependencies between existing code and new features\n- Provide more accurate subtask recommendations based on real code structure\n\nProject Root: {{projectRoot}}\n\n{{/if}}Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.{{#if useResearch}} Consider current best practices, common implementation patterns, and industry standards in your analysis.{{/if}}\n\nTasks:\n{{{json tasks}}}\n{{#if gatheredContext}}\n\n# Project Context\n\n{{gatheredContext}}\n{{/if}}\n\nRespond ONLY with a valid JSON array matching the schema:\n[\n  {\n    \"taskId\": <number>,\n    \"taskTitle\": \"<string>\",\n    \"complexityScore\": <number 1-10>,\n    \"recommendedSubtasks\": <number>,\n    \"expansionPrompt\": \"<string>\",\n    \"reasoning\": \"<string>\"\n  },\n  ...\n]\n\nDo not include any explanatory text, markdown formatting, or code block markers before or after the JSON array."
 		}
 	}
 }

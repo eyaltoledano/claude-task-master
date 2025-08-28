@@ -6,6 +6,7 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
+import { hasCodebaseAnalysis } from '../../../../../scripts/modules/config-manager.js';
 
 // Mock the dependencies
 jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({
@@ -302,7 +303,7 @@ jest.unstable_mockModule(
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
 		getVertexLocation: jest.fn(() => undefined),
-		isClaudeCode: jest.fn(() => false)
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 

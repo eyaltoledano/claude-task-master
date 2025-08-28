@@ -3,7 +3,7 @@ import boxen from 'boxen';
 import readline from 'readline';
 import fs from 'fs';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, isSilentMode } from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -16,9 +16,7 @@ import { generateTextService } from '../ai-services-unified.js';
 import {
 	getDebugFlag,
 	getProjectName,
-	getMainProvider,
-	getResearchProvider,
-	isClaudeCode
+	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import {
@@ -421,7 +419,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			tasks: tasksData.tasks,
 			gatheredContext: gatheredContext || '',
 			useResearch: useResearch,
-			isClaudeCode: isClaudeCode(useResearch, projectRoot),
+			hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
 			projectRoot: projectRoot || ''
 		};
 

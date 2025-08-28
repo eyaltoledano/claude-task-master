@@ -20,7 +20,7 @@ import {
 	flattenTasksWithSubtasks
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
-import { getDebugFlag, isClaudeCode } from '../config-manager.js';
+import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
@@ -232,7 +232,7 @@ async function updateSubtaskById(
 				updatePrompt: prompt,
 				useResearch: useResearch,
 				gatheredContext: gatheredContext || '',
-				isClaudeCode: isClaudeCode(useResearch, projectRoot),
+				hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
 				projectRoot: projectRoot
 			};
 

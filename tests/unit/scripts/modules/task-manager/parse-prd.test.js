@@ -187,7 +187,8 @@ jest.unstable_mockModule(
 		getDefaultNumTasks: jest.fn(() => 10),
 		getDefaultPriority: jest.fn(() => 'medium'),
 		getMainProvider: jest.fn(() => 'openai'),
-		getResearchProvider: jest.fn(() => 'perplexity')
+		getResearchProvider: jest.fn(() => 'perplexity'),
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 

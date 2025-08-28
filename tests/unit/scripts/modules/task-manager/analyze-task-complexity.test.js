@@ -6,6 +6,7 @@ import {
 	createGetTagAwareFilePathMock,
 	createSlugifyTagForFilePathMock
 } from './setup.js';
+import { hasCodebaseAnalysis } from '../../../../../scripts/modules/config-manager.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
@@ -188,7 +189,7 @@ jest.unstable_mockModule(
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
 		getVertexLocation: jest.fn(() => undefined),
-		isClaudeCode: jest.fn(() => false)
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 
