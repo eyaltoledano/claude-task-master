@@ -6,7 +6,6 @@ import {
 	createGetTagAwareFilePathMock,
 	createSlugifyTagForFilePathMock
 } from './setup.js';
-import { hasCodebaseAnalysis } from '../../../../../scripts/modules/config-manager.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({

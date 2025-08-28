@@ -77,7 +77,7 @@ export class PrdParseConfig {
 	 * Check if codebase analysis is available (Claude Code or Gemini CLI)
 	 */
 	hasCodebaseAnalysis() {
-		return hasCodebaseAnalysis(this.research, this.projectRoot);
+		return hasCodebaseAnalysis(this.research, this.projectRoot, this.session);
 	}
 }
 

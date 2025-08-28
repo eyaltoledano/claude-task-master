@@ -436,7 +436,11 @@ async function updateTasks(
 				updatePrompt: prompt,
 				useResearch,
 				projectContext: gatheredContext,
-				hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
+				hasCodebaseAnalysis: hasCodebaseAnalysis(
+					useResearch,
+					projectRoot,
+					session
+				),
 				projectRoot: projectRoot
 			}
 		);
