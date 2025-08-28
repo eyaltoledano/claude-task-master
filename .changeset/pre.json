@@ -1,0 +1,15 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.25.1",
+    "docs": "0.0.1",
+    "extension": "0.24.1"
+  },
+  "changesets": [
+    "clarify-force-move-docs",
+    "curvy-moons-dig",
+    "strong-eagles-vanish",
+    "wet-candies-accept"
+  ]
+}
