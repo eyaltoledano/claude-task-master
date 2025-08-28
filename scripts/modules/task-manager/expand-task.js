@@ -458,7 +458,8 @@ async function expandTask(
 		// Check if a codebase analysis provider is being used
 		const hasCodebaseAnalysisCapability = hasCodebaseAnalysis(
 			useResearch,
-			projectRoot
+			projectRoot,
+			session
 		);
 
 		// Combine all context sources into a single additionalContext parameter

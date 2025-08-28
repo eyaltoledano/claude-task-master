@@ -6,7 +6,6 @@
 import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
-import { hasCodebaseAnalysis } from '../../../../../scripts/modules/config-manager.js';
 
 // Mock the dependencies
 jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({

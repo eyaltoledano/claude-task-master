@@ -232,7 +232,11 @@ async function updateSubtaskById(
 				updatePrompt: prompt,
 				useResearch: useResearch,
 				gatheredContext: gatheredContext || '',
-				hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
+				hasCodebaseAnalysis: hasCodebaseAnalysis(
+					useResearch,
+					projectRoot,
+					session
+				),
 				projectRoot: projectRoot
 			};
 

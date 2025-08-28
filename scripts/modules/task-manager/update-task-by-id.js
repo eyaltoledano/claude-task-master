@@ -458,7 +458,11 @@ async function updateTaskById(
 			useResearch: useResearch,
 			currentDetails: taskToUpdate.details || '(No existing details)',
 			gatheredContext: gatheredContext || '',
-			hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
+			hasCodebaseAnalysis: hasCodebaseAnalysis(
+				useResearch,
+				projectRoot,
+				session
+			),
 			projectRoot: projectRoot
 		};
 

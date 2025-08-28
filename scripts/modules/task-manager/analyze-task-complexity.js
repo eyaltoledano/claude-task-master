@@ -419,7 +419,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 			tasks: tasksData.tasks,
 			gatheredContext: gatheredContext || '',
 			useResearch: useResearch,
-			hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
+			hasCodebaseAnalysis: hasCodebaseAnalysis(
+				useResearch,
+				projectRoot,
+				session
+			),
 			projectRoot: projectRoot || ''
 		};
 

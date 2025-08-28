@@ -426,7 +426,11 @@ async function addTask(
 					useResearch,
 					priority: effectivePriority,
 					dependencies: numericDependencies,
-					hasCodebaseAnalysis: hasCodebaseAnalysis(useResearch, projectRoot),
+					hasCodebaseAnalysis: hasCodebaseAnalysis(
+						useResearch,
+						projectRoot,
+						session
+					),
 					projectRoot: projectRoot
 				}
 			);
