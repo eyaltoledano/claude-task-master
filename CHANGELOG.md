@@ -1,5 +1,17 @@
 # task-master-ai
 
+## 0.26.0-rc.1
+
+### Minor Changes
+
+- [#1165](https://github.com/eyaltoledano/claude-task-master/pull/1165) [`c4f92f6`](https://github.com/eyaltoledano/claude-task-master/commit/c4f92f6a0aee3435c56eb8d27d9aa9204284833e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add configurable codebase analysis feature flag with multiple configuration sources
+
+  Users can now control whether codebase analysis features (Claude Code and Gemini CLI integration) are enabled through environment variables, MCP configuration, or project config files.
+
+  Priority order: .env > MCP session env > .taskmaster/config.json.
+
+  Set `TASKMASTER_ENABLE_CODEBASE_ANALYSIS=false` in `.env` to disable codebase analysis prompts and tool integration.
+
 ## 0.26.0-rc.0
 
 ### Minor Changes
