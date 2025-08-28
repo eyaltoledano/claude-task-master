@@ -19,7 +19,7 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, isClaudeCode } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
@@ -435,7 +435,9 @@ async function updateTasks(
 				tasks: tasksToUpdate,
 				updatePrompt: prompt,
 				useResearch,
-				projectContext: gatheredContext
+				projectContext: gatheredContext,
+				isClaudeCode: isClaudeCode(useResearch, projectRoot),
+				projectRoot: projectRoot
 			}
 		);
 		// --- End Build Prompts ---

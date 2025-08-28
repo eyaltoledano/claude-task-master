@@ -17,7 +17,8 @@ import {
 	getDebugFlag,
 	getProjectName,
 	getMainProvider,
-	getResearchProvider
+	getResearchProvider,
+	isClaudeCode
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import {
@@ -415,16 +416,12 @@ async function analyzeTaskComplexity(options, context = {}) {
 		const promptManager = getPromptManager();
 
 		// Check if Claude Code is being used as the provider
-		const currentProvider = useResearch
-			? getResearchProvider(projectRoot)
-			: getMainProvider(projectRoot);
-		const isClaudeCode = currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
 
 		const promptParams = {
 			tasks: tasksData.tasks,
 			gatheredContext: gatheredContext || '',
 			useResearch: useResearch,
-			isClaudeCode: isClaudeCode,
+			isClaudeCode: isClaudeCode(useResearch, projectRoot),
 			projectRoot: projectRoot || ''
 		};
 

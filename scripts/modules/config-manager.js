@@ -427,6 +427,19 @@ function getResearchProvider(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).provider;
 }
 
+/**
+ * Check if Claude Code is being used as the provider
+ * @param {boolean} useResearch - Whether to check research provider or main provider
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @returns {boolean} True if Claude Code is the current provider
+ */
+function isClaudeCode(useResearch = false, projectRoot = null) {
+	const currentProvider = useResearch
+		? getResearchProvider(projectRoot)
+		: getMainProvider(projectRoot);
+	return currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
+}
+
 function getResearchModelId(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).modelId;
 }
@@ -983,6 +996,7 @@ export {
 	getResearchModelId,
 	getResearchMaxTokens,
 	getResearchTemperature,
+	isClaudeCode,
 	getFallbackProvider,
 	getFallbackModelId,
 	getFallbackMaxTokens,

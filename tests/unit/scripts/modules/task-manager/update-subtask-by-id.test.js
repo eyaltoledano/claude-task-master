@@ -52,7 +52,8 @@ jest.unstable_mockModule(
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		isClaudeCode: jest.fn(() => false)
 	})
 );
 

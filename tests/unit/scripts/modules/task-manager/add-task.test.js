@@ -99,7 +99,8 @@ jest.unstable_mockModule(
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDefaultPriority: jest.fn(() => 'medium')
+		getDefaultPriority: jest.fn(() => 'medium'),
+		isClaudeCode: jest.fn(() => false)
 	})
 );
 
