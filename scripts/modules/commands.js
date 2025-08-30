@@ -4001,9 +4001,10 @@ Examples:
 				try {
 					const userResponse = await inquirer.prompt([
 						{
-							type: 'input',
+							type: 'list',
 							name: 'responseLanguage',
-							message: 'Input your preferred response language',
+							message: 'Select your preferred response language',
+							choices: ['English', 'Japanese'],
 							default: 'English'
 						}
 					]);
