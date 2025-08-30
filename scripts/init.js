@@ -22,6 +22,7 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
+import i18n from '../src/i18n.js';
 import { isSilentMode } from './modules/utils.js';
 import { insideGitWorkTree } from './modules/utils/git-utils.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
@@ -86,7 +87,7 @@ function displayBanner() {
 	);
 
 	console.log(
-		boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {
+		boxen(chalk.white(`${chalk.bold(i18n.t('init.banner.initializing'))}`), {
 			padding: 1,
 			margin: { top: 0, bottom: 1 },
 			borderStyle: 'round',
@@ -150,7 +151,7 @@ function addShellAliases() {
 	} else if (process.env.SHELL?.includes('bash')) {
 		shellConfigFile = path.join(homeDir, '.bashrc');
 	} else {
-		log('warn', 'Could not determine shell type. Aliases not added.');
+		log('warn', i18n.t('init.aliases.error.noShell'));
 		return false;
 	}
 
@@ -159,7 +160,7 @@ function addShellAliases() {
 		if (!fs.existsSync(shellConfigFile)) {
 			log(
 				'warn',
-				`Shell config file ${shellConfigFile} not found. Aliases not added.`
+				i18n.t('init.aliases.error.noShellConfig', { shellConfigFile })
 			);
 			return false;
 		}
@@ -167,7 +168,7 @@ function addShellAliases() {
 		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
 		if (configContent.includes("alias tm='task-master'")) {
-			log('info', 'Task Master aliases already exist in shell config.');
+			log('info', i18n.t('init.aliases.info.aliasesExist'));
 			return true;
 		}
 
@@ -179,15 +180,15 @@ alias taskmaster='task-master'
 `;
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
-		log('success', `Added Task Master aliases to ${shellConfigFile}`);
+		log('success', i18n.t('init.aliases.success.aliasesAdded', { shellConfigFile }));
 		log(
 			'info',
-			`To use the aliases in your current terminal, run: source ${shellConfigFile}`
+			i18n.t('init.aliases.info.sourceShellConfig', { shellConfigFile })
 		);
 
 		return true;
 	} catch (error) {
-		log('error', `Failed to add aliases: ${error.message}`);
+		log('error', i18n.t('init.aliases.error.aliasesFailed', { errorMessage: error.message }));
 		return false;
 	}
 }

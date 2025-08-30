@@ -1,0 +1,43 @@
+{
+  "lang": {
+    "setup": {
+      "starting": "対話式の言語設定を開始します...",
+      "select": "ご希望の言語を選択してください",
+      "success": "言語を{{lang}}に設定しました",
+      "successMessage": "✅ {{message}}",
+      "errorMessage": "❌ 言語設定エラー: {{message}}"
+    }
+  },
+  "addTask": {
+    "error": {
+      "promptOrTitleRequired": "エラー: --prompt または --title と --description の両方を指定する必要があります",
+      "noTasksFile": "❌ tasks.json ファイルが見つかりません。 \"task-master init\" を実行するか、{{filePath}} に tasks.json ファイルを作成してください",
+      "addTask": "タスクの追加エラー: {{message}}"
+    },
+    "info": {
+      "manualCreate": "手動でタスクを作成中: \"{{title}}\"",
+      "aiCreate": "AIを使用してプロンプトからタスクを作成中: \"{{prompt}}\"",
+      "dependencies": "依存関係: [{{deps}}]",
+      "priority": "優先度: {{priority}}"
+    }
+  },
+  "init": {
+    "banner": {
+      "initializing": "新しいプロジェクトを初期化しています"
+    },
+    "aliases": {
+      "error": {
+        "noShell": "シェルの種類を特定できませんでした。エイリアスは追加されません。",
+        "noShellConfig": "シェル設定ファイル {{shellConfigFile}} が見つかりません。エイリアスは追加されません。",
+        "aliasesFailed": "エイリアスの追加に失敗しました: {{errorMessage}}"
+      },
+      "info": {
+        "aliasesExist": "Task Master のエイリアスは既にシェル設定に存在します。",
+        "sourceShellConfig": "現在のターミナルでエイリアスを使用するには、次のコマンドを実行してください: source {{shellConfigFile}}"
+      },
+      "success": {
+        "aliasesAdded": "Task Master のエイリアスを {{shellConfigFile}} に追加しました"
+      }
+    }
+  }
+}

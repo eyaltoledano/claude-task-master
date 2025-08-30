@@ -127,6 +127,7 @@ import {
 } from '../../src/utils/profiles.js';
 
 import { initializeProject } from '../init.js';
+import i18n from '../../src/i18n.js';
 import {
 	getModelConfiguration,
 	getAvailableModelsList,
@@ -2478,7 +2479,7 @@ ${result.result}
 			if (!options.prompt && !isManualCreation) {
 				console.error(
 					chalk.red(
-						'Error: Either --prompt or both --title and --description must be provided'
+						i18n.t('addTask.error.promptOrTitleRequired')
 					)
 				);
 				process.exit(1);
@@ -2488,7 +2489,7 @@ ${result.result}
 
 			if (!fs.existsSync(tasksPath)) {
 				console.error(
-					`❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file at ${TASKMASTER_TASKS_FILE}`
+					i18n.t('addTask.error.noTasksFile', { filePath: TASKMASTER_TASKS_FILE })
 				);
 				process.exit(1);
 			}
@@ -2517,12 +2518,12 @@ ${result.result}
 				};
 				// Restore specific logging for manual creation
 				console.log(
-					chalk.blue(`Creating task manually with title: "${options.title}"`)
+					chalk.blue(i18n.t('addTask.info.manualCreate', { title: options.title }))
 				);
 			} else {
 				// Restore specific logging for AI creation
 				console.log(
-					chalk.blue(`Creating task with AI using prompt: "${options.prompt}"`)
+					chalk.blue(i18n.t('addTask.info.aiCreate', { prompt: options.prompt }))
 				);
 			}
 
@@ -2532,11 +2533,11 @@ ${result.result}
 				: [];
 			if (dependenciesArray.length > 0) {
 				console.log(
-					chalk.blue(`Dependencies: [${dependenciesArray.join(', ')}]`)
+					chalk.blue(i18n.t('addTask.info.dependencies', { deps: dependenciesArray.join(', ') }))
 				);
 			}
 			if (options.priority) {
-				console.log(chalk.blue(`Priority: ${options.priority}`));
+				console.log(chalk.blue(i18n.t('addTask.info.priority', { priority: options.priority })));
 			}
 
 			const context = {
@@ -2561,7 +2562,7 @@ ${result.result}
 				// addTask handles detailed CLI success logging AND telemetry display when outputFormat is 'text'
 				// No need to call displayAiUsageSummary here anymore.
 			} catch (error) {
-				console.error(chalk.red(`Error adding task: ${error.message}`));
+				console.error(chalk.red(i18n.t('addTask.error.addTask', { message: error.message })));
 				if (error.details) {
 					console.error(chalk.red(error.details));
 				}
@@ -3994,28 +3995,35 @@ Examples:
 			const projectRoot = taskMaster.getProjectRoot(); // Find project root for context
 			const { response, setup } = options;
 			let responseLanguage = response !== undefined ? response : 'English';
+
+			// Always initialize i18next for this command
+			const langToLoad = responseLanguage.split('-')[0].toLowerCase();
+			await i18n.changeLanguage(langToLoad);
+
 			if (setup) {
-				console.log(
-					chalk.blue('Starting interactive response language setup...')
-				);
+				console.log(chalk.blue(i18n.t('lang.setup.starting')));
 				try {
 					const userResponse = await inquirer.prompt([
 						{
 							type: 'list',
 							name: 'responseLanguage',
-							message: 'Select your preferred response language',
+							message: i18n.t('lang.setup.select'),
 							choices: ['English', 'Japanese'],
 							default: 'English'
 						}
 					]);
 
+					responseLanguage = userResponse.responseLanguage;
+					const newLangToLoad = responseLanguage.split('-')[0].toLowerCase();
+					await i18n.changeLanguage(newLangToLoad);
+
 					console.log(
 						chalk.blue(
-							'Response language set to:',
-							userResponse.responseLanguage
+							i18n.t('lang.setup.success', {
+								lang: responseLanguage
+							})
 						)
 					);
-					responseLanguage = userResponse.responseLanguage;
 				} catch (setupError) {
 					console.error(
 						chalk.red('\\nInteractive setup failed unexpectedly:'),
@@ -4029,11 +4037,19 @@ Examples:
 			});
 
 			if (result.success) {
-				console.log(chalk.green(`✅ ${result.data.message}`));
+				console.log(
+					chalk.green(
+						i18n.t('lang.setup.successMessage', {
+							message: result.data.message
+						})
+					)
+				);
 			} else {
 				console.error(
 					chalk.red(
-						`❌ Error setting response language: ${result.error.message}`
+						i18n.t('lang.setup.errorMessage', {
+							message: result.error.message
+						})
 					)
 				);
 				process.exit(1);

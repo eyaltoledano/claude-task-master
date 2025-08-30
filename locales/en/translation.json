@@ -1,0 +1,43 @@
+{
+  "lang": {
+    "setup": {
+      "starting": "Starting interactive response language setup...",
+      "select": "Select your preferred response language",
+      "success": "Response language set to: {{lang}}",
+      "successMessage": "✅ {{message}}",
+      "errorMessage": "❌ Error setting response language: {{message}}"
+    }
+  },
+  "addTask": {
+    "error": {
+      "promptOrTitleRequired": "Error: Either --prompt or both --title and --description must be provided",
+      "noTasksFile": "❌ No tasks.json file found. Please run \"task-master init\" or create a tasks.json file at {{filePath}}",
+      "addTask": "Error adding task: {{message}}"
+    },
+    "info": {
+      "manualCreate": "Creating task manually with title: \"{{title}}\"",
+      "aiCreate": "Creating task with AI using prompt: \"{{prompt}}\"",
+      "dependencies": "Dependencies: [{{deps}}]",
+      "priority": "Priority: {{priority}}"
+    }
+  },
+  "init": {
+    "banner": {
+      "initializing": "Initializing your new project"
+    },
+    "aliases": {
+      "error": {
+        "noShell": "Could not determine shell type. Aliases not added.",
+        "noShellConfig": "Shell config file {{shellConfigFile}} not found. Aliases not added.",
+        "aliasesFailed": "Failed to add aliases: {{errorMessage}}"
+      },
+      "info": {
+        "aliasesExist": "Task Master aliases already exist in shell config.",
+        "sourceShellConfig": "To use the aliases in your current terminal, run: source {{shellConfigFile}}"
+      },
+      "success": {
+        "aliasesAdded": "Added Task Master aliases to {{shellConfigFile}}"
+      }
+    }
+  }
+}
