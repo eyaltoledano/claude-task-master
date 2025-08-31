@@ -310,6 +310,7 @@ function validateProviderModelCombination(providerName, modelId) {
 function validateClaudeCodeSettings(settings) {
 	// Define the base settings schema without commandSpecific first
 	const BaseSettingsSchema = z.object({
+		pathToClaudeCodeExecutable: z.string().optional(),
 		maxTurns: z.number().int().positive().optional(),
 		customSystemPrompt: z.string().optional(),
 		appendSystemPrompt: z.string().optional(),
