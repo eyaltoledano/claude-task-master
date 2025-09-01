@@ -1,0 +1,49 @@
+{
+	"name": "@tm/cli",
+	"version": "1.0.0",
+	"description": "Task Master CLI - Command line interface for task management",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check src",
+		"format": "biome format --write src",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"@tm/core": "*",
+		"boxen": "^7.1.1",
+		"chalk": "^5.3.0",
+		"cli-table3": "^0.6.5",
+		"commander": "^12.1.0",
+		"inquirer": "^9.2.10",
+		"ora": "^8.1.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/inquirer": "^9.0.3",
+		"@types/node": "^22.10.5",
+		"tsup": "^8.3.0",
+		"tsx": "^4.20.4",
+		"typescript": "^5.7.3",
+		"vitest": "^2.1.8"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"keywords": ["task-master", "cli", "task-management", "productivity"],
+	"author": "",
+	"license": "MIT"
+}

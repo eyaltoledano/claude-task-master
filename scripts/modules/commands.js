@@ -14,14 +14,10 @@ import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
-import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
-} from './utils.js';
+import { log, readJSON } from './utils.js';
+// Import new ListTasksCommand from @tm/cli
+import { ListTasksCommand } from '@tm/cli';
+
 import {
 	parsePRD,
 	updateTasks,
@@ -1741,67 +1737,9 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// list command
-	programInstance
-		.command('list')
-		.description('List all tasks')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('-s, --status <status>', 'Filter by status')
-		.option('--with-subtasks', 'Show subtasks for each task')
-		.option('-c, --compact', 'Display tasks in compact one-line format')
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-
-			const taskMaster = initTaskMaster(initOptions);
-
-			const statusFilter = options.status;
-			const withSubtasks = options.withSubtasks || false;
-			const compact = options.compact || false;
-			const tag = taskMaster.getCurrentTag();
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!compact) {
-				console.log(
-					chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
-				);
-				if (statusFilter) {
-					console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-				}
-				if (withSubtasks) {
-					console.log(chalk.blue('Including subtasks in listing'));
-				}
-			}
-
-			await listTasks(
-				taskMaster.getTasksPath(),
-				statusFilter,
-				taskMaster.getComplexityReportPath(),
-				withSubtasks,
-				compact ? 'compact' : 'text',
-				{ projectRoot: taskMaster.getProjectRoot(), tag }
-			);
-		});
-
+	// NEW: Register the new list command from @tm/cli
+	// This command handles all its own configuration and logic
+	ListTasksCommand.registerOn(programInstance);
 	// expand command
 	programInstance
 		.command('expand')

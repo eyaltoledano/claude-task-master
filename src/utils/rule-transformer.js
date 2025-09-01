@@ -7,8 +7,10 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { log } from '../../scripts/modules/utils.js';
+
+// Import asset resolver
+import { assetExists, readAsset, getAssetsDir } from './asset-resolver.js';
 
 // Import the shared MCP configuration helper
 import {
@@ -199,11 +201,7 @@ export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
  * Convert all Cursor rules to profile rules for a specific profile
  */
 export function convertAllRulesToProfileRules(projectRoot, profile) {
-	const __filename = fileURLToPath(import.meta.url);
-	const __dirname = path.dirname(__filename);
-	const sourceDir = path.join(__dirname, '..', '..', 'assets', 'rules');
 	const targetDir = path.join(projectRoot, profile.rulesDir);
-	const assetsDir = path.join(__dirname, '..', '..', 'assets');
 
 	let success = 0;
 	let failed = 0;
@@ -211,6 +209,7 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
+			const assetsDir = getAssetsDir();
 			profile.onAddRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
@@ -238,14 +237,11 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 			const isAssetFile = !sourceFile.startsWith('rules/');
 
 			try {
-				// Use explicit path from fileMap - assets/ is the base directory
-				const sourcePath = path.join(assetsDir, sourceFile);
-
-				// Check if source file exists
-				if (!fs.existsSync(sourcePath)) {
+				// Check if source file exists using asset resolver
+				if (!assetExists(sourceFile)) {
 					log(
 						'warn',
-						`[Rule Transformer] Source file not found: ${sourcePath}, skipping`
+						`[Rule Transformer] Source file not found: ${sourceFile}, skipping`
 					);
 					continue;
 				}
@@ -259,8 +255,8 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 					fs.mkdirSync(targetFileDir, { recursive: true });
 				}
 
-				// Read source content
-				let content = fs.readFileSync(sourcePath, 'utf8');
+				// Read source content using asset resolver
+				let content = readAsset(sourceFile, 'utf8');
 
 				// Apply transformations (only if this is a rule file, not an asset file)
 				if (!isAssetFile) {
@@ -308,6 +304,7 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	// 4. Call post-conversion hook (for finalization)
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
 		try {
+			const assetsDir = getAssetsDir();
 			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
@@ -386,11 +383,46 @@ export function removeProfileRules(projectRoot, profile) {
 				);
 
 				// Get all files in the rules directory
-				const allFiles = fs.readdirSync(targetDir, { recursive: true });
+				// For root-level directories, we need to be careful to avoid circular symlinks
+				let allFiles = [];
+				if (targetDir === projectRoot || profile.rulesDir === '.') {
+					// For root directory, manually read without recursion into problematic directories
+					const items = fs.readdirSync(targetDir);
+					for (const item of items) {
+						// Skip directories that can cause issues or are irrelevant
+						if (item === 'node_modules' || item === '.git' || item === 'dist') {
+							continue;
+						}
+						const itemPath = path.join(targetDir, item);
+						try {
+							const stats = fs.lstatSync(itemPath);
+							if (stats.isFile()) {
+								allFiles.push(item);
+							} else if (stats.isDirectory() && !stats.isSymbolicLink()) {
+								// Only recurse into safe directories
+								const subFiles = fs.readdirSync(itemPath, { recursive: true });
+								subFiles.forEach((subFile) => {
+									allFiles.push(path.join(item, subFile.toString()));
+								});
+							}
+						} catch (err) {
+							// Silently skip files we can't access
+						}
+					}
+				} else {
+					// For non-root directories, use normal recursive read
+					allFiles = fs.readdirSync(targetDir, { recursive: true });
+				}
+
 				const allFilePaths = allFiles
 					.filter((file) => {
 						const fullPath = path.join(targetDir, file);
-						return fs.statSync(fullPath).isFile();
+						try {
+							const stats = fs.statSync(fullPath);
+							return stats.isFile();
+						} catch (err) {
+							return false;
+						}
 					})
 					.map((file) => file.toString()); // Ensure it's a string
 

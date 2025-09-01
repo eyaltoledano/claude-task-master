@@ -7297,5 +7297,763 @@
       "updated": "2025-07-22T09:38:19.341Z",
       "description": "Tasks for cc-kiro-hooks context"
     }
+  },
+  "tm-core-phase-1": {
+    "tasks": [
+      {
+        "id": 115,
+        "title": "Initialize tm-core Package Structure",
+        "description": "Create the initial package structure for tm-core with all required directories and configuration files",
+        "details": "Create the packages/tm-core directory structure with all subdirectories as specified: src/, tests/, and all nested folders. Set up package.json with proper ESM/CJS configuration, tsconfig.json with strict TypeScript settings, tsup.config.js for dual format builds, and jest.config.js for testing. Ensure all barrel export files (index.ts) are created in each directory for clean imports.",
+        "testStrategy": "Verify directory structure matches specification exactly, ensure all configuration files are valid JSON/JS, run 'npm install' to verify package.json is correct, run 'tsc --noEmit' to verify TypeScript configuration",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create tm-core directory structure and base configuration files",
+            "description": "Set up the packages/tm-core directory with all required subdirectories and initialize core configuration files",
+            "dependencies": [],
+            "details": "Create packages/tm-core directory with subdirectories: src/, src/types/, src/interfaces/, src/providers/, src/parsers/, src/builders/, src/utils/, src/errors/, tests/, tests/unit/, tests/integration/, tests/mocks/. Create package.json with name '@task-master/tm-core', version '1.0.0', type 'module', main/module/types fields for dual ESM/CJS support, and necessary dependencies (typescript, tsup, jest, @types/node). Set up tsconfig.json with strict mode, ES2022 target, module resolution, and proper include/exclude patterns.\n<info added on 2025-08-06T10:49:59.891Z>\nImplementation completed as specified. Directory structure verified with all paths created correctly. Package.json configured with dual ESM/CJS support using tsup build tool, exports field properly set for both formats. TypeScript configuration established with strict mode enabled, ES2022 target for modern JavaScript features, and path mappings configured for clean imports like '@/types' and '@/utils'. All configuration files are valid and ready for development.\n</info added on 2025-08-06T10:49:59.891Z>",
+            "status": "done",
+            "testStrategy": "Verify directory structure with fs.existsSync() checks, validate package.json structure with JSON.parse(), ensure tsconfig.json compiles without errors"
+          },
+          {
+            "id": 2,
+            "title": "Configure build and test infrastructure",
+            "description": "Set up tsup build configuration for dual format support and Jest testing configuration",
+            "dependencies": [
+              "115.1"
+            ],
+            "details": "Create tsup.config.js with dual format configuration (ESM and CJS), entry points from src/index.ts, declaration files generation, and sourcemaps. Configure jest.config.js with TypeScript preset, ESM support, proper module name mapping, coverage thresholds (80%), and test environment setup. Create .gitignore for node_modules, dist, and coverage directories. Add npm scripts in package.json for build, test, test:watch, and test:coverage commands.\n<info added on 2025-08-06T10:50:49.396Z>\nBuild process successfully configured with tsup.config.ts (TypeScript configuration file instead of JavaScript) supporting dual format output and multiple entry points including submodules. Jest configuration established with comprehensive ESM support and path alias mapping. Created tests/setup.ts for centralized test environment configuration. Added ES2022 compilation target for modern JavaScript features. Enhanced .gitignore to exclude additional development-specific files beyond the basic directories.\n</info added on 2025-08-06T10:50:49.396Z>",
+            "status": "done",
+            "testStrategy": "Run 'npm run build' to verify tsup configuration works, execute 'npm test' with a simple test file to confirm Jest setup, check that both .mjs and .cjs files are generated in dist/"
+          },
+          {
+            "id": 3,
+            "title": "Create barrel export files for all directories",
+            "description": "Implement index.ts files in each directory to enable clean imports throughout the package",
+            "dependencies": [
+              "115.1"
+            ],
+            "details": "Create index.ts in src/ that exports from all subdirectories. Create index.ts in each subdirectory (types/, interfaces/, providers/, parsers/, builders/, utils/, errors/) with appropriate exports. For now, add placeholder comments indicating what will be exported from each module. Ensure proper export syntax for TypeScript types and interfaces using 'export type' where appropriate. Structure exports to allow consumers to import like '@task-master/tm-core/types' or from the main entry point.\n<info added on 2025-08-06T10:51:56.837Z>\nImplementation complete. All barrel export files have been created successfully with:\n\n- Main src/index.ts exporting from all subdirectories with proper TypeScript syntax\n- Individual index.ts files in types/, providers/, storage/, parser/, utils/, and errors/ directories\n- Proper ES module syntax with .js extensions for TypeScript compatibility\n- Placeholder exports with @deprecated JSDoc tags to indicate future implementation\n- Clean module structure supporting both root imports and submodule imports like '@task-master/tm-core/types'\n- All files include appropriate documentation comments explaining their purpose\n</info added on 2025-08-06T10:51:56.837Z>",
+            "status": "done",
+            "testStrategy": "Compile with TypeScript to ensure all index.ts files are valid, verify no circular dependencies exist, check that imports from package root work correctly"
+          },
+          {
+            "id": 4,
+            "title": "Add development tooling and documentation",
+            "description": "Set up development tools, linting, and initial documentation structure",
+            "dependencies": [
+              "115.1",
+              "115.2"
+            ],
+            "details": "Create .eslintrc.js with TypeScript plugin and recommended rules for consistent code style. Add prettier configuration for code formatting. Create README.md with package overview, installation instructions, and usage examples (marked as 'coming soon'). Add CHANGELOG.md to track version changes. Create npm scripts for linting and formatting. Add pre-commit hooks configuration if needed. Document the dual ESM/CJS support in README.\n<info added on 2025-08-06T10:53:45.056Z>\nI'll analyze the user's request and the context to determine what new information should be added to the subtask's details.Successfully completed development tooling and documentation setup. Created .eslintrc.js with TypeScript plugin and comprehensive rules including no-explicit-any, consistent-type-imports, and proper TypeScript checks. Added .prettierrc.json with sensible defaults for consistent code formatting. Created comprehensive README.md with package overview, installation instructions, usage examples for both ESM and CommonJS, modular imports, architecture description, development setup, and detailed roadmap for tasks 116-125. Added CHANGELOG.md following Keep a Changelog format with current package status and planned features. All development tooling is configured and ready for use.\n</info added on 2025-08-06T10:53:45.056Z>",
+            "status": "done",
+            "testStrategy": "Run eslint on sample TypeScript files, verify prettier formats code consistently, ensure all npm scripts execute without errors"
+          },
+          {
+            "id": 5,
+            "title": "Validate package structure and prepare for development",
+            "description": "Perform final validation of the package structure and ensure it's ready for implementation",
+            "dependencies": [
+              "115.1",
+              "115.2",
+              "115.3",
+              "115.4"
+            ],
+            "details": "Run 'npm install' to ensure all dependencies are properly resolved. Execute 'tsc --noEmit' to verify TypeScript configuration is correct. Create a simple smoke test in tests/ that imports from the package to verify module resolution works. Ensure the package can be linked locally for testing in other projects. Verify that both CommonJS and ESM imports work correctly. Create a checklist in README for remaining implementation tasks based on tasks 116-125.\n<info added on 2025-08-06T11:02:21.457Z>\nSuccessfully validated package structure with comprehensive testing. All validations passed: npm install resolved dependencies without issues, TypeScript compilation (tsc --noEmit) showed no errors, and dual-format build (npm run build) successfully generated both ESM and CJS outputs with proper TypeScript declarations. Created and executed comprehensive smoke test suite covering all module imports, placeholder functionality, and type definitions - all 8 tests passing. Code quality tools (ESLint, Prettier) are properly configured and show no issues. Package is confirmed ready for local linking and supports both CommonJS and ESM import patterns. README updated with implementation checklist marking Task 115 as complete and clearly outlining remaining implementation tasks 116-125. Package structure validation is complete and development environment is fully prepared for core implementation phase.\n</info added on 2025-08-06T11:02:21.457Z>",
+            "status": "done",
+            "testStrategy": "Successfully run all build and test commands, verify package can be imported in both ESM and CJS test files, ensure TypeScript compilation produces no errors, confirm all directories contain appropriate index.ts files"
+          }
+        ]
+      },
+      {
+        "id": 116,
+        "title": "Define Core TypeScript Types and Interfaces",
+        "description": "Create all TypeScript type definitions and interfaces for the tm-core package",
+        "details": "Create types/index.ts with Task, Subtask, TaskMetadata interfaces and type literals (TaskStatus, TaskPriority, TaskComplexity). Create all interface files: storage.interface.ts with IStorage methods, ai-provider.interface.ts with IAIProvider and AIOptions, configuration.interface.ts with IConfiguration. Use strict typing throughout, no 'any' types allowed. Follow naming conventions: interfaces prefixed with 'I', type literals in PascalCase.",
+        "testStrategy": "Compile with TypeScript to ensure no type errors, create mock implementations to verify interfaces are complete, use type checking in IDE to confirm all required properties are defined",
+        "priority": "high",
+        "dependencies": [
+          115
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Core Task and Subtask Type Definitions",
+            "description": "Create types/index.ts with fundamental Task and Subtask interfaces including all required properties",
+            "dependencies": [],
+            "details": "Create types/index.ts file. Define Task interface with properties: id (string), title (string), description (string), status (TaskStatus), priority (TaskPriority), dependencies (string[]), details (string), testStrategy (string), subtasks (Subtask[]). Define Subtask interface extending Task but with numeric id. Define TaskMetadata interface with version (string), lastModified (string), taskCount (number), completedCount (number). Export all interfaces.\n<info added on 2025-08-06T11:03:44.220Z>\nImplementation completed with comprehensive type system. Created all required interfaces with strict typing, added optional properties for enhanced functionality (createdAt, updatedAt, effort, actualEffort, tags). Implemented utility types for create/update operations with proper type constraints. Added filter interfaces for advanced querying. Included runtime type guards for safe type narrowing. Successfully compiled without TypeScript errors, ready for integration with storage and AI provider implementations.\n</info added on 2025-08-06T11:03:44.220Z>",
+            "status": "done",
+            "testStrategy": "Compile TypeScript files to ensure no type errors, create sample objects conforming to interfaces to verify completeness"
+          },
+          {
+            "id": 2,
+            "title": "Define Type Literals and Enums",
+            "description": "Create all type literal definitions for TaskStatus, TaskPriority, and TaskComplexity in the types file",
+            "dependencies": [
+              "116.1"
+            ],
+            "details": "In types/index.ts, define type literals: TaskStatus = 'pending' | 'in-progress' | 'done' | 'deferred' | 'cancelled' | 'blocked'; TaskPriority = 'low' | 'medium' | 'high' | 'critical'; TaskComplexity = 'simple' | 'moderate' | 'complex' | 'very-complex'. Consider using const assertions for better type inference. Export all type literals.\n<info added on 2025-08-06T11:04:04.675Z>\nType literals were already implemented in subtask 116.1 as part of the comprehensive type system. The types/index.ts file includes all required type literals: TaskStatus with values 'pending' | 'in-progress' | 'done' | 'deferred' | 'cancelled' | 'blocked' | 'review', TaskPriority with values 'low' | 'medium' | 'high' | 'critical', and TaskComplexity with values 'simple' | 'moderate' | 'complex' | 'very-complex'. All type literals are properly exported and include comprehensive JSDoc documentation. TypeScript compilation verified the types work correctly.\n</info added on 2025-08-06T11:04:04.675Z>",
+            "status": "done",
+            "testStrategy": "Use TypeScript compiler to verify type literals work correctly, test with invalid values to ensure type checking catches errors"
+          },
+          {
+            "id": 3,
+            "title": "Create Storage Interface Definition",
+            "description": "Create storage.interface.ts with IStorage interface defining all storage operation methods",
+            "dependencies": [
+              "116.1"
+            ],
+            "details": "Create interfaces/storage.interface.ts file. Define IStorage interface with methods: loadTasks(tag?: string): Promise<Task[]>; saveTasks(tasks: Task[], tag?: string): Promise<void>; appendTasks(tasks: Task[], tag?: string): Promise<void>; updateTask(taskId: string, updates: Partial<Task>, tag?: string): Promise<void>; deleteTask(taskId: string, tag?: string): Promise<void>; exists(tag?: string): Promise<boolean>. Import Task type from types/index.ts.\n<info added on 2025-08-06T11:05:00.573Z>\nImplementation completed successfully. Extended IStorage interface beyond original specification to include metadata operations (loadMetadata, saveMetadata), tag management (getAllTags, deleteTag, renameTag, copyTag), and lifecycle methods (initialize, close, getStats). Added StorageStats interface for monitoring storage metrics and StorageConfig interface for configuration options. Implemented BaseStorage abstract class that provides common functionality including task validation using validateTask method, tag sanitization with sanitizeTag to ensure valid filenames, and backup path generation through getBackupPath for data safety. The abstract class serves as a foundation for concrete storage implementations, reducing code duplication and ensuring consistent behavior across different storage backends. All methods properly typed with async/await patterns and comprehensive error handling considerations.\n</info added on 2025-08-06T11:05:00.573Z>",
+            "status": "done",
+            "testStrategy": "Create mock implementation of IStorage to verify all methods are properly typed, ensure Promise return types are correct"
+          },
+          {
+            "id": 4,
+            "title": "Create AI Provider Interface Definition",
+            "description": "Create ai-provider.interface.ts with IAIProvider interface and AIOptions type",
+            "dependencies": [
+              "116.1"
+            ],
+            "details": "Create interfaces/ai-provider.interface.ts file. Define AIOptions interface with properties: temperature (number), maxTokens (number), stream (boolean), topP (number), frequencyPenalty (number). Define IAIProvider interface with methods: generateCompletion(prompt: string, options?: AIOptions): Promise<string>; calculateTokens(text: string): number; getName(): string; getModel(): string; getDefaultModel(): string; isAvailable(): Promise<boolean>.\n<info added on 2025-08-06T11:06:15.795Z>\nFile successfully updated with expanded interface implementation details including comprehensive method signatures and supporting interfaces: AIOptions with full parameter set (temperature, maxTokens, stream, model, topP, topK, frequencyPenalty, presencePenalty, stopSequences, systemPrompt), AIResponse structure with content and usage metadata, AIModel interface for model information, ProviderInfo for capability tracking, ProviderUsageStats for usage monitoring, AIProviderConfig for initialization, and additional interfaces for streaming support. Documented BaseAIProvider abstract class implementation with validation, usage tracking, and common utility methods. All interfaces properly typed with strict TypeScript patterns and async/await support. No compilation errors.\n</info added on 2025-08-06T11:06:15.795Z>",
+            "status": "done",
+            "testStrategy": "Create stub implementation to verify interface completeness, test optional parameters work correctly"
+          },
+          {
+            "id": 5,
+            "title": "Create Configuration Interface Definition",
+            "description": "Create configuration.interface.ts with IConfiguration interface for all config options",
+            "dependencies": [
+              "116.1",
+              "116.2"
+            ],
+            "details": "Create interfaces/configuration.interface.ts file. Define IConfiguration interface with properties: projectPath (string), aiProvider (string), apiKeys (Record<string, string>), models (object with main, research, fallback as strings), enableTags (boolean), defaultTag (string), maxConcurrentTasks (number), retryAttempts (number), retryDelay (number). Import necessary types from types/index.ts. Ensure all properties have appropriate types with no 'any' usage.\n<info added on 2025-08-06T11:07:43.367Z>\nImplementation completed successfully. Created comprehensive configuration system with:\n\n- Core IConfiguration interface with all required properties: projectPath, aiProvider, apiKeys, models configuration, providers settings, tasks management, tags configuration, storage options, retry behavior, logging preferences, and security settings\n- Supporting interfaces for each configuration section: ModelConfig for AI model selection, ProviderConfig for API provider settings, TaskSettings for task management options, TagSettings for tag-based organization, StorageSettings for persistence configuration, RetrySettings for error handling, LoggingSettings for debugging options, SecuritySettings for API key management\n- Configuration management system with IConfigurationFactory for creating configs from various sources (file, environment, defaults) and IConfigurationManager for runtime config operations including loading, saving, validation, watching for changes, and merging configurations\n- Validation system with ConfigValidationResult interface for detailed error reporting, ConfigSchema for JSON schema validation, and EnvironmentConfig for environment variable mapping\n- DEFAULT_CONFIG_VALUES constant providing sensible defaults for all configuration options\n- All interfaces properly typed with strict TypeScript typing, no 'any' usage, proper imports from types/index\n- Successfully exported all interfaces through main index.ts for package consumers\n- TypeScript compilation confirmed passing without any type errors\n</info added on 2025-08-06T11:07:43.367Z>",
+            "status": "done",
+            "testStrategy": "Create sample configuration objects to verify interface covers all needed options, test with partial configs to ensure optional properties work"
+          }
+        ]
+      },
+      {
+        "id": 117,
+        "title": "Implement Storage Layer with Repository Pattern",
+        "description": "Create FileStorage class implementing IStorage interface for task persistence",
+        "details": "Implement FileStorage class in storage/file-storage.ts following Repository pattern. Constructor accepts projectPath, private basePath property set to {projectPath}/.taskmaster. Implement all IStorage methods: loadTasks, saveTasks, appendTasks, updateTask, deleteTask, exists. Handle file operations with proper error handling (ENOENT returns empty arrays). Use JSON format with tasks array and metadata object containing version and lastModified. Create getTasksPath method to handle tag-based file paths.",
+        "testStrategy": "Unit test all FileStorage methods with mock file system, test error scenarios (missing files, invalid JSON), verify tag-based path generation, test concurrent operations, ensure proper directory creation",
+        "priority": "high",
+        "dependencies": [
+          116
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create FileStorage class structure and constructor",
+            "description": "Set up the FileStorage class skeleton with proper TypeScript typing and implement the constructor that accepts projectPath parameter",
+            "dependencies": [],
+            "details": "Create storage/file-storage.ts file. Import necessary Node.js modules (fs/promises, path). Import IStorage interface and Task type from types. Define FileStorage class implementing IStorage. Create constructor accepting projectPath string parameter. Initialize private basePath property as `${projectPath}/.taskmaster`. Add private property for managing file locks if needed for concurrent operations.",
+            "status": "done",
+            "testStrategy": "Unit test constructor initialization, verify basePath is correctly set, test with various projectPath inputs including edge cases"
+          },
+          {
+            "id": 2,
+            "title": "Implement file path management and helper methods",
+            "description": "Create internal helper methods for managing file paths and ensuring directory structure exists",
+            "dependencies": [
+              "117.1"
+            ],
+            "details": "Implement private getTasksPath(tag?: string) method that returns path to tasks file based on optional tag parameter. If tag provided, return `${basePath}/tasks/${tag}.json`, otherwise `${basePath}/tasks/tasks.json`. Create private ensureDirectoryExists() method that creates .taskmaster and tasks directories if they don't exist using fs.mkdir with recursive option. Add private method for safe JSON parsing with error handling.",
+            "status": "done",
+            "testStrategy": "Test getTasksPath with and without tags, verify directory creation works recursively, test JSON parsing with valid and invalid data"
+          },
+          {
+            "id": 3,
+            "title": "Implement read operations: loadTasks and exists",
+            "description": "Implement methods for reading tasks from the file system with proper error handling",
+            "dependencies": [
+              "117.2"
+            ],
+            "details": "Implement loadTasks(tag?: string) method: use getTasksPath to get file path, read file using fs.readFile, parse JSON content, return tasks array from parsed data. Handle ENOENT error by returning empty array. Handle JSON parse errors appropriately. Implement exists(tag?: string) method: use fs.access to check if file exists at getTasksPath location, return boolean result.",
+            "status": "done",
+            "testStrategy": "Test loadTasks with existing files, missing files (ENOENT), corrupted JSON files. Test exists method with present and absent files"
+          },
+          {
+            "id": 4,
+            "title": "Implement write operations: saveTasks and appendTasks",
+            "description": "Implement methods for persisting tasks to the file system with metadata",
+            "dependencies": [
+              "117.3"
+            ],
+            "details": "Implement saveTasks(tasks: Task[], tag?: string) method: ensure directory exists, create data object with tasks array and metadata object containing version (e.g., '1.0.0') and lastModified (ISO timestamp). Write to file using fs.writeFile with JSON.stringify and proper formatting. Implement appendTasks(tasks: Task[], tag?: string) method: load existing tasks, merge with new tasks (avoiding duplicates by ID), call saveTasks with merged array.",
+            "status": "done",
+            "testStrategy": "Test saveTasks creates files with correct structure, verify metadata is included, test appendTasks merges correctly without duplicates"
+          },
+          {
+            "id": 5,
+            "title": "Implement update and delete operations",
+            "description": "Implement methods for modifying and removing individual tasks with atomic operations",
+            "dependencies": [
+              "117.4"
+            ],
+            "details": "Implement updateTask(taskId: string, updates: Partial<Task>, tag?: string) method: load tasks, find task by ID, merge updates using object spread, save updated tasks array. Return boolean indicating success. Implement deleteTask(taskId: string, tag?: string) method: load tasks, filter out task with matching ID, save filtered array. Return boolean indicating if task was found and deleted. Ensure both operations are atomic using temporary files if needed.",
+            "status": "done",
+            "testStrategy": "Test updateTask with existing and non-existing tasks, verify partial updates work correctly. Test deleteTask removes correct task, handles missing tasks gracefully"
+          }
+        ]
+      },
+      {
+        "id": 118,
+        "title": "Create AI Provider Base Architecture",
+        "description": "Implement abstract BaseProvider class and provider interfaces using Template Method pattern",
+        "details": "Convert existing base-provider.js to TypeScript abstract class BaseProvider implementing IAIProvider. Add protected properties for apiKey and model. Create abstract methods: generateCompletion, calculateTokens, getName, getModel, getDefaultModel. Apply Template Method pattern for common provider logic like error handling and retry logic. Ensure proper type safety throughout.",
+        "testStrategy": "Create MockProvider extending BaseProvider to test abstract class functionality, verify all abstract methods are properly defined, test error handling and common logic",
+        "priority": "high",
+        "dependencies": [
+          116
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Convert base-provider.js to TypeScript and define IAIProvider interface",
+            "description": "Create the IAIProvider interface with all required method signatures and convert the existing base-provider.js file to a TypeScript file with proper type definitions",
+            "dependencies": [],
+            "details": "Create src/types/providers.ts with IAIProvider interface containing methods: generateCompletion(prompt: string, options?: CompletionOptions): Promise<CompletionResult>, calculateTokens(text: string): number, getName(): string, getModel(): string, getDefaultModel(): string. Move base-provider.js to src/providers/base-provider.ts and add initial TypeScript types.\n<info added on 2025-08-06T12:16:45.893Z>\nSince the IAIProvider interface already exists in src/interfaces/ai-provider.interface.ts with all required methods and type definitions, update the subtask to focus on converting base-provider.js to TypeScript and implementing the BaseAIProvider abstract class. The conversion should extend the existing BaseAIProvider from src/interfaces/ai-provider.interface.ts rather than creating duplicate interfaces. Ensure the implementation aligns with the comprehensive interface that includes AIOptions, AIResponse, AIModel, ProviderInfo types and methods for streaming, validation, and usage tracking.\n</info added on 2025-08-06T12:16:45.893Z>",
+            "status": "done",
+            "testStrategy": "Verify that the interface is properly defined and that TypeScript compilation succeeds without errors"
+          },
+          {
+            "id": 2,
+            "title": "Implement BaseProvider abstract class with core properties",
+            "description": "Create the abstract BaseProvider class implementing IAIProvider with protected properties for apiKey and model configuration",
+            "dependencies": [
+              "118.1"
+            ],
+            "details": "In base-provider.ts, define abstract class BaseProvider implements IAIProvider with protected properties: apiKey: string, model: string, maxRetries: number = 3, retryDelay: number = 1000. Add constructor that accepts BaseProviderConfig interface with apiKey and optional model. Implement getModel() method to return current model.\n<info added on 2025-08-06T12:28:45.485Z>\nI've reviewed the existing BaseAIProvider interface in the interfaces file. The task requires creating a separate BaseProvider abstract class in base-provider.ts that implements the IAIProvider interface, with specific protected properties and configuration. This appears to be a deliberate architectural decision to have a more concrete base class with built-in retry logic and configuration management that all provider implementations will extend.\n</info added on 2025-08-06T12:28:45.485Z>\n<info added on 2025-08-06T13:14:24.539Z>\nSuccessfully implemented BaseProvider abstract class:\n\nIMPLEMENTED FILES:\n✅ packages/tm-core/src/providers/base-provider.ts - Created new BaseProvider abstract class\n✅ packages/tm-core/src/providers/index.ts - Updated to export BaseProvider\n\nIMPLEMENTATION DETAILS:\n- Created BaseProviderConfig interface with required apiKey and optional model\n- BaseProvider abstract class implements IAIProvider interface\n- Protected properties implemented as specified:\n  - apiKey: string \n  - model: string\n  - maxRetries: number = 3\n  - retryDelay: number = 1000\n- Constructor accepts BaseProviderConfig and sets apiKey and model (using getDefaultModel() if not provided)\n- Implemented getModel() method that returns current model\n- All IAIProvider methods declared as abstract (to be implemented by concrete providers)\n- Uses .js extension for ESM import compatibility\n- TypeScript compilation verified successful\n\nThe BaseProvider provides the foundation for concrete provider implementations with shared retry logic properties and standardized configuration.\n</info added on 2025-08-06T13:14:24.539Z>\n<info added on 2025-08-20T17:16:14.037Z>\nREFACTORING REQUIRED: The BaseProvider implementation needs to be relocated from packages/tm-core/src/providers/base-provider.ts to packages/tm-core/src/providers/ai/base-provider.ts following the new directory structure. The class must implement the Template Method pattern with the following structure:\n\n1. Keep constructor concise (under 10 lines) - only initialize apiKey and model properties\n2. Remove maxRetries and retryDelay from constructor - these should be class-level constants or configurable separately\n3. Implement all abstract methods from IAIProvider: generateCompletion, calculateTokens, getName, getModel, getDefaultModel\n4. Add protected template methods for extensibility:\n   - validateInput(input: string): void - for input validation with early returns\n   - prepareRequest(input: string, options?: any): any - for request preparation\n   - handleResponse(response: any): string - for response processing\n   - handleError(error: any): never - for consistent error handling\n5. Apply clean code principles: extract complex logic into small focused methods, use early returns to reduce nesting, ensure each method has single responsibility\n\nThe refactored BaseProvider will serve as a robust foundation using Template Method pattern, allowing concrete providers to override specific behaviors while maintaining consistent structure and error handling across all AI provider implementations.\n</info added on 2025-08-20T17:16:14.037Z>\n<info added on 2025-08-21T15:57:30.467Z>\nREFACTORING UPDATE: The BaseProvider implementation in packages/tm-core/src/providers/base-provider.ts is now affected by the core/ folder removal and needs its import paths updated. Since base-provider.ts imports from '../interfaces/provider.interface.js', this import remains valid as both providers/ and interfaces/ are at the same level. No changes needed to BaseProvider imports due to the flattening. The file structure reorganization maintains the relative path relationship between providers/ and interfaces/ directories.\n</info added on 2025-08-21T15:57:30.467Z>",
+            "status": "done",
+            "testStrategy": "Create a test file that attempts to instantiate BaseProvider directly (should fail) and verify that protected properties are accessible in child classes"
+          },
+          {
+            "id": 3,
+            "title": "Define abstract methods and implement Template Method pattern",
+            "description": "Add all abstract methods to BaseProvider and implement the Template Method pattern for common provider operations",
+            "dependencies": [
+              "118.2"
+            ],
+            "details": "Add abstract methods: protected abstract generateCompletionInternal(prompt: string, options?: CompletionOptions): Promise<CompletionResult>, abstract calculateTokens(text: string): number, abstract getName(): string, abstract getDefaultModel(): string. Implement public generateCompletion() as template method that calls generateCompletionInternal() with error handling and retry logic.\n<info added on 2025-08-20T17:16:38.315Z>\nApply Template Method pattern following clean code principles:\n\nDefine abstract methods:\n- protected abstract generateCompletionInternal(prompt: string, options?: CompletionOptions): Promise<CompletionResult>\n- protected abstract calculateTokens(text: string): number\n- protected abstract getName(): string\n- protected abstract getDefaultModel(): string\n- protected abstract getMaxRetries(): number\n- protected abstract getRetryDelay(): number\n\nImplement template method generateCompletion():\n- Call validateInput() with early returns for invalid prompt/options\n- Call prepareRequest() to format the request\n- Execute generateCompletionInternal() with retry logic\n- Call handleResponse() to process the result\n- Call handleError() in catch blocks\n\nAdd protected helper methods:\n- validateInput(prompt: string, options?: CompletionOptions): ValidationResult - Check prompt length, validate options, return early on errors\n- prepareRequest(prompt: string, options?: CompletionOptions): PreparedRequest - Format prompt, merge with defaults, add metadata\n- handleResponse(result: CompletionResult): ProcessedResult - Validate response format, extract completion text, add usage metrics\n- handleError(error: unknown, attempt: number): void - Log error details, determine if retryable, throw TaskMasterError\n\nExtract retry logic helpers:\n- shouldRetry(error: unknown, attempt: number): boolean - Check error type and attempt count\n- calculateBackoffDelay(attempt: number): number - Use exponential backoff with jitter\n- isRateLimitError(error: unknown): boolean - Detect rate limit responses\n- isTimeoutError(error: unknown): boolean - Detect timeout errors\n\nUse named constants:\n- DEFAULT_MAX_RETRIES = 3\n- BASE_RETRY_DELAY_MS = 1000\n- MAX_RETRY_DELAY_MS = 32000\n- BACKOFF_MULTIPLIER = 2\n- JITTER_FACTOR = 0.1\n\nEnsure each method stays under 30 lines by extracting complex logic into focused helper methods.\n</info added on 2025-08-20T17:16:38.315Z>",
+            "status": "done",
+            "testStrategy": "Create MockProvider extending BaseProvider to verify all abstract methods must be implemented and template method properly delegates to internal methods"
+          },
+          {
+            "id": 4,
+            "title": "Implement error handling and retry logic with exponential backoff",
+            "description": "Add comprehensive error handling and retry mechanism with exponential backoff for API calls in the template method",
+            "dependencies": [
+              "118.3"
+            ],
+            "details": "In generateCompletion() template method, wrap generateCompletionInternal() in try-catch with retry logic. Implement exponential backoff: delay * Math.pow(2, attempt). Add error types: ProviderError, RateLimitError, AuthenticationError extending Error. Log errors in development mode only. Handle specific error cases like rate limits (429), authentication errors (401), and network timeouts.",
+            "status": "done",
+            "testStrategy": "Test retry logic with MockProvider that fails N times then succeeds, verify exponential backoff timing, test different error scenarios and their handling"
+          },
+          {
+            "id": 5,
+            "title": "Add validation, logging, and completion options handling",
+            "description": "Implement input validation, debug logging for development, and proper handling of completion options like temperature and max tokens",
+            "dependencies": [
+              "118.4"
+            ],
+            "details": "Add validatePrompt() method to check for empty/invalid prompts. Add validateOptions() to ensure temperature is between 0-2, maxTokens is positive. Implement debug logging using console.log only when NODE_ENV !== 'production'. Create CompletionOptions interface with optional temperature, maxTokens, topP, frequencyPenalty, presencePenalty. Ensure all validation errors throw descriptive ProviderError instances.",
+            "status": "done",
+            "testStrategy": "Test validation with invalid inputs (empty prompts, negative maxTokens, temperature > 2), verify logging only occurs in development, test option merging with defaults"
+          }
+        ]
+      },
+      {
+        "id": 119,
+        "title": "Implement Provider Factory with Dynamic Imports",
+        "description": "Create ProviderFactory class using Factory pattern for AI provider instantiation",
+        "details": "Implement ProviderFactory class in ai/provider-factory.ts with static create method. Use switch statement for provider selection ('anthropic', 'openai', 'google'). Implement dynamic imports for each provider to enable tree-shaking. Return Promise<IAIProvider> from create method. Handle unknown providers with meaningful error messages. Ensure proper typing for configuration object.",
+        "testStrategy": "Test factory with each provider type, verify dynamic imports work correctly, test error handling for unknown providers, mock dynamic imports for unit testing",
+        "priority": "medium",
+        "dependencies": [
+          118
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ProviderFactory class structure and types",
+            "description": "Set up the ProviderFactory class file with proper TypeScript types and interfaces",
+            "dependencies": [],
+            "details": "Create ai/provider-factory.ts file. Define ProviderFactory class with static create method signature. Import IAIProvider interface from base provider. Define ProviderType as union type ('anthropic' | 'openai' | 'google'). Set up proper return type as Promise<IAIProvider> for the create method to support dynamic imports.\n<info added on 2025-08-20T17:16:56.506Z>\nClean code architecture implementation: Move to src/providers/ai/provider-factory.ts. Follow Single Responsibility Principle - factory only creates providers, no other responsibilities. Create validateProviderConfig() method for provider configuration validation. Define PROVIDER_NAMES constant object with provider string values. Implement create() method with early returns pattern for better readability. Apply Dependency Inversion - factory depends on IAIProvider interface abstraction, not concrete implementations. Keep method under 40 lines following clean code practices.\n</info added on 2025-08-20T17:16:56.506Z>",
+            "status": "pending",
+            "testStrategy": "Verify file structure and type definitions compile correctly"
+          },
+          {
+            "id": 2,
+            "title": "Implement provider selection logic with switch statement",
+            "description": "Add the core switch statement logic to handle different provider types",
+            "dependencies": [
+              "119.1"
+            ],
+            "details": "Inside the static create method, implement switch statement on provider type parameter. Add cases for 'anthropic', 'openai', and 'google'. Add default case that throws a descriptive error for unknown providers (e.g., throw new Error(`Unknown provider: ${providerType}`)). Structure each case to prepare for dynamic imports.",
+            "status": "pending",
+            "testStrategy": "Test switch statement with valid and invalid provider types, verify error messages"
+          },
+          {
+            "id": 3,
+            "title": "Add dynamic imports for each provider",
+            "description": "Implement dynamic import() statements for lazy loading provider modules",
+            "dependencies": [
+              "119.2"
+            ],
+            "details": "In each switch case, use dynamic import() to load the provider module: for 'anthropic' case use await import('./providers/anthropic-provider'), similar for OpenAI and Google providers. Extract the default export or specific class from each dynamic import. This enables tree-shaking by only loading the selected provider.",
+            "status": "pending",
+            "testStrategy": "Mock dynamic imports in tests, verify only requested provider is loaded"
+          },
+          {
+            "id": 4,
+            "title": "Instantiate providers with configuration",
+            "description": "Create provider instances with proper configuration passing",
+            "dependencies": [
+              "119.3"
+            ],
+            "details": "After each dynamic import, instantiate the provider class with the configuration object passed to create method. Ensure configuration object is properly typed (use IConfiguration or relevant subset). Return the instantiated provider instance. Handle any instantiation errors and wrap them with context about which provider failed.",
+            "status": "pending",
+            "testStrategy": "Test provider instantiation with various configuration objects, verify configuration is passed correctly"
+          },
+          {
+            "id": 5,
+            "title": "Add error handling and validation",
+            "description": "Implement comprehensive error handling for all failure scenarios",
+            "dependencies": [
+              "119.4"
+            ],
+            "details": "Wrap dynamic imports in try-catch blocks to handle module loading failures. Add validation for configuration object before passing to providers. Create custom error messages that include the provider type and specific failure reason. Consider adding a ProviderFactoryError custom error class. Ensure all errors bubble up properly while maintaining async/await chain.",
+            "status": "pending",
+            "testStrategy": "Test various error scenarios: missing provider modules, invalid configurations, network failures during dynamic import"
+          }
+        ]
+      },
+      {
+        "id": 120,
+        "title": "Implement Anthropic Provider",
+        "description": "Create AnthropicProvider class extending BaseProvider with full Anthropic SDK integration",
+        "details": "Create AnthropicProvider class in ai/providers/anthropic-provider.ts extending BaseProvider. Import and use @anthropic-ai/sdk. Initialize private client property in constructor. Implement all abstract methods: generateCompletion using Claude API, calculateTokens using appropriate tokenizer, getName returning 'anthropic', getModel returning current model, getDefaultModel returning 'claude-3-sonnet-20240229'. Wrap API errors with context.",
+        "testStrategy": "Mock Anthropic SDK for unit tests, test API error handling, verify token calculation accuracy, test with different model configurations",
+        "priority": "high",
+        "dependencies": [
+          118
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up AnthropicProvider class structure and dependencies",
+            "description": "Create the AnthropicProvider class file with proper imports and class structure extending BaseProvider",
+            "dependencies": [],
+            "details": "Create ai/providers/anthropic-provider.ts file. Import BaseProvider from base-provider.ts and import Anthropic from @anthropic-ai/sdk. Import necessary types including IAIProvider, ChatMessage, and ChatCompletion. Set up the class declaration extending BaseProvider with proper TypeScript typing. Add private client property declaration of type Anthropic.\n<info added on 2025-08-20T17:17:15.019Z>\nFile should be created at src/providers/ai/adapters/anthropic-provider.ts instead of ai/providers/anthropic-provider.ts. Follow clean code principles: keep constructor minimal (under 10 lines) with only client initialization. Extract API call logic into separate small methods (each under 20 lines). Use early returns in generateCompletionInternal() for better readability. Extract error mapping logic to a dedicated mapAnthropicError() method. Avoid magic strings - define constants for model names and API parameters.\n</info added on 2025-08-20T17:17:15.019Z>",
+            "status": "pending",
+            "testStrategy": "Verify file structure and imports compile without errors, ensure class properly extends BaseProvider"
+          },
+          {
+            "id": 2,
+            "title": "Implement constructor and client initialization",
+            "description": "Create the constructor that accepts configuration and initializes the Anthropic SDK client",
+            "dependencies": [
+              "120.1"
+            ],
+            "details": "Implement constructor accepting IConfiguration parameter. Call super(config) to initialize BaseProvider. Initialize the private client property by creating new Anthropic instance with apiKey from config.apiKeys.anthropic. Add validation to ensure API key exists, throwing meaningful error if missing. Store the model configuration from config.model or use default.",
+            "status": "pending",
+            "testStrategy": "Test constructor with valid and invalid configurations, verify client initialization, test API key validation"
+          },
+          {
+            "id": 3,
+            "title": "Implement generateCompletion method with Claude API",
+            "description": "Implement the main generateCompletion method that calls Anthropic's Claude API and handles responses",
+            "dependencies": [
+              "120.2"
+            ],
+            "details": "Implement async generateCompletion method accepting ChatMessage array. Map ChatMessage format to Anthropic's expected format (role and content). Use client.messages.create() with appropriate parameters including model, max_tokens, and messages. Transform Anthropic response format to ChatCompletion interface. Handle streaming vs non-streaming responses. Implement proper error handling wrapping API errors with context.",
+            "status": "pending",
+            "testStrategy": "Mock Anthropic SDK client.messages.create, test with various message formats, verify response transformation, test error scenarios"
+          },
+          {
+            "id": 4,
+            "title": "Implement token calculation and utility methods",
+            "description": "Implement calculateTokens method and other required abstract methods from BaseProvider",
+            "dependencies": [
+              "120.3"
+            ],
+            "details": "Implement calculateTokens method using appropriate tokenizer (tiktoken or claude-tokenizer if available). Implement getName method returning 'anthropic' string constant. Implement getModel method returning current model from configuration. Implement getDefaultModel method returning 'claude-3-sonnet-20240229'. Add any additional helper methods for token counting or message formatting.",
+            "status": "pending",
+            "testStrategy": "Test token calculation accuracy with various input strings, verify utility methods return correct values"
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive error handling and type exports",
+            "description": "Implement robust error handling throughout the class and ensure proper TypeScript exports",
+            "dependencies": [
+              "120.4"
+            ],
+            "details": "Wrap all Anthropic API calls in try-catch blocks. Create custom error messages that include context about the operation being performed. Handle rate limiting errors specifically. Ensure all methods have proper TypeScript return types. Export the AnthropicProvider class as default export. Add JSDoc comments for all public methods. Ensure proper error propagation maintaining stack traces.",
+            "status": "pending",
+            "testStrategy": "Test various API error scenarios, verify error messages include context, test rate limit handling, ensure TypeScript types are correctly exported"
+          }
+        ]
+      },
+      {
+        "id": 121,
+        "title": "Create Prompt Builder and Task Parser",
+        "description": "Implement PromptBuilder class and TaskParser with Dependency Injection",
+        "details": "Create PromptBuilder class with buildParsePrompt and buildExpandPrompt methods using template literals. Include specific JSON format instructions. Create TaskParser class accepting IAIProvider and IConfiguration via constructor (Dependency Injection). Implement parsePRD method to read PRD file, use PromptBuilder to create prompt, call AI provider, extract tasks from response, and enrich with metadata. Handle parsing errors gracefully.",
+        "testStrategy": "Unit test prompt building with various inputs, mock AI provider responses, test JSON extraction logic, verify error handling for malformed responses, integration test with real PRD files",
+        "priority": "high",
+        "dependencies": [
+          119,
+          120
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create PromptBuilder Class Structure",
+            "description": "Implement the PromptBuilder class with template methods for generating AI prompts",
+            "dependencies": [],
+            "details": "Create src/services/prompt-builder.ts. Define PromptBuilder class with two public methods: buildParsePrompt(prdContent: string): string and buildExpandPrompt(task: Task): string. Use template literals to construct prompts with clear JSON format instructions. Include system instructions for AI to follow specific output formats. Add private helper methods for common prompt sections like JSON schema definitions and response format examples.\n<info added on 2025-08-20T17:17:31.467Z>\nRefactor to src/services/prompts/prompt-builder.ts to separate concerns. Implement buildTaskPrompt() method. Define prompt template constants: PARSE_PROMPT_TEMPLATE, EXPAND_PROMPT_TEMPLATE, TASK_PROMPT_TEMPLATE, JSON_FORMAT_INSTRUCTIONS. Move JSON schema definitions and format instructions to constants. Ensure each template uses template literals with ${} placeholders. Keep all methods under 40 lines by extracting logic into focused helper methods. Use descriptive constant names for all repeated strings or instruction blocks.\n</info added on 2025-08-20T17:17:31.467Z>",
+            "status": "pending",
+            "testStrategy": "Unit test both prompt methods with sample inputs. Verify prompt contains required JSON structure instructions. Test edge cases like empty PRD content or minimal task objects."
+          },
+          {
+            "id": 2,
+            "title": "Implement TaskParser Class with DI",
+            "description": "Create TaskParser class accepting IAIProvider and IConfiguration through constructor injection",
+            "dependencies": [
+              "121.1"
+            ],
+            "details": "Create src/services/task-parser.ts. Define TaskParser class with constructor(private aiProvider: IAIProvider, private config: IConfiguration). Add private promptBuilder property initialized in constructor. Implement basic class structure with placeholder methods. Ensure proper TypeScript typing for all parameters and properties. Follow dependency injection pattern for testability.\n<info added on 2025-08-20T17:17:49.624Z>\nUpdate file location to src/services/tasks/task-parser.ts instead of src/services/task-parser.ts. Refactor parsePRD() method to stay under 40 lines by extracting logic into helper methods: readPRD(), validatePRD(), extractTasksFromResponse(), and enrichTasksWithMetadata(). Each helper method should be under 20 lines. Implement early returns in validation methods for cleaner code flow. Remove any file I/O operations from the parser class - delegate all storage operations to injected dependencies. Ensure clean separation of concerns with parser focused only on task parsing logic.\n</info added on 2025-08-20T17:17:49.624Z>",
+            "status": "pending",
+            "testStrategy": "Test constructor properly stores injected dependencies. Verify class instantiation with mock providers. Test TypeScript compilation with proper interface implementations."
+          },
+          {
+            "id": 3,
+            "title": "Implement parsePRD Method Core Logic",
+            "description": "Create the main parsePRD method that orchestrates the PRD parsing workflow",
+            "dependencies": [
+              "121.2"
+            ],
+            "details": "Implement parsePRD(filePath: string): Promise<ParsedTask[]> method in TaskParser. Read PRD file using fs.promises.readFile. Use promptBuilder.buildParsePrompt() to create AI prompt. Call aiProvider.generateResponse() with constructed prompt. Extract JSON array from AI response using regex or JSON.parse. Handle potential parsing errors with try-catch blocks. Return empty array on errors after logging.",
+            "status": "pending",
+            "testStrategy": "Test with mock AI provider returning valid JSON. Test file reading with various file paths. Mock file system for controlled testing. Verify proper error logging without throwing."
+          },
+          {
+            "id": 4,
+            "title": "Add Task Enrichment and Metadata",
+            "description": "Enhance parsed tasks with additional metadata and validation",
+            "dependencies": [
+              "121.3"
+            ],
+            "details": "After extracting tasks from AI response, enrich each task with metadata: add createdAt timestamp, set initial status to 'pending', validate required fields (id, title, description). Add priority field with default 'medium' if not provided. Ensure all tasks have valid structure before returning. Create private enrichTask(task: any): ParsedTask method for this logic. Handle missing or malformed task data gracefully.",
+            "status": "pending",
+            "testStrategy": "Test enrichment adds all required metadata. Verify validation catches malformed tasks. Test default values are applied correctly. Ensure timestamps are properly formatted."
+          },
+          {
+            "id": 5,
+            "title": "Implement Comprehensive Error Handling",
+            "description": "Add robust error handling throughout the TaskParser implementation",
+            "dependencies": [
+              "121.4"
+            ],
+            "details": "Wrap file reading in try-catch to handle FILE_NOT_FOUND errors. Catch AI provider errors and wrap in appropriate TaskMasterError. Handle JSON parsing errors when extracting from AI response. Add specific error handling for network timeouts, rate limits, and malformed responses. Log errors with context in development mode only. Return meaningful error messages without exposing internals. Ensure all errors are properly typed as TaskMasterError instances.",
+            "status": "pending",
+            "testStrategy": "Test each error scenario separately: missing files, AI provider failures, malformed JSON, network errors. Verify proper error codes are used. Test that errors don't expose sensitive information."
+          }
+        ]
+      },
+      {
+        "id": 122,
+        "title": "Implement Configuration Management",
+        "description": "Create ConfigManager class with Zod validation for configuration",
+        "details": "Implement ConfigManager in config/config-manager.ts accepting Partial<IConfiguration> in constructor. Use Zod to create validation schema matching IConfiguration interface. Implement get method with TypeScript generics for type-safe access, getAll returning full config, validate method for validation. Set defaults: projectPath = process.cwd(), aiProvider = 'anthropic', enableTags = true. Handle validation errors with clear messages.",
+        "testStrategy": "Test with various configuration combinations, verify Zod validation catches invalid configs, test default values, ensure type safety of get method",
+        "priority": "medium",
+        "dependencies": [
+          116
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Zod validation schema for IConfiguration",
+            "description": "Define a Zod schema that matches the IConfiguration interface structure with proper validation rules",
+            "dependencies": [],
+            "details": "Create configSchema in config/config-manager.ts using z.object() to define validation for all IConfiguration properties. Include string validations for projectPath, enum validation for aiProvider ('anthropic', 'openai', etc.), boolean for enableTags, and any other configuration fields. Use z.string().min(1) for required strings, z.enum() for provider types, and appropriate validators for other fields.\n<info added on 2025-08-06T13:14:58.822Z>\nCompleted Zod validation schema implementation in packages/tm-core/src/config/validation.ts\n\nIMPLEMENTATION DETAILS:\n- Created comprehensive Zod schemas matching IConfiguration interface structure exactly\n- All required schemas exported as expected by config-schema.ts:\n  * configurationSchema - Main configuration validation with custom refinements\n  * partialConfigurationSchema - For partial updates (using base schema without refinements)\n  * modelConfigSchema - Model configuration validation\n  * providerConfigSchema - AI provider configuration validation  \n  * taskSettingsSchema - Task management settings validation\n  * loggingSettingsSchema/loggingConfigSchema - Logging configuration (with legacy alias)\n  * tagSettingsSchema - Tag management settings validation\n  * storageSettingsSchema - Storage configuration validation\n  * retrySettingsSchema - Retry/resilience settings validation\n  * securitySettingsSchema - Security settings validation\n  * cacheConfigSchema - Cache configuration stub (for consistency)\n\nKEY FEATURES:\n- Proper Zod validation rules applied (string lengths, number ranges, enums)\n- Custom refinements for business logic (maxRetryDelay >= retryDelay)\n- Comprehensive enum schemas for all union types\n- Legacy alias support for backwards compatibility\n- All 13 nested interface schemas implemented with appropriate constraints\n- Type exports for runtime validation\n\nVALIDATION INCLUDES:\n- String validations with min lengths for required fields\n- Enum validation for providers, priorities, complexities, log levels, etc.\n- Number range validations (min/max constraints)\n- URL validation for baseUrl fields\n- Array validations with proper item types\n- Record validations for dynamic key-value pairs\n- Optional field handling with appropriate defaults\n\nTESTED AND VERIFIED:\n- All schemas compile correctly with TypeScript\n- Import/export chain works properly through config-schema.ts\n- Basic validation tests pass for key schemas\n- No conflicts with existing IConfiguration interface structure\n</info added on 2025-08-06T13:14:58.822Z>\n<info added on 2025-08-20T17:18:12.343Z>\nCreated ConfigManager class at src/config/config-manager.ts with the following implementation:\n\nSTRUCTURE:\n- DEFAULT_CONFIG constant defined with complete default values for all configuration properties\n- Constructor validates config using validate() method (follows Fail-Fast principle)\n- Constructor kept under 15 lines as required\n- Type-safe get<K>() method using TypeScript generics for accessing specific config properties\n- getAll() method returns complete validated configuration\n- validate() method extracted for configuration validation using Zod schema\n- mergeWithDefaults() helper extracted for merging partial config with defaults\n\nKEY IMPLEMENTATION DETAILS:\n- Imports configurationSchema from src/config/schemas/config.schema.ts\n- Uses z.infer<typeof configurationSchema> for type safety\n- Validates on construction with clear error messages\n- No nested ternaries used\n- Proper error handling with ConfigValidationError\n- Type-safe property access with keyof IConfiguration constraint\n\nMETHODS:\n- constructor(config?: Partial<IConfiguration>) - Validates and stores config\n- get<K extends keyof IConfiguration>(key: K): IConfiguration[K] - Type-safe getter\n- getAll(): IConfiguration - Returns full config\n- private validate(config: unknown): IConfiguration - Validates using Zod\n- private mergeWithDefaults(config: Partial<IConfiguration>): IConfiguration - Merges with defaults\n\nAlso created src/config/schemas/config.schema.ts importing the configurationSchema from validation.ts for cleaner organization.\n</info added on 2025-08-20T17:18:12.343Z>",
+            "status": "review",
+            "testStrategy": "Test schema validation with valid and invalid configurations, ensure all IConfiguration fields are covered"
+          },
+          {
+            "id": 2,
+            "title": "Implement ConfigManager class constructor and storage",
+            "description": "Create ConfigManager class with constructor that accepts Partial<IConfiguration> and initializes configuration with defaults",
+            "dependencies": [
+              "122.1"
+            ],
+            "details": "Define ConfigManager class with private config property. In constructor, merge provided partial config with defaults (projectPath = process.cwd(), aiProvider = 'anthropic', enableTags = true). Store the merged configuration internally. Ensure the class is properly typed with IConfiguration interface.",
+            "status": "pending",
+            "testStrategy": "Test constructor with various partial configs, verify defaults are applied correctly, test with empty config"
+          },
+          {
+            "id": 3,
+            "title": "Implement validate method with error handling",
+            "description": "Create validate method that uses Zod schema to validate configuration and provides clear error messages",
+            "dependencies": [
+              "122.1",
+              "122.2"
+            ],
+            "details": "Implement validate(): void method that runs configSchema.parse(this.config) within try-catch block. On ZodError, transform the error into user-friendly messages that clearly indicate which fields are invalid and why. Consider creating a custom error class for configuration validation errors. The method should throw if validation fails.",
+            "status": "pending",
+            "testStrategy": "Test with invalid configs to ensure proper error messages, verify all validation rules work correctly"
+          },
+          {
+            "id": 4,
+            "title": "Implement type-safe get method with generics",
+            "description": "Create generic get method for retrieving individual configuration values with TypeScript type inference",
+            "dependencies": [
+              "122.2"
+            ],
+            "details": "Implement get<K extends keyof IConfiguration>(key: K): IConfiguration[K] method that returns the value for a specific configuration key. Use TypeScript generics and keyof operator to ensure type safety. The method should provide proper type inference so consumers get the correct type based on the key they request.",
+            "status": "pending",
+            "testStrategy": "Test type inference with different keys, verify TypeScript catches invalid keys at compile time"
+          },
+          {
+            "id": 5,
+            "title": "Implement getAll method and finalize class",
+            "description": "Create getAll method to return full configuration and ensure proper exports",
+            "dependencies": [
+              "122.2",
+              "122.3",
+              "122.4"
+            ],
+            "details": "Implement getAll(): IConfiguration method that returns a deep copy of the entire configuration object to prevent external mutations. Add JSDoc comments to all public methods. Export the ConfigManager class and ensure it's properly integrated with the module structure. Consider adding a static factory method if needed.",
+            "status": "pending",
+            "testStrategy": "Test getAll returns complete config, verify returned object is immutable, test integration with other modules"
+          }
+        ]
+      },
+      {
+        "id": 123,
+        "title": "Create Utility Functions and Error Handling",
+        "description": "Implement ID generation utilities and custom error classes",
+        "details": "Create id-generator.ts with generateTaskId and generateSubtaskId functions using specified formats with timestamp and random components. Create TaskMasterError class extending Error in errors/task-master-error.ts with error codes (FILE_NOT_FOUND, PARSE_ERROR, etc.). Ensure errors don't expose internal details. Add development-only logging.",
+        "testStrategy": "Test ID generation for uniqueness and format compliance, verify error classes properly extend Error, test error message formatting, ensure no sensitive data in errors",
+        "priority": "low",
+        "dependencies": [
+          116
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ID generation utilities module",
+            "description": "Implement the id-generator.ts module with functions for generating unique task and subtask IDs",
+            "dependencies": [],
+            "details": "Create src/utils/id-generator.ts file. Implement generateTaskId() function that returns format 'TASK-{timestamp}-{random}' where timestamp is Date.now() and random is 4-character alphanumeric string. Implement generateSubtaskId(parentId) function that returns format '{parentId}.{sequential}' where sequential increments based on existing subtasks. Use crypto.randomBytes or Math.random for randomness. Export both functions as named exports.\n<info added on 2025-08-06T12:42:22.203Z>\nThe ID generator module has been successfully implemented with the following completed features:\n- generateTaskId() function that creates unique IDs in 'TASK-{timestamp}-{random}' format\n- generateSubtaskId() function that generates sequential subtask IDs in '{parentId}.{sequential}' format\n- Input validation functions to ensure ID integrity\n- Proper TypeScript type definitions and interfaces\n- Comprehensive JSDoc documentation with usage examples\n- All functions exported as named exports from src/utils/id-generator.ts\n</info added on 2025-08-06T12:42:22.203Z>",
+            "status": "done",
+            "testStrategy": "Test uniqueness by generating 1000 IDs and checking for duplicates, verify format compliance with regex, test subtask ID sequential numbering"
+          },
+          {
+            "id": 2,
+            "title": "Create base error class structure",
+            "description": "Implement the TaskMasterError base class that extends Error with proper error handling capabilities",
+            "dependencies": [],
+            "details": "Create src/errors/task-master-error.ts file. Define TaskMasterError class extending Error. Add constructor accepting (message: string, code: string, details?: any). Set this.name = 'TaskMasterError'. Create error code constants: FILE_NOT_FOUND = 'FILE_NOT_FOUND', PARSE_ERROR = 'PARSE_ERROR', VALIDATION_ERROR = 'VALIDATION_ERROR', API_ERROR = 'API_ERROR'. Override toString() to format errors appropriately. Ensure stack trace is preserved.\n<info added on 2025-08-06T13:13:11.635Z>\nCompleted TaskMasterError base class implementation:\n\nIMPLEMENTATION DETAILS:\n- TaskMasterError class fully implemented extending Error\n- Added proper prototype chain fix with Object.setPrototypeOf(this, TaskMasterError.prototype)\n- Includes all required properties: code (from ERROR_CODES), timestamp, context, cause\n- toJSON method implemented for full serialization support\n- Error sanitization implemented via getSanitizedDetails() and containsSensitiveInfo() methods\n- Error chaining with cause property fully supported\n- Additional utility methods: getUserMessage(), toString(), is(), hasCode(), withContext(), wrap()\n\nSUCCESS CRITERIA VERIFIED:\n✅ TaskMasterError class fully implemented\n✅ Extends Error with proper prototype chain fix (Object.setPrototypeOf)\n✅ Includes all required properties and methods\n✅ toJSON method for serialization\n✅ Error sanitization logic for production (containsSensitiveInfo method)\n✅ Comprehensive error context and metadata support\n\nFILE MODIFIED: packages/tm-core/src/errors/task-master-error.ts\n</info added on 2025-08-06T13:13:11.635Z>\n<info added on 2025-08-20T17:18:38.499Z>\nRefactored to follow clean code principles:\n\nCLEAN CODE IMPROVEMENTS:\n- Moved TaskMasterError class to be under 40 lines by extracting methods\n- Created separate error-codes.ts file with ERROR_CODES constant object\n- Extracted sanitizeMessage() method to handle message sanitization\n- Extracted addContext() method for adding error context\n- Extracted toJSON() method for serialization\n- Added static factory methods: fromError(), notFound(), parseError(), validationError(), apiError()\n- Improved error chaining with proper 'cause' property handling\n- Ensured user-friendly messages that hide implementation details\n- Maintained all existing functionality while improving code organization\n\nFILES CREATED/MODIFIED:\n- packages/tm-core/src/errors/error-codes.ts (new file with ERROR_CODES)\n- packages/tm-core/src/errors/task-master-error.ts (refactored to under 40 lines)\n</info added on 2025-08-20T17:18:38.499Z>",
+            "status": "review",
+            "testStrategy": "Test that error extends Error properly, verify error.name is set correctly, test toString() output format, ensure stack trace exists"
+          },
+          {
+            "id": 3,
+            "title": "Implement error sanitization and security features",
+            "description": "Add security features to prevent exposure of sensitive internal details in error messages",
+            "dependencies": [
+              "123.2"
+            ],
+            "details": "In TaskMasterError class, add private sanitizeDetails() method that removes sensitive data like API keys, file paths beyond project root, and internal state. Implement toJSON() method that returns sanitized error object for external consumption. Add static isSafeForProduction() method to validate error messages don't contain patterns like absolute paths, environment variables, or API credentials. Store original details in private property for debugging.",
+            "status": "pending",
+            "testStrategy": "Test sanitization removes absolute paths, API keys, and sensitive patterns, verify toJSON returns safe object, test original details are preserved internally"
+          },
+          {
+            "id": 4,
+            "title": "Add development-only logging functionality",
+            "description": "Implement conditional logging that only operates in development environment",
+            "dependencies": [
+              "123.2",
+              "123.3"
+            ],
+            "details": "In task-master-error.ts, add static enableDevLogging property defaulting to process.env.NODE_ENV !== 'production'. Add logError() method that console.error's full error details only when enableDevLogging is true. Include timestamp, error code, sanitized message, and full stack trace in dev logs. In production, log only error code and safe message. Create static setDevLogging(enabled: boolean) to control logging.",
+            "status": "pending",
+            "testStrategy": "Test logging output in dev vs production modes, verify sensitive data isn't logged in production, test log format includes all required fields"
+          },
+          {
+            "id": 5,
+            "title": "Create specialized error subclasses",
+            "description": "Implement specific error classes for different error scenarios inheriting from TaskMasterError",
+            "dependencies": [
+              "123.2",
+              "123.3",
+              "123.4"
+            ],
+            "details": "Create FileNotFoundError extending TaskMasterError with code FILE_NOT_FOUND, accepting filePath parameter. Create ParseError with code PARSE_ERROR for parsing failures, accepting source and line number. Create ValidationError with code VALIDATION_ERROR for data validation, accepting field and value. Create APIError with code API_ERROR for external API failures, accepting statusCode and provider. Each should format appropriate user-friendly messages while storing technical details internally.",
+            "status": "pending",
+            "testStrategy": "Test each error class constructor and message formatting, verify inheritance chain, test that each error type has correct code, ensure specialized errors work with logging system"
+          }
+        ]
+      },
+      {
+        "id": 124,
+        "title": "Implement TaskMasterCore Facade",
+        "description": "Create main TaskMasterCore class as Facade pattern entry point",
+        "details": "Create TaskMasterCore class in index.ts with private properties for config, storage, aiProvider, and parser. Implement initialize method for lazy loading of AI provider. Implement parsePRD method that coordinates parser, storage, and configuration. Implement getTasks for retrieving stored tasks. Apply Facade pattern to hide complexity. Export createTaskMaster factory function, all types and interfaces. Use proper import paths with .js extensions for ESM.",
+        "testStrategy": "Integration test full parse flow, test lazy initialization, verify facade properly delegates to subsystems, test with different configurations, ensure exports are correct",
+        "priority": "high",
+        "dependencies": [
+          117,
+          121,
+          122
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TaskMasterCore class structure with type definitions",
+            "description": "Set up the main TaskMasterCore class in src/index.ts with all necessary imports, type definitions, and class structure following the Facade pattern",
+            "dependencies": [],
+            "details": "Create src/index.ts file. Import IConfiguration, ITaskStorage, IAIProvider, and IPRDParser interfaces. Define TaskMasterCore class with private properties: _config (ConfigManager), _storage (ITaskStorage), _aiProvider (IAIProvider | null), _parser (IPRDParser | null). Add constructor accepting options parameter of type Partial<IConfiguration>. Initialize _config with ConfigManager, set other properties to null for lazy loading. Import all necessary types from their respective modules using .js extensions for ESM compatibility.\n<info added on 2025-08-20T17:18:56.625Z>\nApply Facade pattern principles: simple public interface, hide subsystem complexity. Keep all methods under 30 lines by extracting logic. Implement lazy initialization pattern in initialize() method - only create dependencies when first needed. Extract createDependencies() private helper method to handle creation of storage, AI provider, and parser instances. Add createTaskMaster() factory function for convenient instance creation. Use barrel exports pattern - export all public types and interfaces that clients need (IConfiguration, ITaskStorage, IAIProvider, IPRDParser, TaskMasterCore). Follow Interface Segregation Principle - only expose methods and types that clients actually need, hide internal implementation details.\n</info added on 2025-08-20T17:18:56.625Z>",
+            "status": "pending",
+            "testStrategy": "Test class instantiation with various configuration options, verify private properties are correctly initialized, ensure TypeScript types are properly enforced"
+          },
+          {
+            "id": 2,
+            "title": "Implement initialize method for lazy loading",
+            "description": "Create the initialize method that handles lazy loading of AI provider and parser instances based on configuration",
+            "dependencies": [
+              "124.1"
+            ],
+            "details": "Implement async initialize() method in TaskMasterCore. Check if _aiProvider is null, if so create appropriate provider based on config.aiProvider value using a factory pattern or switch statement. Similarly initialize _parser if null. Store instances in private properties for reuse. Handle provider initialization errors gracefully. Ensure method is idempotent - calling multiple times should not recreate instances. Use dynamic imports if needed for code splitting.",
+            "status": "pending",
+            "testStrategy": "Test lazy initialization occurs only once, verify correct provider is instantiated based on config, test error handling for invalid providers, ensure idempotency"
+          },
+          {
+            "id": 3,
+            "title": "Implement parsePRD method with coordination logic",
+            "description": "Create parsePRD method that coordinates the parser, AI provider, and storage to parse PRD content and store results",
+            "dependencies": [
+              "124.1",
+              "124.2"
+            ],
+            "details": "Implement async parsePRD(content: string) method. First call initialize() to ensure components are loaded. Use _parser.parse() to parse the PRD content, passing the AI provider for task generation. Take the parsed tasks and use _storage.saveTasks() to persist them. Handle errors from parser or storage operations. Return the parsed tasks array. Implement proper error context and logging for debugging.",
+            "status": "pending",
+            "testStrategy": "Integration test with mock parser and storage, verify coordination between components, test error propagation from subsystems, ensure tasks are properly stored"
+          },
+          {
+            "id": 4,
+            "title": "Implement getTasks method and other facade methods",
+            "description": "Create getTasks method and any other necessary facade methods to retrieve and manage tasks",
+            "dependencies": [
+              "124.1"
+            ],
+            "details": "Implement async getTasks() method that calls _storage.loadTasks() and returns the tasks array. Add getTask(id: string) for retrieving single task. Consider adding updateTask, deleteTask methods if needed. All methods should follow facade pattern - simple interface hiding complex operations. Add proper TypeScript return types for all methods. Handle storage not initialized scenarios.",
+            "status": "pending",
+            "testStrategy": "Test task retrieval with various scenarios, verify proper delegation to storage, test edge cases like empty task lists or invalid IDs"
+          },
+          {
+            "id": 5,
+            "title": "Create factory function and module exports",
+            "description": "Implement createTaskMaster factory function and set up all module exports including types and interfaces",
+            "dependencies": [
+              "124.1",
+              "124.2",
+              "124.3",
+              "124.4"
+            ],
+            "details": "Create createTaskMaster(options?: Partial<IConfiguration>) factory function that returns a new TaskMasterCore instance. Export this as the primary entry point. Re-export all types and interfaces from submodules: ITask, IConfiguration, IAIProvider, ITaskStorage, IPRDParser, etc. Use 'export type' for type-only exports. Ensure all imports use .js extensions for ESM. Create index.d.ts if needed for better TypeScript support. Add JSDoc comments for public API.",
+            "status": "pending",
+            "testStrategy": "Test factory function creates proper instances, verify all exports are accessible, test TypeScript type inference works correctly, ensure ESM imports resolve properly"
+          }
+        ]
+      },
+      {
+        "id": 125,
+        "title": "Create Placeholder Providers and Complete Testing",
+        "description": "Implement placeholder providers for OpenAI and Google, create comprehensive test suite",
+        "details": "Create OpenAIProvider and GoogleProvider classes extending BaseProvider, throwing 'not yet implemented' errors. Create MockProvider in tests/mocks for testing without API calls. Write unit tests for TaskParser, integration tests for parse-prd flow, ensure 80% code coverage. Follow kebab-case naming for test files. Test error scenarios comprehensively.",
+        "testStrategy": "Run full test suite with coverage report, verify all edge cases are tested, ensure mock provider behaves like real providers, test both success and failure paths",
+        "priority": "medium",
+        "dependencies": [
+          120,
+          124
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create OpenAIProvider placeholder class",
+            "description": "Implement OpenAIProvider class that extends BaseProvider with all required methods throwing 'not yet implemented' errors",
+            "dependencies": [],
+            "details": "Create src/providers/openai-provider.ts file. Import BaseProvider from base-provider.ts. Implement class OpenAIProvider extends BaseProvider. Override parseText() method to throw new Error('OpenAI provider not yet implemented'). Add proper TypeScript types and JSDoc comments. Export the class as default.",
+            "status": "pending",
+            "testStrategy": "Write unit test to verify OpenAIProvider extends BaseProvider correctly and throws expected error when parseText is called"
+          },
+          {
+            "id": 2,
+            "title": "Create GoogleProvider placeholder class",
+            "description": "Implement GoogleProvider class that extends BaseProvider with all required methods throwing 'not yet implemented' errors",
+            "dependencies": [],
+            "details": "Create src/providers/google-provider.ts file. Import BaseProvider from base-provider.ts. Implement class GoogleProvider extends BaseProvider. Override parseText() method to throw new Error('Google provider not yet implemented'). Add proper TypeScript types and JSDoc comments. Export the class as default.",
+            "status": "pending",
+            "testStrategy": "Write unit test to verify GoogleProvider extends BaseProvider correctly and throws expected error when parseText is called"
+          },
+          {
+            "id": 3,
+            "title": "Create MockProvider for testing",
+            "description": "Implement MockProvider class in tests/mocks directory that simulates provider behavior without making actual API calls",
+            "dependencies": [],
+            "details": "Create tests/mocks/mock-provider.ts file. Extend BaseProvider class. Implement parseText() to return predefined mock task data based on input. Add methods to configure mock responses, simulate errors, and track method calls. Include delay simulation for realistic testing. Export class and helper functions for test setup.",
+            "status": "pending",
+            "testStrategy": "Test MockProvider returns consistent mock data, can simulate different scenarios (success/failure), and properly tracks method invocations"
+          },
+          {
+            "id": 4,
+            "title": "Write unit tests for TaskParser",
+            "description": "Create comprehensive unit tests for TaskParser class covering all methods and edge cases",
+            "dependencies": [
+              "125.3"
+            ],
+            "details": "Create tests/unit/task-parser.test.ts file. Test TaskParser constructor with different providers. Test parseFromText method with valid/invalid inputs. Test error handling for malformed responses. Use MockProvider to simulate API responses. Test task ID generation and structure validation. Ensure all public methods are covered.",
+            "status": "pending",
+            "testStrategy": "Achieve 100% code coverage for TaskParser class, test both success and failure paths, verify error messages are appropriate"
+          },
+          {
+            "id": 5,
+            "title": "Write integration tests for parse-prd flow",
+            "description": "Create end-to-end integration tests for the complete PRD parsing workflow",
+            "dependencies": [
+              "125.3",
+              "125.4"
+            ],
+            "details": "Create tests/integration/parse-prd-flow.test.ts file. Test full flow from PRD input to task output. Test with MockProvider simulating successful parsing. Test error scenarios (file not found, parse errors, network failures). Test task dependency resolution. Verify output format matches expected structure. Test with different PRD formats and sizes.",
+            "status": "pending",
+            "testStrategy": "Run coverage report to ensure 80% overall coverage, verify all critical paths are tested, ensure tests are deterministic and don't depend on external services"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-06T08:51:19.649Z",
+      "updated": "2025-08-20T21:32:21.837Z",
+      "description": "Tasks for tm-core-phase-1 context"
+    }
   }
 }
