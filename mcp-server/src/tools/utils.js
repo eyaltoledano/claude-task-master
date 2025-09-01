@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 import { fileURLToPath } from 'url';
+import packageJson from '../../../package.json' with { type: 'json' };
 import { getCurrentTag } from '../../../scripts/modules/utils.js';
 
 // Import path utilities to ensure consistent path resolution
@@ -31,33 +32,12 @@ function getVersionInfo() {
 		return cachedVersionInfo;
 	}
 
-	try {
-		// Navigate to the project root from the tools directory
-		const packageJsonPath = path.join(
-			path.dirname(__filename),
-			'../../../package.json'
-		);
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-			cachedVersionInfo = {
-				version: packageJson.version,
-				name: packageJson.name
-			};
-			return cachedVersionInfo;
-		}
-		cachedVersionInfo = {
-			version: 'unknown',
-			name: 'task-master-ai'
-		};
-		return cachedVersionInfo;
-	} catch (error) {
-		// Fallback version info if package.json can't be read
-		cachedVersionInfo = {
-			version: 'unknown',
-			name: 'task-master-ai'
-		};
-		return cachedVersionInfo;
-	}
+	// Use the imported packageJson directly
+	cachedVersionInfo = {
+		version: packageJson.version || 'unknown',
+		name: packageJson.name || 'task-master-ai'
+	};
+	return cachedVersionInfo;
 }
 
 /**

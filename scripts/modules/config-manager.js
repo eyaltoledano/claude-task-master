@@ -16,29 +16,11 @@ import {
 } from '../../src/constants/providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import MODEL_MAP from './supported-models.json' with { type: 'json' };
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Load supported models from JSON file using the calculated __dirname
-let MODEL_MAP;
-try {
-	const supportedModelsRaw = fs.readFileSync(
-		path.join(__dirname, 'supported-models.json'),
-		'utf-8'
-	);
-	MODEL_MAP = JSON.parse(supportedModelsRaw);
-} catch (error) {
-	console.error(
-		chalk.red(
-			'FATAL ERROR: Could not load supported-models.json. Please ensure the file exists and is valid JSON.'
-		),
-		error
-	);
-	MODEL_MAP = {}; // Default to empty map on error to avoid crashing, though functionality will be limited
-	process.exit(1); // Exit if models can't be loaded
-}
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {

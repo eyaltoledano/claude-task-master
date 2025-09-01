@@ -5,23 +5,31 @@
 	"main": "index.js",
 	"type": "module",
 	"bin": {
-		"task-master": "bin/task-master.js",
-		"task-master-mcp": "mcp-server/server.js",
-		"task-master-ai": "mcp-server/server.js"
+		"task-master": "dist/task-master.js",
+		"task-master-mcp": "dist/mcp-server.js",
+		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
+		"build": "npm run build:packages && tsup",
+		"dev": "npm run build:packages && npm link && (npm run dev:packages & tsup --watch --onSuccess 'echo Build complete && npm link')",
+		"dev:packages": "(cd packages/tm-core && npm run dev) & (cd apps/cli && npm run dev) & wait",
+		"dev:core": "cd packages/tm-core && npm run dev",
+		"dev:cli": "cd apps/cli && npm run dev",
+		"build:packages": "npm run build:core && npm run build:cli",
+		"build:core": "cd packages/tm-core && npm run build",
+		"build:cli": "cd apps/cli && npm run build",
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
 		"test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
-		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
+		"postpack": "chmod +x dist/task-master.js dist/mcp-server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
-		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
-		"mcp-server": "node mcp-server/server.js",
+		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
+		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
 		"format": "biome format . --write"
 	},
@@ -101,16 +109,7 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": [
-		"scripts/**",
-		"assets/**",
-		".cursor/**",
-		"README-task-master.md",
-		"index.js",
-		"bin/**",
-		"mcp-server/**",
-		"src/**"
-	],
+	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
@@ -127,6 +126,8 @@
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"supertest": "^7.1.0",
-		"tsx": "^4.16.2"
+		"tsup": "^8.5.0",
+		"tsx": "^4.16.2",
+		"typescript": "^5.9.2"
 	}
 }
