@@ -7,18 +7,18 @@ import { execSync } from 'child_process';
 describe('Rules Files Inclusion in Package', () => {
 	// This test verifies that the required rules files are included in the final package
 
-	test('package.json includes assets/** in the "files" array for rules source files', () => {
+	test('package.json includes dist/** in the "files" array for bundled files', () => {
 		// Read the package.json file
 		const packageJsonPath = path.join(process.cwd(), 'package.json');
 		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-		// Check if assets/** is included in the files array (which contains rules files)
-		expect(packageJson.files).toContain('assets/**');
+		// Check if dist/** is included in the files array (which contains bundled output including assets)
+		expect(packageJson.files).toContain('dist/**');
 	});
 
-	test('source rules files exist in assets/rules directory', () => {
+	test('source rules files exist in public/assets/rules directory', () => {
 		// Verify that the actual rules files exist
-		const rulesDir = path.join(process.cwd(), 'assets', 'rules');
+		const rulesDir = path.join(process.cwd(), 'public', 'assets', 'rules');
 		expect(fs.existsSync(rulesDir)).toBe(true);
 
 		// Check for the 4 files that currently exist
@@ -86,13 +86,13 @@ describe('Rules Files Inclusion in Package', () => {
 		expect(rooJsContent.includes('${mode}-rules')).toBe(true);
 	});
 
-	test('source Roo files exist in assets directory', () => {
+	test('source Roo files exist in public/assets directory', () => {
 		// Verify that the source files for Roo integration exist
 		expect(
-			fs.existsSync(path.join(process.cwd(), 'assets', 'roocode', '.roo'))
+			fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'roocode', '.roo'))
 		).toBe(true);
 		expect(
-			fs.existsSync(path.join(process.cwd(), 'assets', 'roocode', '.roomodes'))
+			fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'roocode', '.roomodes'))
 		).toBe(true);
 	});
 });
