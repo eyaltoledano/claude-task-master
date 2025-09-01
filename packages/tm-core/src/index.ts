@@ -9,19 +9,19 @@ export {
 	createTaskMasterCore,
 	type TaskMasterCoreOptions,
 	type ListTasksResult
-} from './task-master-core.js';
+} from './task-master-core';
 
 // Re-export types
-export type * from './types/index.js';
+export type * from './types';
 
 // Re-export interfaces (types only to avoid conflicts)
-export type * from './interfaces/index.js';
+export type * from './interfaces';
 
 // Re-export constants
-export * from './constants/index.js';
+export * from './constants';
 
 // Re-export providers
-export * from './providers/index.js';
+export * from './providers';
 
 // Re-export storage (selectively to avoid conflicts)
 export {
@@ -29,29 +29,17 @@ export {
 	ApiStorage,
 	StorageFactory,
 	type ApiStorageConfig
-} from './storage/index.js';
-export { PlaceholderStorage, type StorageAdapter } from './storage/index.js';
+} from './storage';
+export { PlaceholderStorage, type StorageAdapter } from './storage';
 
 // Re-export parser
-export * from './parser/index.js';
+export * from './parser';
 
 // Re-export utilities
-export * from './utils/index.js';
+export * from './utils';
 
 // Re-export errors
-export * from './errors/index.js';
+export * from './errors';
 
 // Re-export entities
-export { TaskEntity } from './entities/task.entity.js';
-
-// Re-export authentication
-export {
-	AuthManager,
-	AuthenticationError,
-	type AuthCredentials,
-	type OAuthFlowOptions,
-	type AuthConfig
-} from './auth/index.js';
-
-// Re-export logger
-export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
+export { TaskEntity } from './entities/task.entity';

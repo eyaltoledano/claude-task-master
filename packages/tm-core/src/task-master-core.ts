@@ -152,7 +152,7 @@ export class TaskMasterCore {
 	/**
 	 * Get current storage type
 	 */
-	getStorageType(): 'file' | 'api' | 'auto' {
+	getStorageType(): 'file' | 'api' {
 		return this.taskService.getStorageType();
 	}
 

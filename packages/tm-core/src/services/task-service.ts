@@ -22,8 +22,8 @@ export interface TaskListResult {
 	filtered: number;
 	/** The tag these tasks belong to (only present if explicitly provided) */
 	tag?: string;
-	/** Storage type being used - includes 'auto' for automatic detection */
-	storageType: 'file' | 'api' | 'auto';
+	/** Storage type being used */
+	storageType: 'file' | 'api';
 }
 
 /**
@@ -64,8 +64,8 @@ export class TaskService {
 		const storageConfig = this.configManager.getStorageConfig();
 		const projectRoot = this.configManager.getProjectRoot();
 
-		this.storage = StorageFactory.createFromStorageConfig(
-			storageConfig,
+		this.storage = StorageFactory.create(
+			{ storage: storageConfig } as any,
 			projectRoot
 		);
 
@@ -166,7 +166,7 @@ export class TaskService {
 		byStatus: Record<TaskStatus, number>;
 		withSubtasks: number;
 		blocked: number;
-		storageType: 'file' | 'api' | 'auto';
+		storageType: 'file' | 'api';
 	}> {
 		const result = await this.getTaskList({
 			tag,
@@ -334,7 +334,7 @@ export class TaskService {
 	/**
 	 * Get current storage type
 	 */
-	getStorageType(): 'file' | 'api' | 'auto' {
+	getStorageType(): 'file' | 'api' {
 		return this.configManager.getStorageConfig().type;
 	}
 

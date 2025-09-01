@@ -3,7 +3,7 @@
  * This file defines the contract for configuration management
  */
 
-import type { TaskComplexity, TaskPriority } from '../types/index.js';
+import type { TaskComplexity, TaskPriority } from '../types/index';
 
 /**
  * Model configuration for different AI roles
@@ -74,48 +74,17 @@ export interface TagSettings {
 }
 
 /**
- * Storage type options
- * - 'file': Local file system storage
- * - 'api': Remote API storage (Hamster integration)
- * - 'auto': Automatically detect based on auth status
+ * Storage and persistence settings
  */
-export type StorageType = 'file' | 'api' | 'auto';
-
-/**
- * Runtime storage configuration used for storage backend selection
- * This is what getStorageConfig() returns and what StorageFactory expects
- */
-export interface RuntimeStorageConfig {
+export interface StorageSettings {
 	/** Storage backend type */
-	type: StorageType;
-	/** Base path for file storage (if configured) */
+	type: 'file' | 'api';
+	/** Base path for file storage */
 	basePath?: string;
 	/** API endpoint for API storage (Hamster integration) */
 	apiEndpoint?: string;
 	/** Access token for API authentication */
 	apiAccessToken?: string;
-	/**
-	 * Indicates whether API is configured (has endpoint or token)
-	 * @computed Derived automatically from presence of apiEndpoint or apiAccessToken
-	 * @internal Should not be set manually - computed by ConfigManager
-	 */
-	readonly apiConfigured: boolean;
-}
-
-/**
- * Storage and persistence settings
- * Extended storage settings including file operation preferences
- */
-export interface StorageSettings
-	extends Omit<RuntimeStorageConfig, 'apiConfigured'> {
-	/** Base path for file storage */
-	basePath?: string;
-	/**
-	 * Indicates whether API is configured
-	 * @computed Derived automatically from presence of apiEndpoint or apiAccessToken
-	 * @internal Should not be set manually in user config - computed by ConfigManager
-	 */
-	readonly apiConfigured?: boolean;
 	/** Enable automatic backups */
 	enableBackup: boolean;
 	/** Maximum number of backups to retain */
@@ -419,7 +388,7 @@ export const DEFAULT_CONFIG_VALUES = {
 		NAMING_CONVENTION: 'kebab-case' as const
 	},
 	STORAGE: {
-		TYPE: 'auto' as const,
+		TYPE: 'file' as const,
 		ENCODING: 'utf8' as BufferEncoding,
 		MAX_BACKUPS: 5
 	},

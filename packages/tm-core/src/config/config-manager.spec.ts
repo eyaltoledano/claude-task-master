@@ -177,7 +177,7 @@ describe('ConfigManager', () => {
 
 		it('should return storage configuration', () => {
 			const storage = manager.getStorageConfig();
-			expect(storage).toEqual({ type: 'auto', apiConfigured: false });
+			expect(storage).toEqual({ type: 'file' });
 		});
 
 		it('should return API storage configuration when configured', async () => {
@@ -206,65 +206,7 @@ describe('ConfigManager', () => {
 			expect(storage).toEqual({
 				type: 'api',
 				apiEndpoint: 'https://api.example.com',
-				apiAccessToken: 'token123',
-				apiConfigured: true
-			});
-		});
-
-		it('should return auto storage configuration with apiConfigured flag', async () => {
-			// Create a new instance with auto storage config and partial API settings
-			vi.mocked(ConfigMerger).mockImplementationOnce(
-				() =>
-					({
-						addSource: vi.fn(),
-						clearSources: vi.fn(),
-						merge: vi.fn().mockReturnValue({
-							storage: {
-								type: 'auto',
-								apiEndpoint: 'https://api.example.com'
-								// No apiAccessToken - partial config
-							}
-						}),
-						getSources: vi.fn().mockReturnValue([])
-					}) as any
-			);
-
-			const autoManager = await ConfigManager.create(testProjectRoot);
-
-			const storage = autoManager.getStorageConfig();
-			expect(storage).toEqual({
-				type: 'auto',
-				apiEndpoint: 'https://api.example.com',
-				apiAccessToken: undefined,
-				apiConfigured: true // true because apiEndpoint is provided
-			});
-		});
-
-		it('should return auto storage with apiConfigured false when no API settings', async () => {
-			// Create a new instance with auto storage but no API settings
-			vi.mocked(ConfigMerger).mockImplementationOnce(
-				() =>
-					({
-						addSource: vi.fn(),
-						clearSources: vi.fn(),
-						merge: vi.fn().mockReturnValue({
-							storage: {
-								type: 'auto'
-								// No API settings at all
-							}
-						}),
-						getSources: vi.fn().mockReturnValue([])
-					}) as any
-			);
-
-			const autoManager = await ConfigManager.create(testProjectRoot);
-
-			const storage = autoManager.getStorageConfig();
-			expect(storage).toEqual({
-				type: 'auto',
-				apiEndpoint: undefined,
-				apiAccessToken: undefined,
-				apiConfigured: false // false because no API settings
+				apiAccessToken: 'token123'
 			});
 		});
 
@@ -309,11 +251,11 @@ describe('ConfigManager', () => {
 			expect(manager.getProjectRoot()).toBe(testProjectRoot);
 		});
 
-		it('should check if API is explicitly configured', () => {
-			expect(manager.isApiExplicitlyConfigured()).toBe(false);
+		it('should check if using API storage', () => {
+			expect(manager.isUsingApiStorage()).toBe(false);
 		});
 
-		it('should detect when API is explicitly configured', () => {
+		it('should detect API storage', () => {
 			// Update config for current instance
 			(manager as any).config = {
 				storage: {
@@ -323,7 +265,7 @@ describe('ConfigManager', () => {
 				}
 			};
 
-			expect(manager.isApiExplicitlyConfigured()).toBe(true);
+			expect(manager.isUsingApiStorage()).toBe(true);
 		});
 	});
 

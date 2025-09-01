@@ -6,10 +6,7 @@
  * maintainability, testability, and separation of concerns.
  */
 
-import type {
-	PartialConfiguration,
-	RuntimeStorageConfig
-} from '../interfaces/configuration.interface.js';
+import type { PartialConfiguration } from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
 import {
 	ConfigMerger,
@@ -137,28 +134,26 @@ export class ConfigManager {
 	/**
 	 * Get storage configuration
 	 */
-	getStorageConfig(): RuntimeStorageConfig {
+	getStorageConfig(): {
+		type: 'file' | 'api';
+		apiEndpoint?: string;
+		apiAccessToken?: string;
+	} {
 		const storage = this.config.storage;
 
-		// Return the configured type (including 'auto')
-		const storageType = storage?.type || 'auto';
-		const basePath = storage?.basePath ?? this.projectRoot;
-
-		if (storageType === 'api' || storageType === 'auto') {
+		if (
+			storage?.type === 'api' &&
+			storage.apiEndpoint &&
+			storage.apiAccessToken
+		) {
 			return {
-				type: storageType,
-				basePath,
-				apiEndpoint: storage?.apiEndpoint,
-				apiAccessToken: storage?.apiAccessToken,
-				apiConfigured: Boolean(storage?.apiEndpoint || storage?.apiAccessToken)
+				type: 'api',
+				apiEndpoint: storage.apiEndpoint,
+				apiAccessToken: storage.apiAccessToken
 			};
 		}
 
-		return {
-			type: storageType,
-			basePath,
-			apiConfigured: false
-		};
+		return { type: 'file' };
 	}
 
 	/**
@@ -189,10 +184,9 @@ export class ConfigManager {
 	}
 
 	/**
-	 * Check if explicitly configured to use API storage
-	 * Excludes 'auto' type
+	 * Check if using API storage
 	 */
-	isApiExplicitlyConfigured(): boolean {
+	isUsingApiStorage(): boolean {
 		return this.getStorageConfig().type === 'api';
 	}
 
@@ -225,7 +219,6 @@ export class ConfigManager {
 		await this.persistence.saveConfig(this.config);
 
 		// Re-initialize to respect precedence
-		this.initialized = false;
 		await this.initialize();
 	}
 
@@ -275,5 +268,13 @@ export class ConfigManager {
 	 */
 	getConfigSources() {
 		return this.merger.getSources();
+	}
+
+	/**
+	 * Watch for configuration changes (placeholder for future)
+	 */
+	watch(_callback: (config: PartialConfiguration) => void): () => void {
+		console.warn('Configuration watching not yet implemented');
+		return () => {}; // Return no-op unsubscribe function
 	}
 }
