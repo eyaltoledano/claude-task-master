@@ -12,6 +12,7 @@ import {
 import { addSubtaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
+import i18n from '../../i18n.js';
 
 /**
  * Register the addSubtask tool with the MCP server
@@ -20,47 +21,45 @@ import { resolveTag } from '../../../scripts/modules/utils.js';
 export function registerAddSubtaskTool(server) {
 	server.addTool({
 		name: 'add_subtask',
-		description: 'Add a subtask to an existing task',
+		description: i18n.t('tools.addSubtask.description'),
 		parameters: z.object({
-			id: z.string().describe('Parent task ID (required)'),
+			id: z.string().describe(i18n.t('tools.addSubtask.params.id')),
 			taskId: z
 				.string()
 				.optional()
-				.describe('Existing task ID to convert to subtask'),
+				.describe(i18n.t('tools.addSubtask.params.taskId')),
 			title: z
 				.string()
 				.optional()
-				.describe('Title for the new subtask (when creating a new subtask)'),
+				.describe(i18n.t('tools.addSubtask.params.title')),
 			description: z
 				.string()
 				.optional()
-				.describe('Description for the new subtask'),
+				.describe(i18n.t('tools.addSubtask.params.description')),
 			details: z
 				.string()
 				.optional()
-				.describe('Implementation details for the new subtask'),
+				.describe(i18n.t('tools.addSubtask.params.details')),
 			status: z
 				.string()
 				.optional()
-				.describe("Status for the new subtask (default: 'pending')"),
+				.describe(i18n.t('tools.addSubtask.params.status')),
 			dependencies: z
 				.string()
 				.optional()
-				.describe('Comma-separated list of dependency IDs for the new subtask'),
+				.describe(i18n.t('tools.addSubtask.params.dependencies')),
 			file: z
 				.string()
 				.optional()
-				.describe(
-					'Absolute path to the tasks file (default: tasks/tasks.json)'
-				),
+				.describe(i18n.t('tools.addSubtask.params.file')),
 			skipGenerate: z
 				.boolean()
 				.optional()
-				.describe('Skip regenerating task files'),
+				.describe(i18n.t('tools.addSubtask.params.skipGenerate')),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.'),
-			tag: z.string().optional().describe('Tag context to operate on')
+				.describe(i18n.t('tools.addSubtask.params.projectRoot')),
+			tag: z.string().optional().describe(i18n.t('tools.addSubtask.params.tag'))
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -68,7 +67,7 @@ export function registerAddSubtaskTool(server) {
 					projectRoot: args.projectRoot,
 					tag: args.tag
 				});
-				log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
+				log.info(i18n.t('tools.addSubtask.logs.addingSubtask', { args: JSON.stringify(args) }));
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
@@ -78,9 +77,9 @@ export function registerAddSubtaskTool(server) {
 						log
 					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					log.error(i18n.t('tools.addDependency.logs.errorFindingTasksJson', { message: error.message }));
 					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
+						i18n.t('tools.addDependency.logs.failedToFindTasksJson', { message: error.message })
 					);
 				}
 
@@ -103,20 +102,20 @@ export function registerAddSubtaskTool(server) {
 				);
 
 				if (result.success) {
-					log.info(`Subtask added successfully: ${result.data.message}`);
+					log.info(i18n.t('tools.addSubtask.logs.success', { message: result.data.message }));
 				} else {
-					log.error(`Failed to add subtask: ${result.error.message}`);
+					log.error(i18n.t('tools.addSubtask.logs.failed', { message: result.error.message }));
 				}
 
 				return handleApiResult(
 					result,
 					log,
-					'Error adding subtask',
+					i18n.t('tools.addSubtask.logs.error'),
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in addSubtask tool: ${error.message}`);
+				log.error(i18n.t('tools.addSubtask.logs.toolError', { message: error.message }));
 				return createErrorResponse(error.message);
 			}
 		})

@@ -39,5 +39,49 @@
         "aliasesAdded": "Added Task Master aliases to {{shellConfigFile}}"
       }
     }
+  },
+  "tools": {
+    "addDependency": {
+      "description": "Add a dependency relationship between two tasks",
+      "params": {
+        "id": "ID of task that will depend on another task",
+        "dependsOn": "ID of task that will become a dependency",
+        "file": "Absolute path to the tasks file (default: tasks/tasks.json)",
+        "projectRoot": "The directory of the project. Must be an absolute path.",
+        "tag": "Tag context to operate on"
+      },
+      "logs": {
+        "addingDependency": "Adding dependency for task {{id}} to depend on {{dependsOn}}",
+        "errorFindingTasksJson": "Error finding tasks.json: {{message}}",
+        "failedToFindTasksJson": "Failed to find tasks.json: {{message}}",
+        "success": "Successfully added dependency: {{message}}",
+        "failed": "Failed to add dependency: {{message}}",
+        "error": "Error adding dependency",
+        "toolError": "Error in addDependency tool: {{message}}"
+      }
+    },
+    "addSubtask": {
+      "description": "Add a subtask to an existing task",
+      "params": {
+        "id": "Parent task ID (required)",
+        "taskId": "Existing task ID to convert to subtask",
+        "title": "Title for the new subtask (when creating a new subtask)",
+        "description": "Description for the new subtask",
+        "details": "Implementation details for the new subtask",
+        "status": "Status for the new subtask (default: 'pending')",
+        "dependencies": "Comma-separated list of dependency IDs for the new subtask",
+        "file": "Absolute path to the tasks file (default: tasks/tasks.json)",
+        "skipGenerate": "Skip regenerating task files",
+        "projectRoot": "The directory of the project. Must be an absolute path.",
+        "tag": "Tag context to operate on"
+      },
+      "logs": {
+        "addingSubtask": "Adding subtask with args: {{args}}",
+        "success": "Subtask added successfully: {{message}}",
+        "failed": "Failed to add subtask: {{message}}",
+        "error": "Error adding subtask",
+        "toolError": "Error in addSubtask tool: {{message}}"
+      }
+    }
   }
 }

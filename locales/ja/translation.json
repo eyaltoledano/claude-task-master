@@ -39,5 +39,49 @@
         "aliasesAdded": "Task Master のエイリアスを {{shellConfigFile}} に追加しました"
       }
     }
+  },
+  "tools": {
+    "addDependency": {
+      "description": "タスク間に依存関係を追加します",
+      "params": {
+        "id": "別のタスクに依存するタスクのID",
+        "dependsOn": "依存関係となるタスクのID",
+        "file": "tasksファイルの絶対パス（デフォルト: tasks/tasks.json）",
+        "projectRoot": "プロジェクトのディレクトリ。絶対パスである必要があります。",
+        "tag": "操作対象のタグコンテキスト"
+      },
+      "logs": {
+        "addingDependency": "タスク {{id}} に {{dependsOn}} への依存関係を追加しています",
+        "errorFindingTasksJson": "tasks.jsonの検索エラー: {{message}}",
+        "failedToFindTasksJson": "tasks.jsonが見つかりませんでした: {{message}}",
+        "success": "依存関係の追加に成功しました: {{message}}",
+        "failed": "依存関係の追加に失敗しました: {{message}}",
+        "error": "依存関係の追加エラー",
+        "toolError": "addDependencyツールのエラー: {{message}}"
+      }
+    },
+    "addSubtask": {
+      "description": "既存のタスクにサブタスクを追加します",
+      "params": {
+        "id": "親タスクID（必須）",
+        "taskId": "サブタスクに変換する既存のタスクID",
+        "title": "新しいサブタスクのタイトル（新規作成時）",
+        "description": "新しいサブタスクの説明",
+        "details": "新しいサブタスクの実装詳細",
+        "status": "新しいサブタスクのステータス（デフォルト: 'pending'）",
+        "dependencies": "新しいサブタスクの依存関係IDのカンマ区切りリスト",
+        "file": "tasksファイルの絶対パス（デフォルト: tasks/tasks.json）",
+        "skipGenerate": "タスクファイルの再生成をスキップ",
+        "projectRoot": "プロジェクトのディレクトリ。絶対パスである必要があります。",
+        "tag": "操作対象のタグコンテキスト"
+      },
+      "logs": {
+        "addingSubtask": "引数でサブタスクを追加中: {{args}}",
+        "success": "サブタスクの追加に成功しました: {{message}}",
+        "failed": "サブタスクの追加に失敗しました: {{message}}",
+        "error": "サブタスクの追加エラー",
+        "toolError": "addSubtaskツールのエラー: {{message}}"
+      }
+    }
   }
 }
