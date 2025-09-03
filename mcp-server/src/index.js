@@ -44,6 +44,13 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
+		// Read tool mode configuration
+		const toolMode = process.env.TASK_MASTER_TOOLS || 'all';
+
+		// Log startup information
+		this.logger.info('Task Master MCP Server starting...');
+		this.logger.info(`Tool mode: ${toolMode}`);
+
 		// Pass the manager instance to the tool registration function
 		registerTaskMasterTools(this.server, this.asyncManager);
 

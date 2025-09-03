@@ -3,108 +3,135 @@
  * Export all Task Master CLI tools for MCP server
  */
 
-import { registerListTasksTool } from './get-tasks.js';
 import logger from '../logger.js';
-import { registerSetTaskStatusTool } from './set-task-status.js';
-import { registerParsePRDTool } from './parse-prd.js';
-import { registerUpdateTool } from './update.js';
-import { registerUpdateTaskTool } from './update-task.js';
-import { registerUpdateSubtaskTool } from './update-subtask.js';
-import { registerGenerateTool } from './generate.js';
-import { registerShowTaskTool } from './get-task.js';
-import { registerNextTaskTool } from './next-task.js';
-import { registerExpandTaskTool } from './expand-task.js';
-import { registerAddTaskTool } from './add-task.js';
-import { registerAddSubtaskTool } from './add-subtask.js';
-import { registerRemoveSubtaskTool } from './remove-subtask.js';
-import { registerAnalyzeProjectComplexityTool } from './analyze.js';
-import { registerClearSubtasksTool } from './clear-subtasks.js';
-import { registerExpandAllTool } from './expand-all.js';
-import { registerRemoveDependencyTool } from './remove-dependency.js';
-import { registerValidateDependenciesTool } from './validate-dependencies.js';
-import { registerFixDependenciesTool } from './fix-dependencies.js';
-import { registerComplexityReportTool } from './complexity-report.js';
-import { registerAddDependencyTool } from './add-dependency.js';
-import { registerRemoveTaskTool } from './remove-task.js';
-import { registerInitializeProjectTool } from './initialize-project.js';
-import { registerModelsTool } from './models.js';
-import { registerMoveTaskTool } from './move-task.js';
-import { registerResponseLanguageTool } from './response-language.js';
-import { registerAddTagTool } from './add-tag.js';
-import { registerDeleteTagTool } from './delete-tag.js';
-import { registerListTagsTool } from './list-tags.js';
-import { registerUseTagTool } from './use-tag.js';
-import { registerRenameTagTool } from './rename-tag.js';
-import { registerCopyTagTool } from './copy-tag.js';
-import { registerResearchTool } from './research.js';
-import { registerRulesTool } from './rules.js';
-import { registerScopeUpTool } from './scope-up.js';
-import { registerScopeDownTool } from './scope-down.js';
+import { 
+  toolRegistry, 
+  coreTools, 
+  standardTools, 
+  getAvailableTools, 
+  getToolRegistration,
+  isValidTool
+} from './tool-registry.js';
 
 /**
- * Register all Task Master tools with the MCP server
+ * Helper function to safely read and normalize the TASK_MASTER_TOOLS environment variable
+ * @returns {string} The tools configuration string, defaults to 'all'
+ */
+function getToolsConfiguration() {
+  const rawValue = process.env.TASK_MASTER_TOOLS;
+  
+  if (!rawValue || rawValue.trim() === '') {
+    logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "all"');
+    return 'all';
+  }
+  
+  const normalizedValue = rawValue.trim();
+  logger.debug(`TASK_MASTER_TOOLS env var: "${normalizedValue}"`);
+  return normalizedValue;
+}
+
+/**
+ * Register Task Master tools with the MCP server
+ * Supports selective tool loading via TASK_MASTER_TOOLS environment variable
  * @param {Object} server - FastMCP server instance
  */
 export function registerTaskMasterTools(server) {
 	try {
-		// Register each tool in a logical workflow order
+		const enabledTools = getToolsConfiguration();
+		let toolsToRegister = [];
+		
+		const lowerCaseConfig = enabledTools.toLowerCase();
+		
+		switch(lowerCaseConfig) {
+			case 'all':
+				toolsToRegister = Object.keys(toolRegistry);
+				logger.info('Loading all available tools');
+				break;
+			case 'core':
+			case 'lean':
+				toolsToRegister = coreTools;
+				logger.info('Loading core tools only');
+				break;
+			case 'standard':
+				toolsToRegister = standardTools;
+				logger.info('Loading standard tools');
+				break;
+			default:
+				const requestedTools = enabledTools.split(',')
+					.map(t => t.trim())
+					.filter(t => t.length > 0);
+				
+				toolsToRegister = requestedTools.filter(toolName => {
+					if (toolRegistry[toolName]) {
+						return true;
+					} else {
+						logger.warn(`Unknown tool specified: "${toolName}"`);
+						return false;
+					}
+				});
+				
+				if (toolsToRegister.length === 0) {
+					logger.warn(`No valid tools found in custom list. Loading all tools as fallback.`);
+					toolsToRegister = Object.keys(toolRegistry);
+				} else {
+					logger.info(`Loading ${toolsToRegister.length} custom tools from list`);
+				}
+				break;
+		}
+		
+		logger.info(`Registering ${toolsToRegister.length} MCP tools (mode: ${enabledTools})`);
 
-		// Group 1: Initialization & Setup
-		registerInitializeProjectTool(server);
-		registerModelsTool(server);
-		registerRulesTool(server);
-		registerParsePRDTool(server);
+		let successCount = 0;
+		let failedTools = [];
 
-		// Group 2: Task Analysis & Expansion
-		registerAnalyzeProjectComplexityTool(server);
-		registerExpandTaskTool(server);
-		registerExpandAllTool(server);
-		registerScopeUpTool(server);
-		registerScopeDownTool(server);
+		toolsToRegister.forEach(toolName => {
+			try {
+				if (toolRegistry[toolName]) {
+					toolRegistry[toolName](server);
+					logger.debug(`Registered tool: ${toolName}`);
+					successCount++;
+				} else {
+					logger.warn(`Tool ${toolName} not found in registry`);
+					failedTools.push(toolName);
+				}
+			} catch (error) {
+				logger.error(`Failed to register tool ${toolName}: ${error.message}`);
+				failedTools.push(toolName);
+			}
+		});
 
-		// Group 3: Task Listing & Viewing
-		registerListTasksTool(server);
-		registerShowTaskTool(server);
-		registerNextTaskTool(server);
-		registerComplexityReportTool(server);
-
-		// Group 4: Task Status & Management
-		registerSetTaskStatusTool(server);
-		registerGenerateTool(server);
-
-		// Group 5: Task Creation & Modification
-		registerAddTaskTool(server);
-		registerAddSubtaskTool(server);
-		registerUpdateTool(server);
-		registerUpdateTaskTool(server);
-		registerUpdateSubtaskTool(server);
-		registerRemoveTaskTool(server);
-		registerRemoveSubtaskTool(server);
-		registerClearSubtasksTool(server);
-		registerMoveTaskTool(server);
-
-		// Group 6: Dependency Management
-		registerAddDependencyTool(server);
-		registerRemoveDependencyTool(server);
-		registerValidateDependenciesTool(server);
-		registerFixDependenciesTool(server);
-		registerResponseLanguageTool(server);
-
-		// Group 7: Tag Management
-		registerListTagsTool(server);
-		registerAddTagTool(server);
-		registerDeleteTagTool(server);
-		registerUseTagTool(server);
-		registerRenameTagTool(server);
-		registerCopyTagTool(server);
-
-		// Group 8: Research Features
-		registerResearchTool(server);
+		logger.info(`Successfully registered ${successCount}/${toolsToRegister.length} tools`);
+		if (failedTools.length > 0) {
+			logger.warn(`Failed tools: ${failedTools.join(', ')}`);
+		}
+		
 	} catch (error) {
-		logger.error(`Error registering Task Master tools: ${error.message}`);
-		throw error;
+		logger.error(`Error parsing TASK_MASTER_TOOLS environment variable: ${error.message}`);
+		logger.info('Falling back to loading all tools');
+		
+		const fallbackTools = Object.keys(toolRegistry);
+		let registeredCount = 0;
+		for (const toolName of fallbackTools) {
+			const registerFunction = getToolRegistration(toolName);
+			if (registerFunction) {
+				registerFunction(server);
+				registeredCount++;
+			} else {
+				logger.warn(`Tool '${toolName}' not found in registry`);
+			}
+		}
+		logger.info(`Successfully registered ${registeredCount} fallback tools`);
 	}
 }
+
+export { 
+	toolRegistry, 
+	coreTools, 
+	standardTools, 
+	getAvailableTools, 
+	getToolRegistration,
+	isValidTool
+};
 
 export default {
 	registerTaskMasterTools

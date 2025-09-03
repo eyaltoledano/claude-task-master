@@ -59,6 +59,70 @@ Taskmaster uses two primary methods for configuration:
     - **Migration:** Use `task-master migrate` to move this to `.taskmaster/config.json`.
     - **Deprecation:** While still supported, you'll see warnings encouraging migration to the new structure.
 
+## MCP Tool Loading Configuration
+
+### TASK_MASTER_TOOLS Environment Variable
+
+The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by the Task Master MCP server. This allows you to optimize token usage based on your workflow needs.
+
+#### Configuration Options
+
+- **`all`** (default): Loads all 36 available tools (~21,000 tokens)
+  - Best for: Users who need the complete feature set
+  - Use when: Working with complex projects requiring all Task Master features
+  - Backward compatibility: This is the default to maintain compatibility with existing installations
+
+- **`standard`**: Loads 15 commonly used tools (~10,000 tokens, 50% reduction)
+  - Best for: Regular task management workflows
+  - Tools included: All core tools plus project initialization, complexity analysis, task generation, and more
+  - Use when: You need a balanced set of features with reduced token usage
+
+- **`core`**: Loads 7 essential tools (~5,000 tokens, 70% reduction)
+  - Best for: Daily development with minimal token overhead
+  - Tools included: `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
+  - Use when: Working in large contexts where token usage is critical
+
+- **Custom list**: Comma-separated list of specific tool names
+  - Best for: Specialized workflows requiring specific tools
+  - Example: `"get_tasks,next_task,set_task_status"`
+  - Use when: You know exactly which tools you need
+
+#### How to Configure
+
+1. **In MCP configuration files** (`.cursor/mcp.json`, `.vscode/mcp.json`, etc.):
+   ```json
+   {
+     "mcpServers": {
+       "task-master-ai": {
+         "env": {
+           "TASK_MASTER_TOOLS": "standard",  // Add this line
+           // ... API keys
+         }
+       }
+     }
+   }
+   ```
+
+2. **Via Claude Code CLI**:
+   ```bash
+   claude mcp add task-master-ai --scope user \
+     --env TASK_MASTER_TOOLS="core" \
+     -- npx -y task-master-ai@latest
+   ```
+
+3. **In environment variables** (for development/testing):
+   ```bash
+   export TASK_MASTER_TOOLS="standard"
+   node mcp-server/server.js
+   ```
+
+#### Tool Loading Behavior
+
+- If `TASK_MASTER_TOOLS` is not set or is empty, defaults to `"all"`
+- Invalid tool names in custom lists are ignored with warnings
+- If all tools in a custom list are invalid, falls back to `"all"`
+- Configuration is case-insensitive (`"CORE"`, `"core"`, `"Core"` all work)
+
 ## Environment Variables (`.env` file or MCP `env` block - For API Keys Only)
 
 - Used **exclusively** for sensitive API keys and specific endpoint URLs.
@@ -223,10 +287,10 @@ node scripts/init.js
    ```bash
    # Set MCP provider for main role
    task-master models set-main --provider mcp --model claude-3-5-sonnet-20241022
-   
-   # Set MCP provider for research role  
+
+   # Set MCP provider for research role
    task-master models set-research --provider mcp --model claude-3-opus-20240229
-   
+
    # Verify configuration
    task-master models list
    ```
@@ -357,7 +421,7 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
          "temperature": 0.7
        },
        "fallback": {
-         "provider": "azure", 
+         "provider": "azure",
          "modelId": "gpt-4o-mini",
          "maxTokens": 10000,
          "temperature": 0.7
@@ -376,7 +440,7 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
      "models": {
        "main": {
          "provider": "azure",
-         "modelId": "gpt-4o", 
+         "modelId": "gpt-4o",
          "maxTokens": 16000,
          "temperature": 0.7,
          "baseURL": "https://your-resource-name.azure.com/openai/deployments"
@@ -390,7 +454,7 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
        "fallback": {
          "provider": "azure",
          "modelId": "gpt-4o-mini",
-         "maxTokens": 10000, 
+         "maxTokens": 10000,
          "temperature": 0.7,
          "baseURL": "https://your-resource-name.azure.com/openai/deployments"
        }
@@ -402,7 +466,7 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    ```bash
    # In .env file
    AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
-   
+
    # Optional: Override endpoint for all Azure models
    AZURE_OPENAI_ENDPOINT=https://your-resource-name.azure.com/openai/deployments
    ```
