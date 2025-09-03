@@ -45,42 +45,42 @@ import { registerScopeDownTool } from './scope-down.js';
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
-  'initialize_project': registerInitializeProjectTool,
-  'models': registerModelsTool,
-  'rules': registerRulesTool,
-  'parse_prd': registerParsePRDTool,
-  'response-language': registerResponseLanguageTool,
-  'analyze_project_complexity': registerAnalyzeProjectComplexityTool,
-  'expand_task': registerExpandTaskTool,
-  'expand_all': registerExpandAllTool,
-  'scope_up_task': registerScopeUpTool,
-  'scope_down_task': registerScopeDownTool,
-  'get_tasks': registerListTasksTool,
-  'get_task': registerShowTaskTool,
-  'next_task': registerNextTaskTool,
-  'complexity_report': registerComplexityReportTool,
-  'set_task_status': registerSetTaskStatusTool,
-  'generate': registerGenerateTool,
-  'add_task': registerAddTaskTool,
-  'add_subtask': registerAddSubtaskTool,
-  'update': registerUpdateTool,
-  'update_task': registerUpdateTaskTool,
-  'update_subtask': registerUpdateSubtaskTool,
-  'remove_task': registerRemoveTaskTool,
-  'remove_subtask': registerRemoveSubtaskTool,
-  'clear_subtasks': registerClearSubtasksTool,
-  'move_task': registerMoveTaskTool,
-  'add_dependency': registerAddDependencyTool,
-  'remove_dependency': registerRemoveDependencyTool,
-  'validate_dependencies': registerValidateDependenciesTool,
-  'fix_dependencies': registerFixDependenciesTool,
-  'list_tags': registerListTagsTool,
-  'add_tag': registerAddTagTool,
-  'delete_tag': registerDeleteTagTool,
-  'use_tag': registerUseTagTool,
-  'rename_tag': registerRenameTagTool,
-  'copy_tag': registerCopyTagTool,
-  'research': registerResearchTool
+	initialize_project: registerInitializeProjectTool,
+	models: registerModelsTool,
+	rules: registerRulesTool,
+	parse_prd: registerParsePRDTool,
+	'response-language': registerResponseLanguageTool,
+	analyze_project_complexity: registerAnalyzeProjectComplexityTool,
+	expand_task: registerExpandTaskTool,
+	expand_all: registerExpandAllTool,
+	scope_up_task: registerScopeUpTool,
+	scope_down_task: registerScopeDownTool,
+	get_tasks: registerListTasksTool,
+	get_task: registerShowTaskTool,
+	next_task: registerNextTaskTool,
+	complexity_report: registerComplexityReportTool,
+	set_task_status: registerSetTaskStatusTool,
+	generate: registerGenerateTool,
+	add_task: registerAddTaskTool,
+	add_subtask: registerAddSubtaskTool,
+	update: registerUpdateTool,
+	update_task: registerUpdateTaskTool,
+	update_subtask: registerUpdateSubtaskTool,
+	remove_task: registerRemoveTaskTool,
+	remove_subtask: registerRemoveSubtaskTool,
+	clear_subtasks: registerClearSubtasksTool,
+	move_task: registerMoveTaskTool,
+	add_dependency: registerAddDependencyTool,
+	remove_dependency: registerRemoveDependencyTool,
+	validate_dependencies: registerValidateDependenciesTool,
+	fix_dependencies: registerFixDependenciesTool,
+	list_tags: registerListTagsTool,
+	add_tag: registerAddTagTool,
+	delete_tag: registerDeleteTagTool,
+	use_tag: registerUseTagTool,
+	rename_tag: registerRenameTagTool,
+	copy_tag: registerCopyTagTool,
+	research: registerResearchTool
 };
 
 /**
@@ -88,13 +88,13 @@ export const toolRegistry = {
  * These represent the minimal set needed for basic task management operations
  */
 export const coreTools = [
-  'get_tasks',
-  'next_task', 
-  'get_task',
-  'set_task_status',
-  'update_subtask',
-  'parse_prd',
-  'expand_task'
+	'get_tasks',
+	'next_task',
+	'get_task',
+	'set_task_status',
+	'update_subtask',
+	'parse_prd',
+	'expand_task'
 ];
 
 /**
@@ -102,15 +102,15 @@ export const coreTools = [
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [
-  ...coreTools,
-  'initialize_project',
-  'analyze_project_complexity',
-  'expand_all',
-  'add_subtask',
-  'remove_task',
-  'generate',
-  'add_task',
-  'complexity_report'
+	...coreTools,
+	'initialize_project',
+	'analyze_project_complexity',
+	'expand_all',
+	'add_subtask',
+	'remove_task',
+	'generate',
+	'add_task',
+	'complexity_report'
 ];
 
 /**
@@ -118,7 +118,7 @@ export const standardTools = [
  * @returns {string[]} Array of tool names
  */
 export function getAvailableTools() {
-  return Object.keys(toolRegistry);
+	return Object.keys(toolRegistry);
 }
 
 /**
@@ -127,7 +127,7 @@ export function getAvailableTools() {
  * @returns {Function|null} Registration function or null if not found
  */
 export function getToolRegistration(toolName) {
-  return toolRegistry[toolName] || null;
+	return toolRegistry[toolName] || null;
 }
 
 /**
@@ -136,7 +136,7 @@ export function getToolRegistration(toolName) {
  * @returns {boolean} True if tool exists
  */
 export function isValidTool(toolName) {
-  return toolName in toolRegistry;
+	return toolName in toolRegistry;
 }
 
 export default toolRegistry;
