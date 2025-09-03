@@ -4,13 +4,13 @@
  */
 
 import logger from '../logger.js';
-import { 
-  toolRegistry, 
-  coreTools, 
-  standardTools, 
-  getAvailableTools, 
-  getToolRegistration,
-  isValidTool
+import {
+	toolRegistry,
+	coreTools,
+	standardTools,
+	getAvailableTools,
+	getToolRegistration,
+	isValidTool
 } from './tool-registry.js';
 
 /**
@@ -18,16 +18,16 @@ import {
  * @returns {string} The tools configuration string, defaults to 'all'
  */
 function getToolsConfiguration() {
-  const rawValue = process.env.TASK_MASTER_TOOLS;
-  
-  if (!rawValue || rawValue.trim() === '') {
-    logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "all"');
-    return 'all';
-  }
-  
-  const normalizedValue = rawValue.trim();
-  logger.debug(`TASK_MASTER_TOOLS env var: "${normalizedValue}"`);
-  return normalizedValue;
+	const rawValue = process.env.TASK_MASTER_TOOLS;
+
+	if (!rawValue || rawValue.trim() === '') {
+		logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "all"');
+		return 'all';
+	}
+
+	const normalizedValue = rawValue.trim();
+	logger.debug(`TASK_MASTER_TOOLS env var: "${normalizedValue}"`);
+	return normalizedValue;
 }
 
 /**
@@ -39,10 +39,10 @@ export function registerTaskMasterTools(server) {
 	try {
 		const enabledTools = getToolsConfiguration();
 		let toolsToRegister = [];
-		
+
 		const lowerCaseConfig = enabledTools.toLowerCase();
-		
-		switch(lowerCaseConfig) {
+
+		switch (lowerCaseConfig) {
 			case 'all':
 				toolsToRegister = Object.keys(toolRegistry);
 				logger.info('Loading all available tools');
@@ -57,11 +57,12 @@ export function registerTaskMasterTools(server) {
 				logger.info('Loading standard tools');
 				break;
 			default:
-				const requestedTools = enabledTools.split(',')
-					.map(t => t.trim())
-					.filter(t => t.length > 0);
-				
-				toolsToRegister = requestedTools.filter(toolName => {
+				const requestedTools = enabledTools
+					.split(',')
+					.map((t) => t.trim())
+					.filter((t) => t.length > 0);
+
+				toolsToRegister = requestedTools.filter((toolName) => {
 					if (toolRegistry[toolName]) {
 						return true;
 					} else {
@@ -69,22 +70,28 @@ export function registerTaskMasterTools(server) {
 						return false;
 					}
 				});
-				
+
 				if (toolsToRegister.length === 0) {
-					logger.warn(`No valid tools found in custom list. Loading all tools as fallback.`);
+					logger.warn(
+						`No valid tools found in custom list. Loading all tools as fallback.`
+					);
 					toolsToRegister = Object.keys(toolRegistry);
 				} else {
-					logger.info(`Loading ${toolsToRegister.length} custom tools from list`);
+					logger.info(
+						`Loading ${toolsToRegister.length} custom tools from list`
+					);
 				}
 				break;
 		}
-		
-		logger.info(`Registering ${toolsToRegister.length} MCP tools (mode: ${enabledTools})`);
+
+		logger.info(
+			`Registering ${toolsToRegister.length} MCP tools (mode: ${enabledTools})`
+		);
 
 		let successCount = 0;
 		let failedTools = [];
 
-		toolsToRegister.forEach(toolName => {
+		toolsToRegister.forEach((toolName) => {
 			try {
 				if (toolRegistry[toolName]) {
 					toolRegistry[toolName](server);
@@ -100,15 +107,18 @@ export function registerTaskMasterTools(server) {
 			}
 		});
 
-		logger.info(`Successfully registered ${successCount}/${toolsToRegister.length} tools`);
+		logger.info(
+			`Successfully registered ${successCount}/${toolsToRegister.length} tools`
+		);
 		if (failedTools.length > 0) {
 			logger.warn(`Failed tools: ${failedTools.join(', ')}`);
 		}
-		
 	} catch (error) {
-		logger.error(`Error parsing TASK_MASTER_TOOLS environment variable: ${error.message}`);
+		logger.error(
+			`Error parsing TASK_MASTER_TOOLS environment variable: ${error.message}`
+		);
 		logger.info('Falling back to loading all tools');
-		
+
 		const fallbackTools = Object.keys(toolRegistry);
 		let registeredCount = 0;
 		for (const toolName of fallbackTools) {
@@ -124,11 +134,11 @@ export function registerTaskMasterTools(server) {
 	}
 }
 
-export { 
-	toolRegistry, 
-	coreTools, 
-	standardTools, 
-	getAvailableTools, 
+export {
+	toolRegistry,
+	coreTools,
+	standardTools,
+	getAvailableTools,
 	getToolRegistration,
 	isValidTool
 };
