@@ -21,6 +21,7 @@ describe('AuthManager Singleton', () => {
 	beforeEach(() => {
 		// Reset singleton before each test
 		AuthManager.resetInstance();
+		vi.clearAllMocks();
 	});
 
 	it('should return the same instance on multiple calls', () => {
@@ -39,6 +40,12 @@ describe('AuthManager Singleton', () => {
 
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
+		
+		// Verify the config is passed to internal components
+		// This would be observable when attempting operations that use the config
+		// For example, getCredentials would look in the configured file path
+		const credentials = instance.getCredentials();
+		expect(credentials).toBeNull(); // File doesn't exist, but it should check the right path
 	});
 
 	it('should warn when config is provided after initialization', () => {

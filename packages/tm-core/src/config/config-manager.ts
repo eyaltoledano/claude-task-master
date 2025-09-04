@@ -142,17 +142,23 @@ export class ConfigManager {
 
 		// Return the configured type (including 'auto')
 		const storageType = storage?.type || 'auto';
+		const basePath = storage?.basePath;
 
 		if (storageType === 'api' || storageType === 'auto') {
 			return {
 				type: storageType,
+				basePath,
 				apiEndpoint: storage?.apiEndpoint,
 				apiAccessToken: storage?.apiAccessToken,
 				apiConfigured: Boolean(storage?.apiEndpoint || storage?.apiAccessToken)
 			};
 		}
 
-		return { type: storageType, apiConfigured: false };
+		return { 
+			type: storageType, 
+			basePath, 
+			apiConfigured: false 
+		};
 	}
 
 	/**
@@ -183,9 +189,10 @@ export class ConfigManager {
 	}
 
 	/**
-	 * Check if using API storage
+	 * Check if explicitly configured to use API storage
+	 * Excludes 'auto' type 
 	 */
-	isUsingApiStorage(): boolean {
+	isApiExplicitlyConfigured(): boolean {
 		return this.getStorageConfig().type === 'api';
 	}
 
@@ -218,6 +225,7 @@ export class ConfigManager {
 		await this.persistence.saveConfig(this.config);
 
 		// Re-initialize to respect precedence
+		this.initialized = false;
 		await this.initialize();
 	}
 

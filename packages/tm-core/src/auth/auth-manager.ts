@@ -41,7 +41,7 @@ export class AuthManager {
 				'getInstance called with config after initialization; config is ignored.'
 			);
 		}
-		return AuthManager.instance;
+		return AuthManager.instance!;
 	}
 
 	/**
@@ -72,29 +72,6 @@ export class AuthManager {
 	 */
 	getAuthorizationUrl(): string | null {
 		return this.oauthService.getAuthorizationUrl();
-	}
-
-	/**
-	 * Authenticate with API key
-	 * Note: This would require a custom implementation or Supabase RLS policies
-	 */
-	async authenticateWithApiKey(apiKey: string): Promise<AuthCredentials> {
-		const token = apiKey.trim();
-		if (!token || token.length < 10) {
-			throw new AuthenticationError('Invalid API key', 'INVALID_API_KEY');
-		}
-
-		const authData: AuthCredentials = {
-			token,
-			tokenType: 'api_key',
-			userId: 'api-user',
-			email: undefined,
-			expiresAt: undefined, // API keys don't expire
-			savedAt: new Date().toISOString()
-		};
-
-		this.credentialStore.saveCredentials(authData);
-		return authData;
 	}
 
 	/**

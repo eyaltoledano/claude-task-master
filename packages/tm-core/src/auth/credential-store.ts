@@ -29,30 +29,38 @@ export class CredentialStore {
 				fs.readFileSync(this.config.configFile, 'utf-8')
 			) as AuthCredentials;
 
-			// Parse expiration time for validation (expects ISO string format)
+			// Normalize/migrate timestamps to numeric (handles both number and ISO string)
 			let expiresAtMs: number | undefined;
-			
-			if (authData.expiresAt) {
-				expiresAtMs = Date.parse(authData.expiresAt);
-				if (isNaN(expiresAtMs)) {
-					// Invalid date string - treat as expired
-					this.logger.error(`Invalid expiresAt format: ${authData.expiresAt}`);
-					return null;
-				}
+			if (typeof authData.expiresAt === 'number') {
+				expiresAtMs = Number.isFinite(authData.expiresAt) ? authData.expiresAt : undefined;
+			} else if (typeof authData.expiresAt === 'string') {
+				const parsed = Date.parse(authData.expiresAt);
+				expiresAtMs = Number.isNaN(parsed) ? undefined : parsed;
+			} else {
+				expiresAtMs = undefined;
 			}
 
-			// Check if token is expired (API keys never expire)
-			const isApiKey = authData.tokenType === 'api_key';
-			if (
-				!isApiKey &&
-				expiresAtMs &&
-				expiresAtMs < Date.now() &&
-				!options?.allowExpired
-			) {
-				this.logger.warn('Authentication token has expired');
+			// Validate expiration time for tokens
+			if (expiresAtMs === undefined) {
+				this.logger.warn('No valid expiration time provided for token');
 				return null;
 			}
 
+			// Update the authData with normalized timestamp
+			authData.expiresAt = expiresAtMs;
+
+			// Check if the token has expired
+			const now = Date.now();
+			const allowExpired = options?.allowExpired ?? false;
+			if (now >= expiresAtMs && !allowExpired) {
+				this.logger.warn('Authentication token has expired', {
+					expiresAt: authData.expiresAt,
+					currentTime: new Date(now).toISOString()
+				});
+				return null;
+			}
+
+			// Return valid token
 			return authData;
 		} catch (error) {
 			this.logger.error(
@@ -87,18 +95,29 @@ export class CredentialStore {
 				fs.mkdirSync(this.config.configDir, { recursive: true, mode: 0o700 });
 			}
 
-			// Add timestamp
-			authData.savedAt = new Date().toISOString();
+			// Add timestamp without mutating caller's object
+			authData = { ...authData, savedAt: new Date().toISOString() };
 			
-			// Validate expiresAt is a valid ISO string if present
-			if (authData.expiresAt) {
-				const ms = Date.parse(authData.expiresAt);
-				if (isNaN(ms)) {
+			// Validate and normalize expiresAt timestamp
+			if (authData.expiresAt !== undefined) {
+				let validTimestamp: number | undefined;
+				
+				if (typeof authData.expiresAt === 'number') {
+					validTimestamp = Number.isFinite(authData.expiresAt) ? authData.expiresAt : undefined;
+				} else if (typeof authData.expiresAt === 'string') {
+					const parsed = Date.parse(authData.expiresAt);
+					validTimestamp = Number.isNaN(parsed) ? undefined : parsed;
+				}
+				
+				if (validTimestamp === undefined) {
 					throw new AuthenticationError(
 						`Invalid expiresAt format: ${authData.expiresAt}`,
 						'SAVE_FAILED'
 					);
 				}
+				
+				// Store as ISO string for consistency
+				authData.expiresAt = new Date(validTimestamp).toISOString();
 			}
 
 			// Save credentials atomically with secure permissions
@@ -156,16 +175,19 @@ export class CredentialStore {
 		try {
 			const dir = path.dirname(this.config.configFile);
 			const baseName = path.basename(this.config.configFile);
-			const corruptPattern = new RegExp(`^${baseName}\\.corrupt-\\d+$`);
+			const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			const corruptPattern = new RegExp(`^${escapedBaseName}\\.corrupt-\\d+$`);
 
 			if (!fs.existsSync(dir)) {
 				return;
 			}
 
-			const files = fs.readdirSync(dir);
+			const entries = fs.readdirSync(dir, { withFileTypes: true });
 			const now = Date.now();
 
-			for (const file of files) {
+			for (const entry of entries) {
+				if (!entry.isFile()) continue;
+				const file = entry.name;
 				if (corruptPattern.test(file)) {
 					const filePath = path.join(dir, file);
 					try {

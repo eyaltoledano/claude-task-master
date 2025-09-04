@@ -26,9 +26,10 @@ export class StorageFactory {
 		storageConfig: RuntimeStorageConfig,
 		projectPath: string
 	): IStorage {
-		// Wrap the storage config in the expected format
+		// Wrap the storage config in the expected format, including projectPath
+		// This ensures ApiStorage receives the projectPath for projectId
 		return StorageFactory.create(
-			{ storage: storageConfig } as Partial<IConfiguration>,
+			{ storage: storageConfig, projectPath } as Partial<IConfiguration>,
 			projectPath
 		);
 	}

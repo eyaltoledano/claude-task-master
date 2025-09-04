@@ -88,6 +88,8 @@ export type StorageType = 'file' | 'api' | 'auto';
 export interface RuntimeStorageConfig {
 	/** Storage backend type */
 	type: StorageType;
+	/** Base path for file storage (if configured) */
+	basePath?: string;
 	/** API endpoint for API storage (Hamster integration) */
 	apiEndpoint?: string;
 	/** Access token for API authentication */
@@ -107,19 +109,15 @@ export interface RuntimeStorageConfig {
 export interface StorageSettings
 	extends Omit<RuntimeStorageConfig, 'apiConfigured'> {
 	/** Storage backend type - 'auto' detects based on auth status */
-	type: 'file' | 'api' | 'auto';
+	type: StorageType;
 	/** Base path for file storage */
 	basePath?: string;
-	/** API endpoint for API storage (Hamster integration) */
-	apiEndpoint?: string;
-	/** Access token for API authentication */
-	apiAccessToken?: string;
-	/**
-	 * Indicates whether API is configured (has endpoint or token)
+	/** 
+	 * Indicates whether API is configured 
 	 * @computed Derived automatically from presence of apiEndpoint or apiAccessToken
 	 * @internal Should not be set manually in user config - computed by ConfigManager
 	 */
-	apiConfigured?: boolean;
+	readonly apiConfigured?: boolean;
 	/** Enable automatic backups */
 	enableBackup: boolean;
 	/** Maximum number of backups to retain */
