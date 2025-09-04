@@ -17,7 +17,7 @@ import { getLogger } from '../logger/index.js';
  * Authentication manager class
  */
 export class AuthManager {
-	private static instance: AuthManager;
+	private static instance: AuthManager | null = null;
 	private credentialStore: CredentialStore;
 	private oauthService: OAuthService;
 	private supabaseClient: SupabaseAuthClient;
@@ -41,14 +41,14 @@ export class AuthManager {
 				'getInstance called with config after initialization; config is ignored.'
 			);
 		}
-		return AuthManager.instance!;
+		return AuthManager.instance;
 	}
 
 	/**
 	 * Reset the singleton instance (useful for testing)
 	 */
 	static resetInstance(): void {
-		AuthManager.instance = null as any;
+		AuthManager.instance = null;
 	}
 
 	/**
@@ -120,7 +120,7 @@ export class AuthManager {
 			await this.supabaseClient.signOut();
 		} catch (error) {
 			// Log but don't throw - we still want to clear local credentials
-			console.warn('Failed to sign out from Supabase:', error);
+			getLogger('AuthManager').warn('Failed to sign out from Supabase:', error);
 		}
 
 		// Always clear local credentials (removes auth.json file)

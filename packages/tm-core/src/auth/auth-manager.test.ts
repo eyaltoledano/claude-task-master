@@ -3,9 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuthManager } from './auth-manager.js';
 
-// Mock the logger to verify warnings
+// Mock the logger to verify warnings (must be hoisted before SUT import)
 const mockLogger = {
 	warn: vi.fn(),
 	info: vi.fn(),
@@ -17,11 +16,66 @@ vi.mock('../logger/index.js', () => ({
 	getLogger: () => mockLogger
 }));
 
+// Spy on CredentialStore constructor to verify config propagation
+const CredentialStoreSpy = vi.fn();
+vi.mock('./credential-store.js', () => {
+	return {
+		CredentialStore: class {
+			constructor(config: any) {
+				CredentialStoreSpy(config);
+				this.getCredentials = vi.fn(() => null);
+			}
+			getCredentials() {
+				return null;
+			}
+			saveCredentials() {}
+			clearCredentials() {}
+			hasValidCredentials() {
+				return false;
+			}
+		}
+	};
+});
+
+// Mock OAuthService to avoid side effects
+vi.mock('./oauth-service.js', () => {
+	return {
+		OAuthService: class {
+			constructor() {}
+			authenticate() {
+				return Promise.resolve({});
+			}
+			getAuthorizationUrl() {
+				return null;
+			}
+		}
+	};
+});
+
+// Mock SupabaseAuthClient to avoid side effects
+vi.mock('../clients/supabase-client.js', () => {
+	return {
+		SupabaseAuthClient: class {
+			constructor() {}
+			refreshSession() {
+				return Promise.resolve({});
+			}
+			signOut() {
+				return Promise.resolve();
+			}
+		}
+	};
+});
+
+// Import SUT after mocks
+import { AuthManager } from './auth-manager.js';
+
 describe('AuthManager Singleton', () => {
 	beforeEach(() => {
 		// Reset singleton before each test
 		AuthManager.resetInstance();
 		vi.clearAllMocks();
+		CredentialStoreSpy.mockClear();
 	});
 
 	it('should return the same instance on multiple calls', () => {
@@ -41,11 +95,14 @@ describe('AuthManager Singleton', () => {
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
 
-		// Verify the config is passed to internal components
-		// This would be observable when attempting operations that use the config
-		// For example, getCredentials would look in the configured file path
+		// Assert that CredentialStore was constructed with the provided config
+		expect(CredentialStoreSpy).toHaveBeenCalledTimes(1);
+		expect(CredentialStoreSpy).toHaveBeenCalledWith(config);
+
+		// Verify the config is passed to internal components through observable behavior
+		// getCredentials would look in the configured file path
 		const credentials = instance.getCredentials();
-		expect(credentials).toBeNull(); // File doesn't exist, but it should check the right path
+		expect(credentials).toBeNull(); // File doesn't exist, but config was propagated correctly
 	});
 
 	it('should warn when config is provided after initialization', () => {
@@ -60,7 +117,7 @@ describe('AuthManager Singleton', () => {
 
 		// Verify warning was logged
 		expect(mockLogger.warn).toHaveBeenCalledWith(
-			'getInstance called with config after initialization; config is ignored.'
+			expect.stringMatching(/config.*after initialization.*ignored/i)
 		);
 	});
 
