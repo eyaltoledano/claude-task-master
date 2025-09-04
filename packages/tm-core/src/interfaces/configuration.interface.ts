@@ -99,7 +99,7 @@ export interface RuntimeStorageConfig {
 	 * @computed Derived automatically from presence of apiEndpoint or apiAccessToken
 	 * @internal Should not be set manually - computed by ConfigManager
 	 */
-	apiConfigured: boolean;
+	readonly apiConfigured: boolean;
 }
 
 /**
@@ -108,8 +108,6 @@ export interface RuntimeStorageConfig {
  */
 export interface StorageSettings
 	extends Omit<RuntimeStorageConfig, 'apiConfigured'> {
-	/** Storage backend type - 'auto' detects based on auth status */
-	type: StorageType;
 	/** Base path for file storage */
 	basePath?: string;
 	/**

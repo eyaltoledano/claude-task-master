@@ -142,7 +142,7 @@ export class ConfigManager {
 
 		// Return the configured type (including 'auto')
 		const storageType = storage?.type || 'auto';
-		const basePath = storage?.basePath;
+		const basePath = storage?.basePath ?? this.projectRoot;
 
 		if (storageType === 'api' || storageType === 'auto') {
 			return {

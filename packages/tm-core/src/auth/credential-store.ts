@@ -8,9 +8,21 @@ import { AuthCredentials, AuthenticationError, AuthConfig } from './types.js';
 import { getAuthConfig } from './config.js';
 import { getLogger } from '../logger/index.js';
 
+/**
+ * CredentialStore manages the persistence and retrieval of authentication credentials.
+ * 
+ * Runtime vs Persisted Shape:
+ * - When retrieved (getCredentials): expiresAt is normalized to number (milliseconds since epoch)
+ * - When persisted (saveCredentials): expiresAt is stored as ISO string for readability
+ * 
+ * This normalization ensures consistent runtime behavior while maintaining
+ * human-readable persisted format in the auth.json file.
+ */
 export class CredentialStore {
 	private logger = getLogger('CredentialStore');
 	private config: AuthConfig;
+	// Clock skew tolerance for expiry checks (30 seconds)
+	private readonly CLOCK_SKEW_MS = 30_000;
 
 	constructor(config?: Partial<AuthConfig>) {
 		this.config = getAuthConfig(config);
@@ -18,6 +30,7 @@ export class CredentialStore {
 
 	/**
 	 * Get stored authentication credentials
+	 * @returns AuthCredentials with expiresAt as number (milliseconds) for runtime use
 	 */
 	getCredentials(options?: { allowExpired?: boolean }): AuthCredentials | null {
 		try {
@@ -51,13 +64,14 @@ export class CredentialStore {
 			// Update the authData with normalized timestamp
 			authData.expiresAt = expiresAtMs;
 
-			// Check if the token has expired
+			// Check if the token has expired (with clock skew tolerance)
 			const now = Date.now();
 			const allowExpired = options?.allowExpired ?? false;
-			if (now >= expiresAtMs && !allowExpired) {
-				this.logger.warn('Authentication token has expired', {
+			if (now >= (expiresAtMs - this.CLOCK_SKEW_MS) && !allowExpired) {
+				this.logger.warn('Authentication token has expired or is about to expire', {
 					expiresAt: authData.expiresAt,
-					currentTime: new Date(now).toISOString()
+					currentTime: new Date(now).toISOString(),
+					skewWindow: `${this.CLOCK_SKEW_MS / 1000}s`
 				});
 				return null;
 			}
@@ -72,7 +86,7 @@ export class CredentialStore {
 			// Quarantine corrupt file to prevent repeated errors
 			try {
 				if (fs.existsSync(this.config.configFile)) {
-					const corruptFile = `${this.config.configFile}.corrupt-${Date.now()}`;
+					const corruptFile = `${this.config.configFile}.corrupt-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
 					fs.renameSync(this.config.configFile, corruptFile);
 					this.logger.warn(`Quarantined corrupt auth file to: ${corruptFile}`);
 				}
@@ -89,6 +103,7 @@ export class CredentialStore {
 
 	/**
 	 * Save authentication credentials
+	 * @param authData - Credentials with expiresAt as number or string (will be persisted as ISO string)
 	 */
 	saveCredentials(authData: AuthCredentials): void {
 		try {
@@ -179,8 +194,7 @@ export class CredentialStore {
 		try {
 			const dir = path.dirname(this.config.configFile);
 			const baseName = path.basename(this.config.configFile);
-			const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			const corruptPattern = new RegExp(`^${escapedBaseName}\\.corrupt-\\d+$`);
+			const prefix = `${baseName}.corrupt-`;
 
 			if (!fs.existsSync(dir)) {
 				return;
@@ -192,22 +206,26 @@ export class CredentialStore {
 			for (const entry of entries) {
 				if (!entry.isFile()) continue;
 				const file = entry.name;
-				if (corruptPattern.test(file)) {
-					const filePath = path.join(dir, file);
-					try {
-						const stats = fs.statSync(filePath);
-						const age = now - stats.mtimeMs;
+				
+				// Check if file matches pattern: baseName.corrupt-{timestamp}
+				if (!file.startsWith(prefix)) continue;
+				const suffix = file.slice(prefix.length);
+				if (!/^\d+$/.test(suffix)) continue; // Fixed regex, not from variable input
+				
+				const filePath = path.join(dir, file);
+				try {
+					const stats = fs.statSync(filePath);
+					const age = now - stats.mtimeMs;
 
-						if (age > maxAgeMs) {
-							fs.unlinkSync(filePath);
-							this.logger.debug(`Cleaned up old corrupt file: ${file}`);
-						}
-					} catch (error) {
-						// Ignore errors for individual file cleanup
-						this.logger.debug(
-							`Could not clean up corrupt file ${file}: ${(error as Error).message}`
-						);
+					if (age > maxAgeMs) {
+						fs.unlinkSync(filePath);
+						this.logger.debug(`Cleaned up old corrupt file: ${file}`);
 					}
+				} catch (error) {
+					// Ignore errors for individual file cleanup
+					this.logger.debug(
+						`Could not clean up corrupt file ${file}: ${(error as Error).message}`
+					);
 				}
 			}
 		} catch (error) {

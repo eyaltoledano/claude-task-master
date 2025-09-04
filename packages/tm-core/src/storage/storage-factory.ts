@@ -5,7 +5,8 @@
 import type { IStorage } from '../interfaces/storage.interface.js';
 import type {
 	IConfiguration,
-	RuntimeStorageConfig
+	RuntimeStorageConfig,
+	StorageSettings
 } from '../interfaces/configuration.interface.js';
 import { FileStorage } from './file-storage/index.js';
 import { ApiStorage } from './api-storage.js';
@@ -74,15 +75,16 @@ export class StorageFactory {
 					const credentials = authManager.getCredentials();
 					if (credentials) {
 						// Merge with existing storage config, ensuring required fields
-						config.storage = {
-							...config.storage,
-							type: 'api' as const,
+						const nextStorage: StorageSettings = {
+							...(config.storage as StorageSettings),
+							type: 'api',
 							apiAccessToken: credentials.token,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.HAMSTER_API_URL ||
 								'https://tryhamster.com/api'
-						} as any; // Cast to any to bypass strict type checking for partial config
+						};
+						config.storage = nextStorage;
 					}
 				}
 				logger.info('☁️  Using API storage');
@@ -103,15 +105,16 @@ export class StorageFactory {
 					const credentials = authManager.getCredentials();
 					if (credentials) {
 						// Configure API storage with auth credentials
-						config.storage = {
-							...config.storage,
-							type: 'api' as const,
+						const nextStorage: StorageSettings = {
+							...(config.storage as StorageSettings),
+							type: 'api',
 							apiAccessToken: credentials.token,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.HAMSTER_API_URL ||
 								'https://tryhamster.com/api'
-						} as any; // Cast to any to bypass strict type checking for partial config
+						};
+						config.storage = nextStorage;
 						logger.info('☁️  Using API storage (authenticated)');
 						return StorageFactory.createApiStorage(config);
 					}
