@@ -116,8 +116,11 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
+		"dotenv-mono": "^1.5.1",
+
 		"@types/jest": "^29.5.14",
 		"execa": "^8.0.1",
 		"ink": "^5.0.1",

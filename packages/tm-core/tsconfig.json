@@ -28,12 +28,17 @@
 		"isolatedModules": true,
 		"paths": {
 			"@/*": ["./src/*"],
-			"@/types": ["./src/types"],
-			"@/providers": ["./src/providers"],
-			"@/storage": ["./src/storage"],
+			"@/auth": ["./src/auth"],
+			"@/config": ["./src/config"],
+			"@/errors": ["./src/errors"],
+			"@/interfaces": ["./src/interfaces"],
+			"@/logger": ["./src/logger"],
 			"@/parser": ["./src/parser"],
-			"@/utils": ["./src/utils"],
-			"@/errors": ["./src/errors"]
+			"@/providers": ["./src/providers"],
+			"@/services": ["./src/services"],
+			"@/storage": ["./src/storage"],
+			"@/types": ["./src/types"],
+			"@/utils": ["./src/utils"]
 		}
 	},
 	"include": ["src/**/*"],
