@@ -112,8 +112,8 @@ export interface StorageSettings
 	type: StorageType;
 	/** Base path for file storage */
 	basePath?: string;
-	/** 
-	 * Indicates whether API is configured 
+	/**
+	 * Indicates whether API is configured
 	 * @computed Derived automatically from presence of apiEndpoint or apiAccessToken
 	 * @internal Should not be set manually in user config - computed by ConfigManager
 	 */

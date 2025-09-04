@@ -154,10 +154,10 @@ export class ConfigManager {
 			};
 		}
 
-		return { 
-			type: storageType, 
-			basePath, 
-			apiConfigured: false 
+		return {
+			type: storageType,
+			basePath,
+			apiConfigured: false
 		};
 	}
 
@@ -190,7 +190,7 @@ export class ConfigManager {
 
 	/**
 	 * Check if explicitly configured to use API storage
-	 * Excludes 'auto' type 
+	 * Excludes 'auto' type
 	 */
 	isApiExplicitlyConfigured(): boolean {
 		return this.getStorageConfig().type === 'api';

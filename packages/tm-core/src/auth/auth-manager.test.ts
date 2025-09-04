@@ -40,7 +40,7 @@ describe('AuthManager Singleton', () => {
 
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
-		
+
 		// Verify the config is passed to internal components
 		// This would be observable when attempting operations that use the config
 		// For example, getCredentials would look in the configured file path

@@ -56,7 +56,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -79,7 +81,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -100,7 +104,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -120,7 +126,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -140,7 +148,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -160,7 +170,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -181,7 +193,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials();
 
@@ -203,7 +217,9 @@ describe('CredentialStore', () => {
 			};
 
 			vi.mocked(fs.existsSync).mockReturnValue(true);
-			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockCredentials));
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
 
 			const result = store.getCredentials({ allowExpired: true });
 
@@ -239,7 +255,8 @@ describe('CredentialStore', () => {
 			);
 
 			// Check that the written data contains a valid ISO string
-			const writtenData = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+			const writtenData = vi.mocked(fs.writeFileSync).mock
+				.calls[0][1] as string;
 			const parsed = JSON.parse(writtenData);
 			expect(typeof parsed.expiresAt).toBe('string');
 			expect(new Date(parsed.expiresAt).toISOString()).toBe(parsed.expiresAt);
@@ -257,7 +274,8 @@ describe('CredentialStore', () => {
 
 			store.saveCredentials(credentials);
 
-			const writtenData = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+			const writtenData = vi.mocked(fs.writeFileSync).mock
+				.calls[0][1] as string;
 			const parsed = JSON.parse(writtenData);
 			expect(typeof parsed.expiresAt).toBe('string');
 			expect(new Date(parsed.expiresAt).getTime()).toBe(futureTimestamp);
@@ -272,8 +290,12 @@ describe('CredentialStore', () => {
 				savedAt: new Date().toISOString()
 			};
 
-			expect(() => store.saveCredentials(credentials)).toThrow(AuthenticationError);
-			expect(() => store.saveCredentials(credentials)).toThrow('Invalid expiresAt format');
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				AuthenticationError
+			);
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				'Invalid expiresAt format'
+			);
 		});
 
 		it('should reject NaN timestamp when saving', () => {
@@ -285,8 +307,12 @@ describe('CredentialStore', () => {
 				savedAt: new Date().toISOString()
 			};
 
-			expect(() => store.saveCredentials(credentials)).toThrow(AuthenticationError);
-			expect(() => store.saveCredentials(credentials)).toThrow('Invalid expiresAt format');
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				AuthenticationError
+			);
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				'Invalid expiresAt format'
+			);
 		});
 
 		it('should reject Infinity timestamp when saving', () => {
@@ -298,8 +324,12 @@ describe('CredentialStore', () => {
 				savedAt: new Date().toISOString()
 			};
 
-			expect(() => store.saveCredentials(credentials)).toThrow(AuthenticationError);
-			expect(() => store.saveCredentials(credentials)).toThrow('Invalid expiresAt format');
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				AuthenticationError
+			);
+			expect(() => store.saveCredentials(credentials)).toThrow(
+				'Invalid expiresAt format'
+			);
 		});
 
 		it('should handle missing expiresAt when saving', () => {
@@ -313,7 +343,8 @@ describe('CredentialStore', () => {
 
 			store.saveCredentials(credentials);
 
-			const writtenData = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+			const writtenData = vi.mocked(fs.writeFileSync).mock
+				.calls[0][1] as string;
 			const parsed = JSON.parse(writtenData);
 			expect(parsed.expiresAt).toBeUndefined();
 		});
@@ -394,8 +425,12 @@ describe('CredentialStore', () => {
 
 			store.cleanupCorruptFiles();
 
-			expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringContaining(oldFile));
-			expect(fs.unlinkSync).not.toHaveBeenCalledWith(expect.stringContaining(newFile));
+			expect(fs.unlinkSync).toHaveBeenCalledWith(
+				expect.stringContaining(oldFile)
+			);
+			expect(fs.unlinkSync).not.toHaveBeenCalledWith(
+				expect.stringContaining(newFile)
+			);
 		});
 
 		it('should handle cleanup errors gracefully', () => {

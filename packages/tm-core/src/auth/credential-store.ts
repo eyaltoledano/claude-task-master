@@ -32,7 +32,9 @@ export class CredentialStore {
 			// Normalize/migrate timestamps to numeric (handles both number and ISO string)
 			let expiresAtMs: number | undefined;
 			if (typeof authData.expiresAt === 'number') {
-				expiresAtMs = Number.isFinite(authData.expiresAt) ? authData.expiresAt : undefined;
+				expiresAtMs = Number.isFinite(authData.expiresAt)
+					? authData.expiresAt
+					: undefined;
 			} else if (typeof authData.expiresAt === 'string') {
 				const parsed = Date.parse(authData.expiresAt);
 				expiresAtMs = Number.isNaN(parsed) ? undefined : parsed;
@@ -97,25 +99,27 @@ export class CredentialStore {
 
 			// Add timestamp without mutating caller's object
 			authData = { ...authData, savedAt: new Date().toISOString() };
-			
+
 			// Validate and normalize expiresAt timestamp
 			if (authData.expiresAt !== undefined) {
 				let validTimestamp: number | undefined;
-				
+
 				if (typeof authData.expiresAt === 'number') {
-					validTimestamp = Number.isFinite(authData.expiresAt) ? authData.expiresAt : undefined;
+					validTimestamp = Number.isFinite(authData.expiresAt)
+						? authData.expiresAt
+						: undefined;
 				} else if (typeof authData.expiresAt === 'string') {
 					const parsed = Date.parse(authData.expiresAt);
 					validTimestamp = Number.isNaN(parsed) ? undefined : parsed;
 				}
-				
+
 				if (validTimestamp === undefined) {
 					throw new AuthenticationError(
 						`Invalid expiresAt format: ${authData.expiresAt}`,
 						'SAVE_FAILED'
 					);
 				}
-				
+
 				// Store as ISO string for consistency
 				authData.expiresAt = new Date(validTimestamp).toISOString();
 			}
