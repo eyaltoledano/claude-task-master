@@ -85,6 +85,11 @@ describe('EnvironmentConfigProvider', () => {
 			provider = new EnvironmentConfigProvider(); // Reset provider
 			config = provider.loadConfig();
 			expect(config.storage?.type).toBe('api');
+
+			process.env.TASKMASTER_STORAGE_TYPE = 'auto';
+			provider = new EnvironmentConfigProvider(); // Reset provider
+			config = provider.loadConfig();
+			expect(config.storage?.type).toBe('auto');
 		});
 
 		it('should handle nested configuration paths', () => {
