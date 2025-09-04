@@ -3,8 +3,11 @@
  */
 
 import type { IStorage } from '../interfaces/storage.interface.js';
-import type { IConfiguration } from '../interfaces/configuration.interface.js';
-import { FileStorage } from './file-storage';
+import type {
+	IConfiguration,
+	RuntimeStorageConfig
+} from '../interfaces/configuration.interface.js';
+import { FileStorage } from './file-storage/index.js';
 import { ApiStorage } from './api-storage.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 
@@ -12,6 +15,24 @@ import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
  * Factory for creating storage implementations based on configuration
  */
 export class StorageFactory {
+	/**
+	 * Create a storage implementation from runtime storage config
+	 * This is the preferred method when you have a RuntimeStorageConfig
+	 * @param storageConfig - Runtime storage configuration
+	 * @param projectPath - Project root path (for file storage)
+	 * @returns Storage implementation
+	 */
+	static createFromStorageConfig(
+		storageConfig: RuntimeStorageConfig,
+		projectPath: string
+	): IStorage {
+		// Wrap the storage config in the expected format
+		return StorageFactory.create(
+			{ storage: storageConfig } as Partial<IConfiguration>,
+			projectPath
+		);
+	}
+
 	/**
 	 * Create a storage implementation based on configuration
 	 * @param config - Configuration object
@@ -123,6 +144,11 @@ export class StorageFactory {
 
 			case 'file':
 				// File storage doesn't require additional config
+				break;
+
+			case 'auto':
+				// Auto storage is valid - it will determine the actual type at runtime
+				// No specific validation needed as it will fall back to file if API not configured
 				break;
 
 			default:

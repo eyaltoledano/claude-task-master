@@ -6,7 +6,10 @@
  * maintainability, testability, and separation of concerns.
  */
 
-import type { PartialConfiguration } from '../interfaces/configuration.interface.js';
+import type {
+	PartialConfiguration,
+	RuntimeStorageConfig
+} from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
 import {
 	ConfigMerger,
@@ -134,26 +137,22 @@ export class ConfigManager {
 	/**
 	 * Get storage configuration
 	 */
-	getStorageConfig(): {
-		type: 'file' | 'api';
-		apiEndpoint?: string;
-		apiAccessToken?: string;
-	} {
+	getStorageConfig(): RuntimeStorageConfig {
 		const storage = this.config.storage;
 
-		if (
-			storage?.type === 'api' &&
-			storage.apiEndpoint &&
-			storage.apiAccessToken
-		) {
+		// Return the configured type (including 'auto')
+		const storageType = storage?.type || 'auto';
+
+		if (storageType === 'api' || storageType === 'auto') {
 			return {
-				type: 'api',
-				apiEndpoint: storage.apiEndpoint,
-				apiAccessToken: storage.apiAccessToken
+				type: storageType,
+				apiEndpoint: storage?.apiEndpoint,
+				apiAccessToken: storage?.apiAccessToken,
+				apiConfigured: Boolean(storage?.apiEndpoint || storage?.apiAccessToken)
 			};
 		}
 
-		return { type: 'file' };
+		return { type: storageType, apiConfigured: false };
 	}
 
 	/**
@@ -268,13 +267,5 @@ export class ConfigManager {
 	 */
 	getConfigSources() {
 		return this.merger.getSources();
-	}
-
-	/**
-	 * Watch for configuration changes (placeholder for future)
-	 */
-	watch(_callback: (config: PartialConfiguration) => void): () => void {
-		console.warn('Configuration watching not yet implemented');
-		return () => {}; // Return no-op unsubscribe function
 	}
 }

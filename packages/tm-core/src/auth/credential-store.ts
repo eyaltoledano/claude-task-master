@@ -4,25 +4,13 @@
 
 import fs from 'fs';
 import path from 'path';
-import { AuthCredentials, AuthenticationError, AuthConfig } from './types.js';
-import { getAuthConfig } from './config.js';
-import { getLogger } from '../logger/index.js';
+import { AuthCredentials, AuthenticationError, AuthConfig } from './types';
+import { getAuthConfig } from './config';
+import { getLogger } from '../logger';
 
-/**
- * CredentialStore manages the persistence and retrieval of authentication credentials.
- *
- * Runtime vs Persisted Shape:
- * - When retrieved (getCredentials): expiresAt is normalized to number (milliseconds since epoch)
- * - When persisted (saveCredentials): expiresAt is stored as ISO string for readability
- *
- * This normalization ensures consistent runtime behavior while maintaining
- * human-readable persisted format in the auth.json file.
- */
 export class CredentialStore {
 	private logger = getLogger('CredentialStore');
 	private config: AuthConfig;
-	// Clock skew tolerance for expiry checks (30 seconds)
-	private readonly CLOCK_SKEW_MS = 30_000;
 
 	constructor(config?: Partial<AuthConfig>) {
 		this.config = getAuthConfig(config);
@@ -30,7 +18,6 @@ export class CredentialStore {
 
 	/**
 	 * Get stored authentication credentials
-	 * @returns AuthCredentials with expiresAt as number (milliseconds) for runtime use
 	 */
 	getCredentials(options?: { allowExpired?: boolean }): AuthCredentials | null {
 		try {
@@ -42,44 +29,31 @@ export class CredentialStore {
 				fs.readFileSync(this.config.configFile, 'utf-8')
 			) as AuthCredentials;
 
-			// Normalize/migrate timestamps to numeric (handles both number and ISO string)
-			let expiresAtMs: number | undefined;
-			if (typeof authData.expiresAt === 'number') {
-				expiresAtMs = Number.isFinite(authData.expiresAt)
+			// Normalize/migrate timestamps to numeric (handles both string ISO dates and numbers)
+			const expiresAtMs =
+				typeof authData.expiresAt === 'number'
 					? authData.expiresAt
-					: undefined;
-			} else if (typeof authData.expiresAt === 'string') {
-				const parsed = Date.parse(authData.expiresAt);
-				expiresAtMs = Number.isNaN(parsed) ? undefined : parsed;
-			} else {
-				expiresAtMs = undefined;
-			}
-
-			// Validate expiration time for tokens
-			if (expiresAtMs === undefined) {
-				this.logger.warn('No valid expiration time provided for token');
-				return null;
-			}
+					: authData.expiresAt
+						? Date.parse(authData.expiresAt as unknown as string)
+						: undefined;
 
 			// Update the authData with normalized timestamp
-			authData.expiresAt = expiresAtMs;
+			if (expiresAtMs !== undefined) {
+				authData.expiresAt = expiresAtMs;
+			}
 
-			// Check if the token has expired (with clock skew tolerance)
-			const now = Date.now();
-			const allowExpired = options?.allowExpired ?? false;
-			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
-				this.logger.warn(
-					'Authentication token has expired or is about to expire',
-					{
-						expiresAt: authData.expiresAt,
-						currentTime: new Date(now).toISOString(),
-						skewWindow: `${this.CLOCK_SKEW_MS / 1000}s`
-					}
-				);
+			// Check if token is expired (API keys never expire)
+			const isApiKey = authData.tokenType === 'api_key';
+			if (
+				!isApiKey &&
+				expiresAtMs &&
+				expiresAtMs < Date.now() &&
+				!options?.allowExpired
+			) {
+				this.logger.warn('Authentication token has expired');
 				return null;
 			}
 
-			// Return valid token
 			return authData;
 		} catch (error) {
 			this.logger.error(
@@ -89,7 +63,7 @@ export class CredentialStore {
 			// Quarantine corrupt file to prevent repeated errors
 			try {
 				if (fs.existsSync(this.config.configFile)) {
-					const corruptFile = `${this.config.configFile}.corrupt-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+					const corruptFile = `${this.config.configFile}.corrupt-${Date.now()}`;
 					fs.renameSync(this.config.configFile, corruptFile);
 					this.logger.warn(`Quarantined corrupt auth file to: ${corruptFile}`);
 				}
@@ -106,7 +80,6 @@ export class CredentialStore {
 
 	/**
 	 * Save authentication credentials
-	 * @param authData - Credentials with expiresAt as number or string (will be persisted as ISO string)
 	 */
 	saveCredentials(authData: AuthCredentials): void {
 		try {
@@ -115,32 +88,8 @@ export class CredentialStore {
 				fs.mkdirSync(this.config.configDir, { recursive: true, mode: 0o700 });
 			}
 
-			// Add timestamp without mutating caller's object
-			authData = { ...authData, savedAt: new Date().toISOString() };
-
-			// Validate and normalize expiresAt timestamp
-			if (authData.expiresAt !== undefined) {
-				let validTimestamp: number | undefined;
-
-				if (typeof authData.expiresAt === 'number') {
-					validTimestamp = Number.isFinite(authData.expiresAt)
-						? authData.expiresAt
-						: undefined;
-				} else if (typeof authData.expiresAt === 'string') {
-					const parsed = Date.parse(authData.expiresAt);
-					validTimestamp = Number.isNaN(parsed) ? undefined : parsed;
-				}
-
-				if (validTimestamp === undefined) {
-					throw new AuthenticationError(
-						`Invalid expiresAt format: ${authData.expiresAt}`,
-						'SAVE_FAILED'
-					);
-				}
-
-				// Store as ISO string for consistency
-				authData.expiresAt = new Date(validTimestamp).toISOString();
-			}
+			// Add timestamp
+			authData.savedAt = new Date().toISOString();
 
 			// Save credentials atomically with secure permissions
 			const tempFile = `${this.config.configFile}.tmp`;
@@ -197,38 +146,32 @@ export class CredentialStore {
 		try {
 			const dir = path.dirname(this.config.configFile);
 			const baseName = path.basename(this.config.configFile);
-			const prefix = `${baseName}.corrupt-`;
+			const corruptPattern = new RegExp(`^${baseName}\\.corrupt-\\d+$`);
 
 			if (!fs.existsSync(dir)) {
 				return;
 			}
 
-			const entries = fs.readdirSync(dir, { withFileTypes: true });
+			const files = fs.readdirSync(dir);
 			const now = Date.now();
 
-			for (const entry of entries) {
-				if (!entry.isFile()) continue;
-				const file = entry.name;
+			for (const file of files) {
+				if (corruptPattern.test(file)) {
+					const filePath = path.join(dir, file);
+					try {
+						const stats = fs.statSync(filePath);
+						const age = now - stats.mtimeMs;
 
-				// Check if file matches pattern: baseName.corrupt-{timestamp}
-				if (!file.startsWith(prefix)) continue;
-				const suffix = file.slice(prefix.length);
-				if (!/^\d+$/.test(suffix)) continue; // Fixed regex, not from variable input
-
-				const filePath = path.join(dir, file);
-				try {
-					const stats = fs.statSync(filePath);
-					const age = now - stats.mtimeMs;
-
-					if (age > maxAgeMs) {
-						fs.unlinkSync(filePath);
-						this.logger.debug(`Cleaned up old corrupt file: ${file}`);
+						if (age > maxAgeMs) {
+							fs.unlinkSync(filePath);
+							this.logger.debug(`Cleaned up old corrupt file: ${file}`);
+						}
+					} catch (error) {
+						// Ignore errors for individual file cleanup
+						this.logger.debug(
+							`Could not clean up corrupt file ${file}: ${(error as Error).message}`
+						);
 					}
-				} catch (error) {
-					// Ignore errors for individual file cleanup
-					this.logger.debug(
-						`Could not clean up corrupt file ${file}: ${(error as Error).message}`
-					);
 				}
 			}
 		} catch (error) {
