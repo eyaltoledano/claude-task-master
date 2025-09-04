@@ -4,9 +4,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { AuthCredentials, AuthenticationError, AuthConfig } from './types';
-import { getAuthConfig } from './config';
-import { getLogger } from '../logger';
+import { AuthCredentials, AuthenticationError, AuthConfig } from './types.js';
+import { getAuthConfig } from './config.js';
+import { getLogger } from '../logger/index.js';
 
 export class CredentialStore {
 	private logger = getLogger('CredentialStore');
@@ -29,17 +29,16 @@ export class CredentialStore {
 				fs.readFileSync(this.config.configFile, 'utf-8')
 			) as AuthCredentials;
 
-			// Normalize/migrate timestamps to numeric (handles both string ISO dates and numbers)
-			const expiresAtMs =
-				typeof authData.expiresAt === 'number'
-					? authData.expiresAt
-					: authData.expiresAt
-						? Date.parse(authData.expiresAt as unknown as string)
-						: undefined;
-
-			// Update the authData with normalized timestamp
-			if (expiresAtMs !== undefined) {
-				authData.expiresAt = expiresAtMs;
+			// Parse expiration time for validation (expects ISO string format)
+			let expiresAtMs: number | undefined;
+			
+			if (authData.expiresAt) {
+				expiresAtMs = Date.parse(authData.expiresAt);
+				if (isNaN(expiresAtMs)) {
+					// Invalid date string - treat as expired
+					this.logger.error(`Invalid expiresAt format: ${authData.expiresAt}`);
+					return null;
+				}
 			}
 
 			// Check if token is expired (API keys never expire)
@@ -90,6 +89,17 @@ export class CredentialStore {
 
 			// Add timestamp
 			authData.savedAt = new Date().toISOString();
+			
+			// Validate expiresAt is a valid ISO string if present
+			if (authData.expiresAt) {
+				const ms = Date.parse(authData.expiresAt);
+				if (isNaN(ms)) {
+					throw new AuthenticationError(
+						`Invalid expiresAt format: ${authData.expiresAt}`,
+						'SAVE_FAILED'
+					);
+				}
+			}
 
 			// Save credentials atomically with secure permissions
 			const tempFile = `${this.config.configFile}.tmp`;

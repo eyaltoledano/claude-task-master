@@ -17,7 +17,7 @@ import { getLogger } from '../logger/index.js';
  * Authentication manager class
  */
 export class AuthManager {
-	private static instance: AuthManager | null = null;
+	private static instance: AuthManager;
 	private credentialStore: CredentialStore;
 	private oauthService: OAuthService;
 	private supabaseClient: SupabaseAuthClient;
@@ -48,7 +48,7 @@ export class AuthManager {
 	 * Reset the singleton instance (useful for testing)
 	 */
 	static resetInstance(): void {
-		AuthManager.instance = null;
+		AuthManager.instance = null as any;
 	}
 
 	/**
@@ -72,6 +72,29 @@ export class AuthManager {
 	 */
 	getAuthorizationUrl(): string | null {
 		return this.oauthService.getAuthorizationUrl();
+	}
+
+	/**
+	 * Authenticate with API key
+	 * Note: This would require a custom implementation or Supabase RLS policies
+	 */
+	async authenticateWithApiKey(apiKey: string): Promise<AuthCredentials> {
+		const token = apiKey.trim();
+		if (!token || token.length < 10) {
+			throw new AuthenticationError('Invalid API key', 'INVALID_API_KEY');
+		}
+
+		const authData: AuthCredentials = {
+			token,
+			tokenType: 'api_key',
+			userId: 'api-user',
+			email: undefined,
+			expiresAt: undefined, // API keys don't expire
+			savedAt: new Date().toISOString()
+		};
+
+		this.credentialStore.saveCredentials(authData);
+		return authData;
 	}
 
 	/**
@@ -120,7 +143,7 @@ export class AuthManager {
 			await this.supabaseClient.signOut();
 		} catch (error) {
 			// Log but don't throw - we still want to clear local credentials
-			getLogger('AuthManager').warn('Failed to sign out from Supabase:', error);
+			console.warn('Failed to sign out from Supabase:', error);
 		}
 
 		// Always clear local credentials (removes auth.json file)

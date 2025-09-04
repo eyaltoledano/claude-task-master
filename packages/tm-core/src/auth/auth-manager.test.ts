@@ -3,16 +3,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuthManager } from './auth-manager';
+import { AuthManager } from './auth-manager.js';
 
 // Mock the logger to verify warnings
-vi.mock('../logger', () => ({
-	getLogger: () => ({
-		warn: vi.fn(),
-		info: vi.fn(),
-		debug: vi.fn(),
-		error: vi.fn()
-	})
+const mockLogger = {
+	warn: vi.fn(),
+	info: vi.fn(),
+	debug: vi.fn(),
+	error: vi.fn()
+};
+
+vi.mock('../logger/index.js', () => ({
+	getLogger: () => mockLogger
 }));
 
 describe('AuthManager Singleton', () => {
@@ -24,58 +26,60 @@ describe('AuthManager Singleton', () => {
 	it('should return the same instance on multiple calls', () => {
 		const instance1 = AuthManager.getInstance();
 		const instance2 = AuthManager.getInstance();
-		
+
 		expect(instance1).toBe(instance2);
 	});
 
 	it('should use config on first call', () => {
-		const config = { 
+		const config = {
 			baseUrl: 'https://test.auth.com',
 			configDir: '/test/config',
 			configFile: '/test/config/auth.json'
 		};
-		
+
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
 	});
 
 	it('should warn when config is provided after initialization', () => {
-		const logger = vi.mocked(require('../logger').getLogger());
-		
+		// Clear previous calls
+		mockLogger.warn.mockClear();
+
 		// First call with config
 		AuthManager.getInstance({ baseUrl: 'https://first.auth.com' });
-		
+
 		// Second call with different config
 		AuthManager.getInstance({ baseUrl: 'https://second.auth.com' });
-		
+
 		// Verify warning was logged
-		expect(logger.warn).toHaveBeenCalledWith(
+		expect(mockLogger.warn).toHaveBeenCalledWith(
 			'getInstance called with config after initialization; config is ignored.'
 		);
 	});
 
 	it('should not warn when no config is provided after initialization', () => {
-		const logger = vi.mocked(require('../logger').getLogger());
-		
+		// Clear previous calls
+		mockLogger.warn.mockClear();
+
 		// First call with config
 		AuthManager.getInstance({ configDir: '/test/config' });
-		
+
 		// Second call without config
 		AuthManager.getInstance();
-		
+
 		// Verify no warning was logged
-		expect(logger.warn).not.toHaveBeenCalled();
+		expect(mockLogger.warn).not.toHaveBeenCalled();
 	});
 
 	it('should allow resetting the instance', () => {
 		const instance1 = AuthManager.getInstance();
-		
+
 		// Reset the instance
 		AuthManager.resetInstance();
-		
+
 		// Get new instance
 		const instance2 = AuthManager.getInstance();
-		
+
 		// They should be different instances
 		expect(instance1).not.toBe(instance2);
 	});
