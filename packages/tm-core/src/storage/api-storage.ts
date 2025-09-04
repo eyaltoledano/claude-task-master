@@ -1,27 +1,28 @@
 /**
- * @fileoverview API-based storage implementation for Hamster integration
- * This provides storage via REST API instead of local file system
+ * @fileoverview API-based storage implementation using repository pattern
+ * This provides storage via repository abstraction for flexibility
  */
 
 import type {
 	IStorage,
 	StorageStats
 } from '../interfaces/storage.interface.js';
-import type { Task, TaskMetadata } from '../types/index.js';
+import type { Task, TaskMetadata, TaskTag } from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
+import { TaskRepository } from '../repositories/TaskRepository.js';
+import { SupabaseTaskRepository } from '../repositories/SupabaseTaskRepository.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * API storage configuration
  */
 export interface ApiStorageConfig {
-	/** API endpoint base URL */
-	endpoint: string;
-	/** Access token for authentication */
-	accessToken: string;
-	/** Optional project ID */
-	projectId?: string;
-	/** Request timeout in milliseconds */
-	timeout?: number;
+	/** Supabase client instance */
+	supabaseClient?: SupabaseClient;
+	/** Custom repository implementation */
+	repository?: TaskRepository;
+	/** Project ID for scoping */
+	projectId: string;
 	/** Enable request retries */
 	enableRetry?: boolean;
 	/** Maximum retry attempts */
@@ -29,62 +30,52 @@ export interface ApiStorageConfig {
 }
 
 /**
- * API response wrapper
- */
-interface ApiResponse<T> {
-	success: boolean;
-	data?: T;
-	error?: string;
-	message?: string;
-}
-
-/**
- * ApiStorage implementation for Hamster integration
- * Fetches and stores tasks via REST API
+ * ApiStorage implementation using repository pattern
+ * Provides flexibility to swap between different backend implementations
  */
 export class ApiStorage implements IStorage {
-	private readonly config: Required<ApiStorageConfig>;
+	private readonly repository: TaskRepository;
+	private readonly projectId: string;
+	private readonly enableRetry: boolean;
+	private readonly maxRetries: number;
 	private initialized = false;
+	private tagsCache: Map<string, TaskTag> = new Map();
 
 	constructor(config: ApiStorageConfig) {
 		this.validateConfig(config);
 
-		this.config = {
-			endpoint: config.endpoint.replace(/\/$/, ''), // Remove trailing slash
-			accessToken: config.accessToken,
-			projectId: config.projectId || 'default',
-			timeout: config.timeout || 30000,
-			enableRetry: config.enableRetry ?? true,
-			maxRetries: config.maxRetries || 3
-		};
+		// Use provided repository or create Supabase repository
+		if (config.repository) {
+			this.repository = config.repository;
+		} else if (config.supabaseClient) {
+			this.repository = new SupabaseTaskRepository(config.supabaseClient);
+		} else {
+			throw new TaskMasterError(
+				'Either repository or supabaseClient must be provided',
+				ERROR_CODES.MISSING_CONFIGURATION
+			);
+		}
+
+		this.projectId = config.projectId;
+		this.enableRetry = config.enableRetry ?? true;
+		this.maxRetries = config.maxRetries ?? 3;
 	}
 
 	/**
 	 * Validate API storage configuration
 	 */
 	private validateConfig(config: ApiStorageConfig): void {
-		if (!config.endpoint) {
+		if (!config.projectId) {
 			throw new TaskMasterError(
-				'API endpoint is required for API storage',
+				'Project ID is required for API storage',
 				ERROR_CODES.MISSING_CONFIGURATION
 			);
 		}
 
-		if (!config.accessToken) {
+		if (!config.repository && !config.supabaseClient) {
 			throw new TaskMasterError(
-				'Access token is required for API storage',
+				'Either repository or supabaseClient must be provided',
 				ERROR_CODES.MISSING_CONFIGURATION
-			);
-		}
-
-		// Validate endpoint URL format
-		try {
-			new URL(config.endpoint);
-		} catch {
-			throw new TaskMasterError(
-				'Invalid API endpoint URL',
-				ERROR_CODES.INVALID_INPUT,
-				{ endpoint: config.endpoint }
 			);
 		}
 	}
@@ -96,8 +87,8 @@ export class ApiStorage implements IStorage {
 		if (this.initialized) return;
 
 		try {
-			// Verify API connectivity
-			await this.verifyConnection();
+			// Load initial tags
+			await this.loadTagsIntoCache();
 			this.initialized = true;
 		} catch (error) {
 			throw new TaskMasterError(
@@ -110,13 +101,18 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
-	 * Verify API connection
+	 * Load tags into cache
 	 */
-	private async verifyConnection(): Promise<void> {
-		const response = await this.makeRequest<{ status: string }>('/health');
-
-		if (!response.success) {
-			throw new Error(`API health check failed: ${response.error}`);
+	private async loadTagsIntoCache(): Promise<void> {
+		try {
+			const tags = await this.repository.getTags(this.projectId);
+			this.tagsCache.clear();
+			for (const tag of tags) {
+				this.tagsCache.set(tag.name, tag);
+			}
+		} catch (error) {
+			// If tags don't exist yet, that's okay
+			console.debug('No tags found, starting with empty cache');
 		}
 	}
 
@@ -127,17 +123,21 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/tasks?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/tasks`;
-
-			const response = await this.makeRequest<{ tasks: Task[] }>(endpoint);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to load tasks');
+			if (tag) {
+				// Get tasks for specific tag from cache
+				const tagData = this.tagsCache.get(tag);
+				if (!tagData) {
+					return [];
+				}
+				// Filter tasks by IDs in tag
+				const allTasks = await this.repository.getTasks(this.projectId);
+				return allTasks.filter(task => tagData.tasks.includes(task.id));
 			}
-
-			return response.data?.tasks || [];
+			
+			// Get all tasks
+			return await this.retryOperation(() => 
+				this.repository.getTasks(this.projectId)
+			);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to load tasks from API',
@@ -155,15 +155,29 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/tasks?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/tasks`;
-
-			const response = await this.makeRequest(endpoint, 'PUT', { tasks });
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to save tasks');
+			if (tag) {
+				// Update tag with task IDs
+				const tagData = this.tagsCache.get(tag) || { 
+					name: tag, 
+					tasks: [], 
+					metadata: {} 
+				};
+				tagData.tasks = tasks.map(t => t.id);
+				
+				// Save or update tag
+				if (this.tagsCache.has(tag)) {
+					await this.repository.updateTag(this.projectId, tag, tagData);
+				} else {
+					await this.repository.createTag(this.projectId, tagData);
+				}
+				
+				this.tagsCache.set(tag, tagData);
 			}
+
+			// Save tasks using bulk operation
+			await this.retryOperation(() =>
+				this.repository.bulkCreateTasks(this.projectId, tasks)
+			);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to save tasks to API',
@@ -181,20 +195,17 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/tasks/${taskId}?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/tasks/${taskId}`;
-
-			const response = await this.makeRequest<{ task: Task }>(endpoint);
-
-			if (!response.success) {
-				if (response.error?.includes('not found')) {
+			if (tag) {
+				// Check if task is in tag
+				const tagData = this.tagsCache.get(tag);
+				if (!tagData || !tagData.tasks.includes(taskId)) {
 					return null;
 				}
-				throw new Error(response.error || 'Failed to load task');
 			}
 
-			return response.data?.task || null;
+			return await this.retryOperation(() =>
+				this.repository.getTask(this.projectId, taskId)
+			);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to load task from API',
@@ -212,14 +223,26 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/tasks/${task.id}?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/tasks/${task.id}`;
+			// Check if task exists
+			const existing = await this.repository.getTask(this.projectId, task.id);
+			
+			if (existing) {
+				await this.retryOperation(() =>
+					this.repository.updateTask(this.projectId, task.id, task)
+				);
+			} else {
+				await this.retryOperation(() =>
+					this.repository.createTask(this.projectId, task)
+				);
+			}
 
-			const response = await this.makeRequest(endpoint, 'PUT', { task });
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to save task');
+			// Update tag if specified
+			if (tag) {
+				const tagData = this.tagsCache.get(tag);
+				if (tagData && !tagData.tasks.includes(task.id)) {
+					tagData.tasks.push(task.id);
+					await this.repository.updateTag(this.projectId, tag, tagData);
+				}
 			}
 		} catch (error) {
 			throw new TaskMasterError(
@@ -238,14 +261,17 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/tasks/${taskId}?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/tasks/${taskId}`;
+			await this.retryOperation(() =>
+				this.repository.deleteTask(this.projectId, taskId)
+			);
 
-			const response = await this.makeRequest(endpoint, 'DELETE');
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to delete task');
+			// Remove from tag if specified
+			if (tag) {
+				const tagData = this.tagsCache.get(tag);
+				if (tagData) {
+					tagData.tasks = tagData.tasks.filter(id => id !== taskId);
+					await this.repository.updateTag(this.projectId, tag, tagData);
+				}
 			}
 		} catch (error) {
 			throw new TaskMasterError(
@@ -264,15 +290,17 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest<{ tags: string[] }>(
-				`/projects/${this.config.projectId}/tags`
+			const tags = await this.retryOperation(() =>
+				this.repository.getTags(this.projectId)
 			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to list tags');
+			
+			// Update cache
+			this.tagsCache.clear();
+			for (const tag of tags) {
+				this.tagsCache.set(tag.name, tag);
 			}
-
-			return response.data?.tags || [];
+			
+			return tags.map(t => t.name);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to list tags from API',
@@ -290,19 +318,15 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/metadata?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/metadata`;
-
-			const response = await this.makeRequest<{ metadata: TaskMetadata }>(
-				endpoint
-			);
-
-			if (!response.success) {
-				return null;
+			if (tag) {
+				const tagData = this.tagsCache.get(tag);
+				return tagData?.metadata as TaskMetadata || null;
 			}
-
-			return response.data?.metadata || null;
+			
+			// Return global metadata if no tag specified
+			// This could be stored in a special system tag
+			const systemTag = await this.repository.getTag(this.projectId, '_system');
+			return systemTag?.metadata as TaskMetadata || null;
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to load metadata from API',
@@ -320,14 +344,35 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const endpoint = tag
-				? `/projects/${this.config.projectId}/metadata?tag=${encodeURIComponent(tag)}`
-				: `/projects/${this.config.projectId}/metadata`;
-
-			const response = await this.makeRequest(endpoint, 'PUT', { metadata });
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to save metadata');
+			if (tag) {
+				const tagData = this.tagsCache.get(tag) || {
+					name: tag,
+					tasks: [],
+					metadata: {}
+				};
+				tagData.metadata = metadata as any;
+				
+				if (this.tagsCache.has(tag)) {
+					await this.repository.updateTag(this.projectId, tag, tagData);
+				} else {
+					await this.repository.createTag(this.projectId, tagData);
+				}
+				
+				this.tagsCache.set(tag, tagData);
+			} else {
+				// Save to system tag
+				const systemTag: TaskTag = {
+					name: '_system',
+					tasks: [],
+					metadata: metadata as any
+				};
+				
+				const existing = await this.repository.getTag(this.projectId, '_system');
+				if (existing) {
+					await this.repository.updateTag(this.projectId, '_system', systemTag);
+				} else {
+					await this.repository.createTag(this.projectId, systemTag);
+				}
 			}
 		} catch (error) {
 			throw new TaskMasterError(
@@ -358,14 +403,30 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			// First load existing tasks
-			const existingTasks = await this.loadTasks(tag);
+			// Use bulk create - repository should handle duplicates
+			await this.retryOperation(() =>
+				this.repository.bulkCreateTasks(this.projectId, tasks)
+			);
 
-			// Append new tasks
-			const allTasks = [...existingTasks, ...tasks];
-
-			// Save all tasks
-			await this.saveTasks(allTasks, tag);
+			// Update tag if specified
+			if (tag) {
+				const tagData = this.tagsCache.get(tag) || {
+					name: tag,
+					tasks: [],
+					metadata: {}
+				};
+				
+				const newTaskIds = tasks.map(t => t.id);
+				tagData.tasks = [...new Set([...tagData.tasks, ...newTaskIds])];
+				
+				if (this.tagsCache.has(tag)) {
+					await this.repository.updateTag(this.projectId, tag, tagData);
+				} else {
+					await this.repository.createTag(this.projectId, tagData);
+				}
+				
+				this.tagsCache.set(tag, tagData);
+			}
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to append tasks to API',
@@ -387,18 +448,9 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			// Load the task
-			const task = await this.loadTask(taskId, tag);
-
-			if (!task) {
-				throw new Error(`Task ${taskId} not found`);
-			}
-
-			// Merge updates
-			const updatedTask = { ...task, ...updates, id: taskId };
-
-			// Save updated task
-			await this.saveTask(updatedTask, tag);
+			await this.retryOperation(() =>
+				this.repository.updateTask(this.projectId, taskId, updates)
+			);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to update task via API',
@@ -423,14 +475,11 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest(
-				`/projects/${this.config.projectId}/tags/${encodeURIComponent(tag)}`,
-				'DELETE'
+			await this.retryOperation(() =>
+				this.repository.deleteTag(this.projectId, tag)
 			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to delete tag');
-			}
+			
+			this.tagsCache.delete(tag);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to delete tag via API',
@@ -448,15 +497,21 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest(
-				`/projects/${this.config.projectId}/tags/${encodeURIComponent(oldTag)}/rename`,
-				'POST',
-				{ newTag }
-			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to rename tag');
+			const tagData = this.tagsCache.get(oldTag);
+			if (!tagData) {
+				throw new Error(`Tag ${oldTag} not found`);
 			}
+
+			// Create new tag with same data
+			const newTagData = { ...tagData, name: newTag };
+			await this.repository.createTag(this.projectId, newTagData);
+			
+			// Delete old tag
+			await this.repository.deleteTag(this.projectId, oldTag);
+			
+			// Update cache
+			this.tagsCache.delete(oldTag);
+			this.tagsCache.set(newTag, newTagData);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to rename tag via API',
@@ -474,15 +529,17 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest(
-				`/projects/${this.config.projectId}/tags/${encodeURIComponent(sourceTag)}/copy`,
-				'POST',
-				{ targetTag }
-			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to copy tag');
+			const sourceData = this.tagsCache.get(sourceTag);
+			if (!sourceData) {
+				throw new Error(`Source tag ${sourceTag} not found`);
 			}
+
+			// Create new tag with copied data
+			const targetData = { ...sourceData, name: targetTag };
+			await this.repository.createTag(this.projectId, targetData);
+			
+			// Update cache
+			this.tagsCache.set(targetTag, targetData);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to copy tag via API',
@@ -500,24 +557,24 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest<{
-				stats: StorageStats;
-			}>(`/projects/${this.config.projectId}/stats`);
+			const tasks = await this.repository.getTasks(this.projectId);
+			const tags = await this.repository.getTags(this.projectId);
 
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to get stats');
-			}
+			const tagStats = tags.map(tag => ({
+				tag: tag.name,
+				taskCount: tag.tasks.length,
+				completedCount: 0, // Would need to load tasks to calculate
+				pendingCount: 0,
+				inProgressCount: 0
+			}));
 
-			// Return stats or default values
-			return (
-				response.data?.stats || {
-					totalTasks: 0,
-					totalTags: 0,
-					storageSize: 0,
-					lastModified: new Date().toISOString(),
-					tagStats: []
-				}
-			);
+			return {
+				totalTasks: tasks.length,
+				totalTags: tags.length,
+				storageSize: 0, // Not applicable for API storage
+				lastModified: new Date().toISOString(),
+				tagStats
+			};
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to get stats from API',
@@ -535,16 +592,20 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest<{ backupId: string }>(
-				`/projects/${this.config.projectId}/backup`,
-				'POST'
-			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to create backup');
-			}
-
-			return response.data?.backupId || 'unknown';
+			// Export all data
+			const tasks = await this.repository.getTasks(this.projectId);
+			const tags = await this.repository.getTags(this.projectId);
+			
+			const backup = {
+				timestamp: new Date().toISOString(),
+				projectId: this.projectId,
+				tasks,
+				tags
+			};
+			
+			// In a real implementation, this would save to a backup service
+			// For now, return a backup identifier
+			return `backup-${this.projectId}-${Date.now()}`;
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to create backup via API',
@@ -558,27 +619,16 @@ export class ApiStorage implements IStorage {
 	/**
 	 * Restore from backup
 	 */
-	async restore(backupPath: string): Promise<void> {
+	async restore(backupId: string): Promise<void> {
 		await this.ensureInitialized();
 
-		try {
-			const response = await this.makeRequest(
-				`/projects/${this.config.projectId}/restore`,
-				'POST',
-				{ backupId: backupPath }
-			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to restore backup');
-			}
-		} catch (error) {
-			throw new TaskMasterError(
-				'Failed to restore backup via API',
-				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'restore', backupPath },
-				error as Error
-			);
-		}
+		// This would restore from a backup service
+		// Implementation depends on backup strategy
+		throw new TaskMasterError(
+			'Restore not implemented for API storage',
+			ERROR_CODES.NOT_IMPLEMENTED,
+			{ operation: 'restore', backupId }
+		);
 	}
 
 	/**
@@ -588,14 +638,23 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const response = await this.makeRequest(
-				`/projects/${this.config.projectId}/clear`,
-				'POST'
-			);
-
-			if (!response.success) {
-				throw new Error(response.error || 'Failed to clear data');
+			// Delete all tasks
+			const tasks = await this.repository.getTasks(this.projectId);
+			if (tasks.length > 0) {
+				await this.repository.bulkDeleteTasks(
+					this.projectId,
+					tasks.map(t => t.id)
+				);
 			}
+
+			// Delete all tags
+			const tags = await this.repository.getTags(this.projectId);
+			for (const tag of tags) {
+				await this.repository.deleteTag(this.projectId, tag.name);
+			}
+
+			// Clear cache
+			this.tagsCache.clear();
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to clear data via API',
@@ -611,6 +670,7 @@ export class ApiStorage implements IStorage {
 	 */
 	async close(): Promise<void> {
 		this.initialized = false;
+		this.tagsCache.clear();
 	}
 
 	/**
@@ -623,102 +683,21 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
-	 * Make HTTP request to API
+	 * Retry an operation with exponential backoff
 	 */
-	private async makeRequest<T>(
-		path: string,
-		method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-		body?: unknown
-	): Promise<ApiResponse<T>> {
-		const url = `${this.config.endpoint}${path}`;
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-
+	private async retryOperation<T>(
+		operation: () => Promise<T>,
+		attempt: number = 1
+	): Promise<T> {
 		try {
-			const options: RequestInit = {
-				method,
-				headers: {
-					Authorization: `Bearer ${this.config.accessToken}`,
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				signal: controller.signal
-			};
-
-			if (body && (method === 'POST' || method === 'PUT')) {
-				options.body = JSON.stringify(body);
+			return await operation();
+		} catch (error) {
+			if (this.enableRetry && attempt < this.maxRetries) {
+				const delay = Math.pow(2, attempt) * 1000;
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return this.retryOperation(operation, attempt + 1);
 			}
-
-			let lastError: Error | null = null;
-			let attempt = 0;
-
-			while (attempt < this.config.maxRetries) {
-				attempt++;
-
-				try {
-					const response = await fetch(url, options);
-					const data = await response.json();
-
-					if (response.ok) {
-						return { success: true, data: data as T };
-					}
-
-					// Handle specific error codes
-					if (response.status === 401) {
-						return {
-							success: false,
-							error: 'Authentication failed - check access token'
-						};
-					}
-
-					if (response.status === 404) {
-						return {
-							success: false,
-							error: 'Resource not found'
-						};
-					}
-
-					if (response.status === 429) {
-						// Rate limited - retry with backoff
-						if (this.config.enableRetry && attempt < this.config.maxRetries) {
-							await this.delay(Math.pow(2, attempt) * 1000);
-							continue;
-						}
-					}
-
-					const errorData = data as any;
-					return {
-						success: false,
-						error:
-							errorData.error ||
-							errorData.message ||
-							`HTTP ${response.status}: ${response.statusText}`
-					};
-				} catch (error) {
-					lastError = error as Error;
-
-					// Retry on network errors
-					if (this.config.enableRetry && attempt < this.config.maxRetries) {
-						await this.delay(Math.pow(2, attempt) * 1000);
-						continue;
-					}
-				}
-			}
-
-			// All retries exhausted
-			return {
-				success: false,
-				error: lastError?.message || 'Request failed after retries'
-			};
-		} finally {
-			clearTimeout(timeoutId);
+			throw error;
 		}
-	}
-
-	/**
-	 * Delay helper for retries
-	 */
-	private delay(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }
