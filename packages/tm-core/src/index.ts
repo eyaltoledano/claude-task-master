@@ -43,3 +43,15 @@ export * from './errors';
 
 // Re-export entities
 export { TaskEntity } from './entities/task.entity';
+
+// Re-export authentication
+export {
+	AuthManager,
+	AuthenticationError,
+	type AuthCredentials,
+	type OAuthFlowOptions,
+	type AuthConfig
+} from './auth';
+
+// Re-export logger
+export { getLogger, createLogger, setGlobalLogger } from './logger';

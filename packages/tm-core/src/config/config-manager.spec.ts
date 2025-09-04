@@ -177,7 +177,7 @@ describe('ConfigManager', () => {
 
 		it('should return storage configuration', () => {
 			const storage = manager.getStorageConfig();
-			expect(storage).toEqual({ type: 'file' });
+			expect(storage).toEqual({ type: 'auto', apiConfigured: false });
 		});
 
 		it('should return API storage configuration when configured', async () => {
@@ -206,7 +206,65 @@ describe('ConfigManager', () => {
 			expect(storage).toEqual({
 				type: 'api',
 				apiEndpoint: 'https://api.example.com',
-				apiAccessToken: 'token123'
+				apiAccessToken: 'token123',
+				apiConfigured: true
+			});
+		});
+
+		it('should return auto storage configuration with apiConfigured flag', async () => {
+			// Create a new instance with auto storage config and partial API settings
+			vi.mocked(ConfigMerger).mockImplementationOnce(
+				() =>
+					({
+						addSource: vi.fn(),
+						clearSources: vi.fn(),
+						merge: vi.fn().mockReturnValue({
+							storage: {
+								type: 'auto',
+								apiEndpoint: 'https://api.example.com'
+								// No apiAccessToken - partial config
+							}
+						}),
+						getSources: vi.fn().mockReturnValue([])
+					}) as any
+			);
+
+			const autoManager = await ConfigManager.create(testProjectRoot);
+
+			const storage = autoManager.getStorageConfig();
+			expect(storage).toEqual({
+				type: 'auto',
+				apiEndpoint: 'https://api.example.com',
+				apiAccessToken: undefined,
+				apiConfigured: true // true because apiEndpoint is provided
+			});
+		});
+
+		it('should return auto storage with apiConfigured false when no API settings', async () => {
+			// Create a new instance with auto storage but no API settings
+			vi.mocked(ConfigMerger).mockImplementationOnce(
+				() =>
+					({
+						addSource: vi.fn(),
+						clearSources: vi.fn(),
+						merge: vi.fn().mockReturnValue({
+							storage: {
+								type: 'auto'
+								// No API settings at all
+							}
+						}),
+						getSources: vi.fn().mockReturnValue([])
+					}) as any
+			);
+
+			const autoManager = await ConfigManager.create(testProjectRoot);
+
+			const storage = autoManager.getStorageConfig();
+			expect(storage).toEqual({
+				type: 'auto',
+				apiEndpoint: undefined,
+				apiAccessToken: undefined,
+				apiConfigured: false // false because no API settings
 			});
 		});
 

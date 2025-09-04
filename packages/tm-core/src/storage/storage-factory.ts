@@ -7,6 +7,8 @@ import type { IConfiguration } from '../interfaces/configuration.interface.js';
 import { FileStorage } from './file-storage';
 import { ApiStorage } from './api-storage.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
+import { AuthManager } from '../auth/auth-manager.js';
+import { getLogger } from '../logger/index.js';
 
 /**
  * Factory for creating storage implementations based on configuration
@@ -22,14 +24,76 @@ export class StorageFactory {
 		config: Partial<IConfiguration>,
 		projectPath: string
 	): IStorage {
-		const storageType = config.storage?.type || 'file';
+		const storageType = config.storage?.type || 'auto';
+
+		const logger = getLogger('StorageFactory');
 
 		switch (storageType) {
 			case 'file':
+				logger.debug('📁 Using local file storage');
 				return StorageFactory.createFileStorage(projectPath, config);
 
 			case 'api':
+				if (!StorageFactory.isHamsterAvailable(config)) {
+					// Check if authenticated via AuthManager
+					const authManager = AuthManager.getInstance();
+					if (!authManager.isAuthenticated()) {
+						throw new TaskMasterError(
+							'API storage configured but not authenticated. Run: tm auth login',
+							ERROR_CODES.MISSING_CONFIGURATION,
+							{ storageType: 'api' }
+						);
+					}
+					// Use auth token from AuthManager
+					const credentials = authManager.getCredentials();
+					if (credentials) {
+						// Merge with existing storage config, ensuring required fields
+						config.storage = {
+							...config.storage,
+							type: 'api' as const,
+							apiAccessToken: credentials.token,
+							apiEndpoint:
+								config.storage?.apiEndpoint ||
+								process.env.HAMSTER_API_URL ||
+								'https://tryhamster.com/api'
+						} as any; // Cast to any to bypass strict type checking for partial config
+					}
+				}
+				logger.info('☁️  Using API storage');
 				return StorageFactory.createApiStorage(config);
+
+			case 'auto':
+				// Auto-detect based on authentication status
+				const authManager = AuthManager.getInstance();
+
+				// First check if API credentials are explicitly configured
+				if (StorageFactory.isHamsterAvailable(config)) {
+					logger.info('☁️  Using API storage (configured)');
+					return StorageFactory.createApiStorage(config);
+				}
+
+				// Then check if authenticated via AuthManager
+				if (authManager.isAuthenticated()) {
+					const credentials = authManager.getCredentials();
+					if (credentials) {
+						// Configure API storage with auth credentials
+						config.storage = {
+							...config.storage,
+							type: 'api' as const,
+							apiAccessToken: credentials.token,
+							apiEndpoint:
+								config.storage?.apiEndpoint ||
+								process.env.HAMSTER_API_URL ||
+								'https://tryhamster.com/api'
+						} as any; // Cast to any to bypass strict type checking for partial config
+						logger.info('☁️  Using API storage (authenticated)');
+						return StorageFactory.createApiStorage(config);
+					}
+				}
+
+				// Default to file storage
+				logger.debug('📁 Using local file storage');
+				return StorageFactory.createFileStorage(projectPath, config);
 
 			default:
 				throw new TaskMasterError(
@@ -157,7 +221,8 @@ export class StorageFactory {
 				await apiStorage.initialize();
 				return apiStorage;
 			} catch (error) {
-				console.warn(
+				const logger = getLogger('StorageFactory');
+				logger.warn(
 					'Failed to initialize API storage, falling back to file storage:',
 					error
 				);

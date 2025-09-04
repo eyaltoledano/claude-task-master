@@ -3,29 +3,17 @@
  * This file exports all utility functions and helper classes
  */
 
-// Utility implementations will be defined here
-// export * from './validation.js';
-// export * from './formatting.js';
-// export * from './file-utils.js';
-// export * from './async-utils.js';
+// Export ID generation utilities
+export {
+	generateTaskId as generateId, // Alias for backward compatibility
+	generateTaskId,
+	generateSubtaskId,
+	isValidTaskId,
+	isValidSubtaskId,
+	getParentTaskId
+} from './id-generator';
 
-// Placeholder exports - these will be implemented in later tasks
-
-/**
- * Generates a unique ID for tasks
- * @deprecated This is a placeholder function that will be properly implemented in later tasks
- */
-export function generateTaskId(): string {
-	return `task-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * Validates a task ID format
- * @deprecated This is a placeholder function that will be properly implemented in later tasks
- */
-export function isValidTaskId(id: string): boolean {
-	return typeof id === 'string' && id.length > 0;
-}
+// Additional utility exports
 
 /**
  * Formats a date for task timestamps

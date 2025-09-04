@@ -31,7 +31,7 @@ export class EnvironmentConfigProvider {
 		{
 			env: 'TASKMASTER_STORAGE_TYPE',
 			path: ['storage', 'type'],
-			validate: (v: string) => ['file', 'api'].includes(v)
+			validate: (v: string) => ['file', 'api', 'auto'].includes(v)
 		},
 		{ env: 'TASKMASTER_API_ENDPOINT', path: ['storage', 'apiEndpoint'] },
 		{ env: 'TASKMASTER_API_TOKEN', path: ['storage', 'apiAccessToken'] },

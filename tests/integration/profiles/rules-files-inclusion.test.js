@@ -89,10 +89,14 @@ describe('Rules Files Inclusion in Package', () => {
 	test('source Roo files exist in public/assets directory', () => {
 		// Verify that the source files for Roo integration exist
 		expect(
-			fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'roocode', '.roo'))
+			fs.existsSync(
+				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roo')
+			)
 		).toBe(true);
 		expect(
-			fs.existsSync(path.join(process.cwd(), 'public', 'assets', 'roocode', '.roomodes'))
+			fs.existsSync(
+				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roomodes')
+			)
 		).toBe(true);
 	});
 });
