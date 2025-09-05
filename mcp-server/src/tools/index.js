@@ -40,7 +40,7 @@ function getToolsConfiguration() {
 export function registerTaskMasterTools(server, toolMode = 'all') {
 	const registeredTools = [];
 	const failedTools = [];
-	
+
 	try {
 		const enabledTools = toolMode.trim();
 		let toolsToRegister = [];
@@ -67,14 +67,54 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 					.map((t) => t.trim())
 					.filter((t) => t.length > 0);
 
-				toolsToRegister = requestedTools.filter((toolName) => {
-					if (toolRegistry[toolName]) {
-						return true;
-					} else {
-						logger.warn(`Unknown tool specified: "${toolName}"`);
-						return false;
+				const uniqueTools = new Set();
+				const unknownTools = [];
+
+				for (const toolName of requestedTools) {
+					let resolvedName = null;
+					const lowerToolName = toolName.toLowerCase();
+
+					for (const registryKey of Object.keys(toolRegistry)) {
+						if (registryKey.toLowerCase() === lowerToolName) {
+							resolvedName = registryKey;
+							break;
+						}
 					}
-				});
+
+					if (!resolvedName) {
+						const withHyphens = lowerToolName.replace(/_/g, '-');
+						for (const registryKey of Object.keys(toolRegistry)) {
+							if (registryKey.toLowerCase() === withHyphens) {
+								resolvedName = registryKey;
+								break;
+							}
+						}
+					}
+
+					if (!resolvedName) {
+						const withUnderscores = lowerToolName.replace(/-/g, '_');
+						for (const registryKey of Object.keys(toolRegistry)) {
+							if (registryKey.toLowerCase() === withUnderscores) {
+								resolvedName = registryKey;
+								break;
+							}
+						}
+					}
+
+					if (resolvedName) {
+						uniqueTools.add(resolvedName);
+						logger.debug(`Resolved tool "${toolName}" to "${resolvedName}"`);
+					} else {
+						unknownTools.push(toolName);
+						logger.warn(`Unknown tool specified: "${toolName}"`);
+					}
+				}
+
+				toolsToRegister = Array.from(uniqueTools);
+
+				if (unknownTools.length > 0) {
+					logger.warn(`Unknown tools: ${unknownTools.join(', ')}`);
+				}
 
 				if (toolsToRegister.length === 0) {
 					logger.warn(
@@ -83,7 +123,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 					toolsToRegister = Object.keys(toolRegistry);
 				} else {
 					logger.info(
-						`Loading ${toolsToRegister.length} custom tools from list`
+						`Loading ${toolsToRegister.length} custom tools from list (${uniqueTools.size} unique after normalization)`
 					);
 				}
 				break;
@@ -115,7 +155,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 		if (failedTools.length > 0) {
 			logger.warn(`Failed tools: ${failedTools.join(', ')}`);
 		}
-		
+
 		return {
 			registeredTools,
 			failedTools,
@@ -144,7 +184,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 			}
 		}
 		logger.info(`Successfully registered ${registeredTools.length} fallback tools`);
-		
+
 		return {
 			registeredTools,
 			failedTools,
