@@ -30,6 +30,11 @@ import {
 	standardTools 
 } from '../../../../mcp-server/src/tools/tool-registry.js';
 
+// Derive constants from imported registry to avoid brittle magic numbers
+const ALL_COUNT = Object.keys(toolRegistry).length;
+const CORE_COUNT = coreTools.length;
+const STANDARD_COUNT = standardTools.length;
+
 describe('Task Master Tool Registration System', () => {
 	let mockServer;
 	let originalEnv;
@@ -119,7 +124,7 @@ describe('Task Master Tool Registration System', () => {
 	});
 
 	describe('Configuration Modes', () => {
-		it('should register all tools (36) when TASK_MASTER_TOOLS is not set (default behavior)', () => {
+		it(`should register all tools (${ALL_COUNT}) when TASK_MASTER_TOOLS is not set (default behavior)`, () => {
 			delete process.env.TASK_MASTER_TOOLS;
 
 			registerTaskMasterTools(mockServer);
@@ -127,15 +132,15 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.total);
 		});
 
-		it('should register all tools (36) when TASK_MASTER_TOOLS=all', () => {
+		it(`should register all tools (${ALL_COUNT}) when TASK_MASTER_TOOLS=all`, () => {
 			process.env.TASK_MASTER_TOOLS = 'all';
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
-		it('should register exactly 7 core tools when TASK_MASTER_TOOLS=core', () => {
+		it(`should register exactly ${CORE_COUNT} core tools when TASK_MASTER_TOOLS=core`, () => {
 			process.env.TASK_MASTER_TOOLS = 'core';
 
 			registerTaskMasterTools(mockServer, 'core');
@@ -143,7 +148,7 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.core);
 		});
 
-		it('should register exactly 15 standard tools when TASK_MASTER_TOOLS=standard', () => {
+		it(`should register exactly ${STANDARD_COUNT} standard tools when TASK_MASTER_TOOLS=standard`, () => {
 			process.env.TASK_MASTER_TOOLS = 'standard';
 
 			registerTaskMasterTools(mockServer, 'standard');
@@ -151,12 +156,12 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.standard);
 		});
 
-		it('should treat lean as alias for core mode (7 tools)', () => {
+		it(`should treat lean as alias for core mode (${CORE_COUNT} tools)`, () => {
 			process.env.TASK_MASTER_TOOLS = 'lean';
 
 			registerTaskMasterTools(mockServer, 'lean');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(CORE_COUNT);
 		});
 
 		it('should handle case insensitive configuration values', () => {
@@ -164,7 +169,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer, 'CORE');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(CORE_COUNT);
 		});
 	});
 
@@ -191,7 +196,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
 		it('should handle empty string environment variable', () => {
@@ -199,7 +204,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
 		it('should handle whitespace in comma-separated lists', () => {
@@ -223,7 +228,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
 		it('should handle single tool selection', () => {
@@ -240,14 +245,14 @@ describe('Task Master Tool Registration System', () => {
 			const testCases = [
 				{
 					env: undefined,
-					expectedCount: 36,
+					expectedCount: ALL_COUNT,
 					description: 'undefined env (all)'
 				},
-				{ env: '', expectedCount: 36, description: 'empty string (all)' },
-				{ env: 'all', expectedCount: 36, description: 'all mode' },
-				{ env: 'core', expectedCount: 7, description: 'core mode' },
-				{ env: 'lean', expectedCount: 7, description: 'lean mode (alias)' },
-				{ env: 'standard', expectedCount: 15, description: 'standard mode' },
+				{ env: '', expectedCount: ALL_COUNT, description: 'empty string (all)' },
+				{ env: 'all', expectedCount: ALL_COUNT, description: 'all mode' },
+				{ env: 'core', expectedCount: CORE_COUNT, description: 'core mode' },
+				{ env: 'lean', expectedCount: CORE_COUNT, description: 'lean mode (alias)' },
+				{ env: 'standard', expectedCount: STANDARD_COUNT, description: 'standard mode' },
 				{
 					env: 'get_tasks,next_task',
 					expectedCount: 2,
@@ -255,7 +260,7 @@ describe('Task Master Tool Registration System', () => {
 				},
 				{
 					env: 'invalid_tool',
-					expectedCount: 36,
+					expectedCount: ALL_COUNT,
 					description: 'invalid fallback'
 				}
 			];
@@ -288,7 +293,7 @@ describe('Task Master Tool Registration System', () => {
 			const executionTime = endTime - startTime;
 
 			expect(executionTime).toBeLessThan(100);
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
 		it('should validate token reduction claims', () => {
@@ -297,9 +302,9 @@ describe('Task Master Tool Registration System', () => {
 				Object.keys(toolRegistry).length
 			);
 
-			expect(coreTools.length).toBe(7);
-			expect(standardTools.length).toBe(15);
-			expect(Object.keys(toolRegistry).length).toBe(36);
+			expect(coreTools.length).toBe(CORE_COUNT);
+			expect(standardTools.length).toBe(STANDARD_COUNT);
+			expect(Object.keys(toolRegistry).length).toBe(ALL_COUNT);
 
 			const allToolsCount = Object.keys(toolRegistry).length;
 			const coreReduction =
@@ -332,7 +337,7 @@ describe('Task Master Tool Registration System', () => {
 			registerTaskMasterTools(mockServer, 'core');
 			registerTaskMasterTools(mockServer, 'core');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(21);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(CORE_COUNT * 3);
 		});
 
 		it('should validate all documented tool categories exist', () => {
@@ -377,7 +382,7 @@ describe('Task Master Tool Registration System', () => {
 
 				expect(() => registerTaskMasterTools(mockServer)).not.toThrow();
 
-				expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+				expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 			});
 		});
 	});
