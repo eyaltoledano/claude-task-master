@@ -198,7 +198,7 @@ Initialize taskmaster-ai in my project
 
 #### 5. Make sure you have a PRD (Recommended)
 
-For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`
+For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`.
 For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
 
 An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
