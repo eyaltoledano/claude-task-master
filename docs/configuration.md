@@ -93,7 +93,8 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 #### How to Configure
 
 1. **In MCP configuration files** (`.cursor/mcp.json`, `.vscode/mcp.json`, etc.) - **Recommended**:
-   ```json
+
+   ```jsonc
    {
      "mcpServers": {
        "task-master-ai": {
@@ -107,6 +108,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
    ```
 
 2. **Via Claude Code CLI**:
+
    ```bash
    claude mcp add task-master-ai --scope user \
      --env TASK_MASTER_TOOLS="core" \
