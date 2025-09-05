@@ -56,7 +56,6 @@ describe('Task Master Tool Registration System', () => {
 		}
 
 		jest.clearAllMocks();
-		jest.resetModules();
 	});
 
 	describe('Test Environment Setup', () => {
