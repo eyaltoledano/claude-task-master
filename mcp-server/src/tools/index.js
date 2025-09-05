@@ -17,7 +17,7 @@ import {
  * Helper function to safely read and normalize the TASK_MASTER_TOOLS environment variable
  * @returns {string} The tools configuration string, defaults to 'all'
  */
-function getToolsConfiguration() {
+export function getToolsConfiguration() {
 	const rawValue = process.env.TASK_MASTER_TOOLS;
 
 	if (!rawValue || rawValue.trim() === '') {
