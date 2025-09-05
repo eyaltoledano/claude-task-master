@@ -9,7 +9,6 @@ import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
 import packageJson from '../../package.json' with { type: 'json' };
 
-// Load environment variables
 dotenv.config();
 
 // Constants
@@ -29,12 +28,10 @@ class TaskMasterMCPServer {
 		this.server = new FastMCP(this.options);
 		this.initialized = false;
 
-		// Bind methods
 		this.init = this.init.bind(this);
 		this.start = this.start.bind(this);
 		this.stop = this.stop.bind(this);
 
-		// Setup logging
 		this.logger = logger;
 	}
 
@@ -44,15 +41,25 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
-		// Read tool mode configuration
-		const toolMode = process.env.TASK_MASTER_TOOLS || 'all';
+		const rawToolMode = process.env.TASK_MASTER_TOOLS || 'all';
 
-		// Log startup information
+		const normalizedToolMode = rawToolMode.trim() || 'all';
+
 		this.logger.info('Task Master MCP Server starting...');
-		this.logger.info(`Tool mode: ${toolMode}`);
+		this.logger.info(`Tool mode configuration: ${rawToolMode}`);
 
-		// Pass the manager instance to the tool registration function
-		registerTaskMasterTools(this.server, this.asyncManager);
+		const registrationResult = registerTaskMasterTools(this.server, normalizedToolMode);
+
+		this.logger.info(`Normalized tool mode: ${registrationResult.normalizedMode}`);
+		this.logger.info(`Registered ${registrationResult.registeredTools.length} tools successfully`);
+
+		if (registrationResult.registeredTools.length > 0) {
+			this.logger.info(`Registered tools: ${registrationResult.registeredTools.join(', ')}`);
+		}
+
+		if (registrationResult.failedTools.length > 0) {
+			this.logger.warn(`Failed to register ${registrationResult.failedTools.length} tools: ${registrationResult.failedTools.join(', ')}`);
+		}
 
 		this.initialized = true;
 
