@@ -20,15 +20,21 @@ import {
 	validateToolStructure
 } from '../../../helpers/tool-counts.js';
 
+// Reset modules before static imports to ensure mocks are registered first
+jest.resetModules();
+
+import { registerTaskMasterTools } from '../../../../mcp-server/src/tools/index.js';
+import { 
+	toolRegistry, 
+	coreTools, 
+	standardTools 
+} from '../../../../mcp-server/src/tools/tool-registry.js';
+
 describe('Task Master Tool Registration System', () => {
 	let mockServer;
 	let originalEnv;
-	let registerTaskMasterTools;
-	let toolRegistry;
-	let coreTools;
-	let standardTools;
 
-	beforeEach(async () => {
+	beforeEach(() => {
 		originalEnv = process.env.TASK_MASTER_TOOLS;
 
 		mockServer = {
@@ -40,19 +46,6 @@ describe('Task Master Tool Registration System', () => {
 		};
 
 		delete process.env.TASK_MASTER_TOOLS;
-
-		jest.resetModules();
-		const indexModule = await import(
-			'../../../../mcp-server/src/tools/index.js'
-		);
-		const registryModule = await import(
-			'../../../../mcp-server/src/tools/tool-registry.js'
-		);
-
-		registerTaskMasterTools = indexModule.registerTaskMasterTools;
-		toolRegistry = registryModule.toolRegistry;
-		coreTools = registryModule.coreTools;
-		standardTools = registryModule.standardTools;
 	});
 
 	afterEach(() => {
