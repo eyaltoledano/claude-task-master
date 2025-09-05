@@ -89,14 +89,14 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 
 #### How to Configure
 
-1. **In MCP configuration files** (`.cursor/mcp.json`, `.vscode/mcp.json`, etc.):
+1. **In MCP configuration files** (`.cursor/mcp.json`, `.vscode/mcp.json`, etc.) - **Recommended**:
    ```json
    {
      "mcpServers": {
        "task-master-ai": {
          "env": {
-           "TASK_MASTER_TOOLS": "standard",  // Add this line
-           // ... API keys
+           "TASK_MASTER_TOOLS": "standard",  // Set tool loading mode
+           // API keys can still use .env for security
          }
        }
      }
@@ -110,7 +110,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
      -- npx -y task-master-ai@latest
    ```
 
-3. **In environment variables** (for development/testing):
+3. **In CI/deployment environment variables**:
    ```bash
    export TASK_MASTER_TOOLS="standard"
    node mcp-server/server.js
