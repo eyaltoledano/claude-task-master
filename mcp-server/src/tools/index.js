@@ -34,10 +34,15 @@ function getToolsConfiguration() {
  * Register Task Master tools with the MCP server
  * Supports selective tool loading via TASK_MASTER_TOOLS environment variable
  * @param {Object} server - FastMCP server instance
+ * @param {string} toolMode - The tool mode configuration (defaults to 'all')
+ * @returns {Object} Object containing registered tools, failed tools, and normalized mode
  */
-export function registerTaskMasterTools(server) {
+export function registerTaskMasterTools(server, toolMode = 'all') {
+	const registeredTools = [];
+	const failedTools = [];
+	
 	try {
-		const enabledTools = getToolsConfiguration();
+		const enabledTools = toolMode.trim();
 		let toolsToRegister = [];
 
 		const lowerCaseConfig = enabledTools.toLowerCase();
@@ -88,15 +93,12 @@ export function registerTaskMasterTools(server) {
 			`Registering ${toolsToRegister.length} MCP tools (mode: ${enabledTools})`
 		);
 
-		let successCount = 0;
-		let failedTools = [];
-
 		toolsToRegister.forEach((toolName) => {
 			try {
 				if (toolRegistry[toolName]) {
 					toolRegistry[toolName](server);
 					logger.debug(`Registered tool: ${toolName}`);
-					successCount++;
+					registeredTools.push(toolName);
 				} else {
 					logger.warn(`Tool ${toolName} not found in registry`);
 					failedTools.push(toolName);
@@ -108,11 +110,17 @@ export function registerTaskMasterTools(server) {
 		});
 
 		logger.info(
-			`Successfully registered ${successCount}/${toolsToRegister.length} tools`
+			`Successfully registered ${registeredTools.length}/${toolsToRegister.length} tools`
 		);
 		if (failedTools.length > 0) {
 			logger.warn(`Failed tools: ${failedTools.join(', ')}`);
 		}
+		
+		return {
+			registeredTools,
+			failedTools,
+			normalizedMode: lowerCaseConfig
+		};
 	} catch (error) {
 		logger.error(
 			`Error parsing TASK_MASTER_TOOLS environment variable: ${error.message}`
@@ -120,17 +128,28 @@ export function registerTaskMasterTools(server) {
 		logger.info('Falling back to loading all tools');
 
 		const fallbackTools = Object.keys(toolRegistry);
-		let registeredCount = 0;
 		for (const toolName of fallbackTools) {
 			const registerFunction = getToolRegistration(toolName);
 			if (registerFunction) {
-				registerFunction(server);
-				registeredCount++;
+				try {
+					registerFunction(server);
+					registeredTools.push(toolName);
+				} catch (err) {
+					logger.warn(`Failed to register fallback tool '${toolName}': ${err.message}`);
+					failedTools.push(toolName);
+				}
 			} else {
 				logger.warn(`Tool '${toolName}' not found in registry`);
+				failedTools.push(toolName);
 			}
 		}
-		logger.info(`Successfully registered ${registeredCount} fallback tools`);
+		logger.info(`Successfully registered ${registeredTools.length} fallback tools`);
+		
+		return {
+			registeredTools,
+			failedTools,
+			normalizedMode: 'all'
+		};
 	}
 }
 
