@@ -54,7 +54,7 @@ class TaskMasterMCPServer {
 		this.logger.info(`Registered ${registrationResult.registeredTools.length} tools successfully`);
 
 		if (registrationResult.registeredTools.length > 0) {
-			this.logger.info(`Registered tools: ${registrationResult.registeredTools.join(', ')}`);
+			this.logger.debug(`Registered tools: ${registrationResult.registeredTools.join(', ')}`);
 		}
 
 		if (registrationResult.failedTools.length > 0) {
