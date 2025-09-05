@@ -131,7 +131,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should register exactly 7 core tools when TASK_MASTER_TOOLS=core', () => {
 			process.env.TASK_MASTER_TOOLS = 'core';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'core');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
 		});
@@ -139,7 +139,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should register exactly 15 standard tools when TASK_MASTER_TOOLS=standard', () => {
 			process.env.TASK_MASTER_TOOLS = 'standard';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'standard');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(15);
 		});
@@ -147,7 +147,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should treat lean as alias for core mode (7 tools)', () => {
 			process.env.TASK_MASTER_TOOLS = 'lean';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'lean');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
 		});
@@ -155,7 +155,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should handle case insensitive configuration values', () => {
 			process.env.TASK_MASTER_TOOLS = 'CORE';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'CORE');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
 		});
@@ -165,7 +165,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should register specific tools from comma-separated list', () => {
 			process.env.TASK_MASTER_TOOLS = 'get_tasks,next_task,get_task';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'get_tasks,next_task,get_task');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(3);
 		});
@@ -174,7 +174,7 @@ describe('Task Master Tool Registration System', () => {
 			process.env.TASK_MASTER_TOOLS =
 				'invalid_tool,get_tasks,fake_tool,next_task';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'invalid_tool,get_tasks,fake_tool,next_task');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
@@ -198,7 +198,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should handle whitespace in comma-separated lists', () => {
 			process.env.TASK_MASTER_TOOLS = ' get_tasks , next_task , get_task ';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, ' get_tasks , next_task , get_task ');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(3);
 		});
@@ -206,7 +206,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should handle duplicate tools in list', () => {
 			process.env.TASK_MASTER_TOOLS = 'get_tasks,get_tasks,next_task,get_tasks';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'get_tasks,get_tasks,next_task,get_tasks');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(4);
 		});
@@ -222,7 +222,7 @@ describe('Task Master Tool Registration System', () => {
 		it('should handle single tool selection', () => {
 			process.env.TASK_MASTER_TOOLS = 'get_tasks';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'get_tasks');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(1);
 		});
@@ -262,7 +262,7 @@ describe('Task Master Tool Registration System', () => {
 				mockServer.tools = [];
 				mockServer.addTool.mockClear();
 
-				registerTaskMasterTools(mockServer);
+				registerTaskMasterTools(mockServer, testCase.env || 'all');
 
 				expect(mockServer.addTool).toHaveBeenCalledTimes(
 					testCase.expectedCount
@@ -321,9 +321,9 @@ describe('Task Master Tool Registration System', () => {
 		it('should handle concurrent registration attempts', () => {
 			process.env.TASK_MASTER_TOOLS = 'core';
 
-			registerTaskMasterTools(mockServer);
-			registerTaskMasterTools(mockServer);
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'core');
+			registerTaskMasterTools(mockServer, 'core');
+			registerTaskMasterTools(mockServer, 'core');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(21);
 		});

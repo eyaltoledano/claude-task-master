@@ -65,6 +65,9 @@ Taskmaster uses two primary methods for configuration:
 
 The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by the Task Master MCP server. This allows you to optimize token usage based on your workflow needs.
 
+> Note
+> Prefer setting `TASK_MASTER_TOOLS` in your MCP client's `env` block (e.g., `.cursor/mcp.json`) or in CI/deployment env. The `.env` file is reserved for API keys/endpoints; avoid persisting non-secret settings there.
+
 #### Configuration Options
 
 - **`all`** (default): Loads all 36 available tools (~21,000 tokens)
