@@ -135,8 +135,9 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 
 		toolsToRegister.forEach((toolName) => {
 			try {
-				if (toolRegistry[toolName]) {
-					toolRegistry[toolName](server);
+				const registerFunction = getToolRegistration(toolName);
+				if (registerFunction) {
+					registerFunction(server);
 					logger.debug(`Registered tool: ${toolName}`);
 					registeredTools.push(toolName);
 				} else {
@@ -144,8 +145,13 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 					failedTools.push(toolName);
 				}
 			} catch (error) {
-				logger.error(`Failed to register tool ${toolName}: ${error.message}`);
-				failedTools.push(toolName);
+				if (error.message && error.message.includes('already registered')) {
+					logger.debug(`Tool ${toolName} already registered, skipping`);
+					registeredTools.push(toolName);
+				} else {
+					logger.error(`Failed to register tool ${toolName}: ${error.message}`);
+					failedTools.push(toolName);
+				}
 			}
 		});
 
@@ -175,8 +181,13 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 					registerFunction(server);
 					registeredTools.push(toolName);
 				} catch (err) {
-					logger.warn(`Failed to register fallback tool '${toolName}': ${err.message}`);
-					failedTools.push(toolName);
+					if (err.message && err.message.includes('already registered')) {
+						logger.debug(`Fallback tool ${toolName} already registered, skipping`);
+						registeredTools.push(toolName);
+					} else {
+						logger.warn(`Failed to register fallback tool '${toolName}': ${err.message}`);
+						failedTools.push(toolName);
+					}
 				}
 			} else {
 				logger.warn(`Tool '${toolName}' not found in registry`);
