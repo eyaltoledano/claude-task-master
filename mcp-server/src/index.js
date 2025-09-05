@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from './logger.js';
-import { registerTaskMasterTools } from './tools/index.js';
+import { registerTaskMasterTools, getToolsConfiguration } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
 import packageJson from '../../package.json' with { type: 'json' };
@@ -41,12 +41,10 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
-		const rawToolMode = process.env.TASK_MASTER_TOOLS || 'all';
-
-		const normalizedToolMode = rawToolMode.trim() || 'all';
+		const normalizedToolMode = getToolsConfiguration();
 
 		this.logger.info('Task Master MCP Server starting...');
-		this.logger.info(`Tool mode configuration: ${rawToolMode}`);
+		this.logger.info(`Tool mode configuration: ${normalizedToolMode}`);
 
 		const registrationResult = registerTaskMasterTools(this.server, normalizedToolMode);
 
