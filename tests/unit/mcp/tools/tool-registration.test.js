@@ -13,6 +13,13 @@ import {
 	jest
 } from '@jest/globals';
 
+import { 
+	EXPECTED_TOOL_COUNTS,
+	EXPECTED_CORE_TOOLS,
+	validateToolCounts,
+	validateToolStructure
+} from '../../../helpers/tool-counts.js';
+
 describe('Task Master Tool Registration System', () => {
 	let mockServer;
 	let originalEnv;
@@ -68,27 +75,35 @@ describe('Task Master Tool Registration System', () => {
 		});
 
 		it('should have correct tool registry structure', () => {
-			expect(Object.keys(toolRegistry).length).toBe(36);
-			expect(coreTools.length).toBe(7);
-			expect(standardTools.length).toBe(15);
+			const validation = validateToolCounts();
+			expect(validation.isValid).toBe(true);
+			
+			if (!validation.isValid) {
+				console.error('Tool count validation failed:', validation);
+			}
+			
+			expect(validation.actual.total).toBe(EXPECTED_TOOL_COUNTS.total);
+			expect(validation.actual.core).toBe(EXPECTED_TOOL_COUNTS.core);
+			expect(validation.actual.standard).toBe(EXPECTED_TOOL_COUNTS.standard);
 		});
 
 		it('should have correct core tools', () => {
-			const expectedCoreTools = [
-				'get_tasks',
-				'next_task',
-				'get_task',
-				'set_task_status',
-				'update_subtask',
-				'parse_prd',
-				'expand_task'
-			];
-			expect(coreTools).toEqual(expect.arrayContaining(expectedCoreTools));
-			expect(coreTools.length).toBe(7);
+			const structure = validateToolStructure();
+			expect(structure.isValid).toBe(true);
+			
+			if (!structure.isValid) {
+				console.error('Tool structure validation failed:', structure);
+			}
+			
+			expect(coreTools).toEqual(expect.arrayContaining(EXPECTED_CORE_TOOLS));
+			expect(coreTools.length).toBe(EXPECTED_TOOL_COUNTS.core);
 		});
 
 		it('should have correct standard tools that include all core tools', () => {
-			expect(standardTools.length).toBe(15);
+			const structure = validateToolStructure();
+			expect(structure.details.coreInStandard).toBe(true);
+			expect(standardTools.length).toBe(EXPECTED_TOOL_COUNTS.standard);
+			
 			coreTools.forEach((tool) => {
 				expect(standardTools).toContain(tool);
 			});
@@ -117,7 +132,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(36);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.total);
 		});
 
 		it('should register all tools (36) when TASK_MASTER_TOOLS=all', () => {
@@ -133,7 +148,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer, 'core');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(7);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.core);
 		});
 
 		it('should register exactly 15 standard tools when TASK_MASTER_TOOLS=standard', () => {
@@ -141,7 +156,7 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer, 'standard');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(15);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.standard);
 		});
 
 		it('should treat lean as alias for core mode (7 tools)', () => {

@@ -34,6 +34,7 @@
 		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
 		"format": "biome format . --write",
+		"verify:tool-counts": "node scripts/verify-tool-counts.js",
 		"deps:check": "manypkg check || echo 'Note: Workspace package version warnings are expected for internal @tm/* packages'",
 		"deps:fix": "manypkg fix"
 	},

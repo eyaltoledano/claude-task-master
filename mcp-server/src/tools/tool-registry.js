@@ -122,6 +122,32 @@ export function getAvailableTools() {
 }
 
 /**
+ * Get tool counts for all categories
+ * @returns {Object} Object with core, standard, and total counts
+ */
+export function getToolCounts() {
+	return {
+		core: coreTools.length,
+		standard: standardTools.length,
+		total: Object.keys(toolRegistry).length
+	};
+}
+
+/**
+ * Get tool arrays organized by category
+ * @returns {Object} Object with arrays for each category
+ */
+export function getToolCategories() {
+	const allTools = Object.keys(toolRegistry);
+	return {
+		core: [...coreTools],
+		standard: [...standardTools],
+		all: [...allTools],
+		extended: allTools.filter(t => !standardTools.includes(t))
+	};
+}
+
+/**
  * Get registration function for a specific tool
  * @param {string} toolName - Name of the tool
  * @returns {Function|null} Registration function or null if not found
