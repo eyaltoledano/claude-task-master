@@ -298,7 +298,7 @@ You can optimize performance by configuring the `TASK_MASTER_TOOLS` environment 
 |------|-------|--------------|----------|
 | `all` (default) | 36 | ~21,000 tokens | Complete feature set - all tools available |
 | `standard` | 15 | ~10,000 tokens | Common task management operations |
-| `core` | 7 | ~5,000 tokens | Essential daily development workflow |
+| `core` (or `lean`) | 7 | ~5,000 tokens | Essential daily development workflow |
 | `custom` | Variable | Variable | Comma-separated list of specific tools |
 
 ### Configuration Methods
@@ -307,14 +307,14 @@ You can optimize performance by configuring the `TASK_MASTER_TOOLS` environment 
 
 Add `TASK_MASTER_TOOLS` to your MCP configuration file's `env` section:
 
-```json
+```jsonc
 {
   "mcpServers": {  // or "servers" for VS Code
     "task-master-ai": {
       "command": "npx",
       "args": ["-y", "--package=task-master-ai", "task-master-ai"],
       "env": {
-        "TASK_MASTER_TOOLS": "standard",  // Options: "all", "standard", "core", or comma-separated list
+        "TASK_MASTER_TOOLS": "standard",  // Options: "all", "standard", "core", "lean", or comma-separated list
         "ANTHROPIC_API_KEY": "your-key-here",
         // ... other API keys
       }
