@@ -123,10 +123,10 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 
 #### Tool Loading Behavior
 
-- If `TASK_MASTER_TOOLS` is not set or is empty, defaults to `"all"`
-- Invalid tool names in custom lists are ignored with warnings
-- If all tools in a custom list are invalid, falls back to `"all"`
-- Configuration is case-insensitive (`"CORE"`, `"core"`, `"Core"` all work)
+- When `TASK_MASTER_TOOLS` is unset or empty, the system defaults to `"all"`
+- Invalid tool names in a user-specified list are ignored (a warning is emitted for each)
+- If every tool name in a custom list is invalid, the system falls back to `"all"`
+- Tool names are case-insensitive (e.g., `"CORE"`, `"core"`, and `"Core"` are treated identically)
 
 ## Environment Variables (`.env` file or MCP `env` block - For API Keys Only)
 
