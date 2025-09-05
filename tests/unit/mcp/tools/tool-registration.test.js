@@ -203,12 +203,12 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(3);
 		});
 
-		it('should handle duplicate tools in list', () => {
+		it('should deduplicate tools in list', () => {
 			process.env.TASK_MASTER_TOOLS = 'get_tasks,get_tasks,next_task,get_tasks';
 
 			registerTaskMasterTools(mockServer, 'get_tasks,get_tasks,next_task,get_tasks');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(4);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
 
 		it('should handle only commas and empty entries', () => {
