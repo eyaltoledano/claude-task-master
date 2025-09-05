@@ -70,14 +70,30 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 				const uniqueTools = new Set();
 				const unknownTools = [];
 
+				const aliasMap = {
+					'response_language': 'response-language'
+				};
+
 				for (const toolName of requestedTools) {
 					let resolvedName = null;
 					const lowerToolName = toolName.toLowerCase();
 
-					for (const registryKey of Object.keys(toolRegistry)) {
-						if (registryKey.toLowerCase() === lowerToolName) {
-							resolvedName = registryKey;
-							break;
+					if (aliasMap[lowerToolName]) {
+						const aliasTarget = aliasMap[lowerToolName];
+						for (const registryKey of Object.keys(toolRegistry)) {
+							if (registryKey.toLowerCase() === aliasTarget.toLowerCase()) {
+								resolvedName = registryKey;
+								break;
+							}
+						}
+					}
+
+					if (!resolvedName) {
+						for (const registryKey of Object.keys(toolRegistry)) {
+							if (registryKey.toLowerCase() === lowerToolName) {
+								resolvedName = registryKey;
+								break;
+							}
 						}
 					}
 
