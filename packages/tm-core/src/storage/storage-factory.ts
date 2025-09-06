@@ -13,6 +13,7 @@ import { ApiStorage } from './api-storage.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { AuthManager } from '../auth/auth-manager.js';
 import { getLogger } from '../logger/index.js';
+import { SupabaseAuthClient } from '../clients/supabase-client.js';
 
 /**
  * Factory for creating storage implementations based on configuration
@@ -148,29 +149,13 @@ export class StorageFactory {
 	 * Create API storage implementation
 	 */
 	private static createApiStorage(config: Partial<IConfiguration>): ApiStorage {
-		const { apiEndpoint, apiAccessToken } = config.storage || {};
-
-		if (!apiEndpoint) {
-			throw new TaskMasterError(
-				'API endpoint is required for API storage',
-				ERROR_CODES.MISSING_CONFIGURATION,
-				{ storageType: 'api' }
-			);
-		}
-
-		if (!apiAccessToken) {
-			throw new TaskMasterError(
-				'API access token is required for API storage',
-				ERROR_CODES.MISSING_CONFIGURATION,
-				{ storageType: 'api' }
-			);
-		}
+		// Use our SupabaseAuthClient instead of creating a raw Supabase client
+		const supabaseAuthClient = new SupabaseAuthClient();
+		const supabaseClient = supabaseAuthClient.getClient();
 
 		return new ApiStorage({
-			endpoint: apiEndpoint,
-			accessToken: apiAccessToken,
-			projectId: config.projectPath,
-			timeout: config.retry?.requestTimeout,
+			supabaseClient,
+			projectId: config.projectPath || '',
 			enableRetry: config.retry?.retryOnNetworkError,
 			maxRetries: config.retry?.retryAttempts
 		});

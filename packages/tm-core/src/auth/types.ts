@@ -10,6 +10,15 @@ export interface AuthCredentials {
 	expiresAt?: string | number;
 	tokenType?: 'standard';
 	savedAt: string;
+	selectedContext?: UserContext;
+}
+
+export interface UserContext {
+	orgId?: string;
+	orgName?: string;
+	briefId?: string;
+	briefName?: string;
+	updatedAt: string;
 }
 
 export interface OAuthFlowOptions {
@@ -67,7 +76,11 @@ export type AuthErrorCode =
 	| 'STORAGE_ERROR'
 	| 'NOT_SUPPORTED'
 	| 'REFRESH_FAILED'
-	| 'INVALID_RESPONSE';
+	| 'INVALID_RESPONSE'
+	| 'PKCE_INIT_FAILED'
+	| 'PKCE_FAILED'
+	| 'CODE_EXCHANGE_FAILED'
+	| 'SESSION_SET_FAILED';
 
 /**
  * Authentication error class
