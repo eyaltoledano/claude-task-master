@@ -3,7 +3,7 @@
  * This file defines the contract for all storage implementations
  */
 
-import type { Task, TaskMetadata } from '../types/index';
+import type { Task, TaskMetadata } from '../types/index.js';
 
 /**
  * Interface for storage operations on tasks

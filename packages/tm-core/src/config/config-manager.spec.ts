@@ -309,11 +309,11 @@ describe('ConfigManager', () => {
 			expect(manager.getProjectRoot()).toBe(testProjectRoot);
 		});
 
-		it('should check if using API storage', () => {
-			expect(manager.isUsingApiStorage()).toBe(false);
+		it('should check if API is explicitly configured', () => {
+			expect(manager.isApiExplicitlyConfigured()).toBe(false);
 		});
 
-		it('should detect API storage', () => {
+		it('should detect when API is explicitly configured', () => {
 			// Update config for current instance
 			(manager as any).config = {
 				storage: {
@@ -323,7 +323,7 @@ describe('ConfigManager', () => {
 				}
 			};
 
-			expect(manager.isUsingApiStorage()).toBe(true);
+			expect(manager.isApiExplicitlyConfigured()).toBe(true);
 		});
 	});
 

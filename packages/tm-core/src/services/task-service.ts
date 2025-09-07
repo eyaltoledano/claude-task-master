@@ -64,8 +64,8 @@ export class TaskService {
 		const storageConfig = this.configManager.getStorageConfig();
 		const projectRoot = this.configManager.getProjectRoot();
 
-		this.storage = StorageFactory.create(
-			{ storage: storageConfig } as any,
+		this.storage = StorageFactory.createFromStorageConfig(
+			storageConfig,
 			projectRoot
 		);
 
