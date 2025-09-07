@@ -6,7 +6,10 @@
  * maintainability, testability, and separation of concerns.
  */
 
-import type { PartialConfiguration } from '../interfaces/configuration.interface.js';
+import type {
+	PartialConfiguration,
+	RuntimeStorageConfig
+} from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
 import {
 	ConfigMerger,
@@ -134,27 +137,28 @@ export class ConfigManager {
 	/**
 	 * Get storage configuration
 	 */
-	getStorageConfig(): {
-		type: 'file' | 'api' | 'auto';
-		apiEndpoint?: string;
-		apiAccessToken?: string;
-		apiConfigured: boolean;
-	} {
+	getStorageConfig(): RuntimeStorageConfig {
 		const storage = this.config.storage;
 
 		// Return the configured type (including 'auto')
 		const storageType = storage?.type || 'auto';
+		const basePath = storage?.basePath ?? this.projectRoot;
 
 		if (storageType === 'api' || storageType === 'auto') {
 			return {
 				type: storageType,
+				basePath,
 				apiEndpoint: storage?.apiEndpoint,
 				apiAccessToken: storage?.apiAccessToken,
 				apiConfigured: Boolean(storage?.apiEndpoint || storage?.apiAccessToken)
 			};
 		}
 
-		return { type: storageType, apiConfigured: false };
+		return {
+			type: storageType,
+			basePath,
+			apiConfigured: false
+		};
 	}
 
 	/**
@@ -185,9 +189,10 @@ export class ConfigManager {
 	}
 
 	/**
-	 * Check if using API storage
+	 * Check if explicitly configured to use API storage
+	 * Excludes 'auto' type
 	 */
-	isUsingApiStorage(): boolean {
+	isApiExplicitlyConfigured(): boolean {
 		return this.getStorageConfig().type === 'api';
 	}
 
@@ -220,6 +225,7 @@ export class ConfigManager {
 		await this.persistence.saveConfig(this.config);
 
 		// Re-initialize to respect precedence
+		this.initialized = false;
 		await this.initialize();
 	}
 

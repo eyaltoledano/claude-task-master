@@ -3,8 +3,8 @@
  */
 
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
-import { AuthenticationError } from '../auth/types';
-import { getLogger } from '../logger';
+import { AuthenticationError } from '../auth/types.js';
+import { getLogger } from '../logger/index.js';
 
 export class SupabaseAuthClient {
 	private client: SupabaseClient | null = null;

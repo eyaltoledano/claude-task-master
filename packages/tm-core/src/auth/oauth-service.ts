@@ -12,11 +12,11 @@ import {
 	OAuthFlowOptions,
 	AuthConfig,
 	CliData
-} from './types';
-import { CredentialStore } from './credential-store';
-import { SupabaseAuthClient } from '../clients/supabase-client';
-import { getAuthConfig } from './config';
-import { getLogger } from '../logger';
+} from './types.js';
+import { CredentialStore } from './credential-store.js';
+import { SupabaseAuthClient } from '../clients/supabase-client.js';
+import { getAuthConfig } from './config.js';
+import { getLogger } from '../logger/index.js';
 import packageJson from '../../../../package.json' with { type: 'json' };
 
 export class OAuthService {

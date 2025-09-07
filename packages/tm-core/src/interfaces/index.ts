@@ -4,13 +4,13 @@
  */
 
 // Storage interfaces
-export type * from './storage.interface';
-export * from './storage.interface';
+export type * from './storage.interface.js';
+export * from './storage.interface.js';
 
 // AI Provider interfaces
-export type * from './ai-provider.interface';
-export * from './ai-provider.interface';
+export type * from './ai-provider.interface.js';
+export * from './ai-provider.interface.js';
 
 // Configuration interfaces
-export type * from './configuration.interface';
-export * from './configuration.interface';
+export type * from './configuration.interface.js';
+export * from './configuration.interface.js';
