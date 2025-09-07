@@ -211,11 +211,16 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
-			profile.onAddRulesProfile(projectRoot, assetsDir);
+			const hookResult = profile.onAddRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
 			);
+			// If hook returns result with success/failed counts, add them to totals
+			if (hookResult && typeof hookResult === 'object' && typeof hookResult.success === 'number') {
+				success += hookResult.success;
+				failed += hookResult.failed || 0;
+			}
 		} catch (error) {
 			log(
 				'error',
@@ -343,18 +348,24 @@ export function removeProfileRules(projectRoot, profile) {
 		filesRemoved: [],
 		mcpResult: null,
 		profileDirRemoved: false,
-		notice: null
+		notice: null,
+		fileCount: 0 // Track total files processed by lifecycle hooks
 	};
 
 	try {
 		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
 		if (typeof profile.onRemoveRulesProfile === 'function') {
 			try {
-				profile.onRemoveRulesProfile(projectRoot);
+				const hookResult = profile.onRemoveRulesProfile(projectRoot);
 				log(
 					'debug',
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
 				);
+				// If hook returns result with success count, add it to file count for totals
+				if (hookResult && typeof hookResult === 'object' && typeof hookResult.success === 'number') {
+					result.fileCount += hookResult.success;
+				}
+				// Note: We don't set result.notice here to avoid duplication with file preservation notices
 			} catch (error) {
 				log(
 					'error',
@@ -401,6 +412,7 @@ export function removeProfileRules(projectRoot, profile) {
 						try {
 							fs.rmSync(filePath, { force: true });
 							result.filesRemoved.push(taskMasterFile);
+							result.fileCount++; // Count regular rule files too
 							log(
 								'debug',
 								`[Rule Transformer] Removed Task Master file: ${taskMasterFile}`

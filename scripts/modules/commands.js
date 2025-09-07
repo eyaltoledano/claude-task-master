@@ -4708,11 +4708,25 @@ Examples:
 				const totalSkipped = skippedRemovals.length;
 				const totalFailed = failedRemovals.length;
 
-				console.log(
-					chalk.blue(
-						`\nTotal: ${totalProcessed} profile(s) processed - ${totalSuccessful} removed, ${totalSkipped} skipped, ${totalFailed} failed.`
-					)
-				);
+				// Calculate total files processed (including lifecycle hook files)
+				const totalFilesProcessed = removalResults.reduce((sum, result) => {
+					return sum + (result.fileCount || 0);
+				}, 0);
+
+				// Show file-based totals if any profile processed files, otherwise show profile-based totals
+				if (totalFilesProcessed > 0) {
+					console.log(
+						chalk.blue(
+							`\nTotal: ${totalFilesProcessed} files processed - ${totalFilesProcessed} removed, 0 failed.`
+						)
+					);
+				} else {
+					console.log(
+						chalk.blue(
+							`\nTotal: ${totalProcessed} profile(s) processed - ${totalSuccessful} removed, ${totalSkipped} skipped, ${totalFailed} failed.`
+						)
+					);
+				}
 			}
 		});
 
