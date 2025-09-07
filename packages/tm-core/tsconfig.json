@@ -23,7 +23,9 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
+		"moduleDetection": "force",
+		"types": ["node"],
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"paths": {

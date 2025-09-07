@@ -2,4 +2,4 @@
  * Client exports
  */
 
-export { SupabaseAuthClient } from './supabase-client';
+export { SupabaseAuthClient } from './supabase-client.js';

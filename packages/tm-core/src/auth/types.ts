@@ -7,8 +7,8 @@ export interface AuthCredentials {
 	refreshToken?: string;
 	userId: string;
 	email?: string;
-	expiresAt?: string;
-	tokenType?: 'standard' | 'api_key';
+	expiresAt?: string | number;
+	tokenType?: 'standard';
 	savedAt: string;
 }
 
@@ -57,7 +57,6 @@ export type AuthErrorCode =
 	| 'INVALID_STATE'
 	| 'NO_TOKEN'
 	| 'TOKEN_EXCHANGE_FAILED'
-	| 'INVALID_API_KEY'
 	| 'INVALID_CREDENTIALS'
 	| 'NO_REFRESH_TOKEN'
 	| 'NOT_AUTHENTICATED'
@@ -65,7 +64,10 @@ export type AuthErrorCode =
 	| 'CONFIG_MISSING'
 	| 'SAVE_FAILED'
 	| 'CLEAR_FAILED'
-	| 'STORAGE_ERROR';
+	| 'STORAGE_ERROR'
+	| 'NOT_SUPPORTED'
+	| 'REFRESH_FAILED'
+	| 'INVALID_RESPONSE';
 
 /**
  * Authentication error class
