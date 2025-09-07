@@ -427,7 +427,7 @@ describe('CredentialStore', () => {
 
 			// Should not throw
 			expect(() => store.clearCredentials()).not.toThrow();
-			
+
 			// Should not try to unlink non-existent file
 			expect(fs.unlinkSync).not.toHaveBeenCalled();
 		});
@@ -511,18 +511,20 @@ describe('CredentialStore', () => {
 
 			// Credentials without expiry are considered invalid
 			expect(store.hasValidCredentials()).toBe(false);
-			
+
 			// Should log warning about missing expiration
-			expect(mockLogger.warn).toHaveBeenCalledWith('No valid expiration time provided for token');
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'No valid expiration time provided for token'
+			);
 		});
 
 		it('should use allowExpired=false by default', () => {
 			// Spy on getCredentials to verify it's called with correct params
 			const getCredentialsSpy = vi.spyOn(store, 'getCredentials');
-			
+
 			vi.mocked(fs.existsSync).mockReturnValue(false);
 			store.hasValidCredentials();
-			
+
 			expect(getCredentialsSpy).toHaveBeenCalledWith({ allowExpired: false });
 		});
 	});

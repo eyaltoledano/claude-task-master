@@ -2,7 +2,7 @@
  * @fileoverview Logger factory and singleton management
  */
 
-import { Logger, LoggerConfig } from './logger.js';
+import { Logger, type LoggerConfig } from './logger.js';
 
 // Global logger instance
 let globalLogger: Logger | null = null;

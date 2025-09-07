@@ -10,11 +10,11 @@ import { getLogger } from '../logger/index.js';
 
 /**
  * CredentialStore manages the persistence and retrieval of authentication credentials.
- * 
+ *
  * Runtime vs Persisted Shape:
  * - When retrieved (getCredentials): expiresAt is normalized to number (milliseconds since epoch)
  * - When persisted (saveCredentials): expiresAt is stored as ISO string for readability
- * 
+ *
  * This normalization ensures consistent runtime behavior while maintaining
  * human-readable persisted format in the auth.json file.
  */
@@ -67,12 +67,15 @@ export class CredentialStore {
 			// Check if the token has expired (with clock skew tolerance)
 			const now = Date.now();
 			const allowExpired = options?.allowExpired ?? false;
-			if (now >= (expiresAtMs - this.CLOCK_SKEW_MS) && !allowExpired) {
-				this.logger.warn('Authentication token has expired or is about to expire', {
-					expiresAt: authData.expiresAt,
-					currentTime: new Date(now).toISOString(),
-					skewWindow: `${this.CLOCK_SKEW_MS / 1000}s`
-				});
+			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
+				this.logger.warn(
+					'Authentication token has expired or is about to expire',
+					{
+						expiresAt: authData.expiresAt,
+						currentTime: new Date(now).toISOString(),
+						skewWindow: `${this.CLOCK_SKEW_MS / 1000}s`
+					}
+				);
 				return null;
 			}
 
@@ -206,12 +209,12 @@ export class CredentialStore {
 			for (const entry of entries) {
 				if (!entry.isFile()) continue;
 				const file = entry.name;
-				
+
 				// Check if file matches pattern: baseName.corrupt-{timestamp}
 				if (!file.startsWith(prefix)) continue;
 				const suffix = file.slice(prefix.length);
 				if (!/^\d+$/.test(suffix)) continue; // Fixed regex, not from variable input
-				
+
 				const filePath = path.join(dir, file);
 				try {
 					const stats = fs.statSync(filePath);

@@ -24,6 +24,8 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"moduleResolution": "bundler",
+		"moduleDetection": "force",
+		"types": ["node"],
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"paths": {
