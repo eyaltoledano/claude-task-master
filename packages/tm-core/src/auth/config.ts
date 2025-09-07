@@ -4,7 +4,7 @@
 
 import os from 'os';
 import path from 'path';
-import { AuthConfig } from './types';
+import { AuthConfig } from './types.js';
 
 // Single base domain for all URLs
 // Build-time: process.env.TM_PUBLIC_BASE_DOMAIN gets replaced by tsup's env option

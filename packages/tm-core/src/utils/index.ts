@@ -11,7 +11,7 @@ export {
 	isValidTaskId,
 	isValidSubtaskId,
 	getParentTaskId
-} from './id-generator';
+} from './id-generator.js';
 
 // Additional utility exports
 

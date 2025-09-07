@@ -3,7 +3,7 @@
  * This file exports all parsing-related classes and functions
  */
 
-import type { PlaceholderTask } from '../types/index';
+import type { PlaceholderTask } from '../types/index.js';
 
 // Parser implementations will be defined here
 // export * from './prd-parser.js';
