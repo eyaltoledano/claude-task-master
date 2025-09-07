@@ -109,7 +109,9 @@ describe('Selective Rules Removal', () => {
 			mockReaddirSync
 				// First call - lifecycle hook reads commands directory
 				.mockReturnValueOnce([
-					'tm-add-task.md', 'tm-next-task.md', 'tm-show-task.md' // Sample command files
+					'tm-add-task.md',
+					'tm-next-task.md',
+					'tm-show-task.md' // Sample command files
 				])
 				// Second call - get initial directory contents (rules directory)
 				.mockReturnValueOnce([
@@ -218,7 +220,8 @@ describe('Selective Rules Removal', () => {
 			mockReaddirSync
 				// First call - lifecycle hook reads commands directory
 				.mockReturnValueOnce([
-					'tm-add-task.md', 'tm-next-task.md' // Sample command files
+					'tm-add-task.md',
+					'tm-next-task.md' // Sample command files
 				])
 				// Second call - get initial directory contents (rules directory)
 				.mockReturnValueOnce([
@@ -425,8 +428,8 @@ describe('Selective Rules Removal', () => {
 			mockReaddirSync
 				.mockReturnValueOnce(['tm-add-task.md']) // Lifecycle hook reads commands directory
 				.mockReturnValueOnce([
-					'cursor_rules.mdc', 
-					'taskmaster', 
+					'cursor_rules.mdc',
+					'taskmaster',
 					'self_improve.mdc'
 				]) // Rules directory initial check
 				.mockReturnValueOnce(['dev_workflow.mdc', 'taskmaster.mdc']) // taskmaster subdirectory
@@ -620,7 +623,8 @@ describe('Selective Rules Removal', () => {
 				// Only .cursor directories exist
 				if (filePath === path.join(projectRoot, '.cursor')) return true;
 				if (filePath === path.join(projectRoot, '.cursor/rules')) return true;
-				if (filePath === path.join(projectRoot, '.cursor/commands')) return true;
+				if (filePath === path.join(projectRoot, '.cursor/commands'))
+					return true;
 				if (filePath === path.join(projectRoot, '.cursor/mcp.json'))
 					return true;
 				// Only cursor_rules.mdc exists, not the other taskmaster files

@@ -217,7 +217,11 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
 			);
 			// If hook returns result with success/failed counts, add them to totals
-			if (hookResult && typeof hookResult === 'object' && typeof hookResult.success === 'number') {
+			if (
+				hookResult &&
+				typeof hookResult === 'object' &&
+				typeof hookResult.success === 'number'
+			) {
 				success += hookResult.success;
 				failed += hookResult.failed || 0;
 			}
@@ -362,7 +366,11 @@ export function removeProfileRules(projectRoot, profile) {
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
 				);
 				// If hook returns result with success count, add it to file count for totals
-				if (hookResult && typeof hookResult === 'object' && typeof hookResult.success === 'number') {
+				if (
+					hookResult &&
+					typeof hookResult === 'object' &&
+					typeof hookResult.success === 'number'
+				) {
 					result.fileCount += hookResult.success;
 				}
 				// Note: We don't set result.notice here to avoid duplication with file preservation notices
