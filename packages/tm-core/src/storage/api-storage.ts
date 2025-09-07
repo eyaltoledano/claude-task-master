@@ -9,9 +9,10 @@ import type {
 } from '../interfaces/storage.interface.js';
 import type { Task, TaskMetadata, TaskTag } from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
-import { TaskRepository } from '../repositories/TaskRepository.js';
-import { SupabaseTaskRepository } from '../repositories/SupabaseTaskRepository.js';
+import { TaskRepository } from '../repositories/task-repository.interface.js';
+import { SupabaseTaskRepository } from '../repositories/supabase-task-repository.js';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { AuthManager } from '../auth/auth-manager.js';
 
 /**
  * API storage configuration
@@ -106,35 +107,70 @@ export class ApiStorage implements IStorage {
 
 	/**
 	 * Load tags into cache
+	 * In our API-based system, "tags" represent briefs
 	 */
 	private async loadTagsIntoCache(): Promise<void> {
 		try {
-			const tags = await this.repository.getTags(this.projectId);
-			this.tagsCache.clear();
-			for (const tag of tags) {
-				this.tagsCache.set(tag.name, tag);
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+
+			// If we have a selected brief, create a virtual "tag" for it
+			if (context?.briefId) {
+				// Create a virtual tag representing the current brief
+				const briefTag: TaskTag = {
+					name: context.briefId,
+					tasks: [], // Will be populated when tasks are loaded
+					metadata: {
+						briefId: context.briefId,
+						briefName: context.briefName,
+						organizationId: context.orgId
+					}
+				};
+
+				this.tagsCache.clear();
+				this.tagsCache.set(context.briefId, briefTag);
 			}
 		} catch (error) {
-			// If tags don't exist yet, that's okay
-			console.debug('No tags found, starting with empty cache');
+			// If no brief is selected, that's okay - user needs to select one first
+			console.debug('No brief selected, starting with empty cache');
 		}
 	}
 
 	/**
 	 * Load tasks from API
+	 * In our system, the tag parameter represents a brief ID
 	 */
 	async loadTasks(tag?: string): Promise<Task[]> {
 		await this.ensureInitialized();
 
 		try {
-			return await this.retryOperation(() =>
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+
+			// If no brief is selected in context, throw an error
+			if (!context?.briefId) {
+				throw new Error(
+					'No brief selected. Please select a brief first using: tm context brief <brief-id>'
+				);
+			}
+
+			// Load tasks from the current brief context
+			const tasks = await this.retryOperation(() =>
 				this.repository.getTasks(this.projectId)
 			);
+
+			// Update the tag cache with the loaded task IDs
+			const briefTag = this.tagsCache.get(context.briefId);
+			if (briefTag) {
+				briefTag.tasks = tasks.map((task) => task.id);
+			}
+
+			return tasks;
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to load tasks from API',
 				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'loadTasks', tag },
+				{ operation: 'loadTasks', tag, context: 'brief-based loading' },
 				error as Error
 			);
 		}
@@ -276,23 +312,24 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
-	 * List available tags
+	 * List available tags (briefs in our system)
 	 */
 	async listTags(): Promise<string[]> {
 		await this.ensureInitialized();
 
 		try {
-			const tags = await this.retryOperation(() =>
-				this.repository.getTags(this.projectId)
-			);
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
 
-			// Update cache
-			this.tagsCache.clear();
-			for (const tag of tags) {
-				this.tagsCache.set(tag.name, tag);
+			// In our API-based system, we only have one "tag" at a time - the current brief
+			if (context?.briefId) {
+				// Ensure the current brief is in our cache
+				await this.loadTagsIntoCache();
+				return [context.briefId];
 			}
 
-			return tags.map((t) => t.name);
+			// No brief selected, return empty array
+			return [];
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to list tags from API',
