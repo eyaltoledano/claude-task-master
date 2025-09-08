@@ -315,17 +315,6 @@ export class ListTasksCommand extends Command {
 
 	/**
 	 * Static method to register this command on an existing program
-	 * This is for gradual migration - allows commands.js to use this
-	 */
-	static registerOn(program: Command): Command {
-		const listCommand = new ListTasksCommand();
-		program.addCommand(listCommand);
-		return listCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
-	 * Can also configure the command name if needed
 	 */
 	static register(program: Command, name?: string): ListTasksCommand {
 		const listCommand = new ListTasksCommand(name);

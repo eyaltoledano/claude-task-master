@@ -16,6 +16,10 @@ import type {
 	TaskFilter,
 	StorageType
 } from './types/index.js';
+import {
+	WorkflowService,
+	type WorkflowServiceConfig
+} from './workflow/index.js';
 
 /**
  * Options for creating TaskMasterCore instance
@@ -23,6 +27,7 @@ import type {
 export interface TaskMasterCoreOptions {
 	projectPath: string;
 	configuration?: Partial<IConfiguration>;
+	workflow?: Partial<WorkflowServiceConfig>;
 }
 
 /**
@@ -38,6 +43,7 @@ export type { GetTaskListOptions } from './services/task-service.js';
 export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
+	private workflowService: WorkflowService;
 
 	/**
 	 * Create and initialize a new TaskMasterCore instance
@@ -60,6 +66,7 @@ export class TaskMasterCore {
 		// Services will be initialized in the initialize() method
 		this.configManager = null as any;
 		this.taskService = null as any;
+		this.workflowService = null as any;
 	}
 
 	/**
@@ -86,6 +93,28 @@ export class TaskMasterCore {
 			// Create task service
 			this.taskService = new TaskService(this.configManager);
 			await this.taskService.initialize();
+
+			// Create workflow service
+			const workflowConfig: WorkflowServiceConfig = {
+				projectRoot: options.projectPath,
+				...options.workflow
+			};
+
+			// Pass task retrieval function to workflow service
+			this.workflowService = new WorkflowService(
+				workflowConfig,
+				async (taskId: string) => {
+					const task = await this.getTask(taskId);
+					if (!task) {
+						throw new TaskMasterError(
+							`Task ${taskId} not found`,
+							ERROR_CODES.TASK_NOT_FOUND
+						);
+					}
+					return task;
+				}
+			);
+			await this.workflowService.initialize();
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TaskMasterCore',
@@ -176,10 +205,20 @@ export class TaskMasterCore {
 	}
 
 	/**
+	 * Get workflow service for workflow operations
+	 */
+	get workflow(): WorkflowService {
+		return this.workflowService;
+	}
+
+	/**
 	 * Close and cleanup resources
 	 */
 	async close(): Promise<void> {
 		// TaskService handles storage cleanup internally
+		if (this.workflowService) {
+			await this.workflowService.dispose();
+		}
 	}
 }
 

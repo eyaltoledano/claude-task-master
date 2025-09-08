@@ -1,0 +1,56 @@
+{
+	"name": "@tm/workflow-engine",
+	"version": "0.1.0",
+	"description": "Task Master workflow execution engine with git worktree and process management",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		},
+		"./task-execution": {
+			"import": "./dist/task-execution/index.js",
+			"types": "./dist/task-execution/index.d.ts"
+		},
+		"./worktree": {
+			"import": "./dist/worktree/index.js",
+			"types": "./dist/worktree/index.d.ts"
+		},
+		"./process": {
+			"import": "./dist/process/index.js",
+			"types": "./dist/process/index.d.ts"
+		},
+		"./state": {
+			"import": "./dist/state/index.js",
+			"types": "./dist/state/index.d.ts"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest",
+		"test:watch": "vitest --watch",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@tm/core": "*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"tsup": "^8.0.0",
+		"typescript": "^5.5.0",
+		"vitest": "^2.0.0"
+	},
+	"files": ["dist"],
+	"keywords": [
+		"task-master",
+		"workflow",
+		"git-worktree",
+		"process-management",
+		"claude-code"
+	],
+	"author": "Task Master AI Team",
+	"license": "MIT"
+}

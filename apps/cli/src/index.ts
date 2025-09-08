@@ -6,7 +6,11 @@
 // Commands
 export { ListTasksCommand } from './commands/list.command.js';
 export { AuthCommand } from './commands/auth.command.js';
+export { WorkflowCommand } from './commands/workflow.command.js';
 export { ContextCommand } from './commands/context.command.js';
+
+// Command registry
+export { registerAllCommands } from './commands/index.js';
 
 // UI utilities (for other commands to use)
 export * as ui from './utils/ui.js';
