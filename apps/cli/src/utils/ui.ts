@@ -324,3 +324,61 @@ export function createTaskTable(
 
 	return table.toString();
 }
+
+
+/**
+ * Display a spinner with message (mock implementation)
+ */
+export function displaySpinner(message: string): void {
+	console.log(chalk.blue('◐'), chalk.gray(message));
+}
+
+/**
+ * Simple confirmation prompt
+ */
+export async function confirm(message: string): Promise<boolean> {
+	// For now, return true. In a real implementation, use inquirer
+	console.log(chalk.yellow('?'), chalk.white(message), chalk.gray('(y/n)'));
+	
+	// Mock implementation - in production this would use inquirer
+	return new Promise((resolve) => {
+		process.stdin.once('data', (data) => {
+			const answer = data.toString().trim().toLowerCase();
+			resolve(answer === 'y' || answer === 'yes');
+		});
+		process.stdin.resume();
+	});
+}
+
+/**
+ * Create a generic table
+ */
+export function createTable(headers: string[], rows: string[][]): string {
+	const table = new Table({
+		head: headers.map(h => chalk.blue.bold(h)),
+		style: {
+			head: [],
+			border: ['gray']
+		},
+		chars: {
+			'top': '─',
+			'top-mid': '┬',
+			'top-left': '┌',
+			'top-right': '┐',
+			'bottom': '─',
+			'bottom-mid': '┴',
+			'bottom-left': '└',
+			'bottom-right': '┘',
+			'left': '│',
+			'left-mid': '├',
+			'mid': '─',
+			'mid-mid': '┼',
+			'right': '│',
+			'right-mid': '┤',
+			'middle': '│'
+		}
+	});
+
+	rows.forEach(row => table.push(row));
+	return table.toString();
+}

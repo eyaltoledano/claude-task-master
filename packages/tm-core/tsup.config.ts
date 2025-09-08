@@ -27,7 +27,8 @@ export default defineConfig({
 		'services/index': 'src/services/index.ts',
 		'storage/index': 'src/storage/index.ts',
 		'types/index': 'src/types/index.ts',
-		'utils/index': 'src/utils/index.ts'
+		'utils/index': 'src/utils/index.ts',
+		'workflow/index': 'src/workflow/index.ts'
 	},
 	format: ['cjs', 'esm'],
 	dts: true,

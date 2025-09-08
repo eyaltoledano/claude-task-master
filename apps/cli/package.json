@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"@tm/core": "*",
+		"@tm/workflow-engine": "*",
 		"boxen": "^7.1.1",
 		"chalk": "^5.3.0",
 		"cli-table3": "^0.6.5",

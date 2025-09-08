@@ -15,8 +15,8 @@ import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
-// Import new commands from @tm/cli
-import { ListTasksCommand, AuthCommand } from '@tm/cli';
+// Import command registry from @tm/cli
+import { registerAllCommands } from '@tm/cli';
 
 import {
 	parsePRD,
@@ -1737,13 +1737,9 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// NEW: Register the new list command from @tm/cli
-	// This command handles all its own configuration and logic
-	ListTasksCommand.registerOn(programInstance);
-
-	// Register the auth command from @tm/cli
-	// Handles authentication with tryhamster.com
-	AuthCommand.registerOn(programInstance);
+	// Register all commands from @tm/cli using the command registry
+	// This automatically registers ListTasksCommand, AuthCommand, and any future commands
+	registerAllCommands(programInstance);
 
 	// expand command
 	programInstance
