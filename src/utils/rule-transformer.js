@@ -29,7 +29,7 @@ export function isValidProfile(profile) {
 /**
  * Get rule profile by name
  * @param {string} name - Profile name
- * @returns {Object|null} Profile object or null if not found
+ * @returns {Profile|null} Profile instance or null if not found
  */
 export function getRulesProfile(name) {
 	if (!isValidProfile(name)) {
@@ -46,28 +46,33 @@ export function getRulesProfile(name) {
 		);
 	}
 
+	// Return Profile instance directly - no more legacy conversion
 	return profile;
 }
 
 /**
- * Replace basic Cursor terms with profile equivalents
+ * Replace Cursor basic terms with profile equivalents
  */
 function replaceBasicTerms(content, conversionConfig) {
 	let result = content;
 
 	// Apply profile term replacements
-	conversionConfig.profileTerms.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (conversionConfig.profileTerms) {
+		conversionConfig.profileTerms.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	// Apply file extension replacements
-	conversionConfig.fileExtensions.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.fileExtensions) {
+		conversionConfig.fileExtensions.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	return result;
 }
@@ -79,26 +84,32 @@ function replaceToolReferences(content, conversionConfig) {
 	let result = content;
 
 	// Basic pattern for direct tool name replacements
-	const toolNames = conversionConfig.toolNames;
-	const toolReferencePattern = new RegExp(
-		`\\b(${Object.keys(toolNames).join('|')})\\b`,
-		'g'
-	);
+	if (conversionConfig.toolNames) {
+		const toolNames = conversionConfig.toolNames;
+		const toolReferencePattern = new RegExp(
+			`\\b(${Object.keys(toolNames).join('|')})\\b`,
+			'g'
+		);
 
-	// Apply direct tool name replacements
-	result = result.replace(toolReferencePattern, (match, toolName) => {
-		return toolNames[toolName] || toolName;
-	});
+		// Apply direct tool name replacements
+		result = result.replace(toolReferencePattern, (match, toolName) => {
+			return toolNames[toolName] || toolName;
+		});
+	}
 
 	// Apply contextual tool replacements
-	conversionConfig.toolContexts.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.toolContexts) {
+		conversionConfig.toolContexts.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	// Apply tool group replacements
-	conversionConfig.toolGroups.forEach((pattern) => {
-		result = result.replace(pattern.from, pattern.to);
-	});
+	if (conversionConfig.toolGroups) {
+		conversionConfig.toolGroups.forEach((pattern) => {
+			result = result.replace(pattern.from, pattern.to);
+		});
+	}
 
 	return result;
 }
@@ -110,13 +121,15 @@ function updateDocReferences(content, conversionConfig) {
 	let result = content;
 
 	// Apply documentation URL replacements
-	conversionConfig.docUrls.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (conversionConfig.docUrls) {
+		conversionConfig.docUrls.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	return result;
 }
@@ -125,6 +138,11 @@ function updateDocReferences(content, conversionConfig) {
  * Update file references in markdown links
  */
 function updateFileReferences(content, conversionConfig) {
+	// Handle profiles that don't define fileReferences
+	if (!conversionConfig.fileReferences) {
+		return content;
+	}
+
 	const { pathPattern, replacement } = conversionConfig.fileReferences;
 	return content.replace(pathPattern, replacement);
 }
@@ -148,13 +166,15 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
 	// Apply any global/catch-all replacements from the profile
 	// Super aggressive failsafe pass to catch any variations we might have missed
 	// This ensures critical transformations are applied even in contexts we didn't anticipate
-	globalReplacements.forEach((pattern) => {
-		if (typeof pattern.to === 'function') {
-			result = result.replace(pattern.from, pattern.to);
-		} else {
-			result = result.replace(pattern.from, pattern.to);
-		}
-	});
+	if (globalReplacements && Array.isArray(globalReplacements)) {
+		globalReplacements.forEach((pattern) => {
+			if (typeof pattern.to === 'function') {
+				result = result.replace(pattern.from, pattern.to);
+			} else {
+				result = result.replace(pattern.from, pattern.to);
+			}
+		});
+	}
 
 	return result;
 }
@@ -163,11 +183,13 @@ function transformRuleContent(content, conversionConfig, globalReplacements) {
  * Convert a Cursor rule file to a profile-specific rule file
  * @param {string} sourcePath - Path to the source .mdc file
  * @param {string} targetPath - Path to the target file
- * @param {Object} profile - The profile configuration
+ * @param {Profile} profile - The profile configuration (Profile instance)
  * @returns {boolean} - Success status
  */
 export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
+	// Work with Profile instance properties directly
 	const { conversionConfig, globalReplacements } = profile;
+
 	try {
 		// Read source content
 		const content = fs.readFileSync(sourcePath, 'utf8');
@@ -208,18 +230,18 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	let success = 0;
 	let failed = 0;
 
-	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
-	if (typeof profile.onAddRulesProfile === 'function') {
+	// 1. Call onAdd hook first (for pre-processing like copying assets)
+	if (typeof profile.hooks?.onAdd === 'function') {
 		try {
-			profile.onAddRulesProfile(projectRoot, assetsDir);
+			profile.hooks.onAdd(projectRoot, assetsDir);
 			log(
 				'debug',
-				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
+				`[Rule Transformer] Called onAdd hook for ${profile.profileName}`
 			);
 		} catch (error) {
 			log(
 				'error',
-				`[Rule Transformer] onAddRulesProfile failed for ${profile.profileName}: ${error.message}`
+				`[Rule Transformer] onAdd hook failed for ${profile.profileName}: ${error.message}`
 			);
 			failed++;
 		}
@@ -306,17 +328,17 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	}
 
 	// 4. Call post-conversion hook (for finalization)
-	if (typeof profile.onPostConvertRulesProfile === 'function') {
+	if (typeof profile.hooks?.onPost === 'function') {
 		try {
-			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			profile.hooks.onPost(projectRoot, assetsDir);
 			log(
 				'debug',
-				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
+				`[Rule Transformer] Called onPost hook for ${profile.profileName}`
 			);
 		} catch (error) {
 			log(
 				'error',
-				`[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`
+				`[Rule Transformer] onPost hook failed for ${profile.profileName}: ${error.message}`
 			);
 		}
 	}
@@ -347,18 +369,18 @@ export function removeProfileRules(projectRoot, profile) {
 	};
 
 	try {
-		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
-		if (typeof profile.onRemoveRulesProfile === 'function') {
+		// 1. Call onRemove hook first (for custom cleanup like removing assets)
+		if (typeof profile.hooks?.onRemove === 'function') {
 			try {
-				profile.onRemoveRulesProfile(projectRoot);
+				profile.hooks.onRemove(projectRoot);
 				log(
 					'debug',
-					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
+					`[Rule Transformer] Called onRemove hook for ${profile.profileName}`
 				);
 			} catch (error) {
 				log(
 					'error',
-					`[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`
+					`[Rule Transformer] onRemove hook failed for ${profile.profileName}: ${error.message}`
 				);
 			}
 		}

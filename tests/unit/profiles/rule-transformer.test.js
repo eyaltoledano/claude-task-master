@@ -77,31 +77,38 @@ describe('Rule Transformer - General', () => {
 				// Check that conversionConfig has required structure for profiles with rules
 				const hasRules = Object.keys(profileConfig.fileMap).length > 0;
 				if (hasRules) {
+					// Check required properties
 					expect(profileConfig.conversionConfig).toHaveProperty('profileTerms');
 					expect(profileConfig.conversionConfig).toHaveProperty('toolNames');
-					expect(profileConfig.conversionConfig).toHaveProperty('toolContexts');
-					expect(profileConfig.conversionConfig).toHaveProperty('toolGroups');
 					expect(profileConfig.conversionConfig).toHaveProperty('docUrls');
-					expect(profileConfig.conversionConfig).toHaveProperty(
-						'fileReferences'
-					);
 
-					// Verify arrays are actually arrays
+					// Verify required properties have correct types
 					expect(
 						Array.isArray(profileConfig.conversionConfig.profileTerms)
 					).toBe(true);
 					expect(typeof profileConfig.conversionConfig.toolNames).toBe(
 						'object'
 					);
-					expect(
-						Array.isArray(profileConfig.conversionConfig.toolContexts)
-					).toBe(true);
-					expect(Array.isArray(profileConfig.conversionConfig.toolGroups)).toBe(
-						true
-					);
 					expect(Array.isArray(profileConfig.conversionConfig.docUrls)).toBe(
 						true
 					);
+
+					// Check optional properties if they exist
+					if (profileConfig.conversionConfig.hasOwnProperty('toolContexts')) {
+						expect(
+							Array.isArray(profileConfig.conversionConfig.toolContexts)
+						).toBe(true);
+					}
+					if (profileConfig.conversionConfig.hasOwnProperty('toolGroups')) {
+						expect(
+							Array.isArray(profileConfig.conversionConfig.toolGroups)
+						).toBe(true);
+					}
+					if (profileConfig.conversionConfig.hasOwnProperty('fileReferences')) {
+						expect(
+							Array.isArray(profileConfig.conversionConfig.fileReferences)
+						).toBe(true);
+					}
 				}
 			});
 		});

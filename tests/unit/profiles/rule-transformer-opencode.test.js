@@ -22,10 +22,10 @@ describe('Rule Transformer - OpenCode Profile', () => {
 
 	test('should have lifecycle functions for MCP config transformation', () => {
 		// Verify that opencode.js has lifecycle functions
-		expect(opencodeProfile.onPostConvertRulesProfile).toBeDefined();
-		expect(typeof opencodeProfile.onPostConvertRulesProfile).toBe('function');
-		expect(opencodeProfile.onRemoveRulesProfile).toBeDefined();
-		expect(typeof opencodeProfile.onRemoveRulesProfile).toBe('function');
+		expect(opencodeProfile.hooks.onPost).toBeDefined();
+		expect(typeof opencodeProfile.hooks.onPost).toBe('function');
+		expect(opencodeProfile.hooks.onRemove).toBeDefined();
+		expect(typeof opencodeProfile.hooks.onRemove).toBe('function');
 	});
 
 	test('should use opencode.json instead of mcp.json', () => {

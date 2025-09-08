@@ -1,176 +1,211 @@
-// VS Code conversion profile for rule-transformer
-import path from 'path';
+// VS Code profile using ProfileBuilder system
+import { ProfileBuilder } from '../profile/ProfileBuilder.js';
+
 import fs from 'fs';
-import { log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
+import path from 'path';
 
-/**
- * Transform standard MCP config format to VS Code format
- * @param {Object} mcpConfig - Standard MCP configuration object
- * @returns {Object} - Transformed VS Code configuration object
- */
-function transformToVSCodeFormat(mcpConfig) {
-	const vscodeConfig = {};
-
-	// Transform mcpServers to servers
-	if (mcpConfig.mcpServers) {
-		vscodeConfig.servers = {};
-
-		for (const [serverName, serverConfig] of Object.entries(
-			mcpConfig.mcpServers
-		)) {
-			// Transform server configuration
-			const transformedServer = {
-				...serverConfig
-			};
-
-			// Add type: "stdio" after the env block
-			if (transformedServer.env) {
-				// Reorder properties: keep command, args, env, then add type
-				const reorderedServer = {};
-				if (transformedServer.command)
-					reorderedServer.command = transformedServer.command;
-				if (transformedServer.args)
-					reorderedServer.args = transformedServer.args;
-				if (transformedServer.env) reorderedServer.env = transformedServer.env;
-				reorderedServer.type = 'stdio';
-
-				// Add any other properties that might exist
-				Object.keys(transformedServer).forEach((key) => {
-					if (!['command', 'args', 'env', 'type'].includes(key)) {
-						reorderedServer[key] = transformedServer[key];
-					}
-				});
-
-				vscodeConfig.servers[serverName] = reorderedServer;
-			} else {
-				// If no env block, just add type at the end
-				transformedServer.type = 'stdio';
-				vscodeConfig.servers[serverName] = transformedServer;
-			}
-		}
-	}
-
-	return vscodeConfig;
-}
-
-/**
- * Lifecycle function called after MCP config generation to transform to VS Code format
- * @param {string} targetDir - Target project directory
- * @param {string} assetsDir - Assets directory (unused for VS Code)
- */
-function onPostConvertRulesProfile(targetDir, assetsDir) {
-	const vscodeConfigPath = path.join(targetDir, '.vscode', 'mcp.json');
-
-	if (!fs.existsSync(vscodeConfigPath)) {
-		log('debug', '[VS Code] No .vscode/mcp.json found to transform');
-		return;
-	}
-
+// Clean up schema integration when profile is removed
+async function cleanupSchemaIntegration(projectRoot) {
 	try {
-		// Read the generated standard MCP config
-		const mcpConfigContent = fs.readFileSync(vscodeConfigPath, 'utf8');
-		const mcpConfig = JSON.parse(mcpConfigContent);
+		const vscodeDir = path.join(projectRoot, '.vscode');
+		const settingsPath = path.join(vscodeDir, 'settings.json');
 
-		// Check if it's already in VS Code format (has servers instead of mcpServers)
-		if (mcpConfig.servers) {
-			log(
-				'info',
-				'[VS Code] mcp.json already in VS Code format, skipping transformation'
-			);
+		// Skip if settings file doesn't exist
+		if (!fs.existsSync(settingsPath)) {
 			return;
 		}
 
-		// Transform to VS Code format
-		const vscodeConfig = transformToVSCodeFormat(mcpConfig);
+		try {
+			// Read and parse settings
+			const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+			let settingsChanged = false;
 
-		// Write back the transformed config with proper formatting
-		fs.writeFileSync(
-			vscodeConfigPath,
-			JSON.stringify(vscodeConfig, null, 2) + '\n'
-		);
+			// Remove Taskmaster schemas if they exist
+			if (Array.isArray(settings['json.schemas'])) {
+				const originalLength = settings['json.schemas'].length;
 
-		log('info', '[VS Code] Transformed mcp.json to VS Code format');
-		log('debug', `[VS Code] Renamed mcpServers->servers, added type: "stdio"`);
-	} catch (error) {
-		log('error', `[VS Code] Failed to transform mcp.json: ${error.message}`);
-	}
-}
-
-/**
- * Lifecycle function called when removing VS Code profile
- * @param {string} targetDir - Target project directory
- */
-function onRemoveRulesProfile(targetDir) {
-	const vscodeConfigPath = path.join(targetDir, '.vscode', 'mcp.json');
-
-	if (!fs.existsSync(vscodeConfigPath)) {
-		log('debug', '[VS Code] No .vscode/mcp.json found to clean up');
-		return;
-	}
-
-	try {
-		// Read the current config
-		const configContent = fs.readFileSync(vscodeConfigPath, 'utf8');
-		const config = JSON.parse(configContent);
-
-		// Check if it has the servers section and task-master-ai server
-		if (config.servers && config.servers['task-master-ai']) {
-			// Remove task-master-ai server
-			delete config.servers['task-master-ai'];
-
-			// Check if there are other MCP servers
-			const remainingServers = Object.keys(config.servers);
-
-			if (remainingServers.length === 0) {
-				// No other servers, remove entire file
-				fs.rmSync(vscodeConfigPath, { force: true });
-				log('info', '[VS Code] Removed empty mcp.json file');
-
-				// Also remove .vscode directory if it's empty
-				const vscodeDir = path.dirname(vscodeConfigPath);
-				try {
-					const dirContents = fs.readdirSync(vscodeDir);
-					if (dirContents.length === 0) {
-						fs.rmSync(vscodeDir, { recursive: true, force: true });
-						log('debug', '[VS Code] Removed empty .vscode directory');
+				settings['json.schemas'] = settings['json.schemas'].filter((schema) => {
+					// Remove tasks.json schema
+					if (schema.fileMatch && Array.isArray(schema.fileMatch)) {
+						const isTasksSchema = schema.fileMatch.includes('**/tasks.json');
+						// Remove prompt template schema
+						const isPromptSchema = schema.fileMatch.some(
+							(match) =>
+								match.includes('src/prompts/') &&
+								schema.url &&
+								schema.url.includes('prompt-template.schema.json')
+						);
+						return !(isTasksSchema || isPromptSchema);
 					}
-				} catch (err) {
-					// Directory might not be empty or might not exist, that's fine
-				}
-			} else {
-				// Write back the modified config
-				fs.writeFileSync(
-					vscodeConfigPath,
-					JSON.stringify(config, null, 2) + '\n'
+					return true;
+				});
+
+				settingsChanged = settings['json.schemas'].length < originalLength;
+			}
+
+			// Remove Taskmaster file associations if they exist
+			if (settings['files.associations']) {
+				const originalAssociations = JSON.stringify(
+					settings['files.associations']
 				);
-				log(
-					'info',
-					'[VS Code] Removed TaskMaster from mcp.json, preserved other configurations'
+
+				// Remove prompt file associations
+				Object.keys(settings['files.associations']).forEach((key) => {
+					if (key.includes('src/prompts/')) {
+						delete settings['files.associations'][key];
+					}
+				});
+
+				// Remove the entire files.associations object if it's empty
+				if (Object.keys(settings['files.associations']).length === 0) {
+					delete settings['files.associations'];
+				}
+
+				settingsChanged =
+					settingsChanged ||
+					JSON.stringify(settings['files.associations'] || {}) !==
+						originalAssociations;
+			}
+
+			// Only write back if we made changes
+			if (settingsChanged) {
+				fs.writeFileSync(
+					settingsPath,
+					JSON.stringify(settings, null, 2) + '\n',
+					'utf8'
 				);
 			}
-		} else {
-			log('debug', '[VS Code] TaskMaster not found in mcp.json');
+		} catch (error) {
+			console.warn('Could not clean up VS Code settings:', error.message);
 		}
 	} catch (error) {
-		log('error', `[VS Code] Failed to clean up mcp.json: ${error.message}`);
+		console.warn('Error during VS Code schema cleanup:', error.message);
 	}
 }
 
-// Create and export vscode profile using the base factory
-export const vscodeProfile = createProfile({
-	name: 'vscode',
-	displayName: 'VS Code',
-	url: 'code.visualstudio.com',
-	docsUrl: 'code.visualstudio.com/docs',
-	rulesDir: '.github/instructions', // VS Code instructions location
-	profileDir: '.vscode', // VS Code configuration directory
-	mcpConfigName: 'mcp.json', // VS Code uses mcp.json in .vscode directory
-	targetExtension: '.instructions.md',
-	customReplacements: [
+// VS Code schema integration function
+async function setupSchemaIntegration(projectRoot) {
+	try {
+		const vscodeDir = path.join(projectRoot, '.vscode');
+		const settingsPath = path.join(vscodeDir, 'settings.json');
+
+		// Only proceed if .vscode directory exists or can be created
+		try {
+			if (!fs.existsSync(vscodeDir)) {
+				fs.mkdirSync(vscodeDir, { recursive: true });
+			}
+		} catch (error) {
+			console.warn(`Could not create .vscode directory: ${error.message}`);
+			return; // Skip schema setup if directory can't be created
+		}
+
+		// Initialize settings object
+		let settings = {};
+		if (fs.existsSync(settingsPath)) {
+			try {
+				settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+			} catch (error) {
+				console.warn(
+					'Could not parse existing settings.json, skipping schema setup'
+				);
+				return; // Don't overwrite corrupted settings
+			}
+		}
+
+		// Initialize json.schemas array if it doesn't exist
+		if (!settings['json.schemas']) {
+			settings['json.schemas'] = [];
+		}
+
+		// Add schema for tasks.json if not already present
+		const tasksSchema = {
+			fileMatch: ['**/tasks.json'],
+			url: 'https://json.schemastore.org/tasks.json'
+		};
+
+		const schemaExists = settings['json.schemas'].some(
+			(schema) =>
+				schema.fileMatch &&
+				Array.isArray(schema.fileMatch) &&
+				schema.fileMatch.includes('**/tasks.json')
+		);
+
+		if (!schemaExists) {
+			settings['json.schemas'].push(tasksSchema);
+
+			try {
+				fs.writeFileSync(
+					settingsPath,
+					JSON.stringify(settings, null, 2) + '\n',
+					'utf8'
+				);
+				console.log('VS Code schema integration complete');
+			} catch (error) {
+				console.warn(`Could not update settings.json: ${error.message}`);
+			}
+		}
+	} catch (error) {
+		console.warn(`VS Code schema integration failed: ${error.message}`);
+	}
+}
+
+// Create vscode profile using ProfileBuilder
+const vscodeProfile = ProfileBuilder.minimal('vscode')
+	.display('VS Code')
+	.profileDir('.vscode') // VS Code uses .vscode directory for configuration
+	.rulesDir('.github/instructions') // VS Code uses .github/instructions for rules
+	.mcpConfig(true) // Enable MCP configuration
+	.includeDefaultRules(true)
+	.targetExtension('.instructions.md') // VS Code uses .instructions.md extension
+	.onAdd(setupSchemaIntegration) // Add schema integration lifecycle function
+	.onRemove(cleanupSchemaIntegration) // Clean up schema when profile is removed
+	.conversion({
+		// Profile name replacements
+		profileTerms: [
+			{ from: /cursor\.so/g, to: 'code.visualstudio.com' },
+			{ from: /\[cursor\.so\]/g, to: '[code.visualstudio.com]' },
+			{
+				from: /href="https:\/\/cursor\.so/g,
+				to: 'href="https://code.visualstudio.com'
+			},
+			{ from: /\(https:\/\/cursor\.so/g, to: '(https://code.visualstudio.com' },
+			{
+				from: /\bcursor\b/gi,
+				to: (match) => (match === 'Cursor' ? 'VS Code' : 'vs code')
+			},
+			{ from: /Cursor/g, to: 'VS Code' }
+		],
+		// Documentation URL replacements
+		docUrls: [{ from: /docs\.cursor\.so/g, to: 'code.visualstudio.com/docs' }],
+		// File extension mappings (.mdc to .instructions.md for VS Code)
+		fileExtensions: [{ from: /\.mdc/g, to: '.instructions.md' }],
+		// Tool name mappings (standard - no custom tools)
+		toolNames: {
+			edit_file: 'edit_file',
+			search: 'search',
+			grep_search: 'grep_search',
+			list_dir: 'list_dir',
+			read_file: 'read_file',
+			run_terminal_cmd: 'run_terminal_cmd'
+		},
+
+		// Tool context mappings (vscode uses standard contexts)
+		toolContexts: [],
+
+		// Tool group mappings (vscode uses standard groups)
+		toolGroups: [],
+
+		// File reference mappings (vscode uses standard file references)
+		fileReferences: []
+	})
+	.globalReplacements([
 		// Core VS Code directory structure changes
 		{ from: /\.cursor\/rules/g, to: '.github/instructions' },
 		{ from: /\.cursor\/mcp\.json/g, to: '.vscode/mcp.json' },
+		{ from: /\.vs code\/rules/g, to: '.github/instructions' },
+		{ from: /\.vs code\/mcp\.json/g, to: '.vscode/mcp.json' },
+		{ from: /\.vs code\/instructions/g, to: '.github/instructions' },
+		{ from: /\.github\/rules/g, to: '.github/instructions' },
 
 		// Fix any remaining vscode/rules references that might be created during transformation
 		{ from: /\.vscode\/rules/g, to: '.github/instructions' },
@@ -186,14 +221,28 @@ export const vscodeProfile = createProfile({
 			from: /\[(.+?)\]\(mdc:\.cursor\/rules\/(.+?)\.mdc\)/g,
 			to: '[$1](.github/instructions/$2.instructions.md)'
 		},
+		// Remove mdc: protocol from any remaining links
+		{ from: /\(mdc:/g, to: '(' },
+		{
+			from: /\[(.+?)\]\(mdc:\.vs code\/rules\/(.+?)\.mdc\)/g,
+			to: '[$1](.github/instructions/$2.instructions.md)'
+		},
+		{
+			from: /\[(.+?)\]\(mdc:\.github\/instructions\/(.+?)\.mdc\)/g,
+			to: '[$1](.github/instructions/$2.instructions.md)'
+		},
+
+		// File extension transformation
+		{ from: /\.mdc/g, to: '.instructions.md' },
+
+		// Globs to applyTo transformation for VS Code
+		{ from: /globs:\s*(.+)/g, to: 'applyTo: "$1"' },
 
 		// VS Code specific terminology
 		{ from: /rules directory/g, to: 'instructions directory' },
-		{ from: /cursor rules/gi, to: 'VS Code instructions' }
-	],
-	onPostConvert: onPostConvertRulesProfile,
-	onRemove: onRemoveRulesProfile
-});
+		{ from: /vs code rules/gi, to: 'VS Code instructions' }
+	])
+	.build();
 
-// Export lifecycle functions separately to avoid naming conflicts
-export { onPostConvertRulesProfile, onRemoveRulesProfile };
+// Export the vscode profile
+export { vscodeProfile };
