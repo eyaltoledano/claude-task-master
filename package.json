@@ -23,7 +23,8 @@
 		"inspector": "npx @modelcontextprotocol/inspector node mcp-server/server.js",
 		"mcp-server": "node mcp-server/server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write"
+		"format": "biome format . --write",
+		"verify:tool-counts": "node scripts/verify-tool-counts.js"
 	},
 	"keywords": [
 		"claude",
