@@ -23,7 +23,11 @@ import {
 } from '../ui.js';
 
 import { generateTextService } from '../ai-services-unified.js';
-import { getDebugFlag, isApiKeySet } from '../config-manager.js';
+import {
+	getDebugFlag,
+	isApiKeySet,
+	hasCodebaseAnalysis
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
@@ -453,7 +457,13 @@ async function updateTaskById(
 			appendMode: appendMode,
 			useResearch: useResearch,
 			currentDetails: taskToUpdate.details || '(No existing details)',
-			gatheredContext: gatheredContext || ''
+			gatheredContext: gatheredContext || '',
+			hasCodebaseAnalysis: hasCodebaseAnalysis(
+				useResearch,
+				projectRoot,
+				session
+			),
+			projectRoot: projectRoot
 		};
 
 		const variantKey = appendMode

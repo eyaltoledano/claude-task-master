@@ -62,6 +62,43 @@ const MOVE_ERROR_CODES = {
 };
 
 /**
+ * Normalize a dependency value to its numeric parent task ID.
+ * - Numbers are returned as-is (if finite)
+ * - Numeric strings are parsed ("5" -> 5)
+ * - Dotted strings return the parent portion ("5.2" -> 5)
+ * - Empty/invalid values return null
+ * - null/undefined are preserved
+ * @param {number|string|null|undefined} dep
+ * @returns {number|null|undefined}
+ */
+function normalizeDependency(dep) {
+	if (dep === null || dep === undefined) return dep;
+	if (typeof dep === 'number') return Number.isFinite(dep) ? dep : null;
+	if (typeof dep === 'string') {
+		const trimmed = dep.trim();
+		if (trimmed === '') return null;
+		const parentPart = trimmed.includes('.') ? trimmed.split('.')[0] : trimmed;
+		const parsed = parseInt(parentPart, 10);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+/**
+ * Normalize an array of dependency values to numeric IDs.
+ * Preserves null/undefined input (returns as-is) and filters out invalid entries.
+ * @param {Array<any>|null|undefined} deps
+ * @returns {Array<number>|null|undefined}
+ */
+function normalizeDependencies(deps) {
+	if (deps === null || deps === undefined) return deps;
+	if (!Array.isArray(deps)) return deps;
+	return deps
+		.map((d) => normalizeDependency(d))
+		.filter((n) => Number.isFinite(n));
+}
+
+/**
  * Move one or more tasks/subtasks to new positions
  * @param {string} tasksPath - Path to tasks.json file
  * @param {string} sourceId - ID(s) of the task/subtask to move (e.g., '5' or '5.2' or '5,6,7')
@@ -674,15 +711,34 @@ async function resolveDependencies(
 ) {
 	const { withDependencies = false, ignoreDependencies = false } = options;
 
+	// Scope allTasks to the source tag to avoid cross-tag contamination when
+	// computing dependency chains for --with-dependencies
+	const tasksInSourceTag = Array.isArray(allTasks)
+		? allTasks.filter((t) => t && t.tag === sourceTag)
+		: [];
+
 	// Handle --with-dependencies flag first (regardless of cross-tag dependencies)
 	if (withDependencies) {
 		// Move dependent tasks along with main tasks
-		// Find ALL dependencies recursively within the same tag
-		const allDependentTaskIds = findAllDependenciesRecursively(
+		// Find ALL dependencies recursively, but only using tasks from the source tag
+		const allDependentTaskIdsRaw = findAllDependenciesRecursively(
 			sourceTasks,
-			allTasks,
+			tasksInSourceTag,
 			{ maxDepth: 100, includeSelf: false }
 		);
+
+		// Filter dependent IDs to those that actually exist in the source tag
+		const sourceTagIds = new Set(
+			tasksInSourceTag.map((t) =>
+				typeof t.id === 'string' ? parseInt(t.id, 10) : t.id
+			)
+		);
+		const allDependentTaskIds = allDependentTaskIdsRaw.filter((depId) => {
+			// Only numeric task IDs are eligible to be moved (subtasks cannot be moved cross-tag)
+			const normalizedId = normalizeDependency(depId);
+			return Number.isFinite(normalizedId) && sourceTagIds.has(normalizedId);
+		});
+
 		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
 
 		log(
@@ -711,22 +767,31 @@ async function resolveDependencies(
 		if (ignoreDependencies) {
 			// Break cross-tag dependencies (edge case - shouldn't normally happen)
 			sourceTasks.forEach((task) => {
+				const sourceTagTasks = tasksInSourceTag;
+				const targetTagTasks = Array.isArray(allTasks)
+					? allTasks.filter((t) => t && t.tag === targetTag)
+					: [];
 				task.dependencies = task.dependencies.filter((depId) => {
-					// Handle both task IDs and subtask IDs (e.g., "1.2")
-					let depTask = null;
-					if (typeof depId === 'string' && depId.includes('.')) {
-						// It's a subtask ID - extract parent task ID and find the parent task
-						const [parentId, subtaskId] = depId
-							.split('.')
-							.map((id) => parseInt(id, 10));
-						depTask = allTasks.find((t) => t.id === parentId);
-					} else {
-						// It's a regular task ID - normalize to number for comparison
-						const normalizedDepId =
-							typeof depId === 'string' ? parseInt(depId, 10) : depId;
-						depTask = allTasks.find((t) => t.id === normalizedDepId);
+					const parentTaskId = normalizeDependency(depId);
+
+					// If dependency resolves to a task in the source tag, drop it (would be cross-tag after move)
+					if (
+						Number.isFinite(parentTaskId) &&
+						sourceTagTasks.some((t) => t.id === parentTaskId)
+					) {
+						return false;
 					}
-					return !depTask || depTask.tag === targetTag;
+
+					// If dependency resolves to a task in the target tag, keep it
+					if (
+						Number.isFinite(parentTaskId) &&
+						targetTagTasks.some((t) => t.id === parentTaskId)
+					) {
+						return true;
+					}
+
+					// Otherwise, keep as-is (unknown/unresolved dependency)
+					return true;
 				});
 			});
 
@@ -810,7 +875,16 @@ async function executeMoveOperation(
 		if (existingTaskIndex !== -1) {
 			throw new MoveTaskError(
 				MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
-				`Task ${taskId} already exists in target tag "${targetTag}"`
+				`Task ${taskId} already exists in target tag "${targetTag}"`,
+				{
+					conflictingId: normalizedTaskId,
+					targetTag,
+					suggestions: [
+						'Choose a different target tag without conflicting IDs',
+						'Move a different set of IDs (avoid existing ones)',
+						'If needed, move within-tag to a new ID first, then cross-tag move'
+					]
+				}
 			);
 		}
 
@@ -851,7 +925,8 @@ async function finalizeMove(
 	tasksPath,
 	context,
 	sourceTag,
-	targetTag
+	targetTag,
+	dependencyResolution
 ) {
 	const { projectRoot } = context;
 	const { rawData, movedTasks } = moveResult;
@@ -859,10 +934,23 @@ async function finalizeMove(
 	// Write the updated data
 	writeJSON(tasksPath, rawData, projectRoot, null);
 
-	return {
+	const response = {
 		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
 		movedTasks
 	};
+
+	// If we intentionally broke cross-tag dependencies, provide tips to validate & fix
+	if (
+		dependencyResolution &&
+		dependencyResolution.type === 'ignored-dependencies'
+	) {
+		response.tips = [
+			'Run "task-master validate-dependencies" to check for dependency issues.',
+			'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+		];
+	}
+
+	return response;
 }
 
 /**
@@ -898,7 +986,7 @@ async function moveTasksBetweenTags(
 	const { rawData, sourceTasks, allTasks } = await prepareTaskData(validation);
 
 	// 3. Handle dependencies
-	const { tasksToMove } = await resolveDependencies(
+	const { tasksToMove, dependencyResolution } = await resolveDependencies(
 		sourceTasks,
 		allTasks,
 		options,
@@ -923,7 +1011,8 @@ async function moveTasksBetweenTags(
 		tasksPath,
 		context,
 		sourceTag,
-		targetTag
+		targetTag,
+		dependencyResolution
 	);
 }
 

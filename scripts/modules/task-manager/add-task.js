@@ -25,7 +25,7 @@ import {
 	markMigrationForNotice
 } from '../utils.js';
 import { generateObjectService } from '../ai-services-unified.js';
-import { getDefaultPriority } from '../config-manager.js';
+import { getDefaultPriority, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import ContextGatherer from '../utils/contextGatherer.js';
 import generateTaskFiles from './generate-task-files.js';
@@ -425,7 +425,13 @@ async function addTask(
 					contextFromArgs,
 					useResearch,
 					priority: effectivePriority,
-					dependencies: numericDependencies
+					dependencies: numericDependencies,
+					hasCodebaseAnalysis: hasCodebaseAnalysis(
+						useResearch,
+						projectRoot,
+						session
+					),
+					projectRoot: projectRoot
 				}
 			);
 

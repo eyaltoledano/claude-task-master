@@ -7,7 +7,6 @@ import path from 'path';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { ensureTagMetadata, findTaskById } from '../../utils.js';
-import { getPriorityIndicators } from '../../../../src/ui/indicators.js';
 import { displayParsePrdSummary } from '../../../../src/ui/parse-prd.js';
 import { TimeoutManager } from '../../../../src/utils/timeout-manager.js';
 import { displayAiUsageSummary } from '../../ui.js';
@@ -242,7 +241,7 @@ export async function buildPrompts(config, prdContent, nextId) {
 		prdContent,
 		prdPath: config.prdPath,
 		defaultTaskPriority,
-		isClaudeCode: config.isClaudeCode(),
+		hasCodebaseAnalysis: config.hasCodebaseAnalysis(),
 		projectRoot: config.projectRoot || ''
 	});
 }

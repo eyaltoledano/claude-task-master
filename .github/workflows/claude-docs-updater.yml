@@ -1,18 +1,27 @@
 name: Claude Documentation Updater
 
 on:
-  push:
-    branches:
-      - next
-    paths-ignore:
-      - "apps/docs/**"
-      - "*.md"
-      - ".github/workflows/**"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'The commit SHA that triggered this update'
+        required: true
+        type: string
+      commit_message:
+        description: 'The commit message'
+        required: true
+        type: string
+      changed_files:
+        description: 'List of changed files'
+        required: true
+        type: string
+      commit_diff:
+        description: 'Diff summary of changes'
+        required: true
+        type: string
 
 jobs:
   update-docs:
-    # Only run if changes were merged (not direct pushes from bots)
-    if: github.actor != 'github-actions[bot]' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,28 +31,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # Need previous commit for comparison
-
-      - name: Get changed files
-        id: changed-files
-        run: |
-          echo "Changed files in this push:"
-          git diff --name-only HEAD^ HEAD | tee changed_files.txt
-
-          # Store changed files for Claude to analyze
-          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          git diff --name-only HEAD^ HEAD >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Get the commit message and changes summary
-          echo "commit_message<<EOF" >> $GITHUB_OUTPUT
-          git log -1 --pretty=%B >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Get diff for documentation context
-          echo "commit_diff<<EOF" >> $GITHUB_OUTPUT
-          git diff HEAD^ HEAD --stat >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          ref: next
+          fetch-depth: 0 # Need full history to checkout specific commit
 
       - name: Create docs update branch
         id: create-branch
@@ -71,12 +60,12 @@ jobs:
             You are a documentation specialist. Analyze the recent changes pushed to the 'next' branch and update the documentation accordingly.
 
             Recent changes:
-            - Commit: ${{ steps.changed-files.outputs.commit_message }}
+            - Commit: ${{ inputs.commit_message }}
             - Changed files:
-            ${{ steps.changed-files.outputs.changed_files }}
+            ${{ inputs.changed_files }}
 
             - Changes summary:
-            ${{ steps.changed-files.outputs.commit_diff }}
+            ${{ inputs.commit_diff }}
 
             Your task:
             1. Analyze the changes to understand what functionality was added, modified, or removed
@@ -113,7 +102,7 @@ jobs:
 
             This PR was automatically generated to update documentation based on recent changes.
             
-            Original commit: ${{ steps.changed-files.outputs.commit_message }}
+            Original commit: ${{ inputs.commit_message }}
             
             Co-authored-by: Claude <claude-assistant@anthropic.com>"
           fi
@@ -133,12 +122,12 @@ jobs:
             This PR automatically updates documentation based on recent changes merged to the \`next\` branch.
 
             ### Original Changes
-            **Commit:** ${{ github.sha }}
-            **Message:** ${{ steps.changed-files.outputs.commit_message }}
+            **Commit:** ${{ inputs.commit_sha }}
+            **Message:** ${{ inputs.commit_message }}
             
             ### Changed Files in Original Commit
             \`\`\`
-            ${{ steps.changed-files.outputs.changed_files }}
+            ${{ inputs.changed_files }}
             \`\`\`
 
             ### Documentation Updates

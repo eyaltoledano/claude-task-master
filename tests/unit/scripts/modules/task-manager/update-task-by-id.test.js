@@ -51,7 +51,8 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDebugFlag: jest.fn(() => false),
-		isApiKeySet: jest.fn(() => true)
+		isApiKeySet: jest.fn(() => true),
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 

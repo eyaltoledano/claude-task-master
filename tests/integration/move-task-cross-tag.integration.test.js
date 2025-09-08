@@ -426,6 +426,38 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			);
 		});
 
+		it('should provide advisory tips when ignoreDependencies breaks deps', async () => {
+			// Move a task that has dependencies so cross-tag conflicts would be broken
+			const taskIds = [2]; // backlog:2 depends on 1
+			const sourceTag = 'backlog';
+			const targetTag = 'in-progress';
+
+			// Override cross-tag detection to simulate conflicts for this case
+			const depManager = await import(
+				'../../scripts/modules/dependency-manager.js'
+			);
+			depManager.findCrossTagDependencies.mockReturnValueOnce([
+				{ taskId: 2, dependencyId: 1, dependencyTag: sourceTag }
+			]);
+
+			const result = await moveTasksBetweenTags(
+				testDataPath,
+				taskIds,
+				sourceTag,
+				targetTag,
+				{ ignoreDependencies: true },
+				{ projectRoot: '/test/project' }
+			);
+
+			expect(Array.isArray(result.tips)).toBe(true);
+			const expectedTips = [
+				'Run "task-master validate-dependencies" to check for dependency issues.',
+				'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+			];
+			expect(result.tips).toHaveLength(expectedTips.length);
+			expect(result.tips).toEqual(expect.arrayContaining(expectedTips));
+		});
+
 		it('should move task without cross-tag dependency conflicts (since dependencies only exist within tags)', async () => {
 			const taskIds = [2]; // Task 2 depends on Task 1 (both in same tag)
 			const sourceTag = 'backlog';
@@ -564,6 +596,25 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 					{ projectRoot: '/test/project' }
 				)
 			).rejects.toThrow('Task 1 already exists in target tag "in-progress"');
+
+			// Validate suggestions on the error payload
+			try {
+				await moveTasksBetweenTags(
+					testDataPath,
+					taskIds,
+					sourceTag,
+					targetTag,
+					{},
+					{ projectRoot: '/test/project' }
+				);
+			} catch (err) {
+				expect(err.code).toBe('TASK_ALREADY_EXISTS');
+				expect(Array.isArray(err.data?.suggestions)).toBe(true);
+				const s = (err.data?.suggestions || []).join(' ');
+				expect(s).toContain('different target tag');
+				expect(s).toContain('different set of IDs');
+				expect(s).toContain('within-tag');
+			}
 		});
 	});
 
@@ -637,37 +688,7 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			);
 		});
 
-		it('should handle force flag for dependency conflicts', async () => {
-			const taskIds = [2]; // Task 2 depends on Task 1
-			const sourceTag = 'backlog';
-			const targetTag = 'in-progress';
-
-			const result = await moveTasksBetweenTags(
-				testDataPath,
-				taskIds,
-				sourceTag,
-				targetTag,
-				{ force: true },
-				{ projectRoot: '/test/project' }
-			);
-
-			// Verify task was moved despite dependency conflicts
-			expect(mockUtils.writeJSON).toHaveBeenCalledWith(
-				testDataPath,
-				expect.objectContaining({
-					'in-progress': expect.objectContaining({
-						tasks: expect.arrayContaining([
-							expect.objectContaining({
-								id: 2,
-								tag: 'in-progress'
-							})
-						])
-					})
-				}),
-				'/test/project',
-				null
-			);
-		});
+		// Note: force flag deprecated for cross-tag moves; covered by with/ignore dependencies tests
 	});
 
 	describe('Complex Scenarios', () => {

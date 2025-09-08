@@ -19,7 +19,7 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
@@ -435,7 +435,13 @@ async function updateTasks(
 				tasks: tasksToUpdate,
 				updatePrompt: prompt,
 				useResearch,
-				projectContext: gatheredContext
+				projectContext: gatheredContext,
+				hasCodebaseAnalysis: hasCodebaseAnalysis(
+					useResearch,
+					projectRoot,
+					session
+				),
+				projectRoot: projectRoot
 			}
 		);
 		// --- End Build Prompts ---

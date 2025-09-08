@@ -187,7 +187,8 @@ jest.unstable_mockModule(
 		// Additional functions
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
-		getVertexLocation: jest.fn(() => undefined)
+		getVertexLocation: jest.fn(() => undefined),
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 
