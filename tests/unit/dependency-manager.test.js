@@ -920,4 +920,150 @@ describe('Dependency Manager Module', () => {
 			expect(result.conflicts).toEqual([]);
 		});
 	});
+
+	describe('Cross-level dependency tests (Issue #542)', () => {
+		beforeEach(() => {
+			// Set up test data that matches the issue report
+			mockReadJSON.mockReturnValue({
+				tasks: [
+					{
+						id: 2,
+						title: "Task 2 with subtasks",
+						description: "Parent task",
+						status: "pending",
+						dependencies: [],
+						subtasks: [
+							{
+								id: 1,
+								title: "Subtask 2.1",
+								description: "First subtask",
+								status: "pending",
+								dependencies: []
+							},
+							{
+								id: 2,
+								title: "Subtask 2.2",
+								description: "Second subtask that should depend on Task 11",
+								status: "pending",
+								dependencies: []
+							}
+						]
+					},
+					{
+						id: 11,
+						title: "Task 11",
+						description: "Top-level task that 2.2 should depend on",
+						status: "done",
+						dependencies: []
+					}
+				]
+			});
+
+			// Configure mockTaskExists to properly validate cross-level dependencies
+			mockTaskExists.mockImplementation((tasks, taskId) => {
+				if (typeof taskId === 'string' && taskId.includes('.')) {
+					const [parentId, subtaskId] = taskId.split('.').map(Number);
+					const task = tasks.find((t) => t.id === parentId);
+					return (
+						task &&
+						task.subtasks &&
+						task.subtasks.some((st) => st.id === subtaskId)
+					);
+				}
+
+				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				return tasks.some((task) => task.id === numericId);
+			});
+
+			mockFormatTaskId.mockImplementation((id) => {
+				if (typeof id === 'string' && id.includes('.')) {
+					return id;
+				}
+				if (typeof id === 'number') {
+					return id.toString();
+				}
+				return id;
+			});
+		});
+
+		test('should allow subtask to depend on top-level task', async () => {
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const testTasksPath = 'test-tasks.json';
+
+			// Test the specific scenario from Issue #542: subtask 2.2 depending on task 11
+			await expect(addDependency(testTasksPath, '2.2', 11, { projectRoot: '/test' }))
+				.resolves.not.toThrow();
+
+			// Verify mockWriteJSON was called (meaning the dependency was added)
+			expect(mockWriteJSON).toHaveBeenCalled();
+			
+			// Get the call arguments to verify the dependency was added
+			const writeCall = mockWriteJSON.mock.calls[0];
+			const savedData = writeCall[1];
+			const subtask22 = savedData.tasks[0].subtasks[1];
+			
+			// Verify the dependency was actually added to subtask 2.2
+			expect(subtask22.dependencies).toContain('11');
+		});
+
+		test('should allow top-level task to depend on subtask', async () => {
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const testTasksPath = 'test-tasks.json';
+
+			// Test reverse scenario: task 11 depending on subtask 2.1
+			await expect(addDependency(testTasksPath, 11, '2.1', { projectRoot: '/test' }))
+				.resolves.not.toThrow();
+
+			// Verify mockWriteJSON was called
+			expect(mockWriteJSON).toHaveBeenCalled();
+			
+			// Get the saved data and verify the dependency was added
+			const writeCall = mockWriteJSON.mock.calls[0];
+			const savedData = writeCall[1];
+			const task11 = savedData.tasks[1];
+			
+			// Verify the dependency was actually added to task 11
+			expect(task11.dependencies).toContain('2.1');
+		});
+
+		test('should properly validate cross-level dependencies exist', async () => {
+			// Test that validation correctly identifies when a cross-level dependency target doesn't exist
+			mockTaskExists.mockImplementation((tasks, taskId) => {
+				// Simulate task 99 not existing
+				if (taskId === '99' || taskId === 99) {
+					return false;
+				}
+				
+				if (typeof taskId === 'string' && taskId.includes('.')) {
+					const [parentId, subtaskId] = taskId.split('.').map(Number);
+					const task = tasks.find((t) => t.id === parentId);
+					return (
+						task &&
+						task.subtasks &&
+						task.subtasks.some((st) => st.id === subtaskId)
+					);
+				}
+
+				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				return tasks.some((task) => task.id === numericId);
+			});
+
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const testTasksPath = 'test-tasks.json';
+
+			// Mock process.exit to prevent the test from actually exiting
+			const originalExit = process.exit;
+			process.exit = jest.fn();
+
+			try {
+				await addDependency(testTasksPath, '2.2', 99, { projectRoot: '/test' });
+				
+				// If we get here, the function didn't exit as expected
+				expect(process.exit).toHaveBeenCalledWith(1);
+			} finally {
+				// Restore original process.exit
+				process.exit = originalExit;
+			}
+		});
+	});
 });

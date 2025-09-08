@@ -396,8 +396,9 @@ function isCircularDependency(tasks, taskId, chain = []) {
 			task = parentTask.subtasks.find((st) => st.id === subtaskId);
 		}
 	} else {
-		// Regular task
-		task = tasks.find((t) => String(t.id) === taskIdStr);
+		// Regular task - handle both string and numeric task IDs
+		const taskIdNum = parseInt(taskIdStr, 10);
+		task = tasks.find((t) => t.id === taskIdNum || String(t.id) === taskIdStr);
 	}
 
 	if (!task) {
