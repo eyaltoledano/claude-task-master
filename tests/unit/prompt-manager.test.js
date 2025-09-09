@@ -62,11 +62,11 @@ describe('PromptManager', () => {
 	describe('loadPrompt', () => {
 		it('should load and render a prompt from actual files', () => {
 			// Test with an actual prompt that exists
-			const result = promptManager.loadPrompt('research', { 
+			const result = promptManager.loadPrompt('research', {
 				query: 'test query',
 				projectContext: 'test context'
 			});
-			
+
 			expect(result.systemPrompt).toBeDefined();
 			expect(result.userPrompt).toBeDefined();
 			expect(result.userPrompt).toContain('test query');
@@ -87,7 +87,7 @@ describe('PromptManager', () => {
 			});
 
 			const result = promptManager.loadPrompt('test-prompt', { name: 'John' });
-			
+
 			expect(result.userPrompt).toBe('Hello John, your age is ');
 		});
 
@@ -100,13 +100,13 @@ describe('PromptManager', () => {
 		it('should use cache for repeated calls', () => {
 			// First call with a real prompt
 			const result1 = promptManager.loadPrompt('research', { query: 'test' });
-			
+
 			// Mark the result to verify cache is used
 			result1._cached = true;
-			
+
 			// Second call with same parameters should return cached result
 			const result2 = promptManager.loadPrompt('research', { query: 'test' });
-			
+
 			expect(result2._cached).toBe(true);
 			expect(result1).toBe(result2); // Same object reference
 		});
@@ -127,7 +127,7 @@ describe('PromptManager', () => {
 			const result = promptManager.loadPrompt('array-prompt', {
 				items: ['one', 'two', 'three']
 			});
-			
+
 			// The actual implementation doesn't handle {{this}} properly, check what it does produce
 			expect(result.userPrompt).toContain('Item:');
 		});
@@ -145,10 +145,14 @@ describe('PromptManager', () => {
 				}
 			});
 
-			const withData = promptManager.loadPrompt('conditional-prompt', { hasData: true });
+			const withData = promptManager.loadPrompt('conditional-prompt', {
+				hasData: true
+			});
 			expect(withData.userPrompt).toBe('Data exists');
 
-			const withoutData = promptManager.loadPrompt('conditional-prompt', { hasData: false });
+			const withoutData = promptManager.loadPrompt('conditional-prompt', {
+				hasData: false
+			});
 			expect(withoutData.userPrompt).toBe('No data');
 		});
 	});
@@ -162,7 +166,7 @@ describe('PromptManager', () => {
 					age: 30
 				}
 			};
-			
+
 			const result = promptManager.renderTemplate(template, variables);
 			expect(result).toBe('User: John, Age: 30');
 		});
@@ -172,7 +176,7 @@ describe('PromptManager', () => {
 			const variables = {
 				special: '<>&"\''
 			};
-			
+
 			const result = promptManager.renderTemplate(template, variables);
 			expect(result).toBe('Special: <>&"\'');
 		});
@@ -183,15 +187,14 @@ describe('PromptManager', () => {
 			const prompts = promptManager.listPrompts();
 			expect(prompts).toBeInstanceOf(Array);
 			expect(prompts.length).toBeGreaterThan(0);
-			
-			const ids = prompts.map(p => p.id);
+
+			const ids = prompts.map((p) => p.id);
 			expect(ids).toContain('analyze-complexity');
 			expect(ids).toContain('expand-task');
 			expect(ids).toContain('add-task');
 			expect(ids).toContain('research');
 		});
 	});
-
 
 	describe('validateTemplate', () => {
 		it('should validate a correct template', () => {
@@ -202,7 +205,7 @@ describe('PromptManager', () => {
 		it('should reject invalid template', () => {
 			const result = promptManager.validateTemplate('non-existent');
 			expect(result.valid).toBe(false);
-			expect(result.error).toContain("not found");
+			expect(result.error).toContain('not found');
 		});
 	});
 });
