@@ -181,8 +181,8 @@ export class OAuthService {
 					timestamp: Date.now()
 				};
 
-				// Build authorization URL for web app sign-in page
-				const authUrl = new URL(`${this.baseUrl}/auth/sign-in`);
+				// Build authorization URL for CLI-specific sign-in page
+				const authUrl = new URL(`${this.baseUrl}/auth/cli/sign-in`);
 
 				// Encode CLI data as base64
 				const cliParam = Buffer.from(JSON.stringify(cliData)).toString(
@@ -272,7 +272,49 @@ export class OAuthService {
 			return;
 		}
 
-		// Handle direct token response from server
+		// Handle authorization code for PKCE flow
+		const code = url.searchParams.get('code');
+		if (code && type === 'pkce_callback') {
+			try {
+				this.logger.info('Received authorization code for PKCE flow');
+
+				// Exchange code for session using PKCE
+				const session = await this.supabaseClient.exchangeCodeForSession(code);
+
+				// Save authentication data
+				const authData: AuthCredentials = {
+					token: session.access_token,
+					refreshToken: session.refresh_token,
+					userId: session.user.id,
+					email: session.user.email,
+					expiresAt: session.expires_at
+						? new Date(session.expires_at * 1000).toISOString()
+						: undefined,
+					tokenType: 'standard',
+					savedAt: new Date().toISOString()
+				};
+
+				this.credentialStore.saveCredentials(authData);
+
+				if (server.listening) {
+					server.close();
+				}
+				// Clear timeout since authentication succeeded
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+				}
+				resolve(authData);
+				return;
+			} catch (error) {
+				if (server.listening) {
+					server.close();
+				}
+				reject(error);
+				return;
+			}
+		}
+
+		// Handle direct token response from server (legacy flow)
 		if (
 			accessToken &&
 			(type === 'oauth_success' || type === 'session_transfer')
@@ -280,8 +322,23 @@ export class OAuthService {
 			try {
 				this.logger.info(`Received tokens via ${type}`);
 
-				// Get user info using the access token if possible
-				const user = await this.supabaseClient.getUser(accessToken);
+				// Create a session with the tokens and set it in Supabase client
+				const session = {
+					access_token: accessToken,
+					refresh_token: refreshToken || '',
+					expires_at: expiresIn
+						? Math.floor(Date.now() / 1000) + parseInt(expiresIn)
+						: undefined,
+					expires_in: expiresIn ? parseInt(expiresIn) : undefined,
+					token_type: 'bearer',
+					user: null as any // Will be populated by setSession
+				};
+
+				// Set the session in Supabase client
+				await this.supabaseClient.setSession(session as any);
+
+				// Get user info from the session
+				const user = await this.supabaseClient.getUser();
 
 				// Calculate expiration time
 				const expiresAt = expiresIn
