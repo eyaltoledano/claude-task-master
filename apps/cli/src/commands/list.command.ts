@@ -175,7 +175,9 @@ export class ListTasksCommand extends Command {
 
 		// Runtime guard to prevent 'auto' from reaching CLI consumers
 		if (result.storageType === 'auto') {
-			throw new Error('Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.');
+			throw new Error(
+				'Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.'
+			);
 		}
 
 		return result as ListTasksResult;

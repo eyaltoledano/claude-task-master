@@ -339,7 +339,8 @@ export class TaskService {
 		// Prefer the runtime storage type if available to avoid exposing 'auto'
 		const s = this.storage as { getType?: () => 'file' | 'api' } | null;
 		const runtimeType = s?.getType?.();
-		return (runtimeType ?? this.configManager.getStorageConfig().type) as StorageType;
+		return (runtimeType ??
+			this.configManager.getStorageConfig().type) as StorageType;
 	}
 
 	/**
