@@ -996,13 +996,15 @@ describe('Dependency Manager Module', () => {
 			// Test the specific scenario from Issue #542: subtask 2.2 depending on task 11
 			await addDependency(TEST_TASKS_PATH, '2.2', 11, { projectRoot: '/test' });
 
-			// Verify mockWriteJSON was called (meaning the dependency was added)
-			expect(mockWriteJSON).toHaveBeenCalled();
-			
-			// Get the call arguments to verify the dependency was added
-			const writeCall = mockWriteJSON.mock.calls[0];
+			// Verify we wrote to the test path (and not the real tasks.json)
+			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
+			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
+			// Get the specific write call for TEST_TASKS_PATH
+			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			expect(writeCall).toBeDefined();
 			const savedData = writeCall[1];
-			const subtask22 = savedData.tasks[0].subtasks[1];
+			const parent2 = savedData.tasks.find((t) => t.id === 2);
+			const subtask22 = parent2.subtasks.find((st) => st.id === 2);
 			
 			// Verify the dependency was actually added to subtask 2.2
 			expect(subtask22.dependencies).toContain(11);
@@ -1014,13 +1016,13 @@ describe('Dependency Manager Module', () => {
 			// Test reverse scenario: task 11 depending on subtask 2.1
 			await addDependency(TEST_TASKS_PATH, 11, '2.1', { projectRoot: '/test' });
 
-			// Verify mockWriteJSON was called
-			expect(mockWriteJSON).toHaveBeenCalled();
-			
-			// Get the saved data and verify the dependency was added
-			const writeCall = mockWriteJSON.mock.calls[0];
+			// Stronger assertions for writeJSON call and locating the correct task
+			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
+			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
+			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			expect(writeCall).toBeDefined();
 			const savedData = writeCall[1];
-			const task11 = savedData.tasks[1];
+			const task11 = savedData.tasks.find((t) => t.id === 11);
 			
 			// Verify the dependency was actually added to task 11
 			expect(task11.dependencies).toContain('2.1');
@@ -1054,6 +1056,8 @@ describe('Dependency Manager Module', () => {
 			
 			// Verify that process.exit was called due to non-existent dependency target
 			expect(process.exit).toHaveBeenCalledWith(1);
+			// And that no writes were attempted
+			expect(mockWriteJSON).not.toHaveBeenCalled();
 		});
 	});
 });
