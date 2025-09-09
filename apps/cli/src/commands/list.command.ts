@@ -9,13 +9,13 @@ import {
 	createTaskMasterCore,
 	type Task,
 	type TaskStatus,
-	type StorageType,
 	type TaskMasterCore,
 	TASK_STATUSES,
 	OUTPUT_FORMATS,
 	STATUS_ICONS,
 	type OutputFormat
 } from '@tm/core';
+import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -172,6 +172,11 @@ export class ListTasksCommand extends Command {
 			filter,
 			includeSubtasks: options.withSubtasks
 		});
+
+		// Runtime guard to prevent 'auto' from reaching CLI consumers
+		if (result.storageType === 'auto') {
+			throw new Error('Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.');
+		}
 
 		return result as ListTasksResult;
 	}

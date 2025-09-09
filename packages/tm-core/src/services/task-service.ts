@@ -114,7 +114,7 @@ export class TaskService {
 				total: rawTasks.length,
 				filtered: filteredEntities.length,
 				tag: options.tag, // Only include tag if explicitly provided
-				storageType: this.configManager.getStorageConfig().type
+				storageType: this.getStorageType()
 			};
 		} catch (error) {
 			throw new TaskMasterError(
@@ -336,7 +336,10 @@ export class TaskService {
 	 * Get current storage type
 	 */
 	getStorageType(): StorageType {
-		return this.configManager.getStorageConfig().type;
+		// Prefer the runtime storage type if available to avoid exposing 'auto'
+		const s = this.storage as { getType?: () => 'file' | 'api' } | null;
+		const runtimeType = s?.getType?.();
+		return (runtimeType ?? this.configManager.getStorageConfig().type) as StorageType;
 	}
 
 	/**
