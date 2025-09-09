@@ -9,11 +9,13 @@ import {
 	type GetTaskListOptions
 } from './services/task-service.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
+import type { IConfiguration } from './interfaces/configuration.interface.js';
 import type {
-	IConfiguration,
+	Task,
+	TaskStatus,
+	TaskFilter,
 	StorageType
-} from './interfaces/configuration.interface.js';
-import type { Task, TaskStatus, TaskFilter } from './types/index.js';
+} from './types/index.js';
 
 /**
  * Options for creating TaskMasterCore instance

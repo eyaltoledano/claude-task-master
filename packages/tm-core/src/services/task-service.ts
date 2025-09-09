@@ -3,8 +3,12 @@
  * Core service for task operations - handles business logic between storage and API
  */
 
-import type { Task, TaskFilter, TaskStatus } from '../types/index.js';
-import type { StorageType } from '../interfaces/configuration.interface.js';
+import type {
+	Task,
+	TaskFilter,
+	TaskStatus,
+	StorageType
+} from '../types/index.js';
 import type { IStorage } from '../interfaces/storage.interface.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { StorageFactory } from '../storage/storage-factory.js';

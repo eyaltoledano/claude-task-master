@@ -71,6 +71,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@tm/build-config": "*",
 		"@types/node": "^20.11.30",
 		"@vitest/coverage-v8": "^2.0.5",
 		"ts-node": "^10.9.2",
@@ -81,7 +82,6 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"sideEffects": false,
 	"files": ["dist", "README.md", "CHANGELOG.md"],
 	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
 	"author": "Task Master AI",
