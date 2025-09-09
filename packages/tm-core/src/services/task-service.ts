@@ -4,6 +4,7 @@
  */
 
 import type { Task, TaskFilter, TaskStatus } from '../types/index.js';
+import type { StorageType } from '../interfaces/configuration.interface.js';
 import type { IStorage } from '../interfaces/storage.interface.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { StorageFactory } from '../storage/storage-factory.js';
@@ -23,7 +24,7 @@ export interface TaskListResult {
 	/** The tag these tasks belong to (only present if explicitly provided) */
 	tag?: string;
 	/** Storage type being used */
-	storageType: 'file' | 'api';
+	storageType: StorageType;
 }
 
 /**
@@ -166,7 +167,7 @@ export class TaskService {
 		byStatus: Record<TaskStatus, number>;
 		withSubtasks: number;
 		blocked: number;
-		storageType: 'file' | 'api';
+		storageType: StorageType;
 	}> {
 		const result = await this.getTaskList({
 			tag,
@@ -334,7 +335,7 @@ export class TaskService {
 	/**
 	 * Get current storage type
 	 */
-	getStorageType(): 'file' | 'api' {
+	getStorageType(): StorageType {
 		return this.configManager.getStorageConfig().type;
 	}
 

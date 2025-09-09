@@ -9,6 +9,7 @@ import {
 	createTaskMasterCore,
 	type Task,
 	type TaskStatus,
+	type StorageType,
 	type TaskMasterCore,
 	TASK_STATUSES,
 	OUTPUT_FORMATS,
@@ -37,7 +38,7 @@ export interface ListTasksResult {
 	total: number;
 	filtered: number;
 	tag?: string;
-	storageType: 'file' | 'api';
+	storageType: Exclude<StorageType, 'auto'>;
 }
 
 /**
