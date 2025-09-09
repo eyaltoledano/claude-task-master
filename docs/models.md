@@ -111,7 +111,7 @@
 | groq        | deepseek-r1-distill-llama-70b                | 0.52      | 0.75       | 0.99        |
 | perplexity  | sonar-pro                                    | —         | 3          | 15          |
 | perplexity  | sonar                                        | —         | 1          | 1           |
-| perplexity  | deep-research                                | 0.211     | 2          | 8           |
+| perplexity  | sonar-deep-research                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
 | bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |

@@ -472,7 +472,7 @@
 			"supported": true
 		},
 		{
-			"id": "deep-research",
+			"id": "sonar-deep-research",
 			"swe_score": 0.211,
 			"cost_per_1m_tokens": {
 				"input": 2,
