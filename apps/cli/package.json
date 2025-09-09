@@ -4,12 +4,11 @@
 	"description": "Task Master CLI - Command line interface for task management",
 	"type": "module",
 	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"types": "./src/index.ts",
 	"exports": {
 		".": {
 			"types": "./src/index.ts",
-			"import": "./dist/index.js",
-			"require": "./dist/index.js"
+			"import": "./dist/index.js"
 		}
 	},
 	"files": ["dist", "README.md"],
@@ -20,12 +19,17 @@
 		"lint": "biome check src",
 		"format": "biome format --write src",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"test:unit": "vitest run -t unit",
+		"test:integration": "vitest run -t integration",
+		"test:e2e": "vitest run --dir tests/e2e",
+		"test:ci": "vitest run --coverage --reporter=dot"
 	},
 	"dependencies": {
 		"@tm/core": "*",
 		"boxen": "^7.1.1",
-		"chalk": "^5.3.0",
+		"chalk": "5.6.2",
 		"cli-table3": "^0.6.5",
 		"commander": "^12.1.0",
 		"inquirer": "^9.2.10",
@@ -33,6 +37,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@tm/build-config": "*",
 		"@types/inquirer": "^9.0.3",
 		"@types/node": "^22.10.5",
 		"tsup": "^8.3.0",

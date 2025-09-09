@@ -15,6 +15,7 @@ import {
 	STATUS_ICONS,
 	type OutputFormat
 } from '@tm/core';
+import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -37,7 +38,7 @@ export interface ListTasksResult {
 	total: number;
 	filtered: number;
 	tag?: string;
-	storageType: 'file' | 'api';
+	storageType: Exclude<StorageType, 'auto'>;
 }
 
 /**
@@ -171,6 +172,13 @@ export class ListTasksCommand extends Command {
 			filter,
 			includeSubtasks: options.withSubtasks
 		});
+
+		// Runtime guard to prevent 'auto' from reaching CLI consumers
+		if (result.storageType === 'auto') {
+			throw new Error(
+				'Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.'
+			);
+		}
 
 		return result as ListTasksResult;
 	}

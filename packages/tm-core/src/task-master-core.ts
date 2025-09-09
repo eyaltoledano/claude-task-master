@@ -10,7 +10,12 @@ import {
 } from './services/task-service.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
-import type { Task, TaskStatus, TaskFilter } from './types/index.js';
+import type {
+	Task,
+	TaskStatus,
+	TaskFilter,
+	StorageType
+} from './types/index.js';
 
 /**
  * Options for creating TaskMasterCore instance
@@ -152,7 +157,7 @@ export class TaskMasterCore {
 	/**
 	 * Get current storage type
 	 */
-	getStorageType(): 'file' | 'api' {
+	getStorageType(): StorageType {
 		return this.taskService.getStorageType();
 	}
 

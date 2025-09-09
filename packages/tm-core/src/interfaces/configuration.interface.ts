@@ -3,7 +3,11 @@
  * This file defines the contract for configuration management
  */
 
-import type { TaskComplexity, TaskPriority } from '../types/index.js';
+import type {
+	TaskComplexity,
+	TaskPriority,
+	StorageType
+} from '../types/index.js';
 
 /**
  * Model configuration for different AI roles
@@ -72,14 +76,6 @@ export interface TagSettings {
 	/** Tag naming convention (kebab-case, camelCase, snake_case) */
 	tagNamingConvention: 'kebab-case' | 'camelCase' | 'snake_case';
 }
-
-/**
- * Storage type options
- * - 'file': Local file system storage
- * - 'api': Remote API storage (Hamster integration)
- * - 'auto': Automatically detect based on auth status
- */
-export type StorageType = 'file' | 'api' | 'auto';
 
 /**
  * Runtime storage configuration used for storage backend selection

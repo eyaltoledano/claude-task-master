@@ -2,6 +2,14 @@
  * Core type definitions for Task Master
  */
 
+/**
+ * Storage type options
+ * - 'file': Local file system storage
+ * - 'api': Remote API storage (Hamster integration)
+ * - 'auto': Automatically detect based on auth status
+ */
+export type StorageType = 'file' | 'api' | 'auto';
+
 // ============================================================================
 // Type Literals
 // ============================================================================

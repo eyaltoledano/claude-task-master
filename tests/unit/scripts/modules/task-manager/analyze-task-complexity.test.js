@@ -198,11 +198,13 @@ jest.unstable_mockModule('fs', () => ({
 	default: {
 		existsSync: jest.fn(() => false),
 		readFileSync: jest.fn(),
-		writeFileSync: mockWriteFileSync
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: jest.fn()
 	},
 	existsSync: jest.fn(() => false),
 	readFileSync: jest.fn(),
-	writeFileSync: mockWriteFileSync
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: jest.fn()
 }));
 
 jest.unstable_mockModule(

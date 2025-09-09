@@ -7,6 +7,7 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"outDir": "./dist",
+		"baseUrl": ".",
 		"rootDir": "./src",
 		"strict": true,
 		"noImplicitAny": true,
@@ -27,16 +28,7 @@
 		"moduleDetection": "force",
 		"types": ["node"],
 		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"paths": {
-			"@/*": ["./src/*"],
-			"@/types": ["./src/types"],
-			"@/providers": ["./src/providers"],
-			"@/storage": ["./src/storage"],
-			"@/parser": ["./src/parser"],
-			"@/utils": ["./src/utils"],
-			"@/errors": ["./src/errors"]
-		}
+		"isolatedModules": true
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "tests", "**/*.test.ts", "**/*.spec.ts"]
