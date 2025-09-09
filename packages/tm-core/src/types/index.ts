@@ -96,6 +96,15 @@ export interface TaskCollection {
 	metadata: TaskMetadata;
 }
 
+/**
+ * Task tag for organizing tasks
+ */
+export interface TaskTag {
+	name: string;
+	tasks: string[]; // Task IDs belonging to this tag
+	metadata: Record<string, any>;
+}
+
 // ============================================================================
 // Utility Types
 // ============================================================================
