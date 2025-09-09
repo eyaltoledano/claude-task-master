@@ -45,7 +45,8 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	writeJSON: mockWriteJSON,
 	taskExists: mockTaskExists,
 	formatTaskId: mockFormatTaskId,
-	findCycles: mockFindCycles
+	findCycles: mockFindCycles,
+	isSilentMode: jest.fn(() => true)
 }));
 
 jest.mock('../../scripts/modules/ui.js', () => ({
@@ -922,7 +923,11 @@ describe('Dependency Manager Module', () => {
 	});
 
 	describe('Cross-level dependency tests (Issue #542)', () => {
+		let originalExit;
+
 		beforeEach(() => {
+			originalExit = process.exit;
+			process.exit = jest.fn();
 			// Set up test data that matches the issue report
 			mockReadJSON.mockReturnValue({
 				tasks: [
@@ -976,23 +981,20 @@ describe('Dependency Manager Module', () => {
 			});
 
 			mockFormatTaskId.mockImplementation((id) => {
-				if (typeof id === 'string' && id.includes('.')) {
-					return id;
-				}
-				if (typeof id === 'number') {
-					return id.toString();
-				}
-				return id;
+				if (typeof id === 'string' && id.includes('.')) return id; // keep dot notation
+				return parseInt(id, 10);              // normalize top-level task IDs to number
 			});
+		});
+
+		afterEach(() => {
+			process.exit = originalExit;
 		});
 
 		test('should allow subtask to depend on top-level task', async () => {
 			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
-			const testTasksPath = 'test-tasks.json';
 
 			// Test the specific scenario from Issue #542: subtask 2.2 depending on task 11
-			await expect(addDependency(testTasksPath, '2.2', 11, { projectRoot: '/test' }))
-				.resolves.not.toThrow();
+			await addDependency(TEST_TASKS_PATH, '2.2', 11, { projectRoot: '/test' });
 
 			// Verify mockWriteJSON was called (meaning the dependency was added)
 			expect(mockWriteJSON).toHaveBeenCalled();
@@ -1003,16 +1005,14 @@ describe('Dependency Manager Module', () => {
 			const subtask22 = savedData.tasks[0].subtasks[1];
 			
 			// Verify the dependency was actually added to subtask 2.2
-			expect(subtask22.dependencies).toContain('11');
+			expect(subtask22.dependencies).toContain(11);
 		});
 
 		test('should allow top-level task to depend on subtask', async () => {
 			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
-			const testTasksPath = 'test-tasks.json';
 
 			// Test reverse scenario: task 11 depending on subtask 2.1
-			await expect(addDependency(testTasksPath, 11, '2.1', { projectRoot: '/test' }))
-				.resolves.not.toThrow();
+			await addDependency(TEST_TASKS_PATH, 11, '2.1', { projectRoot: '/test' });
 
 			// Verify mockWriteJSON was called
 			expect(mockWriteJSON).toHaveBeenCalled();
@@ -1049,21 +1049,11 @@ describe('Dependency Manager Module', () => {
 			});
 
 			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
-			const testTasksPath = 'test-tasks.json';
 
-			// Mock process.exit to prevent the test from actually exiting
-			const originalExit = process.exit;
-			process.exit = jest.fn();
-
-			try {
-				await addDependency(testTasksPath, '2.2', 99, { projectRoot: '/test' });
-				
-				// If we get here, the function didn't exit as expected
-				expect(process.exit).toHaveBeenCalledWith(1);
-			} finally {
-				// Restore original process.exit
-				process.exit = originalExit;
-			}
+			await addDependency(TEST_TASKS_PATH, '2.2', 99, { projectRoot: '/test' });
+			
+			// Verify that process.exit was called due to non-existent dependency target
+			expect(process.exit).toHaveBeenCalledWith(1);
 		});
 	});
 });
