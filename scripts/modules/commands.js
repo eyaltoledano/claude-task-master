@@ -16,7 +16,7 @@ import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
 // Import new commands from @tm/cli
-import { ListTasksCommand, AuthCommand } from '@tm/cli';
+import { ListTasksCommand, AuthCommand, ContextCommand } from '@tm/cli';
 
 import {
 	parsePRD,
@@ -1744,6 +1744,10 @@ function registerCommands(programInstance) {
 	// Register the auth command from @tm/cli
 	// Handles authentication with tryhamster.com
 	AuthCommand.registerOn(programInstance);
+
+	// Register the context command from @tm/cli
+	// Manages workspace context (org/brief selection)
+	ContextCommand.registerOn(programInstance);
 
 	// expand command
 	programInstance
