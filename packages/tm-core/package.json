@@ -76,7 +76,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@supabase/supabase-js": "^2.57.2",
+		"@supabase/supabase-js": "^2.57.4",
 		"zod": "^3.22.4"
 	},
 	"devDependencies": {
