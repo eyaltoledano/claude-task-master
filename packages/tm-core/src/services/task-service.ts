@@ -3,7 +3,12 @@
  * Core service for task operations - handles business logic between storage and API
  */
 
-import type { Task, TaskFilter, TaskStatus } from '../types/index.js';
+import type {
+	Task,
+	TaskFilter,
+	TaskStatus,
+	StorageType
+} from '../types/index.js';
 import type { IStorage } from '../interfaces/storage.interface.js';
 import { ConfigManager } from '../config/config-manager.js';
 import { StorageFactory } from '../storage/storage-factory.js';
@@ -23,7 +28,7 @@ export interface TaskListResult {
 	/** The tag these tasks belong to (only present if explicitly provided) */
 	tag?: string;
 	/** Storage type being used */
-	storageType: 'file' | 'api';
+	storageType: StorageType;
 }
 
 /**
@@ -113,7 +118,7 @@ export class TaskService {
 				total: rawTasks.length,
 				filtered: filteredEntities.length,
 				tag: options.tag, // Only include tag if explicitly provided
-				storageType: this.configManager.getStorageConfig().type
+				storageType: this.getStorageType()
 			};
 		} catch (error) {
 			throw new TaskMasterError(
@@ -166,7 +171,7 @@ export class TaskService {
 		byStatus: Record<TaskStatus, number>;
 		withSubtasks: number;
 		blocked: number;
-		storageType: 'file' | 'api';
+		storageType: StorageType;
 	}> {
 		const result = await this.getTaskList({
 			tag,
@@ -334,8 +339,12 @@ export class TaskService {
 	/**
 	 * Get current storage type
 	 */
-	getStorageType(): 'file' | 'api' {
-		return this.configManager.getStorageConfig().type;
+	getStorageType(): StorageType {
+		// Prefer the runtime storage type if available to avoid exposing 'auto'
+		const s = this.storage as { getType?: () => 'file' | 'api' } | null;
+		const runtimeType = s?.getType?.();
+		return (runtimeType ??
+			this.configManager.getStorageConfig().type) as StorageType;
 	}
 
 	/**

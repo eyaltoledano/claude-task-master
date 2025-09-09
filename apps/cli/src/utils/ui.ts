@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import type { Task, TaskStatus, TaskPriority } from '@tm/core';
+import type { Task, TaskStatus, TaskPriority } from '@tm/core/types';
 
 /**
  * Get colored status display with ASCII icons (matches scripts/modules/ui.js style)
