@@ -86,6 +86,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          NODE_ENV: production
           FORCE_COLOR: 1
 
   test:
@@ -109,6 +110,8 @@ jobs:
 
       - name: Build packages (required for tests)
         run: npm run build:packages
+        env:
+          NODE_ENV: production
 
       - name: Run Tests
         run: |
