@@ -16,7 +16,7 @@ import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
 // Import new commands from @tm/cli
-import { ListTasksCommand, AuthCommand, ContextCommand } from '@tm/cli';
+import { ListTasksCommand, ShowCommand, AuthCommand, ContextCommand } from '@tm/cli';
 
 import {
 	parsePRD,
@@ -1749,6 +1749,10 @@ function registerCommands(programInstance) {
 	// Manages workspace context (org/brief selection)
 	ContextCommand.registerOn(programInstance);
 
+	// Register the show command from @tm/cli
+	// Displays detailed information about tasks
+	ShowCommand.registerOn(programInstance);
+
 	// expand command
 	programInstance
 		.command('expand')
@@ -2567,79 +2571,6 @@ ${result.result}
 			);
 		});
 
-	// show command
-	programInstance
-		.command('show')
-		.description(
-			`Display detailed information about one or more tasks${chalk.reset('')}`
-		)
-		.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
-		.option(
-			'-i, --id <id>',
-			'Task ID(s) to show (comma-separated for multiple)'
-		)
-		.option('-s, --status <status>', 'Filter subtasks by status')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (taskId, options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-			const taskMaster = initTaskMaster(initOptions);
-
-			const idArg = taskId || options.id;
-			const statusFilter = options.status;
-			const tag = taskMaster.getCurrentTag();
-
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!idArg) {
-				console.error(chalk.red('Error: Please provide a task ID'));
-				process.exit(1);
-			}
-
-			// Check if multiple IDs are provided (comma-separated)
-			const taskIds = idArg
-				.split(',')
-				.map((id) => id.trim())
-				.filter((id) => id.length > 0);
-
-			if (taskIds.length > 1) {
-				// Multiple tasks - use compact summary view with interactive drill-down
-				await displayMultipleTasksSummary(
-					taskMaster.getTasksPath(),
-					taskIds,
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			} else {
-				// Single task - use detailed view
-				await displayTaskById(
-					taskMaster.getTasksPath(),
-					taskIds[0],
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			}
-		});
 
 	// add-dependency command
 	programInstance
