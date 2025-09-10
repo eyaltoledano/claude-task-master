@@ -1,8 +1,8 @@
 import { defineConfig } from 'tsup';
-import { libraryConfig, mergeConfig } from '@tm/build-config';
+import { baseConfig, mergeConfig } from '@tm/build-config';
 
 export default defineConfig(
-	mergeConfig(libraryConfig, {
+	mergeConfig(baseConfig, {
 		entry: {
 			index: 'src/index.ts',
 			'auth/index': 'src/auth/index.ts',
