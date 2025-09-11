@@ -18,9 +18,13 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 				);
 			});
 		} else {
-			const content = fs.readFileSync(src, 'utf8');
-			const transformed = transformFn ? transformFn(content) : content;
-			fs.writeFileSync(dest, transformed, 'utf8');
+			if (transformFn) {
+				const content = fs.readFileSync(src, 'utf8');
+				const transformed = transformFn(content);
+				fs.writeFileSync(dest, transformed, 'utf8');
+			} else {
+				fs.copyFileSync(src, dest);
+			}
 			count++;
 		}
 	} catch (error) {
