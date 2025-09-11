@@ -40,7 +40,11 @@ const onAdd = (projectRoot, assetsDir) => {
 
 	if (!fs.existsSync(sourceDir)) {
 		console.warn(`Source commands not found: ${sourceDir}`);
-		return { success: 0, failed: 1 };
+		return {
+			success: 0,
+			failed: 1,
+			fileCount: 0
+		};
 	}
 
 	// Transform function for Claude -> Cursor syntax
@@ -57,41 +61,69 @@ const onAdd = (projectRoot, assetsDir) => {
 	console.log(
 		`[SUCCESS] Added ${count} Task Master slash commands to Cursor IDE`
 	);
-	return { success: count, failed: 0 };
+	return {
+		success: count,
+		failed: 0,
+		fileCount: count
+	};
 };
 
 const onRemove = (projectRoot) => {
-	const tmDir = path.join(projectRoot, '.cursor', 'commands', 'tm');
+	const commandsDir = path.join(projectRoot, '.cursor', 'commands');
 
-	if (!fs.existsSync(tmDir)) {
+	if (!fs.existsSync(commandsDir)) {
 		console.log(`[INFO] No Task Master commands found to remove`);
-		return { success: 0, failed: 0 };
+		return {
+			success: 0,
+			failed: 0,
+			fileCount: 0
+		};
 	}
 
 	try {
-		// Count .md files recursively
+		// Count Task Master .md files recursively (files starting with 'tm-')
 		let count = 0;
 		const countFiles = (dir) => {
 			fs.readdirSync(dir).forEach((item) => {
 				const fullPath = path.join(dir, item);
 				if (fs.statSync(fullPath).isDirectory()) {
 					countFiles(fullPath);
-				} else if (item.endsWith('.md')) {
+				} else if (item.startsWith('tm-') && item.endsWith('.md')) {
 					count++;
 				}
 			});
 		};
-		countFiles(tmDir);
+		countFiles(commandsDir);
 
 		console.log(`[INFO] Removing ${count} Task Master slash commands`);
-		fs.rmSync(tmDir, { recursive: true, force: true });
+		
+		// Remove individual Task Master files
+		const removeFiles = (dir) => {
+			fs.readdirSync(dir).forEach((item) => {
+				const fullPath = path.join(dir, item);
+				if (fs.statSync(fullPath).isDirectory()) {
+					removeFiles(fullPath);
+				} else if (item.startsWith('tm-') && item.endsWith('.md')) {
+					fs.rmSync(fullPath);
+				}
+			});
+		};
+		removeFiles(commandsDir);
 		console.log(
 			`[SUCCESS] Removed ${count} Task Master slash commands from Cursor IDE`
 		);
-		return { success: count, failed: 0 };
+		return {
+			success: count,
+			failed: 0,
+			fileCount: count
+		};
 	} catch (error) {
 		console.warn(`Failed to remove commands: ${error.message}`);
-		return { success: 0, failed: 1 };
+		return {
+			success: 0,
+			failed: 1,
+			fileCount: 0
+		};
 	}
 };
 
