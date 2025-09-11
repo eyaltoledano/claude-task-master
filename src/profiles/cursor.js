@@ -9,7 +9,7 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 	try {
 		const stats = fs.statSync(src);
 		if (stats.isDirectory()) {
-			if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+			fs.mkdirSync(dest, { recursive: true });
 			fs.readdirSync(src).forEach((item) => {
 				count += copyRecursiveWithTransform(
 					path.join(src, item),
