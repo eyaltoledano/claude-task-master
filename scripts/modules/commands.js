@@ -4682,7 +4682,7 @@ Examples:
 				if (totalFilesProcessed > 0) {
 					console.log(
 						chalk.blue(
-							`\nTotal: ${totalFilesProcessed} files processed - ${totalFilesProcessed} removed, 0 failed.`
+							`\nTotal: ${totalFilesProcessed} files processed - ${totalFilesProcessed} removed.`
 						)
 					);
 				} else {
