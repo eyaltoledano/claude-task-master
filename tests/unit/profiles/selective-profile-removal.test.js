@@ -30,7 +30,6 @@ describe('Selective Rules Removal', () => {
 	let mockWriteFileSync;
 	let mockMkdirSync;
 	let mockStatSync;
-	let mockUnlinkSync;
 	let originalConsoleLog;
 
 	beforeEach(() => {
@@ -68,7 +67,6 @@ describe('Selective Rules Removal', () => {
 				return { isDirectory: () => false, isFile: () => true };
 			}
 		});
-		mockUnlinkSync = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
