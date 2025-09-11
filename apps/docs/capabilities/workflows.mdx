@@ -1,0 +1,221 @@
+---
+title: "Workflow Engine"
+sidebarTitle: "Workflows"
+---
+
+The Task Master Workflow Engine provides advanced task execution capabilities with git worktree isolation and Claude Code process management.
+
+## Overview
+
+The workflow system extends Task Master with powerful execution features:
+
+- **Git Worktree Isolation**: Each task runs in its own isolated git worktree
+- **Process Sandboxing**: Spawns dedicated Claude Code processes for task execution
+- **Real-time Monitoring**: Track workflow progress and process output
+- **State Management**: Persistent workflow state across sessions
+- **Parallel Execution**: Run multiple tasks concurrently with resource limits
+
+## Quick Start
+
+### Starting a Workflow
+
+```bash
+# Start workflow for a specific task
+task-master workflow start 1.2
+
+# Using the alias
+task-master workflow run 1.2
+```
+
+### Monitoring Workflows
+
+```bash
+# List all active workflows
+task-master workflow list
+
+# Check specific workflow status
+task-master workflow status workflow-1.2-1234567890-abc123
+
+# Using the alias
+task-master workflow info workflow-1.2-1234567890-abc123
+```
+
+### Stopping Workflows
+
+```bash
+# Stop a running workflow
+task-master workflow stop workflow-1.2-1234567890-abc123
+
+# Force stop using alias
+task-master workflow kill workflow-1.2-1234567890-abc123
+```
+
+## Workflow States
+
+| State | Description |
+|-------|-------------|
+| `pending` | Created but not started |
+| `initializing` | Setting up worktree and process |
+| `running` | Active execution in progress |
+| `paused` | Temporarily stopped |
+| `completed` | Successfully finished |
+| `failed` | Error occurred during execution |
+| `cancelled` | User cancelled the workflow |
+| `timeout` | Exceeded time limit |
+
+## Environment Configuration
+
+### Environment Variables
+
+Set these environment variables to customize workflow behavior:
+
+- `TASKMASTER_WORKFLOW_DEBUG`: Enable debug logging
+- `TASKMASTER_CLAUDE_PATH`: Custom Claude Code executable path
+- `TASKMASTER_WORKTREE_BASE`: Base directory for worktrees
+- `TASKMASTER_MAX_CONCURRENT`: Maximum concurrent workflows
+
+### Example Configuration
+
+```bash
+# Enable debug mode
+export TASKMASTER_WORKFLOW_DEBUG=true
+
+# Set custom Claude path
+export TASKMASTER_CLAUDE_PATH=/usr/local/bin/claude
+
+# Set worktree base directory
+export TASKMASTER_WORKTREE_BASE=./worktrees
+
+# Limit concurrent workflows
+export TASKMASTER_MAX_CONCURRENT=3
+```
+
+## Git Worktree Integration
+
+### How It Works
+
+When you start a workflow:
+
+1. **Worktree Creation**: A new git worktree is created for the task
+2. **Process Spawn**: A dedicated Claude Code process is launched in the worktree
+3. **Task Execution**: The task runs in complete isolation
+4. **State Tracking**: Progress is monitored and persisted
+5. **Cleanup**: Worktree is removed when workflow completes
+
+### Worktree Structure
+
+```
+project/
+├── .git/              # Main repository
+├── src/               # Main working directory
+└── worktrees/         # Workflow worktrees
+    ├── task-1.2/      # Worktree for task 1.2
+    ├── task-2.1/      # Worktree for task 2.1
+    └── task-3.4/      # Worktree for task 3.4
+```
+
+## Best Practices
+
+### When to Use Workflows
+
+Use workflows for tasks that:
+
+- Require isolated development environments
+- Need dedicated Claude Code attention
+- Benefit from parallel execution
+- Require process monitoring and state tracking
+
+### Workflow Management
+
+- **Start workflows for complex tasks** that need focused execution
+- **Monitor progress** using `workflow status` command
+- **Clean up completed workflows** to free resources
+- **Use meaningful task descriptions** for better workflow tracking
+
+### Resource Management
+
+- **Limit concurrent workflows** based on system resources
+- **Monitor workflow output** for debugging and progress tracking
+- **Stop unnecessary workflows** to free up resources
+
+## Troubleshooting
+
+### Common Issues
+
+**Worktree Creation Fails**
+```bash
+# Check git version (requires 2.5+)
+git --version
+
+# Verify project is a git repository
+git status
+```
+
+**Claude Code Not Found**
+```bash
+# Check Claude installation
+which claude
+
+# Set custom path
+export TASKMASTER_CLAUDE_PATH=/path/to/claude
+```
+
+**Permission Errors**
+```bash
+# Check worktree directory permissions
+chmod -R 755 ./worktrees
+```
+
+### Debug Mode
+
+Enable debug logging for troubleshooting:
+
+```bash
+export TASKMASTER_WORKFLOW_DEBUG=true
+task-master workflow start 1.2
+```
+
+## Integration Examples
+
+### With VS Code Extension
+
+The workflow engine integrates with the Task Master VS Code extension to provide:
+
+- **Workflow Tree View**: Visual workflow management
+- **Process Monitoring**: Real-time output streaming  
+- **Worktree Navigation**: Quick access to isolated workspaces
+- **Status Indicators**: Visual workflow state tracking
+
+### With Task Management
+
+```bash
+# Typical workflow
+task-master next                    # Find next task
+task-master workflow start 1.2     # Start workflow
+task-master workflow status <id>   # Monitor progress
+task-master set-status --id=1.2 --status=done  # Mark complete
+```
+
+## Advanced Features
+
+### Parallel Execution
+
+Run multiple workflows simultaneously:
+
+```bash
+# Start multiple workflows
+task-master workflow start 1.2
+task-master workflow start 2.1  
+task-master workflow start 3.4
+
+# Monitor all active workflows
+task-master workflow list
+```
+
+### Process Monitoring
+
+Each workflow provides real-time output monitoring and process management through the workflow engine's event system.
+
+### State Persistence
+
+Workflow state is automatically persisted across sessions, allowing you to resume monitoring workflows after restarting the CLI.

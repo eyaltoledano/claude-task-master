@@ -49,6 +49,7 @@
 						"pages": [
 							"capabilities/mcp",
 							"capabilities/cli-root-commands",
+							"capabilities/workflows",
 							"capabilities/task-structure"
 						]
 					}

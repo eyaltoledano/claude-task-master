@@ -3,4 +3,38 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
+## New Workflow Engine (Latest)
+
+Task Master now includes a powerful workflow engine that revolutionizes how tasks are executed:
+
+### 🚀 Key Features
+
+- **Git Worktree Isolation**: Each task runs in its own isolated git worktree
+- **Claude Code Integration**: Spawns dedicated Claude Code processes for task execution  
+- **Real-time Monitoring**: Track workflow progress and process output
+- **Parallel Execution**: Run multiple tasks concurrently with resource management
+- **State Persistence**: Workflow state is maintained across sessions
+
+### 🔧 New CLI Commands
+
+```bash
+# Start workflow execution
+task-master workflow start <task-id>
+
+# Monitor active workflows  
+task-master workflow list
+
+# Check workflow status
+task-master workflow status <workflow-id>
+
+# Stop running workflow
+task-master workflow stop <workflow-id>
+```
+
+### 📖 Learn More
+
+Check out the new [Workflow Documentation](/capabilities/workflows) for comprehensive usage guides and best practices.
+
+---
+
 An easy way to see the latest releases

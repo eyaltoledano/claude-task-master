@@ -200,6 +200,34 @@ sidebarTitle: "CLI Commands"
     ```
   </Accordion>
 
+  <Accordion title="Workflow Management">
+    ```bash
+    # Start workflow execution for a task
+    task-master workflow start <task-id>
+    # or use alias
+    task-master workflow run <task-id>
+
+    # List all active workflows
+    task-master workflow list
+
+    # Check status of a specific workflow
+    task-master workflow status <workflow-id>
+    # or use alias
+    task-master workflow info <workflow-id>
+
+    # Stop a running workflow
+    task-master workflow stop <workflow-id>
+    # or use alias
+    task-master workflow kill <workflow-id>
+    ```
+
+    The workflow system executes tasks in isolated git worktrees with dedicated Claude Code processes, providing:
+    - **Isolated Execution**: Each task runs in its own git worktree
+    - **Process Management**: Spawns dedicated Claude Code processes
+    - **Real-time Monitoring**: Track progress and output
+    - **Parallel Execution**: Run multiple tasks concurrently
+  </Accordion>
+
   <Accordion title="Initialize a Project">
     ```bash
     # Initialize a new project with Task Master structure
