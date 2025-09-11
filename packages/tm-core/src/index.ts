@@ -55,3 +55,7 @@ export {
 
 // Re-export logger
 export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
+
+// Re-export workflow
+export { WorkflowService, type WorkflowServiceConfig } from './workflow/index.js';
+export type * from './workflow/index.js';
