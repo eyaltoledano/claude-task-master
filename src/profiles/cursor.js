@@ -1,7 +1,7 @@
 // Cursor conversion profile for rule-transformer
 import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 // Helper function to copy and transform files (similar to claude.js)
 function copyRecursiveWithTransform(src, dest, transformFn) {
