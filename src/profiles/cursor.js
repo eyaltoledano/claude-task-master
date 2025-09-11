@@ -33,7 +33,13 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 	return count;
 }
 
-// Lifecycle hooks
+/**
+ * Hook: onAddRulesProfile
+ * Copies Task Master slash commands from assets to .cursor/commands with syntax transformation
+ * @param {string} projectRoot - The root directory of the project
+ * @param {string} assetsDir - The assets directory containing source files
+ * @returns {{success: number, failed: number, fileCount: number}} Count of successful/failed operations and total files processed
+ */
 const onAdd = (projectRoot, assetsDir) => {
 	const sourceDir = path.join(assetsDir, 'claude', 'commands');
 	const targetDir = path.join(projectRoot, '.cursor', 'commands');
@@ -68,6 +74,12 @@ const onAdd = (projectRoot, assetsDir) => {
 	};
 };
 
+/**
+ * Hook: onRemoveRulesProfile  
+ * Removes Task Master slash commands from .cursor/commands directory
+ * @param {string} projectRoot - The root directory of the project
+ * @returns {{success: number, failed: number, fileCount: number}} Count of successful/failed operations and total files processed
+ */
 const onRemove = (projectRoot) => {
 	const commandsDir = path.join(projectRoot, '.cursor', 'commands');
 

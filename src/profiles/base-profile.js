@@ -19,9 +19,9 @@ import path from 'path';
  * @param {Object} [editorConfig.fileMap={}] - Custom file name mappings
  * @param {boolean} [editorConfig.supportsRulesSubdirectories=false] - Whether to use taskmaster/ subdirectory for taskmaster-specific rules (only Cursor uses this by default)
  * @param {boolean} [editorConfig.includeDefaultRules=true] - Whether to include default rule files
- * @param {Function} [editorConfig.onAdd] - Lifecycle hook for profile addition
- * @param {Function} [editorConfig.onRemove] - Lifecycle hook for profile removal
- * @param {Function} [editorConfig.onPostConvert] - Lifecycle hook for post-conversion
+ * @param {Function} [editorConfig.onAdd] - Lifecycle hook for profile addition. Optional return: {success: number, failed: number, fileCount?: number}
+ * @param {Function} [editorConfig.onRemove] - Lifecycle hook for profile removal. Optional return: {success: number, failed: number, fileCount?: number}
+ * @param {Function} [editorConfig.onPostConvert] - Lifecycle hook for post-conversion. Optional return: {success: number, failed: number, fileCount?: number}
  * @returns {Object} - Complete profile configuration
  */
 export function createProfile(editorConfig) {

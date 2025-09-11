@@ -215,7 +215,16 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 				'debug',
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
 			);
-			// If hook returns result with success/failed counts, add them to totals
+			
+			/**
+			 * Hook Contract: onAddRulesProfile can optionally return an object with count information
+			 * Expected shape: { success: number, failed: number, fileCount?: number }
+			 * - success: number of successful operations (e.g., files processed)
+			 * - failed: number of failed operations
+			 * - fileCount: optional total file count for reporting
+			 * 
+			 * Note: This is optional - hooks can also return nothing/undefined
+			 */
 			if (
 				hookResult &&
 				typeof hookResult === 'object' &&
