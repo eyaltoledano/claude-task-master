@@ -1,0 +1,71 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ],
+      "outputs": ["dist/**", "build/**"],
+      "outputLogs": "new-only"
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ],
+      "outputLogs": "new-only"
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ],
+      "outputLogs": "new-only"
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ],
+      "outputLogs": "new-only"
+    },
+    "format": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!{packages,apps}/**/dist/**",
+        "!{packages,apps}/**/node_modules/**"
+      ],
+      "outputLogs": "new-only"
+    }
+  },
+  "globalDependencies": [
+    "turbo.json",
+    "tsconfig.json",
+    ".env*"
+  ]
+}

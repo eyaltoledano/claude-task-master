@@ -54,7 +54,7 @@
 	},
 	"scripts": {
 		"build": "tsup",
-		"dev": "tsup --watch --onSuccess 'echo \"🔥 Tm Core build complete\"'",
+		"dev": "tsup --watch --onSuccess 'echo \"🔥 [tm-core] Build complete\"'",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",

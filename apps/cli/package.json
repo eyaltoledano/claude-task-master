@@ -14,7 +14,7 @@
 	"files": ["dist", "README.md"],
 	"scripts": {
 		"build": "tsup",
-		"dev": "tsup --watch --onSuccess 'echo \"🔥 Tm Cli build complete\"'",
+		"dev": "tsup --watch --onSuccess 'echo \"🔥 [tm-cli] Build complete\"'",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
 		"format": "biome format --write src",

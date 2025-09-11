@@ -9,27 +9,34 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
-		"build": "npm run build:packages:parallel && tsup-node",
-		"dev": "npm run build:build-config && npm run dev:core & npm run dev:cli & tsup --watch --onSuccess 'echo Build complete && npm link'",
+		"build": "turbo build && tsup-node",
+		"dev": "npm run build:build-config && turbo dev --parallel",
+		"dev:main": "tsup --watch --onSuccess 'echo \"📦 Main package built\" && npm link'",
+		"dev:legacy": "npm run build:build-config && concurrently -n \"core,cli,main\" -c \"blue,green,yellow\" \"npm run dev:core\" \"npm run dev:cli\" \"npm run dev:main\"",
 		"dev:core": "npm run dev -w @tm/core",
 		"dev:cli": "npm run dev -w @tm/cli",
-		"build:packages": "npm run build:build-config && npm run build:core && npm run build:cli",
-		"build:packages:parallel": "npm run build:build-config && npm run build:core && npm run build:cli",
+		"build:packages": "turbo build --filter='./packages/*' --filter='./apps/*'",
+		"build:packages:parallel": "turbo build --filter='./packages/*' --filter='./apps/*'",
 		"build:build-config": "npm run build -w @tm/build-config",
 		"build:core": "npm run build -w @tm/core",
 		"build:cli": "npm run build -w @tm/cli",
-		"typecheck": "npm run typecheck:core && npm run typecheck:cli",
-		"typecheck:all": "npm run typecheck --workspaces --if-present",
+		"typecheck": "turbo typecheck",
+		"typecheck:all": "turbo typecheck",
 		"typecheck:core": "npm run typecheck -w @tm/core",
 		"typecheck:cli": "npm run typecheck -w @tm/cli",
-		"test": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest",
+		"test": "turbo test",
+		"test:watch": "turbo test:watch",
+		"test:legacy": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest",
 		"test:debug": "NODE_ENV=development node --inspect --experimental-vm-modules node_modules/.bin/jest --no-cache --verbose",
 		"test:unit": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=unit",
 		"test:integration": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=integration",
 		"test:fails": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
-		"test:watch": "NODE_ENV=development node --experimental-vm-modules node_modules/.bin/jest --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
 		"test:ci": "node --experimental-vm-modules node_modules/.bin/jest --coverage --ci",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
@@ -40,9 +47,11 @@
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
 		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write",
-		"lint:all": "npm run lint --workspaces --if-present",
-		"test:all": "npm run test --workspaces --if-present"
+		"format": "biome format . --write && turbo format",
+		"lint": "turbo lint",
+		"lint:all": "turbo lint",
+		"lint:legacy": "npm run lint --workspaces --if-present",
+		"test:all": "turbo test"
 	},
 	"keywords": [
 		"claude",
@@ -120,19 +129,23 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
-		"dotenv-mono": "^1.5.1",
-
 		"@types/jest": "^29.5.14",
+		"concurrently": "^9.2.1",
+		"dotenv-mono": "^1.5.1",
 		"execa": "^8.0.1",
 		"ink": "^5.0.1",
 		"jest": "^29.7.0",
@@ -142,6 +155,7 @@
 		"supertest": "^7.1.0",
 		"tsup": "^8.5.0",
 		"tsx": "^4.16.2",
+		"turbo": "^2.5.6",
 		"typescript": "^5.9.2"
 	}
 }

@@ -19,7 +19,7 @@ export class SupabaseAuthClient {
 	private logger = getLogger('SupabaseAuthClient');
 
 	constructor() {
-		const credentialStore = new CredentialStore();
+		const credentialStore = CredentialStore.getInstance();
 		this.sessionStorage = new SupabaseSessionStorage(credentialStore);
 	}
 
