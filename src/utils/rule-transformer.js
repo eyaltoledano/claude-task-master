@@ -364,13 +364,17 @@ export function removeProfileRules(projectRoot, profile) {
 					'debug',
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
 				);
-				// If hook returns result with success count, add it to file count for totals
-				if (
-					hookResult &&
-					typeof hookResult === 'object' &&
-					typeof hookResult.success === 'number'
-				) {
-					result.fileCount += hookResult.success;
+				// If hook returns result with file count, add it to file count for totals
+				if (hookResult && typeof hookResult === 'object') {
+					let fileCountToAdd = 0;
+					if (typeof hookResult.fileCount === 'number') {
+						fileCountToAdd = hookResult.fileCount;
+					} else if (typeof hookResult.success === 'number') {
+						fileCountToAdd = hookResult.success;
+					}
+					if (fileCountToAdd > 0) {
+						result.fileCount += fileCountToAdd;
+					}
 				}
 				// Note: We don't set result.notice here to avoid duplication with file preservation notices
 			} catch (error) {
