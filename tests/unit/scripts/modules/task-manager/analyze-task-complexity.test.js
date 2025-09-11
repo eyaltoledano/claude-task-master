@@ -187,7 +187,8 @@ jest.unstable_mockModule(
 		// Additional functions
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
-		getVertexLocation: jest.fn(() => undefined)
+		getVertexLocation: jest.fn(() => undefined),
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 
@@ -197,11 +198,13 @@ jest.unstable_mockModule('fs', () => ({
 	default: {
 		existsSync: jest.fn(() => false),
 		readFileSync: jest.fn(),
-		writeFileSync: mockWriteFileSync
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: jest.fn()
 	},
 	existsSync: jest.fn(() => false),
 	readFileSync: jest.fn(),
-	writeFileSync: mockWriteFileSync
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: jest.fn()
 }));
 
 jest.unstable_mockModule(

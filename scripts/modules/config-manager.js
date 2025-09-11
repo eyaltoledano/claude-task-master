@@ -16,29 +16,11 @@ import {
 } from '../../src/constants/providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import MODEL_MAP from './supported-models.json' with { type: 'json' };
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Load supported models from JSON file using the calculated __dirname
-let MODEL_MAP;
-try {
-	const supportedModelsRaw = fs.readFileSync(
-		path.join(__dirname, 'supported-models.json'),
-		'utf-8'
-	);
-	MODEL_MAP = JSON.parse(supportedModelsRaw);
-} catch (error) {
-	console.error(
-		chalk.red(
-			'FATAL ERROR: Could not load supported-models.json. Please ensure the file exists and is valid JSON.'
-		),
-		error
-	);
-	MODEL_MAP = {}; // Default to empty map on error to avoid crashing, though functionality will be limited
-	process.exit(1); // Exit if models can't be loaded
-}
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
@@ -72,7 +54,8 @@ const DEFAULTS = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
-		responseLanguage: 'English'
+		responseLanguage: 'English',
+		enableCodebaseAnalysis: true
 	},
 	claudeCode: {}
 };
@@ -427,6 +410,63 @@ function getResearchProvider(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).provider;
 }
 
+/**
+ * Check if codebase analysis feature flag is enabled across all sources
+ * Priority: .env > MCP env > config.json
+ * @param {object|null} session - MCP session object (optional)
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @returns {boolean} True if codebase analysis is enabled
+ */
+function isCodebaseAnalysisEnabled(session = null, projectRoot = null) {
+	// Priority 1: Environment variable
+	const envFlag = resolveEnvVariable(
+		'TASKMASTER_ENABLE_CODEBASE_ANALYSIS',
+		session,
+		projectRoot
+	);
+	if (envFlag !== null && envFlag !== undefined && envFlag !== '') {
+		return envFlag.toLowerCase() === 'true' || envFlag === '1';
+	}
+
+	// Priority 2: MCP session environment
+	if (session?.env?.TASKMASTER_ENABLE_CODEBASE_ANALYSIS) {
+		const mcpFlag = session.env.TASKMASTER_ENABLE_CODEBASE_ANALYSIS;
+		return mcpFlag.toLowerCase() === 'true' || mcpFlag === '1';
+	}
+
+	// Priority 3: Configuration file
+	const globalConfig = getGlobalConfig(projectRoot);
+	return globalConfig.enableCodebaseAnalysis !== false; // Default to true
+}
+
+/**
+ * Check if codebase analysis is available and enabled
+ * @param {boolean} useResearch - Whether to check research provider or main provider
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @param {object|null} session - MCP session object (optional)
+ * @returns {boolean} True if codebase analysis is available and enabled
+ */
+function hasCodebaseAnalysis(
+	useResearch = false,
+	projectRoot = null,
+	session = null
+) {
+	// First check if the feature is enabled
+	if (!isCodebaseAnalysisEnabled(session, projectRoot)) {
+		return false;
+	}
+
+	// Then check if a codebase analysis provider is configured
+	const currentProvider = useResearch
+		? getResearchProvider(projectRoot)
+		: getMainProvider(projectRoot);
+
+	return (
+		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI
+	);
+}
+
 function getResearchModelId(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).modelId;
 }
@@ -540,6 +580,11 @@ function getVertexLocation(explicitRoot = null) {
 function getResponseLanguage(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).responseLanguage;
+}
+
+function getCodebaseAnalysisEnabled(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
 }
 
 /**
@@ -983,6 +1028,7 @@ export {
 	getResearchModelId,
 	getResearchMaxTokens,
 	getResearchTemperature,
+	hasCodebaseAnalysis,
 	getFallbackProvider,
 	getFallbackModelId,
 	getFallbackMaxTokens,
@@ -999,6 +1045,8 @@ export {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getResponseLanguage,
+	getCodebaseAnalysisEnabled,
+	isCodebaseAnalysisEnabled,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

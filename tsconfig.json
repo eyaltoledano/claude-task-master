@@ -1,0 +1,29 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022"],
+		"types": ["node"],
+		"allowJs": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"baseUrl": "."
+	},
+	"tsx": {
+		"tsconfig": {
+			"allowImportingTsExtensions": false
+		}
+	},
+	"include": [
+		"bin/**/*",
+		"scripts/**/*",
+		"packages/*/src/**/*",
+		"apps/*/src/**/*"
+	],
+	"exclude": ["node_modules", "dist", "**/dist"]
+}

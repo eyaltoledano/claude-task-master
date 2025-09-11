@@ -14,14 +14,10 @@ import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
-import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
-} from './utils.js';
+import { log, readJSON } from './utils.js';
+// Import new commands from @tm/cli
+import { ListTasksCommand, AuthCommand, ContextCommand } from '@tm/cli';
+
 import {
 	parsePRD,
 	updateTasks,
@@ -1741,66 +1737,17 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// list command
-	programInstance
-		.command('list')
-		.description('List all tasks')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('-s, --status <status>', 'Filter by status')
-		.option('--with-subtasks', 'Show subtasks for each task')
-		.option('-c, --compact', 'Display tasks in compact one-line format')
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
+	// NEW: Register the new list command from @tm/cli
+	// This command handles all its own configuration and logic
+	ListTasksCommand.registerOn(programInstance);
 
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
+	// Register the auth command from @tm/cli
+	// Handles authentication with tryhamster.com
+	AuthCommand.registerOn(programInstance);
 
-			const taskMaster = initTaskMaster(initOptions);
-
-			const statusFilter = options.status;
-			const withSubtasks = options.withSubtasks || false;
-			const compact = options.compact || false;
-			const tag = taskMaster.getCurrentTag();
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!compact) {
-				console.log(
-					chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
-				);
-				if (statusFilter) {
-					console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-				}
-				if (withSubtasks) {
-					console.log(chalk.blue('Including subtasks in listing'));
-				}
-			}
-
-			await listTasks(
-				taskMaster.getTasksPath(),
-				statusFilter,
-				taskMaster.getComplexityReportPath(),
-				withSubtasks,
-				compact ? 'compact' : 'text',
-				{ projectRoot: taskMaster.getProjectRoot(), tag }
-			);
-		});
+	// Register the context command from @tm/cli
+	// Manages workspace context (org/brief selection)
+	ContextCommand.registerOn(programInstance);
 
 	// expand command
 	programInstance
@@ -4103,12 +4050,7 @@ Examples:
 							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies'
 						) +
 						'\n\n' +
-						chalk.white('  # Force move (may break dependencies)') +
 						'\n' +
-						chalk.white(
-							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --force'
-						) +
-						'\n\n' +
 						chalk.yellow.bold('Best Practices:') +
 						'\n' +
 						chalk.white(
@@ -4117,10 +4059,6 @@ Examples:
 						'\n' +
 						chalk.white(
 							'  • Use --ignore-dependencies to break cross-tag dependencies'
-						) +
-						'\n' +
-						chalk.white(
-							'  • Use --force only when you understand the consequences'
 						) +
 						'\n' +
 						chalk.white(
@@ -4183,6 +4121,12 @@ Examples:
 				);
 
 				console.log(chalk.green(`✓ ${result.message}`));
+
+				// Print any tips returned from the move operation (e.g., after ignoring dependencies)
+				if (Array.isArray(result.tips) && result.tips.length > 0) {
+					console.log('\n' + chalk.yellow.bold('Next Steps:'));
+					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
+				}
 
 				// Check if source tag still contains tasks before regenerating files
 				const tasksData = readJSON(
@@ -4450,6 +4394,27 @@ Examples:
 					await handleWithinTagMove(moveContext);
 				}
 			} catch (error) {
+				const errMsg = String(error && (error.message || error));
+				if (errMsg.includes('already exists in target tag')) {
+					console.error(chalk.red(`Error: ${errMsg}`));
+					console.log(
+						'\n' +
+							chalk.yellow.bold('Conflict: ID already exists in target tag') +
+							'\n' +
+							chalk.white(
+								'  • Choose a different target tag without conflicting IDs'
+							) +
+							'\n' +
+							chalk.white(
+								'  • Move a different set of IDs (avoid existing ones)'
+							) +
+							'\n' +
+							chalk.white(
+								'  • If needed, move within-tag to a new ID first, then cross-tag move'
+							)
+					);
+					process.exit(1);
+				}
 				handleMoveError(error, moveContext);
 			}
 		});

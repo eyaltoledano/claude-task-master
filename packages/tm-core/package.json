@@ -1,0 +1,89 @@
+{
+	"name": "@tm/core",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Core library for Task Master - TypeScript task management system",
+	"type": "module",
+	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./dist/index.js"
+		},
+		"./auth": {
+			"types": "./src/auth/index.ts",
+			"import": "./dist/auth/index.js"
+		},
+		"./storage": {
+			"types": "./src/storage/index.ts",
+			"import": "./dist/storage/index.js"
+		},
+		"./config": {
+			"types": "./src/config/index.ts",
+			"import": "./dist/config/index.js"
+		},
+		"./providers": {
+			"types": "./src/providers/index.ts",
+			"import": "./dist/providers/index.js"
+		},
+		"./services": {
+			"types": "./src/services/index.ts",
+			"import": "./dist/services/index.js"
+		},
+		"./errors": {
+			"types": "./src/errors/index.ts",
+			"import": "./dist/errors/index.js"
+		},
+		"./logger": {
+			"types": "./src/logger/index.ts",
+			"import": "./dist/logger/index.js"
+		},
+		"./types": {
+			"types": "./src/types/index.ts",
+			"import": "./dist/types/index.js"
+		},
+		"./interfaces": {
+			"types": "./src/interfaces/index.ts",
+			"import": "./dist/interfaces/index.js"
+		},
+		"./utils": {
+			"types": "./src/utils/index.ts",
+			"import": "./dist/utils/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"lint": "biome check --write",
+		"lint:check": "biome check",
+		"lint:fix": "biome check --fix --unsafe",
+		"format": "biome format --write",
+		"format:check": "biome format",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "^2.57.4",
+		"zod": "^3.22.4"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@tm/build-config": "*",
+		"@types/node": "^20.11.30",
+		"@vitest/coverage-v8": "^2.0.5",
+		"ts-node": "^10.9.2",
+		"tsup": "^8.0.2",
+		"typescript": "^5.4.3",
+		"vitest": "^2.0.5"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"files": ["dist", "README.md", "CHANGELOG.md"],
+	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
+	"author": "Task Master AI",
+	"license": "MIT"
+}

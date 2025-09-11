@@ -44,12 +44,24 @@
 			"type": "string",
 			"default": "",
 			"description": "Additional project context"
+		},
+		"hasCodebaseAnalysis": {
+			"type": "boolean",
+			"required": false,
+			"default": false,
+			"description": "Whether codebase analysis is available"
+		},
+		"projectRoot": {
+			"type": "string",
+			"required": false,
+			"default": "",
+			"description": "Project root path for context"
 		}
 	},
 	"prompts": {
 		"default": {
 			"system": "You are an AI assistant helping to update a subtask. You will be provided with the subtask's existing details, context about its parent and sibling tasks, and a user request string.{{#if useResearch}} You have access to current best practices and latest technical information to provide research-backed updates.{{/if}}\n\nYour Goal: Based *only* on the user's request and all the provided context (including existing details if relevant to the request), GENERATE the new text content that should be added to the subtask's details.\nFocus *only* on generating the substance of the update.\n\nOutput Requirements:\n1. Return *only* the newly generated text content as a plain string. Do NOT return a JSON object or any other structured data.\n2. Your string response should NOT include any of the subtask's original details, unless the user's request explicitly asks to rephrase, summarize, or directly modify existing text.\n3. Do NOT include any timestamps, XML-like tags, markdown, or any other special formatting in your string response.\n4. Ensure the generated text is concise yet complete for the update based on the user request. Avoid conversational fillers or explanations about what you are doing (e.g., do not start with \"Okay, here's the update...\").{{#if useResearch}}\n5. Include specific libraries, versions, and current best practices relevant to the subtask implementation.\n6. Provide research-backed technical recommendations and proven approaches.{{/if}}",
-			"user": "Task Context:\n\nParent Task: {{{json parentTask}}}\n{{#if prevSubtask}}Previous Subtask: {{{json prevSubtask}}}\n{{/if}}{{#if nextSubtask}}Next Subtask: {{{json nextSubtask}}}\n{{/if}}Current Subtask Details (for context only):\n{{currentDetails}}\n\nUser Request: \"{{updatePrompt}}\"\n\n{{#if useResearch}}Research and incorporate current best practices, latest stable versions, and proven approaches into your update. {{/if}}Based on the User Request and all the Task Context (including current subtask details provided above), what is the new information or text that should be appended to this subtask's details? Return ONLY this new text as a plain string.{{#if useResearch}} Include specific technical recommendations based on current industry standards.{{/if}}\n{{#if gatheredContext}}\n\n# Additional Project Context\n\n{{gatheredContext}}\n{{/if}}"
+			"user": "{{#if hasCodebaseAnalysis}}## IMPORTANT: Codebase Analysis Required\n\nYou have access to powerful codebase analysis tools. Before generating the subtask update:\n\n1. Use the Glob tool to explore the project structure (e.g., \"**/*.js\", \"**/*.json\", \"**/README.md\")\n2. Use the Grep tool to search for existing implementations, patterns, and technologies\n3. Use the Read tool to examine relevant files and understand current implementation\n4. Analyze the current codebase to inform your subtask update\n\nBased on your analysis:\n- Include specific file references, code patterns, or implementation details\n- Ensure suggestions align with the project's current architecture\n- Reference existing components or patterns when relevant\n- Make implementation notes specific to the codebase structure\n\nProject Root: {{projectRoot}}\n\n{{/if}}Task Context:\n\nParent Task: {{{json parentTask}}}\n{{#if prevSubtask}}Previous Subtask: {{{json prevSubtask}}}\n{{/if}}{{#if nextSubtask}}Next Subtask: {{{json nextSubtask}}}\n{{/if}}Current Subtask Details (for context only):\n{{currentDetails}}\n\nUser Request: \"{{updatePrompt}}\"\n\n{{#if useResearch}}Research and incorporate current best practices, latest stable versions, and proven approaches into your update. {{/if}}Based on the User Request and all the Task Context (including current subtask details provided above), what is the new information or text that should be appended to this subtask's details? Return ONLY this new text as a plain string.{{#if useResearch}} Include specific technical recommendations based on current industry standards.{{/if}}\n{{#if gatheredContext}}\n\n# Additional Project Context\n\n{{gatheredContext}}\n{{/if}}"
 		}
 	}
 }

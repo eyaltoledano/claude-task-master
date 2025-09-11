@@ -6,8 +6,7 @@ import { z } from 'zod';
 import { TASK_PRIORITY_OPTIONS } from '../../../../src/constants/task-priority.js';
 import { getCurrentTag, isSilentMode, log } from '../../utils.js';
 import { Duration } from '../../../../src/utils/timeout-manager.js';
-import { CUSTOM_PROVIDERS } from '../../../../src/constants/providers.js';
-import { getMainProvider, getResearchProvider } from '../../config-manager.js';
+import { hasCodebaseAnalysis } from '../../config-manager.js';
 
 // ============================================================================
 // SCHEMAS
@@ -75,13 +74,10 @@ export class PrdParseConfig {
 	}
 
 	/**
-	 * Check if Claude Code is being used
+	 * Check if codebase analysis is available (Claude Code or Gemini CLI)
 	 */
-	isClaudeCode() {
-		const currentProvider = this.research
-			? getResearchProvider(this.projectRoot)
-			: getMainProvider(this.projectRoot);
-		return currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE;
+	hasCodebaseAnalysis() {
+		return hasCodebaseAnalysis(this.research, this.projectRoot, this.session);
 	}
 }
 

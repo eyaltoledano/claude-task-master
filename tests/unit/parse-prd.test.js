@@ -52,7 +52,8 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	VALID_PROVIDERS: ['anthropic', 'perplexity'],
 	validateProvider: jest.fn(() => true),
 	validateProviderModelCombination: jest.fn(() => true),
-	isApiKeySet: jest.fn(() => true)
+	isApiKeySet: jest.fn(() => true),
+	hasCodebaseAnalysis: jest.fn(() => false)
 }));
 
 // Mock utils comprehensively to prevent CLI behavior

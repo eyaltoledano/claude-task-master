@@ -1,0 +1,31 @@
+{
+	"name": "@tm/build-config",
+	"version": "1.0.0",
+	"description": "Shared build configuration for Task Master monorepo",
+	"type": "module",
+	"main": "./dist/tsup.base.js",
+	"types": "./dist/tsup.base.d.ts",
+	"exports": {
+		".": {
+			"types": "./src/tsup.base.ts",
+			"import": "./dist/tsup.base.js",
+			"require": "./dist/tsup.base.cjs"
+		}
+	},
+	"files": ["dist", "src"],
+	"keywords": ["build-config", "tsup", "monorepo"],
+	"author": "",
+	"license": "MIT",
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"tsup": "^8.5.0",
+		"typescript": "^5.7.3"
+	},
+	"peerDependencies": {
+		"tsup": "^8.0.0"
+	}
+}

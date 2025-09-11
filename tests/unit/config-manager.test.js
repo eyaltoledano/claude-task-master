@@ -145,6 +145,7 @@ const DEFAULT_CONFIG = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		enableCodebaseAnalysis: true,
 		responseLanguage: 'English'
 	},
 	claudeCode: {}
