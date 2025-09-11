@@ -350,7 +350,9 @@ export function removeProfileRules(projectRoot, profile) {
 		mcpResult: null,
 		profileDirRemoved: false,
 		notice: null,
-		fileCount: 0 // Track total files processed by lifecycle hooks
+		fileCount: 0, // Track total files processed by lifecycle hooks
+		failedFileCount: 0,
+		failedFiles: []
 	};
 
 	try {
@@ -458,6 +460,11 @@ export function removeProfileRules(projectRoot, profile) {
 								`[Rule Transformer] Removed Task Master file: ${taskMasterFile}`
 							);
 						} catch (error) {
+							result.failedFileCount++;
+							result.failedFiles.push({
+								filename: taskMasterFile,
+								error: error.message
+							});
 							log(
 								'error',
 								`[Rule Transformer] Failed to remove ${taskMasterFile}: ${error.message}`
