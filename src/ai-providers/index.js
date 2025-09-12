@@ -16,3 +16,4 @@ export { AzureProvider } from './azure.js';
 export { VertexAIProvider } from './google-vertex.js';
 export { ClaudeCodeProvider } from './claude-code.js';
 export { GeminiCliProvider } from './gemini-cli.js';
+export { GrokCliProvider } from './grok-cli.js';

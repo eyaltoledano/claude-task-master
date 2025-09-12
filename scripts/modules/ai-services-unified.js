@@ -43,6 +43,7 @@ import {
 	ClaudeCodeProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
+	GrokCliProvider,
 	GroqProvider,
 	OllamaAIProvider,
 	OpenAIProvider,
@@ -69,7 +70,8 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
-	'gemini-cli': new GeminiCliProvider()
+	'gemini-cli': new GeminiCliProvider(),
+	'grok-cli': new GrokCliProvider()
 };
 
 function _getProvider(providerName) {

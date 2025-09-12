@@ -57,7 +57,12 @@ const DEFAULTS = {
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true
 	},
-	claudeCode: {}
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
+	}
 };
 
 // --- Internal Config Loading ---
@@ -132,7 +137,8 @@ function _loadAndValidateConfig(explicitRoot = null) {
 							: { ...defaults.models.fallback }
 				},
 				global: { ...defaults.global, ...parsedConfig?.global },
-				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode }
+				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
+				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
 
@@ -369,6 +375,22 @@ function getClaudeCodeSettingsForCommand(
 	forceReload = false
 ) {
 	const settings = getClaudeCodeSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
+}
+
+function getGrokCliSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	// Ensure Grok CLI defaults are applied if Grok CLI section is missing
+	return { ...DEFAULTS.grokCli, ...(config?.grokCli || {}) };
+}
+
+function getGrokCliSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getGrokCliSettings(explicitRoot, forceReload);
 	const commandSpecific = settings?.commandSpecific || {};
 	return { ...settings, ...commandSpecific[commandName] };
 }
@@ -692,7 +714,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.GEMINI_CLI
+		CUSTOM_PROVIDERS.GEMINI_CLI,
+		CUSTOM_PROVIDERS.GROK_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -998,6 +1021,7 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
+	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP
 ];
 
@@ -1010,6 +1034,9 @@ export {
 	// Claude Code settings
 	getClaudeCodeSettings,
 	getClaudeCodeSettingsForCommand,
+	// Grok CLI settings
+	getGrokCliSettings,
+	getGrokCliSettingsForCommand,
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
