@@ -53,8 +53,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsc",
-		"dev": "tsc --watch",
+		"build": "tsup",
+		"dev": "tsup --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -71,9 +71,12 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@tm/build-config": "*",
 		"@types/node": "^20.11.30",
 		"@vitest/coverage-v8": "^2.0.5",
+		"dotenv-mono": "^1.3.14",
 		"ts-node": "^10.9.2",
+		"tsup": "^8.5.0",
 		"typescript": "^5.4.3",
 		"vitest": "^2.0.5"
 	},

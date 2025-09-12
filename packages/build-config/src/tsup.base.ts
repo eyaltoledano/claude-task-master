@@ -3,29 +3,9 @@
  * Provides shared configuration that can be extended by individual packages
  */
 import type { Options } from 'tsup';
-import * as dotenv from 'dotenv-mono';
-
-dotenv.load();
-
-console.log(
-	'TM_PUBLIC_BASE_DOMAIN:',
-	process.env.TM_PUBLIC_BASE_DOMAIN,
-	'TM_PUBLIC_SUPABASE_URL:',
-	process.env.TM_PUBLIC_SUPABASE_URL,
-	'TM_PUBLIC_SUPABASE_ANON_KEY:',
-	process.env.TM_PUBLIC_SUPABASE_ANON_KEY
-);
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
-
-const envVariables = {
-	TM_PUBLIC_BASE_DOMAIN: process.env.TM_PUBLIC_BASE_DOMAIN ?? '',
-	TM_PUBLIC_SUPABASE_URL: process.env.TM_PUBLIC_SUPABASE_URL ?? '',
-	TM_PUBLIC_SUPABASE_ANON_KEY: process.env.TM_PUBLIC_SUPABASE_ANON_KEY ?? ''
-};
-
-console.log('envVariables:', envVariables);
 
 /**
  * Environment helpers
@@ -33,8 +13,7 @@ console.log('envVariables:', envVariables);
 export const env = {
 	isProduction,
 	isDevelopment,
-	NODE_ENV: process.env.NODE_ENV || 'development',
-	...envVariables
+	NODE_ENV: process.env.NODE_ENV || 'development'
 };
 
 /**
@@ -52,7 +31,6 @@ export const baseConfig: Partial<Options> = {
 	splitting: false,
 	// Don't bundle any other dependencies (auto-external all node_modules)
 	external: [/^[^./]/],
-	env: envVariables,
 	esbuildOptions(options) {
 		options.platform = 'node';
 		// Allow importing TypeScript from JavaScript
