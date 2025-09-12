@@ -1,9 +1,10 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { PriorityBadge } from './PriorityBadge';
 import type { TaskMasterTask } from '../../webview/types';
+import { useVSCodeContext } from '../../webview/contexts/VSCodeContext';
 
 interface TaskMetadataSidebarProps {
 	currentTask: TaskMasterTask;
@@ -28,10 +29,12 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 	isRegenerating = false,
 	isAppending = false
 }) => {
+	const { vscode } = useVSCodeContext();
 	const [isLoadingComplexity, setIsLoadingComplexity] = useState(false);
 	const [mcpComplexityScore, setMcpComplexityScore] = useState<
 		number | undefined
 	>(undefined);
+	const [isStartingTask, setIsStartingTask] = useState(false);
 
 	// Get complexity score from task
 	const currentComplexityScore = complexity?.score;
@@ -95,6 +98,29 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 		} finally {
 			setIsLoadingComplexity(false);
 		}
+	};
+
+	// Handle starting a task
+	const handleStartTask = () => {
+		if (!currentTask || isStartingTask) {
+			return;
+		}
+		
+		setIsStartingTask(true);
+		
+		// Send message to extension to open terminal
+		if (vscode) {
+			vscode.postMessage({
+				type: 'openTerminal',
+				taskId: currentTask.id,
+				taskTitle: currentTask.title
+			});
+		}
+		
+		// Reset loading state after a short delay
+		setTimeout(() => {
+			setIsStartingTask(false);
+		}, 500);
 	};
 
 	// Effect to handle complexity on task change
@@ -284,6 +310,24 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 					{currentTask.dependencies && currentTask.dependencies.length > 0 && (
 						<div className="border-b border-textSeparator-foreground" />
 					)}
+
+					{/* Start Task Button */}
+					<div className="mt-4">
+						<Button
+							onClick={handleStartTask}
+							variant="default"
+							size="sm"
+							className="w-full text-xs"
+							disabled={isRegenerating || isAppending || isStartingTask || currentTask?.status === 'done'}
+						>
+							{isStartingTask ? (
+								<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							) : (
+								<Play className="w-4 h-4 mr-2" />
+							)}
+							{isStartingTask ? 'Starting...' : 'Start Task'}
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>
