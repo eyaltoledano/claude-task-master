@@ -84,7 +84,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Build
-        run: npm run build
+        run: npm run turbo:build
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
