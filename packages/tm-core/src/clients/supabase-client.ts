@@ -10,8 +10,8 @@ import {
 } from '@supabase/supabase-js';
 import { AuthenticationError } from '../auth/types.js';
 import { getLogger } from '../logger/index.js';
-import { SupabaseSessionStorage } from '../auth/supabase-session-storage';
-import { CredentialStore } from '../auth/credential-store';
+import { SupabaseSessionStorage } from '../auth/supabase-session-storage.js';
+import { CredentialStore } from '../auth/credential-store.js';
 
 export class SupabaseAuthClient {
 	private client: SupabaseJSClient | null = null;
@@ -19,7 +19,7 @@ export class SupabaseAuthClient {
 	private logger = getLogger('SupabaseAuthClient');
 
 	constructor() {
-		const credentialStore = new CredentialStore();
+		const credentialStore = CredentialStore.getInstance();
 		this.sessionStorage = new SupabaseSessionStorage(credentialStore);
 	}
 

@@ -9,6 +9,6 @@
 		"preview": "mintlify preview"
 	},
 	"devDependencies": {
-		"mintlify": "^4.0.0"
+		"mintlify": "^4.2.111"
 	}
 }

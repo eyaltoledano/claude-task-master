@@ -31,7 +31,7 @@ export class AuthManager {
 	private organizationService?: OrganizationService;
 
 	private constructor(config?: Partial<AuthConfig>) {
-		this.credentialStore = new CredentialStore(config);
+		this.credentialStore = CredentialStore.getInstance(config);
 		this.supabaseClient = new SupabaseAuthClient();
 		this.oauthService = new OAuthService(this.credentialStore, config);
 
@@ -73,6 +73,7 @@ export class AuthManager {
 	 */
 	static resetInstance(): void {
 		AuthManager.instance = null;
+		CredentialStore.resetInstance();
 	}
 
 	/**

@@ -173,13 +173,6 @@ export class ListTasksCommand extends Command {
 			includeSubtasks: options.withSubtasks
 		});
 
-		// Runtime guard to prevent 'auto' from reaching CLI consumers
-		if (result.storageType === 'auto') {
-			throw new Error(
-				'Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.'
-			);
-		}
-
 		return result as ListTasksResult;
 	}
 
