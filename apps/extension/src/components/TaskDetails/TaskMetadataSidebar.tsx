@@ -105,9 +105,9 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 		if (!currentTask || isStartingTask) {
 			return;
 		}
-		
+
 		setIsStartingTask(true);
-		
+
 		// Send message to extension to open terminal
 		if (vscode) {
 			vscode.postMessage({
@@ -116,7 +116,7 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 				taskTitle: currentTask.title
 			});
 		}
-		
+
 		// Reset loading state after a short delay
 		setTimeout(() => {
 			setIsStartingTask(false);
@@ -318,7 +318,13 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 							variant="default"
 							size="sm"
 							className="w-full text-xs"
-							disabled={isRegenerating || isAppending || isStartingTask || currentTask?.status === 'done'}
+							disabled={
+								isRegenerating ||
+								isAppending ||
+								isStartingTask ||
+								currentTask?.status === 'done' ||
+								currentTask?.status === 'in-progress'
+							}
 						>
 							{isStartingTask ? (
 								<Loader2 className="w-4 h-4 mr-2 animate-spin" />
