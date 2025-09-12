@@ -229,6 +229,7 @@
 		"build": "npm run build:js && npm run build:css",
 		"build:js": "node ./esbuild.js --production",
 		"build:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
+		"dev": "npm run watch",
 		"package": "npm exec node ./package.mjs",
 		"package:direct": "node ./package.mjs",
 		"debug:env": "node ./debug-env.mjs",

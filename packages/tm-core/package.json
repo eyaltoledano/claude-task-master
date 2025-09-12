@@ -53,8 +53,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
+		"build": "tsc",
+		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -71,18 +71,16 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@tm/build-config": "*",
 		"@types/node": "^20.11.30",
 		"@vitest/coverage-v8": "^2.0.5",
 		"ts-node": "^10.9.2",
-		"tsup": "^8.0.2",
 		"typescript": "^5.4.3",
 		"vitest": "^2.0.5"
 	},
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"files": ["dist", "README.md", "CHANGELOG.md"],
+	"files": ["src", "README.md", "CHANGELOG.md"],
 	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
 	"author": "Task Master AI",
 	"license": "MIT"

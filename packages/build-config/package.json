@@ -7,9 +7,8 @@
 	"types": "./dist/tsup.base.d.ts",
 	"exports": {
 		".": {
-			"types": "./src/tsup.base.ts",
-			"import": "./dist/tsup.base.js",
-			"require": "./dist/tsup.base.cjs"
+			"types": "./dist/tsup.base.d.ts",
+			"import": "./dist/tsup.base.js"
 		}
 	},
 	"files": ["dist", "src"],
@@ -17,15 +16,14 @@
 	"author": "",
 	"license": "MIT",
 	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
+		"build": "tsc",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"tsup": "^8.5.0",
+		"dotenv-mono": "^1.5.1",
 		"typescript": "^5.7.3"
 	},
-	"peerDependencies": {
-		"tsup": "^8.0.0"
+	"dependencies": {
+		"tsup": "^8.5.0"
 	}
 }

@@ -3,78 +3,56 @@
  * Provides shared configuration that can be extended by individual packages
  */
 import type { Options } from 'tsup';
+import * as dotenv from 'dotenv-mono';
+
+dotenv.load();
+
+console.log(
+	'TM_PUBLIC_BASE_DOMAIN:',
+	process.env.TM_PUBLIC_BASE_DOMAIN,
+	'TM_PUBLIC_SUPABASE_URL:',
+	process.env.TM_PUBLIC_SUPABASE_URL,
+	'TM_PUBLIC_SUPABASE_ANON_KEY:',
+	process.env.TM_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
 
+const envVariables = {
+	TM_PUBLIC_BASE_DOMAIN: process.env.TM_PUBLIC_BASE_DOMAIN ?? '',
+	TM_PUBLIC_SUPABASE_URL: process.env.TM_PUBLIC_SUPABASE_URL ?? '',
+	TM_PUBLIC_SUPABASE_ANON_KEY: process.env.TM_PUBLIC_SUPABASE_ANON_KEY ?? ''
+};
+
+console.log('envVariables:', envVariables);
+
 /**
- * Base configuration for library packages (tm-core, etc.)
+ * Environment helpers
  */
-export const libraryConfig: Partial<Options> = {
-	format: ['cjs', 'esm'],
-	target: 'es2022',
-	// Sourcemaps only in development to reduce production bundle size
-	sourcemap: isDevelopment,
-	clean: true,
-	dts: true,
-	// Enable optimizations in production
-	splitting: isProduction,
-	treeshake: isProduction,
-	minify: isProduction,
-	bundle: true,
-	esbuildOptions(options) {
-		options.conditions = ['module'];
-		// Better source mapping in development only
-		options.sourcesContent = isDevelopment;
-		// Keep original names for better debugging in development
-		options.keepNames = isDevelopment;
-	},
-	// Watch mode configuration for development
-	watch: isDevelopment ? ['src'] : false
+export const env = {
+	isProduction,
+	isDevelopment,
+	NODE_ENV: process.env.NODE_ENV || 'development',
+	...envVariables
 };
 
 /**
- * Base configuration for CLI packages
+ * Base tsup configuration for all packages
+ * Since everything gets bundled into root dist/ anyway, use consistent settings
  */
-export const cliConfig: Partial<Options> = {
+export const baseConfig: Partial<Options> = {
 	format: ['esm'],
 	target: 'node18',
-	splitting: false,
-	// Sourcemaps only in development to reduce production bundle size
 	sourcemap: isDevelopment,
 	clean: true,
-	dts: true,
-	shims: true,
-	// Enable minification in production for smaller bundles
+	dts: false,
 	minify: isProduction,
 	treeshake: isProduction,
-	esbuildOptions(options) {
-		options.platform = 'node';
-		// Better source mapping in development only
-		options.sourcesContent = isDevelopment;
-		// Keep original names for better debugging in development
-		options.keepNames = isDevelopment;
-	}
-};
-
-/**
- * Base configuration for executable bundles (root level)
- */
-export const executableConfig: Partial<Options> = {
-	format: ['esm'],
-	target: 'node18',
 	splitting: false,
-	// Sourcemaps only in development to reduce production bundle size
-	sourcemap: isDevelopment,
-	clean: true,
-	bundle: true, // Bundle everything into one file
-	// Minify in production for smaller executables
-	minify: isProduction,
-	// Handle TypeScript imports transparently
-	loader: {
-		'.js': 'jsx',
-		'.ts': 'ts'
-	},
+	// Don't bundle any other dependencies (auto-external all node_modules)
+	external: [/^[^./]/],
+	env: envVariables,
 	esbuildOptions(options) {
 		options.platform = 'node';
 		// Allow importing TypeScript from JavaScript
@@ -83,14 +61,18 @@ export const executableConfig: Partial<Options> = {
 		options.sourcesContent = isDevelopment;
 		// Keep original names for better debugging in development
 		options.keepNames = isDevelopment;
-	}
+	},
+	// Watch mode configuration for development
+	watch: false
 };
 
 /**
- * Common external modules that should not be bundled
+ * Legacy external modules list - kept for backwards compatibility
+ * Note: When using tsup-node, this is not needed as it automatically
+ * excludes dependencies and peerDependencies from package.json
  */
 export const commonExternals = [
-	// Native Node.js modules
+	// Native Node.js modules (for cases where tsup is used instead of tsup-node)
 	'fs',
 	'path',
 	'child_process',
@@ -119,6 +101,7 @@ export const commonExternals = [
 
 /**
  * Utility function to merge configurations
+ * Simplified for tsup-node usage
  */
 export function mergeConfig(
 	baseConfig: Partial<Options>,
@@ -127,8 +110,6 @@ export function mergeConfig(
 	return {
 		...baseConfig,
 		...overrides,
-		// Merge arrays instead of overwriting
-		external: [...(baseConfig.external || []), ...(overrides.external || [])],
 		// Merge esbuildOptions
 		esbuildOptions(options, context) {
 			if (baseConfig.esbuildOptions) {
@@ -140,12 +121,3 @@ export function mergeConfig(
 		}
 	} as Options;
 }
-
-/**
- * Environment helpers
- */
-export const env = {
-	isProduction,
-	isDevelopment,
-	NODE_ENV: process.env.NODE_ENV || 'development'
-};

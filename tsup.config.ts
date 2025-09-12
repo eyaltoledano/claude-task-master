@@ -1,12 +1,8 @@
 import { defineConfig } from 'tsup';
-import {
-	executableConfig,
-	mergeConfig,
-	commonExternals
-} from '@tm/build-config';
+import { baseConfig, mergeConfig } from '@tm/build-config';
 
 export default defineConfig(
-	mergeConfig(executableConfig, {
+	mergeConfig(baseConfig, {
 		entry: {
 			'task-master': 'bin/task-master.js',
 			'mcp-server': 'mcp-server/server.js'
@@ -15,6 +11,16 @@ export default defineConfig(
 		publicDir: 'public',
 		// Bundle our monorepo packages but keep node_modules external
 		noExternal: [/@tm\/.*/],
-		external: commonExternals
+		// Ensure no code splitting
+		splitting: false,
+		// Better watch configuration
+		ignoreWatch: [
+			'dist',
+			'node_modules',
+			'.git',
+			'tests',
+			'*.test.*',
+			'*.spec.*'
+		]
 	})
 );
