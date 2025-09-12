@@ -322,7 +322,8 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 								isRegenerating ||
 								isAppending ||
 								isStartingTask ||
-								currentTask?.status === 'done'
+								currentTask?.status === 'done' ||
+								currentTask?.status === 'in-progress'
 							}
 						>
 							{isStartingTask ? (
