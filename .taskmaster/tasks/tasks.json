@@ -7842,20 +7842,20 @@
         "testStrategy": "Verify the command registers correctly by running the CLI with --help and checking that the start command appears with proper description and arguments. Test the basic structure by ensuring the command can be invoked without errors.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
         "id": 3,
-        "title": "Create standardized prompt builder",
-        "description": "Implement a function to build the standardized prompt for claude-code based on the task details",
-        "details": "Create a function in the StartCommand class that builds the standardized prompt according to the template provided in the PRD. The prompt should include instructions for Claude to first run `tm show <task_id>` to get task details, and then implement the required changes.\n\n```typescript\nprivate buildPrompt(taskId: string): string {\n  return `You are an AI coding assistant with access to this repository's codebase.\n\nFirst, run this command to get the task details:\ntm show ${taskId}\n\nThen implement the task with these requirements:\n- Make the SMALLEST number of code changes possible\n- Follow ALL existing patterns in the codebase (you have access to analyze the code)\n- Do NOT over-engineer the solution\n- Use existing files/functions/patterns wherever possible\n- When complete, print: COMPLETED: <brief summary of changes>\n\nBegin by running tm show ${taskId} to understand what needs to be implemented.`;\n}\n```\n<info added on 2025-09-12T02:40:01.812Z>\nThe prompt builder function will handle task context retrieval by instructing Claude to use the task-master show command. This approach ensures Claude has access to all necessary task details before implementation begins. The command syntax \"tm show ${taskId}\" embedded in the prompt will direct Claude to first gather the complete task context, including description, requirements, and any existing implementation details, before proceeding with code changes.\n</info added on 2025-09-12T02:40:01.812Z>",
-        "testStrategy": "Verify the prompt is correctly formatted by calling the function with a sample task ID and checking that the output matches the expected template with the task ID properly inserted.",
+        "title": "Create standardized prompt builder with task details",
+        "description": "Implement a function to build the standardized prompt for claude-code that includes the actual task details",
+        "details": "Create a function in the StartCommand class that builds the standardized prompt with the actual task data (title, description, details) instead of instructing Claude to run 'tm show'.\n\n```typescript\nprivate buildPrompt(task: Task): string {\n  return `You are an AI coding assistant with access to this repository's codebase.\n\nHere are the task details to implement:\n\nTask ID: ${task.id}\nTitle: ${task.title}\nDescription: ${task.description}\nDetails: ${task.details}\n\nImplement the task with these requirements:\n- Make the SMALLEST number of code changes possible\n- Follow ALL existing patterns in the codebase (you have access to analyze the code)\n- Do NOT over-engineer the solution\n- Use existing files/functions/patterns wherever possible\n- When complete, print: COMPLETED: <brief summary of changes>\n\nPlease implement this task now.`;\n}\n```\n<info added on 2025-09-12T02:40:01.812Z>\nThe prompt builder function will handle task context retrieval by instructing Claude to use the task-master show command. This approach ensures Claude has access to all necessary task details before implementation begins. The command syntax \"tm show ${taskId}\" embedded in the prompt will direct Claude to first gather the complete task context, including description, requirements, and any existing implementation details, before proceeding with code changes.\n</info added on 2025-09-12T02:40:01.812Z>\n\n<info added>\nThe updated approach eliminates the need for Claude to run 'tm show' by directly providing the task details in the prompt. The function now takes a Task object instead of just the task ID, allowing it to include the complete task information directly in the prompt.\n</info added>",
+        "testStrategy": "Verify the prompt is correctly formatted by calling the function with a sample task object and checking that the output includes all the task details (ID, title, description, details) properly inserted into the template.",
         "priority": "medium",
         "dependencies": [
           1
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -7868,21 +7868,21 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
         "id": 7,
         "title": "Integrate execution flow in start command",
         "description": "Connect all the components to implement the complete execution flow for the start command",
-        "details": "Update the execute method in the StartCommand class to integrate all the components and implement the complete execution flow as described in the PRD:\n1. Validate task exists\n2. Build standardized prompt\n3. Execute claude-code\n4. Check git status for changes\n5. Auto-mark task as done if changes detected\n\n```typescript\npublic async execute(taskId: string): Promise<void> {\n  // Validate task exists\n  const core = await createTaskMasterCore();\n  const task = await core.tasks.getById(parseInt(taskId, 10));\n  \n  if (!task) {\n    console.error(`Task with ID ${taskId} not found`);\n    process.exit(1);\n  }\n  \n  // Build prompt\n  const prompt = this.buildPrompt(taskId);\n  \n  // Execute claude-code\n  await this.executeClaude(prompt);\n  \n  // Check git status\n  const changedFiles = await this.checkGitChanges();\n  \n  if (changedFiles.length > 0) {\n    console.log('\\nChanges detected in the following files:');\n    changedFiles.forEach(file => console.log(`- ${file}`));\n    \n    // Auto-mark task as done\n    await this.markTaskAsDone(taskId);\n    console.log(`\\nTask ${taskId} completed successfully and marked as done.`);\n  } else {\n    console.warn('\\nNo changes detected after claude-code execution. Task not marked as done.');\n  }\n}\n```",
-        "testStrategy": "Test the complete execution flow by running the start command with a valid task ID and verifying that all steps are executed correctly. Test with both scenarios: when changes are detected and when no changes are detected.",
+        "details": "Update the execute method in the StartCommand class to integrate all the components and implement the complete execution flow with the updated approach:\n1. Get task details directly using TaskMasterCore\n2. Build standardized prompt with actual task data\n3. Execute claude-code\n4. Check git status for changes\n5. Auto-mark task as done if changes detected\n\n```typescript\npublic async execute(taskId: string): Promise<void> {\n  // Get task details directly\n  const core = await createTaskMasterCore();\n  const task = await core.tasks.getById(parseInt(taskId, 10));\n  \n  if (!task) {\n    console.error(`Task with ID ${taskId} not found`);\n    process.exit(1);\n  }\n  \n  // Build prompt with actual task data\n  const prompt = this.buildPrompt(task);\n  \n  // Execute claude-code\n  await this.executeClaude(prompt);\n  \n  // Check git status\n  const changedFiles = await this.checkGitChanges();\n  \n  if (changedFiles.length > 0) {\n    console.log('\\nChanges detected in the following files:');\n    changedFiles.forEach(file => console.log(`- ${file}`));\n    \n    // Auto-mark task as done\n    await this.markTaskAsDone(taskId);\n    console.log(`\\nTask ${taskId} completed successfully and marked as done.`);\n  } else {\n    console.warn('\\nNo changes detected after claude-code execution. Task not marked as done.');\n  }\n}\n```",
+        "testStrategy": "Test the complete execution flow by running the start command with a valid task ID and verifying that all steps are executed correctly. Verify that the task details are correctly retrieved from TaskMasterCore and included in the prompt. Test with both scenarios: when changes are detected and when no changes are detected.",
         "priority": "high",
         "dependencies": [
           3,
           4
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -7895,13 +7895,24 @@
         "dependencies": [
           7
         ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Create hello_world.txt file for testing start command",
+        "description": "Create a hello_world.txt file in the project root directory with the content 'Hello, World!' to serve as a simple test case for the start command functionality.",
+        "details": "This task involves creating a simple test case for the start command by:\n\n1. Create a new task in the task database with a simple objective: creating a hello_world.txt file\n2. The task should have clear instructions to create a file named hello_world.txt in the project root\n3. The file should contain exactly the text \"Hello, World!\"\n4. This will serve as an ideal test case for the start command as it:\n   - Is simple enough to be completed quickly\n   - Creates a new file that will be detected by git status\n   - Has a clear success criteria (file exists with correct content)\n   - Doesn't require complex dependencies or environment setup\n\nThe task should be structured to test the complete flow of the start command, from retrieving task details to executing claude-code and detecting the resulting file changes.\n\nExample task data to add:\n```json\n{\n  \"id\": \"test_task\",\n  \"title\": \"Create hello_world.txt file\",\n  \"description\": \"Create a simple text file in the project root\",\n  \"details\": \"Create a file named hello_world.txt in the project root directory with the content 'Hello, World!'\"\n}\n```\n\nThis task will help verify that the start command correctly:\n1. Retrieves task details\n2. Builds the prompt with those details\n3. Executes claude-code with the prompt\n4. Detects the resulting file changes\n5. Auto-marks the task as done if changes are detected",
+        "testStrategy": "To verify this task has been completed correctly:\n\n1. Check that a new task has been added to the task database with instructions to create hello_world.txt\n2. Run the start command with the ID of this new task: `tm start <task_id>`\n3. Verify that the command executes without errors and shows appropriate progress messages\n4. Check that claude-code is invoked with the correct prompt containing the task details\n5. After the command completes, verify that:\n   - A file named hello_world.txt exists in the project root directory\n   - The file contains exactly the text \"Hello, World!\"\n   - The task has been automatically marked as done in the task database\n6. Run `git status` manually to confirm the new file is detected as an untracked file\n7. Test the edge case by deleting the file and running the command again to ensure it recreates the file correctly\n8. Verify the command's output includes appropriate success messages indicating the task was completed",
         "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
         "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-09-12T01:56:37.713Z",
-      "updated": "2025-09-12T02:37:32.111Z",
+      "updated": "2025-09-12T03:19:28.658Z",
       "description": "Tasks for tm-start context"
     }
   }
