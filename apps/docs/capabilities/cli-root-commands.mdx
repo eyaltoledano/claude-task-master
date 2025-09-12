@@ -47,6 +47,20 @@ sidebarTitle: "CLI Commands"
 
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
+
+    # Show multiple tasks at once (comma-separated)
+    task-master show 1,2,3
+    task-master show --id=1,2,3
+
+    # Filter subtasks by status
+    task-master show <id> --status=pending
+    task-master show <id> --status=done
+
+    # Output in JSON format (useful for scripts)
+    task-master show <id> --format=json
+
+    # Silent mode (suppress output, useful for programmatic usage)
+    task-master show <id> --silent
     ```
   </Accordion>
 
