@@ -361,6 +361,25 @@ export class WebviewManager {
 					}
 					return;
 
+				case 'openTerminal':
+					// Open VS Code terminal for task execution
+					this.logger.info(`Opening terminal for task ${data.taskId}: ${data.taskTitle}`);
+					
+					try {
+						const terminal = vscode.window.createTerminal({
+							name: `Task ${data.taskId}: ${data.taskTitle}`,
+							cwd: this.workspaceRoot
+						});
+						terminal.show();
+						
+						this.logger.info('Terminal created and shown successfully');
+						response = { success: true };
+					} catch (error) {
+						this.logger.error('Failed to create terminal:', error);
+						response = { success: false, error: error.message };
+					}
+					break;
+
 				default:
 					throw new Error(`Unknown message type: ${type}`);
 			}

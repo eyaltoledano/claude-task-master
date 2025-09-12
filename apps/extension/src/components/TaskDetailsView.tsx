@@ -202,16 +202,16 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 					/>
 				</div>
 
-				{/* Right column - Metadata (1/3 width) */}
-				<TaskMetadataSidebar
-					currentTask={currentTask}
-					tasks={allTasks}
-					complexity={complexity}
-					isSubtask={isSubtask}
-					sendMessage={sendMessage}
-					onStatusChange={handleStatusChange}
-					onDependencyClick={handleDependencyClick}
-				/>
+			{/* Right column - Metadata (1/3 width) */}
+			<TaskMetadataSidebar
+				currentTask={currentTask}
+				tasks={allTasks}
+				complexity={complexity}
+				isSubtask={isSubtask}
+				sendMessage={sendMessage}
+				onStatusChange={handleStatusChange}
+				onDependencyClick={handleDependencyClick}
+			/>
 			</div>
 		</div>
 	);
