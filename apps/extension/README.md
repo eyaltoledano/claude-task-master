@@ -83,6 +83,7 @@ The extension automatically handles the Taskmaster MCP server connection:
 | **View Kanban Board** | `Ctrl/Cmd + Shift + P` → "Taskmaster: Show Board" |
 | **Change Task Status** | Drag task card to different column |
 | **View Task Details** | Click on any task card |
+| **Start Working on Task** | Click task → Click "Start Task" button in properties panel |
 | **Edit Task Content** | Click task → Use edit buttons in details panel |
 | **Add Subtasks** | Click the + button on parent task cards |
 | **Use AI Features** | Open task details → Click AI action buttons |
@@ -94,6 +95,14 @@ The extension automatically handles the Taskmaster MCP server connection:
 - 👀 **Review** - Awaiting review or feedback
 - ✅ **Done** - Completed tasks
 - ⏸️ **Deferred** - Postponed for later
+
+### **Built-in Development Tools**
+
+**Start Task Button** - Quickly begin working on any task:
+- **One-Click Terminal** - Opens a new VS Code terminal named after your task
+- **Context Awareness** - Terminal automatically opens in your workspace root
+- **Smart State Management** - Button is disabled for completed tasks
+- **Seamless Workflow** - Go from task planning to implementation instantly
 
 ### **AI-Powered Task Management**
 
