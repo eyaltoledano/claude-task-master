@@ -34,17 +34,23 @@ export class ExecutorService {
 	/**
 	 * Execute a task
 	 */
-	async executeTask(task: Task, executorType?: ExecutorType): Promise<ExecutionResult> {
+	async executeTask(
+		task: Task,
+		executorType?: ExecutorType
+	): Promise<ExecutionResult> {
 		try {
-
 			// Determine executor type
-			const type = executorType || this.defaultExecutor || await ExecutorFactory.getDefaultExecutor(this.projectRoot);
+			const type =
+				executorType ||
+				this.defaultExecutor ||
+				(await ExecutorFactory.getDefaultExecutor(this.projectRoot));
 			if (!type) {
 				return {
 					success: false,
 					taskId: task.id,
 					executorType: 'claude',
-					error: 'No executor available. Please install Claude CLI or specify an executor type.',
+					error:
+						'No executor available. Please install Claude CLI or specify an executor type.',
 					startTime: new Date().toISOString()
 				};
 			}

@@ -68,11 +68,13 @@ describe('ClaudeExecutor', () => {
 
 		// Access protected method through any type assertion for testing
 		const formattedPrompt = (executor as any).formatTaskPrompt(mockTask);
-		
+
 		expect(formattedPrompt).toContain('Task ID: 1');
 		expect(formattedPrompt).toContain('Title: Test Task');
 		expect(formattedPrompt).toContain('Description:\nTest description');
-		expect(formattedPrompt).toContain('Implementation Details:\nImplementation details');
+		expect(formattedPrompt).toContain(
+			'Implementation Details:\nImplementation details'
+		);
 		expect(formattedPrompt).toContain('Test Strategy:\nUnit tests');
 		expect(formattedPrompt).toContain('Status: pending');
 		expect(formattedPrompt).toContain('Priority: high');

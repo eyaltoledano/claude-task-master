@@ -18,15 +18,15 @@ export class ExecutorFactory {
 		switch (options.type) {
 			case 'claude':
 				return new ClaudeExecutor(options.projectRoot, options.config);
-			
+
 			case 'shell':
 				// Placeholder for shell executor
 				throw new Error('Shell executor not yet implemented');
-			
+
 			case 'custom':
 				// Placeholder for custom executor
 				throw new Error('Custom executor not yet implemented');
-			
+
 			default:
 				throw new Error(`Unknown executor type: ${options.type}`);
 		}
@@ -35,7 +35,9 @@ export class ExecutorFactory {
 	/**
 	 * Get the default executor type based on available tools
 	 */
-	static async getDefaultExecutor(projectRoot: string): Promise<ExecutorType | null> {
+	static async getDefaultExecutor(
+		projectRoot: string
+	): Promise<ExecutorType | null> {
 		// Check for Claude first
 		const claudeExecutor = new ClaudeExecutor(projectRoot);
 		if (await claudeExecutor.isAvailable()) {

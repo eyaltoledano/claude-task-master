@@ -3,11 +3,7 @@
  */
 
 import type { Task } from '../types/index.js';
-import type {
-	ITaskExecutor,
-	ExecutorType,
-	ExecutionResult
-} from './types.js';
+import type { ITaskExecutor, ExecutorType, ExecutionResult } from './types.js';
 import { getLogger } from '../logger/index.js';
 
 export abstract class BaseExecutor implements ITaskExecutor {
@@ -46,9 +42,7 @@ export abstract class BaseExecutor implements ITaskExecutor {
 		}
 
 		if (task.dependencies && task.dependencies.length > 0) {
-			sections.push(
-				`\nDependencies: ${task.dependencies.join(', ')}`
-			);
+			sections.push(`\nDependencies: ${task.dependencies.join(', ')}`);
 		}
 
 		if (task.subtasks && task.subtasks.length > 0) {
