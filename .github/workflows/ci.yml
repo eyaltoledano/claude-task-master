@@ -61,7 +61,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Typecheck
-        run: npm run typecheck
+        run: npm run turbo:typecheck
         env:
           FORCE_COLOR: 1
 
