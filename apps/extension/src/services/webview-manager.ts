@@ -362,19 +362,38 @@ export class WebviewManager {
 					return;
 
 				case 'openTerminal':
-					// Open VS Code terminal for task execution
+					// Execute task by getting task data from repository
 					this.logger.log(
-						`Opening terminal for task ${data.taskId}: ${data.taskTitle}`
+						`Starting task execution for ${data.taskId}: ${data.taskTitle}`
 					);
 
 					try {
+						// Get the task from repository (we already have it cached)
+						const task = await this.repository.getById(data.taskId);
+						if (!task) {
+							throw new Error(`Task ${data.taskId} not found`);
+						}
+
+						// Format the task prompt using the same formatting as the executor
+						const taskPrompt = this.formatTaskPrompt(task as any);
+						const fullPrompt = `You are a helpful AI assistant helping to complete a software development task.\n\n${taskPrompt}`;
+
+						// Create terminal and run Claude command
+						const workspaceRoot =
+							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 						const terminal = vscode.window.createTerminal({
 							name: `Task ${data.taskId}: ${data.taskTitle}`,
 							cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 						});
+
+						// Show the terminal
 						terminal.show();
 
-						this.logger.log('Terminal created and shown successfully');
+						// Send the claude command to the terminal
+						const command = `claude "${fullPrompt}"`;
+						terminal.sendText(command);
+
+						this.logger.log(`Launched Claude for task ${data.taskId}`);
 						response = { success: true };
 					} catch (error) {
 						this.logger.error('Failed to create terminal:', error);
@@ -444,5 +463,43 @@ export class WebviewManager {
 			text += possible.charAt(Math.floor(Math.random() * possible.length));
 		}
 		return text;
+	}
+
+	/**
+	 * Format task details into a readable prompt (same as tm-core executor)
+	 */
+	private formatTaskPrompt(task: any): string {
+		const sections: string[] = [];
+
+		sections.push(`Task ID: ${task.id}`);
+		sections.push(`Title: ${task.title}`);
+
+		if (task.description) {
+			sections.push(`\nDescription:\n${task.description}`);
+		}
+
+		if (task.details) {
+			sections.push(`\nImplementation Details:\n${task.details}`);
+		}
+
+		if (task.testStrategy) {
+			sections.push(`\nTest Strategy:\n${task.testStrategy}`);
+		}
+
+		if (task.dependencies && task.dependencies.length > 0) {
+			sections.push(`\nDependencies: ${task.dependencies.join(', ')}`);
+		}
+
+		if (task.subtasks && task.subtasks.length > 0) {
+			const subtaskList = task.subtasks
+				.map((st) => `  - [${st.status}] ${st.id}: ${st.title}`)
+				.join('\n');
+			sections.push(`\nSubtasks:\n${subtaskList}`);
+		}
+
+		sections.push(`\nStatus: ${task.status}`);
+		sections.push(`Priority: ${task.priority}`);
+
+		return sections.join('\n');
 	}
 }
