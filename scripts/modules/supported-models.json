@@ -106,6 +106,56 @@
 			"supported": true
 		}
 	],
+	"grok-cli": [
+		{
+			"id": "grok-4-latest",
+			"name": "Grok 4 Latest",
+			"swe_score": 0.7,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-latest",
+			"name": "Grok 3 Latest",
+			"swe_score": 0.65,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-fast",
+			"name": "Grok 3 Fast",
+			"swe_score": 0.6,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-mini-fast",
+			"name": "Grok 3 Mini Fast",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768,
+			"supported": true
+		}
+	],
 	"openai": [
 		{
 			"id": "gpt-4o",
