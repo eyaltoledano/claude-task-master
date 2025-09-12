@@ -17,15 +17,6 @@
 				"!{packages,apps}/**/node_modules/**"
 			]
 		},
-		"test": {
-			"dependsOn": ["^build"],
-			"inputs": [
-				"$TURBO_DEFAULT$",
-				"!{packages,apps}/**/dist/**",
-				"!{packages,apps}/**/node_modules/**"
-			],
-			"outputLogs": "new-only"
-		},
 		"test:watch": {
 			"cache": false,
 			"persistent": true,
