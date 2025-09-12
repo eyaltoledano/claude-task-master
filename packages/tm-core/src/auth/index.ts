@@ -5,7 +5,7 @@
 export { AuthManager } from './auth-manager.js';
 export { CredentialStore } from './credential-store.js';
 export { OAuthService } from './oauth-service.js';
-export { SupabaseSessionStorage } from './supabase-session-storage';
+export { SupabaseSessionStorage } from './supabase-session-storage.js';
 export type {
 	Organization,
 	Brief,

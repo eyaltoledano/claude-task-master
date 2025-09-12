@@ -6,11 +6,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import {
-	createTaskMasterCore,
-	type Task,
-	type TaskMasterCore
-} from '@tm/core';
+import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
 
@@ -57,18 +53,19 @@ export class ShowCommand extends Command {
 		// Configure the command
 		this.description('Display detailed information about one or more tasks')
 			.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
-			.option('-i, --id <id>', 'Task ID(s) to show (comma-separated for multiple)')
-			.option('-s, --status <status>', 'Filter subtasks by status')
 			.option(
-				'-f, --format <format>',
-				'Output format (text, json)',
-				'text'
+				'-i, --id <id>',
+				'Task ID(s) to show (comma-separated for multiple)'
 			)
+			.option('-s, --status <status>', 'Filter subtasks by status')
+			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option('-p, --project <path>', 'Project root directory', process.cwd())
-			.action(async (taskId: string | undefined, options: ShowCommandOptions) => {
-				await this.executeCommand(taskId, options);
-			});
+			.action(
+				async (taskId: string | undefined, options: ShowCommandOptions) => {
+					await this.executeCommand(taskId, options);
+				}
+			);
 	}
 
 	/**
@@ -101,9 +98,10 @@ export class ShowCommand extends Command {
 				.filter((id) => id.length > 0);
 
 			// Get tasks from core
-			const result = taskIds.length > 1
-				? await this.getMultipleTasks(taskIds, options)
-				: await this.getSingleTask(taskIds[0], options);
+			const result =
+				taskIds.length > 1
+					? await this.getMultipleTasks(taskIds, options)
+					: await this.getSingleTask(taskIds[0], options);
 
 			// Store result for programmatic access
 			this.setLastResult(result);
@@ -164,13 +162,6 @@ export class ShowCommand extends Command {
 		// Get storage type
 		const storageType = this.tmCore.getStorageType();
 
-		// Runtime guard to prevent 'auto' from reaching CLI consumers
-		if (storageType === 'auto') {
-			throw new Error(
-				'Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.'
-			);
-		}
-
 		return {
 			task,
 			found: task !== null,
@@ -204,13 +195,6 @@ export class ShowCommand extends Command {
 
 		// Get storage type
 		const storageType = this.tmCore.getStorageType();
-
-		// Runtime guard to prevent 'auto' from reaching CLI consumers
-		if (storageType === 'auto') {
-			throw new Error(
-				'Internal error: unresolved storage type reached CLI. Please check TaskService.getStorageType() implementation.'
-			);
-		}
 
 		return {
 			tasks,
@@ -276,20 +260,21 @@ export class ShowCommand extends Command {
 
 		// Header
 		console.log(
-			boxen(
-				chalk.white.bold(`Task #${task.id} - ${task.title}`),
-				{
-					padding: { top: 0, bottom: 0, left: 1, right: 1 },
-					borderColor: 'blue',
-					borderStyle: 'round',
-					margin: { top: 1 }
-				}
-			)
+			boxen(chalk.white.bold(`Task #${task.id} - ${task.title}`), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'blue',
+				borderStyle: 'round',
+				margin: { top: 1 }
+			})
 		);
 
 		// Task details
-		console.log(`\n${chalk.blue.bold('Status:')} ${ui.getStatusWithColor(task.status)}`);
-		console.log(`${chalk.blue.bold('Priority:')} ${ui.getPriorityWithColor(task.priority)}`);
+		console.log(
+			`\n${chalk.blue.bold('Status:')} ${ui.getStatusWithColor(task.status)}`
+		);
+		console.log(
+			`${chalk.blue.bold('Priority:')} ${ui.getPriorityWithColor(task.priority)}`
+		);
 
 		if (task.description) {
 			console.log(`\n${chalk.blue.bold('Description:')}`);
@@ -312,14 +297,16 @@ export class ShowCommand extends Command {
 		// Subtasks
 		if (task.subtasks && task.subtasks.length > 0) {
 			console.log(`\n${chalk.blue.bold('Subtasks:')}`);
-			
+
 			// Filter subtasks by status if provided
 			const filteredSubtasks = options.status
-				? task.subtasks.filter(sub => sub.status === options.status)
+				? task.subtasks.filter((sub) => sub.status === options.status)
 				: task.subtasks;
 
 			if (filteredSubtasks.length === 0 && options.status) {
-				console.log(chalk.gray(`  No subtasks with status '${options.status}'`));
+				console.log(
+					chalk.gray(`  No subtasks with status '${options.status}'`)
+				);
 			} else {
 				filteredSubtasks.forEach((subtask) => {
 					console.log(
@@ -374,7 +361,9 @@ export class ShowCommand extends Command {
 	/**
 	 * Set the last result for programmatic access
 	 */
-	private setLastResult(result: ShowTaskResult | ShowMultipleTasksResult): void {
+	private setLastResult(
+		result: ShowTaskResult | ShowMultipleTasksResult
+	): void {
 		this.lastResult = result;
 	}
 

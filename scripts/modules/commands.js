@@ -16,7 +16,12 @@ import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
 // Import new commands from @tm/cli
-import { ListTasksCommand, ShowCommand, AuthCommand, ContextCommand } from '@tm/cli';
+import {
+	ListTasksCommand,
+	ShowCommand,
+	AuthCommand,
+	ContextCommand
+} from '@tm/cli';
 
 import {
 	parsePRD,
@@ -2570,7 +2575,6 @@ ${result.result}
 				context
 			);
 		});
-
 
 	// add-dependency command
 	programInstance

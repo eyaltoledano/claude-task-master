@@ -3,9 +3,39 @@
  * Provides shared configuration that can be extended by individual packages
  */
 import type { Options } from 'tsup';
+import * as dotenv from 'dotenv-mono';
+
+dotenv.load();
+
+console.log(
+	'TM_PUBLIC_BASE_DOMAIN:',
+	process.env.TM_PUBLIC_BASE_DOMAIN,
+	'TM_PUBLIC_SUPABASE_URL:',
+	process.env.TM_PUBLIC_SUPABASE_URL,
+	'TM_PUBLIC_SUPABASE_ANON_KEY:',
+	process.env.TM_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
+
+const envVariables = {
+	TM_PUBLIC_BASE_DOMAIN: process.env.TM_PUBLIC_BASE_DOMAIN ?? '',
+	TM_PUBLIC_SUPABASE_URL: process.env.TM_PUBLIC_SUPABASE_URL ?? '',
+	TM_PUBLIC_SUPABASE_ANON_KEY: process.env.TM_PUBLIC_SUPABASE_ANON_KEY ?? ''
+};
+
+console.log('envVariables:', envVariables);
+
+/**
+ * Environment helpers
+ */
+export const env = {
+	isProduction,
+	isDevelopment,
+	NODE_ENV: process.env.NODE_ENV || 'development',
+	...envVariables
+};
 
 /**
  * Base tsup configuration for all packages
@@ -16,11 +46,13 @@ export const baseConfig: Partial<Options> = {
 	target: 'node18',
 	sourcemap: isDevelopment,
 	clean: true,
-	dts: true,
+	dts: false,
 	minify: isProduction,
 	treeshake: isProduction,
+	splitting: false,
 	// Don't bundle any other dependencies (auto-external all node_modules)
 	external: [/^[^./]/],
+	env: envVariables,
 	esbuildOptions(options) {
 		options.platform = 'node';
 		// Allow importing TypeScript from JavaScript
@@ -31,9 +63,8 @@ export const baseConfig: Partial<Options> = {
 		options.keepNames = isDevelopment;
 	},
 	// Watch mode configuration for development
-	watch: isDevelopment ? ['src'] : false
+	watch: false
 };
-
 
 /**
  * Legacy external modules list - kept for backwards compatibility
@@ -90,12 +121,3 @@ export function mergeConfig(
 		}
 	} as Options;
 }
-
-/**
- * Environment helpers
- */
-export const env = {
-	isProduction,
-	isDevelopment,
-	NODE_ENV: process.env.NODE_ENV || 'development'
-};

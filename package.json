@@ -9,14 +9,12 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"packages/*",
-		"."
-	],
+	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
-		"build": "turbo build && tsup-node",
-		"dev": "npm run build:build-config && turbo dev --parallel",
+		"build": "npm run build:build-config && tsup",
+		"dev": "tsup --watch",
+		"turbo:dev": "turbo dev",
+		"turbo:build": "turbo build",
 		"dev:main": "tsup --watch --onSuccess 'echo \"📦 Main package built\" && npm link'",
 		"dev:legacy": "npm run build:build-config && concurrently -n \"core,cli,main\" -c \"blue,green,yellow\" \"npm run dev:core\" \"npm run dev:cli\" \"npm run dev:main\"",
 		"dev:core": "npm run dev -w @tm/core",
@@ -44,10 +42,11 @@
 		"postpack": "chmod +x dist/task-master.js dist/mcp-server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
+		"publish-packages": "turbo run build lint test && changeset version && changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
 		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write && turbo format",
+		"format": "biome format . --write",
 		"lint": "turbo lint",
 		"lint:all": "turbo lint",
 		"lint:legacy": "npm run lint --workspaces --if-present",
@@ -121,6 +120,7 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
+	"packageManager": "npm@10.9.2",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/eyaltoledano/claude-task-master.git"
@@ -129,12 +129,7 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": [
-		"dist/**",
-		"README-task-master.md",
-		"README.md",
-		"LICENSE"
-	],
+	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
@@ -145,9 +140,9 @@
 		"@changesets/cli": "^2.28.1",
 		"@types/jest": "^29.5.14",
 		"concurrently": "^9.2.1",
+		"cross-env": "^10.0.0",
 		"dotenv-mono": "^1.5.1",
 		"execa": "^8.0.1",
-		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
 		"mock-fs": "^5.5.0",

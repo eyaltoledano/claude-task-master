@@ -11,6 +11,8 @@ export default defineConfig(
 		publicDir: 'public',
 		// Bundle our monorepo packages but keep node_modules external
 		noExternal: [/@tm\/.*/],
+		// Ensure no code splitting
+		splitting: false,
 		// Better watch configuration
 		ignoreWatch: [
 			'dist',
