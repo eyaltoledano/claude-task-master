@@ -16,6 +16,12 @@ import type {
 	TaskFilter,
 	StorageType
 } from './types/index.js';
+import {
+	ExecutorService,
+	type ExecutorServiceOptions,
+	type ExecutionResult,
+	type ExecutorType
+} from './executors/index.js';
 
 /**
  * Options for creating TaskMasterCore instance
@@ -38,6 +44,7 @@ export type { GetTaskListOptions } from './services/task-service.js';
 export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
+	private executorService: ExecutorService | null = null;
 
 	/**
 	 * Create and initialize a new TaskMasterCore instance
@@ -176,6 +183,39 @@ export class TaskMasterCore {
 	}
 
 	/**
+	 * Initialize executor service (lazy initialization)
+	 */
+	private getExecutorService(): ExecutorService {
+		if (!this.executorService) {
+			const executorOptions: ExecutorServiceOptions = {
+				projectRoot: this.configManager.getProjectRoot()
+			};
+			this.executorService = new ExecutorService(executorOptions);
+		}
+		return this.executorService;
+	}
+
+	/**
+	 * Execute a task
+	 */
+	async executeTask(
+		task: Task,
+		executorType?: ExecutorType
+	): Promise<ExecutionResult> {
+		const executor = this.getExecutorService();
+		return executor.executeTask(task, executorType);
+	}
+
+	/**
+	 * Stop the current task execution
+	 */
+	async stopCurrentTask(): Promise<void> {
+		if (this.executorService) {
+			await this.executorService.stopCurrentTask();
+		}
+	}
+
+	/**
 	 * Update task status
 	 */
 	async updateTaskStatus(
@@ -195,6 +235,10 @@ export class TaskMasterCore {
 	 * Close and cleanup resources
 	 */
 	async close(): Promise<void> {
+		// Stop any running executors
+		if (this.executorService) {
+			await this.executorService.stopCurrentTask();
+		}
 		// TaskService handles storage cleanup internally
 	}
 }
