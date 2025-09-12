@@ -485,7 +485,8 @@ function hasCodebaseAnalysis(
 
 	return (
 		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
-		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI || 
+		currentProvider === CUSTOM_PROVIDERS.GROK_CLI
 	);
 }
 
