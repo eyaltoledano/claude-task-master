@@ -6,10 +6,7 @@
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
 	"exports": {
-		".": {
-			"types": "./src/index.ts",
-			"import": "./dist/index.js"
-		}
+		".": "./src/index.ts"
 	},
 	"files": ["dist", "README.md"],
 	"scripts": {
@@ -46,5 +43,10 @@
 	},
 	"keywords": ["task-master", "cli", "task-management", "productivity"],
 	"author": "",
-	"license": "MIT"
+	"license": "MIT",
+	"typesVersions": {
+		"*": {
+			"*": ["src/*"]
+		}
+	}
 }

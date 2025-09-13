@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
+import packageJson from '../../../package.json';
 
 /**
  * Header configuration options
@@ -40,7 +41,7 @@ function createBanner(): string {
  */
 export function displayHeader(options: HeaderOptions = {}): void {
 	const {
-		version = '0.26.0',
+		version = packageJson.version,
 		projectName = 'Taskmaster',
 		tag,
 		filePath,
@@ -50,7 +51,7 @@ export function displayHeader(options: HeaderOptions = {}): void {
 	// Display the ASCII banner if requested
 	if (showBanner) {
 		console.log(createBanner());
-		
+
 		// Add creator credit line below the banner
 		console.log(
 			chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
@@ -74,7 +75,7 @@ export function displayHeader(options: HeaderOptions = {}): void {
 	// Display tag and file path info
 	if (tag || filePath) {
 		let tagInfo = '';
-		
+
 		if (tag && tag !== 'master') {
 			tagInfo = `🏷 tag: ${chalk.cyan(tag)}`;
 		} else {
@@ -84,9 +85,11 @@ export function displayHeader(options: HeaderOptions = {}): void {
 		console.log(tagInfo);
 
 		if (filePath) {
-			console.log(
-				`Listing tasks from: ${chalk.dim(filePath)}`
-			);
+			// Convert to absolute path if it's relative
+			const absolutePath = filePath.startsWith('/')
+				? filePath
+				: `${process.cwd()}/${filePath}`;
+			console.log(`Listing tasks from: ${chalk.dim(absolutePath)}`);
 		}
 
 		console.log(); // Empty line for spacing
