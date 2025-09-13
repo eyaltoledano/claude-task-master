@@ -12,7 +12,7 @@
 	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
 		"build": "npm run build:build-config && tsup",
-		"dev": "tsup --watch",
+		"dev": "tsup --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
 		"turbo:dev": "turbo dev",
 		"turbo:build": "turbo build",
 		"turbo:typecheck": "turbo typecheck",

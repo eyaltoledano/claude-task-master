@@ -13,8 +13,6 @@
 	},
 	"files": ["dist", "README.md"],
 	"scripts": {
-		"build": "tsc",
-		"dev": "tsc --watch",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
 		"format": "biome format --write src",
