@@ -20,11 +20,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["node"],
-    "paths": {
-      "@tm/core": ["../../packages/tm-core/src/index.ts"],
-      "@tm/core/*": ["../../packages/tm-core/src/*"]
-    }
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]

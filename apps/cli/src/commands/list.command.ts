@@ -262,13 +262,10 @@ export class ListTasksCommand extends Command {
 		// Get file path for display
 		const filePath = this.tmCore ? `.taskmaster/tasks/tasks.json` : undefined;
 
-		// Display header with Task Master banner
+		// Display header without banner (banner already shown by main CLI)
 		displayHeader({
-			version: '0.26.0', // You may want to get this dynamically
-			projectName: 'Taskmaster',
 			tag: tag || 'master',
-			filePath: filePath,
-			showBanner: true
+			filePath: filePath
 		});
 
 		// No tasks message
@@ -303,13 +300,13 @@ export class ListTasksCommand extends Command {
 				showComplexity: true // Enable complexity column
 			})
 		);
-		
+
 		// Display recommended next task section immediately after table
 		if (nextTask) {
 			// Find the full task object to get description
-			const fullTask = tasks.find(t => String(t.id) === String(nextTask.id));
+			const fullTask = tasks.find((t) => String(t.id) === String(nextTask.id));
 			const description = fullTask ? getTaskDescription(fullTask) : undefined;
-			
+
 			displayRecommendedNextTask({
 				...nextTask,
 				status: 'pending', // Next task is typically pending
@@ -318,7 +315,7 @@ export class ListTasksCommand extends Command {
 		} else {
 			displayRecommendedNextTask(undefined);
 		}
-		
+
 		// Display suggested next steps at the end
 		displaySuggestedNextSteps();
 	}
