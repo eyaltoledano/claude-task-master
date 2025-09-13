@@ -17,6 +17,15 @@ import {
 } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import {
+	displayHeader,
+	displayDashboards,
+	calculateTaskStatistics,
+	calculateSubtaskStatistics,
+	calculateDependencyStatistics,
+	getPriorityBreakdown,
+	type NextTaskInfo
+} from '../ui/index.js';
 
 /**
  * Options interface for the list command
@@ -245,25 +254,45 @@ export class ListTasksCommand extends Command {
 	 * Display in text format with tables
 	 */
 	private displayText(data: ListTasksResult, withSubtasks?: boolean): void {
-		const { tasks, total, filtered, tag, storageType } = data;
+		const { tasks, tag } = data;
 
-		// Header
-		ui.displayBanner(`Task List${tag ? ` (${tag})` : ''}`);
-
-		// Statistics
-		console.log(chalk.blue.bold('\n📊 Statistics:\n'));
-		console.log(`  Total tasks: ${chalk.cyan(total)}`);
-		console.log(`  Filtered: ${chalk.cyan(filtered)}`);
-		if (tag) {
-			console.log(`  Tag: ${chalk.cyan(tag)}`);
-		}
-		console.log(`  Storage: ${chalk.cyan(storageType)}`);
+		// Get file path for display
+		const filePath = this.tmCore ? `.taskmaster/tasks/tasks.json` : undefined;
+		
+		// Display header with Task Master banner
+		displayHeader({
+			version: '0.26.0', // You may want to get this dynamically
+			projectName: 'Taskmaster',
+			tag: tag || 'master',
+			filePath: filePath,
+			showBanner: true
+		});
 
 		// No tasks message
 		if (tasks.length === 0) {
 			ui.displayWarning('No tasks found matching the criteria.');
 			return;
 		}
+
+		// Calculate statistics
+		const taskStats = calculateTaskStatistics(tasks);
+		const subtaskStats = calculateSubtaskStatistics(tasks);
+		const depStats = calculateDependencyStatistics(tasks);
+		const priorityBreakdown = getPriorityBreakdown(tasks);
+
+		// Find next task (simplified for now)
+		const nextTask: NextTaskInfo | undefined = tasks
+			.filter(t => t.status === 'pending' && (!t.dependencies || t.dependencies.length === 0))
+			.map(t => ({
+				id: t.id,
+				title: t.title,
+				priority: t.priority,
+				dependencies: t.dependencies,
+				complexity: undefined // Add if available
+			}))[0];
+
+		// Display dashboard boxes
+		displayDashboards(taskStats, subtaskStats, priorityBreakdown, depStats, nextTask);
 
 		// Task table
 		console.log(chalk.blue.bold(`\n📋 Tasks (${tasks.length}):\n`));
@@ -273,13 +302,6 @@ export class ListTasksCommand extends Command {
 				showDependencies: true
 			})
 		);
-
-		// Progress bar
-		const completedCount = tasks.filter(
-			(t: Task) => t.status === 'done'
-		).length;
-		console.log(chalk.blue.bold('\n📊 Overall Progress:\n'));
-		console.log(`  ${ui.createProgressBar(completedCount, tasks.length)}`);
 	}
 
 	/**
