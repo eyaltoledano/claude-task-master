@@ -24,6 +24,9 @@ import {
 	calculateSubtaskStatistics,
 	calculateDependencyStatistics,
 	getPriorityBreakdown,
+	displayRecommendedNextTask,
+	getTaskDescription,
+	displaySuggestedNextSteps,
 	type NextTaskInfo
 } from '../ui/index.js';
 
@@ -258,7 +261,7 @@ export class ListTasksCommand extends Command {
 
 		// Get file path for display
 		const filePath = this.tmCore ? `.taskmaster/tasks/tasks.json` : undefined;
-		
+
 		// Display header with Task Master banner
 		displayHeader({
 			version: '0.26.0', // You may want to get this dynamically
@@ -284,16 +287,40 @@ export class ListTasksCommand extends Command {
 		const nextTask = this.findNextTask(tasks);
 
 		// Display dashboard boxes
-		displayDashboards(taskStats, subtaskStats, priorityBreakdown, depStats, nextTask);
+		displayDashboards(
+			taskStats,
+			subtaskStats,
+			priorityBreakdown,
+			depStats,
+			nextTask
+		);
 
-		// Task table
-		console.log(chalk.blue.bold(`\n📋 Tasks (${tasks.length}):\n`));
+		// Task table - no title, just show the table directly
 		console.log(
 			ui.createTaskTable(tasks, {
 				showSubtasks: withSubtasks,
-				showDependencies: true
+				showDependencies: true,
+				showComplexity: true // Enable complexity column
 			})
 		);
+		
+		// Display recommended next task section immediately after table
+		if (nextTask) {
+			// Find the full task object to get description
+			const fullTask = tasks.find(t => String(t.id) === String(nextTask.id));
+			const description = fullTask ? getTaskDescription(fullTask) : undefined;
+			
+			displayRecommendedNextTask({
+				...nextTask,
+				status: 'pending', // Next task is typically pending
+				description
+			});
+		} else {
+			displayRecommendedNextTask(undefined);
+		}
+		
+		// Display suggested next steps at the end
+		displaySuggestedNextSteps();
 	}
 
 	/**
@@ -308,21 +335,21 @@ export class ListTasksCommand extends Command {
 	 * Implements the same logic as scripts/modules/task-manager/find-next-task.js
 	 */
 	private findNextTask(tasks: Task[]): NextTaskInfo | undefined {
-		const priorityValues: Record<string, number> = { 
+		const priorityValues: Record<string, number> = {
 			critical: 4,
-			high: 3, 
-			medium: 2, 
-			low: 1 
+			high: 3,
+			medium: 2,
+			low: 1
 		};
 
 		// Build set of completed task IDs (including subtasks)
 		const completedIds = new Set<string>();
-		tasks.forEach(t => {
+		tasks.forEach((t) => {
 			if (t.status === 'done' || t.status === 'completed') {
 				completedIds.add(String(t.id));
 			}
 			if (t.subtasks) {
-				t.subtasks.forEach(st => {
+				t.subtasks.forEach((st) => {
 					if (st.status === 'done' || st.status === 'completed') {
 						completedIds.add(`${t.id}.${st.id}`);
 					}
@@ -332,32 +359,36 @@ export class ListTasksCommand extends Command {
 
 		// First, look for eligible subtasks in in-progress parent tasks
 		const candidateSubtasks: NextTaskInfo[] = [];
-		
+
 		tasks
-			.filter(t => t.status === 'in-progress' && t.subtasks && t.subtasks.length > 0)
-			.forEach(parent => {
-				parent.subtasks!.forEach(st => {
+			.filter(
+				(t) => t.status === 'in-progress' && t.subtasks && t.subtasks.length > 0
+			)
+			.forEach((parent) => {
+				parent.subtasks!.forEach((st) => {
 					const stStatus = (st.status || 'pending').toLowerCase();
 					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
 
 					// Check if dependencies are satisfied
-					const fullDeps = st.dependencies?.map(d => {
-						// Handle both numeric and string IDs
-						if (typeof d === 'string' && d.includes('.')) {
-							return d;
-						}
-						return `${parent.id}.${d}`;
-					}) ?? [];
+					const fullDeps =
+						st.dependencies?.map((d) => {
+							// Handle both numeric and string IDs
+							if (typeof d === 'string' && d.includes('.')) {
+								return d;
+							}
+							return `${parent.id}.${d}`;
+						}) ?? [];
 
-					const depsSatisfied = fullDeps.length === 0 || 
-						fullDeps.every(depId => completedIds.has(String(depId)));
+					const depsSatisfied =
+						fullDeps.length === 0 ||
+						fullDeps.every((depId) => completedIds.has(String(depId)));
 
 					if (depsSatisfied) {
 						candidateSubtasks.push({
 							id: `${parent.id}.${st.id}`,
 							title: st.title || `Subtask ${st.id}`,
 							priority: st.priority || parent.priority || 'medium',
-							dependencies: fullDeps.map(d => String(d))
+							dependencies: fullDeps.map((d) => String(d))
 						});
 					}
 				});
@@ -380,15 +411,16 @@ export class ListTasksCommand extends Command {
 		}
 
 		// Fall back to finding eligible top-level tasks
-		const eligibleTasks = tasks.filter(task => {
+		const eligibleTasks = tasks.filter((task) => {
 			// Skip non-eligible statuses
 			const status = (task.status || 'pending').toLowerCase();
 			if (status !== 'pending' && status !== 'in-progress') return false;
 
 			// Check dependencies
 			const deps = task.dependencies || [];
-			const depsSatisfied = deps.length === 0 || 
-				deps.every(depId => completedIds.has(String(depId)));
+			const depsSatisfied =
+				deps.length === 0 ||
+				deps.every((depId) => completedIds.has(String(depId)));
 
 			return depsSatisfied;
 		});
@@ -416,7 +448,7 @@ export class ListTasksCommand extends Command {
 			id: nextTask.id,
 			title: nextTask.title,
 			priority: nextTask.priority,
-			dependencies: nextTask.dependencies?.map(d => String(d))
+			dependencies: nextTask.dependencies?.map((d) => String(d))
 		};
 	}
 
