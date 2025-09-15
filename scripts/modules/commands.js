@@ -12,15 +12,15 @@ import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
-import ora from 'ora'; // Import ora
+// import ora from 'ora'; // Import ora - not used in this file
 
 import {
 	log,
 	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
+	// writeJSON, // Not used in this file
+	// getCurrentTag, // Not used in this file
+	// detectCamelCaseFlags, // Not used in this file
+	// toKebabCase // Not used in this file
 } from './utils.js';
 import {
 	parsePRD,
@@ -49,9 +49,9 @@ import {
 } from './task-manager.js';
 
 import {
-	moveTasksBetweenTags,
-	MoveTaskError,
-	MOVE_ERROR_CODES
+	moveTasksBetweenTags
+	// MoveTaskError, // Not used in this file
+	// MOVE_ERROR_CODES // Not used in this file
 } from './task-manager/move-task.js';
 
 import {
@@ -67,9 +67,9 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand,
-	DependencyError,
-	DEPENDENCY_ERROR_CODES
+	fixDependenciesCommand
+	// DependencyError, // Not used in this file
+	// DEPENDENCY_ERROR_CODES // Not used in this file
 } from './dependency-manager.js';
 
 import {
@@ -79,10 +79,9 @@ import {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-	getAvailableModels,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
+	// getDefaultSubtasks // Not used in this file
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -94,6 +93,9 @@ import {
 } from '../../src/constants/paths.js';
 
 import { initTaskMaster } from '../../src/task-master.js';
+
+import { runCursorAgent } from './cursor-agent.js';
+import { executeAutoPipeline, checkAutoConfiguration } from './auto.js';
 
 import {
 	displayBanner,
@@ -108,7 +110,7 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary,
+	// displayAiUsageSummary, // Not used in this file
 	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator,
@@ -130,6 +132,7 @@ import { initializeProject } from '../init.js';
 import {
 	getModelConfiguration,
 	getAvailableModelsList,
+	getAvailableModels,
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
@@ -293,7 +296,7 @@ async function runInteractiveSetup(projectRoot) {
 	// Helper to get choices and default index for a role
 	const getPromptData = (role, allowNone = false) => {
 		const currentModel = currentModels[role]; // Use the fetched data
-		const allModelsRaw = getAvailableModels(); // Get all available models
+		const allModelsRaw = getAvailableModels(projectRoot); // Get all available models
 
 		// Manually group models by provider
 		const modelsByProvider = allModelsRaw.reduce((acc, model) => {
@@ -835,6 +838,15 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed task generation, providing more comprehensive and accurate task breakdown'
 		)
+		.option(
+			'--auto',
+			'Automatically analyze complexity and expand high-complexity tasks after PRD parsing'
+		)
+		.option(
+			'--auto-threshold <number>',
+			'Complexity threshold for auto-expansion (default: 7)',
+			'7'
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (file, options) => {
 			// Initialize TaskMaster
@@ -852,7 +864,7 @@ function registerCommands(programInstance) {
 			} catch (error) {
 				console.log(
 					boxen(
-						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
+						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n  --auto                   Automatically analyze complexity and expand high-complexity tasks\n  --auto-threshold <num>   Complexity threshold for auto-expansion (default: 7)\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n  task-master parse-prd requirements.txt --auto --auto-threshold 8\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used\n  4. If --auto is used, automatically analyze complexity and expand high-complexity tasks`,
 						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 					)
 				);
@@ -864,6 +876,11 @@ function registerCommands(programInstance) {
 			const force = options.force || false;
 			const append = options.append || false;
 			const research = options.research || false;
+			const auto = options.auto || false;
+			const autoThresholdRaw = options.autoThreshold ?? '7';
+			const autoThreshold = Number.isFinite(Number(autoThresholdRaw))
+				? Number(autoThresholdRaw)
+				: 7;
 			let useForce = force;
 			const useAppend = append;
 
@@ -927,18 +944,50 @@ function registerCommands(programInstance) {
 						)
 					);
 				}
+				if (auto) {
+					console.log(
+						chalk.blue(
+							`Auto-expansion enabled with complexity threshold: ${autoThreshold}`
+						)
+					);
+				}
 
 				// Handle case where getTasksPath() returns null
 				const outputPath =
 					taskMaster.getTasksPath() ||
 					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
-				await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
+				
+				// Parse PRD first
+				const parseResult = await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
 					research: research,
 					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
+
+				// If auto mode is enabled, run complexity analysis and expand high-complexity tasks
+				if (auto && parseResult.success) {
+					try {
+						console.log(chalk.blue('\n🔍 Running automatic complexity analysis...'));
+						
+						// Import the auto workflow function
+						const { runAutoComplexityExpansion } = await import('./task-manager/auto-complexity-expansion.js');
+						
+						await runAutoComplexityExpansion({
+							tasksPath: outputPath,
+							threshold: autoThreshold,
+							research: research,
+							projectRoot: taskMaster.getProjectRoot(),
+							tag: tag
+						});
+						
+						console.log(chalk.green('✅ Auto-expansion completed successfully!'));
+					} catch (autoError) {
+						console.error(chalk.yellow(`⚠️  Auto-expansion failed: ${autoError.message}`));
+						console.log(chalk.blue('Continuing with regular PRD parsing results...'));
+					}
+				}
 			} catch (error) {
 				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
@@ -3751,6 +3800,10 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--lmstudio',
+			'Allow setting a LM Studio model ID (use with --set-*)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3782,12 +3835,13 @@ Examples:
 				options.ollama,
 				options.bedrock,
 				options.claudeCode,
-				options.geminiCli
+				options.geminiCli,
+				options.lmstudio
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --lmstudio) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3833,7 +3887,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3859,7 +3915,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3887,7 +3945,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -5224,6 +5284,153 @@ Examples:
 				);
 			} catch (error) {
 				console.error(chalk.red(`Error copying tag: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// cursor-agent command
+	programInstance
+		.command('cursor-agent')
+		.description('Run Cursor Agent to automatically execute tasks from tasks.json')
+		.argument('[tasksPath]', 'Path to the tasks.json file', TASKMASTER_TASKS_FILE)
+		.option('--silent', 'Run in silent mode with minimal output')
+		.action(async (tasksPath, options) => {
+			try {
+				// Initialize TaskMaster to get project root
+				const taskMaster = initTaskMaster({
+					tasksPath: tasksPath || true
+				});
+				const projectRoot = taskMaster.getProjectRoot();
+				const resolvedTasksPath = taskMaster.getTasksPath();
+
+				// Validate tasks file exists
+				if (!fs.existsSync(resolvedTasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${resolvedTasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				if (!options.silent) {
+					console.log(
+						boxen(
+							chalk.white.bold('Cursor Agent Integration') +
+								'\n\n' +
+								chalk.cyan('Tasks File:') +
+								` ${resolvedTasksPath}\n` +
+								chalk.cyan('Project Root:') +
+								` ${projectRoot}\n` +
+								chalk.cyan('Mode:') +
+								` ${options.silent ? 'Silent' : 'Normal'}\n\n` +
+								chalk.yellow('Starting Cursor Agent...'),
+							{
+								padding: 1,
+								borderColor: 'blue',
+								borderStyle: 'round'
+							}
+						)
+					);
+				}
+
+				// Run cursor-agent
+				await runCursorAgent(resolvedTasksPath, options.silent, projectRoot);
+
+				if (!options.silent) {
+					console.log(
+						chalk.green('\n🎉 Cursor Agent execution completed successfully!')
+					);
+				}
+			} catch (error) {
+				console.error(chalk.red(`Error running Cursor Agent: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// auto command - fully automated task execution pipeline
+	programInstance
+		.command('auto')
+		.description('Fully automated task execution pipeline: parse PRD, expand tasks, run agent, monitor completion')
+		.option('-c, --config <path>', 'Path to custom config file')
+		.option('--silent', 'Run in silent mode with minimal output')
+		.option('--max-iterations <number>', 'Maximum number of agent iterations', '10')
+		.option('--check-config', 'Check auto configuration and exit')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster to get project root
+				const taskMaster = initTaskMaster({
+					tasksPath: true
+				});
+				const projectRoot = taskMaster.getProjectRoot();
+
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				// Check configuration if requested
+				if (options.checkConfig) {
+					console.log(chalk.blue('Checking auto configuration...'));
+					const configCheck = await checkAutoConfiguration(projectRoot);
+					
+					if (configCheck.valid) {
+						console.log(chalk.green('✅ Auto configuration is valid'));
+						console.log(chalk.blue('Configuration:'), JSON.stringify(configCheck.config, null, 2));
+					} else {
+						console.log(chalk.red('❌ Auto configuration has errors:'));
+						configCheck.errors.forEach(error => {
+							console.log(chalk.red(`  - ${error}`));
+						});
+					}
+					
+					if (configCheck.warnings.length > 0) {
+						console.log(chalk.yellow('⚠️  Warnings:'));
+						configCheck.warnings.forEach(warning => {
+							console.log(chalk.yellow(`  - ${warning}`));
+						});
+					}
+					
+					process.exit(configCheck.valid ? 0 : 1);
+				}
+
+				// Display banner
+				if (!options.silent) {
+					displayBanner();
+					console.log(chalk.blue('\n🚀 Starting automated task execution pipeline...\n'));
+				}
+
+				// Execute auto pipeline
+				const result = await executeAutoPipeline({
+					projectRoot,
+					configPath: options.config,
+					silentMode: options.silent,
+					maxIterations: parseInt(options.maxIterations, 10)
+				});
+
+				// Display results
+				if (!options.silent) {
+					console.log(chalk.green('\n🎉 Automated execution completed successfully!'));
+					console.log(chalk.blue('\n📊 Execution Statistics:'));
+					console.log(`  • Total tasks: ${result.totalTasks}`);
+					console.log(`  • Completed: ${result.completedTasks}`);
+					console.log(`  • Failed: ${result.failedTasks}`);
+					console.log(`  • New tasks added: ${result.newTasksAdded}`);
+					console.log(`  • Iterations: ${result.iterations}`);
+					console.log(`  • Duration: ${Math.round(result.duration / 1000)}s`);
+				}
+
+			} catch (error) {
+				console.error(chalk.red(`Error in auto execution: ${error.message}`));
+				if (!options.silent && process.env.DEBUG) {
+					console.error(chalk.red('Stack trace:'), error.stack);
+				}
 				process.exit(1);
 			}
 		})

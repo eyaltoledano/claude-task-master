@@ -1,0 +1,36 @@
+{
+  "models": {
+    "main": {
+      "provider": "lmstudio",
+      "modelId": "llama-3.1-8b-instruct",
+      "maxTokens": 32000,
+      "temperature": 0.2,
+      "baseURL": "http://127.0.0.1:1234/v1"
+    },
+    "research": {
+      "provider": "lmstudio",
+      "modelId": "llama-3.1-70b-instruct",
+      "maxTokens": 131072,
+      "temperature": 0.1,
+      "baseURL": "http://127.0.0.1:1234/v1"
+    },
+    "fallback": {
+      "provider": "lmstudio",
+      "modelId": "qwen2.5-7b-instruct",
+      "maxTokens": 32768,
+      "temperature": 0.2,
+      "baseURL": "http://127.0.0.1:1234/v1"
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "debug": false,
+    "defaultNumTasks": 10,
+    "defaultSubtasks": 5,
+    "defaultPriority": "medium",
+    "projectName": "Task Master with LM Studio",
+    "lmstudioBaseURL": "http://127.0.0.1:1234/v1",
+    "responseLanguage": "English",
+    "enableCodebaseAnalysis": true
+  }
+}

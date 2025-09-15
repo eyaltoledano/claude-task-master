@@ -1018,5 +1018,121 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
+	],
+	"lmstudio": [
+		{
+			"id": "custom",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:latest",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:20b",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:120b",
+			"swe_score": 0.624,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "devstral:latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "qwen3:latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "qwen3:14b",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "qwen3:32b",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "mistral-small3.1:latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "llama3.3:latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "phi4:latest",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		}
 	]
 }

@@ -530,7 +530,9 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {},
+			autoExpansion: null,
+			tagInfo: undefined
 		});
 
 		// Verify that the written data contains 2 tasks from sampleClaudeResponse in the correct tag
@@ -736,7 +738,9 @@ describe('parsePRD', () => {
 		expect(result).toEqual({
 			success: true,
 			tasksPath: 'tasks/tasks.json',
-			telemetryData: {}
+			telemetryData: {},
+			autoExpansion: null,
+			tagInfo: undefined
 		});
 
 		// Verify that the written data contains 4 tasks (2 existing + 2 new)
@@ -834,7 +838,9 @@ describe('parsePRD', () => {
 			expect(result).toEqual({
 				success: true,
 				tasksPath: 'tasks/tasks.json',
-				telemetryData: {}
+				telemetryData: {},
+				autoExpansion: null,
+				tagInfo: undefined
 			});
 		});
 
@@ -948,7 +954,9 @@ describe('parsePRD', () => {
 			expect(result).toEqual({
 				success: true,
 				tasksPath: 'tasks/tasks.json',
-				telemetryData: {}
+				telemetryData: {},
+				autoExpansion: null,
+				tagInfo: undefined
 			});
 		});
 
@@ -1028,7 +1036,9 @@ describe('parsePRD', () => {
 			expect(result).toEqual({
 				success: true,
 				tasksPath: 'tasks/tasks.json',
-				telemetryData: {}
+				telemetryData: {},
+				autoExpansion: null,
+				tagInfo: undefined
 			});
 		});
 
@@ -1343,7 +1353,9 @@ describe('parsePRD', () => {
 			expect(result).toEqual({
 				success: true,
 				tasksPath: 'tasks/tasks.json',
-				telemetryData: {}
+				telemetryData: {},
+				autoExpansion: null,
+				tagInfo: undefined
 			});
 		});
 

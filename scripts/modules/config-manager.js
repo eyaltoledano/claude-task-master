@@ -72,8 +72,14 @@ const DEFAULTS = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		lmstudioBaseURL: 'http://127.0.0.1:1234/v1',
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true
+	},
+	auto: {
+		agent: 'cursor-agent',
+		mode: 'standard',
+		prd_path: 'scripts/prd.txt'
 	},
 	claudeCode: {}
 };
@@ -575,6 +581,11 @@ function getBedrockBaseURL(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).bedrockBaseURL;
 }
 
+function getLMStudioBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).lmstudioBaseURL;
+}
+
 /**
  * Gets the Google Cloud project ID for Vertex AI from configuration
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
@@ -603,6 +614,47 @@ function getResponseLanguage(explicitRoot = null) {
 function getCodebaseAnalysisEnabled(explicitRoot = null) {
 	// Directly return value from config
 	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
+}
+
+// ============================================================================
+// AUTO CONFIGURATION GETTERS
+// ============================================================================
+
+/**
+ * Gets the auto configuration section from the config
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {Object} The auto configuration object
+ */
+function getAutoConfig(explicitRoot = null) {
+	const config = getConfig(explicitRoot);
+	return config.auto || DEFAULTS.auto;
+}
+
+/**
+ * Gets the agent type for auto mode from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The agent type (default: 'cursor-agent')
+ */
+function getAutoAgent(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).agent;
+}
+
+/**
+ * Gets the mode for auto execution from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The mode ('silent' or 'standard', default: 'standard')
+ */
+function getAutoMode(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).mode;
+}
+
+/**
+ * Gets the PRD file path for auto mode from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The PRD file path (default: 'scripts/prd.txt')
+ */
+function getAutoPrdPath(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).prd_path;
 }
 
 /**
@@ -1016,7 +1068,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
-	CUSTOM_PROVIDERS.MCP
+	CUSTOM_PROVIDERS.MCP,
+	CUSTOM_PROVIDERS.LMSTUDIO
 ];
 
 export {
@@ -1062,8 +1115,14 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getLMStudioBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,
+	// Auto configuration getters
+	getAutoConfig,
+	getAutoAgent,
+	getAutoMode,
+	getAutoPrdPath,
 	isCodebaseAnalysisEnabled,
 	getParametersForRole,
 	getUserId,

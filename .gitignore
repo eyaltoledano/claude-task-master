@@ -94,3 +94,10 @@ apps/extension/.vscode-test/
 
 # apps/extension
 apps/extension/vsix-build/
+
+# Temporary directories
+tmp/**
+!tmp/.gitkeep
+
+# Generated reports
+.taskmaster/reports/*.json

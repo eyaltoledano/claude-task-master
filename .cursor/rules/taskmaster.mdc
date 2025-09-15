@@ -53,8 +53,13 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `output`: `Specify where Taskmaster should save the generated 'tasks.json' file. Defaults to '.taskmaster/tasks/tasks.json'.` (CLI: `-o, --output <file>`)
     *   `numTasks`: `Approximate number of top-level tasks Taskmaster should aim to generate from the document.` (CLI: `-n, --num-tasks <number>`)
     *   `force`: `Use this to allow Taskmaster to overwrite an existing 'tasks.json' without asking for confirmation.` (CLI: `-f, --force`)
+    *   `append`: `Append generated tasks to existing file.` (CLI: `--append`)
+    *   `research`: `Enable Taskmaster to use the research role for potentially more informed task generation. Requires appropriate API key.` (CLI: `-r, --research`)
+    *   `auto`: `Automatically analyze complexity and expand high-complexity tasks after PRD parsing.` (CLI: `--auto`)
+    *   `autoThreshold`: `Complexity threshold for auto-expansion (default: 7).` (CLI: `--auto-threshold <number>`)
 *   **Usage:** Useful for bootstrapping a project from an existing requirements document.
 *   **Notes:** Task Master will strictly adhere to any specific requirements mentioned in the PRD, such as libraries, database schemas, frameworks, tech stacks, etc., while filling in any gaps where the PRD isn't fully specified. Tasks are designed to provide the most direct implementation path while avoiding over-engineering.
+*   **Auto-Expansion:** When using the `--auto` flag, Task Master will automatically run complexity analysis after parsing the PRD, then intelligently expand high-complexity tasks (above the threshold) using the existing `expand --all` functionality. This is equivalent to running `task-master analyze-complexity` followed by `task-master expand --all`, but with the intelligence to only expand tasks that meet the complexity threshold.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress. If the user does not have a PRD, suggest discussing their idea and then use the example PRD in `.taskmaster/templates/example_prd.txt` as a template for creating the PRD based on their idea, for use with `parse-prd`.
 
 ---

@@ -1,9 +1,9 @@
 {
   "models": {
     "main": {
-      "provider": "claude-code",
-      "modelId": "sonnet",
-      "maxTokens": 64000,
+      "provider": "lmstudio",
+      "modelId": "gpt-oss:latest",
+      "maxTokens": 128000,
       "temperature": 0.2
     },
     "research": {
@@ -30,8 +30,10 @@
     "bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
     "lmstudioBaseURL": "http://127.0.0.1:1234/v1",
     "responseLanguage": "English",
-    "enableCodebaseAnalysis": false,
+    "enableCodebaseAnalysis": true,
+    "userId": "1234567890",
     "azureBaseURL": "https://your-endpoint.azure.com/",
     "defaultTag": "master"
-  }
+  },
+  "claudeCode": {}
 }

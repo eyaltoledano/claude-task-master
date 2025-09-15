@@ -89,6 +89,40 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 		// Save to file
 		saveTasksToFile(config.tasksPath, finalTasks, config.targetTag, logger);
 
+		// Handle auto-expansion if enabled
+		let autoExpansionResult = null;
+		if (config.auto) {
+			try {
+				logger.report('Running automatic complexity analysis and expansion...', 'info');
+				
+				// Import the auto workflow function
+				const { runAutoComplexityExpansion } = await import('./auto-complexity-expansion.js');
+				
+				const threshold = parseFloat(config.autoThreshold || '7');
+				if (isNaN(threshold) || threshold < 1 || threshold > 10) {
+					throw new Error(`Invalid auto-threshold value: ${config.autoThreshold}. Must be between 1 and 10.`);
+				}
+				
+				autoExpansionResult = await runAutoComplexityExpansion({
+					tasksPath: config.tasksPath,
+					threshold,
+					research: config.research,
+					projectRoot: config.projectRoot,
+					tag: config.targetTag
+				});
+				
+				logger.report(`Auto-expansion completed: ${autoExpansionResult.expandedTasks} tasks expanded`, 'info');
+			} catch (autoError) {
+				const errorType = autoError.message?.includes('threshold') ? 'INVALID_THRESHOLD' : 'AUTO_EXPANSION_FAILED';
+				logger.report(`Auto-expansion failed (${errorType}): ${autoError.message}`, 'warn');
+				autoExpansionResult = {
+					success: false,
+					error: autoError.message,
+					errorType
+				};
+			}
+		}
+
 		// Handle completion reporting
 		await handleCompletionReporting(
 			config,
@@ -103,7 +137,8 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 			success: true,
 			tasksPath: config.tasksPath,
 			telemetryData: serviceResult.aiServiceResponse?.telemetryData,
-			tagInfo: serviceResult.aiServiceResponse?.tagInfo
+			tagInfo: serviceResult.aiServiceResponse?.tagInfo,
+			autoExpansion: autoExpansionResult
 		};
 	} catch (error) {
 		logger.report(`Error parsing PRD: ${error.message}`, 'error');
