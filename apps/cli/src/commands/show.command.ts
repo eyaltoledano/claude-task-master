@@ -9,6 +9,14 @@ import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import {
+	displayTaskHeader,
+	displayTaskProperties,
+	displayImplementationDetails,
+	displayTestStrategy,
+	displaySubtasks,
+	displaySuggestedActions
+} from '../ui/components/task-detail.component.js';
 
 /**
  * Options interface for the show command
@@ -258,46 +266,26 @@ export class ShowCommand extends Command {
 
 		const task = result.task;
 
-		// Header
-		console.log(
-			boxen(chalk.white.bold(`Task #${task.id} - ${task.title}`), {
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				borderColor: 'blue',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			})
-		);
+		// Display header with tag
+		displayTaskHeader(task.id, task.title);
 
-		// Task details
-		console.log(
-			`\n${chalk.blue.bold('Status:')} ${ui.getStatusWithColor(task.status)}`
-		);
-		console.log(
-			`${chalk.blue.bold('Priority:')} ${ui.getPriorityWithColor(task.priority)}`
-		);
+		// Display task properties in table format
+		displayTaskProperties(task);
 
-		if (task.description) {
-			console.log(`\n${chalk.blue.bold('Description:')}`);
-			console.log(task.description);
-		}
-
+		// Display implementation details if available
 		if (task.details) {
-			console.log(`\n${chalk.blue.bold('Details:')}`);
-			console.log(task.details);
+			console.log(); // Empty line for spacing
+			displayImplementationDetails(task.details);
 		}
 
-		// Dependencies
-		if (task.dependencies && task.dependencies.length > 0) {
-			console.log(`\n${chalk.blue.bold('Dependencies:')}`);
-			task.dependencies.forEach((dep) => {
-				console.log(`  - ${chalk.cyan(dep)}`);
-			});
+		// Display test strategy if available
+		if ('testStrategy' in task && task.testStrategy) {
+			console.log(); // Empty line for spacing
+			displayTestStrategy(task.testStrategy as string);
 		}
 
-		// Subtasks
+		// Display subtasks if available
 		if (task.subtasks && task.subtasks.length > 0) {
-			console.log(`\n${chalk.blue.bold('Subtasks:')}`);
-
 			// Filter subtasks by status if provided
 			const filteredSubtasks = options.status
 				? task.subtasks.filter((sub) => sub.status === options.status)
@@ -308,23 +296,12 @@ export class ShowCommand extends Command {
 					chalk.gray(`  No subtasks with status '${options.status}'`)
 				);
 			} else {
-				filteredSubtasks.forEach((subtask) => {
-					console.log(
-						`  ${chalk.cyan(`${task.id}.${subtask.id}`)} ${ui.getStatusWithColor(subtask.status)} ${subtask.title}`
-					);
-					if (subtask.description) {
-						console.log(`    ${chalk.gray(subtask.description)}`);
-					}
-				});
+				displaySubtasks(filteredSubtasks, task.id);
 			}
 		}
 
-		if (task.testStrategy) {
-			console.log(`\n${chalk.blue.bold('Test Strategy:')}`);
-			console.log(task.testStrategy);
-		}
-
-		console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
+		// Display suggested actions
+		displaySuggestedActions(task.id);
 	}
 
 	/**
