@@ -15,6 +15,7 @@ import {
 	getDebugFlag,
 	getFallbackModelId,
 	getFallbackProvider,
+	getLMStudioBaseURL,
 	getMainModelId,
 	getMainProvider,
 	getOllamaBaseURL,
@@ -44,6 +45,7 @@ import {
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GroqProvider,
+	LMStudioAIProvider,
 	OllamaAIProvider,
 	OpenAIProvider,
 	OpenRouterAIProvider,
@@ -69,7 +71,8 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
-	'gemini-cli': new GeminiCliProvider()
+	'gemini-cli': new GeminiCliProvider(),
+	lmstudio: new LMStudioAIProvider()
 };
 
 function _getProvider(providerName) {
@@ -582,6 +585,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
 				baseURL = getBedrockBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Bedrock base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'lmstudio' && !baseURL) {
+				// For LM Studio, use the global LM Studio base URL if role-specific URL is not configured
+				baseURL = getLMStudioBaseURL(effectiveProjectRoot);
+				log('debug', `Using global LM Studio base URL: ${baseURL}`);
 			}
 
 			// Get AI parameters for the current role

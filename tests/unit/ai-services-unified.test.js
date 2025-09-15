@@ -115,6 +115,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	isApiKeySet: mockIsApiKeySet,
 	getAllProviders: mockGetAllProviders,
 	getOllamaBaseURL: mockGetOllamaBaseURL,
+	getLMStudioBaseURL: jest.fn(() => 'http://127.0.0.1:1234/v1'),
 	getAzureBaseURL: mockGetAzureBaseURL,
 	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
@@ -122,7 +123,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
 
 	// Providers without API keys
-	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli', 'lmstudio']
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -225,6 +226,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
 		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
+	LMStudioAIProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'LMSTUDIO_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	}))
 }));

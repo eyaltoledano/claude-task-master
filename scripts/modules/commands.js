@@ -79,7 +79,6 @@ import {
 	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-	getAvailableModels,
 	getBaseUrlForRole,
 	getDefaultNumTasks,
 	getDefaultSubtasks
@@ -130,6 +129,7 @@ import { initializeProject } from '../init.js';
 import {
 	getModelConfiguration,
 	getAvailableModelsList,
+	getAvailableModels,
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
@@ -293,7 +293,7 @@ async function runInteractiveSetup(projectRoot) {
 	// Helper to get choices and default index for a role
 	const getPromptData = (role, allowNone = false) => {
 		const currentModel = currentModels[role]; // Use the fetched data
-		const allModelsRaw = getAvailableModels(); // Get all available models
+		const allModelsRaw = getAvailableModels(projectRoot); // Get all available models
 
 		// Manually group models by provider
 		const modelsByProvider = allModelsRaw.reduce((acc, model) => {
@@ -3751,6 +3751,10 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--lmstudio',
+			'Allow setting a LM Studio model ID (use with --set-*)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3782,12 +3786,13 @@ Examples:
 				options.ollama,
 				options.bedrock,
 				options.claudeCode,
-				options.geminiCli
+				options.geminiCli,
+				options.lmstudio
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --lmstudio) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3833,7 +3838,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3859,7 +3866,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3887,7 +3896,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.lmstudio
+												? 'lmstudio'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

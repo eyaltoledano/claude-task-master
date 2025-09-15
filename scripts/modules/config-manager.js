@@ -72,6 +72,7 @@ const DEFAULTS = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		lmstudioBaseURL: 'http://127.0.0.1:1234/v1',
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true
 	},
@@ -575,6 +576,11 @@ function getBedrockBaseURL(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).bedrockBaseURL;
 }
 
+function getLMStudioBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).lmstudioBaseURL;
+}
+
 /**
  * Gets the Google Cloud project ID for Vertex AI from configuration
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
@@ -1016,7 +1022,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
-	CUSTOM_PROVIDERS.MCP
+	CUSTOM_PROVIDERS.MCP,
+	CUSTOM_PROVIDERS.LMSTUDIO
 ];
 
 export {
@@ -1062,6 +1069,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getLMStudioBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,
 	isCodebaseAnalysisEnabled,

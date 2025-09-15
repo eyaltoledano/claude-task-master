@@ -9,7 +9,7 @@ import {
 	getMainModelId,
 	getResearchModelId,
 	getFallbackModelId,
-	getAvailableModels,
+	getAvailableModels as getAvailableModelsBase,
 	getMainProvider,
 	getResearchProvider,
 	getFallbackProvider,
@@ -24,6 +24,12 @@ import {
 import { findConfigPath } from '../../../src/utils/path-utils.js';
 import { log } from '../utils.js';
 import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+
+// Wrapper function to maintain compatibility with projectRoot parameter
+function getAvailableModels(projectRoot) {
+	// The base function doesn't need projectRoot, but we maintain the interface
+	return getAvailableModelsBase();
+}
 
 // Constants
 const CONFIG_MISSING_ERROR =
@@ -539,6 +545,24 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Gemini CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.LMSTUDIO) {
+					// LM Studio provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.LMSTUDIO;
+					// Re-find modelData specifically for lmstudio provider
+					const lmstudioModels = availableModels.filter(
+						(m) => m.provider === 'lmstudio'
+					);
+					const lmstudioModelData = lmstudioModels.find(
+						(m) => m.id === modelId
+					);
+					if (lmstudioModelData) {
+						// Update modelData to the found lmstudio model
+						modelData = lmstudioModelData;
+						report('info', `Setting LM Studio model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: LM Studio model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -683,6 +707,7 @@ async function getApiKeyStatusReport(options = {}) {
 export {
 	getModelConfiguration,
 	getAvailableModelsList,
+	getAvailableModels,
 	setModel,
 	getApiKeyStatusReport
 };
