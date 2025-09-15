@@ -76,6 +76,11 @@ const DEFAULTS = {
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true
 	},
+	auto: {
+		agent: 'cursor-agent',
+		mode: 'standard',
+		prd_path: 'scripts/prd.txt'
+	},
 	claudeCode: {}
 };
 
@@ -611,6 +616,47 @@ function getCodebaseAnalysisEnabled(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
 }
 
+// ============================================================================
+// AUTO CONFIGURATION GETTERS
+// ============================================================================
+
+/**
+ * Gets the auto configuration section from the config
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {Object} The auto configuration object
+ */
+function getAutoConfig(explicitRoot = null) {
+	const config = getConfig(explicitRoot);
+	return config.auto || DEFAULTS.auto;
+}
+
+/**
+ * Gets the agent type for auto mode from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The agent type (default: 'cursor-agent')
+ */
+function getAutoAgent(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).agent;
+}
+
+/**
+ * Gets the mode for auto execution from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The mode ('silent' or 'standard', default: 'standard')
+ */
+function getAutoMode(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).mode;
+}
+
+/**
+ * Gets the PRD file path for auto mode from configuration
+ * @param {string|null} explicitRoot - Optional explicit path to the project root
+ * @returns {string} The PRD file path (default: 'scripts/prd.txt')
+ */
+function getAutoPrdPath(explicitRoot = null) {
+	return getAutoConfig(explicitRoot).prd_path;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -1072,6 +1118,11 @@ export {
 	getLMStudioBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,
+	// Auto configuration getters
+	getAutoConfig,
+	getAutoAgent,
+	getAutoMode,
+	getAutoPrdPath,
 	isCodebaseAnalysisEnabled,
 	getParametersForRole,
 	getUserId,

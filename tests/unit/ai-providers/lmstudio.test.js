@@ -231,7 +231,7 @@ describe('LMStudioAIProvider', () => {
 
 		it('should accept optional API key for remote usage', () => {
 			expect(() => provider.validateAuth({ apiKey: 'test-key' })).not.toThrow();
-			expect(() => provider.validateAuth({ apiKey: 'sk-1234567890' })).not.toThrow();
+			expect(() => provider.validateAuth({ apiKey: 'test-api-key-placeholder' })).not.toThrow();
 		});
 	});
 

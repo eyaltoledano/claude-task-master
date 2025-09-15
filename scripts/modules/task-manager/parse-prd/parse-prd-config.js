@@ -49,9 +49,15 @@ export class PrdParseConfig {
 		this.numTasks = numTasks;
 		this.force = options.force || false;
 		this.append = options.append || false;
-		this.research = options.research || false;
-		this.auto = options.auto || false;
-		this.autoThreshold = options.autoThreshold || '7';
+		this.research = !!options.research;
+		this.auto = !!options.auto;
+		const at = options.autoThreshold;
+		this.autoThreshold =
+			typeof at === 'number'
+				? at
+				: Number.isFinite(Number(at))
+				? Number(at)
+				: 7;
 		this.reportProgress = options.reportProgress;
 		this.mcpLog = options.mcpLog;
 		this.session = options.session;

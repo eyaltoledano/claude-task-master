@@ -210,6 +210,82 @@ Use your AI assistant to:
 
 [More examples on how to use Task Master in chat](docs/examples.md)
 
+#### 7. Automated Execution Mode
+
+Task Master now includes a powerful **automated execution mode** that can run the complete development pipeline from PRD to task completion:
+
+```bash
+# Run the complete automated pipeline
+task-master auto
+
+# Check your auto configuration
+task-master auto --check-config
+
+# Run in silent mode (minimal output)
+task-master auto --silent
+
+# Use custom config file
+task-master auto --config .taskmaster/config-alt.json
+
+# Limit iterations for testing
+task-master auto --max-iterations 5
+```
+
+**What `task-master auto` does:**
+
+1. **📋 Parse PRD**: Automatically parses your PRD file and generates tasks
+2. **🔍 Analyze & Expand**: Runs complexity analysis and expands complex tasks into subtasks
+3. **🤖 Launch Agent**: Spawns cursor-agent to execute tasks automatically
+4. **📊 Monitor Progress**: Updates task statuses in real-time as the agent works
+5. **🔄 Feedback Loop**: Detects when new tasks are needed and adds them automatically
+6. **✅ Complete**: Continues until all tasks are done or max iterations reached
+
+**Configuration:**
+
+Add this to your `.taskmaster/config.json`:
+
+```json
+{
+  "auto": {
+    "agent": "cursor-agent",
+    "mode": "standard",
+    "prd_path": "scripts/prd.txt"
+  }
+}
+```
+
+- `agent`: Which agent to use (currently supports `cursor-agent`)
+- `mode`: `"silent"` for minimal output, `"standard"` for detailed progress
+- `prd_path`: Path to your PRD file (relative to project root)
+
+**Example Output:**
+
+```
+🚀 Starting automated task execution pipeline...
+
+📋 Parsing PRD and generating tasks...
+✅ Generated 8 tasks from PRD
+
+🔍 Analyzing task complexity and expanding...
+✅ Expanded tasks. Total tasks: 12
+
+🤖 Running cursor-agent on 12 pending tasks...
+📊 Task 1 status: in-progress
+📊 Task 2 status: done
+📊 Task 3 status: in-progress
+📊 New task detected: Add error handling for API failures
+
+🎉 Automated execution completed successfully!
+
+📊 Execution Statistics:
+  • Total tasks: 12
+  • Completed: 10
+  • Failed: 1
+  • New tasks added: 2
+  • Iterations: 3
+  • Duration: 4m 32s
+```
+
 ### Option 2: Using Command Line
 
 #### Installation
@@ -272,9 +348,71 @@ task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-depen
 # Generate task files
 task-master generate
 
+# Run automated execution pipeline
+task-master auto
+
+# Check auto configuration
+task-master auto --check-config
+
+# Run auto in silent mode
+task-master auto --silent
+
 # Add rules after initialization
 task-master rules add windsurf,roo,vscode
+
+# Run Cursor Agent to automatically execute tasks
+task-master cursor-agent
+
+# Run Cursor Agent in silent mode (minimal output)
+task-master cursor-agent --silent
+
+# Run Cursor Agent with custom tasks file
+task-master cursor-agent ./custom-tasks.json
 ```
+
+### Cursor Agent Integration
+
+Task Master now includes integration with [Cursor Agent](https://cursor.com/agent), allowing you to automatically execute tasks using AI-powered code generation.
+
+#### Prerequisites
+
+- Install [Cursor Agent](https://cursor.com/agent) CLI tool
+- Ensure `cursor-agent` is available in your PATH
+- Have tasks defined in your `tasks.json` file
+
+#### Usage Examples
+
+```bash
+# Basic usage - execute all pending tasks
+task-master cursor-agent
+
+# Silent mode - minimal output with spinner
+task-master cursor-agent --silent
+
+# Use custom tasks file
+task-master cursor-agent ./my-tasks.json
+
+# Combine with other Task Master features
+task-master parse-prd requirements.txt
+task-master cursor-agent --silent
+```
+
+#### How It Works
+
+1. **Task Loading**: Cursor Agent loads tasks from your `tasks.json` file
+2. **Sequential Execution**: Tasks are executed in dependency order
+3. **Status Updates**: Task statuses are automatically updated (pending → in_progress → done)
+4. **Progress Display**: Real-time progress updates show current task and activity
+5. **Error Handling**: Failed tasks are marked appropriately, execution continues with other tasks
+
+#### Features
+
+- **Automatic Task Discovery**: Cursor Agent can create new tasks/subtasks as needed
+- **Dependency Management**: Respects task dependencies and execution order
+- **Real-time Progress**: Live updates on current task and implementation progress
+- **Silent Mode**: Minimal output with rotating spinner for automated workflows
+- **Cross-platform**: Works on Windows, macOS, and Linux
+- **Error Recovery**: Continues execution even if individual tasks fail
 
 ### Automatic Task Expansion
 
@@ -308,6 +446,78 @@ Task Master now supports Claude models through the Claude Code CLI, which requir
 - **Benefits**: No API key needed, uses your local Claude instance
 
 [Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+
+## LM Studio Integration
+
+Task Master supports LM Studio for local AI model hosting. This allows you to run Task Master with locally hosted models without requiring external API keys.
+
+### LM Studio Setup
+
+1. **Install LM Studio**: Download and install [LM Studio](https://lmstudio.ai/)
+2. **Download a model**: Choose and download a compatible model (e.g., GPT-OSS models)
+3. **Start the server**: Launch LM Studio and start the local server (typically on `http://127.0.0.1:1234`)
+
+### Configuration Example
+
+Here's a complete `.taskmaster/config.json` example for LM Studio integration:
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "lmstudio",
+      "modelId": "gpt-oss:20b",
+      "maxTokens": 32000,
+      "temperature": 0.2
+    },
+    "research": {
+      "provider": "lmstudio",
+      "modelId": "gpt-oss:20b",
+      "maxTokens": 32000,
+      "temperature": 0.1
+    },
+    "fallback": {
+      "provider": "lmstudio",
+      "modelId": "gpt-oss:20b",
+      "maxTokens": 32000,
+      "temperature": 0.3
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "debug": false,
+    "defaultNumTasks": 10,
+    "defaultSubtasks": 5,
+    "defaultPriority": "medium",
+    "projectName": "Task Master with LM Studio",
+    "ollamaBaseURL": "http://localhost:11434/api",
+    "lmstudioBaseURL": "http://127.0.0.1:1234/v1",
+    "bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
+    "responseLanguage": "English",
+    "enableCodebaseAnalysis": true,
+    "userId": "lmstudio-user",
+    "azureBaseURL": "https://your-endpoint.azure.com/",
+    "defaultTag": "master"
+  },
+  "claudeCode": {}
+}
+```
+
+### Key Configuration Points
+
+- **`lmstudioBaseURL`**: Set to your LM Studio server URL (default: `http://127.0.0.1:1234/v1`)
+- **`modelId`**: Use the model identifier from LM Studio (e.g., `gpt-oss:20b`)
+- **`provider`**: Set to `"lmstudio"` for all model roles
+- **No API keys required**: LM Studio runs locally without external API dependencies
+
+### Benefits of LM Studio Integration
+
+- **Privacy**: All AI processing happens locally on your machine
+- **Cost-effective**: No per-token charges for API usage
+- **Offline capability**: Works without internet connection
+- **Model flexibility**: Use any compatible model available in LM Studio
+
+[Learn more about LM Studio integration](docs/lmstudio-integration.md)
 
 ## Troubleshooting
 

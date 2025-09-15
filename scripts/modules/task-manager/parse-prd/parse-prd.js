@@ -98,9 +98,14 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 				// Import the auto workflow function
 				const { runAutoComplexityExpansion } = await import('./auto-complexity-expansion.js');
 				
+				const threshold = parseFloat(config.autoThreshold || '7');
+				if (isNaN(threshold) || threshold < 1 || threshold > 10) {
+					throw new Error(`Invalid auto-threshold value: ${config.autoThreshold}. Must be between 1 and 10.`);
+				}
+				
 				autoExpansionResult = await runAutoComplexityExpansion({
 					tasksPath: config.tasksPath,
-					threshold: parseFloat(config.autoThreshold || '7'),
+					threshold,
 					research: config.research,
 					projectRoot: config.projectRoot,
 					tag: config.targetTag
@@ -108,10 +113,12 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 				
 				logger.report(`Auto-expansion completed: ${autoExpansionResult.expandedTasks} tasks expanded`, 'info');
 			} catch (autoError) {
-				logger.report(`Auto-expansion failed: ${autoError.message}`, 'warn');
+				const errorType = autoError.message?.includes('threshold') ? 'INVALID_THRESHOLD' : 'AUTO_EXPANSION_FAILED';
+				logger.report(`Auto-expansion failed (${errorType}): ${autoError.message}`, 'warn');
 				autoExpansionResult = {
 					success: false,
-					error: autoError.message
+					error: autoError.message,
+					errorType
 				};
 			}
 		}

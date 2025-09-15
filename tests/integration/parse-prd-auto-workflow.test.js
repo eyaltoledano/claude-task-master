@@ -305,7 +305,7 @@ Build a comprehensive task management application with advanced features.
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.autoExpansionResult).toBeDefined();
+			expect(result.autoExpansion).toBeDefined();
 		});
 
 		it('should handle --auto-threshold parameter', async () => {
@@ -326,7 +326,7 @@ Build a comprehensive task management application with advanced features.
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.autoExpansionResult).toBeDefined();
+			expect(result.autoExpansion).toBeDefined();
 		});
 	});
 
@@ -357,8 +357,8 @@ Build a comprehensive task management application with advanced features.
 			expect(fs.existsSync(tasksPath)).toBe(true);
 
 			// Verify auto-expansion was triggered
-			expect(result.autoExpansionResult).toBeDefined();
-			expect(result.autoExpansionResult.success).toBe(true);
+			expect(result.autoExpansion).toBeDefined();
+			expect(result.autoExpansion.success).toBe(true);
 
 			// Verify complexity report was created
 			expect(fs.existsSync(complexityReportPath)).toBe(true);
@@ -394,7 +394,7 @@ Build a comprehensive task management application with advanced features.
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.autoExpansionResult).toBeDefined();
+			expect(result.autoExpansion).toBeDefined();
 		});
 
 		it('should handle workflow with research flag', async () => {
@@ -416,7 +416,7 @@ Build a comprehensive task management application with advanced features.
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.autoExpansionResult).toBeDefined();
+			expect(result.autoExpansion).toBeDefined();
 		});
 	});
 
@@ -471,7 +471,7 @@ Build a comprehensive task management application with advanced features.
 			expect(result.tasksPath).toBe(tasksPath);
 
 			// Auto-expansion should be marked as failed
-			expect(result.autoExpansionResult).toBeUndefined();
+			expect(result.autoExpansion).toBeUndefined();
 		});
 	});
 
@@ -578,8 +578,8 @@ Build a comprehensive task management application with advanced features.
 
 			// Verify telemetry data is present
 			expect(result.telemetryData).toBeDefined();
-			expect(result.autoExpansionResult.complexityTelemetryData).toBeDefined();
-			expect(result.autoExpansionResult.expansionTelemetryData).toBeDefined();
+			expect(result.autoExpansion.complexityTelemetryData).toBeDefined();
+			expect(result.autoExpansion.expansionTelemetryData).toBeDefined();
 		});
 	});
 

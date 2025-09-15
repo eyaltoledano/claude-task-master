@@ -67,11 +67,16 @@ export function registerParsePRDTool(server) {
 			auto: z
 				.boolean()
 				.optional()
+				.default(false)
 				.describe('Automatically analyze complexity and expand high-complexity tasks after PRD parsing.'),
 			autoThreshold: z
-				.string()
+				.preprocess(v => {
+					if (v === undefined || v === null || v === '') return 7;
+					const n = Number(v);
+					return Number.isFinite(n) ? n : 7;
+				}, z.number().min(0))
 				.optional()
-				.default('7')
+				.default(7)
 				.describe('Complexity threshold for auto-expansion (default: 7).')
 		}),
 		execute: withNormalizedProjectRoot(
@@ -102,17 +107,24 @@ export function registerParsePRDTool(server) {
 							// Import the auto workflow function
 							const { runAutoComplexityExpansion } = await import('../../../../scripts/modules/task-manager/auto-complexity-expansion.js');
 							
-							const autoResult = await runAutoComplexityExpansion({
-								tasksPath: result.data.tasksPath,
-								threshold: parseFloat(args.autoThreshold || '7'),
-								research: args.research || false,
-								projectRoot: args.projectRoot,
-								tag: resolvedTag
-							});
-
-							// Add auto-expansion results to the response
-							result.data.autoExpansion = autoResult;
-							log.info(`Auto-expansion completed: ${autoResult.expandedTasks} tasks expanded`);
+							const tasksPath = result.data.tasksPath || result.data.outputPath;
+							if (!tasksPath) {
+								log.warn('Auto-expansion skipped: tasksPath not found in parse result.');
+							} else {
+								const parsed = Number(args.autoThreshold);
+								const threshold = Number.isFinite(parsed) ? parsed : 7;
+								const autoResult = await runAutoComplexityExpansion({
+									tasksPath,
+									threshold,
+									research: !!args.research,
+									projectRoot: args.projectRoot,
+									tag: resolvedTag
+								});
+								// Add auto-expansion results to the response
+								result.data.autoExpansion = autoResult;
+								log.info(`Auto-expansion completed: ${autoResult.expandedTasks} tasks expanded`);
+							}
+							
 						} catch (autoError) {
 							log.warn(`Auto-expansion failed: ${autoError.message}`);
 							// Don't fail the entire operation, just log the auto-expansion failure

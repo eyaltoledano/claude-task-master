@@ -333,8 +333,8 @@ Build a task management application.
 
 			expect(result.success).toBe(true);
 			expect(result.data.tasksPath).toBe(tasksPath);
-			expect(result.data.autoExpansionResult).toBeDefined();
-			expect(result.data.autoExpansionResult.success).toBe(true);
+			expect(result.data.autoExpansion).toBeDefined();
+			expect(result.data.autoExpansion.success).toBe(true);
 		});
 
 		it('should handle auto parameter defaults', async () => {
@@ -362,7 +362,7 @@ Build a task management application.
 			const result = await parsePRDDirect(args, mockLog, { session: 'test-session' });
 
 			expect(result.success).toBe(true);
-			expect(result.data.autoExpansionResult).toBeDefined();
+			expect(result.data.autoExpansion).toBeDefined();
 		});
 
 		it('should handle auto=false (disabled)', async () => {
@@ -391,7 +391,7 @@ Build a task management application.
 
 			expect(result.success).toBe(true);
 			expect(result.data.tasksPath).toBe(tasksPath);
-			expect(result.data.autoExpansionResult).toBeUndefined();
+			expect(result.data.autoExpansion).toBeUndefined();
 		});
 	});
 
@@ -429,7 +429,7 @@ Build a task management application.
 			expect(result.data.tasksPath).toBe(tasksPath);
 
 			// Auto-expansion should be undefined (failed)
-			expect(result.data.autoExpansionResult).toBeUndefined();
+			expect(result.data.autoExpansion).toBeUndefined();
 		});
 
 		it('should handle invalid autoThreshold values', async () => {
@@ -493,14 +493,14 @@ Build a task management application.
 
 			// Verify data structure
 			expect(result.data).toHaveProperty('tasksPath');
-			expect(result.data).toHaveProperty('autoExpansionResult');
+			expect(result.data).toHaveProperty('autoExpansion');
 			expect(result.data).toHaveProperty('telemetryData');
 
 			// Verify auto-expansion result structure
-			expect(result.data.autoExpansionResult).toHaveProperty('success');
-			expect(result.data.autoExpansionResult).toHaveProperty('expandedTasks');
-			expect(result.data.autoExpansionResult).toHaveProperty('skippedTasks');
-			expect(result.data.autoExpansionResult).toHaveProperty('failedTasks');
+			expect(result.data.autoExpansion).toHaveProperty('success');
+			expect(result.data.autoExpansion).toHaveProperty('expandedTasks');
+			expect(result.data.autoExpansion).toHaveProperty('skippedTasks');
+			expect(result.data.autoExpansion).toHaveProperty('failedTasks');
 		});
 
 		it('should include telemetry data in response', async () => {
@@ -529,8 +529,8 @@ Build a task management application.
 
 			// Verify telemetry data is present
 			expect(result.data.telemetryData).toBeDefined();
-			expect(result.data.autoExpansionResult.complexityTelemetryData).toBeDefined();
-			expect(result.data.autoExpansionResult.expansionTelemetryData).toBeDefined();
+			expect(result.data.autoExpansion.complexityTelemetryData).toBeDefined();
+			expect(result.data.autoExpansion.expansionTelemetryData).toBeDefined();
 
 			// Verify telemetry structure
 			expect(result.data.telemetryData).toHaveProperty('timestamp');

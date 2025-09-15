@@ -310,9 +310,7 @@ describe('runAutoComplexityExpansion', () => {
 				tag: 'master'
 			};
 
-			await expect(runAutoComplexityExpansion(options)).rejects.toThrow(
-				'Complexity analysis failed'
-			);
+			await expect(runAutoComplexityExpansion(options)).rejects.toThrow(/Complexity analysis failed/);
 		});
 
 		it('should handle missing complexity report', async () => {
@@ -331,7 +329,7 @@ describe('runAutoComplexityExpansion', () => {
 			};
 
 			await expect(runAutoComplexityExpansion(options)).rejects.toThrow(
-				'Complexity analysis failed: No report generated'
+/No report generated/
 			);
 		});
 
@@ -347,7 +345,7 @@ describe('runAutoComplexityExpansion', () => {
 			};
 
 			await expect(runAutoComplexityExpansion(options)).rejects.toThrow(
-				'Complexity analysis failed: No report generated'
+/No report generated/
 			);
 		});
 
@@ -364,7 +362,7 @@ describe('runAutoComplexityExpansion', () => {
 			};
 
 			await expect(runAutoComplexityExpansion(options)).rejects.toThrow(
-				'Expansion failed'
+/Expansion failed/
 			);
 		});
 	});

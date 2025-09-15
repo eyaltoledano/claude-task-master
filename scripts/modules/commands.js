@@ -12,15 +12,15 @@ import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
-import ora from 'ora'; // Import ora
+// import ora from 'ora'; // Import ora - not used in this file
 
 import {
 	log,
 	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
+	// writeJSON, // Not used in this file
+	// getCurrentTag, // Not used in this file
+	// detectCamelCaseFlags, // Not used in this file
+	// toKebabCase // Not used in this file
 } from './utils.js';
 import {
 	parsePRD,
@@ -49,9 +49,9 @@ import {
 } from './task-manager.js';
 
 import {
-	moveTasksBetweenTags,
-	MoveTaskError,
-	MOVE_ERROR_CODES
+	moveTasksBetweenTags
+	// MoveTaskError, // Not used in this file
+	// MOVE_ERROR_CODES // Not used in this file
 } from './task-manager/move-task.js';
 
 import {
@@ -67,9 +67,9 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand,
-	DependencyError,
-	DEPENDENCY_ERROR_CODES
+	fixDependenciesCommand
+	// DependencyError, // Not used in this file
+	// DEPENDENCY_ERROR_CODES // Not used in this file
 } from './dependency-manager.js';
 
 import {
@@ -80,8 +80,8 @@ import {
 	ConfigurationError,
 	isConfigFilePresent,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
+	// getDefaultSubtasks // Not used in this file
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -93,6 +93,9 @@ import {
 } from '../../src/constants/paths.js';
 
 import { initTaskMaster } from '../../src/task-master.js';
+
+import { runCursorAgent } from './cursor-agent.js';
+import { executeAutoPipeline, checkAutoConfiguration } from './auto.js';
 
 import {
 	displayBanner,
@@ -107,7 +110,7 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary,
+	// displayAiUsageSummary, // Not used in this file
 	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator,
@@ -874,7 +877,10 @@ function registerCommands(programInstance) {
 			const append = options.append || false;
 			const research = options.research || false;
 			const auto = options.auto || false;
-			const autoThreshold = parseFloat(options.autoThreshold || '7');
+			const autoThresholdRaw = options.autoThreshold ?? '7';
+			const autoThreshold = Number.isFinite(Number(autoThresholdRaw))
+				? Number(autoThresholdRaw)
+				: 7;
 			let useForce = force;
 			const useAppend = append;
 
@@ -5278,6 +5284,153 @@ Examples:
 				);
 			} catch (error) {
 				console.error(chalk.red(`Error copying tag: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// cursor-agent command
+	programInstance
+		.command('cursor-agent')
+		.description('Run Cursor Agent to automatically execute tasks from tasks.json')
+		.argument('[tasksPath]', 'Path to the tasks.json file', TASKMASTER_TASKS_FILE)
+		.option('--silent', 'Run in silent mode with minimal output')
+		.action(async (tasksPath, options) => {
+			try {
+				// Initialize TaskMaster to get project root
+				const taskMaster = initTaskMaster({
+					tasksPath: tasksPath || true
+				});
+				const projectRoot = taskMaster.getProjectRoot();
+				const resolvedTasksPath = taskMaster.getTasksPath();
+
+				// Validate tasks file exists
+				if (!fs.existsSync(resolvedTasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${resolvedTasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				if (!options.silent) {
+					console.log(
+						boxen(
+							chalk.white.bold('Cursor Agent Integration') +
+								'\n\n' +
+								chalk.cyan('Tasks File:') +
+								` ${resolvedTasksPath}\n` +
+								chalk.cyan('Project Root:') +
+								` ${projectRoot}\n` +
+								chalk.cyan('Mode:') +
+								` ${options.silent ? 'Silent' : 'Normal'}\n\n` +
+								chalk.yellow('Starting Cursor Agent...'),
+							{
+								padding: 1,
+								borderColor: 'blue',
+								borderStyle: 'round'
+							}
+						)
+					);
+				}
+
+				// Run cursor-agent
+				await runCursorAgent(resolvedTasksPath, options.silent, projectRoot);
+
+				if (!options.silent) {
+					console.log(
+						chalk.green('\n🎉 Cursor Agent execution completed successfully!')
+					);
+				}
+			} catch (error) {
+				console.error(chalk.red(`Error running Cursor Agent: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// auto command - fully automated task execution pipeline
+	programInstance
+		.command('auto')
+		.description('Fully automated task execution pipeline: parse PRD, expand tasks, run agent, monitor completion')
+		.option('-c, --config <path>', 'Path to custom config file')
+		.option('--silent', 'Run in silent mode with minimal output')
+		.option('--max-iterations <number>', 'Maximum number of agent iterations', '10')
+		.option('--check-config', 'Check auto configuration and exit')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster to get project root
+				const taskMaster = initTaskMaster({
+					tasksPath: true
+				});
+				const projectRoot = taskMaster.getProjectRoot();
+
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not find project root.'));
+					process.exit(1);
+				}
+
+				// Check configuration if requested
+				if (options.checkConfig) {
+					console.log(chalk.blue('Checking auto configuration...'));
+					const configCheck = await checkAutoConfiguration(projectRoot);
+					
+					if (configCheck.valid) {
+						console.log(chalk.green('✅ Auto configuration is valid'));
+						console.log(chalk.blue('Configuration:'), JSON.stringify(configCheck.config, null, 2));
+					} else {
+						console.log(chalk.red('❌ Auto configuration has errors:'));
+						configCheck.errors.forEach(error => {
+							console.log(chalk.red(`  - ${error}`));
+						});
+					}
+					
+					if (configCheck.warnings.length > 0) {
+						console.log(chalk.yellow('⚠️  Warnings:'));
+						configCheck.warnings.forEach(warning => {
+							console.log(chalk.yellow(`  - ${warning}`));
+						});
+					}
+					
+					process.exit(configCheck.valid ? 0 : 1);
+				}
+
+				// Display banner
+				if (!options.silent) {
+					displayBanner();
+					console.log(chalk.blue('\n🚀 Starting automated task execution pipeline...\n'));
+				}
+
+				// Execute auto pipeline
+				const result = await executeAutoPipeline({
+					projectRoot,
+					configPath: options.config,
+					silentMode: options.silent,
+					maxIterations: parseInt(options.maxIterations, 10)
+				});
+
+				// Display results
+				if (!options.silent) {
+					console.log(chalk.green('\n🎉 Automated execution completed successfully!'));
+					console.log(chalk.blue('\n📊 Execution Statistics:'));
+					console.log(`  • Total tasks: ${result.totalTasks}`);
+					console.log(`  • Completed: ${result.completedTasks}`);
+					console.log(`  • Failed: ${result.failedTasks}`);
+					console.log(`  • New tasks added: ${result.newTasksAdded}`);
+					console.log(`  • Iterations: ${result.iterations}`);
+					console.log(`  • Duration: ${Math.round(result.duration / 1000)}s`);
+				}
+
+			} catch (error) {
+				console.error(chalk.red(`Error in auto execution: ${error.message}`));
+				if (!options.silent && process.env.DEBUG) {
+					console.error(chalk.red('Stack trace:'), error.stack);
+				}
 				process.exit(1);
 			}
 		})

@@ -53,7 +53,7 @@ alwaysApply: true
   - Use consistent formatting across rules
 
 - **Temporary Work Directory:**
-  - **All temporary programming and testing work MUST be done in the `tmp/` directory**
+  - **All temporary programming and testing work MUST be done in the repo‑root `tmp/` directory.**
   - Use `tmp/` for experimental code, quick tests, debugging scripts, and temporary files
   - Keep the main project structure clean by isolating temporary work
   - Examples of appropriate `tmp/` usage:
@@ -62,5 +62,11 @@ alwaysApply: true
     - Debugging utilities (`tmp/debug-helper.js`)
     - Temporary data files (`tmp/test-data.json`)
   - **DO NOT** create temporary files in main source directories (`src/`, `scripts/`, etc.)
-  - **DO NOT** commit temporary files from `tmp/` directory to version control
-  - Clean up `tmp/` directory regularly to prevent accumulation of temporary files 
+  - Add `tmp/` to [gitignore](mdc:.gitignore); do not commit its contents. If you must keep the directory, commit only a `tmp/.gitkeep` placeholder.
+    ```gitignore
+    tmp/**
+    !tmp/.gitkeep
+    ```
+  - Exclude `tmp/` from linters/formatters/tests (e.g., [eslintignore](mdc:.eslintignore), [prettierignore](mdc:.prettierignore), test runner config).
+  - Never import from `tmp/` in production code.
+  - Clean up `tmp/` regularly to prevent accumulation of temporary files

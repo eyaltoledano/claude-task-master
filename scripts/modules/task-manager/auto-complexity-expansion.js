@@ -24,15 +24,18 @@ export async function runAutoComplexityExpansion(options) {
 		projectRoot,
 		tag
 	} = options;
+	const thr = Number.isFinite(Number(threshold))
+		? Math.min(10, Math.max(1, Number(threshold)))
+		: 7;
 
-	console.log(chalk.blue(`📊 Analyzing task complexity (threshold: ${threshold})...`));
+	console.log(chalk.blue(`📊 Analyzing task complexity (threshold: ${thr})...`));
 
 	try {
 		// Step 1: Run complexity analysis
 		const complexityResult = await analyzeTaskComplexity(
 			{
 				file: tasksPath,
-				threshold: threshold,
+				threshold: thr,
 				research: research,
 				projectRoot: projectRoot,
 				tag: tag
@@ -121,9 +124,9 @@ export async function runAutoComplexityExpansion(options) {
  * @param {string} projectRoot - Project root path
  * @returns {Promise<boolean>} Whether auto-expansion can proceed
  */
-export async function validateAutoExpansion(tasksPath, projectRoot) {
+export async function validateAutoExpansion(tasksPath, projectRoot, tag = 'master') {
 	try {
-		const tasksData = readJSON(tasksPath, projectRoot);
+		const tasksData = readJSON(tasksPath, projectRoot, tag);
 		
 		if (!tasksData || !tasksData.tasks || tasksData.tasks.length === 0) {
 			throw new Error('No tasks found to analyze');
