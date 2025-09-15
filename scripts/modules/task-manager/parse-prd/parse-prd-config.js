@@ -50,6 +50,8 @@ export class PrdParseConfig {
 		this.force = options.force || false;
 		this.append = options.append || false;
 		this.research = options.research || false;
+		this.auto = options.auto || false;
+		this.autoThreshold = options.autoThreshold || '7';
 		this.reportProgress = options.reportProgress;
 		this.mcpLog = options.mcpLog;
 		this.session = options.session;

@@ -220,4 +220,128 @@ describe('LMStudioAIProvider', () => {
 			expect(provider.requiresMaxCompletionTokens('custom-model')).toBe(false);
 		});
 	});
+
+	describe('API Key Configuration', () => {
+		it('should handle missing API key gracefully', () => {
+			// LM Studio should work without API key for local usage
+			expect(() => provider.validateAuth({})).not.toThrow();
+			expect(() => provider.validateAuth({ apiKey: undefined })).not.toThrow();
+			expect(() => provider.validateAuth({ apiKey: null })).not.toThrow();
+		});
+
+		it('should accept optional API key for remote usage', () => {
+			expect(() => provider.validateAuth({ apiKey: 'test-key' })).not.toThrow();
+			expect(() => provider.validateAuth({ apiKey: 'sk-1234567890' })).not.toThrow();
+		});
+	});
+
+	describe('Model Support', () => {
+		it('should support various model formats', () => {
+			const client = provider.getClient({});
+			
+			// Test different model naming conventions
+			const models = [
+				'llama-3.1-8b-instruct',
+				'qwen2.5-7b-instruct', 
+				'mistral-7b-instruct',
+				'gpt-oss:latest',
+				'gpt-oss:20b',
+				'devstral:latest',
+				'qwen3:latest',
+				'custom-model'
+			];
+
+			models.forEach(modelId => {
+				const model = client(modelId);
+				expect(model).toBeDefined();
+				expect(model.modelId).toBe(modelId);
+			});
+		});
+	});
+
+	describe('Base URL Configuration', () => {
+		it('should use default base URL when not specified', () => {
+			const client = provider.getClient({});
+			const model = client('test-model');
+			expect(model).toBeDefined();
+		});
+
+		it('should accept custom base URL', () => {
+			const customURL = 'http://192.168.1.100:8080/v1';
+			const client = provider.getClient({ baseURL: customURL });
+			const model = client('test-model');
+			expect(model).toBeDefined();
+		});
+
+		it('should handle different port configurations', () => {
+			const ports = ['11434', '8080', '1234', '3000'];
+			
+			ports.forEach(port => {
+				const baseURL = `http://localhost:${port}/v1`;
+				const client = provider.getClient({ baseURL });
+				const model = client('test-model');
+				expect(model).toBeDefined();
+			});
+		});
+	});
+
+	describe('Error Handling', () => {
+		it('should handle invalid base URL gracefully', () => {
+			// Should not throw during client creation, errors would occur during actual API calls
+			expect(() => {
+				const client = provider.getClient({ baseURL: 'invalid-url' });
+				client('test-model');
+			}).not.toThrow();
+		});
+
+		it('should handle empty model ID', () => {
+			const client = provider.getClient({});
+			const model = client('');
+			expect(model).toBeDefined();
+			expect(model.modelId).toBe('');
+		});
+	});
+
+	describe('Token Parameter Edge Cases', () => {
+		it('should handle very large token values', () => {
+			const result = provider.prepareTokenParam('test-model', 1000000);
+			expect(result).toEqual({ maxTokens: 1000000 });
+		});
+
+		it('should handle string token values', () => {
+			const result = provider.prepareTokenParam('test-model', '5000');
+			expect(result).toEqual({ maxTokens: 5000 });
+		});
+
+		it('should handle null token values', () => {
+			const result = provider.prepareTokenParam('test-model', null);
+			expect(result).toEqual({ maxTokens: 0 });
+		});
+	});
+
+	describe('Provider Integration', () => {
+		it('should be compatible with provider registry', () => {
+			// Test that the provider can be instantiated and used
+			expect(provider.name).toBe('LM Studio');
+			expect(typeof provider.getClient).toBe('function');
+			expect(typeof provider.validateAuth).toBe('function');
+			expect(typeof provider.prepareTokenParam).toBe('function');
+		});
+
+		it('should support all required provider methods', () => {
+			const requiredMethods = [
+				'validateAuth',
+				'getClient', 
+				'prepareTokenParam',
+				'validateOptionalParams',
+				'isRequiredApiKey',
+				'getRequiredApiKeyName',
+				'requiresMaxCompletionTokens'
+			];
+
+			requiredMethods.forEach(method => {
+				expect(typeof provider[method]).toBe('function');
+			});
+		});
+	});
 });

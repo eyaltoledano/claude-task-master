@@ -193,11 +193,14 @@ An example PRD template is available after initialization in `.taskmaster/templa
 
 The more detailed your PRD, the better the generated tasks will be.
 
+> 💡 **Pro Tip**: Use the `--auto` flag when parsing your PRD to automatically analyze task complexity and expand high-complexity tasks into detailed subtasks. This saves time and ensures complex tasks are properly broken down from the start.
+
 #### 6. Common Commands
 
 Use your AI assistant to:
 
 - Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
+- Parse with auto-expansion: `Can you parse my PRD at scripts/prd.txt with automatic complexity analysis and task expansion?`
 - Plan next step: `What's the next task I should work on?`
 - Implement a task: `Can you help me implement task 3?`
 - View multiple tasks: `Can you show me tasks 1, 3, and 5?`
@@ -243,6 +246,12 @@ task-master init
 # Parse a PRD and generate tasks
 task-master parse-prd your-prd.txt
 
+# Parse PRD with automatic complexity analysis and task expansion
+task-master parse-prd your-prd.txt --auto
+
+# Parse PRD with custom complexity threshold for auto-expansion
+task-master parse-prd your-prd.txt --auto --auto-threshold 8
+
 # List all tasks
 task-master list
 
@@ -266,6 +275,29 @@ task-master generate
 # Add rules after initialization
 task-master rules add windsurf,roo,vscode
 ```
+
+### Automatic Task Expansion
+
+Task Master can automatically analyze task complexity and expand high-complexity tasks after parsing your PRD:
+
+```bash
+# Automatically analyze complexity and expand tasks above threshold 7
+task-master parse-prd your-prd.txt --auto
+
+# Use custom complexity threshold (tasks with complexity ≥ 8 will be expanded)
+task-master parse-prd your-prd.txt --auto --auto-threshold 8
+
+# Combine with research mode for more informed analysis
+task-master parse-prd your-prd.txt --auto --research
+```
+
+**How it works:**
+1. **Parses your PRD** and generates initial tasks
+2. **Analyzes complexity** of each task (1-10 scale)
+3. **Automatically expands** tasks above the threshold into detailed subtasks
+4. **Provides summary** of expanded vs skipped tasks
+
+This is equivalent to running `task-master analyze-complexity` followed by `task-master expand --all`, but with intelligent filtering based on complexity scores.
 
 ## Claude Code Support
 

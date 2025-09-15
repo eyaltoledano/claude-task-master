@@ -835,6 +835,15 @@ function registerCommands(programInstance) {
 			'-r, --research',
 			'Use Perplexity AI for research-backed task generation, providing more comprehensive and accurate task breakdown'
 		)
+		.option(
+			'--auto',
+			'Automatically analyze complexity and expand high-complexity tasks after PRD parsing'
+		)
+		.option(
+			'--auto-threshold <number>',
+			'Complexity threshold for auto-expansion (default: 7)',
+			'7'
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (file, options) => {
 			// Initialize TaskMaster
@@ -852,7 +861,7 @@ function registerCommands(programInstance) {
 			} catch (error) {
 				console.log(
 					boxen(
-						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used`,
+						`${chalk.white.bold('Parse PRD Help')}\n\n${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file (alternative to positional argument)\n  -o, --output <file>      Output file path (default: .taskmaster/tasks/tasks.json)\n  -n, --num-tasks <number> Number of tasks to generate (default: 10)\n  -f, --force              Skip confirmation when overwriting existing tasks\n  --append                 Append new tasks to existing tasks.json instead of overwriting\n  -r, --research           Use Perplexity AI for research-backed task generation\n  --auto                   Automatically analyze complexity and expand high-complexity tasks\n  --auto-threshold <num>   Complexity threshold for auto-expansion (default: 7)\n\n${chalk.cyan('Example:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd --force\n  task-master parse-prd requirements_v2.txt --append\n  task-master parse-prd requirements.txt --research\n  task-master parse-prd requirements.txt --auto --auto-threshold 8\n\n${chalk.yellow('Note: This command will:')}\n  1. Look for a PRD file at ${TASKMASTER_DOCS_DIR}/PRD.md by default\n  2. Use the file specified by --input or positional argument if provided\n  3. Generate tasks from the PRD and either:\n     - Overwrite any existing tasks.json file (default)\n     - Append to existing tasks.json if --append is used\n  4. If --auto is used, automatically analyze complexity and expand high-complexity tasks`,
 						{ padding: 1, borderColor: 'blue', borderStyle: 'round' }
 					)
 				);
@@ -864,6 +873,8 @@ function registerCommands(programInstance) {
 			const force = options.force || false;
 			const append = options.append || false;
 			const research = options.research || false;
+			const auto = options.auto || false;
+			const autoThreshold = parseFloat(options.autoThreshold || '7');
 			let useForce = force;
 			const useAppend = append;
 
@@ -927,18 +938,50 @@ function registerCommands(programInstance) {
 						)
 					);
 				}
+				if (auto) {
+					console.log(
+						chalk.blue(
+							`Auto-expansion enabled with complexity threshold: ${autoThreshold}`
+						)
+					);
+				}
 
 				// Handle case where getTasksPath() returns null
 				const outputPath =
 					taskMaster.getTasksPath() ||
 					path.join(taskMaster.getProjectRoot(), TASKMASTER_TASKS_FILE);
-				await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
+				
+				// Parse PRD first
+				const parseResult = await parsePRD(taskMaster.getPrdPath(), outputPath, numTasks, {
 					append: useAppend,
 					force: useForce,
 					research: research,
 					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
+
+				// If auto mode is enabled, run complexity analysis and expand high-complexity tasks
+				if (auto && parseResult.success) {
+					try {
+						console.log(chalk.blue('\n🔍 Running automatic complexity analysis...'));
+						
+						// Import the auto workflow function
+						const { runAutoComplexityExpansion } = await import('./task-manager/auto-complexity-expansion.js');
+						
+						await runAutoComplexityExpansion({
+							tasksPath: outputPath,
+							threshold: autoThreshold,
+							research: research,
+							projectRoot: taskMaster.getProjectRoot(),
+							tag: tag
+						});
+						
+						console.log(chalk.green('✅ Auto-expansion completed successfully!'));
+					} catch (autoError) {
+						console.error(chalk.yellow(`⚠️  Auto-expansion failed: ${autoError.message}`));
+						console.log(chalk.blue('Continuing with regular PRD parsing results...'));
+					}
+				}
 			} catch (error) {
 				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);

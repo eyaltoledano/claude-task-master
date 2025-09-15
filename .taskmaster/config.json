@@ -1,9 +1,9 @@
 {
   "models": {
     "main": {
-      "provider": "lmstudio",
-      "modelId": "gpt-oss:latest",
-      "maxTokens": 128000,
+      "provider": "claude-code",
+      "modelId": "sonnet",
+      "maxTokens": 64000,
       "temperature": 0.2
     },
     "research": {

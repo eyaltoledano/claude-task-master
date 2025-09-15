@@ -41,6 +41,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 		force,
 		append,
 		research,
+		auto,
+		autoThreshold,
 		projectRoot,
 		tag
 	} = args;
@@ -164,6 +166,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 				force,
 				append,
 				research,
+				auto,
+				autoThreshold,
 				reportProgress,
 				commandName: 'parse-prd',
 				outputType: 'mcp'

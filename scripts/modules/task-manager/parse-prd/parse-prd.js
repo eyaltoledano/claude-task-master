@@ -89,6 +89,33 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 		// Save to file
 		saveTasksToFile(config.tasksPath, finalTasks, config.targetTag, logger);
 
+		// Handle auto-expansion if enabled
+		let autoExpansionResult = null;
+		if (config.auto) {
+			try {
+				logger.report('Running automatic complexity analysis and expansion...', 'info');
+				
+				// Import the auto workflow function
+				const { runAutoComplexityExpansion } = await import('./auto-complexity-expansion.js');
+				
+				autoExpansionResult = await runAutoComplexityExpansion({
+					tasksPath: config.tasksPath,
+					threshold: parseFloat(config.autoThreshold || '7'),
+					research: config.research,
+					projectRoot: config.projectRoot,
+					tag: config.targetTag
+				});
+				
+				logger.report(`Auto-expansion completed: ${autoExpansionResult.expandedTasks} tasks expanded`, 'info');
+			} catch (autoError) {
+				logger.report(`Auto-expansion failed: ${autoError.message}`, 'warn');
+				autoExpansionResult = {
+					success: false,
+					error: autoError.message
+				};
+			}
+		}
+
 		// Handle completion reporting
 		await handleCompletionReporting(
 			config,
@@ -103,7 +130,8 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 			success: true,
 			tasksPath: config.tasksPath,
 			telemetryData: serviceResult.aiServiceResponse?.telemetryData,
-			tagInfo: serviceResult.aiServiceResponse?.tagInfo
+			tagInfo: serviceResult.aiServiceResponse?.tagInfo,
+			autoExpansion: autoExpansionResult
 		};
 	} catch (error) {
 		logger.report(`Error parsing PRD: ${error.message}`, 'error');

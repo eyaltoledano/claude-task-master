@@ -50,4 +50,17 @@ alwaysApply: true
   - Keep descriptions concise
   - Include both DO and DON'T examples
   - Reference actual code over theoretical examples
-  - Use consistent formatting across rules 
+  - Use consistent formatting across rules
+
+- **Temporary Work Directory:**
+  - **All temporary programming and testing work MUST be done in the `tmp/` directory**
+  - Use `tmp/` for experimental code, quick tests, debugging scripts, and temporary files
+  - Keep the main project structure clean by isolating temporary work
+  - Examples of appropriate `tmp/` usage:
+    - Quick test scripts (`tmp/test-script.js`)
+    - Experimental features (`tmp/experiment-feature/`)
+    - Debugging utilities (`tmp/debug-helper.js`)
+    - Temporary data files (`tmp/test-data.json`)
+  - **DO NOT** create temporary files in main source directories (`src/`, `scripts/`, etc.)
+  - **DO NOT** commit temporary files from `tmp/` directory to version control
+  - Clean up `tmp/` directory regularly to prevent accumulation of temporary files 

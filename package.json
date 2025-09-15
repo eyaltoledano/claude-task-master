@@ -9,12 +9,21 @@
 		"task-master-mcp": "mcp-server/server.js",
 		"task-master-ai": "mcp-server/server.js"
 	},
-	"workspaces": ["apps/*", "."],
+	"workspaces": [
+		"apps/*",
+		"."
+	],
 	"scripts": {
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:fails": "node --experimental-vm-modules node_modules/.bin/jest --onlyFailures",
 		"test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
 		"test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+		"test:unit": "node --experimental-vm-modules node_modules/.bin/jest tests/unit",
+		"test:integration": "node --experimental-vm-modules node_modules/.bin/jest tests/integration",
+		"test:lmstudio": "node --experimental-vm-modules node_modules/.bin/jest tests/unit/ai-providers/lmstudio.test.js",
+		"test:auto-complexity": "node --experimental-vm-modules node_modules/.bin/jest tests/unit/task-manager/auto-complexity-expansion.test.js",
+		"test:parse-prd-auto": "node --experimental-vm-modules node_modules/.bin/jest tests/integration/parse-prd-auto-workflow.test.js",
+		"test:mcp-auto": "node --experimental-vm-modules node_modules/.bin/jest tests/integration/mcp-server/parse-prd-auto-mcp.test.js",
 		"test:e2e": "./tests/e2e/run_e2e.sh",
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
 		"prepare": "chmod +x bin/task-master.js mcp-server/server.js",
@@ -70,6 +79,7 @@
 		"fastmcp": "^3.5.0",
 		"figlet": "^1.8.0",
 		"fuse.js": "^7.1.0",
+		"g": "^2.0.1",
 		"gpt-tokens": "^1.3.14",
 		"gradient-string": "^3.0.0",
 		"helmet": "^8.1.0",

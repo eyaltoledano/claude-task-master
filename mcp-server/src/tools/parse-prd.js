@@ -63,7 +63,16 @@ export function registerParsePRDTool(server) {
 			append: z
 				.boolean()
 				.optional()
-				.describe('Append generated tasks to existing file.')
+				.describe('Append generated tasks to existing file.'),
+			auto: z
+				.boolean()
+				.optional()
+				.describe('Automatically analyze complexity and expand high-complexity tasks after PRD parsing.'),
+			autoThreshold: z
+				.string()
+				.optional()
+				.default('7')
+				.describe('Complexity threshold for auto-expansion (default: 7).')
 		}),
 		execute: withNormalizedProjectRoot(
 			async (args, { log, session, reportProgress }) => {
@@ -84,6 +93,33 @@ export function registerParsePRDTool(server) {
 						log,
 						{ session, reportProgress: progressCapability }
 					);
+
+					// Handle auto-expansion if enabled and PRD parsing was successful
+					if (args.auto && result.success && result.data) {
+						try {
+							log.info('Running automatic complexity analysis and expansion...');
+							
+							// Import the auto workflow function
+							const { runAutoComplexityExpansion } = await import('../../../../scripts/modules/task-manager/auto-complexity-expansion.js');
+							
+							const autoResult = await runAutoComplexityExpansion({
+								tasksPath: result.data.tasksPath,
+								threshold: parseFloat(args.autoThreshold || '7'),
+								research: args.research || false,
+								projectRoot: args.projectRoot,
+								tag: resolvedTag
+							});
+
+							// Add auto-expansion results to the response
+							result.data.autoExpansion = autoResult;
+							log.info(`Auto-expansion completed: ${autoResult.expandedTasks} tasks expanded`);
+						} catch (autoError) {
+							log.warn(`Auto-expansion failed: ${autoError.message}`);
+							// Don't fail the entire operation, just log the auto-expansion failure
+							result.data.autoExpansionError = autoError.message;
+						}
+					}
+
 					return handleApiResult(
 						result,
 						log,
