@@ -3,7 +3,7 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.24.2",
+	"version": "0.25.0-rc.0",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
@@ -240,7 +240,7 @@
 		"check-types": "tsc --noEmit"
 	},
 	"dependencies": {
-		"task-master-ai": "0.26.0"
+		"task-master-ai": "*"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",

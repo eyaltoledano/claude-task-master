@@ -65,7 +65,7 @@ export class SupabaseTaskRepository {
 			.from('tasks')
 			.select('*')
 			.eq('account_id', accountId)
-			.eq('id', taskId)
+			.ilike('display_id', taskId)
 			.single();
 
 		if (error) {
