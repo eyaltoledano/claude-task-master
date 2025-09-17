@@ -120,6 +120,15 @@ const onAdd = (projectRoot, assetsDir) => {
  * @returns {{processed: number, skipped: number, fileCount: number, success: number, failed: number}} Count of successful/failed removal operations and total files targeted for removal
  */
 const onRemove = (projectRoot, assetsDir) => {
+	if (!assetsDir) {
+		log('warn', 'assetsDir not provided to onRemove');
+		return {
+			success: 0,
+			failed: 1,
+			fileCount: 0
+		};
+	}
+
 	const sourceDir = path.join(assetsDir, 'claude', 'commands');
 	const targetDir = path.join(projectRoot, '.cursor', 'commands');
 
