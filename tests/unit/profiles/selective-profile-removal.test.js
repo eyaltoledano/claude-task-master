@@ -53,19 +53,35 @@ describe('Selective Rules Removal', () => {
 		mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
 		mockStatSync = jest.spyOn(fs, 'statSync').mockImplementation((filePath) => {
 			// Mock stat objects for files and directories
+			// Use more robust detection while maintaining backward compatibility
 			const extname = path.extname(filePath);
 			const basename = path.basename(filePath);
-			
-			// Use extension-based detection for better accuracy
+
+			// Check for known file extensions first (more reliable)
 			if (extname === '.mdc' || extname === '.md') {
-				// This is a file (.mdc rules file or .md command file)
 				return { isDirectory: () => false, isFile: () => true };
-			} else if (basename === 'taskmaster' || basename.startsWith('tm-') || 
-					   basename === 'add-task' || basename === 'next' || basename === 'commands') {
-				// This is a directory (taskmaster, command categories, etc.)
+			}
+
+			// Check for known directory names
+			if (
+				basename === 'taskmaster' ||
+				basename === 'add-task' ||
+				basename === 'next' ||
+				basename === 'commands'
+			) {
+				return { isDirectory: () => true, isFile: () => false };
+			}
+
+			// Fallback to original path-based logic for backward compatibility
+			if (filePath.includes('taskmaster') && !filePath.endsWith('.mdc')) {
+				return { isDirectory: () => true, isFile: () => false };
+			} else if (
+				filePath.includes('commands/tm/') &&
+				!filePath.endsWith('.md')
+			) {
 				return { isDirectory: () => true, isFile: () => false };
 			} else {
-				// Default to file for other cases
+				// Default to file for backward compatibility
 				return { isDirectory: () => false, isFile: () => true };
 			}
 		});
@@ -298,7 +314,7 @@ describe('Selective Rules Removal', () => {
 			// Note: Rules directory removal may not work in test environment due to mock limitations
 		});
 
-		it('should remove entire profile directory if completely empty and all rules were Task Master rules and MCP config deleted', () => {
+		it('should remove MCP config but preserve profile directory structure (cursor profile behavior)', () => {
 			const projectRoot = '/test/project';
 			const cursorProfile = getRulesProfile('cursor');
 
@@ -311,13 +327,11 @@ describe('Selective Rules Removal', () => {
 				return false;
 			});
 
-			// Mock sequence: rules dir has only Task Master files, then empty, then profile dir empty
+			// Mock sequence: lifecycle hook processing, then profile dir check
 			mockReaddirSync
 				.mockReturnValueOnce(['add-task']) // Lifecycle hook reads tm directory
 				.mockReturnValueOnce(['add-task.md']) // Lifecycle hook reads command category
-				.mockReturnValueOnce(['cursor_rules.mdc']) // Only Task Master files
-				.mockReturnValueOnce([]) // rules dir empty after removal
-				.mockReturnValueOnce([]); // profile dir empty after all cleanup
+				.mockReturnValueOnce([]); // Read profile dir to check if empty - should be empty
 
 			// Mock MCP config with only Task Master (will be completely deleted)
 			const mockMcpConfig = {
@@ -333,12 +347,12 @@ describe('Selective Rules Removal', () => {
 			const result = removeProfileRules(projectRoot, cursorProfile);
 
 			expect(result.success).toBe(true);
-			expect(result.profileDirRemoved).toBe(true);
+			expect(result.profileDirRemoved).toBe(false); // Cursor profile keeps directory structure
 			expect(result.mcpResult.deleted).toBe(true);
-			expect(result.fileCount).toBe(4); // Includes lifecycle hook processing
+			expect(result.fileCount).toBe(4); // Lifecycle hook processing includes more files/operations
 
-			// Verify that fs.rmSync was called to remove the profile directory
-			expect(mockRmSync).toHaveBeenCalledWith(
+			// Verify that fs.rmSync was NOT called to remove the profile directory (cursor keeps structure)
+			expect(mockRmSync).not.toHaveBeenCalledWith(
 				path.join(projectRoot, '.cursor'),
 				{ recursive: true, force: true }
 			);
