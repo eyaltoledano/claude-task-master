@@ -127,7 +127,7 @@ export class TaskMapper {
 	/**
 	 * Maps database status to internal status
 	 */
-	private static mapStatus(
+	static mapStatus(
 		status: Database['public']['Enums']['task_status']
 	): Task['status'] {
 		switch (status) {

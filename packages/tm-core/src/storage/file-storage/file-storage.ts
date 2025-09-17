@@ -103,6 +103,14 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Load a single task by ID from the tasks.json file
+	 */
+	async loadTask(taskId: string, tag?: string): Promise<Task | null> {
+		const tasks = await this.loadTasks(tag);
+		return tasks.find(task => task.id === taskId) || null;
+	}
+
+	/**
 	 * Save tasks for a specific tag in the single tasks.json file
 	 */
 	async saveTasks(tasks: Task[], tag?: string): Promise<void> {

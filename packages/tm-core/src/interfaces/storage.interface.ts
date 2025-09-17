@@ -18,6 +18,14 @@ export interface IStorage {
 	loadTasks(tag?: string): Promise<Task[]>;
 
 	/**
+	 * Load a single task by ID
+	 * @param taskId - ID of the task to load
+	 * @param tag - Optional tag context for the task
+	 * @returns Promise that resolves to the task or null if not found
+	 */
+	loadTask(taskId: string, tag?: string): Promise<Task | null>;
+
+	/**
 	 * Save tasks to storage, replacing existing tasks
 	 * @param tasks - Array of tasks to save
 	 * @param tag - Optional tag context for the tasks
@@ -175,6 +183,7 @@ export abstract class BaseStorage implements IStorage {
 
 	// Abstract methods that must be implemented by concrete classes
 	abstract loadTasks(tag?: string): Promise<Task[]>;
+	abstract loadTask(taskId: string, tag?: string): Promise<Task | null>;
 	abstract saveTasks(tasks: Task[], tag?: string): Promise<void>;
 	abstract appendTasks(tasks: Task[], tag?: string): Promise<void>;
 	abstract updateTask(
