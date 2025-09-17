@@ -20,6 +20,7 @@ export default {
 	// Transform files
 	preset: 'ts-jest/presets/default-esm',
 	extensionsToTreatAsEsm: ['.ts'],
+	moduleFileExtensions: ['js', 'ts', 'json', 'node'],
 	transform: {
 		'^.+\\.ts$': [
 			'ts-jest',
