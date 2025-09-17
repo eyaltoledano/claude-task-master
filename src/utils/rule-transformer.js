@@ -385,6 +385,18 @@ export function removeProfileRules(projectRoot, profile) {
 					if (fileCountToAdd > 0) {
 						result.fileCount += fileCountToAdd;
 					}
+
+					// Handle failure counts
+					let failureCountToAdd = 0;
+					if (typeof hookResult.failed === 'number') {
+						failureCountToAdd = hookResult.failed;
+					} else if (typeof hookResult.failedCount === 'number') {
+						failureCountToAdd = hookResult.failedCount;
+					}
+					if (failureCountToAdd > 0) {
+						result.failedFileCount =
+							(result.failedFileCount || 0) + failureCountToAdd;
+					}
 				}
 				// Note: We don't set result.notice here to avoid duplication with file preservation notices
 			} catch (error) {
