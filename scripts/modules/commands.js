@@ -4678,13 +4678,21 @@ Examples:
 					return sum + (result.fileCount || 0);
 				}, 0);
 
+				// Calculate total failed files
+				const totalFailedFiles = removalResults.reduce((sum, result) => {
+					return sum + (result.failedFileCount || 0);
+				}, 0);
+
+				// Calculate total removed files (processed minus failed)
+				const totalRemovedFiles = totalFilesProcessed - totalFailedFiles;
+
 				// Show file-based totals if any profile processed files, otherwise show profile-based totals
 				if (totalFilesProcessed > 0) {
-					console.log(
-						chalk.blue(
-							`\nTotal: ${totalFilesProcessed} files processed - ${totalFilesProcessed} removed.`
-						)
-					);
+					let message = `\nTotal: ${totalFilesProcessed} files processed - ${totalRemovedFiles} removed`;
+					if (totalFailedFiles > 0) {
+						message += `, ${totalFailedFiles} failed`;
+					}
+					console.log(chalk.blue(message + '.'));
 				} else {
 					console.log(
 						chalk.blue(
