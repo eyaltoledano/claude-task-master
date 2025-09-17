@@ -224,7 +224,7 @@ const onRemove = (projectRoot, assetsDir) => {
 		);
 		return {
 			processed: successCount,
-			skipped: 0,
+			skipped: failedCount,
 			fileCount: filesToRemove.length,
 			success: successCount,
 			failed: failedCount
