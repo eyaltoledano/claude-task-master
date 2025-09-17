@@ -3,12 +3,12 @@
 	"version": "1.0.0",
 	"description": "Shared build configuration for Task Master monorepo",
 	"type": "module",
-	"main": "./dist/tsup.base.js",
-	"types": "./dist/tsup.base.d.ts",
+	"main": "./dist/tsdown.base.js",
+	"types": "./dist/tsdown.base.d.ts",
 	"exports": {
 		".": {
-			"types": "./dist/tsup.base.d.ts",
-			"import": "./dist/tsup.base.js"
+			"types": "./dist/tsdown.base.d.ts",
+			"import": "./dist/tsdown.base.js"
 		}
 	},
 	"files": ["dist", "src"],
