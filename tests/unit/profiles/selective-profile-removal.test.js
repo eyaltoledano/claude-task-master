@@ -53,17 +53,19 @@ describe('Selective Rules Removal', () => {
 		mockMkdirSync = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
 		mockStatSync = jest.spyOn(fs, 'statSync').mockImplementation((filePath) => {
 			// Mock stat objects for files and directories
-			if (filePath.includes('taskmaster') && !filePath.endsWith('.mdc')) {
-				// This is the taskmaster directory (rules)
-				return { isDirectory: () => true, isFile: () => false };
-			} else if (
-				filePath.includes('commands/tm/') &&
-				!filePath.endsWith('.md')
-			) {
-				// This is a command category directory (add-task, next, etc.)
+			const extname = path.extname(filePath);
+			const basename = path.basename(filePath);
+			
+			// Use extension-based detection for better accuracy
+			if (extname === '.mdc' || extname === '.md') {
+				// This is a file (.mdc rules file or .md command file)
+				return { isDirectory: () => false, isFile: () => true };
+			} else if (basename === 'taskmaster' || basename.startsWith('tm-') || 
+					   basename === 'add-task' || basename === 'next' || basename === 'commands') {
+				// This is a directory (taskmaster, command categories, etc.)
 				return { isDirectory: () => true, isFile: () => false };
 			} else {
-				// This is a file (.mdc rules file or .md command file)
+				// Default to file for other cases
 				return { isDirectory: () => false, isFile: () => true };
 			}
 		});
