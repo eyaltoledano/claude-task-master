@@ -112,12 +112,14 @@ const onAdd = (projectRoot, assetsDir) => {
  * Hook: onRemoveRulesProfile
  * Removes Task Master slash commands from .cursor/commands directory
  * @param {string} projectRoot - The root directory of the project
+ * @param {string} assetsDir - The assets directory containing source files
  * @returns {{success: number, failed: number, fileCount: number}} Count of successful/failed operations and total files processed
  */
-const onRemove = (projectRoot) => {
-	const commandsDir = path.join(projectRoot, '.cursor', 'commands');
+const onRemove = (projectRoot, assetsDir) => {
+	const sourceDir = path.join(assetsDir, 'claude', 'commands');
+	const targetDir = path.join(projectRoot, '.cursor', 'commands');
 
-	if (!fs.existsSync(commandsDir)) {
+	if (!fs.existsSync(targetDir)) {
 		log('info', 'No Task Master commands found to remove');
 		return {
 			success: 0,
@@ -126,43 +128,85 @@ const onRemove = (projectRoot) => {
 		};
 	}
 
+	if (!fs.existsSync(sourceDir)) {
+		log('warn', `Source commands not found: ${sourceDir}`);
+		return {
+			success: 0,
+			failed: 1,
+			fileCount: 0
+		};
+	}
+
 	try {
-		// Count Task Master .md files recursively (files starting with 'tm-')
-		let count = 0;
-		const countFiles = (dir) => {
-			fs.readdirSync(dir).forEach((item) => {
-				const fullPath = path.join(dir, item);
+		// Get all markdown files that should be removed by mirroring source structure
+		const filesToRemove = [];
+
+		const collectSourceFiles = (srcDir, relativePath = '') => {
+			fs.readdirSync(srcDir).forEach((item) => {
+				const fullPath = path.join(srcDir, item);
+				const relativeItemPath = path.join(relativePath, item);
+
 				if (fs.statSync(fullPath).isDirectory()) {
-					countFiles(fullPath);
-				} else if (item.startsWith('tm-') && item.endsWith('.md')) {
-					count++;
+					collectSourceFiles(fullPath, relativeItemPath);
+				} else if (item.endsWith('.md')) {
+					const targetFilePath = path.join(targetDir, relativeItemPath);
+					if (fs.existsSync(targetFilePath)) {
+						filesToRemove.push(targetFilePath);
+					}
 				}
 			});
 		};
-		countFiles(commandsDir);
 
-		log('info', `Removing ${count} Task Master slash commands`);
+		collectSourceFiles(sourceDir);
 
-		// Remove individual Task Master files
-		const removeFiles = (dir) => {
-			fs.readdirSync(dir).forEach((item) => {
-				const fullPath = path.join(dir, item);
-				if (fs.statSync(fullPath).isDirectory()) {
-					removeFiles(fullPath);
-				} else if (item.startsWith('tm-') && item.endsWith('.md')) {
-					fs.rmSync(fullPath);
+		log('info', `Removing ${filesToRemove.length} Task Master slash commands`);
+
+		// Remove the collected files
+		let removedCount = 0;
+		filesToRemove.forEach((filePath) => {
+			try {
+				fs.rmSync(filePath);
+				removedCount++;
+			} catch (err) {
+				log('warn', `Failed to remove ${filePath}: ${err.message}`);
+			}
+		});
+
+		// Remove empty directories
+		const removeEmptyDirs = (dir) => {
+			if (!fs.existsSync(dir)) return;
+
+			try {
+				const items = fs.readdirSync(dir);
+
+				// Recursively process subdirectories first
+				items.forEach((item) => {
+					const fullPath = path.join(dir, item);
+					if (fs.statSync(fullPath).isDirectory()) {
+						removeEmptyDirs(fullPath);
+					}
+				});
+
+				// Check if directory is now empty and remove if so
+				const remainingItems = fs.readdirSync(dir);
+				if (remainingItems.length === 0 && dir !== targetDir) {
+					fs.rmdirSync(dir);
 				}
-			});
+			} catch (err) {
+				// Ignore errors when cleaning up directories
+			}
 		};
-		removeFiles(commandsDir);
+
+		removeEmptyDirs(targetDir);
+
 		log(
 			'success',
-			`Removed ${count} Task Master slash commands from Cursor IDE`
+			`Removed ${removedCount} Task Master slash commands from Cursor IDE`
 		);
 		return {
-			success: count,
-			failed: 0,
-			fileCount: count
+			success: removedCount,
+			failed: filesToRemove.length - removedCount,
+			fileCount: filesToRemove.length
 		};
 	} catch (error) {
 		log('warn', `Failed to remove commands: ${error.message}`);
