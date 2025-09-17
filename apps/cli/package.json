@@ -1,6 +1,6 @@
 {
 	"name": "@tm/cli",
-	"version": "1.0.0",
+	"version": "1.1.0-rc.0",
 	"description": "Task Master CLI - Command line interface for task management",
 	"type": "module",
 	"private": true,
@@ -9,7 +9,10 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
@@ -42,12 +45,19 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"keywords": ["task-master", "cli", "task-management", "productivity"],
+	"keywords": [
+		"task-master",
+		"cli",
+		"task-management",
+		"productivity"
+	],
 	"author": "",
 	"license": "MIT",
 	"typesVersions": {
 		"*": {
-			"*": ["src/*"]
+			"*": [
+				"src/*"
+			]
 		}
 	}
 }

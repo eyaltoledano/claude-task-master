@@ -1,5 +1,16 @@
 # task-master-ai
 
+## 1.1.0-rc.0
+
+### Minor Changes
+
+- [#1213](https://github.com/eyaltoledano/claude-task-master/pull/1213) [`33259cc`](https://github.com/eyaltoledano/claude-task-master/commit/33259cc4f87dd6876174c5558cdc589e0f31e5f9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Test out the RC
+
+### Patch Changes
+
+- Updated dependencies [[`cd90b4d`](https://github.com/eyaltoledano/claude-task-master/commit/cd90b4d65fc2f04bdad9fb73aba320b58a124240)]:
+  - @tm/cli@1.1.0-rc.0
+
 ## 0.26.0
 
 ### Minor Changes

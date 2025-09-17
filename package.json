@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.26.0",
+	"version": "1.1.0-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -9,7 +9,11 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
@@ -65,7 +69,7 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"@streamparser/json": "^0.0.22",
-		"@tm/cli": "*",
+		"@tm/cli": "1.1.0-rc.0",
 		"ai": "^4.3.10",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
@@ -115,7 +119,12 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"

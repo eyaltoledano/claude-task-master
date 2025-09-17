@@ -1,0 +1,17 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.26.0",
+    "@tm/cli": "1.0.0",
+    "docs": "0.0.2",
+    "extension": "0.24.2",
+    "@tm/build-config": "1.0.0",
+    "@tm/core": "1.0.0"
+  },
+  "changesets": [
+    "moody-oranges-slide",
+    "odd-otters-tan",
+    "wild-ears-look"
+  ]
+}
