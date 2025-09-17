@@ -331,11 +331,15 @@ describe('Selective Rules Removal', () => {
 			const result = removeProfileRules(projectRoot, cursorProfile);
 
 			expect(result.success).toBe(true);
-			expect(result.profileDirRemoved).toBe(false); // May not be removed due to test environment constraints
+			expect(result.profileDirRemoved).toBe(true);
 			expect(result.mcpResult.deleted).toBe(true);
 			expect(result.fileCount).toBe(4); // Includes lifecycle hook processing
 
-			// Note: Profile directory removal may not work correctly in test environment
+			// Verify that fs.rmSync was called to remove the profile directory
+			expect(mockRmSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.cursor'),
+				{ recursive: true, force: true }
+			);
 		});
 
 		it('should NOT remove profile directory if existing rules were preserved, even if MCP config deleted', () => {
