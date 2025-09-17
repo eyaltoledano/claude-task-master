@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "Shared build configuration for Task Master monorepo",
 	"type": "module",
+	"private": true,
 	"main": "./dist/tsdown.base.js",
 	"types": "./src/tsdown.base.ts",
 	"exports": {

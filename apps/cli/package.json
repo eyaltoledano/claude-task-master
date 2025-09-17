@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"description": "Task Master CLI - Command line interface for task management",
 	"type": "module",
+	"private": true,
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
 	"exports": {
