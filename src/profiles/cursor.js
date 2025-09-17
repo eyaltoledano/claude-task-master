@@ -162,13 +162,15 @@ const onRemove = (projectRoot, assetsDir) => {
 		log('info', `Removing ${filesToRemove.length} Task Master slash commands`);
 
 		// Remove the collected files
-		let removedCount = 0;
+		let successCount = 0;
+		let failedCount = 0;
 		filesToRemove.forEach((filePath) => {
 			try {
-				fs.rmSync(filePath);
-				removedCount++;
+				fs.rmSync(filePath, { force: true });
+				successCount++;
 			} catch (err) {
 				log('warn', `Failed to remove ${filePath}: ${err.message}`);
+				failedCount++;
 			}
 		});
 
@@ -201,11 +203,11 @@ const onRemove = (projectRoot, assetsDir) => {
 
 		log(
 			'success',
-			`Removed ${removedCount} Task Master slash commands from Cursor IDE`
+			`Removed ${successCount} Task Master slash commands from Cursor IDE`
 		);
 		return {
-			success: removedCount,
-			failed: filesToRemove.length - removedCount,
+			success: successCount,
+			failed: failedCount,
 			fileCount: filesToRemove.length
 		};
 	} catch (error) {
