@@ -39,6 +39,24 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 }
 
 /**
+ * Helper function to count markdown files recursively
+ * @param {string} dir - Directory path to count markdown files in
+ * @returns {number} Total count of markdown files
+ */
+function countMarkdownFiles(dir) {
+	let total = 0;
+	const stats = fs.statSync(dir);
+	if (stats.isDirectory()) {
+		for (const entry of fs.readdirSync(dir)) {
+			total += countMarkdownFiles(path.join(dir, entry));
+		}
+	} else if (path.extname(dir) === '.md') {
+		total += 1;
+	}
+	return total;
+}
+
+/**
  * Hook: onAddRulesProfile
  * Copies Task Master slash commands from assets to .cursor/commands with syntax transformation
  * @param {string} projectRoot - The root directory of the project
@@ -68,12 +86,13 @@ const onAdd = (projectRoot, assetsDir) => {
 			);
 
 	log('info', 'Adding Task Master slash commands to .cursor/commands');
-	const count = copyRecursiveWithTransform(sourceDir, targetDir, transform);
-	log('success', `Added ${count} Task Master slash commands to Cursor IDE`);
+	const fileCount = countMarkdownFiles(sourceDir);
+	const added = copyRecursiveWithTransform(sourceDir, targetDir, transform);
+	log('success', `Added ${added} of ${fileCount} Task Master slash commands to Cursor IDE`);
 	return {
-		success: count,
-		failed: 0,
-		fileCount: count
+		success: added,
+		failed: fileCount - added,
+		fileCount: fileCount
 	};
 };
 
