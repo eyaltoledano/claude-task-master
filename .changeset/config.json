@@ -13,7 +13,6 @@
   ],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": false,
   "ignore": [
     "docs"
   ]
