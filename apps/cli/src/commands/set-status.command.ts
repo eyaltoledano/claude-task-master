@@ -136,14 +136,22 @@ export class SetStatusCommand extends Command {
 						newStatus: result.newStatus
 					});
 				} catch (error) {
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
+
 					if (!options.silent) {
 						console.error(
-							chalk.red(`Failed to update task ${taskId}: ${error.message}`)
+							chalk.red(`Failed to update task ${taskId}: ${errorMessage}`)
 						);
 					}
 					if (options.format === 'json') {
 						console.log(
-							JSON.stringify({ success: false, error: error.message, taskId })
+							JSON.stringify({
+								success: false,
+								error: errorMessage,
+								taskId,
+								timestamp: new Date().toISOString()
+							})
 						);
 					}
 					process.exit(1);
@@ -266,7 +274,8 @@ export class SetStatusCommand extends Command {
 			deferred: chalk.gray,
 			cancelled: chalk.red,
 			blocked: chalk.red,
-			review: chalk.magenta
+			review: chalk.magenta,
+			completed: chalk.green
 		};
 
 		const colorFn = statusColors[status] || chalk.white;
