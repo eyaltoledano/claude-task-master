@@ -18,7 +18,13 @@ export default {
 	testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
 
 	// Transform files
-	transform: {},
+	preset: 'ts-jest/presets/default-esm',
+	extensionsToTreatAsEsm: ['.ts'],
+	transform: {
+		'^.+\\.ts$': ['ts-jest', {
+			useESM: true
+		}]
+	},
 
 	// Disable transformations for node_modules
 	transformIgnorePatterns: ['/node_modules/'],

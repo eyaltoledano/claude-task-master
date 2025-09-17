@@ -50,6 +50,11 @@ export function getStatusWithColor(
 			color: chalk.red,
 			icon: '!',
 			tableIcon: '!'
+		},
+		completed: {
+			color: chalk.green,
+			icon: '✓',
+			tableIcon: '✓'
 		}
 	};
 

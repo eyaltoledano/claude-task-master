@@ -9,22 +9,18 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
-		"build": "npm run build:build-config && tsdown",
+		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
 		"turbo:dev": "turbo dev",
 		"turbo:build": "turbo build",
 		"turbo:typecheck": "turbo typecheck",
-		"dev:main": "tsdown --watch --onSuccess 'echo \"📦 Main package built\" && npm link'",
-		"dev:legacy": "npm run build:build-config && concurrently -n \"core,cli,main\" -c \"blue,green,yellow\" \"npm run dev:core\" \"npm run dev:cli\" \"npm run dev:main\"",
-		"dev:core": "npm run dev -w @tm/core",
-		"dev:cli": "npm run dev -w @tm/cli",
-		"build:packages": "turbo build --filter='./packages/*' --filter='./apps/*'",
-		"build:packages:parallel": "turbo build --filter='./packages/*' --filter='./apps/*'",
 		"build:build-config": "npm run build -w @tm/build-config",
-		"build:core": "npm run build -w @tm/core",
-		"build:cli": "npm run build -w @tm/cli",
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:unit": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=unit",
 		"test:integration": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=integration",
@@ -123,7 +119,12 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
@@ -143,6 +144,7 @@
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"supertest": "^7.1.0",
+		"ts-jest": "^29.4.2",
 		"tsdown": "^0.15.2",
 		"tsx": "^4.16.2",
 		"turbo": "^2.5.6",

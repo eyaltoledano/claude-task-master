@@ -24,13 +24,8 @@ export default defineConfig(
 		},
 		outDir: 'dist',
 		copy: ['public'],
-		// Override the base config's external to bundle our workspace packages
+		// Bundle only our workspace packages, keep npm dependencies external
 		noExternal: [/^@tm\//],
-		external: [
-			/^@supabase\//, // Keep Supabase external to avoid dynamic require issues
-			'marked',
-			'marked-terminal'
-		],
 		env: getBuildTimeEnvs()
 	})
 );

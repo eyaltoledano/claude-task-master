@@ -22,11 +22,13 @@ export const env = {
  */
 export const baseConfig: Partial<UserConfig> = {
 	sourcemap: isDevelopment,
+	format: 'esm',
+	platform: 'node',
 	dts: isDevelopment,
 	minify: isProduction,
 	treeshake: isProduction,
-	// Don't bundle any other dependencies (auto-external all node_modules)
-	external: [/^[^./]/]
+	// Keep all npm dependencies external (available via node_modules)
+	external: [/^[^@./]/, /^@(?!tm\/)/]
 };
 
 /**
