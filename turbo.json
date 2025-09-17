@@ -10,7 +10,6 @@
 		"dev": {
 			"cache": false,
 			"persistent": true,
-			"dependsOn": ["^build"],
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"!{packages,apps}/**/dist/**",

@@ -17,6 +17,18 @@ import {
 } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import {
+	displayHeader,
+	displayDashboards,
+	calculateTaskStatistics,
+	calculateSubtaskStatistics,
+	calculateDependencyStatistics,
+	getPriorityBreakdown,
+	displayRecommendedNextTask,
+	getTaskDescription,
+	displaySuggestedNextSteps,
+	type NextTaskInfo
+} from '../ui/index.js';
 
 /**
  * Options interface for the list command
@@ -245,19 +257,16 @@ export class ListTasksCommand extends Command {
 	 * Display in text format with tables
 	 */
 	private displayText(data: ListTasksResult, withSubtasks?: boolean): void {
-		const { tasks, total, filtered, tag, storageType } = data;
+		const { tasks, tag } = data;
 
-		// Header
-		ui.displayBanner(`Task List${tag ? ` (${tag})` : ''}`);
+		// Get file path for display
+		const filePath = this.tmCore ? `.taskmaster/tasks/tasks.json` : undefined;
 
-		// Statistics
-		console.log(chalk.blue.bold('\n📊 Statistics:\n'));
-		console.log(`  Total tasks: ${chalk.cyan(total)}`);
-		console.log(`  Filtered: ${chalk.cyan(filtered)}`);
-		if (tag) {
-			console.log(`  Tag: ${chalk.cyan(tag)}`);
-		}
-		console.log(`  Storage: ${chalk.cyan(storageType)}`);
+		// Display header without banner (banner already shown by main CLI)
+		displayHeader({
+			tag: tag || 'master',
+			filePath: filePath
+		});
 
 		// No tasks message
 		if (tasks.length === 0) {
@@ -265,21 +274,50 @@ export class ListTasksCommand extends Command {
 			return;
 		}
 
-		// Task table
-		console.log(chalk.blue.bold(`\n📋 Tasks (${tasks.length}):\n`));
+		// Calculate statistics
+		const taskStats = calculateTaskStatistics(tasks);
+		const subtaskStats = calculateSubtaskStatistics(tasks);
+		const depStats = calculateDependencyStatistics(tasks);
+		const priorityBreakdown = getPriorityBreakdown(tasks);
+
+		// Find next task following the same logic as findNextTask
+		const nextTask = this.findNextTask(tasks);
+
+		// Display dashboard boxes
+		displayDashboards(
+			taskStats,
+			subtaskStats,
+			priorityBreakdown,
+			depStats,
+			nextTask
+		);
+
+		// Task table - no title, just show the table directly
 		console.log(
 			ui.createTaskTable(tasks, {
 				showSubtasks: withSubtasks,
-				showDependencies: true
+				showDependencies: true,
+				showComplexity: true // Enable complexity column
 			})
 		);
 
-		// Progress bar
-		const completedCount = tasks.filter(
-			(t: Task) => t.status === 'done'
-		).length;
-		console.log(chalk.blue.bold('\n📊 Overall Progress:\n'));
-		console.log(`  ${ui.createProgressBar(completedCount, tasks.length)}`);
+		// Display recommended next task section immediately after table
+		if (nextTask) {
+			// Find the full task object to get description
+			const fullTask = tasks.find((t) => String(t.id) === String(nextTask.id));
+			const description = fullTask ? getTaskDescription(fullTask) : undefined;
+
+			displayRecommendedNextTask({
+				...nextTask,
+				status: 'pending', // Next task is typically pending
+				description
+			});
+		} else {
+			displayRecommendedNextTask(undefined);
+		}
+
+		// Display suggested next steps at the end
+		displaySuggestedNextSteps();
 	}
 
 	/**
@@ -287,6 +325,128 @@ export class ListTasksCommand extends Command {
 	 */
 	private setLastResult(result: ListTasksResult): void {
 		this.lastResult = result;
+	}
+
+	/**
+	 * Find the next task to work on
+	 * Implements the same logic as scripts/modules/task-manager/find-next-task.js
+	 */
+	private findNextTask(tasks: Task[]): NextTaskInfo | undefined {
+		const priorityValues: Record<string, number> = {
+			critical: 4,
+			high: 3,
+			medium: 2,
+			low: 1
+		};
+
+		// Build set of completed task IDs (including subtasks)
+		const completedIds = new Set<string>();
+		tasks.forEach((t) => {
+			if (t.status === 'done' || t.status === 'completed') {
+				completedIds.add(String(t.id));
+			}
+			if (t.subtasks) {
+				t.subtasks.forEach((st) => {
+					if (st.status === 'done' || st.status === 'completed') {
+						completedIds.add(`${t.id}.${st.id}`);
+					}
+				});
+			}
+		});
+
+		// First, look for eligible subtasks in in-progress parent tasks
+		const candidateSubtasks: NextTaskInfo[] = [];
+
+		tasks
+			.filter(
+				(t) => t.status === 'in-progress' && t.subtasks && t.subtasks.length > 0
+			)
+			.forEach((parent) => {
+				parent.subtasks!.forEach((st) => {
+					const stStatus = (st.status || 'pending').toLowerCase();
+					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
+
+					// Check if dependencies are satisfied
+					const fullDeps =
+						st.dependencies?.map((d) => {
+							// Handle both numeric and string IDs
+							if (typeof d === 'string' && d.includes('.')) {
+								return d;
+							}
+							return `${parent.id}.${d}`;
+						}) ?? [];
+
+					const depsSatisfied =
+						fullDeps.length === 0 ||
+						fullDeps.every((depId) => completedIds.has(String(depId)));
+
+					if (depsSatisfied) {
+						candidateSubtasks.push({
+							id: `${parent.id}.${st.id}`,
+							title: st.title || `Subtask ${st.id}`,
+							priority: st.priority || parent.priority || 'medium',
+							dependencies: fullDeps.map((d) => String(d))
+						});
+					}
+				});
+			});
+
+		if (candidateSubtasks.length > 0) {
+			// Sort by priority, then by dependencies count, then by ID
+			candidateSubtasks.sort((a, b) => {
+				const pa = priorityValues[a.priority || 'medium'] ?? 2;
+				const pb = priorityValues[b.priority || 'medium'] ?? 2;
+				if (pb !== pa) return pb - pa;
+
+				const depCountA = a.dependencies?.length || 0;
+				const depCountB = b.dependencies?.length || 0;
+				if (depCountA !== depCountB) return depCountA - depCountB;
+
+				return String(a.id).localeCompare(String(b.id));
+			});
+			return candidateSubtasks[0];
+		}
+
+		// Fall back to finding eligible top-level tasks
+		const eligibleTasks = tasks.filter((task) => {
+			// Skip non-eligible statuses
+			const status = (task.status || 'pending').toLowerCase();
+			if (status !== 'pending' && status !== 'in-progress') return false;
+
+			// Check dependencies
+			const deps = task.dependencies || [];
+			const depsSatisfied =
+				deps.length === 0 ||
+				deps.every((depId) => completedIds.has(String(depId)));
+
+			return depsSatisfied;
+		});
+
+		if (eligibleTasks.length === 0) return undefined;
+
+		// Sort eligible tasks
+		eligibleTasks.sort((a, b) => {
+			// Priority (higher first)
+			const pa = priorityValues[a.priority || 'medium'] ?? 2;
+			const pb = priorityValues[b.priority || 'medium'] ?? 2;
+			if (pb !== pa) return pb - pa;
+
+			// Dependencies count (fewer first)
+			const depCountA = a.dependencies?.length || 0;
+			const depCountB = b.dependencies?.length || 0;
+			if (depCountA !== depCountB) return depCountA - depCountB;
+
+			// ID (lower first)
+			return Number(a.id) - Number(b.id);
+		});
+
+		const nextTask = eligibleTasks[0];
+		return {
+			id: nextTask.id,
+			title: nextTask.title,
+			priority: nextTask.priority,
+			dependencies: nextTask.dependencies?.map((d) => String(d))
+		};
 	}
 
 	/**
