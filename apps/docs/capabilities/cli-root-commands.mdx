@@ -99,7 +99,29 @@ sidebarTitle: "CLI Commands"
 
     # Set status for subtasks
     task-master set-status --id=1.1,1.2 --status=<status>
+
+    # Output in JSON format
+    task-master set-status --id=<id> --status=<status> --format=json
+
+    # Silent mode (suppress output)
+    task-master set-status --id=<id> --status=<status> --silent
+
+    # Specify project root directory
+    task-master set-status --id=<id> --status=<status> --project=/path/to/project
     ```
+
+    **Valid Status Values:**
+    - `pending` - Ready to work on
+    - `in-progress` - Currently being worked on  
+    - `done` - Completed and verified
+    - `deferred` - Postponed
+    - `cancelled` - No longer needed
+    - `blocked` - Waiting on external factors
+    - `review` - Ready for review
+
+    **Output Formats:**
+    - `text` (default) - Human-readable colored output
+    - `json` - Machine-readable JSON format for programmatic usage
 
     When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
   </Accordion>
