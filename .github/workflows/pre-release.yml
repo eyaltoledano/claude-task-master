@@ -65,6 +65,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Build packages
+        run: npm run turbo:build
+        env:
+          NODE_ENV: production
+          FORCE_COLOR: 1
+
       - name: Create Release Candidate Pull Request or Publish Release Candidate to npm
         uses: changesets/action@v1
         with:
