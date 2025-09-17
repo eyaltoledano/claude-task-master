@@ -4,8 +4,6 @@
  */
 
 import chalk from 'chalk';
-import figlet from 'figlet';
-import gradient from 'gradient-string';
 
 /**
  * Header configuration options

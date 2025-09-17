@@ -17,7 +17,7 @@ describe('Complex Cross-Tag Scenarios', () => {
 		'..',
 		'..',
 		'..',
-		'bin',
+		'dist',
 		'task-master.js'
 	);
 

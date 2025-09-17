@@ -53,6 +53,7 @@ export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
  */
 export const STATUS_ICONS: Record<TaskStatus, string> = {
 	done: '✓',
+	completed: '✓',
 	'in-progress': '►',
 	blocked: '⭕',
 	pending: '○',
@@ -71,5 +72,6 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
 	deferred: 'gray',
 	cancelled: 'red',
 	blocked: 'magenta',
-	review: 'cyan'
+	review: 'cyan',
+	completed: 'green'
 } as const;
