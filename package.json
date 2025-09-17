@@ -9,11 +9,7 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"packages/*",
-		"."
-	],
+	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
@@ -119,12 +115,7 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": [
-		"dist/**",
-		"README-task-master.md",
-		"README.md",
-		"LICENSE"
-	],
+	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
