@@ -128,14 +128,38 @@ describe('Selective Rules Removal', () => {
 
 			// Mock profile directory exists
 			mockExistsSync.mockImplementation((filePath) => {
-				if (filePath.includes('.cursor')) return true;
-				if (filePath.includes('.cursor/rules')) return true;
-				if (filePath.includes('.cursor/commands')) return true;
-				if (filePath.includes('mcp.json')) return true;
+				const fp = path.normalize(filePath);
+				const cursorDir = path.join(projectRoot, '.cursor');
+				const rulesDir = path.join(projectRoot, '.cursor', 'rules');
+				const commandsDir = path.join(projectRoot, '.cursor', 'commands');
+				const mcpConfigFile = path.join(projectRoot, '.cursor', 'mcp.json');
+				const tmAddTaskFile = path.join(
+					projectRoot,
+					'.cursor',
+					'commands',
+					'tm-add-task.md'
+				);
+				const tmNextTaskFile = path.join(
+					projectRoot,
+					'.cursor',
+					'commands',
+					'tm-next-task.md'
+				);
+				const tmShowTaskFile = path.join(
+					projectRoot,
+					'.cursor',
+					'commands',
+					'tm-show-task.md'
+				);
+
+				if (fp === cursorDir) return true;
+				if (fp === rulesDir) return true;
+				if (fp === commandsDir) return true;
+				if (fp === mcpConfigFile) return true;
 				// Mock specific command files exist for lifecycle hook counting
-				if (filePath.includes('tm-add-task.md')) return true;
-				if (filePath.includes('tm-next-task.md')) return true;
-				if (filePath.includes('tm-show-task.md')) return true;
+				if (fp === tmAddTaskFile) return true;
+				if (fp === tmNextTaskFile) return true;
+				if (fp === tmShowTaskFile) return true;
 				return false;
 			});
 
@@ -224,10 +248,16 @@ describe('Selective Rules Removal', () => {
 
 			// Mock profile directory exists
 			mockExistsSync.mockImplementation((filePath) => {
-				if (filePath.includes('.cursor')) return true;
-				if (filePath.includes('.cursor/rules')) return true;
-				if (filePath.includes('.cursor/commands')) return true;
-				if (filePath.includes('mcp.json')) return true;
+				const fp = path.normalize(filePath);
+				const cursorDir = path.join(projectRoot, '.cursor');
+				const rulesDir = path.join(projectRoot, '.cursor', 'rules');
+				const commandsDir = path.join(projectRoot, '.cursor', 'commands');
+				const mcpConfigFile = path.join(projectRoot, '.cursor', 'mcp.json');
+
+				if (fp === cursorDir) return true;
+				if (fp === rulesDir) return true;
+				if (fp === commandsDir) return true;
+				if (fp === mcpConfigFile) return true;
 				return false;
 			});
 
@@ -457,10 +487,16 @@ describe('Selective Rules Removal', () => {
 
 			// Mock profile directory exists
 			mockExistsSync.mockImplementation((filePath) => {
-				if (filePath.includes('.cursor')) return true;
-				if (filePath.includes('.cursor/rules')) return true;
-				if (filePath.includes('.cursor/commands')) return true;
-				if (filePath.includes('mcp.json')) return true;
+				const fp = path.normalize(filePath);
+				const cursorDir = path.join(projectRoot, '.cursor');
+				const rulesDir = path.join(projectRoot, '.cursor', 'rules');
+				const commandsDir = path.join(projectRoot, '.cursor', 'commands');
+				const mcpConfigFile = path.join(projectRoot, '.cursor', 'mcp.json');
+
+				if (fp === cursorDir) return true;
+				if (fp === rulesDir) return true;
+				if (fp === commandsDir) return true;
+				if (fp === mcpConfigFile) return true;
 				return false;
 			});
 
