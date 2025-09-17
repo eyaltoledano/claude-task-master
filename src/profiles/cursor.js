@@ -19,7 +19,7 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 				);
 			});
 		} else {
-			const isMarkdown = path.extname(src) === '.md';
+			const isMarkdown = path.extname(src).toLowerCase() === '.md';
 			// Preserve existing user files; do not overwrite
 			if (!fs.existsSync(dest)) {
 				if (transformFn && isMarkdown) {
@@ -50,7 +50,7 @@ function countMarkdownFiles(dir) {
 		for (const entry of fs.readdirSync(dir)) {
 			total += countMarkdownFiles(path.join(dir, entry));
 		}
-	} else if (path.extname(dir) === '.md') {
+	} else if (path.extname(dir).toLowerCase() === '.md') {
 		total += 1;
 	}
 	return total;
