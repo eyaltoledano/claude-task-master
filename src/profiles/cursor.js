@@ -79,14 +79,13 @@ const onAdd = (projectRoot, assetsDir) => {
 	// Transform function for Claude -> Cursor syntax
 	const transform = (content) => {
 		// Only transform if legacy Claude patterns are detected
-		const hasLegacyPatterns = 
-			/\/project:tm\//.test(content) || 
-			content.includes("Type '/project:tm/'");
-		
+		const hasLegacyPatterns =
+			/\/project:tm\//.test(content) || content.includes("Type '/project:tm/'");
+
 		if (!hasLegacyPatterns) {
 			return content;
 		}
-		
+
 		return content
 			.replace(/\/project:tm\//g, 'tm/')
 			.replace(
@@ -98,7 +97,10 @@ const onAdd = (projectRoot, assetsDir) => {
 	log('info', 'Adding Task Master slash commands to .cursor/commands');
 	const fileCount = countMarkdownFiles(sourceDir);
 	const added = copyRecursiveWithTransform(sourceDir, targetDir, transform);
-	log('success', `Added ${added} of ${fileCount} Task Master slash commands to Cursor IDE`);
+	log(
+		'success',
+		`Added ${added} of ${fileCount} Task Master slash commands to Cursor IDE`
+	);
 	return {
 		success: added,
 		failed: fileCount - added,
@@ -107,7 +109,7 @@ const onAdd = (projectRoot, assetsDir) => {
 };
 
 /**
- * Hook: onRemoveRulesProfile  
+ * Hook: onRemoveRulesProfile
  * Removes Task Master slash commands from .cursor/commands directory
  * @param {string} projectRoot - The root directory of the project
  * @returns {{success: number, failed: number, fileCount: number}} Count of successful/failed operations and total files processed
@@ -140,7 +142,7 @@ const onRemove = (projectRoot) => {
 		countFiles(commandsDir);
 
 		log('info', `Removing ${count} Task Master slash commands`);
-		
+
 		// Remove individual Task Master files
 		const removeFiles = (dir) => {
 			fs.readdirSync(dir).forEach((item) => {
@@ -153,7 +155,10 @@ const onRemove = (projectRoot) => {
 			});
 		};
 		removeFiles(commandsDir);
-		log('success', `Removed ${count} Task Master slash commands from Cursor IDE`);
+		log(
+			'success',
+			`Removed ${count} Task Master slash commands from Cursor IDE`
+		);
 		return {
 			success: count,
 			failed: 0,

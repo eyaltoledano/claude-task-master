@@ -209,20 +209,20 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
-			const assetsDir = getAssetsDir();			
+			const assetsDir = getAssetsDir();
 			const hookResult = profile.onAddRulesProfile(projectRoot, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
 			);
-			
+
 			/**
 			 * Hook Contract: onAddRulesProfile can optionally return an object with count information
 			 * Expected shape: { success: number, failed: number, fileCount?: number }
 			 * - success: number of successful operations (e.g., files processed)
 			 * - failed: number of failed operations
 			 * - fileCount: optional total file count for reporting
-			 * 
+			 *
 			 * Note: This is optional - hooks can also return nothing/undefined
 			 */
 			if (
