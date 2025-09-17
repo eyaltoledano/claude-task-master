@@ -61,7 +61,7 @@ function countMarkdownFiles(dir) {
  * Copies Task Master slash commands from assets to .cursor/commands with syntax transformation
  * @param {string} projectRoot - The root directory of the project
  * @param {string} assetsDir - The assets directory containing source files
- * @returns {{processed: number, skipped: number, fileCount: number}} Count of processed/skipped operations and total files
+ * @returns {{processed: number, skipped: number, fileCount: number, success: number, failed: number}} Count of processed/skipped operations and total files
  */
 const onAdd = (projectRoot, assetsDir) => {
 	const sourceDir = path.join(assetsDir, 'claude', 'commands');
@@ -70,9 +70,11 @@ const onAdd = (projectRoot, assetsDir) => {
 	if (!fs.existsSync(sourceDir)) {
 		log('warn', `Source commands not found: ${sourceDir}`);
 		return {
+			processed: 0,
+			skipped: 0,
+			fileCount: 0,
 			success: 0,
-			failed: 1,
-			fileCount: 0
+			failed: 1
 		};
 	}
 
@@ -104,7 +106,9 @@ const onAdd = (projectRoot, assetsDir) => {
 	return {
 		processed: processed,
 		skipped: fileCount - processed,
-		fileCount: fileCount
+		fileCount: fileCount,
+		success: processed,
+		failed: fileCount - processed
 	};
 };
 
@@ -113,7 +117,7 @@ const onAdd = (projectRoot, assetsDir) => {
  * Removes Task Master slash commands from .cursor/commands directory
  * @param {string} projectRoot - The root directory of the project
  * @param {string} assetsDir - The assets directory containing source files
- * @returns {{success: number, failed: number, fileCount: number}} Count of successful/failed removal operations and total files targeted for removal
+ * @returns {{processed: number, skipped: number, fileCount: number, success: number, failed: number}} Count of successful/failed removal operations and total files targeted for removal
  */
 const onRemove = (projectRoot, assetsDir) => {
 	const sourceDir = path.join(assetsDir, 'claude', 'commands');
@@ -122,18 +126,22 @@ const onRemove = (projectRoot, assetsDir) => {
 	if (!fs.existsSync(targetDir)) {
 		log('info', 'No Task Master commands found to remove');
 		return {
+			processed: 0,
+			skipped: 0,
+			fileCount: 0,
 			success: 0,
-			failed: 0,
-			fileCount: 0
+			failed: 0
 		};
 	}
 
 	if (!fs.existsSync(sourceDir)) {
 		log('warn', `Source commands not found: ${sourceDir}`);
 		return {
+			processed: 0,
+			skipped: 0,
+			fileCount: 0,
 			success: 0,
-			failed: 1,
-			fileCount: 0
+			failed: 1
 		};
 	}
 
@@ -206,16 +214,20 @@ const onRemove = (projectRoot, assetsDir) => {
 			`Removed ${successCount} Task Master slash commands from Cursor IDE`
 		);
 		return {
+			processed: successCount,
+			skipped: 0,
+			fileCount: filesToRemove.length,
 			success: successCount,
-			failed: failedCount,
-			fileCount: filesToRemove.length
+			failed: failedCount
 		};
 	} catch (error) {
 		log('warn', `Failed to remove commands: ${error.message}`);
 		return {
+			processed: 0,
+			skipped: 0,
+			fileCount: 0,
 			success: 0,
-			failed: 1,
-			fileCount: 0
+			failed: 1
 		};
 	}
 };
