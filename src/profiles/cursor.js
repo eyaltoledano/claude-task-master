@@ -209,7 +209,7 @@ const onRemove = (projectRoot, assetsDir) => {
 				// Check if directory is now empty and remove if so
 				const remainingItems = fs.readdirSync(dir);
 				if (remainingItems.length === 0 && dir !== targetDir) {
-					fs.rmdirSync(dir);
+					fs.rmSync(dir, { recursive: false });
 				}
 			} catch (err) {
 				// Ignore errors when cleaning up directories
