@@ -18,19 +18,39 @@ export function getStatusWithColor(
 	const statusConfig = {
 		done: {
 			color: chalk.green,
-			icon: String.fromCharCode(8730),
-			tableIcon: String.fromCharCode(8730)
-		}, // √
-		pending: { color: chalk.yellow, icon: 'o', tableIcon: 'o' },
+			icon: '✓',
+			tableIcon: '✓'
+		},
+		pending: {
+			color: chalk.yellow,
+			icon: '○',
+			tableIcon: '○'
+		},
 		'in-progress': {
 			color: chalk.hex('#FFA500'),
-			icon: String.fromCharCode(9654),
-			tableIcon: '>'
-		}, // ▶
-		deferred: { color: chalk.gray, icon: 'x', tableIcon: 'x' },
-		blocked: { color: chalk.red, icon: '!', tableIcon: '!' },
-		review: { color: chalk.magenta, icon: '?', tableIcon: '?' },
-		cancelled: { color: chalk.gray, icon: 'X', tableIcon: 'X' }
+			icon: '▶',
+			tableIcon: '▶'
+		},
+		deferred: {
+			color: chalk.gray,
+			icon: 'x',
+			tableIcon: 'x'
+		},
+		review: {
+			color: chalk.magenta,
+			icon: '?',
+			tableIcon: '?'
+		},
+		cancelled: {
+			color: chalk.gray,
+			icon: 'x',
+			tableIcon: 'x'
+		},
+		blocked: {
+			color: chalk.red,
+			icon: '!',
+			tableIcon: '!'
+		}
 	};
 
 	const config = statusConfig[status] || {
@@ -39,18 +59,7 @@ export function getStatusWithColor(
 		tableIcon: 'X'
 	};
 
-	// Use simple ASCII characters for stable display
-	const simpleIcons = {
-		done: String.fromCharCode(8730), // √
-		pending: 'o',
-		'in-progress': '>',
-		deferred: 'x',
-		blocked: '!',
-		review: '?',
-		cancelled: 'X'
-	};
-
-	const icon = forTable ? simpleIcons[status] || 'X' : config.icon;
+	const icon = forTable ? config.tableIcon : config.icon;
 	return config.color(`${icon} ${status}`);
 }
 
@@ -245,10 +254,24 @@ export function createTaskTable(
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
-	const terminalWidth = process.stdout.columns || 100;
+	const terminalWidth = process.stdout.columns * 0.9 || 100;
+	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
-		? [8, Math.floor(terminalWidth * 0.35), 18, 12, 15, 12] // ID, Title, Status, Priority, Dependencies, Complexity
-		: [8, Math.floor(terminalWidth * 0.4), 18, 12, 20]; // ID, Title, Status, Priority, Dependencies
+		? [
+				Math.floor(terminalWidth * 0.06),
+				Math.floor(terminalWidth * 0.4),
+				Math.floor(terminalWidth * 0.15),
+				Math.floor(terminalWidth * 0.12),
+				Math.floor(terminalWidth * 0.2),
+				Math.floor(terminalWidth * 0.12)
+			] // ID, Title, Status, Priority, Dependencies, Complexity
+		: [
+				Math.floor(terminalWidth * 0.08),
+				Math.floor(terminalWidth * 0.4),
+				Math.floor(terminalWidth * 0.18),
+				Math.floor(terminalWidth * 0.12),
+				Math.floor(terminalWidth * 0.2)
+			]; // ID, Title, Status, Priority, Dependencies
 
 	const headers = [
 		chalk.blue.bold('ID'),
@@ -284,11 +307,19 @@ export function createTaskTable(
 		];
 
 		if (showDependencies) {
-			row.push(formatDependenciesWithStatus(task.dependencies, tasks));
+			// For table display, show simple format without status icons
+			if (!task.dependencies || task.dependencies.length === 0) {
+				row.push(chalk.gray('None'));
+			} else {
+				row.push(
+					chalk.cyan(task.dependencies.map((d) => String(d)).join(', '))
+				);
+			}
 		}
 
-		if (showComplexity && 'complexity' in task) {
-			row.push(getComplexityWithColor(task.complexity as number | string));
+		if (showComplexity) {
+			// Show N/A if no complexity score
+			row.push(chalk.gray('N/A'));
 		}
 
 		table.push(row);
