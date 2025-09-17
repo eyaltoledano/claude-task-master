@@ -93,6 +93,13 @@ jobs:
           NODE_ENV: production
           FORCE_COLOR: 1
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 1
+
   test:
     name: Test
     timeout-minutes: 15
@@ -111,6 +118,12 @@ jobs:
       - name: Install dependencies
         run: npm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
 
       - name: Run Tests
         run: |
