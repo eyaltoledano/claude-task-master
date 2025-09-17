@@ -2,6 +2,7 @@
 import { createProfile } from './base-profile.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { log } from '../../scripts/modules/utils.js';
 
 // Helper function to copy and transform files (similar to claude.js)
 function copyRecursiveWithTransform(src, dest, transformFn) {
@@ -28,7 +29,7 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 			count++;
 		}
 	} catch (error) {
-		console.warn(`Failed to process ${src}: ${error.message}`);
+		log('warn', `Failed to process ${src}: ${error.message}`);
 	}
 	return count;
 }
@@ -45,7 +46,7 @@ const onAdd = (projectRoot, assetsDir) => {
 	const targetDir = path.join(projectRoot, '.cursor', 'commands');
 
 	if (!fs.existsSync(sourceDir)) {
-		console.warn(`Source commands not found: ${sourceDir}`);
+		log('warn', `Source commands not found: ${sourceDir}`);
 		return {
 			success: 0,
 			failed: 1,
@@ -62,11 +63,9 @@ const onAdd = (projectRoot, assetsDir) => {
 				"Type 'tm/' and use tab completion"
 			);
 
-	console.log(`[INFO] Adding Task Master slash commands to .cursor/commands`);
+	log('info', 'Adding Task Master slash commands to .cursor/commands');
 	const count = copyRecursiveWithTransform(sourceDir, targetDir, transform);
-	console.log(
-		`[SUCCESS] Added ${count} Task Master slash commands to Cursor IDE`
-	);
+	log('success', `Added ${count} Task Master slash commands to Cursor IDE`);
 	return {
 		success: count,
 		failed: 0,
@@ -84,7 +83,7 @@ const onRemove = (projectRoot) => {
 	const commandsDir = path.join(projectRoot, '.cursor', 'commands');
 
 	if (!fs.existsSync(commandsDir)) {
-		console.log(`[INFO] No Task Master commands found to remove`);
+		log('info', 'No Task Master commands found to remove');
 		return {
 			success: 0,
 			failed: 0,
@@ -107,7 +106,7 @@ const onRemove = (projectRoot) => {
 		};
 		countFiles(commandsDir);
 
-		console.log(`[INFO] Removing ${count} Task Master slash commands`);
+		log('info', `Removing ${count} Task Master slash commands`);
 		
 		// Remove individual Task Master files
 		const removeFiles = (dir) => {
@@ -121,16 +120,14 @@ const onRemove = (projectRoot) => {
 			});
 		};
 		removeFiles(commandsDir);
-		console.log(
-			`[SUCCESS] Removed ${count} Task Master slash commands from Cursor IDE`
-		);
+		log('success', `Removed ${count} Task Master slash commands from Cursor IDE`);
 		return {
 			success: count,
 			failed: 0,
 			fileCount: count
 		};
 	} catch (error) {
-		console.warn(`Failed to remove commands: ${error.message}`);
+		log('warn', `Failed to remove commands: ${error.message}`);
 		return {
 			success: 0,
 			failed: 1,
