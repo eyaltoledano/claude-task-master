@@ -17,18 +17,37 @@ sidebarTitle: "CLI Commands"
 
   <Accordion title="List Tasks">
     ```bash
-    # List all tasks
+    # List all tasks with enhanced dashboard view
     task-master list
+    # Alias available
+    task-master ls
 
-    # List tasks with a specific status
+    # List tasks with a specific status (comma-separated multiple statuses supported)
     task-master list --status=<status>
+    task-master list --status=pending,in-progress
 
     # List tasks with subtasks
     task-master list --with-subtasks
 
-    # List tasks with a specific status and include subtasks
-    task-master list --status=<status> --with-subtasks
+    # Filter by tag
+    task-master list --tag=<tag>
+
+    # Output formats: text (default), json, compact
+    task-master list --format=json
+    task-master list --format=compact
+
+    # Suppress output for programmatic use
+    task-master list --silent
+
+    # Specify project directory
+    task-master list --project=/path/to/project
     ```
+
+    The `list` command now displays:
+    - **Project dashboard** with task statistics and progress bars
+    - **Next recommended task** based on dependencies and priority
+    - **Suggested next steps** for project workflow
+    - **Enhanced table view** with complexity scores and color-coded status
   </Accordion>
 
   <Accordion title="Show Next Task">
@@ -45,9 +64,32 @@ sidebarTitle: "CLI Commands"
     # or
     task-master show --id=<id>
 
+    # View multiple tasks at once (comma-separated)
+    task-master show 1,2,3
+    task-master show --id=1,2,3
+
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
+
+    # Filter subtasks by status
+    task-master show <id> --status=<status>
+
+    # Output formats: text (default), json
+    task-master show <id> --format=json
+
+    # Suppress output for programmatic use
+    task-master show <id> --silent
+
+    # Specify project directory
+    task-master show <id> --project=/path/to/project
     ```
+
+    The `show` command now features:
+    - **Enhanced task details** with markdown rendering for descriptions
+    - **Structured information display** with tables and sections
+    - **Multiple task support** for viewing several tasks simultaneously
+    - **Subtask filtering** by status
+    - **Suggested actions** for next steps on the task
   </Accordion>
 
   <Accordion title="Update Tasks">
