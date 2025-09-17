@@ -284,6 +284,14 @@ describe('Selective Rules Removal', () => {
 				path.join(projectRoot, '.cursor/rules/self_improve.mdc'),
 				{ force: true }
 			);
+			expect(mockRmSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc'),
+				{ force: true }
+			);
+			expect(mockRmSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.cursor/rules'),
+				{ recursive: true, force: true }
+			);
 
 			// Note: Rules directory removal may not work in test environment due to mock limitations
 		});
