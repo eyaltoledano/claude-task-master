@@ -176,6 +176,22 @@ export class TaskMasterCore {
 	}
 
 	/**
+	 * Update task status
+	 */
+	async updateTaskStatus(
+		taskId: string | number,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<{
+		success: boolean;
+		oldStatus: TaskStatus;
+		newStatus: TaskStatus;
+		taskId: string;
+	}> {
+		return this.taskService.updateTaskStatus(taskId, newStatus, tag);
+	}
+
+	/**
 	 * Close and cleanup resources
 	 */
 	async close(): Promise<void> {
