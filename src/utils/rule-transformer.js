@@ -361,7 +361,8 @@ export function removeProfileRules(projectRoot, profile) {
 		notice: null,
 		fileCount: 0, // Track total files processed by lifecycle hooks
 		failedFileCount: 0,
-		failedFiles: []
+		failedFiles: [],
+		fileRemoveFailures: 0
 	};
 
 	try {
@@ -387,6 +388,7 @@ export function removeProfileRules(projectRoot, profile) {
 				}
 				// Note: We don't set result.notice here to avoid duplication with file preservation notices
 			} catch (error) {
+				result.fileRemoveFailures++;
 				log(
 					'error',
 					`[Rule Transformer] onRemoveRulesProfile failed for ${profile.profileName}: ${error.message}`
@@ -478,6 +480,7 @@ export function removeProfileRules(projectRoot, profile) {
 								filename: taskMasterFile,
 								error: error.message
 							});
+							result.fileRemoveFailures++;
 							log(
 								'error',
 								`[Rule Transformer] Failed to remove ${taskMasterFile}: ${error.message}`
@@ -495,11 +498,19 @@ export function removeProfileRules(projectRoot, profile) {
 
 				// Remove empty directories or note preserved files
 				if (remainingFiles.length === 0) {
-					fs.rmSync(targetDir, { recursive: true, force: true });
-					log(
-						'debug',
-						`[Rule Transformer] Removed empty rules directory: ${targetDir}`
-					);
+					try {
+						fs.rmSync(targetDir, { recursive: true, force: true });
+						log(
+							'debug',
+							`[Rule Transformer] Removed empty rules directory: ${targetDir}`
+						);
+					} catch (error) {
+						result.fileRemoveFailures++;
+						log(
+							'error',
+							`[Rule Transformer] Failed to remove rules directory ${targetDir}: ${error.message}`
+						);
+					}
 				} else if (hasOtherRulesFiles) {
 					result.notice = `Preserved ${remainingFiles.length} existing rule files in ${profile.rulesDir}`;
 					log('info', `[Rule Transformer] ${result.notice}`);
@@ -546,6 +557,7 @@ export function removeProfileRules(projectRoot, profile) {
 						`[Rule Transformer] Removed empty profile directory: ${profileDir}`
 					);
 				} catch (error) {
+					result.fileRemoveFailures++;
 					log(
 						'error',
 						`[Rule Transformer] Failed to remove profile directory ${profileDir}: ${error.message}`
