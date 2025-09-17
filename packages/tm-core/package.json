@@ -1,6 +1,6 @@
 {
 	"name": "@tm/core",
-	"version": "1.0.0",
+	"version": "0.26.0",
 	"private": true,
 	"description": "Core library for Task Master - TypeScript task management system",
 	"type": "module",
