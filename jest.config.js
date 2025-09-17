@@ -18,7 +18,17 @@ export default {
 	testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
 
 	// Transform files
-	transform: {},
+	preset: 'ts-jest/presets/default-esm',
+	extensionsToTreatAsEsm: ['.ts'],
+	moduleFileExtensions: ['js', 'ts', 'json', 'node'],
+	transform: {
+		'^.+\\.ts$': [
+			'ts-jest',
+			{
+				useESM: true
+			}
+		]
+	},
 
 	// Disable transformations for node_modules
 	transformIgnorePatterns: ['/node_modules/'],
@@ -27,6 +37,7 @@ export default {
 	moduleNameMapper: {
 		'^@/(.*)$': '<rootDir>/$1'
 	},
+	resolver: '<rootDir>/jest.resolver.cjs',
 
 	// Setup module aliases
 	moduleDirectories: ['node_modules', '<rootDir>'],

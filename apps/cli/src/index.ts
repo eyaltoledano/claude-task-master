@@ -5,6 +5,7 @@
 
 // Commands
 export { ListTasksCommand } from './commands/list.command.js';
+export { ShowCommand } from './commands/show.command.js';
 export { AuthCommand } from './commands/auth.command.js';
 export { ContextCommand } from './commands/context.command.js';
 

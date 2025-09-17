@@ -12,7 +12,15 @@
 		"strict": true,
 		"skipLibCheck": true,
 		"noEmit": true,
-		"baseUrl": "."
+		"baseUrl": ".",
+		"paths": {
+			"@tm/core": ["./packages/tm-core/src/index.ts"],
+			"@tm/core/*": ["./packages/tm-core/src/*"],
+			"@tm/cli": ["./apps/cli/src/index.ts"],
+			"@tm/cli/*": ["./apps/cli/src/*"],
+			"@tm/build-config": ["./packages/build-config/src/index.ts"],
+			"@tm/build-config/*": ["./packages/build-config/src/*"]
+		}
 	},
 	"tsx": {
 		"tsconfig": {

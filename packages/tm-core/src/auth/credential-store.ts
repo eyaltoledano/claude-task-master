@@ -19,13 +19,37 @@ import { getLogger } from '../logger/index.js';
  * human-readable persisted format in the auth.json file.
  */
 export class CredentialStore {
+	private static instance: CredentialStore | null = null;
 	private logger = getLogger('CredentialStore');
 	private config: AuthConfig;
 	// Clock skew tolerance for expiry checks (30 seconds)
 	private readonly CLOCK_SKEW_MS = 30_000;
 
-	constructor(config?: Partial<AuthConfig>) {
+	private constructor(config?: Partial<AuthConfig>) {
 		this.config = getAuthConfig(config);
+	}
+
+	/**
+	 * Get the singleton instance of CredentialStore
+	 */
+	static getInstance(config?: Partial<AuthConfig>): CredentialStore {
+		if (!CredentialStore.instance) {
+			CredentialStore.instance = new CredentialStore(config);
+		} else if (config) {
+			// Warn if config is provided after initialization
+			const logger = getLogger('CredentialStore');
+			logger.warn(
+				'getInstance called with config after initialization; config is ignored.'
+			);
+		}
+		return CredentialStore.instance;
+	}
+
+	/**
+	 * Reset the singleton instance (useful for testing)
+	 */
+	static resetInstance(): void {
+		CredentialStore.instance = null;
 	}
 
 	/**

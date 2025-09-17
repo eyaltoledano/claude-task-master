@@ -11,18 +11,12 @@
 	},
 	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
-		"build": "npm run build:packages && tsup",
-		"dev": "npm run build:packages && npm link && (npm run dev:packages & tsup --watch --onSuccess 'echo Build complete && npm link')",
-		"dev:packages": "(cd packages/tm-core && npm run dev) & (cd apps/cli && npm run dev) & wait",
-		"dev:core": "cd packages/tm-core && npm run dev",
-		"dev:cli": "cd apps/cli && npm run dev",
-		"build:packages": "npm run build:build-config && npm run build:core && npm run build:cli",
-		"build:build-config": "cd packages/build-config && npm run build",
-		"build:core": "cd packages/tm-core && npm run build",
-		"build:cli": "cd apps/cli && npm run build",
-		"typecheck": "npm run typecheck:core && npm run typecheck:cli",
-		"typecheck:core": "cd packages/tm-core && npm run typecheck",
-		"typecheck:cli": "cd apps/cli && npm run typecheck",
+		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
+		"dev": "tsdown --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
+		"turbo:dev": "turbo dev",
+		"turbo:build": "turbo build",
+		"turbo:typecheck": "turbo typecheck",
+		"build:build-config": "npm run build -w @tm/build-config",
 		"test": "node --experimental-vm-modules node_modules/.bin/jest",
 		"test:unit": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=unit",
 		"test:integration": "node --experimental-vm-modules node_modules/.bin/jest --testPathPattern=integration",
@@ -35,6 +29,7 @@
 		"postpack": "chmod +x dist/task-master.js dist/mcp-server.js",
 		"changeset": "changeset",
 		"release": "changeset publish",
+		"publish-packages": "turbo run build lint test && changeset version && changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
 		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
@@ -70,6 +65,7 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"@streamparser/json": "^0.0.22",
+		"@tm/cli": "*",
 		"ai": "^4.3.10",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
@@ -93,6 +89,8 @@
 		"jsonrepair": "^3.13.0",
 		"jsonwebtoken": "^9.0.2",
 		"lru-cache": "^10.2.0",
+		"marked": "^15.0.12",
+		"marked-terminal": "^7.3.0",
 		"ollama-ai-provider": "^1.2.0",
 		"openai": "^4.89.0",
 		"ora": "^8.2.0",
@@ -108,6 +106,7 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
+	"packageManager": "npm@10.9.2",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/eyaltoledano/claude-task-master.git"
@@ -123,21 +122,23 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
-		"dotenv-mono": "^1.5.1",
-
 		"@types/jest": "^29.5.14",
+		"@types/marked-terminal": "^6.1.1",
+		"concurrently": "^9.2.1",
+		"cross-env": "^10.0.0",
+		"dotenv-mono": "^1.5.1",
 		"execa": "^8.0.1",
-		"ink": "^5.0.1",
 		"jest": "^29.7.0",
 		"jest-environment-node": "^29.7.0",
 		"mock-fs": "^5.5.0",
 		"prettier": "^3.5.3",
 		"supertest": "^7.1.0",
-		"tsup": "^8.5.0",
+		"ts-jest": "^29.4.2",
+		"tsdown": "^0.15.2",
 		"tsx": "^4.16.2",
+		"turbo": "^2.5.6",
 		"typescript": "^5.9.2"
 	}
 }

@@ -5,10 +5,9 @@
 	"description": "Task Master documentation powered by Mintlify",
 	"scripts": {
 		"dev": "mintlify dev",
-		"build": "mintlify build",
 		"preview": "mintlify preview"
 	},
 	"devDependencies": {
-		"mintlify": "^4.0.0"
+		"mintlify": "^4.2.111"
 	}
 }

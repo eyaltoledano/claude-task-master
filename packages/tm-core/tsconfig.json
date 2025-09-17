@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "ESNext",
+		"module": "NodeNext",
 		"lib": ["ES2022"],
 		"declaration": true,
 		"declarationMap": true,
@@ -24,11 +24,12 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
-		"moduleResolution": "bundler",
+		"moduleResolution": "NodeNext",
 		"moduleDetection": "force",
 		"types": ["node"],
 		"resolveJsonModule": true,
-		"isolatedModules": true
+		"isolatedModules": true,
+		"allowImportingTsExtensions": false
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "tests", "**/*.test.ts", "**/*.spec.ts"]
