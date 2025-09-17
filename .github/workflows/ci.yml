@@ -108,11 +108,6 @@ jobs:
         run: npm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
-      - name: Build packages (required for tests)
-        run: npm run build:packages
-        env:
-          NODE_ENV: production
-
       - name: Run Tests
         run: |
           npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
