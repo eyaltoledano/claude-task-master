@@ -36,9 +36,14 @@ export const baseConfig: Partial<UserConfig> = {
  * Simplified for tsdown usage
  */
 export function mergeConfig(
-	baseConfig: Partial<UserConfig>,
+	base: Partial<UserConfig>,
 	overrides: Partial<UserConfig>
 ): Partial<UserConfig> {
+	return {
+		...base,
+		...overrides
+	};
+}
 	return {
 		...baseConfig,
 		...overrides
