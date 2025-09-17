@@ -19,14 +19,18 @@ function copyRecursiveWithTransform(src, dest, transformFn) {
 				);
 			});
 		} else {
-			if (transformFn) {
-				const content = fs.readFileSync(src, 'utf8');
-				const transformed = transformFn(content);
-				fs.writeFileSync(dest, transformed, 'utf8');
-			} else {
-				fs.copyFileSync(src, dest);
+			const isMarkdown = path.extname(src) === '.md';
+			// Preserve existing user files; do not overwrite
+			if (!fs.existsSync(dest)) {
+				if (transformFn && isMarkdown) {
+					const content = fs.readFileSync(src, 'utf8');
+					const transformed = transformFn(content);
+					fs.writeFileSync(dest, transformed, { encoding: 'utf8', flag: 'wx' });
+				} else {
+					fs.copyFileSync(src, dest);
+				}
 			}
-			count++;
+			if (isMarkdown) count++;
 		}
 	} catch (error) {
 		log('warn', `Failed to process ${src}: ${error.message}`);
