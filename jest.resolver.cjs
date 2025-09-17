@@ -5,7 +5,7 @@ module.exports = function customResolver(request, options) {
 	try {
 		return resolve(request, options);
 	} catch (error) {
-		if (request.endsWith('.js')) {
+		if (request.startsWith('.') && request.endsWith('.js')) {
 			try {
 				return resolve(request.replace(/\.js$/, '.ts'), options);
 			} catch (tsError) {
