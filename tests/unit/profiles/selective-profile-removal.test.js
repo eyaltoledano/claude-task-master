@@ -327,8 +327,6 @@ describe('Selective Rules Removal', () => {
 				path.join(projectRoot, '.cursor/rules'),
 				{ recursive: true, force: true }
 			);
-
-			// Note: Rules directory removal may not work in test environment due to mock limitations
 		});
 
 		it('should remove MCP config but preserve profile directory structure (cursor profile behavior)', () => {
