@@ -77,13 +77,23 @@ const onAdd = (projectRoot, assetsDir) => {
 	}
 
 	// Transform function for Claude -> Cursor syntax
-	const transform = (content) =>
-		content
+	const transform = (content) => {
+		// Only transform if legacy Claude patterns are detected
+		const hasLegacyPatterns = 
+			/\/project:tm\//.test(content) || 
+			content.includes("Type '/project:tm/'");
+		
+		if (!hasLegacyPatterns) {
+			return content;
+		}
+		
+		return content
 			.replace(/\/project:tm\//g, 'tm/')
 			.replace(
 				/Type '\/project:tm\/' and use tab completion/g,
 				"Type 'tm/' and use tab completion"
 			);
+	};
 
 	log('info', 'Adding Task Master slash commands to .cursor/commands');
 	const fileCount = countMarkdownFiles(sourceDir);
