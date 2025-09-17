@@ -369,7 +369,8 @@ export function removeProfileRules(projectRoot, profile) {
 		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
 		if (typeof profile.onRemoveRulesProfile === 'function') {
 			try {
-				const hookResult = profile.onRemoveRulesProfile(projectRoot);
+				const assetsDir = getAssetsDir();
+				const hookResult = profile.onRemoveRulesProfile(projectRoot, assetsDir);
 				log(
 					'debug',
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
