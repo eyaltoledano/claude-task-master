@@ -206,4 +206,25 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Move Tasks">
+    ```bash
+    # Move a task or subtask to a new position
+    task-master move --from=<id> --to=<id>
+    
+    # Move multiple tasks at once (same number of IDs required)
+    task-master move --from=1,2,3 --to=7,8,9
+    
+    # Cross-tag moves with dependency handling
+    task-master move --from=5 --to=3 --with-dependencies --tag-from=feature --tag-to=main
+    task-master move --from=5 --to=3 --ignore-dependencies --tag-from=feature --tag-to=main
+    
+    # Note: --force flag is deprecated, use --with-dependencies or --ignore-dependencies instead
+    ```
+
+    **Cross-tag Move Safety Features:**
+    - CLI shows "Next Steps" guidance after moves that ignore dependencies
+    - Dedicated help is displayed for ID collisions with structured suggestions
+    - Better error handling with actionable suggestions for resolution
+  </Accordion>
 </AccordionGroup>

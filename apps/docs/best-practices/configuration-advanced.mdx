@@ -83,8 +83,39 @@ Taskmaster uses two primary methods for configuration:
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
+  - `TASKMASTER_ENABLE_CODEBASE_ANALYSIS`: Control codebase analysis features (Claude Code and Gemini CLI integration). Set to 'false' to disable. Default: enabled.
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
+
+## Codebase Analysis Configuration
+
+Task Master includes advanced codebase analysis features that enhance task generation by analyzing your project structure, existing implementations, and patterns. This is particularly useful when integrated with Claude Code or using Gemini CLI provider.
+
+### Configuration Options
+
+**Environment Variable Control (Priority Order: `.env` > MCP session env > `.taskmaster/config.json`)**
+
+```bash
+# In .env file
+TASKMASTER_ENABLE_CODEBASE_ANALYSIS=false  # Disable codebase analysis features
+```
+
+When enabled, the following commands benefit from codebase analysis:
+
+- `parse-prd`: Generates tasks informed by project structure
+- `analyze-complexity`: Considers existing codebase complexity
+- `add-task`: Creates tasks aligned with project patterns  
+- `update-task`: Updates tasks with relevant codebase context
+- `update-subtask`: Enhances subtasks based on implementation details
+- `expand`: Generates subtasks informed by existing code patterns
+
+### Integration with Claude Code
+
+When Task Master detects it's running within Claude Code, it automatically provides codebase context to generate more accurate and relevant task details. This feature can be disabled using the environment variable above.
+
+### Gemini CLI Provider Enhancement
+
+The Gemini CLI provider includes automatic codebase analysis when generating or updating tasks, resulting in more contextually accurate outputs aligned with your project's architecture.
 
 ## Tagged Task Lists Configuration (v0.17+)
 
@@ -147,6 +178,9 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
+
+# Feature Control
+# TASKMASTER_ENABLE_CODEBASE_ANALYSIS=false  # Disable codebase analysis features
 ```
 
 ## Troubleshooting

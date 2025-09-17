@@ -128,6 +128,23 @@ You can reorganize tasks in various ways:
 - Moving a task to a new ID position: `--from=5 --to=25` (even if task 25 doesn't exist yet)
 - Moving multiple tasks at once: `--from=10,11,12 --to=16,17,18` (must have same number of IDs, Taskmaster will look through each position)
 
+#### Cross-Tag Move Safety (v0.26.0+)
+
+For moves between different tags, use the enhanced dependency handling:
+
+```bash
+# Move with all dependencies (safest)
+task-master move --from=5 --to=3 --with-dependencies --tag-from=feature --tag-to=main
+
+# Move ignoring dependencies (shows safety tips)
+task-master move --from=5 --to=3 --ignore-dependencies --tag-from=feature --tag-to=main
+```
+
+**Enhanced Safety Features:**
+- **Next Steps Guidance**: After cross-tag moves with `--ignore-dependencies`, the CLI provides "Next Steps" tips with validation and fix guidance
+- **ID Collision Help**: Dedicated help blocks appear when destination tags already have the target ID, with structured suggestions
+- **Better Error Messages**: Task collision errors now include actionable suggestions for resolution
+
 When moving tasks to new IDs:
 
 - The system automatically creates placeholder tasks for non-existent destination IDs
