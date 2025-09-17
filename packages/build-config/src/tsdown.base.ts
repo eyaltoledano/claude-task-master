@@ -38,9 +38,9 @@ export const baseConfig: Partial<UserConfig> = {
 export function mergeConfig(
 	baseConfig: Partial<UserConfig>,
 	overrides: Partial<UserConfig>
-): UserConfig {
+): Partial<UserConfig> {
 	return {
 		...baseConfig,
 		...overrides
-	} as UserConfig;
+	};
 }

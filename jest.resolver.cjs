@@ -1,6 +1,6 @@
+const { defaultResolver } = require('jest-resolve');
 module.exports = function customResolver(request, options) {
-	const resolve =
-		options.defaultResolver || require('jest-resolve').defaultResolver;
+	const resolve = options.defaultResolver || defaultResolver;
 
 	try {
 		return resolve(request, options);
