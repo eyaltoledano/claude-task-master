@@ -1,5 +1,5 @@
 // Cursor conversion profile for rule-transformer
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
+import { createProfile } from './base-profile.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
