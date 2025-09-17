@@ -11,6 +11,10 @@ on:
       - next
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -89,6 +93,13 @@ jobs:
           NODE_ENV: production
           FORCE_COLOR: 1
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 1
+
   test:
     name: Test
     timeout-minutes: 15
@@ -108,10 +119,11 @@ jobs:
         run: npm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
-      - name: Build packages (required for tests)
-        run: npm run build:packages
-        env:
-          NODE_ENV: production
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
 
       - name: Run Tests
         run: |
