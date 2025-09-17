@@ -3,6 +3,30 @@ import { Task } from '../types/index.js';
 import { Database } from '../types/database.types.js';
 import { TaskMapper } from '../mappers/TaskMapper.js';
 import { AuthManager } from '../auth/auth-manager.js';
+import { z } from 'zod';
+
+// Zod schema for task status validation
+const TaskStatusSchema = z.enum([
+	'pending',
+	'in-progress',
+	'done',
+	'review',
+	'deferred',
+	'cancelled',
+	'blocked'
+]);
+
+// Zod schema for task updates
+const TaskUpdateSchema = z
+	.object({
+		title: z.string().min(1).optional(),
+		description: z.string().optional(),
+		status: TaskStatusSchema.optional(),
+		priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+		details: z.string().optional(),
+		testStrategy: z.string().optional()
+	})
+	.partial();
 
 export class SupabaseTaskRepository {
 	constructor(private supabase: SupabaseClient<Database>) {}
@@ -60,12 +84,22 @@ export class SupabaseTaskRepository {
 		return TaskMapper.mapDatabaseTasksToTasks(tasks, depsData || []);
 	}
 
-	async getTask(accountId: string, taskId: string): Promise<Task | null> {
+	async getTask(_projectId: string, taskId: string): Promise<Task | null> {
+		// Get the current context to determine briefId (projectId not used in Supabase context)
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+
+		if (!context || !context.briefId) {
+			throw new Error(
+				'No brief selected. Please select a brief first using: tm context brief'
+			);
+		}
+
 		const { data, error } = await this.supabase
 			.from('tasks')
 			.select('*')
-			.eq('account_id', accountId)
-			.ilike('display_id', taskId)
+			.eq('brief_id', context.briefId)
+			.eq('display_id', taskId.toUpperCase())
 			.single();
 
 		if (error) {
@@ -106,5 +140,86 @@ export class SupabaseTaskRepository {
 			subtasksData || [],
 			dependenciesByTaskId
 		);
+	}
+
+	async updateTask(
+		projectId: string,
+		taskId: string,
+		updates: Partial<Task>
+	): Promise<Task> {
+
+		// Get the current context to determine briefId
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+
+		if (!context || !context.briefId) {
+			throw new Error(
+				'No brief selected. Please select a brief first using: tm context brief'
+			);
+		}
+
+		// Validate updates using Zod schema
+		try {
+			TaskUpdateSchema.parse(updates);
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				const errorMessages = error.errors
+					.map((err) => `${err.path.join('.')}: ${err.message}`)
+					.join(', ');
+				throw new Error(`Invalid task update data: ${errorMessages}`);
+			}
+			throw error;
+		}
+
+		// Convert Task fields to database fields - only include fields that actually exist in the database
+		const dbUpdates: any = {};
+
+		if (updates.title !== undefined) dbUpdates.title = updates.title;
+		if (updates.description !== undefined)
+			dbUpdates.description = updates.description;
+		if (updates.status !== undefined)
+			dbUpdates.status = this.mapStatusToDatabase(updates.status);
+		if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+		// Skip fields that don't exist in database schema: details, testStrategy, etc.
+
+		// Update the task
+		const { error } = await this.supabase
+			.from('tasks')
+			.update(dbUpdates)
+			.eq('brief_id', context.briefId)
+			.eq('display_id', taskId.toUpperCase());
+
+		if (error) {
+			throw new Error(`Failed to update task: ${error.message}`);
+		}
+
+		// Return the updated task by fetching it
+		const updatedTask = await this.getTask(projectId, taskId);
+		if (!updatedTask) {
+			throw new Error(`Failed to retrieve updated task ${taskId}`);
+		}
+
+		return updatedTask;
+	}
+
+	/**
+	 * Maps internal status to database status
+	 */
+	private mapStatusToDatabase(
+		status: string
+	): Database['public']['Enums']['task_status'] {
+		switch (status) {
+			case 'pending':
+				return 'todo';
+			case 'in-progress':
+			case 'in_progress': // Accept both formats
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			default:
+				throw new Error(
+					`Invalid task status: ${status}. Valid statuses are: pending, in-progress, done`
+				);
+		}
 	}
 }

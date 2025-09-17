@@ -288,6 +288,26 @@ export class SetStatusCommand extends Command {
 	getLastResult(): SetStatusResult | undefined {
 		return this.lastResult;
 	}
+
+	/**
+	 * Static method to register this command on an existing program
+	 * This is for gradual migration - allows commands.js to use this
+	 */
+	static registerOn(program: Command): Command {
+		const setStatusCommand = new SetStatusCommand();
+		program.addCommand(setStatusCommand);
+		return setStatusCommand;
+	}
+
+	/**
+	 * Alternative registration that returns the command for chaining
+	 * Can also configure the command name if needed
+	 */
+	static register(program: Command, name?: string): SetStatusCommand {
+		const setStatusCommand = new SetStatusCommand(name);
+		program.addCommand(setStatusCommand);
+		return setStatusCommand;
+	}
 }
 
 /**

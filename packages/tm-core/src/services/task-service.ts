@@ -374,6 +374,7 @@ export class TaskService {
 		newStatus: TaskStatus;
 		taskId: string;
 	}> {
+
 		// Ensure we have storage
 		if (!this.storage) {
 			throw new TaskMasterError(
@@ -385,72 +386,42 @@ export class TaskService {
 		// Use provided tag or get active tag
 		const activeTag = tag || this.getActiveTag();
 
-		// Get all tasks to find the one to update
-		const result = await this.getTaskList({
-			tag: activeTag,
-			includeSubtasks: true
-		});
-
-		// Handle both regular tasks (e.g., "5") and subtasks (e.g., "5.2")
 		const taskIdStr = String(taskId);
-		let taskToUpdate: Task | undefined;
-		let oldStatus: TaskStatus;
 
+		// TODO: For now, assume it's a regular task and just try to update directly
+		// In the future, we can add subtask support if needed
 		if (taskIdStr.includes('.')) {
-			// Handle subtask
-			const [parentIdStr, subtaskIdStr] = taskIdStr.split('.');
-			const parentId = parseInt(parentIdStr, 10);
-			const subtaskId = parseInt(subtaskIdStr, 10);
-
-			const parentTask = result.tasks.find((t) => t.id === String(parentId));
-			if (!parentTask || !parentTask.subtasks) {
-				throw new TaskMasterError(
-					`Parent task ${parentId} not found or has no subtasks`,
-					ERROR_CODES.TASK_NOT_FOUND
-				);
-			}
-
-			const subtask = parentTask.subtasks.find(
-				(st) => String(st.id) === String(subtaskId)
+			throw new TaskMasterError(
+				'Subtask status updates not yet supported in API storage',
+				ERROR_CODES.NOT_IMPLEMENTED
 			);
-			if (!subtask) {
-				throw new TaskMasterError(
-					`Subtask ${taskIdStr} not found`,
-					ERROR_CODES.TASK_NOT_FOUND
-				);
-			}
-
-			oldStatus = subtask.status;
-
-			// Update the subtask status
-			subtask.status = newStatus;
-
-			// Update the parent task with the modified subtask
-			await this.storage.updateTask(parentTask.id, parentTask, activeTag);
-
-			taskToUpdate = parentTask;
-		} else {
-			// Handle regular task
-			const taskIdNum = parseInt(taskIdStr, 10);
-			taskToUpdate = result.tasks.find(
-				(t) => String(t.id) === String(taskIdNum)
-			);
-
-			if (!taskToUpdate) {
-				throw new TaskMasterError(
-					`Task ${taskIdStr} not found`,
-					ERROR_CODES.TASK_NOT_FOUND
-				);
-			}
-
-			oldStatus = taskToUpdate.status;
-
-			// Update the task status
-			taskToUpdate.status = newStatus;
-
-			// Save the updated task
-			await this.storage.updateTask(taskToUpdate.id, taskToUpdate, activeTag);
 		}
+
+		// Get the current task to get old status (simple, direct approach)
+		let currentTask: Task | null;
+		try {
+			// Try to get the task directly
+			currentTask = await this.storage.loadTask(taskIdStr, activeTag);
+		} catch (error) {
+			throw new TaskMasterError(
+				`Failed to load task ${taskIdStr}`,
+				ERROR_CODES.TASK_NOT_FOUND,
+				{ taskId: taskIdStr },
+				error as Error
+			);
+		}
+
+		if (!currentTask) {
+			throw new TaskMasterError(
+				`Task ${taskIdStr} not found`,
+				ERROR_CODES.TASK_NOT_FOUND
+			);
+		}
+
+		const oldStatus = currentTask.status;
+
+		// Simple, direct update - just change the status
+		await this.storage.updateTask(taskIdStr, { status: newStatus }, activeTag);
 
 		return {
 			success: true,

@@ -223,14 +223,6 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			if (tag) {
-				// Check if task is in tag
-				const tagData = this.tagsCache.get(tag);
-				if (!tagData || !tagData.tasks.includes(taskId)) {
-					return null;
-				}
-			}
-
 			return await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
 			);
@@ -477,6 +469,7 @@ export class ApiStorage implements IStorage {
 		updates: Partial<Task>,
 		tag?: string
 	): Promise<void> {
+
 		await this.ensureInitialized();
 
 		try {
