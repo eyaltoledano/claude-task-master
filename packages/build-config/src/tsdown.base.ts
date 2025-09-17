@@ -44,8 +44,3 @@ export function mergeConfig(
 		...overrides
 	};
 }
-	return {
-		...baseConfig,
-		...overrides
-	};
-}
