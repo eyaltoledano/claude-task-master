@@ -99,11 +99,6 @@ describe('Selective Rules Removal', () => {
 			// Fallback to original path-based logic for backward compatibility
 			if (filePath.includes('taskmaster') && !filePath.endsWith('.mdc')) {
 				return { isDirectory: () => true, isFile: () => false };
-			} else if (
-				filePath.includes('commands/tm/') &&
-				!filePath.endsWith('.md')
-			) {
-				return { isDirectory: () => true, isFile: () => false };
 			} else {
 				// Default to file for backward compatibility
 				return { isDirectory: () => false, isFile: () => true };
