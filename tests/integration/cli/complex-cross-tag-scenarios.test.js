@@ -25,6 +25,8 @@ describe('Complex Cross-Tag Scenarios', () => {
 		// Create test directory
 		testDir = fs.mkdtempSync(path.join(__dirname, 'test-'));
 		process.chdir(testDir);
+		// Keep integration timings deterministic
+		process.env.TASKMASTER_SKIP_AUTO_UPDATE = '1';
 
 		// Initialize task-master
 		execSync(`node ${binPath} init --yes`, {
@@ -137,6 +139,7 @@ describe('Complex Cross-Tag Scenarios', () => {
 		if (testDir && fs.existsSync(testDir)) {
 			fs.rmSync(testDir, { recursive: true, force: true });
 		}
+		delete process.env.TASKMASTER_SKIP_AUTO_UPDATE;
 	});
 
 	describe('Circular Dependency Detection', () => {
