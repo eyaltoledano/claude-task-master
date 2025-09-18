@@ -62,7 +62,7 @@ function onAddRulesProfile(targetDir, assetsDir) {
 
 	if (!fs.existsSync(commandsSourceDir)) {
 		log(
-			'error',
+			'warn',
 			`[Cursor] Source commands directory does not exist: ${commandsSourceDir}`
 		);
 		return;
