@@ -124,7 +124,7 @@ function onRemoveRulesProfile(targetDir) {
 	const profileDir = resolveCursorProfileDir(targetDir);
 	const commandsDir = path.join(profileDir, 'commands');
 	if (removeDirectoryRecursive(commandsDir)) {
-		log('debug', `[Cursor] Removed commands directory from ${commandsDir}`);
+		log('debug', `[Cursor] Ensured commands directory removed at ${commandsDir}`);
 	}
 }
 
