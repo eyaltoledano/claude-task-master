@@ -6,7 +6,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { execSync } from 'child_process';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
@@ -107,7 +106,10 @@ export class StartCommand extends Command {
 				message: error?.message ?? String(error)
 			};
 			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-			if (error.stack && process.env.DEBUG) {
+
+			// Show stack trace in development mode or when DEBUG is set
+			const isDevelopment = process.env.NODE_ENV !== 'production';
+			if ((isDevelopment || process.env.DEBUG) && error.stack) {
 				console.error(chalk.gray(error.stack));
 			}
 			process.exit(1);
@@ -145,9 +147,8 @@ export class StartCommand extends Command {
 			throw new Error('TaskMasterCore not initialized');
 		}
 
-		// TODO: Implement next task logic via tm-core
-		// This should find the next task that can be worked on (no blocking dependencies)
-		return null;
+		const nextTask = await this.tmCore.getNextTask();
+		return nextTask?.id || null;
 	}
 
 	/**
@@ -177,18 +178,13 @@ export class StartCommand extends Command {
 			};
 		}
 
-		// Mark task as in-progress if not already
-		if (task.status === 'pending') {
-			// TODO: Update task status to 'in-progress' via tm-core
-		}
-
-		// Build standardized prompt for claude-code
-		const claudeCodePrompt = this.buildStandardizedPrompt(task);
-
-		// Execute claude-code with the prompt (or show dry-run)
+		// Execute the task using ExecutorService
+		// Note: Status management is handled by the user via set-status command
 		let started = false;
+		let executionResult;
 		if (!options.dryRun) {
-			started = await this.executeClaudeCode(claudeCodePrompt, options);
+			executionResult = await this.tmCore.executeTask(task);
+			started = executionResult.success;
 		} else {
 			// For dry-run, just show that we would execute
 			started = true;
@@ -199,175 +195,10 @@ export class StartCommand extends Command {
 			found: true,
 			started,
 			storageType: this.tmCore.getStorageType() as Exclude<StorageType, 'auto'>,
-			claudeCodePrompt
+			claudeCodePrompt: executionResult?.output || 'Task executed via ExecutorService'
 		};
 	}
 
-	/**
-	 * Build the standardized prompt for claude-code based on task details
-	 * Includes all task information directly in the prompt
-	 */
-	private buildStandardizedPrompt(task: Task): string {
-		const sections: string[] = [];
-
-		// Header
-		sections.push(
-			`You are an AI coding assistant with access to this repository's codebase.`
-		);
-		sections.push('');
-
-		// Task information
-		sections.push(`TASK: ${task.id} - ${task.title}`);
-		sections.push('='.repeat(50));
-		sections.push('');
-
-		// Description
-		if (task.description) {
-			sections.push('DESCRIPTION:');
-			sections.push(task.description);
-			sections.push('');
-		}
-
-		// Implementation details
-		if (task.details) {
-			sections.push('IMPLEMENTATION DETAILS:');
-			sections.push(task.details);
-			sections.push('');
-		}
-
-		// Dependencies context
-		if (task.dependencies && task.dependencies.length > 0) {
-			sections.push('DEPENDENCIES:');
-			sections.push(`This task depends on: ${task.dependencies.join(', ')}`);
-			sections.push(
-				'Make sure these dependencies are completed before proceeding.'
-			);
-			sections.push('');
-		}
-
-		// Test strategy
-		if (task.testStrategy) {
-			sections.push('TEST STRATEGY:');
-			sections.push(task.testStrategy);
-			sections.push('');
-		}
-
-		// Subtasks context
-		if (task.subtasks && task.subtasks.length > 0) {
-			sections.push('SUBTASKS:');
-			task.subtasks.forEach((subtask) => {
-				const statusIcon =
-					subtask.status === 'done'
-						? '✅'
-						: subtask.status === 'in-progress'
-							? '🔄'
-							: '⭕';
-				sections.push(
-					`  ${statusIcon} ${task.id}.${subtask.id} - ${subtask.title} [${subtask.status}]`
-				);
-				if (subtask.description) {
-					sections.push(`      ${subtask.description}`);
-				}
-			});
-			sections.push('');
-		}
-
-		// Priority context
-		if (task.priority) {
-			sections.push(`PRIORITY: ${task.priority.toUpperCase()}`);
-			sections.push('');
-		}
-
-		// Implementation guidelines
-		sections.push('IMPLEMENTATION REQUIREMENTS:');
-		sections.push('- Make the SMALLEST number of code changes possible');
-		sections.push('- Follow ALL existing patterns in the codebase');
-		sections.push('- Do NOT over-engineer the solution');
-		sections.push('- Use existing files/functions/patterns wherever possible');
-		sections.push("- Follow the project's conventions and best practices");
-		sections.push('- Ensure proper TypeScript typing');
-		sections.push('- Add appropriate error handling');
-		sections.push('- Do NOT create or modify tasks in the task database');
-		sections.push('- Do NOT use task-master commands');
-		sections.push('');
-
-		// Completion instruction
-		sections.push('COMPLETION:');
-		sections.push(
-			'When complete, print: COMPLETED: <brief summary of changes>'
-		);
-		sections.push('');
-		sections.push('Begin implementation now.');
-
-		return sections.join('\n');
-	}
-
-	/**
-	 * Execute claude-code with the built prompt
-	 */
-	private async executeClaudeCode(
-		prompt: string,
-		options: StartCommandOptions
-	): Promise<boolean> {
-		try {
-			console.log(
-				chalk.blue('🚀 Starting claude-code to implement the task...')
-			);
-
-			// Escape quotes in the prompt for shell execution
-			const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/`/g, '\\`');
-
-			// Construct the claude command with auto-exit
-			// Use printf to send the prompt and then /exit
-			const claudeCommand = `printf "${escapedPrompt}\\n/exit\\n" | claude`;
-
-			if (options.dryRun) {
-				console.log(chalk.cyan('Dry run - would execute:'));
-				console.log(chalk.gray(claudeCommand));
-				return true;
-			}
-
-			// Execute claude-code with the prompt
-			// Use stdio: 'inherit' to allow interactive session
-			execSync(claudeCommand, {
-				stdio: 'inherit',
-				cwd: options.project || process.cwd()
-			});
-
-			console.log(chalk.green('✅ Claude session completed successfully.'));
-
-			return true;
-		} catch (error: any) {
-			// Handle common errors
-			if (error.status === 127) {
-				console.error(chalk.red('❌ Error: claude command not found'));
-				console.error(
-					chalk.yellow(
-						'Please make sure Claude Code is installed and available in your PATH'
-					)
-				);
-				console.error(chalk.gray('Install from: https://claude.ai/code'));
-				return false;
-			}
-
-			if (error.signal === 'SIGINT') {
-				console.log(chalk.yellow('\n⚠️  Claude session interrupted by user'));
-				return false;
-			}
-
-			console.error(
-				chalk.red(`❌ Error executing claude-code: ${error.message}`)
-			);
-
-			// Show additional error details in debug mode
-			if (process.env.DEBUG) {
-				console.error(chalk.gray('Error details:'));
-				console.error(chalk.gray(JSON.stringify(error, null, 2)));
-			}
-
-			return false;
-		}
-	}
 
 	/**
 	 * Display results based on format

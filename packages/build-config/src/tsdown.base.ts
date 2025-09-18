@@ -27,6 +27,11 @@ export const baseConfig: Partial<UserConfig> = {
 	dts: isDevelopment,
 	minify: isProduction,
 	treeshake: isProduction,
+	// Better debugging in development
+	...(isDevelopment && {
+		keepNames: true,
+		splitting: false // Disable code splitting for better stack traces
+	}),
 	// Keep all npm dependencies external (available via node_modules)
 	external: [/^[^@./]/, /^@(?!tm\/)/]
 };
