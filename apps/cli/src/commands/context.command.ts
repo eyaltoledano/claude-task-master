@@ -459,14 +459,15 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			const spinner = ora('Resolving brief...').start();
+			let spinner = ora('Resolving brief...');
+			spinner.start();
 
 			// Extract brief ID
 			const briefId = this.extractBriefId(briefOrUrl);
 			if (!briefId) {
 				spinner.fail('Could not extract a brief ID from the provided input');
 				ui.displayError(
-					'Provide a valid brief ID or a Hamster brief URL, e.g. https://tux.tryhamster.com/home/hamster/briefs/<id>'
+					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
 				);
 				process.exit(1);
 			}
@@ -510,6 +511,7 @@ export class ContextCommand extends Command {
 				message: 'Context set from brief'
 			});
 		} catch (error: any) {
+			try { if (spinner?.isSpinning) spinner.stop(); } catch {}
 			this.handleError(error);
 			process.exit(1);
 		}
@@ -519,40 +521,57 @@ export class ContextCommand extends Command {
 	 * Extract a brief ID from raw input (ID or Hamster URL)
 	 */
 	private extractBriefId(input: string): string | null {
-		// If it's a URL, try to parse and take the last path segment
-		try {
-			const url = new URL(input);
-			const parts = url.pathname.split('/').filter(Boolean);
-			// Look for a path segment after 'briefs', otherwise fallback to last segment
-			const briefsIndex = parts.lastIndexOf('briefs');
-			let candidate =
-				briefsIndex >= 0 && parts.length > briefsIndex + 1
-					? parts[briefsIndex + 1]
+		const raw = input?.trim() ?? '';
+		if (!raw) return null;
+
+		const parseUrl = (s: string): URL | null => {
+			try { return new URL(s); } catch {}
+			try { return new URL(`https://${s}`); } catch {}
+			return null;
+		};
+
+		const fromParts = (path: string): string | null => {
+			const parts = path.split('/').filter(Boolean);
+			const briefsIdx = parts.lastIndexOf('briefs');
+			const candidate =
+				briefsIdx >= 0 && parts.length > briefsIdx + 1
+					? parts[briefsIdx + 1]
 					: parts[parts.length - 1];
-			candidate = candidate?.trim();
-			if (candidate && this.isLikelyId(candidate)) {
-				return candidate;
+			return candidate?.trim() || null;
+		};
+
+		// 1) URL (absolute or scheme‑less)
+		const url = parseUrl(raw);
+		if (url) {
+			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
+			const candidate = (qId || fromParts(url.pathname)) ?? null;
+			if (candidate) {
+				// Light sanity check; let API be the final validator
+				if (this.isLikelyId(candidate) || candidate.length >= 8) return candidate;
 			}
-		} catch {
-			// Not a URL, fall through and treat as raw ID
 		}
 
-		// Treat as raw ID
-		if (input && this.isLikelyId(input)) {
-			return input;
+		// 2) Looks like a path without scheme
+		if (raw.includes('/')) {
+			const candidate = fromParts(raw);
+			if (candidate && (this.isLikelyId(candidate) || candidate.length >= 8)) {
+				return candidate;
+			}
 		}
-		return null;
+
+		// 3) Fallback: raw token
+		return raw;
 	}
 
 	/**
 	 * Heuristic to check if a string looks like a brief ID (UUID-like)
 	 */
 	private isLikelyId(value: string): boolean {
-		// Accept standard UUIDs or reasonably long hex-with-dashes IDs
 		const uuidRegex =
 			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-		const looseRegex = /^[0-9a-fA-F-]{16,}$/;
-		return uuidRegex.test(value) || looseRegex.test(value);
+		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;       // ULID
+		const slugRegex = /^[A-Za-z0-9_-]{16,}$/;            // general token
+		return uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value);
 	}
 
 	/**
