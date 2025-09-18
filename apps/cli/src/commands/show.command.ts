@@ -10,12 +10,7 @@ import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
 import {
-	displayTaskHeader,
-	displayTaskProperties,
-	displayImplementationDetails,
-	displayTestStrategy,
-	displaySubtasks,
-	displaySuggestedActions
+	displayTaskDetails
 } from '../ui/components/task-detail.component.js';
 
 /**
@@ -264,44 +259,11 @@ export class ShowCommand extends Command {
 			return;
 		}
 
-		const task = result.task;
-
-		// Display header with tag
-		displayTaskHeader(task.id, task.title);
-
-		// Display task properties in table format
-		displayTaskProperties(task);
-
-		// Display implementation details if available
-		if (task.details) {
-			console.log(); // Empty line for spacing
-			displayImplementationDetails(task.details);
-		}
-
-		// Display test strategy if available
-		if ('testStrategy' in task && task.testStrategy) {
-			console.log(); // Empty line for spacing
-			displayTestStrategy(task.testStrategy as string);
-		}
-
-		// Display subtasks if available
-		if (task.subtasks && task.subtasks.length > 0) {
-			// Filter subtasks by status if provided
-			const filteredSubtasks = options.status
-				? task.subtasks.filter((sub) => sub.status === options.status)
-				: task.subtasks;
-
-			if (filteredSubtasks.length === 0 && options.status) {
-				console.log(
-					chalk.gray(`  No subtasks with status '${options.status}'`)
-				);
-			} else {
-				displaySubtasks(filteredSubtasks, task.id);
-			}
-		}
-
-		// Display suggested actions
-		displaySuggestedActions(task.id);
+		// Use the global task details display function
+		displayTaskDetails(result.task, {
+			statusFilter: options.status,
+			showSuggestedActions: true
+		});
 	}
 
 	/**

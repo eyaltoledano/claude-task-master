@@ -8,7 +8,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
-import * as ui from '../utils/ui.js';
+import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 
 /**
  * Options interface for the start command
@@ -19,6 +19,8 @@ export interface StartCommandOptions {
 	silent?: boolean;
 	project?: string;
 	dryRun?: boolean;
+	force?: boolean;
+	noStatusUpdate?: boolean;
 }
 
 /**
@@ -31,6 +33,8 @@ export interface StartTaskResult {
 	storageType: Exclude<StorageType, 'auto'>;
 	claudeCodePrompt?: string;
 	error?: string;
+	subtaskId?: string;
+	subtask?: any; // The specific subtask object if working on a subtask
 }
 
 /**
@@ -56,6 +60,14 @@ export class StartCommand extends Command {
 			.option(
 				'--dry-run',
 				'Show what would be executed without launching claude-code'
+			)
+			.option(
+				'--force',
+				'Force start even if another task is already in-progress'
+			)
+			.option(
+				'--no-status-update',
+				'Do not automatically update task status to in-progress'
 			)
 			.action(
 				async (taskId: string | undefined, options: StartCommandOptions) => {
@@ -91,8 +103,61 @@ export class StartCommand extends Command {
 				process.exit(1);
 			}
 
+			// Check for in-progress tasks and warn if needed
+			const canProceed = await this.checkInProgressTasks(targetTaskId, options);
+			if (!canProceed) {
+				process.exit(1);
+			}
+
+			// Update task status to in-progress if not disabled
+			if (!options.noStatusUpdate && !options.dryRun) {
+				try {
+					await this.tmCore?.updateTaskStatus(targetTaskId, 'in-progress');
+					if (!options.silent) {
+						console.log(
+							chalk.blue('📝 Updated task status to: ') +
+								chalk.green.bold('in-progress')
+						);
+					}
+				} catch (error) {
+					if (!options.silent) {
+						console.log(
+							chalk.yellow('⚠ Could not update task status: ') +
+								chalk.gray(
+									error instanceof Error ? error.message : String(error)
+								)
+						);
+						throw error;
+					}
+				}
+			}
+
+			// Show pre-launch message for non-dry-run, non-silent execution
+			if (!options.dryRun && !options.silent) {
+				const task = await this.tmCore!.getTask(targetTaskId);
+				if (task) {
+					console.log(
+						chalk.green('🚀 Starting Task: ') +
+							chalk.white.bold(`#${task.id} - ${task.title}`)
+					);
+					console.log(chalk.gray('Launching Claude Code...'));
+					console.log(); // Empty line
+				}
+			}
+
+			// Handle subtask IDs by extracting parent task ID
+			let actualTaskId = targetTaskId;
+			let subtaskId: string | undefined;
+
+			if (targetTaskId.includes('.')) {
+				// This is a subtask ID like "67.1"
+				const [parentId, subId] = targetTaskId.split('.');
+				actualTaskId = parentId;
+				subtaskId = subId;
+			}
+
 			// Get the task and start it
-			const result = await this.startTask(targetTaskId, options);
+			const result = await this.startTask(actualTaskId, options, subtaskId);
 
 			// Store result for programmatic access
 			this.setLastResult(result);
@@ -152,11 +217,101 @@ export class StartCommand extends Command {
 	}
 
 	/**
+	 * Check for existing in-progress tasks and warn user if needed
+	 */
+	private async checkInProgressTasks(
+		targetTaskId: string,
+		options: StartCommandOptions
+	): Promise<boolean> {
+		if (!this.tmCore || options.force) {
+			return true; // Skip check if forced or core not available
+		}
+
+		// Get all tasks to check for in-progress status
+		const allTasks = await this.tmCore.getTaskList();
+		const inProgressTasks = allTasks.tasks.filter(
+			(task) => task.status === 'in-progress'
+		);
+
+		// If the target task is already in-progress, that's fine
+		const targetTaskInProgress = inProgressTasks.find(
+			(task) => task.id === targetTaskId
+		);
+		if (targetTaskInProgress) {
+			return true; // Target task is already in-progress, allow continuation
+		}
+
+		// Check if target is a subtask and its parent is in-progress
+		const isSubtask = targetTaskId.includes('.');
+		if (isSubtask) {
+			const parentTaskId = targetTaskId.split('.')[0];
+			const parentInProgress = inProgressTasks.find(
+				(task) => task.id === parentTaskId
+			);
+			if (parentInProgress) {
+				return true; // Allow subtasks when parent is in-progress
+			}
+		}
+
+		// Check if other unrelated tasks are in-progress
+		const otherInProgressTasks = inProgressTasks.filter((task) => {
+			if (task.id === targetTaskId) return false;
+
+			// If target is a subtask, exclude its parent from conflicts
+			if (isSubtask) {
+				const parentTaskId = targetTaskId.split('.')[0];
+				if (task.id === parentTaskId) return false;
+			}
+
+			// If the in-progress task is a subtask of our target parent, exclude it
+			if (task.id.toString().includes('.')) {
+				const taskParentId = task.id.toString().split('.')[0];
+				if (isSubtask && taskParentId === targetTaskId.split('.')[0]) {
+					return false;
+				}
+			}
+
+			return true;
+		});
+
+		if (otherInProgressTasks.length > 0) {
+			console.log(
+				boxen(
+					chalk.yellow.bold('⚠ Warning: Tasks Already In Progress') +
+						'\n\n' +
+						chalk.white('The following tasks are currently in-progress:') +
+						'\n\n' +
+						otherInProgressTasks
+							.map((task) => `• Task #${task.id}: ${task.title}`)
+							.join('\n') +
+						'\n\n' +
+						chalk.cyan('Suggestions:') +
+						'\n' +
+						`• Complete current task(s) first\n` +
+						`• Run ${chalk.yellow('tm set-status --id=<id> --status=done')} to mark complete\n` +
+						`• Use ${chalk.yellow('--force')} flag to override this warning`,
+					{
+						padding: 1,
+						borderStyle: 'round',
+						borderColor: 'yellow',
+						width: process.stdout.columns * 0.9 || 100,
+						margin: { top: 1 }
+					}
+				)
+			);
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
 	 * Start working on a task
 	 */
 	private async startTask(
 		taskId: string,
-		options: StartCommandOptions
+		options: StartCommandOptions,
+		subtaskId?: string
 	): Promise<StartTaskResult> {
 		if (!this.tmCore) {
 			throw new Error('TaskMasterCore not initialized');
@@ -178,6 +333,12 @@ export class StartCommand extends Command {
 			};
 		}
 
+		// Find the specific subtask if provided
+		let subtask = undefined;
+		if (subtaskId && task.subtasks) {
+			subtask = task.subtasks.find(st => String(st.id) === subtaskId);
+		}
+
 		// Execute the task using ExecutorService
 		// Note: Status management is handled by the user via set-status command
 		let started = false;
@@ -195,10 +356,12 @@ export class StartCommand extends Command {
 			found: true,
 			started,
 			storageType: this.tmCore.getStorageType() as Exclude<StorageType, 'auto'>,
-			claudeCodePrompt: executionResult?.output || 'Task executed via ExecutorService'
+			claudeCodePrompt:
+				executionResult?.output || 'Task executed via ExecutorService',
+			subtaskId,
+			subtask
 		};
 	}
-
 
 	/**
 	 * Display results based on format
@@ -249,74 +412,100 @@ export class StartCommand extends Command {
 
 		const task = result.task;
 
-		// Header
-		console.log(
-			boxen(chalk.white.bold(`Starting Task #${task.id} - ${task.title}`), {
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				borderColor: 'green',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			})
-		);
-
-		// Task details
-		console.log(
-			`\n${chalk.blue.bold('Status:')} ${ui.getStatusWithColor(task.status)}`
-		);
-		console.log(
-			`${chalk.blue.bold('Priority:')} ${ui.getPriorityWithColor(task.priority)}`
-		);
-
-		if (task.description) {
-			console.log(`\n${chalk.blue.bold('Description:')}`);
-			console.log(task.description);
-		}
-
-		if (task.details) {
-			console.log(`\n${chalk.blue.bold('Implementation Details:')}`);
-			console.log(task.details);
-		}
-
-		// Dependencies
-		if (task.dependencies && task.dependencies.length > 0) {
-			console.log(`\n${chalk.blue.bold('Dependencies:')}`);
-			task.dependencies.forEach((dep) => {
-				console.log(`  - ${chalk.cyan(dep)}`);
-			});
-		}
-
-		// Test strategy
-		if (task.testStrategy) {
-			console.log(`\n${chalk.blue.bold('Test Strategy:')}`);
-			console.log(task.testStrategy);
-		}
-
-		// Show claude-code prompt if dry-run
-		if (options.dryRun && result.claudeCodePrompt) {
-			console.log(`\n${chalk.blue.bold('Claude-Code Prompt:')}`);
-			console.log(
-				boxen(result.claudeCodePrompt, {
-					padding: { top: 0, bottom: 0, left: 1, right: 1 },
-					borderColor: 'cyan',
-					borderStyle: 'round',
-					margin: { top: 1 }
-				})
-			);
-		}
-
-		// Show execution status
 		if (options.dryRun) {
+			// For dry run, show full details since Claude Code won't be launched
+			let headerText = `Dry Run: Starting Task #${task.id} - ${task.title}`;
+
+			// If working on a specific subtask, highlight it in the header
+			if (result.subtask && result.subtaskId) {
+				headerText = `Dry Run: Starting Subtask #${task.id}.${result.subtaskId} - ${result.subtask.title}`;
+			}
+
+			displayTaskDetails(task, {
+				customHeader: headerText,
+				headerColor: 'yellow'
+			});
+
+			// Show claude-code prompt
+			if (result.claudeCodePrompt) {
+				console.log(); // Empty line for spacing
+				console.log(
+					boxen(
+						chalk.white.bold('Claude-Code Prompt:') +
+							'\n\n' +
+							result.claudeCodePrompt,
+						{
+							padding: 1,
+							borderStyle: 'round',
+							borderColor: 'cyan',
+							width: process.stdout.columns * 0.95 || 100
+						}
+					)
+				);
+			}
+
+			console.log(); // Empty line for spacing
 			console.log(
-				chalk.yellow(
-					'\n🔍 Dry run - claude-code would be launched with the above prompt'
+				boxen(
+					chalk.yellow(
+						'🔍 Dry run - claude-code would be launched with the above prompt'
+					),
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'yellow',
+						borderStyle: 'round'
+					}
 				)
 			);
-		} else if (result.started) {
-			console.log(chalk.green('\n🚀 claude-code launched successfully'));
 		} else {
-			console.log(chalk.red('\n❌ Failed to launch claude-code'));
-			if (result.error) {
-				console.log(chalk.gray(`Error: ${result.error}`));
+			// For actual execution, show minimal info since Claude Code will clear the terminal
+			if (result.started) {
+				// Determine what was worked on - task or subtask
+				let workItemText = `Task: #${task.id} - ${task.title}`;
+				let statusTarget = task.id;
+
+				if (result.subtask && result.subtaskId) {
+					workItemText = `Subtask: #${task.id}.${result.subtaskId} - ${result.subtask.title}`;
+					statusTarget = `${task.id}.${result.subtaskId}`;
+				}
+
+				// Post-execution message (shown after Claude Code exits)
+				console.log(
+					boxen(
+						chalk.green.bold('🎉 Task Session Complete!') +
+							'\n\n' +
+							chalk.white(workItemText) +
+							'\n\n' +
+							chalk.cyan('Next steps:') +
+							'\n' +
+							`• Run ${chalk.yellow('tm show ' + task.id)} to review task details\n` +
+							`• Run ${chalk.yellow('tm set-status --id=' + statusTarget + ' --status=done')} when complete\n` +
+							`• Run ${chalk.yellow('tm next')} to find the next available task\n` +
+							`• Run ${chalk.yellow('tm start')} to begin the next task`,
+						{
+							padding: 1,
+							borderStyle: 'round',
+							borderColor: 'green',
+							width: process.stdout.columns * 0.95 || 100,
+							margin: { top: 1 }
+						}
+					)
+				);
+			} else {
+				// Error case
+				console.log(
+					boxen(
+						chalk.red(
+							'❌ Failed to launch claude-code' +
+								(result.error ? `\nError: ${result.error}` : '')
+						),
+						{
+							padding: { top: 0, bottom: 0, left: 1, right: 1 },
+							borderColor: 'red',
+							borderStyle: 'round'
+						}
+					)
+				);
 			}
 		}
 
