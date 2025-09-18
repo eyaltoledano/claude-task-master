@@ -131,6 +131,10 @@ describe('Cursor Integration', () => {
 			jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
 		});
 
+		afterEach(() => {
+			jest.restoreAllMocks();
+		});
+
 		test('onAddRulesProfile copies commands from assets to .cursor/commands', () => {
 			// Act
 			onAddRulesProfile(mockTargetDir, mockAssetsDir);
