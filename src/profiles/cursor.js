@@ -7,22 +7,47 @@ import { createProfile } from './base-profile.js';
 // Helper copy; use cpSync when available, fallback to manual recursion
 function copyRecursiveSync(src, dest) {
 	if (fs.cpSync) {
-		fs.mkdirSync(dest, { recursive: true });
-		fs.cpSync(src, dest, { recursive: true, force: true });
-		return;
+		try {
+			fs.mkdirSync(dest, { recursive: true });
+			fs.cpSync(src, dest, { recursive: true, force: true });
+			return;
+		} catch (err) {
+			throw new Error(`Failed to copy ${src} to ${dest}: ${err.message}`);
+		}
 	}
 	const exists = fs.existsSync(src);
-	const stats = exists && fs.statSync(src);
-	const isDirectory = exists && stats.isDirectory();
+	let stats = null;
+	let isDirectory = false;
+
+	if (exists) {
+		try {
+			stats = fs.statSync(src);
+			isDirectory = stats.isDirectory();
+		} catch (err) {
+			// Handle TOCTOU race condition - treat as non-existent/not-a-directory
+			isDirectory = false;
+		}
+	}
+
 	if (isDirectory) {
-		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-		for (const child of fs.readdirSync(src)) {
-			copyRecursiveSync(path.join(src, child), path.join(dest, child));
+		try {
+			if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+			for (const child of fs.readdirSync(src)) {
+				copyRecursiveSync(path.join(src, child), path.join(dest, child));
+			}
+		} catch (err) {
+			throw new Error(
+				`Failed to copy directory ${src} to ${dest}: ${err.message}`
+			);
 		}
 	} else {
-		// ensure parent exists for file copies
-		fs.mkdirSync(path.dirname(dest), { recursive: true });
-		fs.copyFileSync(src, dest);
+		try {
+			// ensure parent exists for file copies
+			fs.mkdirSync(path.dirname(dest), { recursive: true });
+			fs.copyFileSync(src, dest);
+		} catch (err) {
+			throw new Error(`Failed to copy file ${src} to ${dest}: ${err.message}`);
+		}
 	}
 }
 
