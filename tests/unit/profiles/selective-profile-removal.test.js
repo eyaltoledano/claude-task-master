@@ -526,7 +526,7 @@ describe('Selective Rules Removal', () => {
 				mcpServers: {
 					'taskmaster-wrapper': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					},
 					'other-server': {
 						command: 'node',

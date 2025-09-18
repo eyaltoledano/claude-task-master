@@ -95,7 +95,7 @@
 					"items": {
 						"type": "string"
 					},
-					"default": ["-y", "--package=task-master-ai", "task-master-ai"],
+					"default": ["-y", "task-master-ai"],
 					"description": "An array of arguments to pass to the MCP server command."
 				},
 				"taskmaster.mcp.cwd": {

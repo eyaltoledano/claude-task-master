@@ -153,7 +153,7 @@ describe('Amp Profile Integration', () => {
 				mcpServers: {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				},
 				'workbench.colorTheme': 'Dark+'
@@ -215,7 +215,7 @@ describe('Amp Profile Integration', () => {
 				'amp.mcpServers': {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				}
 			};

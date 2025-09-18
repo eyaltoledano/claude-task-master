@@ -6,12 +6,6 @@
 
 - [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
 
-## 1.0.0-rc.2
-
-### Major Changes
-
-- [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
-
 ## 0.27.0-rc.1
 
 ### Minor Changes
