@@ -68,8 +68,10 @@ describe('Cursor Profile Initialization Functionality', () => {
 		expect(cursorProfileContent).toContain(
 			"path.join(assetsDir, 'claude', 'commands')"
 		);
-		expect(cursorProfileContent).toContain(
-			"path.join(targetDir, '.cursor', 'commands')"
+		// Destination path is built via a resolver to handle both project root and rules dir
+		expect(cursorProfileContent).toContain('resolveCursorProfileDir(');
+		expect(cursorProfileContent).toMatch(
+			/path\.join\(\s*profileDir\s*,\s*['"]commands['"]\s*\)/
 		);
 		expect(cursorProfileContent).toContain(
 			'copyRecursiveSync(commandsSourceDir, commandsDestDir)'
