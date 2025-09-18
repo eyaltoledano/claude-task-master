@@ -200,6 +200,34 @@ sidebarTitle: "CLI Commands"
     ```
   </Accordion>
 
+  <Accordion title="Context Management">
+    ```bash
+    # Show current workspace context (organization and brief)
+    task-master context
+
+    # Set context directly using a brief ID
+    task-master context <briefId>
+
+    # Set context using a Hamster brief URL
+    task-master context https://your-domain/home/hamster/briefs/<briefId>
+
+    # Select an organization interactively
+    task-master context org
+
+    # Select a brief within the current organization
+    task-master context brief
+
+    # Clear all context selections
+    task-master context clear
+
+    # Set context directly with options
+    task-master context set --org <orgId> --brief <briefId>
+    task-master context set --org-name <name> --brief-name <name>
+    ```
+
+    The context command manages your workspace context (organization and brief selection). When you provide a brief ID or Hamster URL directly, Task Master will automatically resolve the brief and set both the organization and brief context for you.
+  </Accordion>
+
   <Accordion title="Initialize a Project">
     ```bash
     # Initialize a new project with Task Master structure
