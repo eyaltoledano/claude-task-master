@@ -23,7 +23,8 @@ import {
 	ContextCommand,
 	SetStatusCommand,
 	checkForUpdate,
-	performAutoUpdate
+	performAutoUpdate,
+	displayUpgradeNotification
 } from '@tm/cli';
 
 import {
@@ -84,8 +85,7 @@ import {
 	isConfigFilePresent,
 	getAvailableModels,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -5115,7 +5115,6 @@ function setupCLI() {
 	return programInstance;
 }
 
-
 /**
  * Parse arguments and run the CLI
  * @param {Array} argv - Command-line arguments
@@ -5145,7 +5144,13 @@ async function runCLI(argv = process.argv) {
 		// After command execution, check if an update is available
 		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
-			// Automatically perform the update
+			// Display the upgrade notification first
+			displayUpgradeNotification(
+				updateInfo.currentVersion,
+				updateInfo.latestVersion
+			);
+
+			// Then automatically perform the update
 			const updateSuccess = await performAutoUpdate(updateInfo.latestVersion);
 			if (updateSuccess) {
 				// Exit gracefully after successful update
@@ -5274,8 +5279,4 @@ export function resolveComplexityReportPath({
 	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
-export {
-	registerCommands,
-	setupCLI,
-	runCLI
-};
+export { registerCommands, setupCLI, runCLI };

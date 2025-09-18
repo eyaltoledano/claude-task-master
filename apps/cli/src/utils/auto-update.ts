@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import https from 'https';
 import chalk from 'chalk';
 import ora from 'ora';
+import boxen from 'boxen';
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -119,13 +120,36 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
 }
 
 /**
+ * Display upgrade notification message
+ */
+export function displayUpgradeNotification(
+	currentVersion: string,
+	latestVersion: string
+) {
+	const message = boxen(
+		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
+			`Auto-updating to the latest version with new features and bug fixes...`,
+		{
+			padding: 1,
+			margin: { top: 1, bottom: 1 },
+			borderColor: 'yellow',
+			borderStyle: 'round'
+		}
+	);
+
+	console.log(message);
+}
+
+/**
  * Automatically update task-master-ai to the latest version
  */
 export async function performAutoUpdate(
 	latestVersion: string
 ): Promise<boolean> {
 	const spinner = ora({
-		text: chalk.blue(`Updating task-master-ai to version ${chalk.green(latestVersion)}`),
+		text: chalk.blue(
+			`Updating task-master-ai to version ${chalk.green(latestVersion)}`
+		),
 		spinner: 'dots',
 		color: 'blue'
 	}).start();
@@ -143,7 +167,9 @@ export async function performAutoUpdate(
 
 		updateProcess.stdout.on('data', () => {
 			// Update spinner text with progress
-			spinner.text = chalk.blue(`Installing task-master-ai@${latestVersion}...`);
+			spinner.text = chalk.blue(
+				`Installing task-master-ai@${latestVersion}...`
+			);
 		});
 
 		updateProcess.stderr.on('data', (data) => {
@@ -153,13 +179,21 @@ export async function performAutoUpdate(
 		updateProcess.on('close', (code) => {
 			if (code === 0) {
 				spinner.succeed(
-					chalk.green(`Successfully updated to version ${chalk.bold(latestVersion)}`)
+					chalk.green(
+						`Successfully updated to version ${chalk.bold(latestVersion)}`
+					)
 				);
-				console.log(chalk.dim('Please restart your command to use the new version.'));
+				console.log(
+					chalk.dim('Please restart your command to use the new version.')
+				);
 				resolve(true);
 			} else {
 				spinner.fail(chalk.red('Auto-update failed'));
-				console.log(chalk.cyan(`Please run manually: npm install -g task-master-ai@${latestVersion}`));
+				console.log(
+					chalk.cyan(
+						`Please run manually: npm install -g task-master-ai@${latestVersion}`
+					)
+				);
 				if (errorOutput) {
 					console.log(chalk.dim(`Error: ${errorOutput.trim()}`));
 				}

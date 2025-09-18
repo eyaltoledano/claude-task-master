@@ -14,7 +14,11 @@ export { SetStatusCommand } from './commands/set-status.command.js';
 export * as ui from './utils/ui.js';
 
 // Auto-update utilities
-export { checkForUpdate, performAutoUpdate } from './utils/auto-update.js';
+export {
+	checkForUpdate,
+	performAutoUpdate,
+	displayUpgradeNotification
+} from './utils/auto-update.js';
 
 // Re-export commonly used types from tm-core
 export type {
