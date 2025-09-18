@@ -107,7 +107,7 @@ export class FileStorage implements IStorage {
 	 */
 	async loadTask(taskId: string, tag?: string): Promise<Task | null> {
 		const tasks = await this.loadTasks(tag);
-		return tasks.find(task => task.id === taskId) || null;
+		return tasks.find((task) => task.id === taskId) || null;
 	}
 
 	/**

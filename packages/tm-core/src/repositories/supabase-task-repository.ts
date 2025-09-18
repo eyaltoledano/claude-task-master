@@ -147,7 +147,6 @@ export class SupabaseTaskRepository {
 		taskId: string,
 		updates: Partial<Task>
 	): Promise<Task> {
-
 		// Get the current context to determine briefId
 		const authManager = AuthManager.getInstance();
 		const context = authManager.getContext();

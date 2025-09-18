@@ -469,7 +469,6 @@ export class ApiStorage implements IStorage {
 		updates: Partial<Task>,
 		tag?: string
 	): Promise<void> {
-
 		await this.ensureInitialized();
 
 		try {

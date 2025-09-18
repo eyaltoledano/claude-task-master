@@ -374,7 +374,6 @@ export class TaskService {
 		newStatus: TaskStatus;
 		taskId: string;
 	}> {
-
 		// Ensure we have storage
 		if (!this.storage) {
 			throw new TaskMasterError(

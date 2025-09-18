@@ -1,5 +1,16 @@
 # Change Log
 
+## 0.25.0-rc.0
+
+### Minor Changes
+
+- [#1201](https://github.com/eyaltoledano/claude-task-master/pull/1201) [`83af314`](https://github.com/eyaltoledano/claude-task-master/commit/83af314879fc0e563581161c60d2bd089899313e) Thanks [@losolosol](https://github.com/losolosol)! - Added a Start Build button to the VSCODE Task Properties Right Panel
+
+### Patch Changes
+
+- Updated dependencies [[`137ef36`](https://github.com/eyaltoledano/claude-task-master/commit/137ef362789a9cdfdb1925e35e0438c1fa6c69ee)]:
+  - task-master-ai@0.27.0-rc.0
+
 ## 0.24.2
 
 ### Patch Changes
