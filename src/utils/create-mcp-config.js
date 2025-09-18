@@ -45,7 +45,7 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 	const newMCPServer = {
 		'task-master-ai': {
 			command: 'npx',
-			args: ['-y', '--package=task-master-ai', 'task-master-ai'],
+			args: ['-y', 'task-master-ai'],
 			env: {
 				ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY_HERE',
 				PERPLEXITY_API_KEY: 'YOUR_PERPLEXITY_API_KEY_HERE',
