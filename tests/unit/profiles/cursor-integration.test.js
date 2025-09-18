@@ -10,6 +10,7 @@ jest.mock('child_process', () => ({
 
 // Mock console methods to avoid chalk issues
 const mockLog = jest.fn();
+const originalConsole = global.console;
 const mockConsole = {
 	log: jest.fn(),
 	info: jest.fn(),
@@ -32,6 +33,10 @@ const { cursorProfile, onAddRulesProfile, onRemoveRulesProfile } = await import(
 
 describe('Cursor Integration', () => {
 	let tempDir;
+
+	afterAll(() => {
+		global.console = originalConsole;
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
