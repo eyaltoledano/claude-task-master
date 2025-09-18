@@ -21,7 +21,10 @@ import {
 	ShowCommand,
 	AuthCommand,
 	ContextCommand,
-	SetStatusCommand
+	SetStatusCommand,
+	checkForUpdate,
+	performAutoUpdate,
+	displayUpgradeNotification
 } from '@tm/cli';
 
 import {
@@ -82,8 +85,7 @@ import {
 	isConfigFilePresent,
 	getAvailableModels,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -5114,122 +5116,6 @@ function setupCLI() {
 }
 
 /**
- * Check for newer version of task-master-ai
- * @returns {Promise<{currentVersion: string, latestVersion: string, needsUpdate: boolean}>}
- */
-async function checkForUpdate() {
-	// Get current version from package.json ONLY
-	const currentVersion = getTaskMasterVersion();
-
-	return new Promise((resolve) => {
-		// Get the latest version from npm registry
-		const options = {
-			hostname: 'registry.npmjs.org',
-			path: '/task-master-ai',
-			method: 'GET',
-			headers: {
-				Accept: 'application/vnd.npm.install-v1+json' // Lightweight response
-			}
-		};
-
-		const req = https.request(options, (res) => {
-			let data = '';
-
-			res.on('data', (chunk) => {
-				data += chunk;
-			});
-
-			res.on('end', () => {
-				try {
-					const npmData = JSON.parse(data);
-					const latestVersion = npmData['dist-tags']?.latest || currentVersion;
-
-					// Compare versions
-					const needsUpdate =
-						compareVersions(currentVersion, latestVersion) < 0;
-
-					resolve({
-						currentVersion,
-						latestVersion,
-						needsUpdate
-					});
-				} catch (error) {
-					log('debug', `Error parsing npm response: ${error.message}`);
-					resolve({
-						currentVersion,
-						latestVersion: currentVersion,
-						needsUpdate: false
-					});
-				}
-			});
-		});
-
-		req.on('error', (error) => {
-			log('debug', `Error checking for updates: ${error.message}`);
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		// Set a timeout to avoid hanging if npm is slow
-		req.setTimeout(3000, () => {
-			req.abort();
-			log('debug', 'Update check timed out');
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		req.end();
-	});
-}
-
-/**
- * Compare semantic versions
- * @param {string} v1 - First version
- * @param {string} v2 - Second version
- * @returns {number} -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
- */
-function compareVersions(v1, v2) {
-	const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
-	const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
-
-	for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-		const v1Part = v1Parts[i] || 0;
-		const v2Part = v2Parts[i] || 0;
-
-		if (v1Part < v2Part) return -1;
-		if (v1Part > v2Part) return 1;
-	}
-
-	return 0;
-}
-
-/**
- * Display upgrade notification message
- * @param {string} currentVersion - Current version
- * @param {string} latestVersion - Latest version
- */
-function displayUpgradeNotification(currentVersion, latestVersion) {
-	const message = boxen(
-		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
-			`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
-		{
-			padding: 1,
-			margin: { top: 1, bottom: 1 },
-			borderColor: 'yellow',
-			borderStyle: 'round'
-		}
-	);
-
-	console.log(message);
-}
-
-/**
  * Parse arguments and run the CLI
  * @param {Array} argv - Command-line arguments
  */
@@ -5247,7 +5133,8 @@ async function runCLI(argv = process.argv) {
 		}
 
 		// Start the update check in the background - don't await yet
-		const updateCheckPromise = checkForUpdate();
+		const currentVersion = getTaskMasterVersion();
+		const updateCheckPromise = checkForUpdate(currentVersion);
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
@@ -5258,10 +5145,18 @@ async function runCLI(argv = process.argv) {
 		// After command execution, check if an update is available
 		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
+			// Display the upgrade notification first
 			displayUpgradeNotification(
 				updateInfo.currentVersion,
 				updateInfo.latestVersion
 			);
+
+			// Then automatically perform the update
+			const updateSuccess = await performAutoUpdate(updateInfo.latestVersion);
+			if (updateSuccess) {
+				// Exit gracefully after successful update
+				process.exit(0);
+			}
 		}
 
 		// Check if migration has occurred and show FYI notice once
@@ -5385,11 +5280,4 @@ export function resolveComplexityReportPath({
 	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
-export {
-	registerCommands,
-	setupCLI,
-	runCLI,
-	checkForUpdate,
-	compareVersions,
-	displayUpgradeNotification
-};
+export { registerCommands, setupCLI, runCLI };
