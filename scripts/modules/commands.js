@@ -20,14 +20,14 @@ import {
 	ListTasksCommand,
 	ShowCommand,
 	AuthCommand,
-	ContextCommand
+	ContextCommand,
+	SetStatusCommand
 } from '@tm/cli';
 
 import {
 	parsePRD,
 	updateTasks,
 	generateTaskFiles,
-	setTaskStatus,
 	listTasks,
 	expandTask,
 	expandAllTasks,
@@ -1684,63 +1684,9 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// set-status command
-	programInstance
-		.command('set-status')
-		.alias('mark')
-		.alias('set')
-		.description('Set the status of a task')
-		.option(
-			'-i, --id <id>',
-			'Task ID (can be comma-separated for multiple tasks)'
-		)
-		.option(
-			'-s, --status <status>',
-			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
-		)
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag
-			});
-
-			const taskId = options.id;
-			const status = options.status;
-
-			if (!taskId || !status) {
-				console.error(chalk.red('Error: Both --id and --status are required'));
-				process.exit(1);
-			}
-
-			if (!isValidTaskStatus(status)) {
-				console.error(
-					chalk.red(
-						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
-					)
-				);
-
-				process.exit(1);
-			}
-			const tag = taskMaster.getCurrentTag();
-
-			displayCurrentTagIndicator(tag);
-
-			console.log(
-				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
-			);
-
-			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			});
-		});
+	// Register the set-status command from @tm/cli
+	// Handles task status updates with proper error handling and validation
+	SetStatusCommand.registerOn(programInstance);
 
 	// NEW: Register the new list command from @tm/cli
 	// This command handles all its own configuration and logic

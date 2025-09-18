@@ -12,7 +12,7 @@
 	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
-		"dev": "tsdown --watch='packages/*/src/**/*' --watch='apps/cli/src/**/*' --watch='bin/**/*' --watch='mcp-server/**/*'",
+		"dev": "tsdown --watch",
 		"turbo:dev": "turbo dev",
 		"turbo:build": "turbo build",
 		"turbo:typecheck": "turbo typecheck",

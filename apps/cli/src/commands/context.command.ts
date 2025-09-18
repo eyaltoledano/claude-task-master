@@ -326,7 +326,7 @@ export class ContextCommand extends Command {
 					choices: [
 						{ name: '(No brief - organization level)', value: null },
 						...briefs.map((brief) => ({
-							name: `Brief ${brief.id.slice(0, 8)} (${new Date(brief.createdAt).toLocaleDateString()})`,
+							name: `Brief ${brief.id} (${new Date(brief.createdAt).toLocaleDateString()})`,
 							value: brief
 						}))
 					]

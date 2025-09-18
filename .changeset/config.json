@@ -6,12 +6,13 @@
       "repo": "eyaltoledano/claude-task-master"
     }
   ],
-  "commit": true,
+  "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [
+    ["task-master-ai", "@tm/cli", "@tm/core"]
+  ],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
   "ignore": [
     "docs"
   ]

@@ -41,6 +41,12 @@ jobs:
       - name: Check pre-release mode
         run: node ./.github/scripts/check-pre-release-mode.mjs "main"
 
+      - name: Build packages
+        run: npm run turbo:build
+        env:
+          NODE_ENV: production
+          FORCE_COLOR: 1
+
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1
         with:
