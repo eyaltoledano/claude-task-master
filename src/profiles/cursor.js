@@ -1,8 +1,8 @@
 // Cursor conversion profile for rule-transformer
 import path from 'path';
 import fs from 'fs';
-import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
+import { log } from '../../scripts/modules/utils.js';
+import { createProfile } from './base-profile.js';
 
 // Helper function to recursively copy directory (adopted from Claude profile)
 function copyRecursiveSync(src, dest) {
