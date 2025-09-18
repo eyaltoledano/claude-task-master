@@ -65,7 +65,6 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"@streamparser/json": "^0.0.22",
-		"@tm/cli": "*",
 		"ai": "^4.3.10",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
@@ -121,6 +120,7 @@
 		"whatwg-url": "^11.0.0"
 	},
 	"devDependencies": {
+		"@tm/cli": "*",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
