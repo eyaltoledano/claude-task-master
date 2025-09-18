@@ -49,8 +49,15 @@ export class ContextCommand extends Command {
 		this.addClearCommand();
 		this.addSetCommand();
 
-		// Default action shows current context
-		this.action(async () => {
+		// Accept optional positional argument for brief ID or Hamster URL
+		this.argument('[briefOrUrl]', 'Brief ID or Hamster brief URL');
+
+		// Default action: if an argument is provided, resolve and set context; else show
+		this.action(async (briefOrUrl?: string) => {
+			if (briefOrUrl && briefOrUrl.trim().length > 0) {
+				await this.executeSetFromBriefInput(briefOrUrl.trim());
+				return;
+			}
 			await this.executeShow();
 		});
 	}
@@ -439,6 +446,113 @@ export class ContextCommand extends Command {
 			this.handleError(error);
 			process.exit(1);
 		}
+	}
+
+	/**
+	 * Execute setting context from a brief ID or Hamster URL
+	 */
+	private async executeSetFromBriefInput(briefOrUrl: string): Promise<void> {
+		try {
+			// Check authentication
+			if (!this.authManager.isAuthenticated()) {
+				ui.displayError('Not authenticated. Run "tm auth login" first.');
+				process.exit(1);
+			}
+
+			const spinner = ora('Resolving brief...').start();
+
+			// Extract brief ID
+			const briefId = this.extractBriefId(briefOrUrl);
+			if (!briefId) {
+				spinner.fail('Could not extract a brief ID from the provided input');
+				ui.displayError(
+					'Provide a valid brief ID or a Hamster brief URL, e.g. https://tux.tryhamster.com/home/hamster/briefs/<id>'
+				);
+				process.exit(1);
+			}
+
+			// Fetch brief and resolve its organization
+			const brief = await this.authManager.getBrief(briefId);
+			if (!brief) {
+				spinner.fail('Brief not found or you do not have access');
+				process.exit(1);
+			}
+
+			// Fetch org to get a friendly name (optional)
+			let orgName: string | undefined;
+			try {
+				const org = await this.authManager.getOrganization(brief.accountId);
+				orgName = org?.name;
+			} catch {
+				// Non-fatal if org lookup fails
+			}
+
+			// Update context: set org and brief
+			const briefName = `Brief ${brief.id.slice(0, 8)}`;
+			await this.authManager.updateContext({
+				orgId: brief.accountId,
+				orgName,
+				briefId: brief.id,
+				briefName
+			});
+
+			spinner.succeed('Context set from brief');
+			console.log(
+				chalk.gray(
+					`  Organization: ${orgName || brief.accountId}\n  Brief: ${briefName}`
+				)
+			);
+
+			this.setLastResult({
+				success: true,
+				action: 'set',
+				context: this.authManager.getContext() || undefined,
+				message: 'Context set from brief'
+			});
+		} catch (error: any) {
+			this.handleError(error);
+			process.exit(1);
+		}
+	}
+
+	/**
+	 * Extract a brief ID from raw input (ID or Hamster URL)
+	 */
+	private extractBriefId(input: string): string | null {
+		// If it's a URL, try to parse and take the last path segment
+		try {
+			const url = new URL(input);
+			const parts = url.pathname.split('/').filter(Boolean);
+			// Look for a path segment after 'briefs', otherwise fallback to last segment
+			const briefsIndex = parts.lastIndexOf('briefs');
+			let candidate =
+				briefsIndex >= 0 && parts.length > briefsIndex + 1
+					? parts[briefsIndex + 1]
+					: parts[parts.length - 1];
+			candidate = candidate?.trim();
+			if (candidate && this.isLikelyId(candidate)) {
+				return candidate;
+			}
+		} catch {
+			// Not a URL, fall through and treat as raw ID
+		}
+
+		// Treat as raw ID
+		if (input && this.isLikelyId(input)) {
+			return input;
+		}
+		return null;
+	}
+
+	/**
+	 * Heuristic to check if a string looks like a brief ID (UUID-like)
+	 */
+	private isLikelyId(value: string): boolean {
+		// Accept standard UUIDs or reasonably long hex-with-dashes IDs
+		const uuidRegex =
+			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+		const looseRegex = /^[0-9a-fA-F-]{16,}$/;
+		return uuidRegex.test(value) || looseRegex.test(value);
 	}
 
 	/**
