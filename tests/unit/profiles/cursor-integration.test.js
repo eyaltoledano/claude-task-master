@@ -21,9 +21,10 @@ const mockConsole = {
 global.console = mockConsole;
 
 // Mock utils logger to avoid chalk dependency issues
-jest.mock('../../../scripts/modules/utils.js', () => ({
+await jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
+	default: undefined,
 	log: mockLog,
-	isSilentMode: jest.fn(() => false)
+	isSilentMode: () => false
 }));
 
 // Import the cursor profile after mocking
