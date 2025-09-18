@@ -4,20 +4,24 @@ import fs from 'fs';
 import { log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 
-// Helper function to recursively copy directory (adopted from Claude profile)
+// Helper copy; use cpSync when available, fallback to manual recursion
 function copyRecursiveSync(src, dest) {
+	if (fs.cpSync) {
+		fs.mkdirSync(dest, { recursive: true });
+		fs.cpSync(src, dest, { recursive: true, force: true });
+		return;
+	}
 	const exists = fs.existsSync(src);
 	const stats = exists && fs.statSync(src);
 	const isDirectory = exists && stats.isDirectory();
 	if (isDirectory) {
 		if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-		fs.readdirSync(src).forEach((childItemName) => {
-			copyRecursiveSync(
-				path.join(src, childItemName),
-				path.join(dest, childItemName)
-			);
-		});
+		for (const child of fs.readdirSync(src)) {
+			copyRecursiveSync(path.join(src, child), path.join(dest, child));
+		}
 	} else {
+		// ensure parent exists for file copies
+		fs.mkdirSync(path.dirname(dest), { recursive: true });
 		fs.copyFileSync(src, dest);
 	}
 }
