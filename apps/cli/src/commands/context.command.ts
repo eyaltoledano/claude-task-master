@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import {
 	AuthManager,
 	AuthenticationError,
@@ -452,6 +452,7 @@ export class ContextCommand extends Command {
 	 * Execute setting context from a brief ID or Hamster URL
 	 */
 	private async executeSetFromBriefInput(briefOrUrl: string): Promise<void> {
+		let spinner: Ora | undefined;
 		try {
 			// Check authentication
 			if (!this.authManager.isAuthenticated()) {
@@ -459,7 +460,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			let spinner = ora('Resolving brief...');
+			spinner = ora('Resolving brief...');
 			spinner.start();
 
 			// Extract brief ID
@@ -511,7 +512,9 @@ export class ContextCommand extends Command {
 				message: 'Context set from brief'
 			});
 		} catch (error: any) {
-			try { if (spinner?.isSpinning) spinner.stop(); } catch {}
+			try {
+				if (spinner?.isSpinning) spinner.stop();
+			} catch {}
 			this.handleError(error);
 			process.exit(1);
 		}
@@ -525,8 +528,12 @@ export class ContextCommand extends Command {
 		if (!raw) return null;
 
 		const parseUrl = (s: string): URL | null => {
-			try { return new URL(s); } catch {}
-			try { return new URL(`https://${s}`); } catch {}
+			try {
+				return new URL(s);
+			} catch {}
+			try {
+				return new URL(`https://${s}`);
+			} catch {}
 			return null;
 		};
 
@@ -547,7 +554,8 @@ export class ContextCommand extends Command {
 			const candidate = (qId || fromParts(url.pathname)) ?? null;
 			if (candidate) {
 				// Light sanity check; let API be the final validator
-				if (this.isLikelyId(candidate) || candidate.length >= 8) return candidate;
+				if (this.isLikelyId(candidate) || candidate.length >= 8)
+					return candidate;
 			}
 		}
 
@@ -569,9 +577,11 @@ export class ContextCommand extends Command {
 	private isLikelyId(value: string): boolean {
 		const uuidRegex =
 			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;       // ULID
-		const slugRegex = /^[A-Za-z0-9_-]{16,}$/;            // general token
-		return uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value);
+		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i; // ULID
+		const slugRegex = /^[A-Za-z0-9_-]{16,}$/; // general token
+		return (
+			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
+		);
 	}
 
 	/**
