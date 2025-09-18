@@ -5133,7 +5133,8 @@ async function runCLI(argv = process.argv) {
 		}
 
 		// Start the update check in the background - don't await yet
-		const updateCheckPromise = checkForUpdate();
+		const currentVersion = getTaskMasterVersion();
+		const updateCheckPromise = checkForUpdate(currentVersion);
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config

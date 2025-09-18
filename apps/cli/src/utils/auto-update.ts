@@ -7,6 +7,7 @@ import https from 'https';
 import chalk from 'chalk';
 import ora from 'ora';
 import boxen from 'boxen';
+import packageJson from '../../../../package.json' with { type: 'json' };
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -19,11 +20,6 @@ export interface UpdateInfo {
  */
 function getCurrentVersion(): string {
 	try {
-		// Read from the root package.json
-		const fs = require('fs');
-		const path = require('path');
-		const packagePath = path.join(__dirname, '../../../../package.json');
-		const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 		return packageJson.version;
 	} catch (error) {
 		console.warn('Could not read package.json for version info');
@@ -32,31 +28,42 @@ function getCurrentVersion(): string {
 }
 
 /**
- * Compare semantic versions
+ * Compare semantic versions with proper pre-release handling
  * @param v1 - First version
  * @param v2 - Second version
  * @returns -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
  */
 function compareVersions(v1: string, v2: string): number {
-	const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
-	const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
+	const toParts = (v: string) => {
+		const [core, pre = ''] = v.split('-', 2);
+		const nums = core.split('.').map((n) => Number.parseInt(n, 10) || 0);
+		return { nums, pre };
+	};
 
-	for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-		const v1Part = v1Parts[i] || 0;
-		const v2Part = v2Parts[i] || 0;
+	const a = toParts(v1);
+	const b = toParts(v2);
+	const len = Math.max(a.nums.length, b.nums.length);
 
-		if (v1Part < v2Part) return -1;
-		if (v1Part > v2Part) return 1;
+	// Compare numeric parts
+	for (let i = 0; i < len; i++) {
+		const d = (a.nums[i] || 0) - (b.nums[i] || 0);
+		if (d !== 0) return d < 0 ? -1 : 1;
 	}
 
-	return 0;
+	// Handle pre-release comparison
+	if (a.pre && !b.pre) return -1; // prerelease < release
+	if (!a.pre && b.pre) return 1; // release > prerelease
+	if (a.pre === b.pre) return 0; // same or both empty
+	return a.pre < b.pre ? -1 : 1; // basic prerelease tie-break
 }
 
 /**
  * Check for newer version of task-master-ai
  */
-export async function checkForUpdate(): Promise<UpdateInfo> {
-	const currentVersion = getCurrentVersion();
+export async function checkForUpdate(
+	currentVersionOverride?: string
+): Promise<UpdateInfo> {
+	const currentVersion = currentVersionOverride || getCurrentVersion();
 
 	return new Promise((resolve) => {
 		const options = {
@@ -64,7 +71,8 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
 			path: '/task-master-ai',
 			method: 'GET',
 			headers: {
-				Accept: 'application/vnd.npm.install-v1+json'
+				Accept: 'application/vnd.npm.install-v1+json',
+				'User-Agent': `task-master-ai/${currentVersion}`
 			}
 		};
 
@@ -77,6 +85,8 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
 
 			res.on('end', () => {
 				try {
+					if (res.statusCode !== 200)
+						throw new Error(`npm registry status ${res.statusCode}`);
 					const npmData = JSON.parse(data);
 					const latestVersion = npmData['dist-tags']?.latest || currentVersion;
 
@@ -107,7 +117,7 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
 		});
 
 		req.setTimeout(3000, () => {
-			req.abort();
+			req.destroy();
 			resolve({
 				currentVersion,
 				latestVersion: currentVersion,
@@ -146,6 +156,12 @@ export function displayUpgradeNotification(
 export async function performAutoUpdate(
 	latestVersion: string
 ): Promise<boolean> {
+	if (process.env.TASKMASTER_SKIP_AUTO_UPDATE === '1' || process.env.CI) {
+		console.log(
+			chalk.dim('Skipping auto-update (TASKMASTER_SKIP_AUTO_UPDATE/CI).')
+		);
+		return false;
+	}
 	const spinner = ora({
 		text: chalk.blue(
 			`Updating task-master-ai to version ${chalk.green(latestVersion)}`
@@ -157,7 +173,14 @@ export async function performAutoUpdate(
 	return new Promise((resolve) => {
 		const updateProcess = spawn(
 			'npm',
-			['install', '-g', `task-master-ai@${latestVersion}`],
+			[
+				'install',
+				'-g',
+				`task-master-ai@${latestVersion}`,
+				'--no-fund',
+				'--no-audit',
+				'--loglevel=warn'
+			],
 			{
 				stdio: ['ignore', 'pipe', 'pipe']
 			}
