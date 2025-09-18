@@ -148,6 +148,19 @@ describe('Cursor Integration', () => {
 				path.join(mockTargetDir, '.cursor', 'commands'),
 				{ recursive: true }
 			);
+
+			// Verify file copying actually occurred
+			if (fs.cpSync) {
+				const cpSpy = jest.spyOn(fs, 'cpSync').mockImplementation(() => {});
+				onAddRulesProfile(mockTargetDir, mockAssetsDir);
+				expect(cpSpy).toHaveBeenCalledWith(
+					path.join(mockAssetsDir, 'claude', 'commands'),
+					path.join(mockTargetDir, '.cursor', 'commands'),
+					expect.objectContaining({ recursive: true, force: true })
+				);
+			} else {
+				expect(fs.copyFileSync).toHaveBeenCalled();
+			}
 		});
 
 		test('onAddRulesProfile handles missing source directory gracefully', () => {
