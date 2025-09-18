@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.27.0-rc.1
+
+### Minor Changes
+
+- [`255b9f0`](https://github.com/eyaltoledano/claude-task-master/commit/255b9f0334555b0063280abde701445cd62fa11b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Testing one more pre-release iteration
+
 ## 0.27.0-rc.0
 
 ### Minor Changes

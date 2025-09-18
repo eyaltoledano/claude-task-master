@@ -10,6 +10,7 @@
     "@tm/core": "0.26.0"
   },
   "changesets": [
+    "easy-deer-heal",
     "moody-oranges-slide",
     "odd-otters-tan",
     "wild-ears-look"
