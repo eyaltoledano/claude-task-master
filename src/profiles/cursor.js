@@ -69,6 +69,21 @@ function onAddRulesProfile(targetDir, assetsDir) {
 	}
 
 	try {
+		// Ensure fresh state to avoid stale command files
+		try {
+			fs.rmSync(commandsDestDir, { recursive: true, force: true });
+			log(
+				'debug',
+				`[Cursor] Removed existing commands directory: ${commandsDestDir}`
+			);
+		} catch (deleteErr) {
+			// Directory might not exist, which is fine
+			log(
+				'debug',
+				`[Cursor] Commands directory did not exist or could not be removed: ${deleteErr.message}`
+			);
+		}
+
 		copyRecursiveSync(commandsSourceDir, commandsDestDir);
 		log('debug', `[Cursor] Copied commands directory to ${commandsDestDir}`);
 	} catch (err) {
