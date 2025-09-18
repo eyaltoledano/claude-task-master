@@ -40,11 +40,25 @@ function removeDirectoryRecursive(dirPath) {
 	return true;
 }
 
+// Resolve the Cursor profile directory from either project root, profile root, or rules dir
+function resolveCursorProfileDir(baseDir) {
+	const base = path.basename(baseDir);
+	// If called with .../.cursor/rules -> return .../.cursor
+	if (base === 'rules' && path.basename(path.dirname(baseDir)) === '.cursor') {
+		return path.dirname(baseDir);
+	}
+	// If called with .../.cursor -> return as-is
+	if (base === '.cursor') return baseDir;
+	// Otherwise assume project root and append .cursor
+	return path.join(baseDir, '.cursor');
+}
+
 // Lifecycle functions for Cursor profile
 function onAddRulesProfile(targetDir, assetsDir) {
 	// Copy commands directory recursively
 	const commandsSourceDir = path.join(assetsDir, 'claude', 'commands');
-	const commandsDestDir = path.join(targetDir, '.cursor', 'commands');
+	const profileDir = resolveCursorProfileDir(targetDir);
+	const commandsDestDir = path.join(profileDir, 'commands');
 
 	if (!fs.existsSync(commandsSourceDir)) {
 		log(
@@ -67,7 +81,8 @@ function onAddRulesProfile(targetDir, assetsDir) {
 
 function onRemoveRulesProfile(targetDir) {
 	// Remove .cursor/commands directory recursively
-	const commandsDir = path.join(targetDir, '.cursor', 'commands');
+	const profileDir = resolveCursorProfileDir(targetDir);
+	const commandsDir = path.join(profileDir, 'commands');
 	if (removeDirectoryRecursive(commandsDir)) {
 		log('debug', `[Cursor] Removed commands directory from ${commandsDir}`);
 	}
