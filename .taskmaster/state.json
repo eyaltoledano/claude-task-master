@@ -1,9 +1,9 @@
 {
-  "currentTag": "master",
-  "lastSwitched": "2025-09-12T22:25:27.535Z",
-  "branchTagMapping": {
-    "v017-adds": "v017-adds",
-    "next": "next"
-  },
-  "migrationNoticeShown": true
+	"currentTag": "master",
+	"lastSwitched": "2025-09-12T22:25:27.535Z",
+	"branchTagMapping": {
+		"v017-adds": "v017-adds",
+		"next": "next"
+	},
+	"migrationNoticeShown": true
 }
