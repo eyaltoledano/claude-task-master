@@ -227,8 +227,8 @@ describe('ConfigManager', () => {
 
 			const models = manager.getModelConfig();
 			expect(models).toEqual({
-				main: 'claude-3-5-sonnet-20241022',
-				fallback: 'gpt-4o-mini'
+				main: 'claude-sonnet-4-20250514',
+				fallback: 'claude-3-7-sonnet-20250219'
 			});
 		});
 

@@ -27,21 +27,21 @@ const DEFAULTS = {
 	models: {
 		main: {
 			provider: 'anthropic',
-			modelId: 'claude-3-7-sonnet-20250219',
+			modelId: 'claude-sonnet-4-20250514',
 			maxTokens: 64000,
 			temperature: 0.2
 		},
 		research: {
 			provider: 'perplexity',
-			modelId: 'sonar-pro',
+			modelId: 'sonar',
 			maxTokens: 8700,
 			temperature: 0.1
 		},
 		fallback: {
 			// No default fallback provider/model initially
 			provider: 'anthropic',
-			modelId: 'claude-3-5-sonnet',
-			maxTokens: 8192, // Default parameters if fallback IS configured
+			modelId: 'claude-3-7-sonnet-20250219',
+			maxTokens: 120000, // Default parameters if fallback IS configured
 			temperature: 0.2
 		}
 	},
