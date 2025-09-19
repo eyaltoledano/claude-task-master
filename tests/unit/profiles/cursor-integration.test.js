@@ -137,28 +137,34 @@ describe('Cursor Integration', () => {
 		});
 
 		test('onAddRulesProfile copies commands from assets to .cursor/commands', () => {
-			// Act
-			onAddRulesProfile(mockTargetDir, mockAssetsDir);
-
-			// Assert
-			expect(fs.existsSync).toHaveBeenCalledWith(
-				path.join(mockAssetsDir, 'claude', 'commands')
-			);
-			expect(fs.mkdirSync).toHaveBeenCalledWith(
-				path.join(mockTargetDir, '.cursor', 'commands'),
-				{ recursive: true }
-			);
-
-			// Verify file copying actually occurred
+			// Detect if cpSync exists and set up appropriate spy
 			if (fs.cpSync) {
 				const cpSpy = jest.spyOn(fs, 'cpSync').mockImplementation(() => {});
+				
+				// Act
 				onAddRulesProfile(mockTargetDir, mockAssetsDir);
+
+				// Assert
+				expect(fs.existsSync).toHaveBeenCalledWith(
+					path.join(mockAssetsDir, 'claude', 'commands')
+				);
 				expect(cpSpy).toHaveBeenCalledWith(
 					path.join(mockAssetsDir, 'claude', 'commands'),
 					path.join(mockTargetDir, '.cursor', 'commands'),
 					expect.objectContaining({ recursive: true, force: true })
 				);
 			} else {
+				// Act
+				onAddRulesProfile(mockTargetDir, mockAssetsDir);
+
+				// Assert
+				expect(fs.existsSync).toHaveBeenCalledWith(
+					path.join(mockAssetsDir, 'claude', 'commands')
+				);
+				expect(fs.mkdirSync).toHaveBeenCalledWith(
+					path.join(mockTargetDir, '.cursor', 'commands'),
+					{ recursive: true }
+				);
 				expect(fs.copyFileSync).toHaveBeenCalled();
 			}
 		});
