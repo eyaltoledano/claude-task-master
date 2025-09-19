@@ -606,8 +606,8 @@ function getResponseLanguage(explicitRoot = null) {
 }
 
 function getCodebaseAnalysisEnabled(explicitRoot = null) {
-	// Directly return value from config
-	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
+	// Return boolean-safe value with default true
+	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis !== false;
 }
 
 /**
