@@ -1,4 +1,4 @@
-# Available Models as of August 12, 2025
+# Available Models as of September 19, 2025
 
 ## Main Models
 
@@ -13,6 +13,10 @@
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                  | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                    | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                               | 0.55      | 0          | 0           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o1                                             | 0.489     | 15         | 60          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
@@ -99,6 +103,10 @@
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                  | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                             | 0.55      | 0          | 0           |
 | openai      | gpt-4o-search-preview                        | 0.33      | 2.5        | 10          |
 | openai      | gpt-4o-mini-search-preview                   | 0.3       | 0.15       | 0.6         |
 | xai         | grok-3                                       | —         | 3          | 15          |
@@ -135,6 +143,10 @@
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                  | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                    | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                               | 0.55      | 0          | 0           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
 | openai      | o4-mini                                        | 0.45      | 1.1        | 4.4         |
