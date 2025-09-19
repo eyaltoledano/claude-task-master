@@ -18,7 +18,7 @@ Taskmaster uses two primary methods for configuration:
         "models": {
           "main": {
             "provider": "anthropic",
-            "modelId": "claude-3-7-sonnet-20250219",
+            "modelId": "claude-sonnet-4-20250514",
             "maxTokens": 64000,
             "temperature": 0.2,
             "baseURL": "https://api.anthropic.com/v1"
@@ -32,7 +32,7 @@ Taskmaster uses two primary methods for configuration:
           },
           "fallback": {
             "provider": "anthropic",
-            "modelId": "claude-3-5-sonnet",
+            "modelId": "claude-3-7-sonnet-20250219",
             "maxTokens": 64000,
             "temperature": 0.2
           }
@@ -75,6 +75,7 @@ Taskmaster uses two primary methods for configuration:
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
+  - `GROK_CLI_API_KEY`: Your Grok API key for grok-cli provider.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -137,6 +138,7 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # OPENAI_API_KEY=sk-your-key-here
 # GOOGLE_API_KEY=AIzaSy...
 # AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
+# GROK_CLI_API_KEY=your-grok-api-key-here
 # etc.
 
 # Optional Endpoint Overrides
@@ -317,3 +319,61 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    - Verify the deployment name matches your configuration exactly (case-sensitive)
    - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
    - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.
+
+### Grok CLI Configuration
+
+The Grok CLI provider integrates with xAI's Grok models and provides full codebase context support for enhanced task generation and analysis.
+
+1. **Prerequisites**:
+   - A Grok API key from [console.x.ai](https://console.x.ai)
+   - The `grok-cli` package will be automatically used when this provider is configured
+
+2. **Authentication**:
+   - Set the `GROK_CLI_API_KEY` environment variable with your Grok API key
+
+3. **Configuration**:
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "grok-cli",
+         "modelId": "grok-beta",
+         "maxTokens": 64000,
+         "temperature": 0.2
+       },
+       "research": {
+         "provider": "grok-cli", 
+         "modelId": "grok-vision-beta",
+         "maxTokens": 8700,
+         "temperature": 0.1
+       }
+     },
+     "grokCli": {
+       "timeout": 120000,
+       "workingDirectory": null,
+       "defaultModel": "grok-4-latest"
+     }
+   }
+   ```
+
+4. **Available Models**:
+   - `grok-beta`: Latest Grok model with codebase context
+   - `grok-vision-beta`: Grok with vision capabilities and codebase context
+   - `grok-2`, `grok-3`, `grok-4`: Standard Grok models
+
+5. **Key Features**:
+   - **Full codebase context**: Grok models can analyze your entire project when generating tasks or parsing PRDs
+   - **Code-aware task generation**: Create more accurate and contextual tasks based on your actual codebase
+   - **Intelligent PRD parsing**: Parse requirements with understanding of your existing code structure
+
+6. **Environment Variables**:
+   ```bash
+   # In .env file
+   GROK_CLI_API_KEY=your-grok-api-key-here
+   ```
+
+7. **Configuration Options**:
+   - `timeout`: Request timeout in milliseconds (default: 120000)
+   - `workingDirectory`: Override working directory for grok-cli (default: null, uses current directory)
+   - `defaultModel`: Default Grok model to use (default: "grok-4-latest")
