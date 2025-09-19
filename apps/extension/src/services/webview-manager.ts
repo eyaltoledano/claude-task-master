@@ -8,6 +8,7 @@ import type { EventEmitter } from '../utils/event-emitter';
 import type { ExtensionLogger } from '../utils/logger';
 import type { ConfigService } from './config-service';
 import type { TaskRepository } from './task-repository';
+import type { TerminalManager } from './terminal-manager';
 
 export class WebviewManager {
 	private panels = new Set<vscode.WebviewPanel>();
@@ -19,7 +20,8 @@ export class WebviewManager {
 		private context: vscode.ExtensionContext,
 		private repository: TaskRepository,
 		private events: EventEmitter,
-		private logger: ExtensionLogger
+		private logger: ExtensionLogger,
+		private terminalManager: TerminalManager
 	) {}
 
 	setConfigService(configService: ConfigService): void {
@@ -362,27 +364,67 @@ export class WebviewManager {
 					return;
 
 				case 'openTerminal':
-					// Open VS Code terminal for task execution
+					// Delegate terminal execution to TerminalManager
+					const { taskId, taskTitle } = data.data || data; // Handle both nested and direct data
 					this.logger.log(
-						`Opening terminal for task ${data.taskId}: ${data.taskTitle}`
+						`Webview openTerminal - taskId: ${taskId} (type: ${typeof taskId}), taskTitle: ${taskTitle}`
 					);
 
-					try {
-						const terminal = vscode.window.createTerminal({
-							name: `Task ${data.taskId}: ${data.taskTitle}`,
-							cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-						});
-						terminal.show();
+					// Get current tag to ensure we're working in the right context
+					let currentTag = 'master'; // default fallback
+					if (this.mcpClient) {
+						try {
+							const tagsResult = await this.mcpClient.callTool('list_tags', {
+								projectRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+								showMetadata: false
+							});
 
-						this.logger.log('Terminal created and shown successfully');
-						response = { success: true };
-					} catch (error) {
-						this.logger.error('Failed to create terminal:', error);
-						response = {
-							success: false,
-							error: error instanceof Error ? error.message : 'Unknown error'
-						};
+							let parsedData;
+							if (
+								tagsResult?.content &&
+								Array.isArray(tagsResult.content) &&
+								tagsResult.content[0]?.text
+							) {
+								try {
+									parsedData = JSON.parse(tagsResult.content[0].text);
+									if (parsedData?.data?.currentTag) {
+										currentTag = parsedData.data.currentTag;
+									}
+								} catch (e) {
+									this.logger.warn(
+										'Failed to parse tags response for terminal execution'
+									);
+								}
+							}
+						} catch (error) {
+							this.logger.warn(
+								'Failed to get current tag for terminal execution:',
+								error
+							);
+						}
 					}
+
+					const result = await this.terminalManager.executeTask({
+						taskId,
+						taskTitle,
+						tag: currentTag
+					});
+
+					response = result;
+
+					// Show user feedback AFTER sending the response (like the working "TaskMaster connected!" example)
+					setImmediate(() => {
+						if (result.success) {
+							// Success: Show info message
+							vscode.window.showInformationMessage(
+								`✅ Started Claude session for Task ${taskId}: ${taskTitle}`
+							);
+						} else {
+							// Error: Show VS Code native error notification only
+							const errorMsg = `Failed to start task: ${result.error}`;
+							vscode.window.showErrorMessage(errorMsg);
+						}
+					});
 					break;
 
 				default:

@@ -21,6 +21,7 @@ import {
 	ShowCommand,
 	AuthCommand,
 	ContextCommand,
+	StartCommand,
 	SetStatusCommand,
 	checkForUpdate,
 	performAutoUpdate,
@@ -1705,6 +1706,10 @@ function registerCommands(programInstance) {
 	// Register the show command from @tm/cli
 	// Displays detailed information about tasks
 	ShowCommand.registerOn(programInstance);
+
+	// Register the start command from @tm/cli
+	// Starts working on a task by launching claude-code with a standardized prompt
+	StartCommand.registerOn(programInstance);
 
 	// expand command
 	programInstance

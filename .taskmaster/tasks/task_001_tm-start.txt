@@ -1,0 +1,34 @@
+# Task ID: 1
+# Title: Create start command class structure
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create the basic structure for the start command following the Commander class pattern
+# Details:
+Create a new file `apps/cli/src/commands/start.command.ts` based on the existing list.command.ts pattern. Implement the command class with proper command registration, description, and argument handling for the task_id parameter. The class should extend the base Command class and implement the required methods.
+
+Example structure:
+```typescript
+import { Command } from 'commander';
+import { BaseCommand } from './base.command';
+
+export class StartCommand extends BaseCommand {
+  public register(program: Command): void {
+    program
+      .command('start')
+      .alias('tm start')
+      .description('Start implementing a task using claude-code')
+      .argument('<task_id>', 'ID of the task to start')
+      .action(async (taskId: string) => {
+        await this.execute(taskId);
+      });
+  }
+
+  public async execute(taskId: string): Promise<void> {
+    // Implementation will be added in subsequent tasks
+  }
+}
+```
+
+# Test Strategy:
+Verify the command registers correctly by running the CLI with --help and checking that the start command appears with proper description and arguments. Test the basic structure by ensuring the command can be invoked without errors.

@@ -26,7 +26,7 @@ const MAX_PROMPT_LENGTH = 100000;
 const MIN_TEMPERATURE = 0;
 const MAX_TEMPERATURE = 2;
 const MIN_MAX_TOKENS = 1;
-const MAX_MAX_TOKENS = 100000;
+const MAX_MAX_TOKENS = 131072;
 
 /**
  * Configuration for BaseProvider

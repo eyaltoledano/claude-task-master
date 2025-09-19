@@ -8,7 +8,10 @@ export {
 	TaskMasterCore,
 	createTaskMasterCore,
 	type TaskMasterCoreOptions,
-	type ListTasksResult
+	type ListTasksResult,
+	type StartTaskOptions,
+	type StartTaskResult,
+	type ConflictCheckResult
 } from './task-master-core.js';
 
 // Re-export types
@@ -55,3 +58,6 @@ export {
 
 // Re-export logger
 export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
+
+// Re-export executors
+export * from './executors/index.js';

@@ -82,8 +82,7 @@
             "status": "done",
             "dependencies": [
               1,
-              3,
-              2
+              3
             ],
             "acceptanceCriteria": "- Successfully parses task files to extract structured data\n- Validates parsed data against the task model schema\n- Updates tasks.json with changes from task files\n- Handles conflicts when the same task is modified in both places\n- Preserves task relationships and dependencies during synchronization\n- Provides clear error messages for parsing or validation failures\n- Updates the \"updatedAt\" timestamp in tasks.json metadata"
           },
@@ -95,8 +94,7 @@
             "dependencies": [
               1,
               3,
-              4,
-              2
+              4
             ],
             "acceptanceCriteria": "- Detects changes in both task files and tasks.json\n- Determines which version is newer based on modification timestamps or content\n- Applies changes in the appropriate direction (file to JSON or JSON to file)\n- Handles edge cases like deleted files, new tasks, and renamed tasks\n- Provides options for manual conflict resolution when necessary\n- Maintains data integrity during the synchronization process\n- Includes a command to force synchronization in either direction\n- Logs all synchronization activities for troubleshooting\n\nEach of these subtasks addresses a specific component of the task file generation system, following a logical progression from template design to bidirectional synchronization. The dependencies ensure that prerequisites are completed before dependent work begins, and the acceptance criteria provide clear guidelines for verifying each subtask's completion.",
             "details": "\n\n<info added on 2025-05-01T21:59:10.551Z>\n{\n  \"id\": 5,\n  \"title\": \"Implement Change Detection and Update Handling\",\n  \"description\": \"Create a system to detect changes in task files and tasks.json, and handle updates bidirectionally. This includes implementing file watching or comparison mechanisms, determining which version is newer, and applying changes in the appropriate direction. Ensure the system handles edge cases like deleted files, new tasks, and conflicting changes.\",\n  \"status\": \"done\",\n  \"dependencies\": [\n    1,\n    3,\n    4,\n    2\n  ],\n  \"acceptanceCriteria\": \"- Detects changes in both task files and tasks.json\\n- Determines which version is newer based on modification timestamps or content\\n- Applies changes in the appropriate direction (file to JSON or JSON to file)\\n- Handles edge cases like deleted files, new tasks, and renamed tasks\\n- Provides options for manual conflict resolution when necessary\\n- Maintains data integrity during the synchronization process\\n- Includes a command to force synchronization in either direction\\n- Logs all synchronization activities for troubleshooting\\n\\nEach of these subtasks addresses a specific component of the task file generation system, following a logical progression from template design to bidirectional synchronization. The dependencies ensure that prerequisites are completed before dependent work begins, and the acceptance criteria provide clear guidelines for verifying each subtask's completion.\",\n  \"details\": \"[2025-05-01 21:59:07] Adding another note via MCP test.\"\n}\n</info added on 2025-05-01T21:59:10.551Z>"
@@ -139,8 +137,7 @@
             "description": "Create a response handling system that processes Claude API responses. Implement JSON parsing for structured outputs, error detection in responses, and extraction of relevant information. Build utility functions to transform Claude's responses into the application's data structures. Include validation to ensure responses meet expected formats.",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- Response parsing functions handle both JSON and text formats\n- Error detection identifies malformed or unexpected responses\n- Utility functions transform responses into task data structures\n- Validation ensures responses meet expected schemas\n- Edge cases like empty or partial responses are handled gracefully"
           },
@@ -172,8 +169,7 @@
             "description": "Implement a flexible system for configuring Claude model parameters. Create a configuration module that manages model selection, temperature, top_p, max_tokens, and other parameters. Build functions to customize parameters based on operation type. Add validation to ensure parameters are within acceptable ranges. Include preset configurations for different use cases (creative, precise, etc.).",
             "status": "done",
             "dependencies": [
-              1,
-              5
+              1
             ],
             "acceptanceCriteria": "- Configuration module manages all Claude model parameters\n- Parameter customization functions exist for different operations\n- Validation ensures parameters are within acceptable ranges\n- Preset configurations exist for different use cases\n- Parameters can be overridden at runtime when needed\n- Documentation explains parameter effects and recommended values\n- Unit tests verify parameter validation and configuration loading"
           }
@@ -185,8 +181,7 @@
         "description": "Create the system for parsing Product Requirements Documents into structured task lists.",
         "status": "done",
         "dependencies": [
-          1,
-          5
+          1
         ],
         "priority": "high",
         "details": "Implement PRD parsing functionality including:\n- PRD file reading from specified path\n- Prompt engineering for effective PRD parsing\n- Convert PRD content to task structure via Claude API\n- Implement intelligent dependency inference\n- Add priority assignment logic\n- Handle large PRDs by chunking if necessary",
@@ -247,7 +242,6 @@
             "status": "done",
             "dependencies": [
               1,
-              5,
               3
             ],
             "acceptanceCriteria": "- Successfully processes PRDs larger than Claude's context window\n- Intelligently splits documents at logical boundaries (sections, chapters)\n- Preserves context when processing individual chunks\n- Reassembles tasks from multiple chunks into a coherent task list\n- Detects and resolves duplicate or overlapping tasks\n- Maintains correct dependency relationships across chunks"
@@ -260,8 +254,7 @@
         "description": "Create functionality to expand tasks into subtasks using Claude's AI capabilities.",
         "status": "done",
         "dependencies": [
-          3,
-          5
+          3
         ],
         "priority": "medium",
         "details": "Build task expansion functionality including:\n- Create subtask generation prompts\n- Implement workflow for expanding a task into subtasks\n- Add context-aware expansion capabilities\n- Implement parent-child relationship management\n- Allow specification of number of subtasks to generate\n- Provide mechanism to regenerate unsatisfactory subtasks",
@@ -280,9 +273,7 @@
             "title": "Develop Task Expansion Workflow and UI",
             "description": "Implement the command-line interface and workflow for expanding tasks into subtasks. Create a new command that allows users to select a task, specify the number of subtasks, and add optional context. Design the interaction flow to handle the API request, process the response, and update the tasks.json file with the newly generated subtasks.",
             "status": "done",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Command `node scripts/dev.js expand --id=<task_id> --count=<number>` is implemented\n- Optional parameters for additional context (`--context=\"...\"`) are supported\n- User is shown progress indicators during API calls\n- Generated subtasks are displayed for review before saving\n- Command handles errors gracefully with helpful error messages\n- Help documentation for the expand command is comprehensive"
           },
           {
@@ -312,7 +303,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               4
             ],
             "acceptanceCriteria": "- Command `node scripts/dev.js regenerate --id=<subtask_id>` is implemented\n- Option to regenerate all subtasks for a parent (`--all`)\n- Feedback parameter allows user to guide regeneration (`--feedback=\"...\"`)\n- Original subtask details are preserved in prompt context\n- Regenerated subtasks maintain proper ID sequence\n- Task relationships remain intact after regeneration\n- Command provides clear before/after comparison of subtasks"
@@ -326,7 +316,6 @@
         "status": "done",
         "dependencies": [
           3,
-          5,
           7
         ],
         "priority": "medium",
@@ -384,9 +373,7 @@
         "title": "Integrate Perplexity API",
         "description": "Add integration with Perplexity API for research-backed task generation.",
         "status": "done",
-        "dependencies": [
-          5
-        ],
+        "dependencies": [],
         "priority": "low",
         "details": "Implement Perplexity integration including:\n- API authentication via OpenAI client\n- Create research-oriented prompt templates\n- Implement response handling for Perplexity\n- Add fallback to Claude when Perplexity is unavailable\n- Implement response quality comparison logic\n- Add configuration for model selection",
         "testStrategy": "Test connectivity to Perplexity API. Verify research-oriented prompts return useful information. Test fallback mechanism by simulating Perplexity API unavailability.",
@@ -439,8 +426,7 @@
         "description": "Enhance subtask generation with research capabilities from Perplexity API.",
         "status": "done",
         "dependencies": [
-          7,
-          9
+          7
         ],
         "priority": "low",
         "details": "Implement research-backed generation including:\n- Create specialized research prompts for different domains\n- Implement context enrichment from research results\n- Add domain-specific knowledge incorporation\n- Create more detailed subtask generation with best practices\n- Include references to relevant libraries and tools",
@@ -467,9 +453,7 @@
             "title": "Develop Context Enrichment Pipeline",
             "description": "Create a pipeline that processes research results and enriches the task context with relevant information. This should include filtering irrelevant information, organizing research findings by category (tools, libraries, best practices, etc.), and formatting the enriched context for use in subtask generation. Implement a scoring mechanism to prioritize the most relevant research findings.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Context enrichment function that takes raw research results and task details as input\n- Filtering system to remove irrelevant or low-quality information\n- Categorization of research findings into distinct sections (tools, libraries, patterns, etc.)\n- Relevance scoring algorithm to prioritize the most important findings\n- Formatted output that can be directly used in subtask generation prompts\n- Tests comparing enriched context quality against baseline"
           },
           {
@@ -499,8 +483,7 @@
             "description": "Create a system to include references to relevant libraries, tools, documentation, and other resources in generated subtasks. This should extract specific references from research results, validate their relevance, and format them as actionable links or citations within subtasks. Implement a verification step to ensure referenced resources are current and applicable.",
             "status": "done",
             "dependencies": [
-              3,
-              5
+              3
             ],
             "acceptanceCriteria": "- Reference extraction function that identifies tools, libraries, and resources from research\n- Validation mechanism to verify reference relevance and currency\n- Formatting system for including references in subtask descriptions\n- Support for different reference types (GitHub repos, documentation, articles, etc.)\n- Optional version specification for referenced libraries and tools\n- Tests verifying that included references are relevant and accessible"
           }
@@ -577,8 +560,7 @@
         "dependencies": [
           1,
           3,
-          4,
-          6
+          4
         ],
         "priority": "medium",
         "details": "Implement project initialization including:\n- Create project templating system\n- Implement interactive setup wizard\n- Add environment configuration generation\n- Create initial directory structure\n- Generate example tasks.json\n- Set up default configuration",
@@ -609,9 +591,7 @@
             "title": "Generate Environment Configuration",
             "description": "Create functionality to generate environment-specific configuration files based on user input and template defaults. This includes creating a .env file with necessary API keys and configuration values, and updating the tasks.json file with project-specific metadata.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- .env file is generated with placeholders for required API keys"
           },
           {
@@ -629,9 +609,7 @@
             "title": "Generate Example Tasks.json",
             "description": "Create functionality to generate an initial tasks.json file with example tasks based on the project template and user inputs from the setup wizard. This should include creating a set of starter tasks that demonstrate the task structure and provide a starting point for the project.",
             "status": "done",
-            "dependencies": [
-              6
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- An initial tasks.json file is generated with at least 3 example tasks"
           },
           {
@@ -692,7 +670,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3
             ],
             "acceptanceCriteria": "- self_improve.mdc file created in .cursor/rules directory\n- Document outlines feedback incorporation mechanisms\n- Guidelines for adapting to project evolution are included\n- Instructions for enhancing codebase understanding over time\n- Strategies for improving code suggestions based on past interactions\n- Methods for refining prompt responses based on user feedback\n- Approach for maintaining consistency with evolving project patterns"
@@ -704,7 +681,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -747,9 +723,7 @@
             "title": "Create Implementation Guidance Generator",
             "description": "Develop a system that generates detailed implementation guidance for AI agents based on task descriptions and project context. This should leverage the Anthropic Claude API to create step-by-step instructions, suggest relevant libraries or tools, and provide code snippets or pseudocode where appropriate. Implement caching to reduce API calls and improve performance.",
             "status": "done",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Node.js module for generating implementation guidance using Claude API"
           },
           {
@@ -758,8 +732,7 @@
             "description": "Create a flexible framework for defining and executing verification procedures for completed tasks. This should include a DSL (Domain Specific Language) for specifying acceptance criteria, automated test generation where possible, and integration with popular testing frameworks. Implement hooks for both automated and manual verification steps.",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- JavaScript module implementing the verification procedure framework"
           },
@@ -770,7 +743,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3
             ],
             "acceptanceCriteria": "- Node.js module implementing the dynamic prioritization system"
@@ -810,9 +782,7 @@
             "title": "Optimize Command Responses for Agent Consumption",
             "description": "Refine the output format of existing commands to ensure they are easily parseable by AI agents. Focus on consistent, structured outputs that agents can reliably interpret without requiring a separate parsing system.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Command outputs optimized for agent consumption"
           },
           {
@@ -831,9 +801,7 @@
             "title": "Add Agent-Specific Features to Existing Commands",
             "description": "Identify and implement any missing agent-specific features in the existing command system. This may include additional flags, parameters, or output formats that are particularly useful for agent interactions.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Agent-specific features added to existing commands"
           },
           {
@@ -885,8 +853,7 @@
             "description": "Create a validation system for configuration values using a schema validation library like Joi, Zod, or Ajv. Define schemas for all configuration categories (API keys, file paths, feature flags, etc.). Implement validation that runs at startup and provides clear error messages for invalid configurations.",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- Schema validation implemented for all configuration values\n- Type checking and format validation for different value types\n- Comprehensive error messages that clearly identify validation failures\n- Support for custom validation rules for complex configuration requirements\n- Unit tests covering validation of valid and invalid configurations"
           },
@@ -897,7 +864,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3
             ],
             "acceptanceCriteria": "- Default configuration values defined for all settings\n- Clear override precedence (env vars > .env files > defaults)\n- Configuration object accessible throughout the application\n- Caching mechanism to improve performance\n- Unit tests verifying override behavior works correctly"
@@ -909,7 +875,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -922,7 +887,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -966,8 +930,7 @@
             "description": "Create specialized logging functionality for command execution and API interactions. For commands, log the command name, arguments, options, and execution status. For API interactions, log request details (URL, method, headers), response status, and timing information. Implement sanitization to prevent logging sensitive data like API keys or passwords.",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- Command logger that captures command execution details\n- API logger that records request/response details with timing information\n- Data sanitization to mask sensitive information in logs\n- Configuration options to control verbosity of command and API logs\n- Integration with existing command execution flow\n- Tests verifying proper logging of commands and API calls"
           },
@@ -986,9 +949,7 @@
             "title": "Implement Log File Rotation and Management",
             "description": "Create a log file management system that handles rotation based on file size or time intervals. Implement compression of rotated logs, automatic cleanup of old logs, and configurable retention policies. Ensure that log rotation happens without disrupting the application and that no log messages are lost during rotation.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Log rotation based on configurable file size or time interval\n- Compressed archive creation for rotated logs\n- Configurable retention policy for log archives\n- Zero message loss during rotation operations\n- Proper file locking to prevent corruption during rotation\n- Configuration options for rotation settings\n- Tests verifying rotation functionality with large log volumes\n- Documentation for log file location and naming conventions"
           }
         ]
@@ -1002,8 +963,6 @@
           1,
           3,
           4,
-          5,
-          6,
           7,
           11,
           12,
@@ -1047,8 +1006,7 @@
             "description": "Create detailed documentation of common workflows and use cases, showing how to use the tool effectively for different scenarios. Include step-by-step guides with command sequences, expected outputs, and explanations. Cover basic to advanced workflows, including PRD parsing, task expansion, and implementation drift handling.",
             "status": "done",
             "dependencies": [
-              3,
-              6
+              3
             ],
             "acceptanceCriteria": "- At least 5 complete workflow examples from initialization to completion\n- Each workflow includes all commands in sequence with expected outputs\n- Screenshots or terminal recordings illustrate the workflows\n- Explanation of decision points and alternatives within workflows\n- Advanced use cases demonstrate integration with development processes\n- Examples show how to handle common edge cases and errors"
           },
@@ -1059,7 +1017,6 @@
             "status": "done",
             "dependencies": [
               1,
-              2,
               3
             ],
             "acceptanceCriteria": "- All error messages are documented with causes and solutions\n- Common issues are organized by category (installation, configuration, execution)\n- FAQ covers at least 15 common questions with detailed answers\n- Troubleshooting decision trees help users diagnose complex issues\n- Known limitations and edge cases are clearly documented\n- Recovery procedures for data corruption or API failures are included"
@@ -1069,9 +1026,7 @@
             "title": "Develop API Integration and Extension Documentation",
             "description": "Create technical documentation for API integrations (Claude, Perplexity) and extension points. Include details on prompt templates, response handling, token optimization, and custom integrations. Document the internal architecture to help developers extend the tool with new features or integrations.",
             "status": "done",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Detailed documentation of all API integrations with authentication requirements\n- Prompt templates are documented with variables and expected responses\n- Token usage optimization strategies are explained\n- Extension points are documented with examples\n- Internal architecture diagrams show component relationships\n- Custom integration guide includes step-by-step instructions and code examples"
           }
         ]
@@ -1084,8 +1039,6 @@
         "dependencies": [
           1,
           3,
-          5,
-          9,
           16,
           17
         ],
@@ -1135,9 +1088,7 @@
             "title": "Implement Command Syntax Error Handling and Guidance",
             "description": "Enhance the CLI to provide more helpful error messages and guidance when users input invalid commands or options. Implement a \"did you mean?\" feature for close matches to valid commands, and provide context-sensitive help for command syntax errors. This should integrate with the existing Commander.js setup.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Invalid commands trigger helpful error messages with suggestions for valid alternatives"
           },
           {
@@ -1159,8 +1110,6 @@
         "description": "Implement system for tracking API token usage and managing costs.",
         "status": "done",
         "dependencies": [
-          5,
-          9,
           17
         ],
         "priority": "medium",
@@ -1172,9 +1121,7 @@
             "title": "Implement Token Usage Tracking for API Calls",
             "description": "Create a middleware or wrapper function that intercepts all API calls to OpenAI, Anthropic, and Perplexity. This function should count the number of tokens used in both the request and response, storing this information in a persistent data store (e.g., SQLite database). Implement a caching mechanism to reduce redundant API calls and token usage.",
             "status": "done",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- Token usage is accurately tracked for all API calls"
           },
           {
@@ -1191,8 +1138,7 @@
             "description": "Develop a reporting module that generates detailed token usage reports. Include breakdowns by API, user, and time period. Implement cost estimation features by integrating current pricing information for each API. Create both command-line and programmatic interfaces for generating reports and estimates.",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- CLI command for generating usage reports with various filters"
           },
@@ -1210,7 +1156,6 @@
             "description": "Create an alert system that monitors token usage in real-time and sends notifications when usage approaches or exceeds defined thresholds. Implement multiple notification channels (e.g., email, Slack, system logs) and allow for customizable alert rules. Integrate this system with the existing logging and reporting modules.",
             "status": "done",
             "dependencies": [
-              2,
               3
             ],
             "acceptanceCriteria": "- Real-time monitoring of token usage against configured limits"
@@ -1254,9 +1199,7 @@
             "title": "Implement Core Module Functionality with Dependency Injection",
             "description": "Migrate the core functionality from dev.js into the appropriate modules following the mapping document. Implement proper dependency injection to avoid circular dependencies. Ensure each module has a clear API and properly encapsulates its internal state. Focus on the critical path functionality first.",
             "status": "done",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "acceptanceCriteria": "- All core functionality migrated to appropriate modules"
           },
           {
@@ -1317,8 +1260,7 @@
             "description": "Create integration tests that verify the correct interaction between different components of the CLI, including command execution, option parsing, and data flow. Implement end-to-end tests that simulate complete user workflows, such as creating a task, expanding it, and updating its status. Include tests for error scenarios, recovery processes, and handling large numbers of tasks.",
             "status": "deferred",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "acceptanceCriteria": "- Integration tests cover all CLI commands (create, expand, update, list, etc.)"
           }
@@ -1361,8 +1303,7 @@
             "title": "Implement MCP Endpoints and API Handlers",
             "description": "Develop the complete API handlers for all required MCP endpoints, ensuring they follow the protocol specification and integrate with the context management system.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implementation steps:\n1. Implement the `/context` endpoint for:\n   - GET: retrieving existing context\n   - POST: creating new context\n   - PUT: updating existing context\n   - DELETE: removing context\n2. Implement the `/models` endpoint to list available models\n3. Develop the `/execute` endpoint for performing operations with context\n4. Create request validators for each endpoint\n5. Implement response formatters according to MCP specifications\n6. Add detailed error handling for each endpoint\n7. Set up proper HTTP status codes for different scenarios\n8. Implement pagination for endpoints that return lists\n\nTesting approach:\n- Unit tests for each endpoint handler\n- Integration tests with mock context data\n- Test various request formats and edge cases\n- Verify response formats match MCP specifications\n- Test error handling with invalid inputs\n- Benchmark endpoint performance",
             "status": "done",
@@ -1374,7 +1315,6 @@
             "description": "Integrate the ModelContextProtocol SDK directly into the MCP server implementation to streamline tool registration and resource handling.",
             "dependencies": [
               1,
-              2,
               3
             ],
             "details": "Implementation steps:\n1. Replace manual tool registration with ModelContextProtocol SDK methods.\n2. Use SDK utilities to simplify resource and template management.\n3. Ensure compatibility with FastMCP's transport mechanisms.\n4. Update server initialization to include SDK-based configurations.\n\nTesting approach:\n- Verify SDK integration with all MCP endpoints.\n- Test resource and template registration using SDK methods.\n- Validate compatibility with existing MCP clients.\n- Benchmark performance improvements from SDK integration.\n\n<info added on 2025-03-31T18:49:14.439Z>\nThe subtask is being cancelled because FastMCP already serves as a higher-level abstraction over the Model Context Protocol SDK. Direct integration with the MCP SDK would be redundant and potentially counterproductive since:\n\n1. FastMCP already encapsulates the necessary SDK functionality for tool registration and resource handling\n2. The existing FastMCP abstractions provide a more streamlined developer experience\n3. Adding another layer of SDK integration would increase complexity without clear benefits\n4. The transport mechanisms in FastMCP are already optimized for the current architecture\n\nInstead, we should focus on extending and enhancing the existing FastMCP abstractions where needed, rather than attempting to bypass them with direct SDK integration.\n</info added on 2025-03-31T18:49:14.439Z>",
@@ -1808,9 +1748,7 @@
             "id": 3,
             "title": "Implement test file generation and output",
             "description": "Create functionality to format AI-generated tests into proper Jest test files and save them to the appropriate location.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implementation steps:\n1. Create a utility to format the FastMCP response into a well-structured Jest test file\n2. Implement naming logic for test files (task_XXX.test.ts for parent tasks, task_XXX_YYY.test.ts for subtasks)\n3. Add logic to determine the appropriate file path for saving the test\n4. Implement file system operations to write the test file\n5. Add validation to ensure the generated test follows Jest conventions\n6. Implement formatting of the test file for consistency with project coding standards\n7. Add user feedback about successful test generation and file location\n8. Implement handling for both parent tasks and subtasks\n\nTesting approach:\n- Test file naming logic for various task/subtask combinations\n- Test file content formatting with sample FastMCP outputs\n- Test file system operations with mocked fs module\n- Test the complete flow from command input to file output\n- Verify generated tests can be executed by Jest\n<info added on 2025-05-23T21:06:32.457Z>\n## Detailed Implementation Guidelines\n\n### File Naming Convention Implementation\n```javascript\nfunction generateTestFileName(taskId, isSubtask = false) {\n  if (isSubtask) {\n    // For subtasks like \"24.1\", generate \"task_024_001.test.js\"\n    const [parentId, subtaskId] = taskId.split('.');\n    return `task_${parentId.padStart(3, '0')}_${subtaskId.padStart(3, '0')}.test.js`;\n  } else {\n    // For parent tasks like \"24\", generate \"task_024.test.js\"\n    return `task_${taskId.toString().padStart(3, '0')}.test.js`;\n  }\n}\n```\n\n### File Location Strategy\n- Place generated test files in the `tasks/` directory alongside task files\n- This ensures co-location with task documentation and simplifies implementation\n\n### File Content Structure Template\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { jest } from '@jest/globals';\n// Additional imports based on task requirements\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n  beforeEach(() => {\n    // Setup code\n  });\n\n  afterEach(() => {\n    // Cleanup code\n  });\n\n  test('should ${testDescription}', () => {\n    // Test implementation\n  });\n});\n```\n\n### Code Formatting Standards\n- Follow project's .prettierrc configuration:\n  - Tab width: 2 spaces (useTabs: true)\n  - Print width: 80 characters\n  - Semicolons: Required (semi: true)\n  - Quotes: Single quotes (singleQuote: true)\n  - Trailing commas: None (trailingComma: \"none\")\n  - Bracket spacing: True\n  - Arrow parens: Always\n\n### File System Operations Implementation\n```javascript\nimport fs from 'fs';\nimport path from 'path';\n\n// Determine output path\nconst tasksDir = path.dirname(tasksPath); // Same directory as tasks.json\nconst fileName = generateTestFileName(task.id, isSubtask);\nconst filePath = path.join(tasksDir, fileName);\n\n// Ensure directory exists\nif (!fs.existsSync(tasksDir)) {\n  fs.mkdirSync(tasksDir, { recursive: true });\n}\n\n// Write test file with proper error handling\ntry {\n  fs.writeFileSync(filePath, formattedTestContent, 'utf8');\n} catch (error) {\n  throw new Error(`Failed to write test file: ${error.message}`);\n}\n```\n\n### Error Handling for File Operations\n```javascript\ntry {\n  // File writing operation\n  fs.writeFileSync(filePath, testContent, 'utf8');\n} catch (error) {\n  if (error.code === 'ENOENT') {\n    throw new Error(`Directory does not exist: ${path.dirname(filePath)}`);\n  } else if (error.code === 'EACCES') {\n    throw new Error(`Permission denied writing to: ${filePath}`);\n  } else if (error.code === 'ENOSPC') {\n    throw new Error('Insufficient disk space to write test file');\n  } else {\n    throw new Error(`Failed to write test file: ${error.message}`);\n  }\n}\n```\n\n### User Feedback Implementation\n```javascript\n// Success feedback\nconsole.log(chalk.green('✅ Test file generated successfully:'));\nconsole.log(chalk.cyan(`   File: ${fileName}`));\nconsole.log(chalk.cyan(`   Location: ${filePath}`));\nconsole.log(chalk.gray(`   Size: ${testContent.length} characters`));\n\n// Additional info\nif (mockRequirements && mockRequirements.length > 0) {\n  console.log(chalk.yellow(`   Mocks needed: ${mockRequirements.join(', ')}`));\n}\n```\n\n### Content Validation Requirements\n1. Jest Syntax Validation:\n   - Ensure proper describe/test structure\n   - Validate import statements\n   - Check for balanced brackets and parentheses\n\n2. Code Quality Checks:\n   - Verify no syntax errors\n   - Ensure proper indentation\n   - Check for required imports\n\n3. Test Completeness:\n   - At least one test case\n   - Proper test descriptions\n   - Appropriate assertions\n\n### Required Dependencies\n```javascript\nimport fs from 'fs';\nimport path from 'path';\nimport chalk from 'chalk';\nimport { log } from '../utils.js';\n```\n\n### Integration with Existing Patterns\nFollow the pattern from `generate-task-files.js`:\n1. Read task data using existing utilities\n2. Process content with proper formatting\n3. Write files with error handling\n4. Provide feedback to user\n5. Return success data for MCP integration\n</info added on 2025-05-23T21:06:32.457Z>\n<info added on 2025-05-23T21:18:25.369Z>\n## Corrected Implementation Approach\n\n### Updated File Location Strategy\n\n**CORRECTION**: Tests should go in `/tests/` directory, not `/tasks/` directory.\n\nBased on Jest configuration analysis:\n- Jest is configured with `roots: ['<rootDir>/tests']`\n- Test pattern: `**/?(*.)+(spec|test).js`\n- Current test structure has `/tests/unit/`, `/tests/integration/`, etc.\n\n### Recommended Directory Structure:\n```\ntests/\n├── unit/                    # Manual unit tests\n├── integration/             # Manual integration tests  \n├── generated/               # AI-generated tests\n│   ├── tasks/              # Generated task tests\n│   │   ├── task_024.test.js\n│   │   └── task_024_001.test.js\n│   └── README.md           # Explains generated tests\n└── fixtures/               # Test fixtures\n```\n\n### Updated File Path Logic:\n```javascript\n// Determine output path - place in tests/generated/tasks/\nconst projectRoot = findProjectRoot() || '.';\nconst testsDir = path.join(projectRoot, 'tests', 'generated', 'tasks');\nconst fileName = generateTestFileName(task.id, isSubtask);\nconst filePath = path.join(testsDir, fileName);\n\n// Ensure directory structure exists\nif (!fs.existsSync(testsDir)) {\n    fs.mkdirSync(testsDir, { recursive: true });\n}\n```\n\n### Testing Framework Configuration\n\nThe generate-test command should read the configured testing framework from `.taskmasterconfig`:\n\n```javascript\n// Read testing framework from config\nconst config = getConfig(projectRoot);\nconst testingFramework = config.testingFramework || 'jest'; // Default to Jest\n\n// Generate different templates based on framework\nswitch (testingFramework) {\n    case 'jest':\n        return generateJestTest(task, context);\n    case 'mocha':\n        return generateMochaTest(task, context);\n    case 'vitest':\n        return generateVitestTest(task, context);\n    default:\n        throw new Error(`Unsupported testing framework: ${testingFramework}`);\n}\n```\n\n### Framework-Specific Templates\n\n**Jest Template** (current):\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { jest } from '@jest/globals';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        jest.clearAllMocks();\n    });\n\n    test('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n**Mocha Template**:\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { expect } from 'chai';\nimport sinon from 'sinon';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        sinon.restore();\n    });\n\n    it('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n**Vitest Template**:\n```javascript\n/**\n * Test file for Task ${taskId}: ${taskTitle}\n * Generated automatically by Task Master\n */\n\nimport { describe, test, expect, vi, beforeEach } from 'vitest';\n// Task-specific imports\n\ndescribe('Task ${taskId}: ${taskTitle}', () => {\n    beforeEach(() => {\n        vi.clearAllMocks();\n    });\n\n    test('should ${testDescription}', () => {\n        // Test implementation\n    });\n});\n```\n\n### AI Prompt Enhancement for Mocking\n\nTo address the mocking challenge, enhance the AI prompt with project context:\n\n```javascript\nconst systemPrompt = `You are an expert at generating comprehensive test files. When generating tests, pay special attention to mocking external dependencies correctly.\n\nCRITICAL MOCKING GUIDELINES:\n1. Analyze the task requirements to identify external dependencies (APIs, databases, file system, etc.)\n2. Mock external dependencies at the module level, not inline\n3. Use the testing framework's mocking utilities (jest.mock(), sinon.stub(), vi.mock())\n4. Create realistic mock data that matches the expected API responses\n5. Test both success and error scenarios for mocked dependencies\n6. Ensure mocks are cleared between tests to prevent test pollution\n\nTesting Framework: ${testingFramework}\nProject Structure: ${projectStructureContext}\n`;\n```\n\n### Integration with Future Features\n\nThis primitive command design enables:\n1. **Automatic test generation**: `task-master add-task --with-test`\n2. **Batch test generation**: `task-master generate-tests --all`\n3. **Framework-agnostic**: Support multiple testing frameworks\n4. **Smart mocking**: LLM analyzes dependencies and generates appropriate mocks\n\n### Updated Implementation Requirements:\n\n1. **Read testing framework** from `.taskmasterconfig`\n2. **Create tests directory structure** if it doesn't exist\n3. **Generate framework-specific templates** based on configuration\n4. **Enhanced AI prompts** with mocking best practices\n5. **Project structure analysis** for better import resolution\n6. **Mock dependency detection** from task requirements\n</info added on 2025-05-23T21:18:25.369Z>",
             "status": "pending",
             "parentTaskId": 24
@@ -1875,9 +1813,7 @@
             "id": 3,
             "title": "Implement add-subtask Command in commands.js",
             "description": "Create the command-line interface for the add-subtask functionality",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "1. Add a new command registration in scripts/modules/commands.js following existing patterns\n2. Define command syntax: 'add-subtask <parentId> [--task-id=<taskId> | --title=<title>]'\n3. Implement command handler that calls the addSubtask function from task-manager.js\n4. Add interactive prompts to collect required information when not provided as arguments\n5. Implement validation for command arguments\n6. Add appropriate success and error messages\n7. Document the command syntax and options in the help system\n8. Test the command with various input combinations\n9. Ensure the command follows the same patterns as other commands like add-dependency",
             "status": "done",
             "parentTaskId": 25
@@ -1887,7 +1823,6 @@
             "title": "Create Unit Test for add-subtask",
             "description": "Develop comprehensive unit tests for the add-subtask functionality",
             "dependencies": [
-              2,
               3
             ],
             "details": "1. Create a test file in tests/unit/ directory for the add-subtask functionality\n2. Write tests for the addSubtask function in task-manager.js\n3. Test all key scenarios: adding new subtasks, converting existing tasks to subtasks\n4. Test error cases: non-existent parent task, circular dependencies, invalid input\n5. Use Jest mocks to isolate the function from file system operations\n6. Test the command handler in isolation using mock functions\n7. Ensure test coverage for all branches and edge cases\n8. Document the testing approach for future reference",
@@ -1899,7 +1834,6 @@
             "title": "Implement remove-subtask Command",
             "description": "Create functionality to remove a subtask from its parent, following the same approach as add-subtask",
             "dependencies": [
-              2,
               3
             ],
             "details": "1. Create a removeSubtask function in scripts/modules/task-manager.js\n2. Implement logic to validate the subtask exists and is actually a subtask\n3. Add options to either delete the subtask completely or convert it to a standalone task\n4. Update the parent task's subtasks array to remove the reference\n5. If converting to standalone task, clear the parentId reference\n6. Implement the remove-subtask command in scripts/modules/commands.js following patterns from add-subtask\n7. Add appropriate validation and error messages\n8. Document the command in the help system\n9. Export the function in task-manager.js\n10. Ensure proper error handling for all scenarios",
@@ -1914,8 +1848,6 @@
         "description": "Implement the foundation for context integration in Task Master, enabling AI operations to leverage file-based context, cursor rules, and basic code context to improve generated outputs.",
         "status": "pending",
         "dependencies": [
-          5,
-          6,
           7
         ],
         "priority": "high",
@@ -2262,8 +2194,7 @@
             "title": "Add comprehensive error handling and validation",
             "description": "Implement robust error handling and validation for the updateTask command to ensure proper user feedback and system stability.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implementation steps:\n1. Create custom error types for different failure scenarios (TaskNotFoundError, ValidationError, etc.)\n2. Implement input validation for the taskId parameter and all options\n3. Add proper error handling for AI service failures with appropriate fallback mechanisms\n4. Implement concurrency handling to prevent conflicts when multiple updates occur simultaneously\n5. Add comprehensive logging for debugging and auditing purposes\n6. Ensure all error messages are user-friendly and actionable\n7. Implement proper HTTP status codes for API responses if applicable\n8. Add validation to ensure the task exists before attempting updates\n\nTesting approach:\n- Test various error scenarios including invalid inputs, non-existent tasks, and API failures\n- Verify error messages are clear and helpful\n- Test concurrency scenarios with multiple simultaneous updates\n- Verify logging captures appropriate information for troubleshooting",
             "status": "done",
@@ -2275,7 +2206,6 @@
             "description": "Create a comprehensive test suite for the updateTask command to ensure it works correctly in all scenarios and maintains backward compatibility.",
             "dependencies": [
               1,
-              2,
               3
             ],
             "details": "Implementation steps:\n1. Create unit tests for the updateTaskById function in task-manager.js\n   - Test finding and updating tasks with various IDs\n   - Test preservation of completed subtasks\n   - Test different update options combinations\n   - Test error handling for non-existent tasks\n2. Create unit tests for the updateTask command in commands.js\n   - Test command parameter parsing\n   - Test option handling\n   - Test error scenarios and messages\n3. Create integration tests that verify the end-to-end flow\n   - Test the command with actual AI service integration\n   - Test with mock AI responses for predictable testing\n4. Implement test fixtures and mocks for consistent testing\n5. Add performance tests to ensure the command is efficient\n6. Test edge cases such as empty tasks, tasks with many subtasks, etc.\n\nTesting approach:\n- Use Jest or similar testing framework\n- Implement mocks for external dependencies like AI services\n- Create test fixtures for consistent test data\n- Use snapshot testing for command output verification",
@@ -2286,9 +2216,7 @@
             "id": 5,
             "title": "Update CLI documentation and help text",
             "description": "Update the CLI help documentation to include the new updateTask command and ensure users understand its purpose and options.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implementation steps:\n1. Add comprehensive help text for the updateTask command including:\n   - Command description\n   - Required and optional parameters\n   - Examples of usage\n   - Description of all supported options\n2. Update the main CLI help documentation to include the new command\n3. Add the command to any relevant command groups or categories\n4. Create usage examples that demonstrate common scenarios\n5. Update README.md and other documentation files to include information about the new command\n6. Add inline code comments explaining the implementation details\n7. Update any API documentation if applicable\n8. Create or update user guides with the new functionality\n\nTesting approach:\n- Verify help text is displayed correctly when running `--help`\n- Review documentation for clarity and completeness\n- Have team members review the documentation for usability\n- Test examples to ensure they work as documented",
             "status": "done",
             "parentTaskId": 34
@@ -2370,8 +2298,7 @@
             "title": "Update Documentation and Create License Explanation",
             "description": "Update project documentation to clearly explain the dual license structure and create comprehensive licensing guidance.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implementation steps:\n1. Update the README.md with a clear, concise explanation of the licensing terms:\n   - Summary of what users can and cannot do with the code\n   - Who holds commercial rights (Ralph & Eyal)\n   - How to obtain commercial use permission\n   - Links to the full license texts\n2. Create a dedicated LICENSING.md or similar document with detailed explanations of:\n   - The rationale behind the dual licensing approach\n   - Detailed examples of what constitutes commercial vs. non-commercial use\n   - FAQs addressing common licensing questions\n3. Update any other documentation references to licensing throughout the project.\n4. Create visual aids (if appropriate) to help users understand the licensing structure.\n5. Ensure all documentation links to licensing information are updated.\n\nTesting approach:\n- Have non-technical stakeholders review the documentation for clarity and understanding\n- Verify all links to license files work correctly\n- Ensure the explanation is comprehensive but concise enough for users to understand quickly\n- Check that the documentation correctly addresses the most common use cases and questions",
             "status": "done",
@@ -2411,9 +2338,7 @@
             "id": 3,
             "title": "Format Plan in XML",
             "description": "Format the generated implementation plan within XML tags. Each step in the plan should be represented as an XML element with appropriate attributes.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Define the XML schema for the implementation plan. Implement a function to convert the AI-generated plan into the defined XML format. Ensure proper XML syntax and validation.",
             "status": "pending"
           },
@@ -2461,9 +2386,7 @@
             "id": 3,
             "title": "ASCII/Unicode Rendering Engine",
             "description": "Implement rendering logic to display the dependency graph using ASCII and Unicode characters in the terminal.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Support for various node and edge styles, and ensure compatibility with different terminal types.\n<info added on 2025-05-23T21:03:10.001Z>\nExtend ui.js with diagram display functions that integrate with Task Master's existing UI patterns:\n\n1. Implement core diagram display functions:\n   - displayTaskDiagram(tasksPath, diagramType, options) as the main entry point\n   - displayMermaidCode(mermaidCode, title) for formatted code output with boxen\n   - displayDiagramLegend() to explain symbols and colors\n\n2. Ensure UI consistency by:\n   - Using established chalk color schemes (blue/green/yellow/red)\n   - Applying boxen for consistent component formatting\n   - Following existing display function patterns (displayTaskById, displayComplexityReport)\n   - Utilizing cli-table3 for any diagram metadata tables\n\n3. Address terminal rendering challenges:\n   - Implement ASCII/Unicode fallback when Mermaid rendering isn't available\n   - Respect terminal width constraints using process.stdout.columns\n   - Integrate with loading indicators via startLoadingIndicator/stopLoadingIndicator\n\n4. Update task file generation to include Mermaid diagram sections in individual task files\n\n5. Support both CLI and MCP output formats through the outputFormat parameter\n</info added on 2025-05-23T21:03:10.001Z>",
             "status": "pending"
           },
@@ -2481,9 +2404,7 @@
             "id": 5,
             "title": "Circular Dependency Detection",
             "description": "Implement algorithms to detect and highlight circular dependencies within the graph.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Clearly mark cycles in the rendered output and provide warnings or errors as appropriate.\n<info added on 2025-05-23T21:04:20.125Z>\nIntegrate with Task Master's existing circular dependency detection:\n\n1. Import the dependency detection logic from dependency-manager.js module\n2. Utilize the findCycles function from utils.js or dependency-manager.js\n3. Extend validateDependenciesCommand functionality to highlight cycles in diagrams\n\nVisual representation in Mermaid diagrams:\n- Apply red/bold styling to nodes involved in dependency cycles\n- Add warning annotations to cyclic edges\n- Implement cycle path highlighting with distinctive line styles\n\nIntegration with validation workflow:\n- Execute dependency validation before diagram generation\n- Display cycle warnings consistent with existing CLI error messaging\n- Utilize chalk.red and boxen for error highlighting following established patterns\n\nAdd diagram legend entries that explain cycle notation and warnings\n\nEnsure detection of cycles in both:\n- Main task dependencies\n- Subtask dependencies within parent tasks\n\nFollow Task Master's error handling patterns for graceful cycle reporting and user notification\n</info added on 2025-05-23T21:04:20.125Z>",
             "status": "pending"
           },
@@ -2492,8 +2413,7 @@
             "title": "Filtering and Search Functionality",
             "description": "Enable users to filter nodes and edges by criteria such as name, type, or dependency depth.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Support command-line flags for filtering and interactive search if feasible.\n<info added on 2025-05-23T21:04:57.811Z>\nImplement MCP tool integration for task dependency visualization:\n\n1. Create task_diagram.js in mcp-server/src/tools/ following existing tool patterns\n2. Implement taskDiagramDirect.js in mcp-server/src/core/direct-functions/\n3. Use Zod schema for parameter validation:\n   - diagramType (dependencies, subtasks, flow, gantt)\n   - taskId (optional string)\n   - format (mermaid, text, json)\n   - includeComplexity (boolean)\n\n4. Structure response data with:\n   - mermaidCode for client-side rendering\n   - metadata (nodeCount, edgeCount, cycleWarnings)\n   - support for both task-specific and project-wide diagrams\n\n5. Integrate with session management and project root handling\n6. Implement error handling using handleApiResult pattern\n7. Register the tool in tools/index.js\n\nMaintain compatibility with existing command-line flags for filtering and interactive search.\n</info added on 2025-05-23T21:04:57.811Z>",
             "status": "pending"
@@ -2514,11 +2434,8 @@
             "title": "Performance Optimization",
             "description": "Profile and optimize the tool for large graphs to ensure responsive rendering and low memory usage.",
             "dependencies": [
-              2,
               3,
-              4,
-              5,
-              6
+              4
             ],
             "details": "Implement lazy loading, efficient data structures, and parallel processing where appropriate.\n<info added on 2025-05-23T21:06:14.533Z>\n# Mermaid Library Integration and Terminal-Specific Handling\n\n## Package Dependencies\n- Add mermaid package as an optional dependency in package.json for generating raw Mermaid diagram code\n- Consider mermaid-cli for SVG/PNG conversion capabilities\n- Evaluate terminal-image or similar libraries for terminals with image support\n- Explore ascii-art-ansi or box-drawing character libraries for text-only terminals\n\n## Terminal Capability Detection\n- Leverage existing terminal detection from ui.js to assess rendering capabilities\n- Implement detection for:\n  - iTerm2 and other terminals with image protocol support\n  - Terminals with Unicode/extended character support\n  - Basic terminals requiring pure ASCII output\n\n## Rendering Strategy with Fallbacks\n1. Primary: Generate raw Mermaid code for user copy/paste\n2. Secondary: Render simplified ASCII tree/flow representation using box characters\n3. Tertiary: Present dependencies in tabular format for minimal terminals\n\n## Implementation Approach\n- Use dynamic imports for optional rendering libraries to maintain lightweight core\n- Implement graceful degradation when optional packages aren't available\n- Follow Task Master's philosophy of minimal dependencies\n- Ensure performance optimization through lazy loading where appropriate\n- Design modular rendering components that can be swapped based on terminal capabilities\n</info added on 2025-05-23T21:06:14.533Z>",
             "status": "pending"
@@ -2529,13 +2446,9 @@
             "description": "Write comprehensive user and developer documentation covering installation, usage, configuration, and extension.",
             "dependencies": [
               1,
-              2,
               3,
               4,
-              5,
-              6,
-              7,
-              8
+              7
             ],
             "details": "Include examples, troubleshooting, and contribution guidelines.",
             "status": "pending"
@@ -2546,14 +2459,9 @@
             "description": "Develop automated tests for all major features, including CLI parsing, layout correctness, rendering, color coding, filtering, and cycle detection.",
             "dependencies": [
               1,
-              2,
               3,
               4,
-              5,
-              6,
-              7,
-              8,
-              9
+              7
             ],
             "details": "Include unit, integration, and regression tests; validate accessibility and performance claims.\n<info added on 2025-05-23T21:08:36.329Z>\n# Documentation Tasks for Visual Task Dependency Graph\n\n## User Documentation\n1. Update README.md with diagram command documentation following existing command reference format\n2. Add examples to CLI command help text in commands.js matching patterns from other commands\n3. Create docs/diagrams.md with detailed usage guide including:\n   - Command examples for each diagram type\n   - Mermaid code samples and output\n   - Terminal compatibility notes\n   - Integration with task workflow examples\n   - Troubleshooting section for common diagram rendering issues\n   - Accessibility features and terminal fallback options\n\n## Developer Documentation\n1. Update MCP tool documentation to include the new task_diagram tool\n2. Add JSDoc comments to all new functions following existing code standards\n3. Create contributor documentation for extending diagram types\n4. Update API documentation for any new MCP interface endpoints\n\n## Integration Documentation\n1. Document integration with existing commands (analyze-complexity, generate, etc.)\n2. Provide examples showing how diagrams complement other Task Master features\n</info added on 2025-05-23T21:08:36.329Z>",
             "status": "pending"
@@ -2674,7 +2582,6 @@
             "title": "Develop webhook delivery and retry mechanism",
             "description": "Create a reliable system for webhook delivery with retry logic and failure handling",
             "dependencies": [
-              2,
               4
             ],
             "details": "Implement exponential backoff retry logic, configurable retry attempts, and dead letter queues for failed deliveries. Add monitoring for webhook delivery success rates and performance metrics. Include timeout handling for unresponsive webhook endpoints.",
@@ -2684,9 +2591,7 @@
             "id": 6,
             "title": "Implement comprehensive error handling and logging",
             "description": "Create robust error handling, logging, and monitoring for the webhook system",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "details": "Develop detailed error logging for webhook failures, including response codes, error messages, and timing information. Implement alerting for critical failures and create a dashboard for monitoring system health. Add debugging tools for webhook delivery issues.",
             "status": "pending"
           },
@@ -2695,9 +2600,7 @@
             "title": "Create webhook testing and simulation tools",
             "description": "Develop tools for testing webhook integrations and simulating event triggers",
             "dependencies": [
-              3,
-              5,
-              6
+              3
             ],
             "details": "Build a webhook testing console that allows manual triggering of events, viewing delivery history, and replaying failed webhooks. Create a webhook simulator for developers to test their endpoint implementations without generating real system events.",
             "status": "pending"
@@ -2739,8 +2642,7 @@
             "title": "Develop GitHub API client for issue fetching",
             "description": "Create a service to authenticate with GitHub and fetch issue details using the GitHub REST API.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implement authentication using GitHub Personal Access Tokens or OAuth. Handle API responses, including error cases (rate limiting, authentication failures, not found). Extract relevant issue data: title, description, labels, assignees, and comments.",
             "status": "pending"
@@ -2777,9 +2679,7 @@
             "id": 7,
             "title": "Add bidirectional integration with export feature",
             "description": "Ensure imported tasks work seamlessly with the GitHub export feature and maintain consistent link management.",
-            "dependencies": [
-              6
-            ],
+            "dependencies": [],
             "details": "Verify that tasks imported from GitHub can be properly exported back to GitHub. Implement checks to prevent duplicate exports of imported issues. Add metadata flags to identify imported tasks and their source repositories. Test round-trip workflows (import → modify → export) to ensure data integrity.",
             "status": "pending"
           },
@@ -2795,10 +2695,7 @@
             "id": 9,
             "title": "Extend GitHub URL parsing for Issues and Discussions",
             "description": "Enhance URL parsing to support both GitHub Issues and Discussions with automatic type detection.",
-            "dependencies": [
-              2,
-              8
-            ],
+            "dependencies": [],
             "details": "Extend existing URL parser to handle GitHub Discussions URLs. Implement automatic detection of content type (issue vs discussion). Update validation logic for both content types. Ensure consistent data extraction for owner, repo, and content ID regardless of type.",
             "status": "pending"
           },
@@ -2807,8 +2704,7 @@
             "title": "Implement comprehensive GitHub API client",
             "description": "Create enhanced GitHub API client supporting both Issues and Discussions APIs with complete content fetching.",
             "dependencies": [
-              3,
-              9
+              3
             ],
             "details": "Extend existing API client to support GitHub Discussions API. Implement complete content fetching including all comments and replies. Add support for GITHUB_API_KEY environment variable. Handle threaded discussions and comment hierarchies. Implement robust error handling and rate limiting for both API types.",
             "status": "pending"
@@ -2817,9 +2713,7 @@
             "id": 11,
             "title": "Integrate ContextGatherer for LLM-powered analysis",
             "description": "Integrate with existing ContextGatherer.js to enable LLM-powered analysis of GitHub content.",
-            "dependencies": [
-              10
-            ],
+            "dependencies": [],
             "details": "Adapt ContextGatherer.js to work with GitHub content as input source. Create GitHub-specific context gathering strategies. Implement content preprocessing for optimal LLM analysis. Add project component identification for GitHub discussions. Create prompts for task generation from GitHub content.",
             "status": "pending"
           },
@@ -2838,7 +2732,6 @@
             "title": "Enhance metadata system for rich import context",
             "description": "Extend the metadata schema to store comprehensive import context and enable advanced features.",
             "dependencies": [
-              6,
               12
             ],
             "details": "Extend existing metadata schema with import-specific fields. Add source platform, import timestamp, and LLM model tracking. Implement content hash storage for change detection. Store participant information and discussion context. Add support for custom metadata per platform type. Ensure backward compatibility with existing export feature metadata.",
@@ -2849,7 +2742,6 @@
             "title": "Implement import_task command interface",
             "description": "Create the user-facing command interface for the new import_task system with GitHub support.",
             "dependencies": [
-              8,
               12,
               13
             ],
@@ -2900,9 +2792,7 @@
             "id": 3,
             "title": "Create report file generator",
             "description": "Build functionality to generate a structured report file with ICE analysis results",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Design the report file format (JSON, CSV, or Markdown). Implement sorting of tasks by ICE score. Include task details, individual I/C/E scores, and final ICE score in the report. Add timestamp and project metadata. Create a function to save the report to the specified location.",
             "status": "pending"
           },
@@ -2961,9 +2851,7 @@
             "id": 3,
             "title": "Build Context Addition Functionality",
             "description": "Create the functionality that allows users to add additional context to tasks and subtasks.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implement context input fields with support for rich text, attachments, links, and references to other tasks. Add auto-save functionality for context changes and version history if applicable. Include context suggestion features based on task content.",
             "status": "pending"
           },
@@ -2971,9 +2859,7 @@
             "id": 4,
             "title": "Develop Task Management Controls",
             "description": "Implement controls for managing tasks within the expanded card view, including prioritization, scheduling, and assignment.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create UI controls for task prioritization (drag-and-drop ranking), deadline setting with calendar integration, assignee selection with user search, and status updates. Implement notification triggers for task changes and deadline reminders.",
             "status": "pending"
           },
@@ -2992,9 +2878,7 @@
             "id": 6,
             "title": "Test and Optimize User Experience",
             "description": "Conduct thorough testing of the enhanced workflow and optimize based on user feedback and performance metrics.",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "details": "Perform usability testing with representative users. Collect metrics on task completion time, error rates, and user satisfaction. Optimize performance for large task lists and complex subtask hierarchies. Implement A/B testing for alternative UI approaches if needed.",
             "status": "pending"
           }
@@ -3033,8 +2917,7 @@
             "title": "Update functions to import prompts",
             "description": "Modify all functions that use hardcoded prompts to import them from the centralized structure",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "For each function that previously used a hardcoded prompt, add an import statement to pull in the prompt from the centralized structure. Test each function after modification to ensure it still works correctly. Update any tests that might be affected by the refactoring. Create a pull request with the changes and document the new prompt structure in the project documentation.",
             "status": "pending"
@@ -3074,8 +2957,7 @@
             "title": "Develop AI integration for code analysis",
             "description": "Integrate AI capabilities to enhance code analysis and provide intelligent recommendations",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Connect to AI services (like OpenAI) to analyze code beyond rule-based checks. Configure the AI to understand context, project-specific patterns, and provide nuanced analysis that rule-based systems might miss.",
             "status": "pending"
@@ -3085,7 +2967,6 @@
             "title": "Create recommendation generation system",
             "description": "Build a system to generate actionable improvement recommendations based on analysis results",
             "dependencies": [
-              2,
               3
             ],
             "details": "Develop algorithms to transform analysis results into specific, actionable recommendations. Include priority levels, effort estimates, and potential impact assessments for each recommendation.",
@@ -3106,8 +2987,7 @@
             "title": "Create comprehensive reporting interface",
             "description": "Develop a user interface to display analysis results and recommendations",
             "dependencies": [
-              4,
-              5
+              4
             ],
             "details": "Build a dashboard showing code quality metrics, identified patterns, recommendations, and created tasks. Include filtering options, trend analysis over time, and the ability to drill down into specific issues with code snippets and explanations.",
             "status": "pending"
@@ -3149,8 +3029,7 @@
             "title": "Build coverage tracking and update generator",
             "description": "Create a system that processes code coverage reports, maps them to tasks, and updates the tests.json file to maintain accurate coverage tracking over time.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "1. Implement a coverage processor that takes parsed coverage data and maps it to task IDs.\n2. Create algorithms to calculate aggregate coverage metrics at the task and subtask levels.\n3. Develop a change detection system that identifies when tests or code have changed and require updates.\n4. Implement incremental update logic to avoid reprocessing unchanged tests.\n5. Create a task-code association system that maps specific code blocks to tasks for granular tracking.\n6. Add historical tracking to monitor coverage trends over time.\n7. Implement hooks for CI/CD integration to automatically update coverage after test runs.\n8. Create a conflict resolution strategy for when multiple tests cover the same code areas.\n9. Add performance optimizations for large codebases and test suites.\n10. Develop unit tests that verify correct aggregation and mapping of coverage data.\n11. Document the update workflow with sequence diagrams and examples.",
             "status": "pending",
@@ -3162,7 +3041,6 @@
             "description": "Create a set of command-line interface tools that allow developers to view, analyze, and manage test coverage at the task level.",
             "dependencies": [
               1,
-              2,
               3
             ],
             "details": "1. Design a cohesive CLI command structure with subcommands for different coverage operations.\n2. Implement 'coverage show' command to display test coverage for a specific task/subtask.\n3. Create 'coverage gaps' command to identify untested code related to a particular task.\n4. Develop 'coverage history' command to show how coverage has changed over time.\n5. Implement 'coverage generate' command that uses LLMs to suggest tests for uncovered code.\n6. Add filtering options to focus on specific test types or coverage thresholds.\n7. Create formatted output options (JSON, CSV, markdown tables) for integration with other tools.\n8. Implement colorized terminal output for better readability of coverage reports.\n9. Add batch processing capabilities for running operations across multiple tasks.\n10. Create comprehensive help documentation and examples for each command.\n11. Develop unit and integration tests for CLI commands.\n12. Document command usage patterns and example workflows.",
@@ -3175,7 +3053,6 @@
             "description": "Create an intelligent system that uses LLMs to generate targeted tests for uncovered code sections within tasks, integrating with the existing task management workflow.",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -3218,8 +3095,7 @@
             "title": "Build Research Command CLI Interface",
             "description": "Implement the Commander.js command structure for the 'research' command with all required options and parameters.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implementation details:\n1. Create a new command file `commands/research.js`\n2. Set up the Commander.js command structure with the following options:\n   - Required search query parameter\n   - `--task` or `-t` option for task/subtask ID\n   - `--prompt` or `-p` option for custom research prompt\n   - `--save` or `-s` option to save results to a file\n   - `--copy` or `-c` option to copy results to clipboard\n   - `--summary` or `-m` option to generate a summary\n   - `--detail` or `-d` option to set research depth (default: medium)\n3. Implement command validation logic\n4. Connect the command to the Perplexity service created in subtask 1\n5. Integrate the context extraction logic from subtask 2\n6. Register the command in the main CLI application\n7. Add help text and examples\n\nTesting approach:\n- Test command registration and option parsing\n- Verify command validation logic works correctly\n- Test with various combinations of options\n- Ensure proper error messages for invalid inputs\n<info added on 2025-05-23T21:09:08.478Z>\nImplementation details:\n1. Create a new module `repl/research-chat.js` for the interactive research experience\n2. Implement REPL-style chat interface using inquirer with:\n   - Persistent conversation history management\n   - Context-aware prompting system\n   - Command parsing for special instructions\n3. Implement REPL commands:\n   - `/save` - Save conversation to file\n   - `/task` - Associate with or load context from a task\n   - `/help` - Show available commands and usage\n   - `/exit` - End the research session\n   - `/copy` - Copy last response to clipboard\n   - `/summary` - Generate summary of conversation\n   - `/detail` - Adjust research depth level\n4. Create context initialization system:\n   - Task/subtask context loading\n   - File content integration\n   - System prompt configuration\n5. Integrate with ai-services-unified.js research mode\n6. Implement conversation state management:\n   - Track message history\n   - Maintain context window\n   - Handle context pruning for long conversations\n7. Design consistent UI patterns using ui.js library\n8. Add entry point in main CLI application\n\nTesting approach:\n- Test REPL command parsing and execution\n- Verify context initialization with various inputs\n- Test conversation state management\n- Ensure proper error handling and recovery\n- Validate UI consistency across different terminal environments\n</info added on 2025-05-23T21:09:08.478Z>",
             "status": "pending",
@@ -3253,9 +3129,7 @@
             "id": 6,
             "title": "Implement Project Context Generation",
             "description": "Create functionality to generate and include project-level context such as file trees, repository structure, and codebase insights for more informed research.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implementation details:\n1. Create a new module `utils/projectContextGenerator.js` for project-level context extraction\n2. Implement file tree generation functionality:\n   - Scan project directory structure recursively\n   - Filter out irrelevant files (node_modules, .git, etc.)\n   - Format file tree for AI consumption\n   - Include file counts and structure statistics\n3. Add code analysis capabilities:\n   - Extract key imports and dependencies\n   - Identify main modules and their relationships\n   - Generate high-level architecture overview\n4. Implement context summarization:\n   - Create concise project overview\n   - Identify key technologies and patterns\n   - Summarize project purpose and structure\n5. Add caching for expensive operations:\n   - Cache file tree with invalidation on changes\n   - Store analysis results with TTL\n6. Create integration with research REPL:\n   - Add project context to system prompts\n   - Support `/project` command to refresh context\n   - Allow selective inclusion of project components\n\nTesting approach:\n- Test file tree generation with various project structures\n- Verify filtering logic works correctly\n- Test context summarization quality\n- Measure performance impact of context generation\n- Verify caching mechanism effectiveness",
             "status": "pending",
             "parentTaskId": 51
@@ -3317,9 +3191,7 @@
             "id": 3,
             "title": "Build interactive CLI interface for suggestions",
             "description": "Create the command-line interface for requesting and displaying task suggestions",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Design a user-friendly CLI command structure with appropriate flags for customization. Implement progress indicators during AI processing and format the output of suggestions in a clear, readable format. Include help text and examples in the command documentation.",
             "status": "pending"
           },
@@ -3378,9 +3250,7 @@
             "id": 3,
             "title": "Develop AI suggestion logic for subtasks",
             "description": "Create the core AI integration to generate relevant subtask suggestions",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implement the AI prompt engineering and response handling for subtask generation. Ensure the AI provides structured output with appropriate fields for subtasks. Include error handling for API failures and malformed responses.",
             "status": "pending"
           },
@@ -3408,9 +3278,7 @@
             "id": 6,
             "title": "Perform comprehensive testing",
             "description": "Test the subtask suggestion feature across various scenarios",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "details": "Create unit tests for each component. Develop integration tests for the full feature workflow. Test edge cases including invalid inputs, API failures, and unusual task structures. Document test results and fix any identified issues.",
             "status": "pending"
           }
@@ -3459,8 +3327,7 @@
             "title": "Implement core positional argument parsing logic",
             "description": "Modify the argument parser to recognize and process positional arguments according to the specification, while maintaining compatibility with existing named arguments.",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Update the parser to identify arguments without flags as positional, map them to the correct parameter based on order, and apply appropriate validation. Ensure the implementation handles missing required positional arguments and provides helpful error messages.",
             "status": "pending"
@@ -3480,7 +3347,6 @@
             "title": "Update documentation and create usage examples",
             "description": "Update CLI documentation to explain positional argument support and provide clear examples showing how to use positional arguments with different commands.",
             "dependencies": [
-              2,
               3,
               4
             ],
@@ -3529,9 +3395,7 @@
             "id": 3,
             "title": "Implement Progress Indicators and Loading Animations",
             "description": "Add visual feedback for long-running operations",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create spinner animations for operations that take time to complete. Implement progress bars for operations with known completion percentages. Ensure animations degrade gracefully in terminals with limited capabilities. Add estimated time remaining calculations where possible.",
             "status": "pending"
           },
@@ -3539,9 +3403,7 @@
             "id": 4,
             "title": "Develop Interactive Selection Menus",
             "description": "Create interactive menus for task selection and configuration",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implement arrow-key navigation for selecting tasks from a list. Add checkbox and radio button interfaces for multi-select and single-select options. Include search/filter functionality for large task lists. Ensure keyboard shortcuts are consistent and documented.",
             "status": "pending"
           },
@@ -3549,9 +3411,7 @@
             "id": 5,
             "title": "Design Tabular and Structured Output Formats",
             "description": "Improve the formatting of task lists and detailed information",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create table layouts with proper column alignment for task lists. Implement tree views for displaying task hierarchies and dependencies. Add support for different output formats (plain text, JSON, CSV). Ensure outputs are properly paginated for large datasets.",
             "status": "pending"
           },
@@ -3560,9 +3420,7 @@
             "title": "Create Help System and Interactive Documentation",
             "description": "Develop an in-CLI help system with examples and contextual assistance",
             "dependencies": [
-              2,
-              4,
-              5
+              4
             ],
             "details": "Implement a comprehensive help command with examples for each feature. Add contextual help that suggests relevant commands based on user actions. Create interactive tutorials for new users. Include command auto-completion suggestions and syntax highlighting for command examples.",
             "status": "pending"
@@ -3611,9 +3469,7 @@
             "id": 3,
             "title": "Update npm Dependencies",
             "description": "Update all project dependencies using npm, ensuring versions are current and compatible, and resolve any conflicts.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Run npm update, audit for vulnerabilities, and adjust package.json and package-lock.json as needed.",
             "status": "done"
           },
@@ -3641,9 +3497,7 @@
             "id": 6,
             "title": "Perform Regression Testing",
             "description": "Run comprehensive tests to ensure that the refactor has not introduced any regressions or broken existing functionality.",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "details": "Execute automated and manual tests, focusing on areas affected by dependency management changes.",
             "status": "done"
           }
@@ -3713,7 +3567,6 @@
             "title": "Integrate Mentor System with Task Management",
             "description": "Connect the mentor system with the existing task management functionality to enable task-specific mentoring.",
             "dependencies": [
-              2,
               3
             ],
             "details": "Create APIs to link tasks with relevant mentors based on expertise. Implement functionality to initiate discussions around specific tasks. Develop mechanisms for mentors to provide feedback and guidance on tasks. Build notification system for task-related mentor interactions.",
@@ -3724,9 +3577,7 @@
             "title": "Test and Optimize Round-Table Discussions",
             "description": "Conduct comprehensive testing of the round-table discussion feature and optimize for performance and user experience.",
             "dependencies": [
-              4,
-              5,
-              6
+              4
             ],
             "details": "Perform load testing with multiple concurrent discussions. Test AI mentor responses for quality and relevance. Optimize LLM usage for cost efficiency. Conduct user testing sessions and gather feedback. Implement performance monitoring and analytics for ongoing optimization.",
             "status": "pending"
@@ -3803,7 +3654,6 @@
             "description": "Implement the 'task-master models' command to display currently configured models and available options.",
             "dependencies": [
               1,
-              2,
               4
             ],
             "details": "1. Create handler for the models command without flags\n2. Implement formatted output showing current model configuration\n3. Add color-coding for better readability using a library like chalk\n4. Include version information for each configured model\n5. Show API status indicators (connected/disconnected)\n6. Display usage examples for changing models\n7. Add support for verbose output with additional details\n8. Testing approach: Create integration tests that verify correct output formatting and content",
@@ -3816,9 +3666,7 @@
             "description": "Implement the commands to set main and research models with proper validation and feedback.",
             "dependencies": [
               1,
-              2,
-              4,
-              6
+              4
             ],
             "details": "1. Create handlers for '--set-main' and '--set-research' flags\n2. Implement validation logic for model names\n3. Add clear error messages for invalid model selections\n4. Implement confirmation messages for successful model changes\n5. Add support for setting both models in a single command\n6. Implement dry-run option to validate without making changes\n7. Add verbose output option for debugging\n8. Testing approach: Create integration tests that verify model setting functionality with various inputs",
             "status": "done",
@@ -3830,7 +3678,6 @@
             "description": "Refactor the main task processing logic to use the new AI services module and support dynamic model selection.",
             "dependencies": [
               4,
-              5,
               "61.18"
             ],
             "details": "1. Update task processing functions to use the centralized AI services\n2. Implement dynamic model selection based on configuration\n3. Add error handling for model-specific failures\n4. Implement graceful degradation when preferred models are unavailable\n5. Update prompts to be model-agnostic where possible\n6. Add telemetry for model performance monitoring\n7. Implement response validation to ensure quality across different models\n8. Testing approach: Create integration tests that verify task processing with different model configurations\n\n<info added on 2025-04-20T03:55:56.310Z>\nWhen updating the main task processing logic, implement the following changes to align with the new configuration system:\n\n1. Replace direct environment variable access with calls to the configuration manager:\n   ```javascript\n   // Before\n   const apiKey = process.env.OPENAI_API_KEY;\n   const modelId = process.env.MAIN_MODEL || \"gpt-4\";\n   \n   // After\n   import { getMainProvider, getMainModelId, getMainMaxTokens, getMainTemperature } from './config-manager.js';\n   \n   const provider = getMainProvider();\n   const modelId = getMainModelId();\n   const maxTokens = getMainMaxTokens();\n   const temperature = getMainTemperature();\n   ```\n\n2. Implement model fallback logic using the configuration hierarchy:\n   ```javascript\n   async function processTaskWithFallback(task) {\n     try {\n       return await processWithModel(task, getMainModelId());\n     } catch (error) {\n       logger.warn(`Primary model failed: ${error.message}`);\n       const fallbackModel = getMainFallbackModelId();\n       if (fallbackModel) {\n         return await processWithModel(task, fallbackModel);\n       }\n       throw error;\n     }\n   }\n   ```\n\n3. Add configuration-aware telemetry points to track model usage and performance:\n   ```javascript\n   function trackModelPerformance(modelId, startTime, success) {\n     const duration = Date.now() - startTime;\n     telemetry.trackEvent('model_usage', {\n       modelId,\n       provider: getMainProvider(),\n       duration,\n       success,\n       configVersion: getConfigVersion()\n     });\n   }\n   ```\n\n4. Ensure all prompt templates are loaded through the configuration system rather than hardcoded:\n   ```javascript\n   const promptTemplate = getPromptTemplate('task_processing');\n   const prompt = formatPrompt(promptTemplate, { task: taskData });\n   ```\n</info added on 2025-04-20T03:55:56.310Z>",
@@ -3843,8 +3690,6 @@
             "description": "Refactor the research processing logic to use the new AI services module and support dynamic model selection for research operations.",
             "dependencies": [
               4,
-              5,
-              8,
               "61.18"
             ],
             "details": "1. Update research functions to use the centralized AI services\n2. Implement dynamic model selection for research operations\n3. Add specialized error handling for research-specific issues\n4. Optimize prompts for research-focused models\n5. Implement result caching for research operations\n6. Add support for model-specific research parameters\n7. Create fallback mechanisms for research operations\n8. Testing approach: Create integration tests that verify research functionality with different model configurations\n\n<info added on 2025-04-20T03:55:39.633Z>\nWhen implementing the refactored research processing logic, ensure the following:\n\n1. Replace direct environment variable access with the new configuration system:\n   ```javascript\n   // Old approach\n   const apiKey = process.env.OPENAI_API_KEY;\n   const model = \"gpt-4\";\n   \n   // New approach\n   import { getResearchProvider, getResearchModelId, getResearchMaxTokens, \n            getResearchTemperature } from './config-manager.js';\n   \n   const provider = getResearchProvider();\n   const modelId = getResearchModelId();\n   const maxTokens = getResearchMaxTokens();\n   const temperature = getResearchTemperature();\n   ```\n\n2. Implement model fallback chains using the configuration system:\n   ```javascript\n   async function performResearch(query) {\n     try {\n       return await callAIService({\n         provider: getResearchProvider(),\n         modelId: getResearchModelId(),\n         maxTokens: getResearchMaxTokens(),\n         temperature: getResearchTemperature()\n       });\n     } catch (error) {\n       logger.warn(`Primary research model failed: ${error.message}`);\n       return await callAIService({\n         provider: getResearchProvider('fallback'),\n         modelId: getResearchModelId('fallback'),\n         maxTokens: getResearchMaxTokens('fallback'),\n         temperature: getResearchTemperature('fallback')\n       });\n     }\n   }\n   ```\n\n3. Add support for dynamic parameter adjustment based on research type:\n   ```javascript\n   function getResearchParameters(researchType) {\n     // Get base parameters\n     const baseParams = {\n       provider: getResearchProvider(),\n       modelId: getResearchModelId(),\n       maxTokens: getResearchMaxTokens(),\n       temperature: getResearchTemperature()\n     };\n     \n     // Adjust based on research type\n     switch(researchType) {\n       case 'deep':\n         return {...baseParams, maxTokens: baseParams.maxTokens * 1.5};\n       case 'creative':\n         return {...baseParams, temperature: Math.min(baseParams.temperature + 0.2, 1.0)};\n       case 'factual':\n         return {...baseParams, temperature: Math.max(baseParams.temperature - 0.2, 0)};\n       default:\n         return baseParams;\n     }\n   }\n   ```\n\n4. Ensure the caching mechanism uses configuration-based TTL settings:\n   ```javascript\n   const researchCache = new Cache({\n     ttl: getResearchCacheTTL(),\n     maxSize: getResearchCacheMaxSize()\n   });\n   ```\n</info added on 2025-04-20T03:55:39.633Z>",
@@ -3856,10 +3701,7 @@
             "title": "Create Comprehensive Documentation and Examples",
             "description": "Develop comprehensive documentation for the new model management features, including examples, troubleshooting guides, and best practices.",
             "dependencies": [
-              6,
-              7,
-              8,
-              9
+              7
             ],
             "details": "1. Update README.md with new model management commands\n2. Create usage examples for all supported models\n3. Document environment variable requirements for each model\n4. Create troubleshooting guide for common issues\n5. Add performance considerations and best practices\n6. Document API key acquisition process for each supported service\n7. Create comparison chart of model capabilities and limitations\n8. Testing approach: Conduct user testing with the documentation to ensure clarity and completeness\n\n<info added on 2025-04-20T03:55:20.433Z>\n## Documentation Update for Configuration System Refactoring\n\n### Configuration System Architecture\n- Document the separation between environment variables and configuration file:\n  - API keys: Sourced exclusively from environment variables (process.env or session.env)\n  - All other settings: Centralized in `.taskmasterconfig` JSON file\n\n### `.taskmasterconfig` Structure\n```json\n{\n  \"models\": {\n    \"completion\": \"gpt-3.5-turbo\",\n    \"chat\": \"gpt-4\",\n    \"embedding\": \"text-embedding-ada-002\"\n  },\n  \"parameters\": {\n    \"temperature\": 0.7,\n    \"maxTokens\": 2000,\n    \"topP\": 1\n  },\n  \"logging\": {\n    \"enabled\": true,\n    \"level\": \"info\"\n  },\n  \"defaults\": {\n    \"outputFormat\": \"markdown\"\n  }\n}\n```\n\n### Configuration Access Patterns\n- Document the getter functions in `config-manager.js`:\n  - `getModelForRole(role)`: Returns configured model for a specific role\n  - `getParameter(name)`: Retrieves model parameters\n  - `getLoggingConfig()`: Access logging settings\n  - Example usage: `const completionModel = getModelForRole('completion')`\n\n### Environment Variable Resolution\n- Explain the `resolveEnvVariable(key)` function:\n  - Checks both process.env and session.env\n  - Prioritizes session variables over process variables\n  - Returns null if variable not found\n\n### Configuration Precedence\n- Document the order of precedence:\n  1. Command-line arguments (highest priority)\n  2. Session environment variables\n  3. Process environment variables\n  4. `.taskmasterconfig` settings\n  5. Hardcoded defaults (lowest priority)\n\n### Migration Guide\n- Steps for users to migrate from previous configuration approach\n- How to verify configuration is correctly loaded\n</info added on 2025-04-20T03:55:20.433Z>",
             "status": "done",
@@ -4238,9 +4080,7 @@
             "id": 3,
             "title": "Format user input with timestamp for simple updates",
             "description": "Implement functionality to format the user's direct text input with a timestamp in the same format as AI-processed updates when the --simple flag is used.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create a utility function that takes the user's raw input text and prepends a timestamp in the same format used for AI-generated updates. This function should be called when the --simple flag is active. Ensure the timestamp format is consistent with the existing format used throughout the application.",
             "status": "pending",
             "testStrategy": "Verify that the timestamp format matches the AI-generated updates and that the user's text is preserved exactly as entered."
@@ -4285,10 +4125,8 @@
             "description": "Create comprehensive integration tests to verify that the --simple flag works correctly in both commands and integrates properly with the rest of the system.",
             "dependencies": [
               1,
-              2,
               3,
-              4,
-              5
+              4
             ],
             "details": "Develop integration tests that verify the entire flow of using the --simple flag with both update commands. Tests should confirm that updates are correctly formatted, stored, and displayed. Include edge cases such as empty input, very long input, and special characters.",
             "status": "pending",
@@ -4300,11 +4138,8 @@
             "description": "Conduct final validation of the feature across all use cases and update the user documentation to include the new functionality.",
             "dependencies": [
               1,
-              2,
               3,
               4,
-              5,
-              6,
               7
             ],
             "details": "Perform end-to-end testing of the feature to ensure it works correctly in all scenarios. Update the user documentation with detailed information about the new --simple flag, including its purpose, how to use it, and examples. Ensure that the documentation clearly explains the difference between AI-processed updates and simple updates.",
@@ -4347,9 +4182,7 @@
             "id": 3,
             "title": "Generate and Validate pnpm Lockfile",
             "description": "Install dependencies using pnpm to create a pnpm-lock.yaml file and ensure it accurately reflects the project's dependency tree, considering the 'module' package type.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Run `pnpm install` to generate the lockfile, check it into version control, and verify that dependency resolution is correct and consistent. Ensure that all dependencies listed in package.json are resolved as expected for an ESM project.",
             "status": "done",
             "testStrategy": "Compare dependency trees between npm and pnpm; ensure no missing or extraneous dependencies. Validate that the lockfile works for both CLI and init.js flows."
@@ -4445,9 +4278,7 @@
             "id": 3,
             "title": "Test and Fix Yarn Compatibility for Scripts and CLI",
             "description": "Ensure all scripts, post-install hooks, and CLI commands function correctly when Taskmaster is installed and managed via Yarn. Confirm that any website or UI shown during installation is identical to npm. Validate that binaries and the init process (scripts/init.js) work as expected.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Test all lifecycle scripts, post-install actions, and CLI commands using Yarn. Address any issues related to environment variables, script execution, or dependency hoisting. Ensure any website or prompt shown during install is the same as with npm. Validate that binaries 'task-master' and 'task-master-mcp' are linked and that scripts/init.js creates the correct structure and templates.",
             "status": "done",
             "testStrategy": "Install Taskmaster using Yarn and run all documented scripts and CLI commands, comparing results to npm installations, especially for any website or UI shown during install. Validate directory and template setup as per scripts/init.js."
@@ -4511,9 +4342,7 @@
             "id": 9,
             "title": "Test Website Account Setup with Yarn",
             "description": "If the installation process includes a website component, verify that account setup, registration, or any other user-specific configurations work correctly when Taskmaster is installed via Yarn. If no website or account setup is required, confirm and document this explicitly.",
-            "dependencies": [
-              6
-            ],
+            "dependencies": [],
             "details": "Test the complete user flow for any website component that appears during installation, including account creation, login, and configuration steps. Ensure that all website interactions work identically with Yarn as they do with npm or pnpm. Document any website-specific steps that users need to complete during the installation process. If no website or account setup is required, confirm and document this.\n\n<info added on 2025-04-25T08:45:48.709Z>\nSince the request is vague, I'll provide helpful implementation details for testing website account setup with Yarn:\n\nFor thorough testing, create a test matrix covering different browsers (Chrome, Firefox, Safari) and operating systems (Windows, macOS, Linux). Document specific Yarn-related environment variables that might affect website connectivity. Use tools like Playwright or Cypress to automate the account setup flow testing, capturing screenshots at each step for documentation. Implement network throttling tests to verify behavior under poor connectivity. Create a checklist of all UI elements that should be verified during the account setup process, including form validation, error messages, and success states. If no website component exists, explicitly document this in the project README and installation guides to prevent user confusion.\n</info added on 2025-04-25T08:45:48.709Z>\n\n<info added on 2025-04-25T08:46:08.651Z>\n- For environments where the website component requires integration with external authentication providers (such as OAuth, SSO, or LDAP), ensure that these flows are tested specifically when Taskmaster is installed via Yarn. Validate that redirect URIs, token exchanges, and session persistence behave as expected across all supported browsers.\n\n- If the website setup involves configuring application pools or web server settings (e.g., with IIS), document any Yarn-specific considerations, such as environment variable propagation or file permission differences, that could affect the web service's availability or configuration[2].\n\n- When automating tests, include validation for accessibility compliance (e.g., using axe-core or Lighthouse) during the account setup process to ensure the UI is usable for all users.\n\n- Capture and log all HTTP requests and responses during the account setup flow to help diagnose any discrepancies between Yarn and other package managers. This can be achieved by enabling network logging in Playwright or Cypress test runs.\n\n- If the website component supports batch operations or automated uploads (such as uploading user data or configuration files), verify that these automation features function identically after installation with Yarn[3].\n\n- For documentation, provide annotated screenshots or screen recordings of the account setup process, highlighting any Yarn-specific prompts, warnings, or differences encountered.\n\n- If the website component is not required, add a badge or prominent note in the README and installation guides stating \"No website or account setup required,\" and reference the test results confirming this.\n</info added on 2025-04-25T08:46:08.651Z>\n\n<info added on 2025-04-25T17:04:12.550Z>\nFor clarity, this task does not involve setting up a Yarn account. Yarn itself is just a package manager that doesn't require any account creation. The task is about testing whether any website component that is part of Taskmaster (if one exists) works correctly when Taskmaster is installed using Yarn as the package manager.\n\nTo be specific:\n- You don't need to create a Yarn account\n- Yarn is simply the tool used to install Taskmaster (`yarn add taskmaster` instead of `npm install taskmaster`)\n- The testing focuses on whether any web interfaces or account setup processes that are part of Taskmaster itself function correctly when the installation was done via Yarn\n- If Taskmaster includes a web dashboard or requires users to create accounts within the Taskmaster system, those features should be tested\n\nIf you're uncertain whether Taskmaster includes a website component at all, the first step would be to check the project documentation or perform an initial installation to determine if any web interface exists.\n</info added on 2025-04-25T17:04:12.550Z>\n\n<info added on 2025-04-25T17:19:03.256Z>\nWhen testing website account setup with Yarn after the codebase refactor, pay special attention to:\n\n- Verify that any environment-specific configuration files (like `.env` or config JSON files) are properly loaded when the application is installed via Yarn\n- Test the session management implementation to ensure user sessions persist correctly across page refreshes and browser restarts\n- Check that any database migrations or schema updates required for account setup execute properly when installed via Yarn\n- Validate that client-side form validation logic works consistently with server-side validation\n- Ensure that any WebSocket connections for real-time features initialize correctly after the refactor\n- Test account deletion and data export functionality to verify GDPR compliance remains intact\n- Document any changes to the authentication flow that resulted from the refactor and confirm they work identically with Yarn installation\n</info added on 2025-04-25T17:19:03.256Z>\n\n<info added on 2025-04-25T17:22:05.951Z>\nWhen testing website account setup with Yarn after the logging fix, implement these additional verification steps:\n\n1. Verify that all account-related actions are properly logged with the correct log levels (debug, info, warn, error) according to the updated logging framework\n2. Test the error handling paths specifically - force authentication failures and verify the logs contain sufficient diagnostic information\n3. Check that sensitive user information is properly redacted in logs according to privacy requirements\n4. Confirm that log rotation and persistence work correctly when high volumes of authentication attempts occur\n5. Validate that any custom logging middleware correctly captures HTTP request/response data for account operations\n6. Test that log aggregation tools (if used) can properly parse and display the account setup logs in their expected format\n7. Verify that performance metrics for account setup flows are correctly captured in logs for monitoring purposes\n8. Document any Yarn-specific environment variables that affect the logging configuration for the website component\n</info added on 2025-04-25T17:22:05.951Z>\n\n<info added on 2025-04-25T17:22:46.293Z>\nWhen testing website account setup with Yarn, consider implementing a positive user experience validation:\n\n1. Measure and document time-to-completion for the account setup process to ensure it meets usability standards\n2. Create a satisfaction survey for test users to rate the account setup experience on a 1-5 scale\n3. Implement A/B testing for different account setup flows to identify the most user-friendly approach\n4. Add delightful micro-interactions or success animations that make the setup process feel rewarding\n5. Test the \"welcome\" or \"onboarding\" experience that follows successful account creation\n6. Ensure helpful tooltips and contextual help are displayed at appropriate moments during setup\n7. Verify that error messages are friendly, clear, and provide actionable guidance rather than technical jargon\n8. Test the account recovery flow to ensure users have a smooth experience if they forget credentials\n</info added on 2025-04-25T17:22:46.293Z>",
             "status": "done",
             "testStrategy": "Perform a complete installation with Yarn and follow through any website account setup process. Compare the experience with npm installation to ensure identical behavior. Test edge cases such as account creation failures, login issues, and configuration changes. If no website or account setup is required, confirm and document this in the test results."
@@ -4552,9 +4381,7 @@
             "id": 3,
             "title": "Create Bun-specific installation path",
             "description": "Implement a dedicated installation flow for Bun users that optimizes for Bun's capabilities.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create a Bun-specific installation script that leverages Bun's performance advantages. Update any environment detection logic to properly identify Bun environments. Ensure proper path resolution and environment variable handling for Bun.",
             "status": "done"
           },
@@ -4583,8 +4410,7 @@
             "title": "Update documentation for Bun support",
             "description": "Update all relevant documentation to include information about installing and running Taskmaster with Bun.",
             "dependencies": [
-              4,
-              5
+              4
             ],
             "details": "Add Bun installation instructions to README and documentation. Document any Bun-specific considerations or limitations. Update troubleshooting guides to include Bun-specific issues. Create examples showing Bun usage with Taskmaster.",
             "status": "done"
@@ -4739,7 +4565,6 @@
             "description": "Develop test cases to verify the correct functioning of task-specific complexity analysis",
             "dependencies": [
               1,
-              2,
               3
             ],
             "details": "Create unit and integration tests that verify the task-specific complexity analysis works correctly across both CLI and MCP interfaces. Include tests for edge cases such as invalid task IDs, tasks with dependencies outside the selected set, and performance tests for large task sets.",
@@ -4779,9 +4604,7 @@
             "id": 3,
             "title": "Develop output handling mechanisms",
             "description": "Implement different output options for the generated diagrams",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Create handlers for different output formats (SVG, PNG, PDF). Implement file output with appropriate naming conventions and directory handling. Add clipboard support for direct pasting. Implement stdout output for piping to other commands. Include progress indicators for longer rendering operations.",
             "status": "pending"
           },
@@ -4862,7 +4685,6 @@
             "title": "Build PDF generation core functionality",
             "description": "Develop the main module that combines data and visualizations into a formatted PDF document",
             "dependencies": [
-              2,
               3,
               4
             ],
@@ -4873,9 +4695,7 @@
             "id": 6,
             "title": "Create export options and command interface",
             "description": "Implement user-facing commands and options for generating and saving PDF reports",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "details": "Develop CLI commands for PDF generation with parameters for customization (time period, detail level, etc.). Include options for automatic saving to specified locations, email distribution, and integration with existing project workflows.",
             "status": "pending"
           }
@@ -4957,7 +4777,6 @@
             "description": "Develop comprehensive tests to verify the correct operation of the Google Search Grounding integration in research contexts.",
             "dependencies": [
               1,
-              2,
               3
             ],
             "details": "Build automated test cases that cover various research scenarios, including edge cases. Create mock responses for the Google Search API to enable testing without actual API calls. Implement integration tests that verify the entire flow from user query to research-enhanced response. Include performance benchmarks to ensure the integration doesn't significantly impact response times.",
@@ -5029,9 +4848,7 @@
             "title": "Implement Test Cases",
             "description": "Develop a comprehensive set of test cases covering all FastMCP server functionality",
             "dependencies": [
-              2,
-              4,
-              5
+              4
             ],
             "details": "Create test cases for basic server operations, error conditions, edge cases, and performance scenarios. Organize tests into logical groups and ensure proper isolation between test cases. Include documentation for each test explaining its purpose and expected outcomes.",
             "status": "pending"
@@ -5040,9 +4857,7 @@
             "id": 7,
             "title": "Create CI Integration and Documentation",
             "description": "Set up continuous integration for the test framework and create comprehensive documentation",
-            "dependencies": [
-              6
-            ],
+            "dependencies": [],
             "details": "Configure the test framework to run in CI environments, generate reports, and fail builds appropriately. Create documentation covering framework architecture, usage instructions, test case development guidelines, and troubleshooting procedures. Include examples of extending the framework for new test scenarios.",
             "status": "pending"
           }
@@ -5274,9 +5089,7 @@
             "id": 3,
             "title": "Ensure Correct Order of Dependency Resolution",
             "description": "Modify the add-task functionality to ensure that dependencies are resolved in the correct order during task execution.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Implement logic to sort and execute tasks based on their dependency order. Handle cases where multiple tasks depend on each other.",
             "status": "done",
             "testStrategy": "Test with complex dependency chains to verify correct ordering."
@@ -5365,8 +5178,7 @@
             "title": "Ensure data integrity during moves",
             "description": "Implement safeguards to maintain data consistency and update all relationships during move operations",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implement dependency handling logic to update dependencies when converting between task/subtask, add appropriate parent dependencies when needed, and validate no circular dependencies are created. Create transaction-like operations to ensure atomic moves that either complete fully or roll back. Implement functions to update all affected task relationships after a move, and add verification steps to confirm data integrity post-move.",
             "status": "done",
@@ -5378,7 +5190,6 @@
             "description": "Develop and execute tests covering all move scenarios and edge cases",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -5500,9 +5311,7 @@
             "id": 3,
             "title": "Implement Provider Interface Methods",
             "description": "Implement all required interface methods (e.g., `getClient`, `generateText`) to ensure compatibility with the provider system.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Reference implementation patterns from other providers to maintain consistency and ensure all required methods are present and functional.",
             "status": "done",
             "testStrategy": "Run integration tests to confirm the provider responds correctly to all interface method calls."
@@ -5571,8 +5380,7 @@
             "title": "Update Provider Integration",
             "description": "Integrate the Azure provider into the existing AI provider system",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Update src/ai-providers/index.js to export the new AzureProvider class. Add 'azure' entry to the PROVIDERS object in scripts/modules/ai-services-unified.js. Ensure the provider is properly registered and accessible through the unified AI services. Test that the provider can be instantiated and used through the provider selection mechanism. Follow the same integration pattern used for existing providers.",
             "status": "done",
@@ -5584,8 +5392,7 @@
             "title": "Implement Azure-Specific Error Handling",
             "description": "Add specialized error handling for Azure OpenAI-specific issues",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "details": "Implement Azure-specific error handling for authentication failures, endpoint connectivity issues, and deployment name validation. Provide helpful error messages that guide users to resolve common configuration mistakes. Follow the established error handling patterns from Task 19. Create custom error classes if needed for Azure-specific errors. Ensure errors are properly propagated and formatted for user display.",
             "status": "done",
@@ -5598,7 +5405,6 @@
             "description": "Create comprehensive documentation for the Azure OpenAI provider integration",
             "dependencies": [
               1,
-              2,
               3,
               4
             ],
@@ -5660,7 +5466,6 @@
             "title": "Implement backward compatibility logic",
             "description": "Add fallback mechanisms to support both old and new file locations during transition",
             "dependencies": [
-              2,
               3
             ],
             "details": "Implement path fallback logic that checks both old and new locations when files aren't found. Add deprecation warnings when old paths are used, informing users about the new structure. Ensure error messages are clear about the transition.",
@@ -5694,10 +5499,7 @@
             "id": 7,
             "title": "Update PRD and report file handling",
             "description": "Modify PRD file creation and report generation to use the new directory structure",
-            "dependencies": [
-              2,
-              6
-            ],
+            "dependencies": [],
             "details": "Update PRD file handling to create and read files from .taskmaster/docs/ instead of scripts/. Modify report generation (like task-complexity-report.json) to save to .taskmaster/reports/. Ensure all file operations use the new paths consistently.",
             "status": "done",
             "testStrategy": "Test PRD file creation and updates in the new location. Verify reports are generated and saved to .taskmaster/reports/. Test reading existing PRD files from new location."
@@ -5707,8 +5509,6 @@
             "title": "Update documentation and create migration guide",
             "description": "Update all documentation to reflect the new directory structure and provide migration guidance",
             "dependencies": [
-              5,
-              6,
               7
             ],
             "details": "Update README.md and other documentation to reflect the new .taskmaster structure for user projects. Create a comprehensive migration guide explaining the benefits of the new structure and how to migrate existing projects. Include examples of the new directory layout and explain how it keeps user project directories clean.",
@@ -5719,10 +5519,7 @@
             "id": 9,
             "title": "Add templates directory support",
             "description": "Implement support for user templates in the .taskmaster/templates/ directory",
-            "dependencies": [
-              2,
-              6
-            ],
+            "dependencies": [],
             "details": "Create functionality to support user-defined templates in .taskmaster/templates/. Allow users to store custom task templates, PRD templates, or other reusable files. Update Task Master commands to recognize and use templates from this directory when available.",
             "status": "done",
             "testStrategy": "Test creating and using custom templates from .taskmaster/templates/. Verify template discovery and usage works correctly. Test that missing templates directory doesn't break functionality."
@@ -5731,10 +5528,7 @@
             "id": 10,
             "title": "Verify clean user project directories",
             "description": "Ensure the new structure keeps user project root directories clean and organized",
-            "dependencies": [
-              8,
-              9
-            ],
+            "dependencies": [],
             "details": "Validate that after implementing the new structure, user project root directories only contain their actual project files plus the single .taskmaster/ directory. Verify that no Task Master files are created outside of .taskmaster/. Test that users can easily add .taskmaster/ to .gitignore if they choose to exclude Task Master files from version control.",
             "status": "done",
             "testStrategy": "Test complete workflows and verify only .taskmaster/ directory is created in project root. Check that all Task Master operations respect the new file organization. Verify .gitignore compatibility."
@@ -5749,7 +5543,6 @@
         "testStrategy": "1. Run the 'export' command with various options and verify that task files are generated only on-demand, not automatically. 2. Generate a PDF export and confirm that the first page contains the correct 'tm list --with-subtasks' output, and that each subsequent page accurately reflects the output of 'tm show <task_id>' and 'tm show <subtask_id>' for all tasks and subtasks. 3. Test exporting in projects with large numbers of tasks and subtasks to ensure performance and correctness. 4. Attempt exports with invalid paths or missing data to verify robust error handling. 5. Confirm that no automatic file generation occurs during normal task operations. 6. Review CLI help output and documentation for accuracy regarding the new export functionality.",
         "status": "pending",
         "dependencies": [
-          2,
           4,
           95
         ],
@@ -5781,9 +5574,7 @@
             "id": 3,
             "title": "Implement Comprehensive PDF Export Functionality",
             "description": "Add PDF export capability to the export command, generating a structured PDF with a first page listing all tasks and subtasks, followed by individual pages for each task and subtask, using a robust PDF library.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Integrate a PDF generation library (e.g., pdfkit, Puppeteer, or jsPDF). Ensure the PDF includes the output of 'tm list --with-subtasks' on the first page, and uses 'tm show <task_id>' and 'tm show <subtask_id>' for subsequent pages. Handle pagination, concurrency, and error handling for large projects.",
             "status": "pending",
             "testStrategy": "Generate PDFs for projects of varying sizes and verify layout, content accuracy, and performance. Test error handling and concurrency under load.",
@@ -5794,7 +5585,6 @@
             "title": "Update Documentation, Tests, and CLI Help for Export Workflow",
             "description": "Revise all relevant documentation, automated tests, and CLI help output to reflect the new export-based workflow and available options.",
             "dependencies": [
-              2,
               3
             ],
             "details": "Update user guides, README files, and CLI help text. Add or modify tests to cover the new export command and its options. Ensure all documentation accurately describes the new workflow and usage.",
@@ -5852,7 +5642,6 @@
         "description": "Develop a new 'task-master research' (alias 'tm research') CLI command for fast, context-aware AI research queries using the ai-services-unified.js infrastructure.",
         "status": "done",
         "dependencies": [
-          2,
           4,
           16
         ],
@@ -5882,9 +5671,7 @@
             "id": 3,
             "title": "Context Gathering",
             "description": "Implement logic to gather necessary context for the research operation, such as reading from files, stdin, or other sources as specified by the user.",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "details": "Support reading input from files or stdin using '-' as a convention. Validate and preprocess the gathered context to ensure it is suitable for AI processing.\n<info added on 2025-05-25T05:24:58.107Z>\nCreate a comprehensive, reusable context gathering utility `utils/contextGatherer.js` that can be shared between the research command and explore REPL functionality.\n\n**Core Features:**\n\n**Task/Subtask Context Extraction:**\n- Parse task IDs and subtask IDs (formats: \"15\", \"15.2\", \"16,17.1\")\n- Extract task titles, descriptions, details, and dependencies from the task system\n- Include parent task context automatically for subtasks\n- Format task data optimally for AI consumption\n\n**File Path Context Processing:**\n- Handle single or comma-separated file paths\n- Implement safe file reading with comprehensive error handling\n- Support multiple file types (JavaScript, markdown, text, JSON, etc.)\n- Include file metadata (path, size, type, last modified)\n\n**Project File Tree Generation:**\n- Create structured project overview with configurable depth\n- Filter out irrelevant directories (.git, node_modules, .env files)\n- Include file counts and directory statistics\n- Support custom filtering patterns\n\n**Custom Context Integration:**\n- Accept and merge custom context strings\n- Maintain clear context hierarchy and organization\n- Preserve context source attribution\n\n**Unified API Design:**\n```javascript\nconst contextGatherer = new ContextGatherer(projectRoot);\nconst context = await contextGatherer.gather({\n  tasks: [\"15\", \"16.2\"],\n  files: [\"src/main.js\", \"README.md\"],\n  customContext: \"Additional context...\",\n  includeProjectTree: true,\n  format: \"research\" // or \"chat\", \"system-prompt\"\n});\n```\n\n**Output Formatting:**\n- Support multiple output formats (research, chat, system-prompt)\n- Ensure consistent context structure across different use cases\n- Optimize for AI model consumption and token efficiency\n\nThis utility will eliminate code duplication between task 51 (explore REPL) and task 94 (research command) while providing a robust, extensible foundation for context gathering operations.\n</info added on 2025-05-25T05:24:58.107Z>\n<info added on 2025-05-25T06:13:19.991Z>\n✅ **Context Gathering Implementation Complete**\n\nSuccessfully implemented the comprehensive ContextGatherer utility in `scripts/modules/utils/contextGatherer.js`:\n\n**✅ Core Features Implemented:**\n\n1. **Task/Subtask Context Extraction:**\n   - ✅ Parse task IDs and subtask IDs (formats: \"15\", \"15.2\", \"16,17.1\")\n   - ✅ Extract task titles, descriptions, details, and dependencies from the task system\n   - ✅ Include parent task context automatically for subtasks\n   - ✅ Format task data optimally for AI consumption\n   - ✅ Proper integration with existing `findTaskById` utility function\n\n2. **File Path Context Processing:**\n   - ✅ Handle single or comma-separated file paths\n   - ✅ Implement safe file reading with comprehensive error handling\n   - ✅ Support multiple file types (JavaScript, markdown, text, JSON, etc.)\n   - ✅ Include file metadata (path, size, type, last modified)\n   - ✅ File size limits (50KB max) to prevent context explosion\n\n3. **Project File Tree Generation:**\n   - ✅ Create structured project overview with configurable depth (max 3 levels)\n   - ✅ Filter out irrelevant directories (.git, node_modules, .env files)\n   - ✅ Include file counts and directory statistics\n   - ✅ Support custom filtering patterns\n\n4. **Custom Context Integration:**\n   - ✅ Accept and merge custom context strings\n   - ✅ Maintain clear context hierarchy and organization\n   - ✅ Preserve context source attribution\n\n5. **Unified API Design:**\n   - ✅ Clean class-based API with factory function\n   - ✅ Flexible options object for configuration\n   - ✅ Multiple output formats (research, chat, system-prompt)\n   - ✅ Proper error handling and graceful degradation\n\n**✅ Output Formatting:**\n- ✅ Support for 'research', 'chat', and 'system-prompt' formats\n- ✅ Consistent context structure across different use cases\n- ✅ Optimized for AI model consumption and token efficiency\n\n**✅ Testing:**\n- ✅ Successfully tested with real task data (Task 94 and subtask 94.1)\n- ✅ Verified task context extraction works correctly\n- ✅ Confirmed proper formatting and structure\n\n**✅ Integration Ready:**\n- ✅ Designed to be shared between task 51 (explore REPL) and task 94 (research command)\n- ✅ Follows existing codebase patterns and utilities\n- ✅ Proper ES6 module exports for easy importing\n\nThe ContextGatherer utility is now ready for integration into the core research function (subtask 94.4).\n</info added on 2025-05-25T06:13:19.991Z>",
             "status": "done"
           },
@@ -6038,7 +5825,6 @@
         "testStrategy": "",
         "status": "pending",
         "dependencies": [
-          2,
           4
         ],
         "priority": "medium",
@@ -6069,9 +5855,7 @@
             "description": "Create the core help content generation system that formats command metadata into user-friendly help text",
             "details": "## Implementation Requirements\n\n### Core Function: `generateHelpContent(categorizedCommands)`\n\n**Location**: Replace existing `displayHelp()` logic in `ui.js`\n\n**Functionality**:\n1. **Help Section Generation**:\n   - Generate header with tool name and version\n   - Create usage section with basic syntax\n   - Build categorized command sections\n   - Add footer with additional resources\n\n2. **Command Formatting Logic**:\n```javascript\nfunction formatCommand(command) {\n  const { name, description, options, arguments: args, aliases } = command;\n  \n  // Build usage line\n  let usage = `task-master ${name}`;\n  \n  // Add arguments\n  if (args && args.length > 0) {\n    args.forEach(arg => {\n      if (arg.required) {\n        usage += ` <${arg.name}>`;\n      } else {\n        usage += ` [${arg.name}]`;\n      }\n    });\n  }\n  \n  // Add options indicator\n  if (options && options.length > 0) {\n    usage += ' [options]';\n  }\n  \n  // Format aliases\n  const aliasText = aliases && aliases.length > 0 \n    ? ` (aliases: ${aliases.join(', ')})` \n    : '';\n  \n  return {\n    usage,\n    description: description || 'No description available',\n    aliasText,\n    options: formatOptions(options)\n  };\n}\n```\n\n3. **Option Formatting**:\n   - Format flags with proper spacing and alignment\n   - Include descriptions and default values\n   - Highlight required vs optional parameters\n   - Group related options together\n\n4. **Category Section Generation**:\n```javascript\nfunction generateCategorySection(categoryName, categoryData) {\n  const { color, commands } = categoryData;\n  \n  let section = `\\n${chalk[color].bold(categoryName)}:\\n`;\n  \n  commands.forEach(command => {\n    const formatted = formatCommand(command);\n    section += `  ${chalk.cyan(formatted.usage)}${formatted.aliasText}\\n`;\n    section += `    ${formatted.description}\\n`;\n    \n    if (formatted.options.length > 0) {\n      section += `    Options:\\n`;\n      formatted.options.forEach(option => {\n        section += `      ${option.flags.padEnd(20)} ${option.description}\\n`;\n      });\n    }\n    section += '\\n';\n  });\n  \n  return section;\n}\n```\n\n5. **Responsive Formatting**:\n   - Detect terminal width for optimal formatting\n   - Adjust column widths based on content length\n   - Handle long descriptions with proper wrapping\n   - Maintain consistent indentation and spacing\n\n### Technical Implementation:\n1. **Content Assembly**:\n   - Build help content in logical sections\n   - Apply consistent styling and colors\n   - Handle empty categories gracefully\n   - Support different output formats (terminal, plain text)\n\n2. **Performance Optimization**:\n   - Cache generated help content\n   - Lazy-load command metadata only when needed\n   - Minimize string concatenation overhead\n   - Support incremental updates\n\n3. **Accessibility Features**:\n   - Support no-color output for accessibility\n   - Provide plain text fallbacks\n   - Ensure proper screen reader compatibility\n   - Support different terminal capabilities\n\n4. **Customization Options**:\n   - Allow filtering by category\n   - Support command-specific help\n   - Enable verbose vs compact modes\n   - Provide search functionality\n\n### Integration Points:\n1. **Replace Existing displayHelp()**:\n   - Maintain same function signature\n   - Preserve existing color scheme\n   - Keep backward compatibility\n   - Update all call sites\n\n2. **Add New Help Variants**:\n   - `displayHelp(category)` - Show specific category\n   - `displayCommandHelp(commandName)` - Detailed command help\n   - `displayHelpSearch(query)` - Search-based help\n\n### Testing Requirements:\n- Test help generation for all command categories\n- Verify formatting consistency across different terminals\n- Test with various terminal widths and capabilities\n- Validate color output and no-color fallbacks\n- Performance testing with large command sets",
             "status": "pending",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "parentTaskId": 100
           },
           {
@@ -6102,9 +5886,7 @@
             "description": "Implement thorough testing for the dynamic help system and update all relevant documentation",
             "details": "## Implementation Requirements\n\n### Testing Strategy:\n\n1. **Unit Tests for Core Functions**:\n```javascript\n// tests/unit/help-system.test.js\ndescribe('Dynamic Help System', () => {\n  describe('extractCommandMetadata', () => {\n    test('should extract basic command information', () => {\n      const mockProgram = createMockProgram();\n      const metadata = extractCommandMetadata(mockProgram);\n      \n      expect(metadata).toHaveProperty('init');\n      expect(metadata.init.name).toBe('init');\n      expect(metadata.init.description).toBeDefined();\n      expect(metadata.init.options).toBeArray();\n    });\n    \n    test('should handle commands with complex options', () => {\n      const mockProgram = createComplexMockProgram();\n      const metadata = extractCommandMetadata(mockProgram);\n      \n      expect(metadata.parseRrd.options).toHaveLength(5);\n      expect(metadata.parseRrd.options[0]).toHaveProperty('flags');\n      expect(metadata.parseRrd.options[0]).toHaveProperty('description');\n    });\n    \n    test('should handle missing descriptions gracefully', () => {\n      const mockProgram = createIncompleteProgram();\n      const metadata = extractCommandMetadata(mockProgram);\n      \n      expect(metadata.undocumented.description).toBe('No description available');\n    });\n  });\n  \n  describe('categorizeCommands', () => {\n    test('should categorize commands correctly', () => {\n      const mockMetadata = createMockMetadata();\n      const categorized = categorizeCommands(mockMetadata);\n      \n      expect(categorized).toHaveProperty('Project Setup & Configuration');\n      expect(categorized['Project Setup & Configuration'].commands).toContainEqual(\n        expect.objectContaining({ name: 'init' })\n      );\n    });\n    \n    test('should handle uncategorized commands', () => {\n      const mockMetadata = { unknownCommand: { name: 'unknown', description: 'test' } };\n      const categorized = categorizeCommands(mockMetadata);\n      \n      expect(categorized).toHaveProperty('Other Commands');\n      expect(categorized['Other Commands'].commands).toHaveLength(1);\n    });\n  });\n  \n  describe('generateHelpContent', () => {\n    test('should generate properly formatted help content', () => {\n      const mockCategorized = createMockCategorizedCommands();\n      const content = generateHelpContent(mockCategorized);\n      \n      expect(content).toContain('Task Master CLI');\n      expect(content).toContain('Project Setup & Configuration');\n      expect(content).toContain('task-master init');\n    });\n    \n    test('should handle empty categories', () => {\n      const emptyCategorized = { 'Empty Category': { commands: [] } };\n      const content = generateHelpContent(emptyCategorized);\n      \n      expect(content).not.toContain('Empty Category');\n    });\n  });\n});\n```\n\n2. **Integration Tests**:\n```javascript\n// tests/integration/help-integration.test.js\ndescribe('Help System Integration', () => {\n  test('should integrate with actual CLI commands', async () => {\n    const { program } = await import('../../scripts/modules/commands.js');\n    const metadata = extractCommandMetadata(program);\n    \n    // Verify all expected commands are present\n    const expectedCommands = ['init', 'parse-prd', 'list', 'add-task', 'expand'];\n    expectedCommands.forEach(cmd => {\n      expect(metadata).toHaveProperty(cmd);\n    });\n  });\n  \n  test('should maintain backward compatibility', () => {\n    const originalHelp = captureConsoleOutput(() => {\n      displayHelp(); // Original function call\n    });\n    \n    expect(originalHelp).toContain('Task Master CLI');\n    expect(originalHelp).toContain('Available Commands');\n  });\n  \n  test('should handle help command with options', () => {\n    const categoryHelp = captureConsoleOutput(() => {\n      displayHelp({ category: 'Task Management' });\n    });\n    \n    expect(categoryHelp).toContain('Task Management');\n    expect(categoryHelp).toContain('list');\n    expect(categoryHelp).not.toContain('init'); // Should not contain other categories\n  });\n});\n```\n\n3. **Performance Tests**:\n```javascript\n// tests/performance/help-performance.test.js\ndescribe('Help System Performance', () => {\n  test('should extract metadata within acceptable time', () => {\n    const start = performance.now();\n    const metadata = extractCommandMetadata(largeMockProgram);\n    const end = performance.now();\n    \n    expect(end - start).toBeLessThan(100); // Should complete in under 100ms\n  });\n  \n  test('should cache help content effectively', () => {\n    const cache = new HelpCache();\n    \n    const start1 = performance.now();\n    const content1 = cache.getHelp('main', () => generateHelpContent(mockData));\n    const end1 = performance.now();\n    \n    const start2 = performance.now();\n    const content2 = cache.getHelp('main', () => generateHelpContent(mockData));\n    const end2 = performance.now();\n    \n    expect(content1).toBe(content2);\n    expect(end2 - start2).toBeLessThan((end1 - start1) / 10); // Cached should be 10x faster\n  });\n});\n```\n\n4. **Accessibility Tests**:\n```javascript\n// tests/accessibility/help-accessibility.test.js\ndescribe('Help System Accessibility', () => {\n  test('should provide no-color output', () => {\n    const noColorHelp = captureConsoleOutput(() => {\n      displayHelp({ noColor: true });\n    });\n    \n    // Should not contain ANSI color codes\n    expect(noColorHelp).not.toMatch(/\\u001b\\[[0-9;]*m/);\n  });\n  \n  test('should format content for screen readers', () => {\n    const accessibleHelp = generateAccessibleHelp(mockMetadata);\n    \n    expect(accessibleHelp).toContain('Heading level 1: Task Master CLI');\n    expect(accessibleHelp).toContain('List item: init command');\n  });\n});\n```\n\n### Mock Data and Utilities:\n\n1. **Mock Program Creation**:\n```javascript\n// tests/utils/mock-program.js\nexport function createMockProgram() {\n  return {\n    commands: [\n      {\n        _name: 'init',\n        _description: 'Initialize a new Task Master project',\n        _aliases: [],\n        options: [\n          {\n            flags: '-y, --yes',\n            description: 'Skip prompts and use defaults',\n            required: false,\n            defaultValue: false\n          }\n        ],\n        _args: []\n      },\n      {\n        _name: 'list',\n        _description: 'List all tasks',\n        _aliases: ['ls'],\n        options: [\n          {\n            flags: '-s, --status <status>',\n            description: 'Filter by status',\n            required: false\n          }\n        ],\n        _args: []\n      }\n    ]\n  };\n}\n```\n\n2. **Test Utilities**:\n```javascript\n// tests/utils/test-helpers.js\nexport function captureConsoleOutput(fn) {\n  const originalLog = console.log;\n  let output = '';\n  \n  console.log = (...args) => {\n    output += args.join(' ') + '\\n';\n  };\n  \n  try {\n    fn();\n    return output;\n  } finally {\n    console.log = originalLog;\n  }\n}\n\nexport function stripAnsiColors(text) {\n  return text.replace(/\\u001b\\[[0-9;]*m/g, '');\n}\n```\n\n### Documentation Updates:\n\n1. **README.md Updates**:\n```markdown\n## Enhanced Help System\n\nTask Master now features a dynamic help system that automatically generates help content from your CLI commands.\n\n### Basic Help\n```bash\ntask-master help\n```\n\n### Category-Specific Help\n```bash\ntask-master help --category \"Task Management\"\n```\n\n### Command Search\n```bash\ntask-master help --search \"dependency\"\n```\n\n### Command-Specific Help\n```bash\ntask-master help add-task\n```\n\n### Advanced Options\n- `--verbose`: Show detailed help with examples\n- `--no-color`: Disable colored output for accessibility\n- `--search <query>`: Search commands by keyword\n- `--category <name>`: Filter by command category\n```\n\n2. **API Documentation**:\n```markdown\n## Help System API\n\n### Core Functions\n\n#### `extractCommandMetadata(programInstance)`\nExtracts command metadata from a Commander.js program instance.\n\n**Parameters:**\n- `programInstance` (Object): Commander.js program instance\n\n**Returns:**\n- Object containing command metadata\n\n#### `categorizeCommands(commandMetadata)`\nCategorizes commands into logical groups.\n\n**Parameters:**\n- `commandMetadata` (Object): Command metadata from extractCommandMetadata\n\n**Returns:**\n- Object with categorized commands\n\n#### `generateHelpContent(categorizedCommands, options)`\nGenerates formatted help content.\n\n**Parameters:**\n- `categorizedCommands` (Object): Categorized command data\n- `options` (Object): Formatting options\n\n**Returns:**\n- String containing formatted help content\n```\n\n3. **Developer Guide**:\n```markdown\n## Extending the Help System\n\n### Adding New Categories\nTo add a new command category, update the `categoryRules` object:\n\n```javascript\nconst categoryRules = {\n  'Your New Category': {\n    commands: ['command1', 'command2'],\n    patterns: [/^pattern/],\n    keywords: ['keyword1', 'keyword2'],\n    color: 'blue'\n  }\n};\n```\n\n### Custom Help Formatters\nCreate custom help formatters for specific use cases:\n\n```javascript\nfunction customHelpFormatter(command) {\n  // Your custom formatting logic\n  return formattedContent;\n}\n```\n```\n\n### Continuous Integration:\n\n1. **GitHub Actions Workflow**:\n```yaml\n# .github/workflows/help-system-tests.yml\nname: Help System Tests\n\non: [push, pull_request]\n\njobs:\n  test-help-system:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v3\n      - uses: actions/setup-node@v3\n        with:\n          node-version: '18'\n      - run: npm ci\n      - run: npm run test:help-system\n      - run: npm run test:help-accessibility\n      - run: npm run test:help-performance\n```\n\n2. **Test Scripts in package.json**:\n```json\n{\n  \"scripts\": {\n    \"test:help-system\": \"jest tests/unit/help-system.test.js tests/integration/help-integration.test.js\",\n    \"test:help-accessibility\": \"jest tests/accessibility/help-accessibility.test.js\",\n    \"test:help-performance\": \"jest tests/performance/help-performance.test.js\",\n    \"test:help-all\": \"npm run test:help-system && npm run test:help-accessibility && npm run test:help-performance\"\n  }\n}\n```\n\n### Quality Assurance:\n\n1. **Code Coverage Requirements**:\n   - Minimum 90% coverage for help system functions\n   - 100% coverage for critical path functions\n   - Integration test coverage for all CLI commands\n\n2. **Performance Benchmarks**:\n   - Help generation: < 100ms for full help\n   - Command search: < 50ms for typical queries\n   - Cache hit ratio: > 95% for repeated requests\n\n3. **Accessibility Standards**:\n   - WCAG 2.1 AA compliance for terminal output\n   - Screen reader compatibility testing\n   - High contrast mode support\n   - Keyboard navigation support",
             "status": "pending",
-            "dependencies": [
-              5
-            ],
+            "dependencies": [],
             "parentTaskId": 100
           }
         ]
@@ -6145,9 +5927,7 @@
             "description": "Create a robust system for managing links between Task Master tasks and GitHub issues, including validation and synchronization",
             "details": "## Implementation Requirements\n\n### Core Link Management Service\n```javascript\n// scripts/modules/github/link-manager.js\nclass GitHubLinkManager {\n  constructor(githubService) {\n    this.githubService = githubService;\n    this.linkCache = new Map();\n  }\n  \n  async addGitHubLinkToTask(taskId, issueUrl, issueNumber, repository) {\n    const task = await this.getTask(taskId);\n    \n    // Initialize metadata if it doesn't exist\n    if (!task.metadata) {\n      task.metadata = {};\n    }\n    \n    // Add GitHub link information\n    task.metadata.githubIssue = {\n      url: issueUrl,\n      number: issueNumber,\n      repository: repository,\n      exportedAt: new Date().toISOString(),\n      lastValidated: new Date().toISOString(),\n      status: 'active'\n    };\n    \n    // Update task in storage\n    await this.updateTask(taskId, task);\n    \n    // Regenerate task files to include the link\n    await this.regenerateTaskFiles();\n    \n    // Cache the link for quick access\n    this.linkCache.set(taskId, task.metadata.githubIssue);\n    \n    return task.metadata.githubIssue;\n  }\n}\n```\n\n### Task Metadata Schema\n```javascript\n// Enhanced task structure with GitHub integration\nconst taskWithGitHubLink = {\n  id: 42,\n  title: \"Example Task\",\n  description: \"Task description\",\n  // ... other task fields ...\n  metadata: {\n    githubIssue: {\n      url: \"https://github.com/owner/repo/issues/123\",\n      number: 123,\n      repository: \"owner/repo\",\n      exportedAt: \"2024-01-15T10:30:00.000Z\",\n      lastValidated: \"2024-01-15T10:30:00.000Z\",\n      status: \"active\", // active, closed, deleted, invalid\n      syncEnabled: true,\n      lastSyncAt: \"2024-01-15T10:30:00.000Z\"\n    },\n    // Other metadata fields...\n  }\n};\n```\n\n### Link Validation System\n```javascript\nclass LinkValidator {\n  constructor(githubService) {\n    this.githubService = githubService;\n  }\n  \n  async validateGitHubLink(taskId, linkInfo) {\n    try {\n      const { repository, number } = linkInfo;\n      const [owner, repo] = repository.split('/');\n      \n      // Check if issue still exists\n      const issue = await this.githubService.getIssue(owner, repo, number);\n      \n      if (!issue) {\n        return {\n          valid: false,\n          status: 'deleted',\n          message: 'GitHub issue no longer exists'\n        };\n      }\n      \n      // Check if issue is closed\n      const status = issue.state === 'open' ? 'active' : 'closed';\n      \n      // Update link status if changed\n      if (linkInfo.status !== status) {\n        await this.updateLinkStatus(taskId, status);\n      }\n      \n      return {\n        valid: true,\n        status: status,\n        issue: issue,\n        lastValidated: new Date().toISOString()\n      };\n      \n    } catch (error) {\n      if (error.status === 404) {\n        return {\n          valid: false,\n          status: 'deleted',\n          message: 'GitHub issue not found'\n        };\n      } else if (error.status === 403) {\n        return {\n          valid: false,\n          status: 'access_denied',\n          message: 'Access denied to GitHub issue'\n        };\n      }\n      \n      throw error;\n    }\n  }\n  \n  async validateAllLinks() {\n    const tasks = await this.getAllTasksWithGitHubLinks();\n    const results = [];\n    \n    for (const task of tasks) {\n      if (task.metadata?.githubIssue) {\n        const result = await this.validateGitHubLink(task.id, task.metadata.githubIssue);\n        results.push({\n          taskId: task.id,\n          ...result\n        });\n      }\n    }\n    \n    return results;\n  }\n}\n```\n\n### Task File Enhancement\n```javascript\n// Enhanced task file generation with GitHub links\nclass TaskFileGenerator {\n  generateTaskFile(task) {\n    let content = this.generateBasicTaskContent(task);\n    \n    // Add GitHub integration section if link exists\n    if (task.metadata?.githubIssue) {\n      content += this.generateGitHubSection(task.metadata.githubIssue);\n    }\n    \n    return content;\n  }\n  \n  generateGitHubSection(githubInfo) {\n    let section = '\\n## GitHub Integration\\n\\n';\n    \n    section += `**GitHub Issue**: [#${githubInfo.number}](${githubInfo.url})\\n`;\n    section += `**Repository**: ${githubInfo.repository}\\n`;\n    section += `**Status**: ${this.formatGitHubStatus(githubInfo.status)}\\n`;\n    section += `**Exported**: ${new Date(githubInfo.exportedAt).toLocaleDateString()}\\n`;\n    \n    if (githubInfo.lastValidated) {\n      section += `**Last Validated**: ${new Date(githubInfo.lastValidated).toLocaleDateString()}\\n`;\n    }\n    \n    if (githubInfo.status === 'closed') {\n      section += '\\n> ⚠️ **Note**: The linked GitHub issue has been closed.\\n';\n    } else if (githubInfo.status === 'deleted') {\n      section += '\\n> ❌ **Warning**: The linked GitHub issue no longer exists.\\n';\n    }\n    \n    return section;\n  }\n  \n  formatGitHubStatus(status) {\n    const statusMap = {\n      'active': '🟢 Active',\n      'closed': '🔴 Closed',\n      'deleted': '❌ Deleted',\n      'invalid': '⚠️ Invalid',\n      'access_denied': '🔒 Access Denied'\n    };\n    \n    return statusMap[status] || status;\n  }\n}\n```\n\n### GitHub Issue Reference System\n```javascript\nclass GitHubReferenceManager {\n  generateTaskMasterReference(taskId, projectName, taskUrl = null) {\n    let reference = '\\n\\n---\\n\\n';\n    reference += '**🔗 Task Master Integration**\\n\\n';\n    reference += `- **Task ID**: #${taskId}\\n`;\n    reference += `- **Project**: ${projectName}\\n`;\n    reference += `- **Exported**: ${new Date().toISOString()}\\n`;\n    \n    if (taskUrl) {\n      reference += `- **Task URL**: [View in Task Master](${taskUrl})\\n`;\n    }\n    \n    reference += '\\n*This issue is managed by Task Master. Changes made here may be overwritten during synchronization.*\\n';\n    \n    return reference;\n  }\n  \n  async updateGitHubIssueWithTaskReference(issueUrl, taskId, projectName) {\n    const { owner, repo, number } = this.parseGitHubUrl(issueUrl);\n    const issue = await this.githubService.getIssue(owner, repo, number);\n    \n    if (!issue) {\n      throw new Error('GitHub issue not found');\n    }\n    \n    // Check if Task Master reference already exists\n    const hasReference = issue.body.includes('Task Master Integration');\n    \n    if (!hasReference) {\n      const reference = this.generateTaskMasterReference(taskId, projectName);\n      const updatedBody = issue.body + reference;\n      \n      await this.githubService.updateIssue(owner, repo, number, {\n        body: updatedBody\n      });\n    }\n  }\n}\n```\n\n### Link Synchronization\n```javascript\nclass LinkSynchronizer {\n  constructor(githubService, linkManager) {\n    this.githubService = githubService;\n    this.linkManager = linkManager;\n  }\n  \n  async syncTaskWithGitHubIssue(taskId) {\n    const task = await this.getTask(taskId);\n    const githubInfo = task.metadata?.githubIssue;\n    \n    if (!githubInfo || !githubInfo.syncEnabled) {\n      return { synced: false, reason: 'Sync not enabled' };\n    }\n    \n    const { repository, number } = githubInfo;\n    const [owner, repo] = repository.split('/');\n    \n    try {\n      const issue = await this.githubService.getIssue(owner, repo, number);\n      \n      if (!issue) {\n        await this.linkManager.updateLinkStatus(taskId, 'deleted');\n        return { synced: false, reason: 'Issue deleted' };\n      }\n      \n      // Sync status changes\n      const changes = await this.detectChanges(task, issue);\n      \n      if (changes.length > 0) {\n        await this.applyChanges(taskId, changes);\n        await this.linkManager.updateLastSync(taskId);\n        \n        return { \n          synced: true, \n          changes: changes,\n          lastSync: new Date().toISOString()\n        };\n      }\n      \n      return { synced: true, changes: [] };\n      \n    } catch (error) {\n      console.error(`Failed to sync task ${taskId}:`, error);\n      return { synced: false, error: error.message };\n    }\n  }\n  \n  async detectChanges(task, issue) {\n    const changes = [];\n    \n    // Check if GitHub issue was closed and task is still pending\n    if (issue.state === 'closed' && task.status !== 'done') {\n      changes.push({\n        type: 'status',\n        from: task.status,\n        to: 'done',\n        reason: 'GitHub issue closed'\n      });\n    }\n    \n    // Check if GitHub issue was reopened and task is done\n    if (issue.state === 'open' && task.status === 'done') {\n      changes.push({\n        type: 'status',\n        from: task.status,\n        to: 'in-progress',\n        reason: 'GitHub issue reopened'\n      });\n    }\n    \n    return changes;\n  }\n}\n```\n\n### CLI Integration\n```javascript\n// Add link management commands\nprogram\n  .command('github-link')\n  .description('Manage GitHub links for tasks')\n  .option('--validate', 'Validate all GitHub links')\n  .option('--sync <taskId>', 'Sync specific task with GitHub')\n  .option('--sync-all', 'Sync all linked tasks')\n  .option('--remove <taskId>', 'Remove GitHub link from task')\n  .action(async (options) => {\n    if (options.validate) {\n      await validateAllGitHubLinks();\n    } else if (options.sync) {\n      await syncTaskWithGitHub(options.sync);\n    } else if (options.syncAll) {\n      await syncAllTasksWithGitHub();\n    } else if (options.remove) {\n      await removeGitHubLink(options.remove);\n    }\n  });\n```\n\n### Testing Requirements\n- Unit tests for link management operations\n- Integration tests with GitHub API\n- Link validation testing (valid, invalid, deleted issues)\n- Synchronization testing with various scenarios\n- Error handling testing (network failures, auth issues)\n- Performance testing with large numbers of linked tasks\n- Cache behavior testing\n- Concurrent operation testing",
             "status": "pending",
-            "dependencies": [
-              2
-            ],
+            "dependencies": [],
             "parentTaskId": 101
           },
           {
@@ -6371,8 +6151,6 @@
             "title": "Ensure Full Backward Compatibility",
             "description": "Guarantee that users without tags continue to operate in the 'master' context without disruption or required changes.",
             "dependencies": [
-              2,
-              5,
               7
             ],
             "details": "Test all workflows for legacy users and ensure no regressions.",
@@ -6384,10 +6162,7 @@
             "title": "Update Documentation and Help Menus",
             "description": "Revise user documentation, migration notes, and CLI help menus to reflect new tag-related features and usage patterns, specifically documenting the add-tag command.",
             "dependencies": [
-              4,
-              5,
-              6,
-              8
+              4
             ],
             "details": "Provide clear instructions and examples for all tag management features, ensuring add-tag command is properly documented with consistent naming.",
             "status": "done",
@@ -6397,10 +6172,7 @@
             "id": 10,
             "title": "Conduct Comprehensive System Testing and QA",
             "description": "Perform end-to-end testing of the tagged task lists system, including migration, tag management, task operations, and context switching.",
-            "dependencies": [
-              8,
-              9
-            ],
+            "dependencies": [],
             "details": "Ensure all features work as intended and meet quality standards, with specific focus on add-tag command functionality.\n<info added on 2025-06-13T23:48:22.721Z>\nStarting MCP integration implementation for tag management:\n\nPhase 1: Creating direct functions for tag management\n- Examining existing tag management functions in scripts/modules/task-manager/tag-management.js\n- Need to create 6 direct functions: add-tag, delete-tag, list-tags, use-tag, rename-tag, copy-tag\n- Following existing patterns from other direct functions for consistency\n</info added on 2025-06-13T23:48:22.721Z>",
             "status": "done",
             "testStrategy": "Execute test cases covering all user scenarios, including edge cases and error handling."
@@ -6458,8 +6230,7 @@
             "details": "<info added on 2025-06-11T20:50:25.721Z>\nMIGRATION LOGIC: Implemented in scripts/modules/utils.js with performCompleteTagMigration(), migrateConfigJson(), createStateJson(), and markMigrationForNotice() functions. Silent migration triggers on readJSON() for tasks.json files. Migration notice system implemented in commands.js with displayTaggedTasksFYI() from ui.js. Complete 3-part migration: tasks.json + config.json + state.json all handled automatically.\n</info added on 2025-06-11T20:50:25.721Z>",
             "status": "done",
             "dependencies": [
-              1,
-              2
+              1
             ],
             "parentTaskId": 103
           },
@@ -6741,8 +6512,7 @@
         "testStrategy": "Unit test queue management, priority scheduling, and concurrency control. Integration test with Taskmaster MCP commands. Simulate resource conflicts and timeouts. Verify execution history persistence and retrieval.",
         "priority": "high",
         "dependencies": [
-          1,
-          2
+          1
         ],
         "status": "pending",
         "subtasks": [
@@ -6879,8 +6649,7 @@
         "testStrategy": "Unit test event filtering, debouncing, and batching logic. Integration test with simulated file system, Git, and build events. Verify correct triggering of hooks and task execution.",
         "priority": "medium",
         "dependencies": [
-          1,
-          2
+          1
         ],
         "status": "pending",
         "subtasks": [
@@ -7012,8 +6781,7 @@
         "testStrategy": "Unit test progress tracking and acceptance validation logic. Integration test with version control events and Taskmaster MCP updates. Simulate conflict scenarios and verify resolution mechanisms.",
         "priority": "medium",
         "dependencies": [
-          1,
-          2
+          1
         ],
         "status": "pending",
         "subtasks": [
@@ -7082,8 +6850,7 @@
         "priority": "medium",
         "dependencies": [
           3,
-          4,
-          5
+          4
         ],
         "status": "pending",
         "subtasks": [
@@ -7150,12 +6917,8 @@
         "priority": "high",
         "dependencies": [
           1,
-          2,
           3,
-          5,
-          6,
-          7,
-          8
+          7
         ],
         "status": "pending",
         "subtasks": [
@@ -7228,8 +6991,7 @@
         "priority": "medium",
         "dependencies": [
           1,
-          4,
-          8
+          4
         ],
         "status": "pending",
         "subtasks": [
@@ -8054,6 +7816,90 @@
       "created": "2025-08-06T08:51:19.649Z",
       "updated": "2025-08-20T21:32:21.837Z",
       "description": "Tasks for tm-core-phase-1 context"
+    }
+  },
+  "tm-start": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Create start command class structure",
+        "description": "Create the basic structure for the start command following the Commander class pattern",
+        "details": "Create a new file `apps/cli/src/commands/start.command.ts` based on the existing list.command.ts pattern. Implement the command class with proper command registration, description, and argument handling for the task_id parameter. The class should extend the base Command class and implement the required methods.\n\nExample structure:\n```typescript\nimport { Command } from 'commander';\nimport { BaseCommand } from './base.command';\n\nexport class StartCommand extends BaseCommand {\n  public register(program: Command): void {\n    program\n      .command('start')\n      .alias('tm start')\n      .description('Start implementing a task using claude-code')\n      .argument('<task_id>', 'ID of the task to start')\n      .action(async (taskId: string) => {\n        await this.execute(taskId);\n      });\n  }\n\n  public async execute(taskId: string): Promise<void> {\n    // Implementation will be added in subsequent tasks\n  }\n}\n```",
+        "testStrategy": "Verify the command registers correctly by running the CLI with --help and checking that the start command appears with proper description and arguments. Test the basic structure by ensuring the command can be invoked without errors.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create standardized prompt builder with task details",
+        "description": "Implement a function to build the standardized prompt for claude-code that includes the actual task details",
+        "details": "Create a function in the StartCommand class that builds the standardized prompt with the actual task data (title, description, details) instead of instructing Claude to run 'tm show'.\n\n```typescript\nprivate buildPrompt(task: Task): string {\n  return `You are an AI coding assistant with access to this repository's codebase.\n\nHere are the task details to implement:\n\nTask ID: ${task.id}\nTitle: ${task.title}\nDescription: ${task.description}\nDetails: ${task.details}\n\nImplement the task with these requirements:\n- Make the SMALLEST number of code changes possible\n- Follow ALL existing patterns in the codebase (you have access to analyze the code)\n- Do NOT over-engineer the solution\n- Use existing files/functions/patterns wherever possible\n- When complete, print: COMPLETED: <brief summary of changes>\n\nPlease implement this task now.`;\n}\n```\n<info added on 2025-09-12T02:40:01.812Z>\nThe prompt builder function will handle task context retrieval by instructing Claude to use the task-master show command. This approach ensures Claude has access to all necessary task details before implementation begins. The command syntax \"tm show ${taskId}\" embedded in the prompt will direct Claude to first gather the complete task context, including description, requirements, and any existing implementation details, before proceeding with code changes.\n</info added on 2025-09-12T02:40:01.812Z>\n\n<info added>\nThe updated approach eliminates the need for Claude to run 'tm show' by directly providing the task details in the prompt. The function now takes a Task object instead of just the task ID, allowing it to include the complete task information directly in the prompt.\n</info added>",
+        "testStrategy": "Verify the prompt is correctly formatted by calling the function with a sample task object and checking that the output includes all the task details (ID, title, description, details) properly inserted into the template.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement claude-code executor",
+        "description": "Add functionality to execute the claude-code command with the built prompt",
+        "details": "Implement the functionality to execute the claude command with the built prompt. This should use Node.js child_process.exec() to run the command directly in the terminal.\n\n```typescript\nimport { exec } from 'child_process';\n\n// Inside execute method, after task validation\nprivate async executeClaude(prompt: string): Promise<void> {\n  console.log('Starting claude-code to implement the task...');\n  \n  try {\n    // Execute claude with the prompt\n    const claudeCommand = `claude \"${prompt.replace(/\"/g, '\\\\\"')}\"`;\n    \n    // Use execSync to wait for the command to complete\n    const { execSync } = require('child_process');\n    execSync(claudeCommand, { stdio: 'inherit' });\n    \n    console.log('Claude session completed.');\n  } catch (error) {\n    console.error('Error executing claude-code:', error.message);\n    process.exit(1);\n  }\n}\n```\n\nThen call this method from the execute method after building the prompt.",
+        "testStrategy": "Test by running the command with a valid task ID and verifying that the claude command is executed with the correct prompt. Check that the command handles errors appropriately if claude-code is not available.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Integrate execution flow in start command",
+        "description": "Connect all the components to implement the complete execution flow for the start command",
+        "details": "Update the execute method in the StartCommand class to integrate all the components and implement the complete execution flow with the updated approach:\n1. Get task details directly using TaskMasterCore\n2. Build standardized prompt with actual task data\n3. Execute claude-code\n4. Check git status for changes\n5. Auto-mark task as done if changes detected\n\n```typescript\npublic async execute(taskId: string): Promise<void> {\n  // Get task details directly\n  const core = await createTaskMasterCore();\n  const task = await core.tasks.getById(parseInt(taskId, 10));\n  \n  if (!task) {\n    console.error(`Task with ID ${taskId} not found`);\n    process.exit(1);\n  }\n  \n  // Build prompt with actual task data\n  const prompt = this.buildPrompt(task);\n  \n  // Execute claude-code\n  await this.executeClaude(prompt);\n  \n  // Check git status\n  const changedFiles = await this.checkGitChanges();\n  \n  if (changedFiles.length > 0) {\n    console.log('\\nChanges detected in the following files:');\n    changedFiles.forEach(file => console.log(`- ${file}`));\n    \n    // Auto-mark task as done\n    await this.markTaskAsDone(taskId);\n    console.log(`\\nTask ${taskId} completed successfully and marked as done.`);\n  } else {\n    console.warn('\\nNo changes detected after claude-code execution. Task not marked as done.');\n  }\n}\n```",
+        "testStrategy": "Test the complete execution flow by running the start command with a valid task ID and verifying that all steps are executed correctly. Verify that the task details are correctly retrieved from TaskMasterCore and included in the prompt. Test with both scenarios: when changes are detected and when no changes are detected.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Register start command in CLI",
+        "description": "Register the start command in the CLI application",
+        "details": "Update the CLI application to register the new start command. This involves importing the StartCommand class and adding it to the commands array in the CLI initialization.\n\nIn `apps/cli/src/index.ts` or the appropriate file where commands are registered:\n\n```typescript\nimport { StartCommand } from './commands/start.command';\n\n// Add StartCommand to the commands array\nconst commands = [\n  // ... existing commands\n  new StartCommand(),\n];\n\n// Register all commands\ncommands.forEach(command => command.register(program));\n```",
+        "testStrategy": "Verify the command is correctly registered by running the CLI with --help and checking that the start command appears in the list of available commands.",
+        "priority": "high",
+        "dependencies": [
+          7
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Add hello_world.txt file at the project root",
+        "description": "Create a new text file named hello_world.txt in the project's root directory, ensuring it contains the standard 'Hello, World!' greeting.",
+        "details": "Based on the codebase analysis, the project root (/Users/shenron/Code/claude-task-master) already contains a file named hello_world.txt with the content 'Hello, World!'. However, for this task, verify its existence and content. If the file does not exist, use the create_file tool to create it at the root with the content 'Hello, World!'. If it exists but has different content, update it using str_replace_editor to replace the entire content with 'Hello, World!'. If it already matches, no action is needed. Consider that the root directory includes files like package.json, README.md, and various configuration files (.gitignore, tsconfig.json, etc.), so ensure the addition fits without conflicting with existing structures. Do not overwrite other files. Reference the current working directory as the project root for path specifications.",
+        "testStrategy": "Verify the task completion by using the view_file tool on 'hello_world.txt' to check if it exists in the project root and contains exactly 'Hello, World!'. If the file was updated, confirm the changes via git status or by re-reading the file. Test edge cases: attempt to run the task multiple times to ensure it doesn't unnecessarily modify the file if already correct, and check that no other files in the root (e.g., package.json) are affected.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-09-12T01:56:37.713Z",
+      "updated": "2025-09-12T04:02:07.346Z",
+      "description": "Tasks for tm-start context"
     }
   }
 }

@@ -107,7 +107,7 @@ export class FileStorage implements IStorage {
 	 */
 	async loadTask(taskId: string, tag?: string): Promise<Task | null> {
 		const tasks = await this.loadTasks(tag);
-		return tasks.find((task) => task.id === taskId) || null;
+		return tasks.find((task) => String(task.id) === String(taskId)) || null;
 	}
 
 	/**
@@ -267,7 +267,7 @@ export class FileStorage implements IStorage {
 		tag?: string
 	): Promise<void> {
 		const tasks = await this.loadTasks(tag);
-		const taskIndex = tasks.findIndex((t) => t.id === taskId.toString());
+		const taskIndex = tasks.findIndex((t) => String(t.id) === String(taskId));
 
 		if (taskIndex === -1) {
 			throw new Error(`Task ${taskId} not found`);
@@ -276,7 +276,7 @@ export class FileStorage implements IStorage {
 		tasks[taskIndex] = {
 			...tasks[taskIndex],
 			...updates,
-			id: taskId.toString()
+			id: String(taskId) // Keep consistent with normalizeTaskIds
 		};
 		await this.saveTasks(tasks, tag);
 	}
@@ -286,7 +286,7 @@ export class FileStorage implements IStorage {
 	 */
 	async deleteTask(taskId: string, tag?: string): Promise<void> {
 		const tasks = await this.loadTasks(tag);
-		const filteredTasks = tasks.filter((t) => t.id !== taskId);
+		const filteredTasks = tasks.filter((t) => String(t.id) !== String(taskId));
 
 		if (filteredTasks.length === tasks.length) {
 			throw new Error(`Task ${taskId} not found`);

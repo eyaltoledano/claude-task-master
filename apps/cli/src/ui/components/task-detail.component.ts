@@ -262,3 +262,74 @@ export function displaySuggestedActions(taskId: string | number): void {
 		)
 	);
 }
+
+/**
+ * Display complete task details - used by both show and start commands
+ */
+export function displayTaskDetails(
+	task: Task,
+	options?: {
+		statusFilter?: string;
+		showSuggestedActions?: boolean;
+		customHeader?: string;
+		headerColor?: string;
+	}
+): void {
+	const {
+		statusFilter,
+		showSuggestedActions = false,
+		customHeader,
+		headerColor = 'blue'
+	} = options || {};
+
+	// Display header - either custom or default
+	if (customHeader) {
+		console.log(
+			boxen(chalk.white.bold(customHeader), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: headerColor,
+				borderStyle: 'round',
+				margin: { top: 1 }
+			})
+		);
+	} else {
+		displayTaskHeader(task.id, task.title);
+	}
+
+	// Display task properties in table format
+	displayTaskProperties(task);
+
+	// Display implementation details if available
+	if (task.details) {
+		console.log(); // Empty line for spacing
+		displayImplementationDetails(task.details);
+	}
+
+	// Display test strategy if available
+	if ('testStrategy' in task && task.testStrategy) {
+		console.log(); // Empty line for spacing
+		displayTestStrategy(task.testStrategy as string);
+	}
+
+	// Display subtasks if available
+	if (task.subtasks && task.subtasks.length > 0) {
+		// Filter subtasks by status if provided
+		const filteredSubtasks = statusFilter
+			? task.subtasks.filter((sub) => sub.status === statusFilter)
+			: task.subtasks;
+
+		if (filteredSubtasks.length === 0 && statusFilter) {
+			console.log(); // Empty line for spacing
+			console.log(chalk.gray(`  No subtasks with status '${statusFilter}'`));
+		} else if (filteredSubtasks.length > 0) {
+			console.log(); // Empty line for spacing
+			displaySubtasks(filteredSubtasks, task.id);
+		}
+	}
+
+	// Display suggested actions if requested
+	if (showSuggestedActions) {
+		console.log(); // Empty line for spacing
+		displaySuggestedActions(task.id);
+	}
+}
