@@ -4,9 +4,18 @@
 
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
-import { createPromptFromMessages, convertFromGrokCliResponse, escapeShellArg } from './message-converter.js';
+import {
+	createPromptFromMessages,
+	convertFromGrokCliResponse,
+	escapeShellArg
+} from './message-converter.js';
 import { extractJson } from './json-extractor.js';
-import { createAPICallError, createAuthenticationError, createInstallationError, createTimeoutError } from './errors.js';
+import {
+	createAPICallError,
+	createAuthenticationError,
+	createInstallationError,
+	createTimeoutError
+} from './errors.js';
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -68,7 +77,7 @@ export class GrokCliLanguageModel {
 			const child = spawn('grok', ['--version'], {
 				stdio: 'pipe'
 			});
-			
+
 			child.on('error', () => resolve(false));
 			child.on('exit', (code) => resolve(code === 0));
 		});
@@ -85,8 +94,8 @@ export class GrokCliLanguageModel {
 		}
 
 		// Check environment variable
-		if (process.env.GROK_API_KEY) {
-			return process.env.GROK_API_KEY;
+		if (process.env.GROK_CLI_API_KEY) {
+			return process.env.GROK_CLI_API_KEY;
 		}
 
 		// Check grok-cli config file
@@ -123,11 +132,13 @@ export class GrokCliLanguageModel {
 			if (timeout > 0) {
 				timeoutId = setTimeout(() => {
 					child.kill('SIGTERM');
-					reject(createTimeoutError({
-						message: `Grok CLI command timed out after ${timeout}ms`,
-						timeoutMs: timeout,
-						promptExcerpt: args.join(' ').substring(0, 200)
-					}));
+					reject(
+						createTimeoutError({
+							message: `Grok CLI command timed out after ${timeout}ms`,
+							timeoutMs: timeout,
+							promptExcerpt: args.join(' ').substring(0, 200)
+						})
+					);
 				}, timeout);
 			}
 
@@ -141,16 +152,18 @@ export class GrokCliLanguageModel {
 
 			child.on('error', (error) => {
 				if (timeoutId) clearTimeout(timeoutId);
-				
+
 				if (error.code === 'ENOENT') {
 					reject(createInstallationError({}));
 				} else {
-					reject(createAPICallError({
-						message: `Failed to execute Grok CLI: ${error.message}`,
-						code: error.code,
-						stderr: error.message,
-						isRetryable: false
-					}));
+					reject(
+						createAPICallError({
+							message: `Failed to execute Grok CLI: ${error.message}`,
+							code: error.code,
+							stderr: error.message,
+							isRetryable: false
+						})
+					);
 				}
 			});
 
@@ -178,8 +191,10 @@ export class GrokCliLanguageModel {
 		// Grok CLI supports some parameters but not all AI SDK parameters
 		if (options.topP !== undefined) unsupportedParams.push('topP');
 		if (options.topK !== undefined) unsupportedParams.push('topK');
-		if (options.presencePenalty !== undefined) unsupportedParams.push('presencePenalty');
-		if (options.frequencyPenalty !== undefined) unsupportedParams.push('frequencyPenalty');
+		if (options.presencePenalty !== undefined)
+			unsupportedParams.push('presencePenalty');
+		if (options.frequencyPenalty !== undefined)
+			unsupportedParams.push('frequencyPenalty');
 		if (options.stopSequences !== undefined && options.stopSequences.length > 0)
 			unsupportedParams.push('stopSequences');
 		if (options.seed !== undefined) unsupportedParams.push('seed');
@@ -213,7 +228,8 @@ export class GrokCliLanguageModel {
 		const apiKey = await this.getApiKey();
 		if (!apiKey) {
 			throw createAuthenticationError({
-				message: 'Grok CLI API key not found. Set GROK_API_KEY environment variable or configure grok-cli.'
+				message:
+					'Grok CLI API key not found. Set GROK_CLI_API_KEY environment variable or configure grok-cli.'
 			});
 		}
 
@@ -221,9 +237,7 @@ export class GrokCliLanguageModel {
 		const warnings = this.generateUnsupportedWarnings(options);
 
 		// Build command arguments
-		const args = [
-			'--prompt', escapeShellArg(prompt)
-		];
+		const args = ['--prompt', escapeShellArg(prompt)];
 
 		// Add model if specified
 		if (this.modelId && this.modelId !== 'default') {
@@ -252,7 +266,11 @@ export class GrokCliLanguageModel {
 
 			if (result.exitCode !== 0) {
 				// Handle authentication errors
-				if (result.exitCode === 401 || result.stderr.includes('unauthorized') || result.stderr.includes('authentication')) {
+				if (
+					result.exitCode === 401 ||
+					result.stderr.includes('unauthorized') ||
+					result.stderr.includes('authentication')
+				) {
 					throw createAuthenticationError({
 						message: `Grok CLI authentication failed: ${result.stderr}`
 					});
@@ -344,16 +362,16 @@ export class GrokCliLanguageModel {
 					// Simulate streaming by chunking the text
 					const text = result.text || '';
 					const chunkSize = 50; // Characters per chunk
-					
+
 					for (let i = 0; i < text.length; i += chunkSize) {
 						const chunk = text.slice(i, i + chunkSize);
 						controller.enqueue({
 							type: 'text-delta',
 							textDelta: chunk
 						});
-						
+
 						// Add small delay to simulate streaming
-						await new Promise(resolve => setTimeout(resolve, 20));
+						await new Promise((resolve) => setTimeout(resolve, 20));
 					}
 
 					// Emit finish event

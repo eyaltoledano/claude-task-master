@@ -8,6 +8,12 @@ import {
 	type TaskListResult as ListTasksResult,
 	type GetTaskListOptions
 } from './services/task-service.js';
+import {
+	TaskExecutionService,
+	type StartTaskOptions,
+	type StartTaskResult,
+	type ConflictCheckResult
+} from './services/task-execution-service.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
 import type {
@@ -32,10 +38,15 @@ export interface TaskMasterCoreOptions {
 }
 
 /**
- * Re-export result types from TaskService
+ * Re-export result types from services
  */
 export type { TaskListResult as ListTasksResult } from './services/task-service.js';
 export type { GetTaskListOptions } from './services/task-service.js';
+export type {
+	StartTaskOptions,
+	StartTaskResult,
+	ConflictCheckResult
+} from './services/task-execution-service.js';
 
 /**
  * TaskMasterCore facade class
@@ -44,6 +55,7 @@ export type { GetTaskListOptions } from './services/task-service.js';
 export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
+	private taskExecutionService: TaskExecutionService;
 	private executorService: ExecutorService | null = null;
 
 	/**
@@ -67,6 +79,7 @@ export class TaskMasterCore {
 		// Services will be initialized in the initialize() method
 		this.configManager = null as any;
 		this.taskService = null as any;
+		this.taskExecutionService = null as any;
 	}
 
 	/**
@@ -93,6 +106,9 @@ export class TaskMasterCore {
 			// Create task service
 			this.taskService = new TaskService(this.configManager);
 			await this.taskService.initialize();
+
+			// Create task execution service
+			this.taskExecutionService = new TaskExecutionService(this.taskService);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TaskMasterCore',
@@ -181,6 +197,52 @@ export class TaskMasterCore {
 	async setActiveTag(tag: string): Promise<void> {
 		await this.configManager.setActiveTag(tag);
 	}
+
+	// ==================== Task Execution Methods ====================
+
+	/**
+	 * Start working on a task with comprehensive business logic
+	 */
+	async startTask(
+		taskId: string,
+		options: StartTaskOptions = {}
+	): Promise<StartTaskResult> {
+		return this.taskExecutionService.startTask(taskId, options);
+	}
+
+	/**
+	 * Check if a task can be started (no conflicts)
+	 */
+	async canStartTask(taskId: string, force = false): Promise<boolean> {
+		return this.taskExecutionService.canStartTask(taskId, force);
+	}
+
+	/**
+	 * Check for existing in-progress tasks and determine conflicts
+	 */
+	async checkInProgressConflicts(
+		targetTaskId: string
+	): Promise<ConflictCheckResult> {
+		return this.taskExecutionService.checkInProgressConflicts(targetTaskId);
+	}
+
+	/**
+	 * Get task with subtask resolution
+	 */
+	async getTaskWithSubtask(
+		taskId: string
+	): Promise<{ task: Task | null; subtask?: any; subtaskId?: string }> {
+		return this.taskExecutionService.getTaskWithSubtask(taskId);
+	}
+
+	/**
+	 * Get the next available task to start
+	 */
+	async getNextAvailableTask(): Promise<string | null> {
+		return this.taskExecutionService.getNextAvailableTask();
+	}
+
+	// ==================== Executor Service Methods ====================
 
 	/**
 	 * Initialize executor service (lazy initialization)

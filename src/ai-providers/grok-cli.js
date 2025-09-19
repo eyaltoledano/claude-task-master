@@ -18,7 +18,7 @@ export class GrokCliProvider extends BaseAIProvider {
 	 * @returns {string} The environment variable name for the Grok API key
 	 */
 	getRequiredApiKeyName() {
-		return 'GROK_API_KEY';
+		return 'GROK_CLI_API_KEY';
 	}
 
 	/**
@@ -36,7 +36,7 @@ export class GrokCliProvider extends BaseAIProvider {
 	validateAuth(params) {
 		// Grok CLI can work with:
 		// 1. API key passed in params
-		// 2. Environment variable GROK_API_KEY  
+		// 2. Environment variable GROK_CLI_API_KEY
 		// 3. Grok CLI's own config file (~/.grok/user-settings.json)
 		// So we don't enforce API key requirement here
 		// Suppress unused parameter warning
@@ -56,7 +56,8 @@ export class GrokCliProvider extends BaseAIProvider {
 	 */
 	getClient(params) {
 		try {
-			const { apiKey, baseURL, workingDirectory, timeout, commandName } = params;
+			const { apiKey, baseURL, workingDirectory, timeout, commandName } =
+				params;
 
 			// Get Grok CLI settings from config
 			const grokCliSettings = getGrokCliSettingsForCommand(commandName);
@@ -65,7 +66,8 @@ export class GrokCliProvider extends BaseAIProvider {
 				defaultSettings: {
 					apiKey,
 					baseURL,
-					workingDirectory: workingDirectory || grokCliSettings.workingDirectory,
+					workingDirectory:
+						workingDirectory || grokCliSettings.workingDirectory,
 					timeout: timeout || grokCliSettings.timeout,
 					defaultModel: grokCliSettings.defaultModel
 				}

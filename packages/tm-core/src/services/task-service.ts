@@ -117,7 +117,7 @@ export class TaskService {
 				tasks,
 				total: rawTasks.length,
 				filtered: filteredEntities.length,
-				tag: options.tag, // Only include tag if explicitly provided
+				tag: tag, // Return the actual tag being used (either explicitly provided or active tag)
 				storageType: this.getStorageType()
 			};
 		} catch (error) {
@@ -233,7 +233,10 @@ export class TaskService {
 		const priorityValues = { critical: 4, high: 3, medium: 2, low: 1 };
 
 		// Helper to convert subtask dependencies to full dotted notation
-		const toFullSubId = (parentId: string, maybeDotId: string | number): string => {
+		const toFullSubId = (
+			parentId: string,
+			maybeDotId: string | number
+		): string => {
 			if (typeof maybeDotId === 'string' && maybeDotId.includes('.')) {
 				return maybeDotId;
 			}
@@ -265,8 +268,11 @@ export class TaskService {
 					const stStatus = (st.status || 'pending').toLowerCase();
 					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
 
-					const fullDeps = st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ?? [];
-					const depsSatisfied = fullDeps.length === 0 ||
+					const fullDeps =
+						st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ??
+						[];
+					const depsSatisfied =
+						fullDeps.length === 0 ||
 						fullDeps.every((depId) => completedIds.has(String(depId)));
 
 					if (depsSatisfied) {
@@ -289,8 +295,10 @@ export class TaskService {
 		if (candidateSubtasks.length > 0) {
 			// Sort by priority → dependency count → parent ID → subtask ID
 			candidateSubtasks.sort((a, b) => {
-				const pa = priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
-				const pb = priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
+				const pa =
+					priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
+				const pb =
+					priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
 				if (pb !== pa) return pb - pa;
 
 				if (a.dependencies!.length !== b.dependencies!.length) {

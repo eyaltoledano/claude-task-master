@@ -9,9 +9,7 @@ import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
-import {
-	displayTaskDetails
-} from '../ui/components/task-detail.component.js';
+import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 
 /**
  * Options interface for the show command

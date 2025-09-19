@@ -1,22 +1,28 @@
 /**
  * @fileoverview StartCommand using Commander's native class pattern
  * Extends Commander.Command for better integration with the framework
+ * This is a thin presentation layer over @tm/core's TaskExecutionService
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
-import type { StorageType } from '@tm/core/types';
+import ora, { type Ora } from 'ora';
+import { spawn } from 'child_process';
+import {
+	createTaskMasterCore,
+	type TaskMasterCore,
+	type StartTaskResult as CoreStartTaskResult
+} from '@tm/core';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
+import * as ui from '../utils/ui.js';
 
 /**
- * Options interface for the start command
+ * CLI-specific options interface for the start command
  */
 export interface StartCommandOptions {
 	id?: string;
 	format?: 'text' | 'json';
-	silent?: boolean;
 	project?: string;
 	dryRun?: boolean;
 	force?: boolean;
@@ -24,26 +30,20 @@ export interface StartCommandOptions {
 }
 
 /**
- * Result type from start command
+ * CLI-specific result type from start command
+ * Extends the core result with CLI-specific display information
  */
-export interface StartTaskResult {
-	task: Task | null;
-	found: boolean;
-	started: boolean;
-	storageType: Exclude<StorageType, 'auto'>;
-	claudeCodePrompt?: string;
-	error?: string;
-	subtaskId?: string;
-	subtask?: any; // The specific subtask object if working on a subtask
+export interface StartCommandResult extends CoreStartTaskResult {
+	storageType?: string;
 }
 
 /**
  * StartCommand extending Commander's Command class
- * This command starts working on a task by launching claude-code with a standardized prompt
+ * This is a thin presentation layer over @tm/core's TaskExecutionService
  */
 export class StartCommand extends Command {
 	private tmCore?: TaskMasterCore;
-	private lastResult?: StartTaskResult;
+	private lastResult?: StartCommandResult;
 
 	constructor(name?: string) {
 		super(name || 'start');
@@ -55,7 +55,6 @@ export class StartCommand extends Command {
 			.argument('[id]', 'Task ID to start working on')
 			.option('-i, --id <id>', 'Task ID to start working on')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
-			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option('-p, --project <path>', 'Project root directory', process.cwd())
 			.option(
 				'--dry-run',
@@ -83,100 +82,85 @@ export class StartCommand extends Command {
 		taskId: string | undefined,
 		options: StartCommandOptions
 	): Promise<void> {
+		let spinner: Ora | null = null;
+
 		try {
 			// Validate options
 			if (!this.validateOptions(options)) {
 				process.exit(1);
 			}
 
-			// Initialize tm-core
+			// Initialize tm-core with spinner
+			spinner = ora('Initializing Task Master...').start();
 			await this.initializeCore(options.project || process.cwd());
+			spinner.succeed('Task Master initialized');
 
 			// Get the task ID from argument or option, or find next available task
-			const idArg = taskId || options.id;
-			const targetTaskId = idArg || (await this.getNextAvailableTask());
+			const idArg = taskId || options.id || null;
+			let targetTaskId = idArg;
 
 			if (!targetTaskId) {
-				console.error(
-					chalk.red('Error: No task ID provided and no available tasks found')
+				spinner = ora('Finding next available task...').start();
+				targetTaskId = await this.performGetNextTask();
+				if (targetTaskId) {
+					spinner.succeed(`Found next task: #${targetTaskId}`);
+				} else {
+					spinner.fail('No available tasks found');
+				}
+			}
+
+			if (!targetTaskId) {
+				ui.displayError('No task ID provided and no available tasks found');
+				process.exit(1);
+			}
+
+			// Show pre-launch message (no spinner needed, it's just display)
+			if (!options.dryRun) {
+				await this.showPreLaunchMessage(targetTaskId);
+			}
+
+			// Use tm-core's startTask method with spinner
+			spinner = ora('Preparing task execution...').start();
+			const coreResult = await this.performStartTask(targetTaskId, options);
+
+			if (coreResult.started) {
+				spinner.succeed(
+					options.dryRun
+						? 'Dry run completed'
+						: 'Task prepared - launching Claude...'
 				);
-				process.exit(1);
+			} else {
+				spinner.fail('Task execution failed');
 			}
 
-			// Check for in-progress tasks and warn if needed
-			const canProceed = await this.checkInProgressTasks(targetTaskId, options);
-			if (!canProceed) {
-				process.exit(1);
-			}
-
-			// Update task status to in-progress if not disabled
-			if (!options.noStatusUpdate && !options.dryRun) {
-				try {
-					await this.tmCore?.updateTaskStatus(targetTaskId, 'in-progress');
-					if (!options.silent) {
-						console.log(
-							chalk.blue('📝 Updated task status to: ') +
-								chalk.green.bold('in-progress')
-						);
-					}
-				} catch (error) {
-					if (!options.silent) {
-						console.log(
-							chalk.yellow('⚠ Could not update task status: ') +
-								chalk.gray(
-									error instanceof Error ? error.message : String(error)
-								)
-						);
-						throw error;
-					}
+			// Execute command if we have one and it's not a dry run
+			if (!options.dryRun && coreResult.command) {
+				// Stop any remaining spinners before launching Claude
+				if (spinner && !spinner.isSpinning) {
+					// Clear the line to make room for Claude
+					console.log();
 				}
+				await this.executeChildProcess(coreResult.command);
 			}
 
-			// Show pre-launch message for non-dry-run, non-silent execution
-			if (!options.dryRun && !options.silent) {
-				const task = await this.tmCore!.getTask(targetTaskId);
-				if (task) {
-					console.log(
-						chalk.green('🚀 Starting Task: ') +
-							chalk.white.bold(`#${task.id} - ${task.title}`)
-					);
-					console.log(chalk.gray('Launching Claude Code...'));
-					console.log(); // Empty line
-				}
-			}
-
-			// Handle subtask IDs by extracting parent task ID
-			let actualTaskId = targetTaskId;
-			let subtaskId: string | undefined;
-
-			if (targetTaskId.includes('.')) {
-				// This is a subtask ID like "67.1"
-				const [parentId, subId] = targetTaskId.split('.');
-				actualTaskId = parentId;
-				subtaskId = subId;
-			}
-
-			// Get the task and start it
-			const result = await this.startTask(actualTaskId, options, subtaskId);
+			// Convert core result to CLI result with storage type
+			const result: StartCommandResult = {
+				...coreResult,
+				storageType: this.tmCore?.getStorageType()
+			};
 
 			// Store result for programmatic access
 			this.setLastResult(result);
 
-			// Display results
-			if (!options.silent) {
+			// Display results (only for dry run or if execution failed)
+			if (options.dryRun || !coreResult.started) {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-
-			// Show stack trace in development mode or when DEBUG is set
-			const isDevelopment = process.env.NODE_ENV !== 'production';
-			if ((isDevelopment || process.env.DEBUG) && error.stack) {
-				console.error(chalk.gray(error.stack));
+			if (spinner) {
+				spinner.fail('Operation failed');
 			}
+			this.handleError(error);
 			process.exit(1);
 		}
 	}
@@ -205,169 +189,125 @@ export class StartCommand extends Command {
 	}
 
 	/**
-	 * Get the next available task if no ID is provided
+	 * Get the next available task using tm-core
 	 */
-	private async getNextAvailableTask(): Promise<string | null> {
+	private async performGetNextTask(): Promise<string | null> {
 		if (!this.tmCore) {
 			throw new Error('TaskMasterCore not initialized');
 		}
-
-		const nextTask = await this.tmCore.getNextTask();
-		return nextTask?.id || null;
+		return this.tmCore.getNextAvailableTask();
 	}
 
 	/**
-	 * Check for existing in-progress tasks and warn user if needed
+	 * Show pre-launch message using tm-core data
 	 */
-	private async checkInProgressTasks(
+	private async showPreLaunchMessage(targetTaskId: string): Promise<void> {
+		if (!this.tmCore) return;
+
+		const { task, subtask, subtaskId } =
+			await this.tmCore.getTaskWithSubtask(targetTaskId);
+		if (task) {
+			const workItemText = subtask
+				? `Subtask #${task.id}.${subtaskId} - ${subtask.title}`
+				: `Task #${task.id} - ${task.title}`;
+
+			console.log(
+				chalk.green('🚀 Starting: ') + chalk.white.bold(workItemText)
+			);
+			console.log(chalk.gray('Launching Claude Code...'));
+			console.log(); // Empty line
+		}
+	}
+
+	/**
+	 * Perform start task using tm-core business logic
+	 */
+	private async performStartTask(
 		targetTaskId: string,
 		options: StartCommandOptions
-	): Promise<boolean> {
-		if (!this.tmCore || options.force) {
-			return true; // Skip check if forced or core not available
-		}
-
-		// Get all tasks to check for in-progress status
-		const allTasks = await this.tmCore.getTaskList();
-		const inProgressTasks = allTasks.tasks.filter(
-			(task) => task.status === 'in-progress'
-		);
-
-		// If the target task is already in-progress, that's fine
-		const targetTaskInProgress = inProgressTasks.find(
-			(task) => task.id === targetTaskId
-		);
-		if (targetTaskInProgress) {
-			return true; // Target task is already in-progress, allow continuation
-		}
-
-		// Check if target is a subtask and its parent is in-progress
-		const isSubtask = targetTaskId.includes('.');
-		if (isSubtask) {
-			const parentTaskId = targetTaskId.split('.')[0];
-			const parentInProgress = inProgressTasks.find(
-				(task) => task.id === parentTaskId
-			);
-			if (parentInProgress) {
-				return true; // Allow subtasks when parent is in-progress
-			}
-		}
-
-		// Check if other unrelated tasks are in-progress
-		const otherInProgressTasks = inProgressTasks.filter((task) => {
-			if (task.id === targetTaskId) return false;
-
-			// If target is a subtask, exclude its parent from conflicts
-			if (isSubtask) {
-				const parentTaskId = targetTaskId.split('.')[0];
-				if (task.id === parentTaskId) return false;
-			}
-
-			// If the in-progress task is a subtask of our target parent, exclude it
-			if (task.id.toString().includes('.')) {
-				const taskParentId = task.id.toString().split('.')[0];
-				if (isSubtask && taskParentId === targetTaskId.split('.')[0]) {
-					return false;
-				}
-			}
-
-			return true;
-		});
-
-		if (otherInProgressTasks.length > 0) {
-			console.log(
-				boxen(
-					chalk.yellow.bold('⚠ Warning: Tasks Already In Progress') +
-						'\n\n' +
-						chalk.white('The following tasks are currently in-progress:') +
-						'\n\n' +
-						otherInProgressTasks
-							.map((task) => `• Task #${task.id}: ${task.title}`)
-							.join('\n') +
-						'\n\n' +
-						chalk.cyan('Suggestions:') +
-						'\n' +
-						`• Complete current task(s) first\n` +
-						`• Run ${chalk.yellow('tm set-status --id=<id> --status=done')} to mark complete\n` +
-						`• Use ${chalk.yellow('--force')} flag to override this warning`,
-					{
-						padding: 1,
-						borderStyle: 'round',
-						borderColor: 'yellow',
-						width: process.stdout.columns * 0.9 || 100,
-						margin: { top: 1 }
-					}
-				)
-			);
-			return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Start working on a task
-	 */
-	private async startTask(
-		taskId: string,
-		options: StartCommandOptions,
-		subtaskId?: string
-	): Promise<StartTaskResult> {
+	): Promise<CoreStartTaskResult> {
 		if (!this.tmCore) {
 			throw new Error('TaskMasterCore not initialized');
 		}
 
-		// Get the task
-		const task = await this.tmCore.getTask(taskId);
+		// Show spinner for status update if enabled
+		let statusSpinner: Ora | null = null;
+		if (!options.noStatusUpdate && !options.dryRun) {
+			statusSpinner = ora('Updating task status to in-progress...').start();
+		}
 
-		if (!task) {
-			return {
-				task: null,
-				found: false,
-				started: false,
-				storageType: this.tmCore.getStorageType() as Exclude<
-					StorageType,
-					'auto'
-				>,
-				error: `Task ${taskId} not found`
+		// Get execution command from tm-core (instead of executing directly)
+		const result = await this.tmCore.startTask(targetTaskId, {
+			dryRun: options.dryRun,
+			force: options.force,
+			updateStatus: !options.noStatusUpdate
+		});
+
+		if (statusSpinner) {
+			if (result.started) {
+				statusSpinner.succeed('Task status updated');
+			} else {
+				statusSpinner.warn('Task status update skipped');
+			}
+		}
+
+		if (!result) {
+			throw new Error('Failed to start task - core result is undefined');
+		}
+
+		// Don't execute here - let the main executeCommand method handle it
+		return result;
+	}
+
+	/**
+	 * Execute the child process directly in the main thread for better process control
+	 */
+	private async executeChildProcess(command: {
+		executable: string;
+		args: string[];
+		cwd: string;
+	}): Promise<void> {
+		return new Promise((resolve, reject) => {
+			// Don't show the full command with args as it can be very long
+			console.log(chalk.green('🚀 Launching Claude Code...'));
+			console.log(); // Add space before Claude takes over
+
+			const childProcess = spawn(command.executable, command.args, {
+				cwd: command.cwd,
+				stdio: 'inherit', // Inherit stdio from parent process
+				shell: false
+			});
+
+			childProcess.on('close', (code) => {
+				if (code === 0) {
+					resolve();
+				} else {
+					reject(new Error(`Process exited with code ${code}`));
+				}
+			});
+
+			childProcess.on('error', (error) => {
+				reject(new Error(`Failed to spawn process: ${error.message}`));
+			});
+
+			// Handle process termination signals gracefully
+			const cleanup = () => {
+				if (childProcess && !childProcess.killed) {
+					childProcess.kill('SIGTERM');
+				}
 			};
-		}
 
-		// Find the specific subtask if provided
-		let subtask = undefined;
-		if (subtaskId && task.subtasks) {
-			subtask = task.subtasks.find(st => String(st.id) === subtaskId);
-		}
-
-		// Execute the task using ExecutorService
-		// Note: Status management is handled by the user via set-status command
-		let started = false;
-		let executionResult;
-		if (!options.dryRun) {
-			executionResult = await this.tmCore.executeTask(task);
-			started = executionResult.success;
-		} else {
-			// For dry-run, just show that we would execute
-			started = true;
-		}
-
-		return {
-			task,
-			found: true,
-			started,
-			storageType: this.tmCore.getStorageType() as Exclude<StorageType, 'auto'>,
-			claudeCodePrompt:
-				executionResult?.output || 'Task executed via ExecutorService',
-			subtaskId,
-			subtask
-		};
+			process.on('SIGINT', cleanup);
+			process.on('SIGTERM', cleanup);
+			process.on('exit', cleanup);
+		});
 	}
 
 	/**
 	 * Display results based on format
 	 */
 	private displayResults(
-		result: StartTaskResult,
+		result: StartCommandResult,
 		options: StartCommandOptions
 	): void {
 		const format = options.format || 'text';
@@ -387,7 +327,7 @@ export class StartCommand extends Command {
 	/**
 	 * Display in JSON format
 	 */
-	private displayJson(result: StartTaskResult): void {
+	private displayJson(result: StartCommandResult): void {
 		console.log(JSON.stringify(result, null, 2));
 	}
 
@@ -395,7 +335,7 @@ export class StartCommand extends Command {
 	 * Display result in text format
 	 */
 	private displayTextResult(
-		result: StartTaskResult,
+		result: StartCommandResult,
 		options: StartCommandOptions
 	): void {
 		if (!result.found || !result.task) {
@@ -427,13 +367,13 @@ export class StartCommand extends Command {
 			});
 
 			// Show claude-code prompt
-			if (result.claudeCodePrompt) {
+			if (result.executionOutput) {
 				console.log(); // Empty line for spacing
 				console.log(
 					boxen(
 						chalk.white.bold('Claude-Code Prompt:') +
 							'\n\n' +
-							result.claudeCodePrompt,
+							result.executionOutput,
 						{
 							padding: 1,
 							borderStyle: 'round',
@@ -513,16 +453,32 @@ export class StartCommand extends Command {
 	}
 
 	/**
+	 * Handle general errors
+	 */
+	private handleError(error: any): void {
+		const msg = error?.getSanitizedDetails?.() ?? {
+			message: error?.message ?? String(error)
+		};
+		console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
+
+		// Show stack trace in development mode or when DEBUG is set
+		const isDevelopment = process.env.NODE_ENV !== 'production';
+		if ((isDevelopment || process.env.DEBUG) && error.stack) {
+			console.error(chalk.gray(error.stack));
+		}
+	}
+
+	/**
 	 * Set the last result for programmatic access
 	 */
-	private setLastResult(result: StartTaskResult): void {
+	private setLastResult(result: StartCommandResult): void {
 		this.lastResult = result;
 	}
 
 	/**
 	 * Get the last result (for programmatic usage)
 	 */
-	getLastResult(): StartTaskResult | undefined {
+	getLastResult(): StartCommandResult | undefined {
 		return this.lastResult;
 	}
 

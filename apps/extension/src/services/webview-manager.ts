@@ -8,6 +8,7 @@ import type { EventEmitter } from '../utils/event-emitter';
 import type { ExtensionLogger } from '../utils/logger';
 import type { ConfigService } from './config-service';
 import type { TaskRepository } from './task-repository';
+import type { TerminalManager } from './terminal-manager';
 
 export class WebviewManager {
 	private panels = new Set<vscode.WebviewPanel>();
@@ -19,7 +20,8 @@ export class WebviewManager {
 		private context: vscode.ExtensionContext,
 		private repository: TaskRepository,
 		private events: EventEmitter,
-		private logger: ExtensionLogger
+		private logger: ExtensionLogger,
+		private terminalManager: TerminalManager
 	) {}
 
 	setConfigService(configService: ConfigService): void {
@@ -362,46 +364,67 @@ export class WebviewManager {
 					return;
 
 				case 'openTerminal':
-					// Execute task by getting task data from repository
+					// Delegate terminal execution to TerminalManager
+					const { taskId, taskTitle } = data.data || data; // Handle both nested and direct data
 					this.logger.log(
-						`Starting task execution for ${data.taskId}: ${data.taskTitle}`
+						`Webview openTerminal - taskId: ${taskId} (type: ${typeof taskId}), taskTitle: ${taskTitle}`
 					);
 
-					try {
-						// Get the task from repository (we already have it cached)
-						const task = await this.repository.getById(data.taskId);
-						if (!task) {
-							throw new Error(`Task ${data.taskId} not found`);
+					// Get current tag to ensure we're working in the right context
+					let currentTag = 'master'; // default fallback
+					if (this.mcpClient) {
+						try {
+							const tagsResult = await this.mcpClient.callTool('list_tags', {
+								projectRoot: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+								showMetadata: false
+							});
+
+							let parsedData;
+							if (
+								tagsResult?.content &&
+								Array.isArray(tagsResult.content) &&
+								tagsResult.content[0]?.text
+							) {
+								try {
+									parsedData = JSON.parse(tagsResult.content[0].text);
+									if (parsedData?.data?.currentTag) {
+										currentTag = parsedData.data.currentTag;
+									}
+								} catch (e) {
+									this.logger.warn(
+										'Failed to parse tags response for terminal execution'
+									);
+								}
+							}
+						} catch (error) {
+							this.logger.warn(
+								'Failed to get current tag for terminal execution:',
+								error
+							);
 						}
-
-						// Format the task prompt using the same formatting as the executor
-						const taskPrompt = this.formatTaskPrompt(task as any);
-						const fullPrompt = `You are a helpful AI assistant helping to complete a software development task.\n\n${taskPrompt}`;
-
-						// Create terminal and run Claude command
-						const workspaceRoot =
-							vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-						const terminal = vscode.window.createTerminal({
-							name: `Task ${data.taskId}: ${data.taskTitle}`,
-							cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-						});
-
-						// Show the terminal
-						terminal.show();
-
-						// Send the claude command to the terminal
-						const command = `claude "${fullPrompt}"`;
-						terminal.sendText(command);
-
-						this.logger.log(`Launched Claude for task ${data.taskId}`);
-						response = { success: true };
-					} catch (error) {
-						this.logger.error('Failed to create terminal:', error);
-						response = {
-							success: false,
-							error: error instanceof Error ? error.message : 'Unknown error'
-						};
 					}
+
+					const result = await this.terminalManager.executeTask({
+						taskId,
+						taskTitle,
+						tag: currentTag
+					});
+
+					response = result;
+
+					// Show user feedback AFTER sending the response (like the working "TaskMaster connected!" example)
+					setImmediate(() => {
+						if (result.success) {
+							// Success: Show info message
+							vscode.window.showInformationMessage(
+								`✅ Started Claude session for Task ${taskId}: ${taskTitle}`
+							);
+						} else {
+							// Error: Show VS Code native error notification only
+							const errorMsg = `Failed to start task: ${result.error}`;
+							vscode.window.showErrorMessage(errorMsg);
+						}
+					});
 					break;
 
 				default:
@@ -463,43 +486,5 @@ export class WebviewManager {
 			text += possible.charAt(Math.floor(Math.random() * possible.length));
 		}
 		return text;
-	}
-
-	/**
-	 * Format task details into a readable prompt (same as tm-core executor)
-	 */
-	private formatTaskPrompt(task: any): string {
-		const sections: string[] = [];
-
-		sections.push(`Task ID: ${task.id}`);
-		sections.push(`Title: ${task.title}`);
-
-		if (task.description) {
-			sections.push(`\nDescription:\n${task.description}`);
-		}
-
-		if (task.details) {
-			sections.push(`\nImplementation Details:\n${task.details}`);
-		}
-
-		if (task.testStrategy) {
-			sections.push(`\nTest Strategy:\n${task.testStrategy}`);
-		}
-
-		if (task.dependencies && task.dependencies.length > 0) {
-			sections.push(`\nDependencies: ${task.dependencies.join(', ')}`);
-		}
-
-		if (task.subtasks && task.subtasks.length > 0) {
-			const subtaskList = task.subtasks
-				.map((st) => `  - [${st.status}] ${st.id}: ${st.title}`)
-				.join('\n');
-			sections.push(`\nSubtasks:\n${subtaskList}`);
-		}
-
-		sections.push(`\nStatus: ${task.status}`);
-		sections.push(`Priority: ${task.priority}`);
-
-		return sections.join('\n');
 	}
 }

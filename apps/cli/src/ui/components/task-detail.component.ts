@@ -320,9 +320,7 @@ export function displayTaskDetails(
 
 		if (filteredSubtasks.length === 0 && statusFilter) {
 			console.log(); // Empty line for spacing
-			console.log(
-				chalk.gray(`  No subtasks with status '${statusFilter}'`)
-			);
+			console.log(chalk.gray(`  No subtasks with status '${statusFilter}'`));
 		} else if (filteredSubtasks.length > 0) {
 			console.log(); // Empty line for spacing
 			displaySubtasks(filteredSubtasks, task.id);

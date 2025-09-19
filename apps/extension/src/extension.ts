@@ -8,6 +8,7 @@ import { ConfigService } from './services/config-service';
 import { PollingService } from './services/polling-service';
 import { createPollingStrategy } from './services/polling-strategies';
 import { TaskRepository } from './services/task-repository';
+import { TerminalManager } from './services/terminal-manager';
 import { WebviewManager } from './services/webview-manager';
 import { EventEmitter } from './utils/event-emitter';
 import { ExtensionLogger } from './utils/logger';
@@ -22,6 +23,7 @@ let logger: ExtensionLogger;
 let mcpClient: MCPClientManager;
 let api: TaskMasterApi;
 let repository: TaskRepository;
+let terminalManager: TerminalManager;
 let pollingService: PollingService;
 let webviewManager: WebviewManager;
 let events: EventEmitter;
@@ -46,6 +48,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Repository with caching (actually useful for performance)
 		repository = new TaskRepository(api, logger);
 
+		// Terminal manager for task execution
+		terminalManager = new TerminalManager(context, logger);
+
 		// Config service for TaskMaster config.json
 		configService = new ConfigService(logger);
 
@@ -56,7 +61,13 @@ export async function activate(context: vscode.ExtensionContext) {
 		pollingService = new PollingService(repository, strategy, logger);
 
 		// Webview manager (cleaner than global panel array) - create before connection
-		webviewManager = new WebviewManager(context, repository, events, logger);
+		webviewManager = new WebviewManager(
+			context,
+			repository,
+			events,
+			logger,
+			terminalManager
+		);
 		webviewManager.setConfigService(configService);
 
 		// Sidebar webview manager
@@ -210,10 +221,11 @@ function registerCommands(context: vscode.ExtensionContext) {
 	);
 }
 
-export function deactivate() {
+export async function deactivate() {
 	logger?.log('👋 TaskMaster Extension deactivating...');
 	pollingService?.stop();
 	webviewManager?.dispose();
+	await terminalManager?.dispose();
 	api?.destroy();
 	mcpClient?.disconnect();
 }

@@ -148,7 +148,12 @@ const DEFAULT_CONFIG = {
 		enableCodebaseAnalysis: true,
 		responseLanguage: 'English'
 	},
-	claudeCode: {}
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
+	}
 };
 
 // Other test data (VALID_CUSTOM_CONFIG, PARTIAL_CONFIG, INVALID_PROVIDER_CONFIG)
@@ -636,7 +641,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -678,7 +684,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, 'utf-8');
@@ -786,7 +793,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 	});

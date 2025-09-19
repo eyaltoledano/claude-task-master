@@ -208,7 +208,6 @@ export const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({
 					tasks={allTasks}
 					complexity={complexity}
 					isSubtask={isSubtask}
-					sendMessage={sendMessage}
 					onStatusChange={handleStatusChange}
 					onDependencyClick={handleDependencyClick}
 				/>

@@ -15,7 +15,7 @@ export function convertToGrokCliMessages(messages) {
 	return messages.map((message) => {
 		// Handle different message content types
 		let content = '';
-		
+
 		if (typeof message.content === 'string') {
 			content = message.content;
 		} else if (Array.isArray(message.content)) {
@@ -44,8 +44,11 @@ export function convertToGrokCliMessages(messages) {
 export function convertFromGrokCliResponse(responseText) {
 	try {
 		// Grok CLI outputs JSONL format - each line is a separate JSON message
-		const lines = responseText.trim().split('\n').filter(line => line.trim());
-		
+		const lines = responseText
+			.trim()
+			.split('\n')
+			.filter((line) => line.trim());
+
 		// Parse each line as JSON and find assistant messages
 		const messages = [];
 		for (const line of lines) {
@@ -57,23 +60,25 @@ export function convertFromGrokCliResponse(responseText) {
 				continue;
 			}
 		}
-		
+
 		// Find the last assistant message
 		const assistantMessage = messages
-			.filter(msg => msg.role === 'assistant')
+			.filter((msg) => msg.role === 'assistant')
 			.pop();
-		
+
 		if (assistantMessage && assistantMessage.content) {
 			return {
 				text: assistantMessage.content,
-				usage: assistantMessage.usage ? {
-					promptTokens: assistantMessage.usage.prompt_tokens || 0,
-					completionTokens: assistantMessage.usage.completion_tokens || 0,
-					totalTokens: assistantMessage.usage.total_tokens || 0
-				} : undefined
+				usage: assistantMessage.usage
+					? {
+							promptTokens: assistantMessage.usage.prompt_tokens || 0,
+							completionTokens: assistantMessage.usage.completion_tokens || 0,
+							totalTokens: assistantMessage.usage.total_tokens || 0
+						}
+					: undefined
 			};
 		}
-		
+
 		// Fallback: if no assistant message found, return the raw text
 		return {
 			text: responseText.trim(),
@@ -95,7 +100,7 @@ export function convertFromGrokCliResponse(responseText) {
  */
 export function createPromptFromMessages(messages) {
 	const grokMessages = convertToGrokCliMessages(messages);
-	
+
 	// Create a conversation-style prompt
 	const prompt = grokMessages
 		.map((message) => {
@@ -111,7 +116,7 @@ export function createPromptFromMessages(messages) {
 			}
 		})
 		.join('\n\n');
-		
+
 	return prompt;
 }
 
@@ -124,7 +129,7 @@ export function escapeShellArg(arg) {
 	if (typeof arg !== 'string') {
 		arg = String(arg);
 	}
-	
+
 	// Replace single quotes with '\''
 	return "'" + arg.replace(/'/g, "'\\''") + "'";
 }

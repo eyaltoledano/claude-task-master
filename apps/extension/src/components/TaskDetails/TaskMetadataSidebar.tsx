@@ -11,7 +11,6 @@ interface TaskMetadataSidebarProps {
 	tasks: TaskMasterTask[];
 	complexity: any;
 	isSubtask: boolean;
-	sendMessage: (message: any) => Promise<any>;
 	onStatusChange: (status: TaskMasterTask['status']) => void;
 	onDependencyClick: (depId: string) => void;
 	isRegenerating?: boolean;
@@ -23,13 +22,12 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 	tasks,
 	complexity,
 	isSubtask,
-	sendMessage,
 	onStatusChange,
 	onDependencyClick,
 	isRegenerating = false,
 	isAppending = false
 }) => {
-	const { vscode } = useVSCodeContext();
+	const { sendMessage } = useVSCodeContext();
 	const [isLoadingComplexity, setIsLoadingComplexity] = useState(false);
 	const [mcpComplexityScore, setMcpComplexityScore] = useState<
 		number | undefined
@@ -101,26 +99,37 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 	};
 
 	// Handle starting a task
-	const handleStartTask = () => {
+	const handleStartTask = async () => {
 		if (!currentTask || isStartingTask) {
 			return;
 		}
 
 		setIsStartingTask(true);
 
-		// Send message to extension to open terminal
-		if (vscode) {
-			vscode.postMessage({
+		try {
+			// Send message to extension to open terminal
+			const result = await sendMessage({
 				type: 'openTerminal',
-				taskId: currentTask.id,
-				taskTitle: currentTask.title
+				data: {
+					taskId: currentTask.id,
+					taskTitle: currentTask.title
+				}
 			});
-		}
 
-		// Reset loading state after a short delay
-		setTimeout(() => {
+			// Handle the response
+			if (result && !result.success) {
+				console.error('Terminal execution failed:', result.error);
+				// The extension will show VS Code error notification and webview toast
+			} else if (result && result.success) {
+				console.log('Terminal started successfully:', result.terminalName);
+			}
+		} catch (error) {
+			console.error('Failed to start task:', error);
+			// This handles network/communication errors
+		} finally {
+			// Reset loading state
 			setIsStartingTask(false);
-		}, 500);
+		}
 	};
 
 	// Effect to handle complexity on task change
