@@ -3,4 +3,70 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
+## Latest Features (January 2025)
+
+### 🚀 New `task-master start` Command
+
+**Automated Task Execution with Claude Code Integration**
+
+The new `start` command revolutionizes your development workflow by automatically launching Claude Code with comprehensive task context:
+
+```bash
+# Start a specific task
+task-master start 1.2
+
+# Start the next available task automatically
+task-master start
+
+# Preview what would be executed without launching Claude Code
+task-master start 1.2 --dry-run
+```
+
+**Key Features:**
+- **Automatic Task Discovery** - When no ID is provided, finds the next available task based on dependencies and status
+- **Rich Context Injection** - Provides Claude Code with task details, requirements, subtasks, and project context
+- **Status Management** - Automatically updates task status to "in-progress" when starting
+- **Flexible Options** - Support for dry-run, force mode, custom project paths, and JSON output
+
+### 🤖 Grok AI Provider Support
+
+**Enhanced AI Model Options**
+
+Task Master now supports xAI's Grok models with full 131K token capacity:
+
+```bash
+# Configure Grok as your main model
+task-master models --set-main grok-beta
+
+# Use Grok with vision capabilities
+task-master models --set-research grok-vision-beta
+```
+
+**Setup:**
+1. Get your API key from [console.x.ai](https://console.x.ai)
+2. Set `GROK_CLI_API_KEY` environment variable
+3. Configure using `task-master models --setup`
+
+**Available Models:**
+- `grok-beta` - Latest Grok model with advanced reasoning
+- `grok-vision-beta` - Grok with vision capabilities
+
+### 📱 VS Code Extension "Start Task" Button
+
+**Seamless VS Code Integration**
+
+The Task Master VS Code extension now includes a "Start Task" button for one-click task execution:
+
+- **Direct Integration** - Launch Claude Code directly from task cards in VS Code
+- **No Terminal Switching** - Automatic terminal management and command execution
+- **Full Context** - Same rich context injection as the CLI command
+- **Visual Workflow** - Seamless transition from task planning to implementation
+
+### 🔧 Technical Improvements
+
+- **TypeScript Migration** - Core components now use TypeScript for better type safety
+- **Model Configuration Updates** - Upgraded fallback model to Claude Sonnet 4
+- **Token Capacity Fixes** - Grok models now properly support their full 131K token capacity
+- **Enhanced Error Handling** - Improved error messages and debugging capabilities
+
 An easy way to see the latest releases

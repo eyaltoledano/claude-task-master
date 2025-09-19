@@ -16,6 +16,24 @@ Alternatively you can use the CLI to show the next task
 task-master next
 ```
 
+### Quick Start with `task-master start`
+
+For immediate task execution, you can use the new `start` command to automatically launch Claude Code with full task context:
+
+```bash
+# Start the next available task automatically
+task-master start
+
+# Or start a specific task
+task-master start 1.2
+```
+
+This command will:
+- Find the next available task (if no ID is provided)
+- Update the task status to "in-progress"  
+- Launch Claude Code with comprehensive task context
+- Provide all necessary implementation details and project context
+
 ## Discuss Task
 When you know what task to work on next you can then start chatting with the agent to make sure it understands the plan of action.
 

@@ -75,6 +75,7 @@ Taskmaster uses two primary methods for configuration:
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
+  - `GROK_CLI_API_KEY`: Your Grok API key from console.x.ai.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -317,3 +318,67 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    - Verify the deployment name matches your configuration exactly (case-sensitive)
    - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
    - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.
+
+### Grok AI Configuration
+
+Grok AI provides access to xAI's Grok models with enhanced reasoning capabilities and requires minimal configuration:
+
+1. **Prerequisites**:
+   - An xAI account with API access
+   - Grok API key from [console.x.ai](https://console.x.ai)
+
+2. **Authentication**:
+   - Set the `GROK_CLI_API_KEY` environment variable with your Grok API key
+
+3. **Available Models**:
+   - `grok-beta`: Latest Grok model with advanced reasoning
+   - `grok-vision-beta`: Grok with vision capabilities for image analysis
+
+4. **Configuration Example**:
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "grok-cli",
+         "modelId": "grok-beta",
+         "maxTokens": 131072,
+         "temperature": 0.3
+       },
+       "research": {
+         "provider": "grok-cli",
+         "modelId": "grok-vision-beta",
+         "maxTokens": 131072,
+         "temperature": 0.1
+       }
+     }
+   }
+   ```
+
+5. **Environment Variables**:
+   ```bash
+   # In .env file
+   GROK_CLI_API_KEY=your-grok-api-key-here
+   ```
+
+6. **Setup Commands**:
+   ```bash
+   # Set Grok as your main model
+   task-master models --set-main grok-beta
+   
+   # Set Grok as your research model
+   task-master models --set-research grok-beta
+   
+   # Set Grok as your fallback model
+   task-master models --set-fallback grok-beta
+   ```
+
+7. **Integration Features**:
+   - **Local Configuration Support**: The Grok CLI provider can use your local Grok CLI configuration file (`~/.grok/user-settings.json`) if available
+   - **Full Token Capacity**: Supports Grok's full 131K token capacity for large context operations
+   - **Built on Grok CLI**: Uses the [grok-cli](https://github.com/superagent-ai/grok-cli) by Superagent AI for reliable integration
+
+8. **Troubleshooting**:
+   - **API Key Issues**: Verify your `GROK_CLI_API_KEY` is correctly set and valid
+   - **Model Availability**: Ensure you have access to the specified Grok model variant
+   - **Rate Limits**: Grok models have generous rate limits, but large contexts may take longer to process

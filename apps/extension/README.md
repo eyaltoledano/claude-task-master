@@ -22,6 +22,7 @@ Taskmaster AI is an intelligent task management system designed for AI-assisted 
 ![Kanban Board](assets/screenshots/kanban-board.png)
 
 ### 🤖 **AI-Powered Features**
+- **One-Click Task Start** - Launch Claude Code directly from task cards with full context
 - **Task Content Generation** - Regenerate task descriptions using AI
 - **Smart Task Updates** - Append findings and progress notes automatically
 - **MCP Integration** - Seamless connection to Taskmaster AI via Model Context Protocol
@@ -83,6 +84,7 @@ The extension automatically handles the Taskmaster MCP server connection:
 | **View Kanban Board** | `Ctrl/Cmd + Shift + P` → "Taskmaster: Show Board" |
 | **Change Task Status** | Drag task card to different column |
 | **View Task Details** | Click on any task card |
+| **Start Working on Task** | Click "Start Task" button to launch Claude Code automatically |
 | **Edit Task Content** | Click task → Use edit buttons in details panel |
 | **Add Subtasks** | Click the + button on parent task cards |
 | **Use AI Features** | Open task details → Click AI action buttons |

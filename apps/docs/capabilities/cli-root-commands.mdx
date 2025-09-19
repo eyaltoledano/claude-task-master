@@ -38,6 +38,39 @@ sidebarTitle: "CLI Commands"
     ```
   </Accordion>
 
+  <Accordion title="Start Working on a Task">
+    ```bash
+    # Start working on a specific task with Claude Code
+    task-master start <id>
+    
+    # Start the next available task automatically
+    task-master start
+    
+    # Show what would be executed without launching Claude Code
+    task-master start <id> --dry-run
+    
+    # Force start even if another task is in-progress
+    task-master start <id> --force
+    
+    # Don't automatically update task status to in-progress
+    task-master start <id> --no-status-update
+    
+    # Specify project root directory
+    task-master start <id> --project /path/to/project
+    
+    # Get results in JSON format
+    task-master start <id> --format json
+    ```
+    
+    The `start` command automatically launches Claude Code with comprehensive context about the task, including:
+    - Task details and requirements
+    - Implementation guidelines
+    - Related subtasks and dependencies
+    - Project-specific context
+    
+    When no task ID is provided, it automatically finds and starts the next available task based on dependencies and status.
+  </Accordion>
+
   <Accordion title="Show Specific Task">
     ```bash
     # Show details of a specific task
