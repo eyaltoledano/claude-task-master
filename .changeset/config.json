@@ -8,12 +8,12 @@
   ],
   "commit": false,
   "fixed": [],
-  "linked": [
-    ["task-master-ai", "@tm/cli", "@tm/core"]
-  ],
   "access": "public",
   "baseBranch": "main",
   "ignore": [
-    "docs"
+    "docs",
+    "@tm/cli",
+    "@tm/core",
+    "@tm/build-config"
   ]
 }

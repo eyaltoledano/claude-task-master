@@ -109,7 +109,7 @@ Access settings via **File → Preferences → Settings** and search for "Taskma
 
 ### **MCP Connection Settings**
 - **MCP Server Command** - Path to task-master-ai executable (default: `npx`)
-- **MCP Server Args** - Arguments for the server command (default: `-y`, `--package=task-master-ai`, `task-master-ai`)
+- **MCP Server Args** - Arguments for the server command (default: `-y`, `task-master-ai`)
 - **Connection Timeout** - Server response timeout (default: 30s)
 - **Auto Refresh** - Enable automatic task updates (default: enabled)
 

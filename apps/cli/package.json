@@ -1,6 +1,6 @@
 {
 	"name": "@tm/cli",
-	"version": "0.26.0",
+	"version": "0.27.0-rc.0",
 	"description": "Task Master CLI - Command line interface for task management",
 	"type": "module",
 	"private": true,

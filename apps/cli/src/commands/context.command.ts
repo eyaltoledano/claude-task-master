@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import {
 	AuthManager,
 	AuthenticationError,
@@ -49,8 +49,15 @@ export class ContextCommand extends Command {
 		this.addClearCommand();
 		this.addSetCommand();
 
-		// Default action shows current context
-		this.action(async () => {
+		// Accept optional positional argument for brief ID or Hamster URL
+		this.argument('[briefOrUrl]', 'Brief ID or Hamster brief URL');
+
+		// Default action: if an argument is provided, resolve and set context; else show
+		this.action(async (briefOrUrl?: string) => {
+			if (briefOrUrl && briefOrUrl.trim().length > 0) {
+				await this.executeSetFromBriefInput(briefOrUrl.trim());
+				return;
+			}
 			await this.executeShow();
 		});
 	}
@@ -439,6 +446,142 @@ export class ContextCommand extends Command {
 			this.handleError(error);
 			process.exit(1);
 		}
+	}
+
+	/**
+	 * Execute setting context from a brief ID or Hamster URL
+	 */
+	private async executeSetFromBriefInput(briefOrUrl: string): Promise<void> {
+		let spinner: Ora | undefined;
+		try {
+			// Check authentication
+			if (!this.authManager.isAuthenticated()) {
+				ui.displayError('Not authenticated. Run "tm auth login" first.');
+				process.exit(1);
+			}
+
+			spinner = ora('Resolving brief...');
+			spinner.start();
+
+			// Extract brief ID
+			const briefId = this.extractBriefId(briefOrUrl);
+			if (!briefId) {
+				spinner.fail('Could not extract a brief ID from the provided input');
+				ui.displayError(
+					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
+				);
+				process.exit(1);
+			}
+
+			// Fetch brief and resolve its organization
+			const brief = await this.authManager.getBrief(briefId);
+			if (!brief) {
+				spinner.fail('Brief not found or you do not have access');
+				process.exit(1);
+			}
+
+			// Fetch org to get a friendly name (optional)
+			let orgName: string | undefined;
+			try {
+				const org = await this.authManager.getOrganization(brief.accountId);
+				orgName = org?.name;
+			} catch {
+				// Non-fatal if org lookup fails
+			}
+
+			// Update context: set org and brief
+			const briefName = `Brief ${brief.id.slice(0, 8)}`;
+			await this.authManager.updateContext({
+				orgId: brief.accountId,
+				orgName,
+				briefId: brief.id,
+				briefName
+			});
+
+			spinner.succeed('Context set from brief');
+			console.log(
+				chalk.gray(
+					`  Organization: ${orgName || brief.accountId}\n  Brief: ${briefName}`
+				)
+			);
+
+			this.setLastResult({
+				success: true,
+				action: 'set',
+				context: this.authManager.getContext() || undefined,
+				message: 'Context set from brief'
+			});
+		} catch (error: any) {
+			try {
+				if (spinner?.isSpinning) spinner.stop();
+			} catch {}
+			this.handleError(error);
+			process.exit(1);
+		}
+	}
+
+	/**
+	 * Extract a brief ID from raw input (ID or Hamster URL)
+	 */
+	private extractBriefId(input: string): string | null {
+		const raw = input?.trim() ?? '';
+		if (!raw) return null;
+
+		const parseUrl = (s: string): URL | null => {
+			try {
+				return new URL(s);
+			} catch {}
+			try {
+				return new URL(`https://${s}`);
+			} catch {}
+			return null;
+		};
+
+		const fromParts = (path: string): string | null => {
+			const parts = path.split('/').filter(Boolean);
+			const briefsIdx = parts.lastIndexOf('briefs');
+			const candidate =
+				briefsIdx >= 0 && parts.length > briefsIdx + 1
+					? parts[briefsIdx + 1]
+					: parts[parts.length - 1];
+			return candidate?.trim() || null;
+		};
+
+		// 1) URL (absolute or scheme‑less)
+		const url = parseUrl(raw);
+		if (url) {
+			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
+			const candidate = (qId || fromParts(url.pathname)) ?? null;
+			if (candidate) {
+				// Light sanity check; let API be the final validator
+				if (this.isLikelyId(candidate) || candidate.length >= 8)
+					return candidate;
+			}
+		}
+
+		// 2) Looks like a path without scheme
+		if (raw.includes('/')) {
+			const candidate = fromParts(raw);
+			if (candidate && (this.isLikelyId(candidate) || candidate.length >= 8)) {
+				return candidate;
+			}
+		}
+
+		// 3) Fallback: raw token
+		return raw;
+	}
+
+	/**
+	 * Heuristic to check if a string looks like a brief ID (UUID-like)
+	 */
+	private isLikelyId(value: string): boolean {
+		const uuidRegex =
+			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i; // ULID
+		const slugRegex = /^[A-Za-z0-9_-]{16,}$/; // general token
+		return (
+			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
+		);
 	}
 
 	/**

@@ -75,6 +75,9 @@ jobs:
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
+          TM_PUBLIC_BASE_DOMAIN: ${{ secrets.TM_PUBLIC_BASE_DOMAIN }}
+          TM_PUBLIC_SUPABASE_URL: ${{ secrets.TM_PUBLIC_SUPABASE_URL }}
+          TM_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TM_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Create Release Candidate Pull Request or Publish Release Candidate to npm
         uses: changesets/action@v1

@@ -102,7 +102,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
   "mcpServers": {
     "task-master-ai": {
       "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "args": ["-y", "task-master-ai"],
       "env": {
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
         "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
@@ -122,7 +122,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
-> **Note**: If you see `0 tools enabled` in the MCP settings, try removing the `--package=task-master-ai` flag from `args`.
+> **Note**: If you see `0 tools enabled` in the MCP settings, restart your editor and check that your API keys are correctly configured.
 
 ###### VS Code (`servers` + `type`)
 
@@ -131,7 +131,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
   "servers": {
     "task-master-ai": {
       "command": "npx",
-      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "args": ["-y", "task-master-ai"],
       "env": {
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
         "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",

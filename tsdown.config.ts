@@ -24,6 +24,7 @@ export default defineConfig(
 		},
 		outDir: 'dist',
 		copy: ['public'],
+		ignoreWatch: ['node_modules', 'dist', 'tests'],
 		// Bundle only our workspace packages, keep npm dependencies external
 		noExternal: [/^@tm\//],
 		env: getBuildTimeEnvs()

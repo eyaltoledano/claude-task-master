@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Cache node_modules
         uses: actions/cache@v4
@@ -46,6 +46,9 @@ jobs:
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
+          TM_PUBLIC_BASE_DOMAIN: ${{ secrets.TM_PUBLIC_BASE_DOMAIN }}
+          TM_PUBLIC_SUPABASE_URL: ${{ secrets.TM_PUBLIC_SUPABASE_URL }}
+          TM_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TM_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Create Release Pull Request or Publish to npm
         uses: changesets/action@v1

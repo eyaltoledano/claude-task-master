@@ -92,6 +92,9 @@ jobs:
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
+          TM_PUBLIC_BASE_DOMAIN: ${{ secrets.TM_PUBLIC_BASE_DOMAIN }}
+          TM_PUBLIC_SUPABASE_URL: ${{ secrets.TM_PUBLIC_SUPABASE_URL }}
+          TM_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TM_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

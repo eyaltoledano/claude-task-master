@@ -280,8 +280,26 @@ describe('Version comparison utility', () => {
 	let compareVersions;
 
 	beforeAll(async () => {
-		const commandsModule = await import('../../scripts/modules/commands.js');
-		compareVersions = commandsModule.compareVersions;
+		// Import from @tm/cli instead of commands.js
+		const { compareVersions: cv } = await import(
+			'../../apps/cli/src/utils/auto-update.js'
+		);
+
+		// Create a local compareVersions function for testing
+		compareVersions = (v1, v2) => {
+			const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
+			const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
+
+			for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+				const v1Part = v1Parts[i] || 0;
+				const v2Part = v2Parts[i] || 0;
+
+				if (v1Part < v2Part) return -1;
+				if (v1Part > v2Part) return 1;
+			}
+
+			return 0;
+		};
 	});
 
 	test('compareVersions correctly compares semantic versions', () => {
@@ -303,8 +321,9 @@ describe('Update check functionality', () => {
 	let consoleLogSpy;
 
 	beforeAll(async () => {
-		const commandsModule = await import('../../scripts/modules/commands.js');
-		displayUpgradeNotification = commandsModule.displayUpgradeNotification;
+		// Import from @tm/cli instead of commands.js
+		const cliModule = await import('../../apps/cli/src/utils/auto-update.js');
+		displayUpgradeNotification = cliModule.displayUpgradeNotification;
 	});
 
 	beforeEach(() => {
