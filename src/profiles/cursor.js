@@ -8,7 +8,6 @@ import { createProfile } from './base-profile.js';
 function copyRecursiveSync(src, dest) {
 	if (fs.cpSync) {
 		try {
-			fs.mkdirSync(dest, { recursive: true });
 			fs.cpSync(src, dest, { recursive: true, force: true });
 			return;
 		} catch (err) {
