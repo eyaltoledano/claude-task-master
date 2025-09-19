@@ -267,9 +267,8 @@ export class GrokCliLanguageModel {
 			if (result.exitCode !== 0) {
 				// Handle authentication errors
 				if (
-					result.exitCode === 401 ||
-					result.stderr.includes('unauthorized') ||
-					result.stderr.includes('authentication')
+					result.stderr.toLowerCase().includes('unauthorized') ||
+					result.stderr.toLowerCase().includes('authentication')
 				) {
 					throw createAuthenticationError({
 						message: `Grok CLI authentication failed: ${result.stderr}`
@@ -282,7 +281,7 @@ export class GrokCliLanguageModel {
 					stderr: result.stderr,
 					stdout: result.stdout,
 					promptExcerpt: prompt.substring(0, 200),
-					isRetryable: result.exitCode >= 500
+					isRetryable: false
 				});
 			}
 
