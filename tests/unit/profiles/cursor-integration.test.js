@@ -140,7 +140,7 @@ describe('Cursor Integration', () => {
 			// Detect if cpSync exists and set up appropriate spy
 			if (fs.cpSync) {
 				const cpSpy = jest.spyOn(fs, 'cpSync').mockImplementation(() => {});
-				
+
 				// Act
 				onAddRulesProfile(mockTargetDir, mockAssetsDir);
 
