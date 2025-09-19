@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ConfigManager } from './config-manager.js';
+import { DEFAULT_CONFIG_VALUES } from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
 import { ConfigMerger } from './services/config-merger.service.js';
 import { RuntimeStateManager } from './services/runtime-state-manager.service.js';
@@ -69,8 +70,8 @@ describe('ConfigManager', () => {
 				({
 					loadState: vi.fn().mockResolvedValue({ activeTag: 'master' }),
 					saveState: vi.fn().mockResolvedValue(undefined),
-					getActiveTag: vi.fn().mockReturnValue('master'),
-					setActiveTag: vi.fn().mockResolvedValue(undefined),
+					getCurrentTag: vi.fn().mockReturnValue('master'),
+					setCurrentTag: vi.fn().mockResolvedValue(undefined),
 					getState: vi.fn().mockReturnValue({ activeTag: 'master' }),
 					updateMetadata: vi.fn().mockResolvedValue(undefined),
 					clearState: vi.fn().mockResolvedValue(undefined)
@@ -227,8 +228,8 @@ describe('ConfigManager', () => {
 
 			const models = manager.getModelConfig();
 			expect(models).toEqual({
-				main: 'claude-3-5-sonnet-20241022',
-				fallback: 'gpt-4o-mini'
+				main: DEFAULT_CONFIG_VALUES.MODELS.MAIN,
+				fallback: DEFAULT_CONFIG_VALUES.MODELS.FALLBACK
 			});
 		});
 
@@ -281,7 +282,7 @@ describe('ConfigManager', () => {
 			await manager.setActiveTag('feature-branch');
 
 			const stateManager = (manager as any).stateManager;
-			expect(stateManager.setActiveTag).toHaveBeenCalledWith('feature-branch');
+			expect(stateManager.setCurrentTag).toHaveBeenCalledWith('feature-branch');
 		});
 	});
 

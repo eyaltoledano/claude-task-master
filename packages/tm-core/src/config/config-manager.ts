@@ -10,6 +10,7 @@ import type {
 	PartialConfiguration,
 	RuntimeStorageConfig
 } from '../interfaces/configuration.interface.js';
+import { DEFAULT_CONFIG_VALUES as DEFAULTS } from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
 import {
 	ConfigMerger,
@@ -167,8 +168,8 @@ export class ConfigManager {
 	getModelConfig() {
 		return (
 			this.config.models || {
-				main: 'claude-3-5-sonnet-20241022',
-				fallback: 'gpt-4o-mini'
+				main: DEFAULTS.MODELS.MAIN,
+				fallback: DEFAULTS.MODELS.FALLBACK
 			}
 		);
 	}
