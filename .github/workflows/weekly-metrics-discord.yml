@@ -17,6 +17,14 @@ jobs:
     env:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_METRICS_WEBHOOK }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Get dates for last week
         run: |
           # Last 7 days
