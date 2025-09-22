@@ -14,20 +14,23 @@ function enhanceRooMCPConfiguration(mcpPath) {
 		log('warn', `[Roo] MCP configuration file not found at ${mcpPath}`);
 		return;
 	}
-	
+
 	try {
 		// Read the existing configuration
 		const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf8'));
-		
+
 		if (mcpConfig.mcpServers && mcpConfig.mcpServers['task-master-ai']) {
 			const server = mcpConfig.mcpServers['task-master-ai'];
-			
+
 			// Add Roo-specific timeout enhancement for long-running AI operations
 			server.timeout = 300;
-			
+
 			// Write the enhanced configuration back
 			fs.writeFileSync(mcpPath, formatJSONWithTabs(mcpConfig) + '\n');
-			log('debug', `[Roo] Enhanced MCP configuration with timeout at ${mcpPath}`);
+			log(
+				'debug',
+				`[Roo] Enhanced MCP configuration with timeout at ${mcpPath}`
+			);
 		} else {
 			log('warn', `[Roo] task-master-ai server not found in MCP configuration`);
 		}
