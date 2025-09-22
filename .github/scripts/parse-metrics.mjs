@@ -7,19 +7,12 @@ function parseMetricsTable(content, metricName) {
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i].trim();
-		if (line.includes(metricName)) {
-			// Split by | and get the value column, filtering empty strings
-			const columns = line
-				.split('|')
-				.map((col) => col.trim())
-				.filter((col) => col.length > 0);
-			// Look for the value in columns 1-3 (accounting for different table formats)
-			for (let j = 1; j < Math.min(columns.length, 4); j++) {
-				const value = columns[j];
-				if (value && value !== '---' && value !== metricName) {
-					return value;
-				}
-			}
+		// Match a markdown table row like: | Metric Name | value | ...
+		const safeName = metricName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const re = new RegExp(`^\\|\\s*${safeName}\\s*\\|\\s*([^|]+)\\|?`);
+		const match = line.match(re);
+		if (match) {
+			return match[1].trim() || 'N/A';
 		}
 	}
 	return 'N/A';
