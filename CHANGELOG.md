@@ -1,5 +1,60 @@
 # task-master-ai
 
+## 0.27.0
+
+### Minor Changes
+
+- [#1220](https://github.com/eyaltoledano/claude-task-master/pull/1220) [`4e12643`](https://github.com/eyaltoledano/claude-task-master/commit/4e126430a092fb54afb035514fb3d46115714f97) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - No longer need --package=task-master-ai in mcp server
+  - A lot of users were having issues with Taskmaster and usually a simple fix was to remove --package from your mcp.json
+  - we now bundle our whole package, so we no longer need the --package
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `task-master start` command for automated task execution with Claude Code
+  - You can now start working on tasks directly by running `task-master start <task-id>` which will automatically launch Claude Code with a comprehensive prompt containing all task details, implementation guidelines, and context.
+  - `task-master start` will automatically detect next-task when no ID is provided.
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Move from javascript to typescript, not a full refactor but we now have a typescript environment and are moving our javascript commands slowly into typescript
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add grok-cli as a provider with full codebase context support. You can now use Grok models (grok-2, grok-3, grok-4, etc.) with Task Master for AI operations that have access to your entire codebase context, enabling more informed task generation and PRD parsing.
+
+  ## Setup Instructions
+  1. **Get your Grok API key** from [console.x.ai](https://console.x.ai)
+  2. **Set the environment variable**:
+     ```bash
+     export GROK_CLI_API_KEY="your-api-key-here"
+     ```
+  3. **Configure Task Master to use Grok**:
+     ```bash
+     task-master models --set-main grok-beta
+     # or
+     task-master models --set-research grok-beta
+     # or
+     task-master models --set-fallback grok-beta
+     ```
+
+  ## Key Features
+  - **Full codebase context**: Grok models can analyze your entire project when generating tasks or parsing PRDs
+  - **xAI model access**: Support for latest Grok models (grok-2, grok-3, grok-4, etc.)
+  - **Code-aware task generation**: Create more accurate and contextual tasks based on your actual codebase
+  - **Intelligent PRD parsing**: Parse requirements with understanding of your existing code structure
+
+  ## Available Models
+  - `grok-beta` - Latest Grok model with codebase context
+  - `grok-vision-beta` - Grok with vision capabilities and codebase context
+
+  The Grok CLI provider integrates with xAI's Grok models via grok-cli and can also use the local Grok CLI configuration file (`~/.grok/user-settings.json`) if available.
+
+  ## Credits
+
+  Built using the [grok-cli](https://github.com/superagent-ai/grok-cli) by Superagent AI for seamless integration with xAI's Grok models.
+
+- [#1225](https://github.com/eyaltoledano/claude-task-master/pull/1225) [`a621ff0`](https://github.com/eyaltoledano/claude-task-master/commit/a621ff05eafb51a147a9aabd7b37ddc0e45b0869) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve taskmaster ai provider defaults
+  - moving from main anthropic 3.7 to anthropic sonnet 4
+  - moving from fallback anthropic 3.5 to anthropic 3.7
+
+- [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix Grok model configuration validation and update deprecated Claude fallback model. Grok models now properly support their full 131K token capacity, and the fallback model has been upgraded to Claude Sonnet 4 for better performance and future compatibility.
+
 ## 0.27.0-rc.2
 
 ### Minor Changes

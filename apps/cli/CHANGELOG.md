@@ -1,5 +1,12 @@
 # @tm/cli
 
+## 0.27.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tm/core@0.26.1
+
 ## 0.27.0-rc.0
 
 ### Minor Changes
