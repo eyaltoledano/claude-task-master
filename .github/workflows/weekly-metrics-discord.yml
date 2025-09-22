@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Get dates for last week
+      - name: Get dates for last 14 days
         run: |
           set -Eeuo pipefail
           # Last 14 days

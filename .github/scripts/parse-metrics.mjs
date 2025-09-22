@@ -70,7 +70,7 @@ function main() {
 			'Time to close'
 		);
 	} else {
-		console.log('⚠️  No issue_metrics.md found');
+		console.warn('[parse-metrics] issue_metrics.md not found; using defaults.');
 	}
 
 	// Parse PR created metrics
@@ -87,7 +87,7 @@ function main() {
 			'Time to first response'
 		);
 	} else {
-		console.log('⚠️  No pr_created_metrics.md found');
+		console.warn('[parse-metrics] pr_created_metrics.md not found; using defaults.');
 	}
 
 	// Parse PR merged metrics (for more accurate merge data)
@@ -102,7 +102,7 @@ function main() {
 		// For merged PRs, "Time to close" is actually time to merge
 		metrics.pr_avg_merge_time = parseMetricsTable(prMergedContent, 'Time to close');
 	} else {
-		console.log('⚠️  No pr_merged_metrics.md found');
+		console.warn('[parse-metrics] pr_merged_metrics.md not found; falling back to pr_metrics.md.');
 		// Fallback: try old pr_metrics.md if it exists
 		if (existsSync('pr_metrics.md')) {
 			console.log('📄 Falling back to pr_metrics.md...');
@@ -115,6 +115,8 @@ function main() {
 			metrics.pr_avg_merge_time = maybeMergeTime !== 'N/A'
 				? maybeMergeTime
 				: parseMetricsTable(prContent, 'Time to close');
+		} else {
+			console.warn('[parse-metrics] pr_metrics.md not found; using defaults.');
 		}
 	}
 
