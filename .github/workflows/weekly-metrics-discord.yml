@@ -27,6 +27,7 @@ jobs:
 
       - name: Get dates for last week
         run: |
+          set -Eeuo pipefail
           # Last 14 days
           first_day=$(date -d "14 days ago" +%Y-%m-%d)
           last_day=$(date +%Y-%m-%d)
@@ -43,6 +44,7 @@ jobs:
           SEARCH_QUERY: "repo:${{ github.repository }} is:issue created:${{ env.first_day }}..${{ env.last_day }}"
           HIDE_TIME_TO_ANSWER: true
           HIDE_LABEL_METRICS: false
+          OUTPUT_FILE: issue_metrics.md
 
       - name: Generate PR metrics
         uses: github/issue-metrics@v3
