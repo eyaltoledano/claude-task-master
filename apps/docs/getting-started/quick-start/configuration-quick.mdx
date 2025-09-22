@@ -20,6 +20,7 @@ For MCP/Cursor usage: Configure keys in the env section of your .cursor/mcp.json
 		"task-master-ai": {
 			"command": "npx",
 			"args": ["-y", "task-master-ai"],
+			"timeout": 300,
 			"env": {
 				"ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "PERPLEXITY_API_KEY_HERE",
@@ -36,6 +37,10 @@ For MCP/Cursor usage: Configure keys in the env section of your .cursor/mcp.json
 	}
 }
 ```
+
+<Note>
+The `timeout: 300` setting (5 minutes) is recommended for long-running AI operations like `parse-prd`, `expand-all`, and `analyze-complexity`. This prevents timeout errors during complex tasks.
+</Note>
 
 ### CLI Usage: `.env` File
 

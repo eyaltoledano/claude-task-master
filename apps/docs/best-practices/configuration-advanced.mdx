@@ -66,6 +66,32 @@ Taskmaster uses two primary methods for configuration:
 - **Location:**
   - For CLI usage: Create a `.env` file in your project root.
   - For MCP/Cursor usage: Configure keys in the `env` section of your `.cursor/mcp.json` file.
+
+## MCP Timeout Configuration
+
+For MCP usage, it's important to configure appropriate timeouts for long-running AI operations:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "timeout": 300,
+      "env": {
+        "ANTHROPIC_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Key points:**
+- **Default MCP timeout**: 60 seconds (often insufficient for AI operations)
+- **Recommended timeout**: 300 seconds (5 minutes) 
+- **Operations that benefit**: `parse_prd`, `expand_task`, `analyze_project_complexity`, `research`
+- **Automatic setup**: Included when using `task-master rules add` for supported editors
+
 - **Required API Keys (Depending on configured providers):**
   - `ANTHROPIC_API_KEY`: Your Anthropic API key.
   - `PERPLEXITY_API_KEY`: Your Perplexity API key.
