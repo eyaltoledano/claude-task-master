@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.25.0
+
+### Minor Changes
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add "Start Task" button to VS Code extension for seamless Claude Code integration
+
+  You can now click a "Start Task" button directly in the Task Master extension which will open a new terminal and automatically execute the task using Claude Code. This provides a seamless workflow from viewing tasks in the extension to implementing them without leaving VS Code.
+
+- [#1201](https://github.com/eyaltoledano/claude-task-master/pull/1201) [`83af314`](https://github.com/eyaltoledano/claude-task-master/commit/83af314879fc0e563581161c60d2bd089899313e) Thanks [@losolosol](https://github.com/losolosol)! - Added a Start Build button to the VSCODE Task Properties Right Panel
+
+### Patch Changes
+
+- [#1229](https://github.com/eyaltoledano/claude-task-master/pull/1229) [`674d1f6`](https://github.com/eyaltoledano/claude-task-master/commit/674d1f6de7ea98116b61bdae6198bafe6c4e7c1a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP not connecting to new Taskmaster version
+
+- Updated dependencies [[`4e12643`](https://github.com/eyaltoledano/claude-task-master/commit/4e126430a092fb54afb035514fb3d46115714f97), [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142), [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142), [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142), [`a621ff0`](https://github.com/eyaltoledano/claude-task-master/commit/a621ff05eafb51a147a9aabd7b37ddc0e45b0869), [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515), [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142)]:
+  - task-master-ai@0.27.0
+
 ## 0.25.0-rc.0
 
 ### Minor Changes

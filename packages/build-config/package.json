@@ -1,6 +1,6 @@
 {
 	"name": "@tm/build-config",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Shared build configuration for Task Master monorepo",
 	"type": "module",
 	"private": true,
