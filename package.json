@@ -33,7 +33,9 @@
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
 		"mcp-server": "node dist/mcp-server.js",
 		"format-check": "biome format .",
-		"format": "biome format . --write"
+		"format": "biome format . --write",
+		"deps:check": "manypkg check || echo 'Note: Workspace package version warnings are expected for internal @tm/* packages'",
+		"deps:fix": "manypkg fix"
 	},
 	"keywords": [
 		"claude",
@@ -65,6 +67,7 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^0.4.5",
 		"@streamparser/json": "^0.0.22",
+		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^4.3.10",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
@@ -73,7 +76,7 @@
 		"cli-highlight": "^2.1.11",
 		"cli-progress": "^3.12.0",
 		"cli-table3": "^0.6.5",
-		"commander": "^11.1.0",
+		"commander": "^12.1.0",
 		"cors": "^2.8.5",
 		"dotenv": "^16.3.1",
 		"express": "^4.21.2",
@@ -120,10 +123,11 @@
 		"whatwg-url": "^11.0.0"
 	},
 	"devDependencies": {
-		"@tm/cli": "*",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
+		"@manypkg/cli": "^0.25.1",
+		"@tm/cli": "*",
 		"@types/jest": "^29.5.14",
 		"@types/marked-terminal": "^6.1.1",
 		"concurrently": "^9.2.1",
@@ -137,8 +141,8 @@
 		"supertest": "^7.1.0",
 		"ts-jest": "^29.4.2",
 		"tsdown": "^0.15.2",
-		"tsx": "^4.16.2",
+		"tsx": "^4.20.4",
 		"turbo": "^2.5.6",
-		"typescript": "^5.9.2"
+		"typescript": "^5.7.3"
 	}
 }
