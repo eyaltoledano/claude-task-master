@@ -82,12 +82,19 @@ function main() {
 			prContent,
 			'Total number of items created'
 		);
-		metrics.prs_merged = parseCountMetric(prContent, 'Number of items closed');
+		// Prefer merged; fall back to closed if the generator doesn't emit "merged"
+		const mergedCount = parseCountMetric(prContent, 'Number of items merged');
+		metrics.prs_merged = mergedCount || parseCountMetric(prContent, 'Number of items closed');
+
 		metrics.pr_avg_first_response = parseMetricsTable(
 			prContent,
 			'Time to first response'
 		);
-		metrics.pr_avg_merge_time = parseMetricsTable(prContent, 'Time to close');
+		// Prefer "Average time to merge"; fall back to "Time to close"
+		const maybeMergeTime = parseMetricsTable(prContent, 'Average time to merge');
+		metrics.pr_avg_merge_time = maybeMergeTime !== 'N/A'
+			? maybeMergeTime
+			: parseMetricsTable(prContent, 'Time to close');
 	} else {
 		console.log('⚠️  No pr_metrics.md found');
 	}
