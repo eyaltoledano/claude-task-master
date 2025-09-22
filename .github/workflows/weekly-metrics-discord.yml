@@ -46,12 +46,19 @@ jobs:
           HIDE_LABEL_METRICS: false
           OUTPUT_FILE: issue_metrics.md
 
-      - name: Generate PR metrics
+      - name: Generate PR created metrics
         uses: github/issue-metrics@v3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:pr created:${{ env.first_day }}..${{ env.last_day }}"
-          OUTPUT_FILE: pr_metrics.md
+          OUTPUT_FILE: pr_created_metrics.md
+
+      - name: Generate PR merged metrics
+        uses: github/issue-metrics@v3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SEARCH_QUERY: "repo:${{ github.repository }} is:pr is:merged merged:${{ env.first_day }}..${{ env.last_day }}"
+          OUTPUT_FILE: pr_merged_metrics.md
 
       - name: Parse metrics
         id: metrics

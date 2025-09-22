@@ -73,30 +73,49 @@ function main() {
 		console.log('⚠️  No issue_metrics.md found');
 	}
 
-	// Parse PR metrics
-	if (existsSync('pr_metrics.md')) {
-		console.log('📄 Found pr_metrics.md, parsing...');
-		const prContent = readFileSync('pr_metrics.md', 'utf8');
+	// Parse PR created metrics
+	if (existsSync('pr_created_metrics.md')) {
+		console.log('📄 Found pr_created_metrics.md, parsing...');
+		const prCreatedContent = readFileSync('pr_created_metrics.md', 'utf8');
 
 		metrics.prs_created = parseCountMetric(
-			prContent,
+			prCreatedContent,
 			'Total number of items created'
 		);
-		// Prefer merged; fall back to closed if the generator doesn't emit "merged"
-		const mergedCount = parseCountMetric(prContent, 'Number of items merged');
-		metrics.prs_merged = mergedCount || parseCountMetric(prContent, 'Number of items closed');
-
 		metrics.pr_avg_first_response = parseMetricsTable(
-			prContent,
+			prCreatedContent,
 			'Time to first response'
 		);
-		// Prefer "Average time to merge"; fall back to "Time to close"
-		const maybeMergeTime = parseMetricsTable(prContent, 'Average time to merge');
-		metrics.pr_avg_merge_time = maybeMergeTime !== 'N/A'
-			? maybeMergeTime
-			: parseMetricsTable(prContent, 'Time to close');
 	} else {
-		console.log('⚠️  No pr_metrics.md found');
+		console.log('⚠️  No pr_created_metrics.md found');
+	}
+
+	// Parse PR merged metrics (for more accurate merge data)
+	if (existsSync('pr_merged_metrics.md')) {
+		console.log('📄 Found pr_merged_metrics.md, parsing...');
+		const prMergedContent = readFileSync('pr_merged_metrics.md', 'utf8');
+
+		metrics.prs_merged = parseCountMetric(
+			prMergedContent,
+			'Total number of items created'
+		);
+		// For merged PRs, "Time to close" is actually time to merge
+		metrics.pr_avg_merge_time = parseMetricsTable(prMergedContent, 'Time to close');
+	} else {
+		console.log('⚠️  No pr_merged_metrics.md found');
+		// Fallback: try old pr_metrics.md if it exists
+		if (existsSync('pr_metrics.md')) {
+			console.log('📄 Falling back to pr_metrics.md...');
+			const prContent = readFileSync('pr_metrics.md', 'utf8');
+
+			const mergedCount = parseCountMetric(prContent, 'Number of items merged');
+			metrics.prs_merged = mergedCount || parseCountMetric(prContent, 'Number of items closed');
+
+			const maybeMergeTime = parseMetricsTable(prContent, 'Average time to merge');
+			metrics.pr_avg_merge_time = maybeMergeTime !== 'N/A'
+				? maybeMergeTime
+				: parseMetricsTable(prContent, 'Time to close');
+		}
 	}
 
 	// Output for GitHub Actions
