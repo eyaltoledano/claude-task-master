@@ -45,46 +45,7 @@ jobs:
 
       - name: Parse metrics
         id: metrics
-        run: |
-          # Parse the metrics from the generated markdown files
-          if [ -f "issue_metrics.md" ]; then
-            echo "DEBUG: issue_metrics.md content:"
-            head -20 issue_metrics.md
-            echo "DEBUG: Lines with 'Time to first response':"
-            grep "Time to first response" issue_metrics.md || echo "No matches found"
-            echo "DEBUG: Lines with 'Time to close':"
-            grep "Time to close" issue_metrics.md || echo "No matches found"
-
-            # Extract key metrics using grep/awk
-            AVG_TIME_TO_FIRST_RESPONSE=$(grep "Time to first response" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "N/A")
-            AVG_TIME_TO_CLOSE=$(grep "Time to close" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "N/A")
-            NUM_ISSUES_CREATED=$(grep "Total number of items created" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "0")
-            NUM_ISSUES_CLOSED=$(grep "Number of items closed" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "0")
-          else
-            NUM_ISSUES_CREATED=0
-            NUM_ISSUES_CLOSED=0
-            AVG_TIME_TO_FIRST_RESPONSE="N/A"
-            AVG_TIME_TO_CLOSE="N/A"
-          fi
-
-          if [ -f "pr_metrics.md" ]; then
-            PR_AVG_TIME_TO_MERGE=$(grep "Time to close" pr_metrics.md | awk -F'|' '{print $3}' | xargs || echo "N/A")
-            NUM_PRS_CREATED=$(grep "Total number of items created" pr_metrics.md | awk -F'|' '{print $3}' | xargs || echo "0")
-            NUM_PRS_MERGED=$(grep "Number of items closed" pr_metrics.md | awk -F'|' '{print $3}' | xargs || echo "0")
-          else
-            NUM_PRS_CREATED=0
-            NUM_PRS_MERGED=0
-            PR_AVG_TIME_TO_MERGE="N/A"
-          fi
-
-          # Set outputs for Discord action
-          echo "issues_created=${NUM_ISSUES_CREATED:-0}" >> $GITHUB_OUTPUT
-          echo "issues_closed=${NUM_ISSUES_CLOSED:-0}" >> $GITHUB_OUTPUT
-          echo "prs_created=${NUM_PRS_CREATED:-0}" >> $GITHUB_OUTPUT
-          echo "prs_merged=${NUM_PRS_MERGED:-0}" >> $GITHUB_OUTPUT
-          echo "avg_first_response=${AVG_TIME_TO_FIRST_RESPONSE:-N/A}" >> $GITHUB_OUTPUT
-          echo "avg_time_to_close=${AVG_TIME_TO_CLOSE:-N/A}" >> $GITHUB_OUTPUT
-          echo "pr_avg_merge_time=${PR_AVG_TIME_TO_MERGE:-N/A}" >> $GITHUB_OUTPUT
+        run: node .github/scripts/parse-metrics.mjs
 
       - name: Send to Discord
         uses: sarisia/actions-status-discord@v1
