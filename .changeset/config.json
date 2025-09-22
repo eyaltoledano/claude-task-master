@@ -11,9 +11,6 @@
   "access": "public",
   "baseBranch": "main",
   "ignore": [
-    "docs",
-    "@tm/cli",
-    "@tm/core",
-    "@tm/build-config"
+    "docs"
   ]
 }

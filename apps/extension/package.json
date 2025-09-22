@@ -3,7 +3,7 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.25.0",
+	"version": "0.25.1",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
@@ -254,8 +254,9 @@
 		"@radix-ui/react-separator": "^1.1.7",
 		"@radix-ui/react-slot": "^1.2.3",
 		"@tailwindcss/postcss": "^4.1.11",
+		"@tanstack/react-query": "^5.83.0",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "20.x",
+		"@types/node": "^22.10.5",
 		"@types/react": "19.1.8",
 		"@types/react-dom": "19.1.6",
 		"@types/vscode": "^1.101.0",
@@ -271,12 +272,11 @@
 		"lucide-react": "^0.525.0",
 		"npm-run-all": "^4.1.5",
 		"postcss": "8.5.6",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
 		"tailwind-merge": "^3.3.1",
 		"tailwindcss": "4.1.11",
-		"typescript": "^5.8.3",
-		"@tanstack/react-query": "^5.83.0",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0"
+		"typescript": "^5.7.3"
 	},
 	"overrides": {
 		"glob@<8": "^10.4.5",
