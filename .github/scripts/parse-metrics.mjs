@@ -32,52 +32,42 @@ function main() {
     issues_closed: 0,
     prs_created: 0,
     prs_merged: 0,
-    avg_first_response: 'N/A',
-    avg_time_to_close: 'N/A',
+    issue_avg_first_response: 'N/A',
+    issue_avg_time_to_close: 'N/A',
+    pr_avg_first_response: 'N/A',
     pr_avg_merge_time: 'N/A'
   };
+
+  console.log('=== DEBUG: Raw file contents ===');
 
   // Parse issue metrics
   if (existsSync('issue_metrics.md')) {
     const issueContent = readFileSync('issue_metrics.md', 'utf8');
-    console.log('DEBUG: Parsing issue metrics...');
+    console.log('\n--- ISSUE METRICS CONTENT ---');
+    console.log(issueContent.substring(0, 1000) + '...');
 
     metrics.issues_created = parseCountMetric(issueContent, 'Total number of items created');
     metrics.issues_closed = parseCountMetric(issueContent, 'Number of items closed');
-    metrics.avg_first_response = parseMetricsTable(issueContent, 'Time to first response');
-    metrics.avg_time_to_close = parseMetricsTable(issueContent, 'Time to close');
-
-    console.log('Issues created:', metrics.issues_created);
-    console.log('Issues closed:', metrics.issues_closed);
-    console.log('Avg first response:', metrics.avg_first_response);
-    console.log('Avg time to close:', metrics.avg_time_to_close);
-  } else {
-    console.log('No issue_metrics.md found');
+    metrics.issue_avg_first_response = parseMetricsTable(issueContent, 'Time to first response');
+    metrics.issue_avg_time_to_close = parseMetricsTable(issueContent, 'Time to close');
   }
 
   // Parse PR metrics
   if (existsSync('pr_metrics.md')) {
     const prContent = readFileSync('pr_metrics.md', 'utf8');
-    console.log('DEBUG: Parsing PR metrics...');
+    console.log('\n--- PR METRICS CONTENT ---');
+    console.log(prContent.substring(0, 1000) + '...');
 
     metrics.prs_created = parseCountMetric(prContent, 'Total number of items created');
     metrics.prs_merged = parseCountMetric(prContent, 'Number of items closed');
+    metrics.pr_avg_first_response = parseMetricsTable(prContent, 'Time to first response');
     metrics.pr_avg_merge_time = parseMetricsTable(prContent, 'Time to close');
-
-    console.log('PRs created:', metrics.prs_created);
-    console.log('PRs merged:', metrics.prs_merged);
-    console.log('PR avg merge time:', metrics.pr_avg_merge_time);
-  } else {
-    console.log('No pr_metrics.md found');
   }
 
   // Output for GitHub Actions
   const output = Object.entries(metrics)
     .map(([key, value]) => `${key}=${value}`)
     .join('\n');
-
-  console.log('\nFinal metrics:');
-  console.log(output);
 
   // Write to GITHUB_OUTPUT if in GitHub Actions
   if (process.env.GITHUB_OUTPUT) {
