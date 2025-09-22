@@ -1,6 +1,6 @@
 {
 	"name": "@tm/core",
-	"version": "0.26.0",
+	"version": "0.26.1",
 	"private": true,
 	"description": "Core library for Task Master - TypeScript task management system",
 	"type": "module",
@@ -48,8 +48,18 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"files": ["src", "README.md", "CHANGELOG.md"],
-	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
+	"files": [
+		"src",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"keywords": [
+		"task-management",
+		"typescript",
+		"ai",
+		"prd",
+		"parser"
+	],
 	"author": "Task Master AI",
 	"license": "MIT"
 }
