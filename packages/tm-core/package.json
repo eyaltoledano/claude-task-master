@@ -48,18 +48,8 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"files": [
-		"src",
-		"README.md",
-		"CHANGELOG.md"
-	],
-	"keywords": [
-		"task-management",
-		"typescript",
-		"ai",
-		"prd",
-		"parser"
-	],
+	"files": ["src", "README.md", "CHANGELOG.md"],
+	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
 	"author": "Task Master AI",
 	"license": "MIT"
 }
