@@ -48,6 +48,13 @@ jobs:
         run: |
           # Parse the metrics from the generated markdown files
           if [ -f "issue_metrics.md" ]; then
+            echo "DEBUG: issue_metrics.md content:"
+            head -20 issue_metrics.md
+            echo "DEBUG: Lines with 'Time to first response':"
+            grep "Time to first response" issue_metrics.md || echo "No matches found"
+            echo "DEBUG: Lines with 'Time to close':"
+            grep "Time to close" issue_metrics.md || echo "No matches found"
+
             # Extract key metrics using grep/awk
             AVG_TIME_TO_FIRST_RESPONSE=$(grep "Time to first response" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "N/A")
             AVG_TIME_TO_CLOSE=$(grep "Time to close" issue_metrics.md | awk -F'|' '{print $3}' | xargs || echo "N/A")
