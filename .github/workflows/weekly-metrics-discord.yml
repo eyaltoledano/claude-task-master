@@ -56,8 +56,8 @@ jobs:
             # Extract key metrics using grep/awk
             AVG_TIME_TO_FIRST_RESPONSE=$(grep -A 1 "Average time to first response" issue_metrics.md | tail -1 | xargs || echo "N/A")
             AVG_TIME_TO_CLOSE=$(grep -A 1 "Average time to close" issue_metrics.md | tail -1 | xargs || echo "N/A")
-            NUM_ISSUES_CREATED=$(grep -oP '\d+(?= issues created)' issue_metrics.md || echo "0")
-            NUM_ISSUES_CLOSED=$(grep -oP '\d+(?= issues closed)' issue_metrics.md || echo "0")
+            NUM_ISSUES_CREATED=$(grep -A 1 "Total number of items created" issue_metrics.md | tail -1 | xargs || echo "0")
+            NUM_ISSUES_CLOSED=$(grep -A 1 "Number of items closed" issue_metrics.md | tail -1 | xargs || echo "0")
           else
             echo "Debug: No issue_metrics.md file found"
             NUM_ISSUES_CREATED=0
@@ -70,8 +70,8 @@ jobs:
             echo "Debug: Found pr_metrics.md, contents:"
             cat pr_metrics.md
             PR_AVG_TIME_TO_MERGE=$(grep -A 1 "Average time to close" pr_metrics.md | tail -1 | xargs || echo "N/A")
-            NUM_PRS_CREATED=$(grep -oP '\d+(?= pull requests created)' pr_metrics.md || echo "0")
-            NUM_PRS_MERGED=$(grep -oP '\d+(?= pull requests closed)' pr_metrics.md || echo "0")
+            NUM_PRS_CREATED=$(grep -A 1 "Total number of items created" pr_metrics.md | tail -1 | xargs || echo "0")
+            NUM_PRS_MERGED=$(grep -A 1 "Number of items closed" pr_metrics.md | tail -1 | xargs || echo "0")
           else
             echo "Debug: No pr_metrics.md file found"
             NUM_PRS_CREATED=0
