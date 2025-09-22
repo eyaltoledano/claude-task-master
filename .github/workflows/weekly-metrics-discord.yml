@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  issues: write
+  issues: read
   pull-requests: read
 
 jobs:
@@ -59,6 +59,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:pr is:merged merged:${{ env.first_day }}..${{ env.last_day }}"
           OUTPUT_FILE: pr_merged_metrics.md
+
+      - name: Debug generated metrics
+        run: |
+          set -Eeuo pipefail
+          echo "Listing markdown files in workspace:"
+          ls -la *.md || true
+          for f in issue_metrics.md pr_created_metrics.md pr_merged_metrics.md; do
+            if [ -f "$f" ]; then
+              echo "== $f (first 10 lines) =="
+              head -n 10 "$f"
+            else
+              echo "Missing $f"
+            fi
+          done
 
       - name: Parse metrics
         id: metrics
