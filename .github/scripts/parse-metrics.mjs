@@ -80,7 +80,9 @@ function main() {
 			'Time to first response'
 		);
 	} else {
-		console.warn('[parse-metrics] pr_created_metrics.md not found; using defaults.');
+		console.warn(
+			'[parse-metrics] pr_created_metrics.md not found; using defaults.'
+		);
 	}
 
 	// Parse PR merged metrics (for more accurate merge data)
@@ -93,21 +95,31 @@ function main() {
 			'Total number of items created'
 		);
 		// For merged PRs, "Time to close" is actually time to merge
-		metrics.pr_avg_merge_time = parseMetricsTable(prMergedContent, 'Time to close');
+		metrics.pr_avg_merge_time = parseMetricsTable(
+			prMergedContent,
+			'Time to close'
+		);
 	} else {
-		console.warn('[parse-metrics] pr_merged_metrics.md not found; falling back to pr_metrics.md.');
+		console.warn(
+			'[parse-metrics] pr_merged_metrics.md not found; falling back to pr_metrics.md.'
+		);
 		// Fallback: try old pr_metrics.md if it exists
 		if (existsSync('pr_metrics.md')) {
 			console.log('📄 Falling back to pr_metrics.md...');
 			const prContent = readFileSync('pr_metrics.md', 'utf8');
 
 			const mergedCount = parseCountMetric(prContent, 'Number of items merged');
-			metrics.prs_merged = mergedCount || parseCountMetric(prContent, 'Number of items closed');
+			metrics.prs_merged =
+				mergedCount || parseCountMetric(prContent, 'Number of items closed');
 
-			const maybeMergeTime = parseMetricsTable(prContent, 'Average time to merge');
-			metrics.pr_avg_merge_time = maybeMergeTime !== 'N/A'
-				? maybeMergeTime
-				: parseMetricsTable(prContent, 'Time to close');
+			const maybeMergeTime = parseMetricsTable(
+				prContent,
+				'Average time to merge'
+			);
+			metrics.pr_avg_merge_time =
+				maybeMergeTime !== 'N/A'
+					? maybeMergeTime
+					: parseMetricsTable(prContent, 'Time to close');
 		} else {
 			console.warn('[parse-metrics] pr_metrics.md not found; using defaults.');
 		}
