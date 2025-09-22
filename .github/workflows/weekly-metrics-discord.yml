@@ -27,14 +27,14 @@ jobs:
 
       - name: Get dates for last week
         run: |
-          # Last 7 days
-          first_day=$(date -d "7 days ago" +%Y-%m-%d)
+          # Last 14 days
+          first_day=$(date -d "14 days ago" +%Y-%m-%d)
           last_day=$(date +%Y-%m-%d)
 
           echo "first_day=$first_day" >> $GITHUB_ENV
           echo "last_day=$last_day" >> $GITHUB_ENV
           echo "week_of=$(date -d '7 days ago' +'Week of %B %d, %Y')" >> $GITHUB_ENV
-          echo "date_range=Past 7 days ($first_day to $last_day)" >> $GITHUB_ENV
+          echo "date_range=Past 14 days ($first_day to $last_day)" >> $GITHUB_ENV
 
       - name: Generate issue metrics
         uses: github/issue-metrics@v3
@@ -69,15 +69,14 @@ jobs:
             **🎯 Issues**
             • Created: ${{ steps.metrics.outputs.issues_created }}
             • Closed: ${{ steps.metrics.outputs.issues_closed }}
+            • Avg Response Time: ${{ steps.metrics.outputs.issue_avg_first_response }}
+            • Avg Time to Close: ${{ steps.metrics.outputs.issue_avg_time_to_close }}
 
             **🔀 Pull Requests**
             • Created: ${{ steps.metrics.outputs.prs_created }}
             • Merged: ${{ steps.metrics.outputs.prs_merged }}
-
-            **⏱️ Response Times**
-            • First Response: ${{ steps.metrics.outputs.avg_first_response }}
-            • Time to Close: ${{ steps.metrics.outputs.avg_time_to_close }}
-            • PR Merge Time: ${{ steps.metrics.outputs.pr_avg_merge_time }}
+            • Avg Response Time: ${{ steps.metrics.outputs.pr_avg_first_response }}
+            • Avg Time to Merge: ${{ steps.metrics.outputs.pr_avg_merge_time }}
           color: 0x58AFFF
           username: Task Master Metrics Bot
           avatar_url: https://raw.githubusercontent.com/eyaltoledano/claude-task-master/main/images/logo.png

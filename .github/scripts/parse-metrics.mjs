@@ -38,13 +38,9 @@ function main() {
     pr_avg_merge_time: 'N/A'
   };
 
-  console.log('=== DEBUG: Raw file contents ===');
-
   // Parse issue metrics
   if (existsSync('issue_metrics.md')) {
     const issueContent = readFileSync('issue_metrics.md', 'utf8');
-    console.log('\n--- ISSUE METRICS CONTENT ---');
-    console.log(issueContent.substring(0, 1000) + '...');
 
     metrics.issues_created = parseCountMetric(issueContent, 'Total number of items created');
     metrics.issues_closed = parseCountMetric(issueContent, 'Number of items closed');
@@ -55,8 +51,6 @@ function main() {
   // Parse PR metrics
   if (existsSync('pr_metrics.md')) {
     const prContent = readFileSync('pr_metrics.md', 'utf8');
-    console.log('\n--- PR METRICS CONTENT ---');
-    console.log(prContent.substring(0, 1000) + '...');
 
     metrics.prs_created = parseCountMetric(prContent, 'Total number of items created');
     metrics.prs_merged = parseCountMetric(prContent, 'Number of items closed');
