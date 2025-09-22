@@ -30,7 +30,8 @@ For MCP/Cursor usage: Configure keys in the env section of your .cursor/mcp.json
 				"MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
 				"AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
 				"OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE",
-				"GITHUB_API_KEY": "GITHUB_API_KEY_HERE"
+				"GITHUB_API_KEY": "GITHUB_API_KEY_HERE",
+				"GROK_CLI_API_KEY": "GROK_CLI_API_KEY_HERE"
 			}
 		}
 	}
@@ -62,7 +63,49 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
+
+# Grok CLI Configuration (Required if using 'grok-cli' provider)
+# GROK_CLI_API_KEY=your-grok-api-key-here
+
+# Codebase Analysis Feature Control
+# TASKMASTER_ENABLE_CODEBASE_ANALYSIS=true  # Enable codebase analysis features (default: true)
 ```
+
+## Grok Provider Setup
+
+Task Master now supports Grok models from xAI with full codebase context awareness. This is especially useful for AI operations that benefit from understanding your entire project structure.
+
+### Getting Started with Grok
+
+1. **Get your Grok API key** from [console.x.ai](https://console.x.ai)
+2. **Set the environment variable**:
+   ```bash
+   export GROK_CLI_API_KEY="your-api-key-here"
+   ```
+3. **Configure Task Master to use Grok**:
+   ```bash
+   task-master models --set-main grok-beta
+   # or
+   task-master models --set-research grok-beta
+   # or  
+   task-master models --set-fallback grok-beta
+   ```
+
+### Key Features
+
+- **Full codebase context**: Grok models can analyze your entire project when generating tasks or parsing PRDs
+- **xAI model access**: Support for latest Grok models (grok-2, grok-3, grok-4, etc.)
+- **Code-aware task generation**: Create more accurate and contextual tasks based on your actual codebase
+- **Intelligent PRD parsing**: Parse requirements with understanding of your existing code structure
+
+### Available Models
+
+- `grok-beta` - Latest Grok model with codebase context
+- `grok-vision-beta` - Grok with vision capabilities and codebase context
+
+<Note>
+The Grok CLI provider integrates with xAI's Grok models via [grok-cli](https://github.com/superagent-ai/grok-cli) by Superagent AI and can also use the local Grok CLI configuration file (`~/.grok/user-settings.json`) if available.
+</Note>
 
 ## What Else Can Be Configured?
 
@@ -88,6 +131,13 @@ You don’t need to configure everything up front. Most settings can be left as 
 - `defaultTag`: Default tag for task grouping
 - `defaultSubtasks`: Number of subtasks to auto-generate
 - `defaultPriority`: Priority level for new tasks
+
+### Codebase Analysis Control
+- `TASKMASTER_ENABLE_CODEBASE_ANALYSIS`: Control whether codebase analysis features are enabled
+  - Can be set via environment variables, MCP configuration, or project config files
+  - Priority order: `.env` > MCP session env > `.taskmaster/config.json`
+  - Default: `true`
+  - When enabled, allows providers like Claude Code and Gemini CLI to analyze your project structure for more contextual task generation
 
 ### API Endpoint Overrides
 - `ollamaBaseURL`: Custom Ollama server URL

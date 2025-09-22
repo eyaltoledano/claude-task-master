@@ -206,4 +206,25 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Start Working on Tasks">
+    ```bash
+    # Start working on a specific task with Claude Code
+    task-master start <task-id>
+
+    # Start working on the next available task automatically
+    task-master start
+
+    # Example: Start working on task 1.2
+    task-master start 1.2
+    ```
+
+    The `start` command automatically launches Claude Code with a comprehensive prompt containing:
+    - Complete task details and context
+    - Implementation guidelines and best practices
+    - Relevant codebase information
+    - Dependencies and requirements
+
+    When no task ID is provided, it automatically detects and starts the next available task.
+  </Accordion>
 </AccordionGroup>

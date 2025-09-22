@@ -3,4 +3,78 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## Version 0.27.0 - Latest Release
+
+### New Features
+
+#### `task-master start` Command
+- **Automated Task Execution**: New command that automatically launches Claude Code with comprehensive task context
+- **Smart Task Detection**: When no task ID is provided, automatically detects and starts the next available task
+- **Rich Context**: Provides complete task details, implementation guidelines, and codebase information to Claude Code
+
+#### Grok Provider Integration
+- **Full Codebase Context**: Grok models can now analyze your entire project when generating tasks or parsing PRDs
+- **xAI Model Support**: Access to latest Grok models (grok-2, grok-3, grok-4, etc.) via the grok-cli integration
+- **Code-Aware Generation**: More accurate and contextual task creation based on your actual codebase structure
+- **Available Models**: 
+  - `grok-beta` - Latest Grok model with codebase context
+  - `grok-vision-beta` - Grok with vision capabilities and codebase context
+
+### Improvements
+
+#### Enhanced Provider Defaults
+- **Main Model**: Upgraded from Claude 3.5 Sonnet to **Claude Sonnet 4** for better performance
+- **Fallback Model**: Improved from Claude 3.5 Sonnet to **Claude 3.7** for enhanced reliability
+
+#### MCP Server Simplification
+- **No More --package Flag**: Removed the need for `--package=task-master-ai` in MCP server configuration
+- **Bundled Package**: The entire package is now bundled, eliminating common configuration issues
+
+#### Auto-Update Functionality
+- **CLI Auto-Updates**: Every CLI command now includes auto-update functionality to keep you on the latest version
+
+#### Codebase Analysis Feature Control
+- **Configurable Analysis**: New `TASKMASTER_ENABLE_CODEBASE_ANALYSIS` environment variable to control codebase analysis features
+- **Multiple Configuration Sources**: Can be set via `.env`, MCP configuration, or project config files
+- **Priority System**: Environment variables > MCP session env > `.taskmaster/config.json`
+
+### TypeScript Migration
+- **Improved Development**: Moving from JavaScript to TypeScript environment for better development experience
+- **Gradual Migration**: JavaScript commands are being incrementally moved to TypeScript
+
+## Getting Started with New Features
+
+### Using the Start Command
+```bash
+# Start working on a specific task
+task-master start 1.2
+
+# Auto-detect and start next available task  
+task-master start
+```
+
+### Setting up Grok
+```bash
+# Set your API key
+export GROK_CLI_API_KEY="your-api-key-here"
+
+# Configure Grok as your main provider
+task-master models --set-main grok-beta
+```
+
+### Simplified MCP Configuration
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+For detailed setup instructions and configuration options, see our [Configuration Guide](/docs/getting-started/quick-start/configuration-quick).
