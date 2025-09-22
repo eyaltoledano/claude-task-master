@@ -18,8 +18,8 @@ For MCP/Cursor usage: Configure keys in the env section of your .cursor/mcp.json
 {
 	"mcpServers": {
 		"task-master-ai": {
-			"command": "node",
-			"args": ["./mcp-server/server.js"],
+			"command": "npx",
+			"args": ["-y", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY_HERE",
 				"PERPLEXITY_API_KEY": "PERPLEXITY_API_KEY_HERE",

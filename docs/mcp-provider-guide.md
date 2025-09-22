@@ -451,8 +451,8 @@ When using Task Master in VS Code with MCP support:
 {
   "servers": {
     "task-master-dev": {
-      "command": "node",
-      "args": ["mcp-server/server.js"],
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
       "cwd": "/path/to/your/task-master-project",
       "env": {
         "NODE_ENV": "development",

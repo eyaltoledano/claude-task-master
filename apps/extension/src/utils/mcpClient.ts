@@ -408,7 +408,7 @@ export function createMCPConfigFromSettings(): MCPConfig {
 			const taskMasterPath = require.resolve('task-master-ai');
 			const mcpServerPath = path.resolve(
 				path.dirname(taskMasterPath),
-				'mcp-server/server.js'
+				'./dist/mcp-server.js'
 			);
 
 			// Verify the server file exists
