@@ -1,6 +1,5 @@
 {
 	"name": "@tm/build-config",
-	"version": "1.0.1",
 	"description": "Shared build configuration for Task Master monorepo",
 	"type": "module",
 	"private": true,
@@ -12,15 +11,8 @@
 			"import": "./dist/tsdown.base.js"
 		}
 	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"keywords": [
-		"build-config",
-		"tsup",
-		"monorepo"
-	],
+	"files": ["dist", "src"],
+	"keywords": ["build-config", "tsup", "monorepo"],
 	"author": "",
 	"license": "MIT",
 	"scripts": {

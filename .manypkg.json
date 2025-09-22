@@ -1,0 +1,6 @@
+{
+	"$schema": "https://unpkg.com/@manypkg/get-packages@1.1.3/schema.json",
+	"defaultBranch": "main",
+	"ignoredRules": ["ROOT_HAS_DEPENDENCIES", "INTERNAL_MISMATCH"],
+	"ignoredPackages": ["@tm/core", "@tm/cli", "@tm/build-config"]
+}
