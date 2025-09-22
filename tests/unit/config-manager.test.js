@@ -119,20 +119,20 @@ const DEFAULT_CONFIG = {
 	models: {
 		main: {
 			provider: 'anthropic',
-			modelId: 'claude-3-7-sonnet-20250219',
+			modelId: 'claude-sonnet-4-20250514',
 			maxTokens: 64000,
 			temperature: 0.2
 		},
 		research: {
 			provider: 'perplexity',
-			modelId: 'sonar-pro',
+			modelId: 'sonar',
 			maxTokens: 8700,
 			temperature: 0.1
 		},
 		fallback: {
 			provider: 'anthropic',
-			modelId: 'claude-3-5-sonnet',
-			maxTokens: 8192,
+			modelId: 'claude-3-7-sonnet-20250219',
+			maxTokens: 120000,
 			temperature: 0.2
 		}
 	},
@@ -148,7 +148,12 @@ const DEFAULT_CONFIG = {
 		enableCodebaseAnalysis: true,
 		responseLanguage: 'English'
 	},
-	claudeCode: {}
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
+	}
 };
 
 // Other test data (VALID_CUSTOM_CONFIG, PARTIAL_CONFIG, INVALID_PROVIDER_CONFIG)
@@ -636,7 +641,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -678,7 +684,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, 'utf-8');
@@ -786,7 +793,8 @@ describe('getConfig Tests', () => {
 			claudeCode: {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
-			}
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 	});

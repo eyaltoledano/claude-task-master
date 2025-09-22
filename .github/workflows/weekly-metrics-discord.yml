@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  issues: write
+  issues: read
   pull-requests: read
 
 jobs:
@@ -17,15 +17,25 @@ jobs:
     env:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_METRICS_WEBHOOK }}
     steps:
-      - name: Get dates for last week
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get dates for last 14 days
         run: |
-          # Last 7 days
-          first_day=$(date -d "7 days ago" +%Y-%m-%d)
+          set -Eeuo pipefail
+          # Last 14 days
+          first_day=$(date -d "14 days ago" +%Y-%m-%d)
           last_day=$(date +%Y-%m-%d)
 
           echo "first_day=$first_day" >> $GITHUB_ENV
           echo "last_day=$last_day" >> $GITHUB_ENV
           echo "week_of=$(date -d '7 days ago' +'Week of %B %d, %Y')" >> $GITHUB_ENV
+          echo "date_range=Past 14 days ($first_day to $last_day)" >> $GITHUB_ENV
 
       - name: Generate issue metrics
         uses: github/issue-metrics@v3
@@ -34,40 +44,39 @@ jobs:
           SEARCH_QUERY: "repo:${{ github.repository }} is:issue created:${{ env.first_day }}..${{ env.last_day }}"
           HIDE_TIME_TO_ANSWER: true
           HIDE_LABEL_METRICS: false
+          OUTPUT_FILE: issue_metrics.md
 
-      - name: Generate PR metrics
+      - name: Generate PR created metrics
         uses: github/issue-metrics@v3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:pr created:${{ env.first_day }}..${{ env.last_day }}"
-          OUTPUT_FILE: pr_metrics.md
+          OUTPUT_FILE: pr_created_metrics.md
+
+      - name: Generate PR merged metrics
+        uses: github/issue-metrics@v3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SEARCH_QUERY: "repo:${{ github.repository }} is:pr is:merged merged:${{ env.first_day }}..${{ env.last_day }}"
+          OUTPUT_FILE: pr_merged_metrics.md
+
+      - name: Debug generated metrics
+        run: |
+          set -Eeuo pipefail
+          echo "Listing markdown files in workspace:"
+          ls -la *.md || true
+          for f in issue_metrics.md pr_created_metrics.md pr_merged_metrics.md; do
+            if [ -f "$f" ]; then
+              echo "== $f (first 10 lines) =="
+              head -n 10 "$f"
+            else
+              echo "Missing $f"
+            fi
+          done
 
       - name: Parse metrics
         id: metrics
-        run: |
-          # Parse the metrics from the generated markdown files
-          if [ -f "issue_metrics.md" ]; then
-            # Extract key metrics using grep/awk
-            AVG_TIME_TO_FIRST_RESPONSE=$(grep -A 1 "Average time to first response" issue_metrics.md | tail -1 | xargs || echo "N/A")
-            AVG_TIME_TO_CLOSE=$(grep -A 1 "Average time to close" issue_metrics.md | tail -1 | xargs || echo "N/A")
-            NUM_ISSUES_CREATED=$(grep -oP '\d+(?= issues created)' issue_metrics.md || echo "0")
-            NUM_ISSUES_CLOSED=$(grep -oP '\d+(?= issues closed)' issue_metrics.md || echo "0")
-          fi
-
-          if [ -f "pr_metrics.md" ]; then
-            PR_AVG_TIME_TO_MERGE=$(grep -A 1 "Average time to close" pr_metrics.md | tail -1 | xargs || echo "N/A")
-            NUM_PRS_CREATED=$(grep -oP '\d+(?= pull requests created)' pr_metrics.md || echo "0")
-            NUM_PRS_MERGED=$(grep -oP '\d+(?= pull requests closed)' pr_metrics.md || echo "0")
-          fi
-
-          # Set outputs for Discord action
-          echo "issues_created=${NUM_ISSUES_CREATED:-0}" >> $GITHUB_OUTPUT
-          echo "issues_closed=${NUM_ISSUES_CLOSED:-0}" >> $GITHUB_OUTPUT
-          echo "prs_created=${NUM_PRS_CREATED:-0}" >> $GITHUB_OUTPUT
-          echo "prs_merged=${NUM_PRS_MERGED:-0}" >> $GITHUB_OUTPUT
-          echo "avg_first_response=${AVG_TIME_TO_FIRST_RESPONSE:-N/A}" >> $GITHUB_OUTPUT
-          echo "avg_time_to_close=${AVG_TIME_TO_CLOSE:-N/A}" >> $GITHUB_OUTPUT
-          echo "pr_avg_merge_time=${PR_AVG_TIME_TO_MERGE:-N/A}" >> $GITHUB_OUTPUT
+        run: node .github/scripts/parse-metrics.mjs
 
       - name: Send to Discord
         uses: sarisia/actions-status-discord@v1
@@ -78,19 +87,22 @@ jobs:
           title: "📊 Weekly Metrics Report"
           description: |
             **${{ env.week_of }}**
-            
+            *${{ env.date_range }}*
+
             **🎯 Issues**
             • Created: ${{ steps.metrics.outputs.issues_created }}
             • Closed: ${{ steps.metrics.outputs.issues_closed }}
-            
+            • Avg Response Time: ${{ steps.metrics.outputs.issue_avg_first_response }}
+            • Avg Time to Close: ${{ steps.metrics.outputs.issue_avg_time_to_close }}
+
             **🔀 Pull Requests**
             • Created: ${{ steps.metrics.outputs.prs_created }}
             • Merged: ${{ steps.metrics.outputs.prs_merged }}
-            
-            **⏱️ Response Times**
-            • First Response: ${{ steps.metrics.outputs.avg_first_response }}
-            • Time to Close: ${{ steps.metrics.outputs.avg_time_to_close }}
-            • PR Merge Time: ${{ steps.metrics.outputs.pr_avg_merge_time }}
+            • Avg Response Time: ${{ steps.metrics.outputs.pr_avg_first_response }}
+            • Avg Time to Merge: ${{ steps.metrics.outputs.pr_avg_merge_time }}
+
+            **📈 Visual Analytics**
+            https://repobeats.axiom.co/api/embed/b439f28f0ab5bd7a2da19505355693cd2c55bfd4.svg
           color: 0x58AFFF
           username: Task Master Metrics Bot
           avatar_url: https://raw.githubusercontent.com/eyaltoledano/claude-task-master/main/images/logo.png

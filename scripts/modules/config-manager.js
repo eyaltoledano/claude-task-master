@@ -16,50 +16,32 @@ import {
 } from '../../src/constants/providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import MODEL_MAP from './supported-models.json' with { type: 'json' };
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Load supported models from JSON file using the calculated __dirname
-let MODEL_MAP;
-try {
-	const supportedModelsRaw = fs.readFileSync(
-		path.join(__dirname, 'supported-models.json'),
-		'utf-8'
-	);
-	MODEL_MAP = JSON.parse(supportedModelsRaw);
-} catch (error) {
-	console.error(
-		chalk.red(
-			'FATAL ERROR: Could not load supported-models.json. Please ensure the file exists and is valid JSON.'
-		),
-		error
-	);
-	MODEL_MAP = {}; // Default to empty map on error to avoid crashing, though functionality will be limited
-	process.exit(1); // Exit if models can't be loaded
-}
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
 	models: {
 		main: {
 			provider: 'anthropic',
-			modelId: 'claude-3-7-sonnet-20250219',
+			modelId: 'claude-sonnet-4-20250514',
 			maxTokens: 64000,
 			temperature: 0.2
 		},
 		research: {
 			provider: 'perplexity',
-			modelId: 'sonar-pro',
+			modelId: 'sonar',
 			maxTokens: 8700,
 			temperature: 0.1
 		},
 		fallback: {
 			// No default fallback provider/model initially
 			provider: 'anthropic',
-			modelId: 'claude-3-5-sonnet',
-			maxTokens: 8192, // Default parameters if fallback IS configured
+			modelId: 'claude-3-7-sonnet-20250219',
+			maxTokens: 120000, // Default parameters if fallback IS configured
 			temperature: 0.2
 		}
 	},
@@ -75,7 +57,12 @@ const DEFAULTS = {
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true
 	},
-	claudeCode: {}
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
+	}
 };
 
 // --- Internal Config Loading ---
@@ -150,7 +137,8 @@ function _loadAndValidateConfig(explicitRoot = null) {
 							: { ...defaults.models.fallback }
 				},
 				global: { ...defaults.global, ...parsedConfig?.global },
-				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode }
+				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
+				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
 
@@ -391,6 +379,22 @@ function getClaudeCodeSettingsForCommand(
 	return { ...settings, ...commandSpecific[commandName] };
 }
 
+function getGrokCliSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	// Ensure Grok CLI defaults are applied if Grok CLI section is missing
+	return { ...DEFAULTS.grokCli, ...(config?.grokCli || {}) };
+}
+
+function getGrokCliSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getGrokCliSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
+}
+
 // --- Role-Specific Getters ---
 
 function getModelConfigForRole(role, explicitRoot = null) {
@@ -481,7 +485,8 @@ function hasCodebaseAnalysis(
 
 	return (
 		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
-		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI ||
+		currentProvider === CUSTOM_PROVIDERS.GROK_CLI
 	);
 }
 
@@ -601,8 +606,8 @@ function getResponseLanguage(explicitRoot = null) {
 }
 
 function getCodebaseAnalysisEnabled(explicitRoot = null) {
-	// Directly return value from config
-	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis;
+	// Return boolean-safe value with default true
+	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis !== false;
 }
 
 /**
@@ -710,7 +715,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.OLLAMA,
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.GEMINI_CLI
+		CUSTOM_PROVIDERS.GEMINI_CLI,
+		CUSTOM_PROVIDERS.GROK_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -1016,6 +1022,7 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
+	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP
 ];
 
@@ -1028,6 +1035,9 @@ export {
 	// Claude Code settings
 	getClaudeCodeSettings,
 	getClaudeCodeSettingsForCommand,
+	// Grok CLI settings
+	getGrokCliSettings,
+	getGrokCliSettingsForCommand,
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,

@@ -103,8 +103,8 @@ async function main() {
 		// This prevents the multiple React instances issue
 		// Ensure React is resolved from the workspace root to avoid duplicates
 		alias: {
-			react: path.resolve(__dirname, 'node_modules/react'),
-			'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
+			react: path.resolve(__dirname, '../../node_modules/react'),
+			'react-dom': path.resolve(__dirname, '../../node_modules/react-dom')
 		},
 		define: {
 			'process.env.NODE_ENV': production ? '"production"' : '"development"',
@@ -135,8 +135,8 @@ async function main() {
 		jsxImportSource: 'react',
 		external: ['*.css'],
 		alias: {
-			react: path.resolve(__dirname, 'node_modules/react'),
-			'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
+			react: path.resolve(__dirname, '../../node_modules/react'),
+			'react-dom': path.resolve(__dirname, '../../node_modules/react-dom')
 		},
 		define: {
 			'process.env.NODE_ENV': production ? '"production"' : '"development"',

@@ -1,0 +1,32 @@
+# Task ID: 3
+# Title: Create standardized prompt builder
+# Status: pending
+# Dependencies: 1
+# Priority: medium
+# Description: Implement a function to build the standardized prompt for claude-code based on the task details
+# Details:
+Create a function in the StartCommand class that builds the standardized prompt according to the template provided in the PRD. The prompt should include instructions for Claude to first run `tm show <task_id>` to get task details, and then implement the required changes.
+
+```typescript
+private buildPrompt(taskId: string): string {
+  return `You are an AI coding assistant with access to this repository's codebase.
+
+First, run this command to get the task details:
+tm show ${taskId}
+
+Then implement the task with these requirements:
+- Make the SMALLEST number of code changes possible
+- Follow ALL existing patterns in the codebase (you have access to analyze the code)
+- Do NOT over-engineer the solution
+- Use existing files/functions/patterns wherever possible
+- When complete, print: COMPLETED: <brief summary of changes>
+
+Begin by running tm show ${taskId} to understand what needs to be implemented.`;
+}
+```
+<info added on 2025-09-12T02:40:01.812Z>
+The prompt builder function will handle task context retrieval by instructing Claude to use the task-master show command. This approach ensures Claude has access to all necessary task details before implementation begins. The command syntax "tm show ${taskId}" embedded in the prompt will direct Claude to first gather the complete task context, including description, requirements, and any existing implementation details, before proceeding with code changes.
+</info added on 2025-09-12T02:40:01.812Z>
+
+# Test Strategy:
+Verify the prompt is correctly formatted by calling the function with a sample task ID and checking that the output matches the expected template with the task ID properly inserted.

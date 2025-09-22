@@ -14,19 +14,24 @@ import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
+import { log, readJSON } from './utils.js';
+// Import new commands from @tm/cli
 import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
-} from './utils.js';
+	ListTasksCommand,
+	ShowCommand,
+	AuthCommand,
+	ContextCommand,
+	StartCommand,
+	SetStatusCommand,
+	checkForUpdate,
+	performAutoUpdate,
+	displayUpgradeNotification
+} from '@tm/cli';
+
 import {
 	parsePRD,
 	updateTasks,
 	generateTaskFiles,
-	setTaskStatus,
 	listTasks,
 	expandTask,
 	expandAllTasks,
@@ -81,8 +86,7 @@ import {
 	isConfigFilePresent,
 	getAvailableModels,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -1683,124 +1687,29 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// set-status command
-	programInstance
-		.command('set-status')
-		.alias('mark')
-		.alias('set')
-		.description('Set the status of a task')
-		.option(
-			'-i, --id <id>',
-			'Task ID (can be comma-separated for multiple tasks)'
-		)
-		.option(
-			'-s, --status <status>',
-			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
-		)
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag
-			});
+	// Register the set-status command from @tm/cli
+	// Handles task status updates with proper error handling and validation
+	SetStatusCommand.registerOn(programInstance);
 
-			const taskId = options.id;
-			const status = options.status;
+	// NEW: Register the new list command from @tm/cli
+	// This command handles all its own configuration and logic
+	ListTasksCommand.registerOn(programInstance);
 
-			if (!taskId || !status) {
-				console.error(chalk.red('Error: Both --id and --status are required'));
-				process.exit(1);
-			}
+	// Register the auth command from @tm/cli
+	// Handles authentication with tryhamster.com
+	AuthCommand.registerOn(programInstance);
 
-			if (!isValidTaskStatus(status)) {
-				console.error(
-					chalk.red(
-						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
-					)
-				);
+	// Register the context command from @tm/cli
+	// Manages workspace context (org/brief selection)
+	ContextCommand.registerOn(programInstance);
 
-				process.exit(1);
-			}
-			const tag = taskMaster.getCurrentTag();
+	// Register the show command from @tm/cli
+	// Displays detailed information about tasks
+	ShowCommand.registerOn(programInstance);
 
-			displayCurrentTagIndicator(tag);
-
-			console.log(
-				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
-			);
-
-			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			});
-		});
-
-	// list command
-	programInstance
-		.command('list')
-		.description('List all tasks')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('-s, --status <status>', 'Filter by status')
-		.option('--with-subtasks', 'Show subtasks for each task')
-		.option('-c, --compact', 'Display tasks in compact one-line format')
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-
-			const taskMaster = initTaskMaster(initOptions);
-
-			const statusFilter = options.status;
-			const withSubtasks = options.withSubtasks || false;
-			const compact = options.compact || false;
-			const tag = taskMaster.getCurrentTag();
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!compact) {
-				console.log(
-					chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
-				);
-				if (statusFilter) {
-					console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-				}
-				if (withSubtasks) {
-					console.log(chalk.blue('Including subtasks in listing'));
-				}
-			}
-
-			await listTasks(
-				taskMaster.getTasksPath(),
-				statusFilter,
-				taskMaster.getComplexityReportPath(),
-				withSubtasks,
-				compact ? 'compact' : 'text',
-				{ projectRoot: taskMaster.getProjectRoot(), tag }
-			);
-		});
+	// Register the start command from @tm/cli
+	// Starts working on a task by launching claude-code with a standardized prompt
+	StartCommand.registerOn(programInstance);
 
 	// expand command
 	programInstance
@@ -2618,80 +2527,6 @@ ${result.result}
 				taskMaster.getComplexityReportPath(),
 				context
 			);
-		});
-
-	// show command
-	programInstance
-		.command('show')
-		.description(
-			`Display detailed information about one or more tasks${chalk.reset('')}`
-		)
-		.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
-		.option(
-			'-i, --id <id>',
-			'Task ID(s) to show (comma-separated for multiple)'
-		)
-		.option('-s, --status <status>', 'Filter subtasks by status')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (taskId, options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-			const taskMaster = initTaskMaster(initOptions);
-
-			const idArg = taskId || options.id;
-			const statusFilter = options.status;
-			const tag = taskMaster.getCurrentTag();
-
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!idArg) {
-				console.error(chalk.red('Error: Please provide a task ID'));
-				process.exit(1);
-			}
-
-			// Check if multiple IDs are provided (comma-separated)
-			const taskIds = idArg
-				.split(',')
-				.map((id) => id.trim())
-				.filter((id) => id.length > 0);
-
-			if (taskIds.length > 1) {
-				// Multiple tasks - use compact summary view with interactive drill-down
-				await displayMultipleTasksSummary(
-					taskMaster.getTasksPath(),
-					taskIds,
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			} else {
-				// Single task - use detailed view
-				await displayTaskById(
-					taskMaster.getTasksPath(),
-					taskIds[0],
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			}
 		});
 
 	// add-dependency command
@@ -5286,122 +5121,6 @@ function setupCLI() {
 }
 
 /**
- * Check for newer version of task-master-ai
- * @returns {Promise<{currentVersion: string, latestVersion: string, needsUpdate: boolean}>}
- */
-async function checkForUpdate() {
-	// Get current version from package.json ONLY
-	const currentVersion = getTaskMasterVersion();
-
-	return new Promise((resolve) => {
-		// Get the latest version from npm registry
-		const options = {
-			hostname: 'registry.npmjs.org',
-			path: '/task-master-ai',
-			method: 'GET',
-			headers: {
-				Accept: 'application/vnd.npm.install-v1+json' // Lightweight response
-			}
-		};
-
-		const req = https.request(options, (res) => {
-			let data = '';
-
-			res.on('data', (chunk) => {
-				data += chunk;
-			});
-
-			res.on('end', () => {
-				try {
-					const npmData = JSON.parse(data);
-					const latestVersion = npmData['dist-tags']?.latest || currentVersion;
-
-					// Compare versions
-					const needsUpdate =
-						compareVersions(currentVersion, latestVersion) < 0;
-
-					resolve({
-						currentVersion,
-						latestVersion,
-						needsUpdate
-					});
-				} catch (error) {
-					log('debug', `Error parsing npm response: ${error.message}`);
-					resolve({
-						currentVersion,
-						latestVersion: currentVersion,
-						needsUpdate: false
-					});
-				}
-			});
-		});
-
-		req.on('error', (error) => {
-			log('debug', `Error checking for updates: ${error.message}`);
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		// Set a timeout to avoid hanging if npm is slow
-		req.setTimeout(3000, () => {
-			req.abort();
-			log('debug', 'Update check timed out');
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		req.end();
-	});
-}
-
-/**
- * Compare semantic versions
- * @param {string} v1 - First version
- * @param {string} v2 - Second version
- * @returns {number} -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
- */
-function compareVersions(v1, v2) {
-	const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
-	const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
-
-	for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-		const v1Part = v1Parts[i] || 0;
-		const v2Part = v2Parts[i] || 0;
-
-		if (v1Part < v2Part) return -1;
-		if (v1Part > v2Part) return 1;
-	}
-
-	return 0;
-}
-
-/**
- * Display upgrade notification message
- * @param {string} currentVersion - Current version
- * @param {string} latestVersion - Latest version
- */
-function displayUpgradeNotification(currentVersion, latestVersion) {
-	const message = boxen(
-		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
-			`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
-		{
-			padding: 1,
-			margin: { top: 1, bottom: 1 },
-			borderColor: 'yellow',
-			borderStyle: 'round'
-		}
-	);
-
-	console.log(message);
-}
-
-/**
  * Parse arguments and run the CLI
  * @param {Array} argv - Command-line arguments
  */
@@ -5419,7 +5138,8 @@ async function runCLI(argv = process.argv) {
 		}
 
 		// Start the update check in the background - don't await yet
-		const updateCheckPromise = checkForUpdate();
+		const currentVersion = getTaskMasterVersion();
+		const updateCheckPromise = checkForUpdate(currentVersion);
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
@@ -5430,10 +5150,18 @@ async function runCLI(argv = process.argv) {
 		// After command execution, check if an update is available
 		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
+			// Display the upgrade notification first
 			displayUpgradeNotification(
 				updateInfo.currentVersion,
 				updateInfo.latestVersion
 			);
+
+			// Then automatically perform the update
+			const updateSuccess = await performAutoUpdate(updateInfo.latestVersion);
+			if (updateSuccess) {
+				// Exit gracefully after successful update
+				process.exit(0);
+			}
 		}
 
 		// Check if migration has occurred and show FYI notice once
@@ -5557,11 +5285,4 @@ export function resolveComplexityReportPath({
 	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
-export {
-	registerCommands,
-	setupCLI,
-	runCLI,
-	checkForUpdate,
-	compareVersions,
-	displayUpgradeNotification
-};
+export { registerCommands, setupCLI, runCLI };

@@ -83,6 +83,8 @@ Taskmaster uses two primary methods for configuration:
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
+- **Optional Auto-Update Control:**
+  - `TASKMASTER_SKIP_AUTO_UPDATE`: Set to '1' to disable automatic updates. Also automatically disabled in CI environments (when `CI` environment variable is set).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 

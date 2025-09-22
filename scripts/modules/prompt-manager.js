@@ -1,18 +1,55 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { log } from './utils.js';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+
+// Import all prompt templates directly
+import analyzeComplexityPrompt from '../../src/prompts/analyze-complexity.json' with {
+	type: 'json'
+};
+import expandTaskPrompt from '../../src/prompts/expand-task.json' with {
+	type: 'json'
+};
+import addTaskPrompt from '../../src/prompts/add-task.json' with {
+	type: 'json'
+};
+import researchPrompt from '../../src/prompts/research.json' with {
+	type: 'json'
+};
+import parsePrdPrompt from '../../src/prompts/parse-prd.json' with {
+	type: 'json'
+};
+import updateTaskPrompt from '../../src/prompts/update-task.json' with {
+	type: 'json'
+};
+import updateTasksPrompt from '../../src/prompts/update-tasks.json' with {
+	type: 'json'
+};
+import updateSubtaskPrompt from '../../src/prompts/update-subtask.json' with {
+	type: 'json'
+};
+
+// Import schema for validation
+import promptTemplateSchema from '../../src/prompts/schemas/prompt-template.schema.json' with {
+	type: 'json'
+};
 
 /**
  * Manages prompt templates for AI interactions
  */
 export class PromptManager {
 	constructor() {
-		const __filename = fileURLToPath(import.meta.url);
-		const __dirname = path.dirname(__filename);
-		this.promptsDir = path.join(__dirname, '..', '..', 'src', 'prompts');
+		// Store all prompts in a map for easy lookup
+		this.prompts = new Map([
+			['analyze-complexity', analyzeComplexityPrompt],
+			['expand-task', expandTaskPrompt],
+			['add-task', addTaskPrompt],
+			['research', researchPrompt],
+			['parse-prd', parsePrdPrompt],
+			['update-task', updateTaskPrompt],
+			['update-tasks', updateTasksPrompt],
+			['update-subtask', updateSubtaskPrompt]
+		]);
+
 		this.cache = new Map();
 		this.setupValidation();
 	}
@@ -26,16 +63,8 @@ export class PromptManager {
 		addFormats(this.ajv);
 
 		try {
-			// Load schema from src/prompts/schemas
-			const schemaPath = path.join(
-				this.promptsDir,
-				'schemas',
-				'prompt-template.schema.json'
-			);
-			const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
-			const schema = JSON.parse(schemaContent);
-
-			this.validatePrompt = this.ajv.compile(schema);
+			// Use the imported schema directly
+			this.validatePrompt = this.ajv.compile(promptTemplateSchema);
 			log('debug', '✓ JSON schema validation enabled');
 		} catch (error) {
 			log('warn', `⚠ Schema validation disabled: ${error.message}`);
@@ -94,41 +123,36 @@ export class PromptManager {
 	}
 
 	/**
-	 * Load a prompt template from disk
+	 * Load a prompt template from the imported prompts
 	 * @private
 	 */
 	loadTemplate(promptId) {
-		const templatePath = path.join(this.promptsDir, `${promptId}.json`);
+		// Get template from the map
+		const template = this.prompts.get(promptId);
 
-		try {
-			const content = fs.readFileSync(templatePath, 'utf-8');
-			const template = JSON.parse(content);
-
-			// Schema validation if available (do this first for detailed errors)
-			if (this.validatePrompt && this.validatePrompt !== true) {
-				const valid = this.validatePrompt(template);
-				if (!valid) {
-					const errors = this.validatePrompt.errors
-						.map((err) => `${err.instancePath || 'root'}: ${err.message}`)
-						.join(', ');
-					throw new Error(`Schema validation failed: ${errors}`);
-				}
-			} else {
-				// Fallback basic validation if no schema validation available
-				if (!template.id || !template.prompts || !template.prompts.default) {
-					throw new Error(
-						'Invalid template structure: missing required fields (id, prompts.default)'
-					);
-				}
-			}
-
-			return template;
-		} catch (error) {
-			if (error.code === 'ENOENT') {
-				throw new Error(`Prompt template '${promptId}' not found`);
-			}
-			throw error;
+		if (!template) {
+			throw new Error(`Prompt template '${promptId}' not found`);
 		}
+
+		// Schema validation if available (do this first for detailed errors)
+		if (this.validatePrompt && this.validatePrompt !== true) {
+			const valid = this.validatePrompt(template);
+			if (!valid) {
+				const errors = this.validatePrompt.errors
+					.map((err) => `${err.instancePath || 'root'}: ${err.message}`)
+					.join(', ');
+				throw new Error(`Schema validation failed: ${errors}`);
+			}
+		} else {
+			// Fallback basic validation if no schema validation available
+			if (!template.id || !template.prompts || !template.prompts.default) {
+				throw new Error(
+					'Invalid template structure: missing required fields (id, prompts.default)'
+				);
+			}
+		}
+
+		return template;
 	}
 
 	/**
@@ -385,25 +409,25 @@ export class PromptManager {
 	validateAllPrompts() {
 		const results = { total: 0, errors: [], valid: [] };
 
-		try {
-			const files = fs.readdirSync(this.promptsDir);
-			const promptFiles = files.filter((file) => file.endsWith('.json'));
+		// Iterate through all imported prompts
+		for (const [promptId, template] of this.prompts.entries()) {
+			results.total++;
 
-			for (const file of promptFiles) {
-				const promptId = file.replace('.json', '');
-				results.total++;
-
-				try {
-					this.loadTemplate(promptId);
-					results.valid.push(promptId);
-				} catch (error) {
-					results.errors.push(`${promptId}: ${error.message}`);
+			try {
+				// Validate the template
+				if (this.validatePrompt && this.validatePrompt !== true) {
+					const valid = this.validatePrompt(template);
+					if (!valid) {
+						const errors = this.validatePrompt.errors
+							.map((err) => `${err.instancePath || 'root'}: ${err.message}`)
+							.join(', ');
+						throw new Error(`Schema validation failed: ${errors}`);
+					}
 				}
+				results.valid.push(promptId);
+			} catch (error) {
+				results.errors.push(`${promptId}: ${error.message}`);
 			}
-		} catch (error) {
-			results.errors.push(
-				`Failed to read templates directory: ${error.message}`
-			);
 		}
 
 		return results;
@@ -413,45 +437,46 @@ export class PromptManager {
 	 * List all available prompt templates
 	 */
 	listPrompts() {
-		try {
-			const files = fs.readdirSync(this.promptsDir);
-			const prompts = [];
+		const prompts = [];
 
-			for (const file of files) {
-				if (!file.endsWith('.json')) continue;
-
-				const promptId = file.replace('.json', '');
-				try {
-					const template = this.loadTemplate(promptId);
-					prompts.push({
-						id: template.id,
-						description: template.description,
-						version: template.version,
-						parameters: template.parameters,
-						tags: template.metadata?.tags || []
-					});
-				} catch (error) {
-					log('warn', `Failed to load template ${promptId}: ${error.message}`);
-				}
+		// Iterate through all imported prompts
+		for (const [promptId, template] of this.prompts.entries()) {
+			try {
+				prompts.push({
+					id: template.id,
+					description: template.description,
+					version: template.version,
+					parameters: template.parameters,
+					tags: template.metadata?.tags || []
+				});
+			} catch (error) {
+				log('warn', `Failed to process template ${promptId}: ${error.message}`);
 			}
-
-			return prompts;
-		} catch (error) {
-			if (error.code === 'ENOENT') {
-				// Templates directory doesn't exist yet
-				return [];
-			}
-			throw error;
 		}
+
+		return prompts;
 	}
 
 	/**
 	 * Validate template structure
+	 * @param {string|Object} templateOrId - Either a template ID or a template object
 	 */
-	validateTemplate(templatePath) {
+	validateTemplate(templateOrId) {
 		try {
-			const content = fs.readFileSync(templatePath, 'utf-8');
-			const template = JSON.parse(content);
+			let template;
+
+			// Handle both template ID and direct template object
+			if (typeof templateOrId === 'string') {
+				template = this.prompts.get(templateOrId);
+				if (!template) {
+					return {
+						valid: false,
+						error: `Template '${templateOrId}' not found`
+					};
+				}
+			} else {
+				template = templateOrId;
+			}
 
 			// Check required fields
 			const required = ['id', 'version', 'description', 'prompts'];

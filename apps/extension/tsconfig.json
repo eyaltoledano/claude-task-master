@@ -20,7 +20,8 @@
 		"paths": {
 			"@/*": ["./src/*"],
 			"@/components/*": ["./src/components/*"],
-			"@/lib/*": ["./src/lib/*"]
+			"@/lib/*": ["./src/lib/*"],
+			"@tm/core": ["../core/src"]
 		}
 	},
 	"exclude": ["node_modules", ".vscode-test", "out", "dist"]

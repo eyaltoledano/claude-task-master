@@ -141,7 +141,7 @@ describe('Amp Profile Init Functionality', () => {
 				mcpServers: {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				}
 			};
@@ -181,7 +181,7 @@ describe('Amp Profile Init Functionality', () => {
 				'amp.mcpServers': {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				}
 			};
@@ -266,7 +266,7 @@ describe('Amp Profile Init Functionality', () => {
 				'amp.mcpServers': {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				},
 				'other.setting': 'value'
@@ -300,7 +300,7 @@ describe('Amp Profile Init Functionality', () => {
 				'amp.mcpServers': {
 					'task-master-ai': {
 						command: 'npx',
-						args: ['-y', '--package=task-master-ai', 'task-master-ai']
+						args: ['-y', 'task-master-ai']
 					}
 				}
 			};

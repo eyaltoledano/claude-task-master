@@ -7,6 +7,7 @@ import logger from './logger.js';
 import { registerTaskMasterTools } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
+import packageJson from '../../package.json' with { type: 'json' };
 
 // Load environment variables
 dotenv.config();
@@ -20,10 +21,6 @@ const __dirname = path.dirname(__filename);
  */
 class TaskMasterMCPServer {
 	constructor() {
-		// Get version from package.json using synchronous fs
-		const packagePath = path.join(__dirname, '../../package.json');
-		const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-
 		this.options = {
 			name: 'Task Master MCP Server',
 			version: packageJson.version

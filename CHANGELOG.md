@@ -1,5 +1,28 @@
 # task-master-ai
 
+## 0.27.0-rc.2
+
+### Minor Changes
+
+- [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
+
+## 0.27.0-rc.1
+
+### Minor Changes
+
+- [`255b9f0`](https://github.com/eyaltoledano/claude-task-master/commit/255b9f0334555b0063280abde701445cd62fa11b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Testing one more pre-release iteration
+
+## 0.27.0-rc.0
+
+### Minor Changes
+
+- [#1213](https://github.com/eyaltoledano/claude-task-master/pull/1213) [`137ef36`](https://github.com/eyaltoledano/claude-task-master/commit/137ef362789a9cdfdb1925e35e0438c1fa6c69ee) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Test out the RC
+
+### Patch Changes
+
+- Updated dependencies [[`137ef36`](https://github.com/eyaltoledano/claude-task-master/commit/137ef362789a9cdfdb1925e35e0438c1fa6c69ee)]:
+  - @tm/cli@0.27.0-rc.0
+
 ## 0.26.0
 
 ### Minor Changes

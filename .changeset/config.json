@@ -8,11 +8,12 @@
   ],
   "commit": false,
   "fixed": [],
-  "linked": [],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
   "ignore": [
-    "docs"
+    "docs",
+    "@tm/cli",
+    "@tm/core",
+    "@tm/build-config"
   ]
 }

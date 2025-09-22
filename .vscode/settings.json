@@ -10,5 +10,18 @@
 	},
 
 	"json.format.enable": true,
-	"json.validate.enable": true
+	"json.validate.enable": true,
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	}
 }
