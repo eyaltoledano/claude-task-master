@@ -1,22 +1,24 @@
 # Task Master Documentation
 
-Welcome to the Task Master documentation. Use the links below to navigate to the information you need:
+Welcome to the Task Master documentation. This documentation site provides comprehensive guides for getting started with Task Master.
 
 ## Getting Started
 
-- [Configuration Guide](archive/configuration.md) - Set up environment variables and customize Task Master
-- [Tutorial](archive/ctutorial.md) - Step-by-step guide to getting started with Task Master
+- [Quick Start Guide](/getting-started/quick-start) - Complete setup and first-time usage guide
+- [Requirements](/getting-started/quick-start/requirements) - What you need to get started
+- [Installation](/getting-started/quick-start/installation) - How to install Task Master
 
-## Reference
+## Core Capabilities
 
-- [Command Reference](archive/ccommand-reference.md) - Complete list of all available commands
-- [Task Structure](archive/ctask-structure.md) - Understanding the task format and features
+- [MCP Tools](/capabilities/mcp) - Model Control Protocol integration
+- [CLI Commands](/capabilities/cli-root-commands) - Command line interface reference
+- [Task Structure](/capabilities/task-structure) - Understanding tasks and subtasks
 
-## Examples & Licensing
+## Best Practices
 
-- [Example Interactions](archive/cexamples.md) - Common Cursor AI interaction examples
-- [Licensing Information](archive/clicensing.md) - Detailed information about the license
+- [Advanced Configuration](/best-practices/configuration-advanced) - Detailed configuration options
+- [Advanced Tasks](/best-practices/advanced-tasks) - Working with complex task structures
 
 ## Need More Help?
 
-If you can't find what you're looking for in these docs, please check the [main README](../README.md) or visit our [GitHub repository](https://github.com/eyaltoledano/claude-task-master).
+If you can't find what you're looking for in these docs, please check the root README.md or visit our [GitHub repository](https://github.com/eyaltoledano/claude-task-master).
