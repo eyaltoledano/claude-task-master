@@ -100,16 +100,16 @@ describe('Roo Files Inclusion in Package', () => {
 		});
 	});
 
-	test('source Roo files exist in public/assets directory', () => {
+	test('source Roo files exist in assets directory', () => {
 		// Verify that the source files for Roo integration exist
 		expect(
 			fs.existsSync(
-				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roo')
+				path.join(process.cwd(), 'assets', 'roocode', '.roo')
 			)
 		).toBe(true);
 		expect(
 			fs.existsSync(
-				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roomodes')
+				path.join(process.cwd(), 'assets', 'roocode', '.roomodes')
 			)
 		).toBe(true);
 	});
