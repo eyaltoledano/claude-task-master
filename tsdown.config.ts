@@ -10,7 +10,9 @@ const getBuildTimeEnvs = () => {
 
 	// Inject package.json version at build time
 	try {
-		const packageJson = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+		const packageJson = JSON.parse(
+			require('fs').readFileSync('package.json', 'utf8')
+		);
 		envs['TM_PUBLIC_VERSION'] = packageJson.version || 'unknown';
 	} catch (error) {
 		console.warn('Could not read package.json version during build:', error);
