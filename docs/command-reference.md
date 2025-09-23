@@ -181,7 +181,7 @@ task-master analyze-complexity --threshold=6
 # Use an alternative tasks file
 task-master analyze-complexity --file=custom-tasks.json
 
-# Use Perplexity AI for research-backed complexity analysis
+# Use your configured research model for research-backed complexity analysis
 task-master analyze-complexity --research
 ```
 

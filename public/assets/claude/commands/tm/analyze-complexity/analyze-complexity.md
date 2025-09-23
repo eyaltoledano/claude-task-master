@@ -16,7 +16,7 @@ task-master analyze-complexity [--research] [--threshold=5]
 
 ## Analysis Parameters
 
-- `--research` → Use research AI for deeper analysis
+- `--research` → Use configured research model for deeper analysis
 - `--threshold=5` → Only flag tasks above complexity 5
 - Default: Analyze all pending tasks
 

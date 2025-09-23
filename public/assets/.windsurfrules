@@ -60,7 +60,7 @@ alwaysApply: true
 
   - For tasks with complexity analysis, use `node scripts/dev.js expand --id=<id>`
   - Otherwise use `node scripts/dev.js expand --id=<id> --subtasks=<number>`
-  - Add `--research` flag to leverage Perplexity AI for research-backed expansion
+  - Add `--research` flag to leverage your configured research model for research-backed expansion
   - Use `--prompt="<context>"` to provide additional context when needed
   - Review and adjust generated subtasks as necessary
   - Use `--all` flag to expand multiple pending tasks at once
@@ -160,7 +160,7 @@ alwaysApply: true
     - `--id=<id>`: ID of task to expand (required unless using --all)
     - `--all`: Expand all pending tasks, prioritized by complexity
     - `--num=<number>`: Number of subtasks to generate (default: from complexity report)
-    - `--research`: Use Perplexity AI for research-backed generation
+    - `--research`: Use your configured research model for research-backed generation
     - `--prompt="<text>"`: Additional context for subtask generation
     - `--force`: Regenerate subtasks even for tasks that already have them
   - Example: `task-master expand --id=3 --num=5 --research --prompt="Focus on security aspects"`
@@ -176,7 +176,7 @@ alwaysApply: true
     - `--model=<model>, -m`: Override LLM model to use
     - `--threshold=<number>, -t`: Minimum score for expansion recommendation (default: 5)
     - `--file=<path>, -f`: Use alternative tasks.json file
-    - `--research, -r`: Use Perplexity AI for research-backed analysis
+    - `--research, -r`: Use your configured research model for research-backed analysis
   - Example: `task-master analyze-complexity --research`
   - Notes: Report includes complexity scores, recommended subtasks, and tailored prompts.
 

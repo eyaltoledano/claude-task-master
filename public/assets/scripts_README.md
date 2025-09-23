@@ -12,7 +12,7 @@ In an AI-driven development process—particularly with tools like [Cursor](http
 4. **Generate** individual task files (e.g., `task_001.txt`) for easy reference or to feed into an AI coding workflow.
 5. **Set task status**—mark tasks as `done`, `pending`, or `deferred` based on progress.
 6. **Expand** tasks with subtasks—break down complex tasks into smaller, more manageable subtasks.
-7. **Research-backed subtask generation**—use Perplexity AI to generate more informed and contextually relevant subtasks.
+7. **Research-backed subtask generation**—use your configured research model to generate more informed and contextually relevant subtasks.
 8. **Clear subtasks**—remove subtasks from specified tasks to allow regeneration or restructuring.
 9. **Show task details**—display detailed information about a specific task and its subtasks.
 
@@ -27,7 +27,7 @@ Task Master configuration is now managed through two primary methods:
     - This is the main configuration file for most settings.
 
 2.  **Environment Variables (`.env` File - API Keys Only)**
-    - Used **only** for sensitive **API Keys** (e.g., `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`).
+    - Used **only** for sensitive **API Keys** (e.g., `ANTHROPIC_API_KEY`, `PERPLEXITY_API_KEY`, etc.).
     - Create a `.env` file in your project root for CLI usage.
     - See `assets/env.example` for required key names.
 
@@ -160,10 +160,10 @@ task-master expand --all
 # Force regeneration of subtasks for all pending tasks
 task-master expand --all --force
 
-# Use Perplexity AI for research-backed subtask generation
+# Use your configured research model for research-backed subtask generation
 task-master expand --id=3 --research
 
-# Use Perplexity AI for research-backed generation on all pending tasks
+# Use your configured research model for research-backed generation on all pending tasks
 task-master expand --all --research
 ```
 
@@ -192,10 +192,10 @@ Notes:
 ## AI Integration (Updated)
 
 - The script now uses a unified AI service layer (`ai-services-unified.js`).
-- Model selection (e.g., Claude vs. Perplexity for `--research`) is determined by the configuration in `.taskmaster/config.json` based on the requested `role` (`main` or `research`).
+- Model selection (e.g., Claude vs. research models for `--research`) is determined by the configuration in `.taskmaster/config.json` based on the requested `role` (`main` or `research`).
 - API keys are automatically resolved from your `.env` file (for CLI) or MCP session environment.
 - To use the research capabilities (e.g., `expand --research`), ensure you have:
-  1.  Configured a model for the `research` role using `task-master models --setup` (Perplexity models are recommended).
+  1.  Configured a model for the `research` role using `task-master models --setup` (research-capable models like Perplexity are recommended).
   2.  Added the corresponding API key (e.g., `PERPLEXITY_API_KEY`) to your `.env` file.
 
 ## Logging
@@ -317,13 +317,13 @@ task-master analyze-complexity --model=claude-3-opus-20240229
 # Set a custom complexity threshold (1-10)
 task-master analyze-complexity --threshold=6
 
-# Use Perplexity AI for research-backed complexity analysis
+# Use your configured research model for research-backed complexity analysis
 task-master analyze-complexity --research
 ```
 
 Notes:
 
-- The command uses Claude to analyze each task's complexity (or Perplexity with --research flag)
+- The command uses your main model to analyze each task's complexity (or your configured research model with --research flag)
 - Tasks are scored on a scale of 1-10
 - Each task receives a recommended number of subtasks based on DEFAULT_SUBTASKS configuration
 - The default output path is `scripts/task-complexity-report.json`

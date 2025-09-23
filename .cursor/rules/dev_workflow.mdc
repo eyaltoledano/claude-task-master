@@ -231,7 +231,7 @@ Taskmaster offers two primary ways to interact:
 
 -   Use `expand_task` / `task-master expand --id=<id>`. It automatically uses the complexity report if found, otherwise generates default number of subtasks.
 -   Use `--num=<number>` to specify an explicit number of subtasks, overriding defaults or complexity report recommendations.
--   Add `--research` flag to leverage Perplexity AI for research-backed expansion.
+-   Add `--research` flag to leverage your configured research model for research-backed expansion.
 -   Add `--force` flag to clear existing subtasks before generating new ones (default is to append).
 -   Use `--prompt="<context>"` to provide additional context when needed.
 -   Review and adjust generated subtasks as necessary.

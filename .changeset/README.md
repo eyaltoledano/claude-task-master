@@ -58,9 +58,9 @@ Examples:
 ```md
 # Good
 
-Added new `--research` flag to the `expand` command that uses Perplexity AI
-to provide research-backed task expansions. Requires PERPLEXITY_API_KEY
-environment variable.
+Added new `--research` flag to the `expand` command that uses your configured research model
+to provide research-backed task expansions. Requires appropriate API key
+for your research model.
 
 # Not Good
 

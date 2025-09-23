@@ -301,7 +301,7 @@ The agent will execute:
 task-master expand --all
 ```
 
-For research-backed subtask generation using Perplexity AI:
+For research-backed subtask generation using your configured research model:
 
 ```
 Please break down task 5 using research-backed generation.
@@ -450,7 +450,7 @@ task-master analyze-complexity --threshold=6
 # Use an alternative tasks file
 task-master analyze-complexity --file=custom-tasks.json
 
-# Use Perplexity AI for research-backed complexity analysis
+# Use your configured research model for research-backed complexity analysis
 task-master analyze-complexity --research
 ```
 

@@ -61,7 +61,7 @@ description: "A comprehensive reference of all available Task Master commands"
     # Update a single task by ID with new information
     task-master update-task --id=<id> --prompt="<prompt>"
 
-    # Use research-backed updates with Perplexity AI
+    # Use research-backed updates with configured research model
     task-master update-task --id=<id> --prompt="<prompt>" --research
     ```
   </Accordion>
@@ -74,7 +74,7 @@ description: "A comprehensive reference of all available Task Master commands"
     # Example: Add details about API rate limiting to subtask 2 of task 5
     task-master update-subtask --id=5.2 --prompt="Add rate limiting of 100 requests per minute"
 
-    # Use research-backed updates with Perplexity AI
+    # Use research-backed updates with configured research model
     task-master update-subtask --id=<parentId.subtaskId> --prompt="<prompt>" --research
     ```
 
@@ -155,7 +155,7 @@ description: "A comprehensive reference of all available Task Master commands"
     # Use an alternative tasks file
     task-master analyze-complexity --file=custom-tasks.json
 
-    # Use Perplexity AI for research-backed complexity analysis
+    # Use configured research model for research-backed complexity analysis
     task-master analyze-complexity --research
     ```
   </Accordion>
