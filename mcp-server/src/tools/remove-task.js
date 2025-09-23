@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { removeTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the remove-task tool with the MCP server
@@ -33,16 +34,27 @@ export function registerRemoveTaskTool(server) {
 			confirm: z
 				.boolean()
 				.optional()
-				.describe('Whether to skip confirmation prompt (default: false)')
+				.describe('Whether to skip confirmation prompt (default: false)'),
+			tag: z
+				.string()
+				.optional()
+				.describe(
+					'Specify which tag context to operate on. Defaults to the current active tag.'
+				)
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);
+
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -58,9 +70,12 @@ export function registerRemoveTaskTool(server) {
 				const result = await removeTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						id: args.id
+						id: args.id,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -69,7 +84,13 @@ export function registerRemoveTaskTool(server) {
 					log.error(`Failed to remove task: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error removing task');
+				return handleApiResult(
+					result,
+					log,
+					'Error removing task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in remove-task tool: ${error.message}`);
 				return createErrorResponse(`Failed to remove task: ${error.message}`);

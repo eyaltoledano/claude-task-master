@@ -8,38 +8,53 @@
 
 // --- Core Dependencies ---
 import {
-	getMainProvider,
-	getMainModelId,
-	getResearchProvider,
-	getResearchModelId,
-	getFallbackProvider,
-	getFallbackModelId,
-	getParametersForRole,
-	getUserId,
 	MODEL_MAP,
-	getDebugFlag,
-	getBaseUrlForRole,
-	isApiKeySet,
-	getOllamaBaseURL,
 	getAzureBaseURL,
+	getBaseUrlForRole,
+	getBedrockBaseURL,
+	getDebugFlag,
+	getFallbackModelId,
+	getFallbackProvider,
+	getMainModelId,
+	getMainProvider,
+	getOllamaBaseURL,
+	getParametersForRole,
+	getResearchModelId,
+	getResearchProvider,
+	getResponseLanguage,
+	getUserId,
+	getVertexLocation,
 	getVertexProjectId,
-	getVertexLocation
+	isApiKeySet,
+	providersWithoutApiKeys
 } from './config-manager.js';
-import { log, findProjectRoot, resolveEnvVariable } from './utils.js';
+import {
+	findProjectRoot,
+	getCurrentTag,
+	log,
+	resolveEnvVariable
+} from './utils.js';
 
 // Import provider classes
 import {
 	AnthropicAIProvider,
-	PerplexityAIProvider,
-	GoogleAIProvider,
-	OpenAIProvider,
-	XAIProvider,
-	OpenRouterAIProvider,
-	OllamaAIProvider,
-	BedrockAIProvider,
 	AzureProvider,
-	VertexAIProvider
+	BedrockAIProvider,
+	ClaudeCodeProvider,
+	GeminiCliProvider,
+	GoogleAIProvider,
+	GrokCliProvider,
+	GroqProvider,
+	OllamaAIProvider,
+	OpenAIProvider,
+	OpenRouterAIProvider,
+	PerplexityAIProvider,
+	VertexAIProvider,
+	XAIProvider
 } from '../../src/ai-providers/index.js';
+
+// Import the provider registry
+import ProviderRegistry from '../../src/provider-registry/index.js';
 
 // Create provider instances
 const PROVIDERS = {
@@ -48,41 +63,145 @@ const PROVIDERS = {
 	google: new GoogleAIProvider(),
 	openai: new OpenAIProvider(),
 	xai: new XAIProvider(),
+	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
-	vertex: new VertexAIProvider()
+	vertex: new VertexAIProvider(),
+	'claude-code': new ClaudeCodeProvider(),
+	'gemini-cli': new GeminiCliProvider(),
+	'grok-cli': new GrokCliProvider()
 };
+
+function _getProvider(providerName) {
+	// First check the static PROVIDERS object
+	if (PROVIDERS[providerName]) {
+		return PROVIDERS[providerName];
+	}
+
+	// If not found, check the provider registry
+	const providerRegistry = ProviderRegistry.getInstance();
+	if (providerRegistry.hasProvider(providerName)) {
+		log('debug', `Provider "${providerName}" found in dynamic registry`);
+		return providerRegistry.getProvider(providerName);
+	}
+
+	// Provider not found in either location
+	return null;
+}
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
+	const DEFAULT_COST = { inputCost: 0, outputCost: 0, currency: 'USD' };
+
 	if (!MODEL_MAP || !MODEL_MAP[providerName]) {
 		log(
 			'warn',
 			`Provider "${providerName}" not found in MODEL_MAP. Cannot determine cost for model ${modelId}.`
 		);
-		return { inputCost: 0, outputCost: 0, currency: 'USD' }; // Default to zero cost
+		return DEFAULT_COST;
 	}
 
 	const modelData = MODEL_MAP[providerName].find((m) => m.id === modelId);
 
-	if (!modelData || !modelData.cost_per_1m_tokens) {
+	if (!modelData?.cost_per_1m_tokens) {
 		log(
 			'debug',
 			`Cost data not found for model "${modelId}" under provider "${providerName}". Assuming zero cost.`
 		);
-		return { inputCost: 0, outputCost: 0, currency: 'USD' }; // Default to zero cost
+		return DEFAULT_COST;
 	}
 
-	// Ensure currency is part of the returned object, defaulting if not present
-	const currency = modelData.cost_per_1m_tokens.currency || 'USD';
-
+	const costs = modelData.cost_per_1m_tokens;
 	return {
-		inputCost: modelData.cost_per_1m_tokens.input || 0,
-		outputCost: modelData.cost_per_1m_tokens.output || 0,
-		currency: currency
+		inputCost: costs.input || 0,
+		outputCost: costs.output || 0,
+		currency: costs.currency || 'USD'
 	};
+}
+
+/**
+ * Calculate cost from token counts and cost per million
+ * @param {number} inputTokens - Number of input tokens
+ * @param {number} outputTokens - Number of output tokens
+ * @param {number} inputCost - Cost per million input tokens
+ * @param {number} outputCost - Cost per million output tokens
+ * @returns {number} Total calculated cost
+ */
+function _calculateCost(inputTokens, outputTokens, inputCost, outputCost) {
+	const calculatedCost =
+		((inputTokens || 0) / 1_000_000) * inputCost +
+		((outputTokens || 0) / 1_000_000) * outputCost;
+	return parseFloat(calculatedCost.toFixed(6));
+}
+
+// Helper function to get tag information for responses
+function _getTagInfo(projectRoot) {
+	const DEFAULT_TAG_INFO = { currentTag: 'master', availableTags: ['master'] };
+
+	try {
+		if (!projectRoot) {
+			return DEFAULT_TAG_INFO;
+		}
+
+		const currentTag = getCurrentTag(projectRoot) || 'master';
+		const availableTags = _readAvailableTags(projectRoot);
+
+		return { currentTag, availableTags };
+	} catch (error) {
+		if (getDebugFlag()) {
+			log('debug', `Error getting tag information: ${error.message}`);
+		}
+		return DEFAULT_TAG_INFO;
+	}
+}
+
+// Extract method for reading available tags
+function _readAvailableTags(projectRoot) {
+	const DEFAULT_TAGS = ['master'];
+
+	try {
+		const path = require('path');
+		const fs = require('fs');
+		const tasksPath = path.join(
+			projectRoot,
+			'.taskmaster',
+			'tasks',
+			'tasks.json'
+		);
+
+		if (!fs.existsSync(tasksPath)) {
+			return DEFAULT_TAGS;
+		}
+
+		const tasksData = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
+		if (!tasksData || typeof tasksData !== 'object') {
+			return DEFAULT_TAGS;
+		}
+
+		// Check if it's tagged format (has tag-like keys with tasks arrays)
+		const potentialTags = Object.keys(tasksData).filter((key) =>
+			_isValidTaggedTask(tasksData[key])
+		);
+
+		return potentialTags.length > 0 ? potentialTags : DEFAULT_TAGS;
+	} catch (readError) {
+		if (getDebugFlag()) {
+			log(
+				'debug',
+				`Could not read tasks file for available tags: ${readError.message}`
+			);
+		}
+		return DEFAULT_TAGS;
+	}
+}
+
+// Helper to validate tagged task structure
+function _isValidTaggedTask(taskData) {
+	return (
+		taskData && typeof taskData === 'object' && Array.isArray(taskData.tasks)
+	);
 }
 
 // --- Configuration for Retries ---
@@ -152,6 +271,65 @@ function _extractErrorMessage(error) {
 }
 
 /**
+ * Get role configuration (provider and model) based on role type
+ * @param {string} role - The role ('main', 'research', 'fallback')
+ * @param {string} projectRoot - Project root path
+ * @returns {Object|null} Configuration object with provider and modelId
+ */
+function _getRoleConfiguration(role, projectRoot) {
+	const roleConfigs = {
+		main: {
+			provider: getMainProvider(projectRoot),
+			modelId: getMainModelId(projectRoot)
+		},
+		research: {
+			provider: getResearchProvider(projectRoot),
+			modelId: getResearchModelId(projectRoot)
+		},
+		fallback: {
+			provider: getFallbackProvider(projectRoot),
+			modelId: getFallbackModelId(projectRoot)
+		}
+	};
+
+	return roleConfigs[role] || null;
+}
+
+/**
+ * Get Vertex AI specific configuration
+ * @param {string} projectRoot - Project root path
+ * @param {Object} session - Session object
+ * @returns {Object} Vertex AI configuration parameters
+ */
+function _getVertexConfiguration(projectRoot, session) {
+	const projectId =
+		getVertexProjectId(projectRoot) ||
+		resolveEnvVariable('VERTEX_PROJECT_ID', session, projectRoot);
+
+	const location =
+		getVertexLocation(projectRoot) ||
+		resolveEnvVariable('VERTEX_LOCATION', session, projectRoot) ||
+		'us-central1';
+
+	const credentialsPath = resolveEnvVariable(
+		'GOOGLE_APPLICATION_CREDENTIALS',
+		session,
+		projectRoot
+	);
+
+	log(
+		'debug',
+		`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
+	);
+
+	return {
+		projectId,
+		location,
+		...(credentialsPath && { credentials: { credentialsFromEnv: true } })
+	};
+}
+
+/**
  * Internal helper to resolve the API key for a given provider.
  * @param {string} providerName - The name of the provider (lowercase).
  * @param {object|null} session - Optional MCP session object.
@@ -160,31 +338,26 @@ function _extractErrorMessage(error) {
  * @throws {Error} If a required API key is missing.
  */
 function _resolveApiKey(providerName, session, projectRoot = null) {
-	const keyMap = {
-		openai: 'OPENAI_API_KEY',
-		anthropic: 'ANTHROPIC_API_KEY',
-		google: 'GOOGLE_API_KEY',
-		perplexity: 'PERPLEXITY_API_KEY',
-		mistral: 'MISTRAL_API_KEY',
-		azure: 'AZURE_OPENAI_API_KEY',
-		openrouter: 'OPENROUTER_API_KEY',
-		xai: 'XAI_API_KEY',
-		ollama: 'OLLAMA_API_KEY',
-		bedrock: 'AWS_ACCESS_KEY_ID',
-		vertex: 'GOOGLE_API_KEY'
-	};
-
-	const envVarName = keyMap[providerName];
-	if (!envVarName) {
+	// Get provider instance
+	const provider = _getProvider(providerName);
+	if (!provider) {
 		throw new Error(
 			`Unknown provider '${providerName}' for API key resolution.`
 		);
 	}
 
+	// All providers must implement getRequiredApiKeyName()
+	const envVarName = provider.getRequiredApiKeyName();
+
+	// If envVarName is null (like for MCP), return null directly
+	if (envVarName === null) {
+		return null;
+	}
+
 	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
 
-	// Special handling for providers that can use alternative auth
-	if (providerName === 'ollama' || providerName === 'bedrock') {
+	// Special handling for providers that can use alternative auth or no API key
+	if (!provider.isRequiredApiKey()) {
 		return apiKey || null;
 	}
 
@@ -245,7 +418,7 @@ async function _attemptProviderCallWithRetries(
 
 			if (isRetryableError(error) && retries < MAX_RETRIES) {
 				retries++;
-				const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, retries - 1);
+				const delay = INITIAL_RETRY_DELAY_MS * 2 ** (retries - 1);
 				log(
 					'info',
 					`Something went wrong on the provider side. Retrying in ${delay / 1000}s...`
@@ -326,28 +499,23 @@ async function _unifiedServiceRunner(serviceType, params) {
 		'AI service call failed for all configured roles.';
 
 	for (const currentRole of sequence) {
-		let providerName,
-			modelId,
-			apiKey,
-			roleParams,
-			provider,
-			baseURL,
-			providerResponse,
-			telemetryData = null;
+		let providerName;
+		let modelId;
+		let apiKey;
+		let roleParams;
+		let provider;
+		let baseURL;
+		let providerResponse;
+		let telemetryData = null;
 
 		try {
-			log('info', `New AI service call with role: ${currentRole}`);
+			log('debug', `New AI service call with role: ${currentRole}`);
 
-			if (currentRole === 'main') {
-				providerName = getMainProvider(effectiveProjectRoot);
-				modelId = getMainModelId(effectiveProjectRoot);
-			} else if (currentRole === 'research') {
-				providerName = getResearchProvider(effectiveProjectRoot);
-				modelId = getResearchModelId(effectiveProjectRoot);
-			} else if (currentRole === 'fallback') {
-				providerName = getFallbackProvider(effectiveProjectRoot);
-				modelId = getFallbackModelId(effectiveProjectRoot);
-			} else {
+			const roleConfig = _getRoleConfiguration(
+				currentRole,
+				effectiveProjectRoot
+			);
+			if (!roleConfig) {
 				log(
 					'error',
 					`Unknown role encountered in _unifiedServiceRunner: ${currentRole}`
@@ -356,6 +524,8 @@ async function _unifiedServiceRunner(serviceType, params) {
 					lastError || new Error(`Unknown AI role specified: ${currentRole}`);
 				continue;
 			}
+			providerName = roleConfig.provider;
+			modelId = roleConfig.modelId;
 
 			if (!providerName || !modelId) {
 				log(
@@ -371,7 +541,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Get provider instance
-			provider = PROVIDERS[providerName?.toLowerCase()];
+			provider = _getProvider(providerName?.toLowerCase());
 			if (!provider) {
 				log(
 					'warn',
@@ -384,7 +554,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Check API key if needed
-			if (providerName?.toLowerCase() !== 'ollama') {
+			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
 					log(
 						'warn',
@@ -410,6 +580,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Ollama base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
+				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
+				baseURL = getBedrockBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Bedrock base URL: ${baseURL}`);
 			}
 
 			// Get AI parameters for the current role
@@ -425,48 +599,19 @@ async function _unifiedServiceRunner(serviceType, params) {
 
 			// Handle Vertex AI specific configuration
 			if (providerName?.toLowerCase() === 'vertex') {
-				// Get Vertex project ID and location
-				const projectId =
-					getVertexProjectId(effectiveProjectRoot) ||
-					resolveEnvVariable(
-						'VERTEX_PROJECT_ID',
-						session,
-						effectiveProjectRoot
-					);
-
-				const location =
-					getVertexLocation(effectiveProjectRoot) ||
-					resolveEnvVariable(
-						'VERTEX_LOCATION',
-						session,
-						effectiveProjectRoot
-					) ||
-					'us-central1';
-
-				// Get credentials path if available
-				const credentialsPath = resolveEnvVariable(
-					'GOOGLE_APPLICATION_CREDENTIALS',
-					session,
-					effectiveProjectRoot
-				);
-
-				// Add Vertex-specific parameters
-				providerSpecificParams = {
-					projectId,
-					location,
-					...(credentialsPath && { credentials: { credentialsFromEnv: true } })
-				};
-
-				log(
-					'debug',
-					`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
+				providerSpecificParams = _getVertexConfiguration(
+					effectiveProjectRoot,
+					session
 				);
 			}
 
 			const messages = [];
-			if (systemPrompt) {
-				messages.push({ role: 'system', content: systemPrompt });
-			}
+			const responseLanguage = getResponseLanguage(effectiveProjectRoot);
+			const systemPromptWithLanguage = `${systemPrompt} \n\n Always respond in ${responseLanguage}.`;
+			messages.push({
+				role: 'system',
+				content: systemPromptWithLanguage.trim()
+			});
 
 			// IN THE FUTURE WHEN DOING CONTEXT IMPROVEMENTS
 			// {
@@ -499,7 +644,8 @@ async function _unifiedServiceRunner(serviceType, params) {
 				temperature: roleParams.temperature,
 				messages,
 				...(baseURL && { baseURL }),
-				...(serviceType === 'generateObject' && { schema, objectName }),
+				...((serviceType === 'generateObject' ||
+					serviceType === 'streamObject') && { schema, objectName }),
 				...providerSpecificParams,
 				...restApiParams
 			};
@@ -540,7 +686,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				finalMainResult = providerResponse.text;
 			} else if (serviceType === 'generateObject') {
 				finalMainResult = providerResponse.object;
-			} else if (serviceType === 'streamText') {
+			} else if (
+				serviceType === 'streamText' ||
+				serviceType === 'streamObject'
+			) {
 				finalMainResult = providerResponse;
 			} else {
 				log(
@@ -550,9 +699,15 @@ async function _unifiedServiceRunner(serviceType, params) {
 				finalMainResult = providerResponse;
 			}
 
+			// Get tag information for the response
+			const tagInfo = _getTagInfo(effectiveProjectRoot);
+
 			return {
 				mainResult: finalMainResult,
-				telemetryData: telemetryData
+				telemetryData: telemetryData,
+				tagInfo: tagInfo,
+				providerName: providerName,
+				modelId: modelId
 			};
 		} catch (error) {
 			const cleanMessage = _extractErrorMessage(error);
@@ -572,7 +727,8 @@ async function _unifiedServiceRunner(serviceType, params) {
 					lowerCaseMessage.includes('does not support tool_use') ||
 					lowerCaseMessage.includes('tool use is not supported') ||
 					lowerCaseMessage.includes('tools are not supported') ||
-					lowerCaseMessage.includes('function calling is not supported')
+					lowerCaseMessage.includes('function calling is not supported') ||
+					lowerCaseMessage.includes('tool use is not supported')
 				) {
 					const specificErrorMsg = `Model '${modelId || 'unknown'}' via provider '${providerName || 'unknown'}' does not support the 'tool use' required by generateObjectService. Please configure a model that supports tool/function calling for the '${currentRole}' role, or use generateTextService if structured output is not strictly required.`;
 					log('error', `[Tool Support Error] ${specificErrorMsg}`);
@@ -630,6 +786,31 @@ async function streamTextService(params) {
 	// The current implementation logs *after* the stream is returned.
 	// We might need to adjust how usage is captured/logged for streams.
 	return _unifiedServiceRunner('streamText', combinedParams);
+}
+
+/**
+ * Unified service function for streaming structured objects.
+ * Uses Vercel AI SDK's streamObject for proper JSON streaming.
+ *
+ * @param {object} params - Parameters for the service call.
+ * @param {string} params.role - The initial client role ('main', 'research', 'fallback').
+ * @param {object} [params.session=null] - Optional MCP session object.
+ * @param {string} [params.projectRoot=null] - Optional project root path for .env fallback.
+ * @param {import('zod').ZodSchema} params.schema - The Zod schema for the expected object.
+ * @param {string} params.prompt - The prompt for the AI.
+ * @param {string} [params.systemPrompt] - Optional system prompt.
+ * @param {string} params.commandName - Name of the command invoking the service.
+ * @param {string} [params.outputType='cli'] - 'cli' or 'mcp'.
+ * @returns {Promise<object>} Result object containing the stream and usage data.
+ */
+async function streamObjectService(params) {
+	const defaults = { outputType: 'cli' };
+	const combinedParams = { ...defaults, ...params };
+	// Stream object requires a schema
+	if (!combinedParams.schema) {
+		throw new Error('streamObjectService requires a schema parameter');
+	}
+	return _unifiedServiceRunner('streamObject', combinedParams);
 }
 
 /**
@@ -692,9 +873,12 @@ async function logAiUsage({
 			modelId
 		);
 
-		const totalCost =
-			((inputTokens || 0) / 1_000_000) * inputCost +
-			((outputTokens || 0) / 1_000_000) * outputCost;
+		const totalCost = _calculateCost(
+			inputTokens,
+			outputTokens,
+			inputCost,
+			outputCost
+		);
 
 		const telemetryData = {
 			timestamp,
@@ -705,7 +889,7 @@ async function logAiUsage({
 			inputTokens: inputTokens || 0,
 			outputTokens: outputTokens || 0,
 			totalTokens,
-			totalCost: parseFloat(totalCost.toFixed(6)),
+			totalCost,
 			currency // Add currency to the telemetry data
 		};
 
@@ -728,6 +912,7 @@ async function logAiUsage({
 export {
 	generateTextService,
 	streamTextService,
+	streamObjectService,
 	generateObjectService,
 	logAiUsage
 };

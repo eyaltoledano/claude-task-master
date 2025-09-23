@@ -26,15 +26,26 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.prompt] - Additional context to guide subtask generation.
  * @param {boolean} [args.force] - Force expansion even if subtasks exist.
  * @param {string} [args.projectRoot] - Project root directory.
+ * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object
  * @param {Object} context - Context object containing session
  * @param {Object} [context.session] - MCP Session object
- * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - Task expansion result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, num, research, prompt, force, projectRoot } = args;
+	const {
+		tasksJsonPath,
+		id,
+		num,
+		research,
+		prompt,
+		force,
+		projectRoot,
+		tag,
+		complexityReportPath
+	} = args;
 
 	// Log session root data for debugging
 	log.info(
@@ -54,8 +65,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -73,8 +83,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'INPUT_VALIDATION_ERROR',
 				message: 'Task ID is required'
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -91,7 +100,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 
 		// Read tasks data
 		log.info(`[expandTaskDirect] Attempting to read JSON from: ${tasksPath}`);
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot);
 		log.info(
 			`[expandTaskDirect] Result of readJSON: ${data ? 'Data read successfully' : 'readJSON returned null or undefined'}`
 		);
@@ -105,8 +114,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'INVALID_TASKS_FILE',
 					message: `No valid tasks found in ${tasksPath}. readJSON returned: ${JSON.stringify(data)}`
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -121,8 +129,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'TASK_NOT_FOUND',
 					message: `Task with ID ${taskId} not found`
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -133,8 +140,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'TASK_COMPLETED',
 					message: `Task ${taskId} is already marked as ${task.status} and cannot be expanded`
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -151,8 +157,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 					task,
 					subtasksAdded: 0,
 					hasExistingSubtasks
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -170,17 +175,13 @@ export async function expandTaskDirect(args, log, context = {}) {
 		// Tracking subtasks count before expansion
 		const subtasksCountBefore = task.subtasks ? task.subtasks.length : 0;
 
-		// Create a backup of the tasks.json file
-		const backupPath = path.join(path.dirname(tasksPath), 'tasks.json.bak');
-		fs.copyFileSync(tasksPath, backupPath);
-
 		// Directly modify the data instead of calling the CLI function
 		if (!task.subtasks) {
 			task.subtasks = [];
 		}
 
-		// Save tasks.json with potentially empty subtasks array
-		writeJSON(tasksPath, data);
+		// Save tasks.json with potentially empty subtasks array and proper context
+		writeJSON(tasksPath, data, projectRoot, tag);
 
 		// Create logger wrapper using the utility
 		const mcpLog = createLogWrapper(log);
@@ -200,11 +201,13 @@ export async function expandTaskDirect(args, log, context = {}) {
 				useResearch,
 				additionalContext,
 				{
+					complexityReportPath,
 					mcpLog,
 					session,
 					projectRoot,
 					commandName: 'expand-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					tag
 				},
 				forceFlag
 			);
@@ -213,7 +216,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			if (!wasSilent && isSilentMode()) disableSilentMode();
 
 			// Read the updated data
-			const updatedData = readJSON(tasksPath);
+			const updatedData = readJSON(tasksPath, projectRoot);
 			const updatedTask = updatedData.tasks.find((t) => t.id === taskId);
 
 			// Calculate how many subtasks were added
@@ -231,9 +234,9 @@ export async function expandTaskDirect(args, log, context = {}) {
 					task: coreResult.task,
 					subtasksAdded,
 					hasExistingSubtasks,
-					telemetryData: coreResult.telemetryData
-				},
-				fromCache: false
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
+				}
 			};
 		} catch (error) {
 			// Make sure to restore normal logging even if there's an error
@@ -245,8 +248,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				error: {
 					code: 'CORE_FUNCTION_ERROR',
 					message: error.message || 'Failed to expand task'
-				},
-				fromCache: false
+				}
 			};
 		}
 	} catch (error) {
@@ -256,8 +258,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 			error: {
 				code: 'CORE_FUNCTION_ERROR',
 				message: error.message || 'Failed to expand task'
-			},
-			fromCache: false
+			}
 		};
 	}
 }

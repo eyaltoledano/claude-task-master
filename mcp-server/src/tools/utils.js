@@ -7,12 +7,96 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
+import { fileURLToPath } from 'url';
+import packageJson from '../../../package.json' with { type: 'json' };
+import { getCurrentTag } from '../../../scripts/modules/utils.js';
 
 // Import path utilities to ensure consistent path resolution
 import {
 	lastFoundProjectRoot,
 	PROJECT_MARKERS
 } from '../core/utils/path-utils.js';
+
+const __filename = fileURLToPath(import.meta.url);
+
+// Cache for version info to avoid repeated file reads
+let cachedVersionInfo = null;
+
+/**
+ * Get version information from package.json
+ * @returns {Object} Version information
+ */
+function getVersionInfo() {
+	// Return cached version if available
+	if (cachedVersionInfo) {
+		return cachedVersionInfo;
+	}
+
+	// Use the imported packageJson directly
+	cachedVersionInfo = {
+		version: packageJson.version || 'unknown',
+		name: packageJson.name || 'task-master-ai'
+	};
+	return cachedVersionInfo;
+}
+
+/**
+ * Get current tag information for MCP responses
+ * @param {string} projectRoot - The project root directory
+ * @param {Object} log - Logger object
+ * @returns {Object} Tag information object
+ */
+function getTagInfo(projectRoot, log) {
+	try {
+		if (!projectRoot) {
+			log.warn('No project root provided for tag information');
+			return { currentTag: 'master', availableTags: ['master'] };
+		}
+
+		const currentTag = getCurrentTag(projectRoot);
+
+		// Read available tags from tasks.json
+		let availableTags = ['master']; // Default fallback
+		try {
+			const tasksJsonPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			if (fs.existsSync(tasksJsonPath)) {
+				const tasksData = JSON.parse(fs.readFileSync(tasksJsonPath, 'utf-8'));
+
+				// If it's the new tagged format, extract tag keys
+				if (
+					tasksData &&
+					typeof tasksData === 'object' &&
+					!Array.isArray(tasksData.tasks)
+				) {
+					const tagKeys = Object.keys(tasksData).filter(
+						(key) =>
+							tasksData[key] &&
+							typeof tasksData[key] === 'object' &&
+							Array.isArray(tasksData[key].tasks)
+					);
+					if (tagKeys.length > 0) {
+						availableTags = tagKeys;
+					}
+				}
+			}
+		} catch (tagError) {
+			log.debug(`Could not read available tags: ${tagError.message}`);
+		}
+
+		return {
+			currentTag: currentTag || 'master',
+			availableTags: availableTags
+		};
+	} catch (error) {
+		log.warn(`Error getting tag information: ${error.message}`);
+		return { currentTag: 'master', availableTags: ['master'] };
+	}
+}
 
 /**
  * Get normalized project root path
@@ -197,19 +281,26 @@ function getProjectRootFromSession(session, log) {
  * @param {Object} log - Logger object
  * @param {string} errorPrefix - Prefix for error messages
  * @param {Function} processFunction - Optional function to process successful result data
+ * @param {string} [projectRoot] - Optional project root for tag information
  * @returns {Object} - Standardized MCP response object
  */
-function handleApiResult(
+async function handleApiResult(
 	result,
 	log,
 	errorPrefix = 'API error',
-	processFunction = processMCPResponseData
+	processFunction = processMCPResponseData,
+	projectRoot = null
 ) {
+	// Get version info for every response
+	const versionInfo = getVersionInfo();
+
+	// Get tag info if project root is provided
+	const tagInfo = projectRoot ? getTagInfo(projectRoot, log) : null;
+
 	if (!result.success) {
 		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;
-		// Include cache status in error logs
-		log.error(`${errorPrefix}: ${errorMsg}. From cache: ${result.fromCache}`); // Keep logging cache status on error
-		return createErrorResponse(errorMsg);
+		log.error(`${errorPrefix}: ${errorMsg}`);
+		return createErrorResponse(errorMsg, versionInfo, tagInfo);
 	}
 
 	// Process the result data if needed
@@ -217,16 +308,19 @@ function handleApiResult(
 		? processFunction(result.data)
 		: result.data;
 
-	// Log success including cache status
-	log.info(`Successfully completed operation. From cache: ${result.fromCache}`); // Add success log with cache status
+	log.info('Successfully completed operation');
 
-	// Create the response payload including the fromCache flag
+	// Create the response payload including version info and tag info
 	const responsePayload = {
-		fromCache: result.fromCache, // Get the flag from the original 'result'
-		data: processedData // Nest the processed data under a 'data' key
+		data: processedData,
+		version: versionInfo
 	};
 
-	// Pass this combined payload to createContentResponse
+	// Add tag information if available
+	if (tagInfo) {
+		responsePayload.tag = tagInfo;
+	}
+
 	return createContentResponse(responsePayload);
 }
 
@@ -320,8 +414,8 @@ function executeTaskMasterCommand(
  * @param {Function} options.actionFn - The async function to execute if the cache misses.
  *                                      Should return an object like { success: boolean, data?: any, error?: { code: string, message: string } }.
  * @param {Object} options.log - The logger instance.
- * @returns {Promise<Object>} - An object containing the result, indicating if it was from cache.
- *                              Format: { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - An object containing the result.
+ *                              Format: { success: boolean, data?: any, error?: { code: string, message: string } }
  */
 async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Check cache first
@@ -329,11 +423,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 
 	if (cachedResult !== undefined) {
 		log.info(`Cache hit for key: ${cacheKey}`);
-		// Return the cached data in the same structure as a fresh result
-		return {
-			...cachedResult, // Spread the cached result to maintain its structure
-			fromCache: true // Just add the fromCache flag
-		};
+		return cachedResult;
 	}
 
 	log.info(`Cache miss for key: ${cacheKey}. Executing action function.`);
@@ -341,12 +431,10 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 	// Execute the action function if cache missed
 	const result = await actionFn();
 
-	// If the action was successful, cache the result (but without fromCache flag)
+	// If the action was successful, cache the result
 	if (result.success && result.data !== undefined) {
 		log.info(`Action successful. Caching result for key: ${cacheKey}`);
-		// Cache the entire result structure (minus the fromCache flag)
-		const { fromCache, ...resultToCache } = result;
-		contextManager.setCachedData(cacheKey, resultToCache);
+		contextManager.setCachedData(cacheKey, result);
 	} else if (!result.success) {
 		log.warn(
 			`Action failed for cache key ${cacheKey}. Result not cached. Error: ${result.error?.message}`
@@ -357,11 +445,7 @@ async function getCachedOrExecute({ cacheKey, actionFn, log }) {
 		);
 	}
 
-	// Return the fresh result, indicating it wasn't from cache
-	return {
-		...result,
-		fromCache: false
-	};
+	return result;
 }
 
 /**
@@ -460,14 +544,31 @@ function createContentResponse(content) {
 /**
  * Creates error response for tools
  * @param {string} errorMessage - Error message to include in response
+ * @param {Object} [versionInfo] - Optional version information object
+ * @param {Object} [tagInfo] - Optional tag information object
  * @returns {Object} - Error content response object in FastMCP format
  */
-function createErrorResponse(errorMessage) {
+function createErrorResponse(errorMessage, versionInfo, tagInfo) {
+	// Provide fallback version info if not provided
+	if (!versionInfo) {
+		versionInfo = getVersionInfo();
+	}
+
+	let responseText = `Error: ${errorMessage}
+Version: ${versionInfo.version}
+Name: ${versionInfo.name}`;
+
+	// Add tag information if available
+	if (tagInfo) {
+		responseText += `
+Current Tag: ${tagInfo.currentTag}`;
+	}
+
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `Error: ${errorMessage}`
+				text: responseText
 			}
 		],
 		isError: true
@@ -657,10 +758,82 @@ function withNormalizedProjectRoot(executeFn) {
 	};
 }
 
+/**
+ * Checks progress reporting capability and returns the validated function or undefined.
+ *
+ * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
+ *
+ * This helper should be used as the first step in any MCP tool that performs long-running
+ * AI operations. It validates the availability of progress reporting and provides consistent
+ * logging about the capability status.
+ *
+ * Operations that should use this pattern:
+ * - parse-prd: Parsing PRD documents with AI
+ * - expand-task: Expanding tasks into subtasks
+ * - expand-all: Expanding all tasks in batch
+ * - analyze-complexity: Analyzing task complexity
+ * - update-task: Updating tasks with AI assistance
+ * - add-task: Creating new tasks with AI
+ * - Any operation that makes AI service calls
+ *
+ * @example Basic usage in a tool's execute function:
+ * ```javascript
+ * import { checkProgressCapability } from './utils.js';
+ *
+ * async execute(args, context) {
+ *   const { log, reportProgress, session } = context;
+ *
+ *   // Always validate progress capability first
+ *   const progressCapability = checkProgressCapability(reportProgress, log);
+ *
+ *   // Pass to direct function - it handles undefined gracefully
+ *   const result = await expandTask(taskId, numSubtasks, {
+ *     session,
+ *     reportProgress: progressCapability,
+ *     mcpLog: log
+ *   });
+ * }
+ * ```
+ *
+ * @example With progress reporting available:
+ * ```javascript
+ * // When reportProgress is available, users see real-time updates:
+ * // "Starting PRD analysis (Input: 5432 tokens)..."
+ * // "Task 1/10 - Implement user authentication"
+ * // "Task 2/10 - Create database schema"
+ * // "Task Generation Completed | Tokens: 5432/1234"
+ * ```
+ *
+ * @example Without progress reporting (graceful degradation):
+ * ```javascript
+ * // When reportProgress is not available:
+ * // - Operation runs normally without progress updates
+ * // - Debug log: "reportProgress not available - operation will run without progress updates"
+ * // - User gets final result after completion
+ * ```
+ *
+ * @param {Function|undefined} reportProgress - The reportProgress function from MCP context.
+ *                                             Expected signature: async (progress: {progress: number, total: number, message: string}) => void
+ * @param {Object} log - Logger instance with debug, info, warn, error methods
+ * @returns {Function|undefined} The validated reportProgress function or undefined if not available
+ */
+function checkProgressCapability(reportProgress, log) {
+	// Validate that reportProgress is available for long-running operations
+	if (typeof reportProgress !== 'function') {
+		log.debug(
+			'reportProgress not available - operation will run without progress updates'
+		);
+		return undefined;
+	}
+
+	return reportProgress;
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
 	getProjectRootFromSession,
+	getTagInfo,
 	handleApiResult,
 	executeTaskMasterCommand,
 	getCachedOrExecute,
@@ -670,5 +843,6 @@ export {
 	createLogWrapper,
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkProgressCapability
 };

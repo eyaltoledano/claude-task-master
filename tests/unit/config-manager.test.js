@@ -3,6 +3,65 @@ import path from 'path';
 import { jest } from '@jest/globals';
 import { fileURLToPath } from 'url';
 
+// Mock modules first before any imports
+jest.mock('fs', () => ({
+	existsSync: jest.fn((filePath) => {
+		// Prevent Jest internal file access
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return false;
+		}
+		return false; // Default to false for config discovery prevention
+	}),
+	readFileSync: jest.fn(() => '{}'),
+	writeFileSync: jest.fn(),
+	mkdirSync: jest.fn()
+}));
+
+jest.mock('path', () => ({
+	join: jest.fn((dir, file) => `${dir}/${file}`),
+	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
+	resolve: jest.fn((...paths) => paths.join('/')),
+	basename: jest.fn((filePath) => filePath.split('/').pop())
+}));
+
+jest.mock('chalk', () => ({
+	red: jest.fn((text) => text),
+	blue: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	yellow: jest.fn((text) => text),
+	white: jest.fn((text) => ({
+		bold: jest.fn((text) => text)
+	})),
+	reset: jest.fn((text) => text),
+	dim: jest.fn((text) => text) // Add dim function to prevent chalk errors
+}));
+
+// Mock console to prevent Jest internal access
+const mockConsole = {
+	log: jest.fn(),
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn()
+};
+global.console = mockConsole;
+
+// --- Define Mock Function Instances ---
+const mockFindConfigPath = jest.fn(() => null); // Default to null, can be overridden in tests
+
+// Mock path-utils to prevent config file path discovery and logging
+jest.mock('../../src/utils/path-utils.js', () => ({
+	__esModule: true,
+	findProjectRoot: jest.fn(() => '/mock/project'),
+	findConfigPath: mockFindConfigPath, // Use the mock function instance
+	findTasksPath: jest.fn(() => '/mock/tasks.json'),
+	findComplexityReportPath: jest.fn(() => null),
+	resolveTasksOutputPath: jest.fn(() => '/mock/tasks.json'),
+	resolveComplexityReportOutputPath: jest.fn(() => '/mock/report.json')
+}));
+
 // --- Read REAL supported-models.json data BEFORE mocks ---
 const __filename = fileURLToPath(import.meta.url); // Get current file path
 const __dirname = path.dirname(__filename); // Get current directory
@@ -34,9 +93,6 @@ const mockLog = jest.fn();
 
 // --- Mock Dependencies BEFORE importing the module under test ---
 
-// Mock the entire 'fs' module
-jest.mock('fs');
-
 // Mock the 'utils.js' module using a factory function
 jest.mock('../../scripts/modules/utils.js', () => ({
 	__esModule: true, // Indicate it's an ES module mock
@@ -46,8 +102,6 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	resolveEnvVariable: jest.fn() // Example if needed
 }));
 
-// DO NOT MOCK 'chalk'
-
 // --- Import the module under test AFTER mocks are defined ---
 import * as configManager from '../../scripts/modules/config-manager.js';
 // Import the mocked 'fs' module to allow spying on its functions
@@ -55,37 +109,50 @@ import fsMocked from 'fs';
 
 // --- Test Data (Keep as is, ensure DEFAULT_CONFIG is accurate) ---
 const MOCK_PROJECT_ROOT = '/mock/project';
-const MOCK_CONFIG_PATH = path.join(MOCK_PROJECT_ROOT, '.taskmasterconfig');
+const MOCK_CONFIG_PATH = path.join(
+	MOCK_PROJECT_ROOT,
+	'.taskmaster/config.json'
+);
 
 // Updated DEFAULT_CONFIG reflecting the implementation
 const DEFAULT_CONFIG = {
 	models: {
 		main: {
 			provider: 'anthropic',
-			modelId: 'claude-3-7-sonnet-20250219',
+			modelId: 'claude-sonnet-4-20250514',
 			maxTokens: 64000,
 			temperature: 0.2
 		},
 		research: {
 			provider: 'perplexity',
-			modelId: 'sonar-pro',
+			modelId: 'sonar',
 			maxTokens: 8700,
 			temperature: 0.1
 		},
 		fallback: {
 			provider: 'anthropic',
-			modelId: 'claude-3-5-sonnet',
-			maxTokens: 64000,
+			modelId: 'claude-3-7-sonnet-20250219',
+			maxTokens: 120000,
 			temperature: 0.2
 		}
 	},
 	global: {
 		logLevel: 'info',
 		debug: false,
+		defaultNumTasks: 10,
 		defaultSubtasks: 5,
 		defaultPriority: 'medium',
 		projectName: 'Task Master',
-		ollamaBaseURL: 'http://localhost:11434/api'
+		ollamaBaseURL: 'http://localhost:11434/api',
+		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
+		enableCodebaseAnalysis: true,
+		responseLanguage: 'English'
+	},
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
 	}
 };
 
@@ -140,6 +207,61 @@ const INVALID_PROVIDER_CONFIG = {
 	}
 };
 
+// Claude Code test data
+const VALID_CLAUDE_CODE_CONFIG = {
+	maxTurns: 5,
+	customSystemPrompt: 'You are a helpful coding assistant',
+	appendSystemPrompt: 'Always follow best practices',
+	permissionMode: 'acceptEdits',
+	allowedTools: ['Read', 'LS', 'Edit'],
+	disallowedTools: ['Write'],
+	mcpServers: {
+		'test-server': {
+			type: 'stdio',
+			command: 'node',
+			args: ['server.js'],
+			env: { NODE_ENV: 'test' }
+		}
+	},
+	commandSpecific: {
+		'add-task': {
+			maxTurns: 3,
+			permissionMode: 'plan'
+		},
+		research: {
+			customSystemPrompt: 'You are a research assistant'
+		}
+	}
+};
+
+const INVALID_CLAUDE_CODE_CONFIG = {
+	maxTurns: 'invalid', // Should be number
+	permissionMode: 'invalid-mode', // Invalid enum value
+	allowedTools: 'not-an-array', // Should be array
+	mcpServers: {
+		'invalid-server': {
+			type: 'invalid-type', // Invalid enum value
+			url: 'not-a-valid-url' // Invalid URL format
+		}
+	},
+	commandSpecific: {
+		'invalid-command': {
+			// Invalid command name
+			maxTurns: -1 // Invalid negative number
+		}
+	}
+};
+
+const PARTIAL_CLAUDE_CODE_CONFIG = {
+	maxTurns: 10,
+	permissionMode: 'default',
+	commandSpecific: {
+		'expand-task': {
+			customSystemPrompt: 'Focus on task breakdown'
+		}
+	}
+};
+
 // Define spies globally to be restored in afterAll
 let consoleErrorSpy;
 let consoleWarnSpy;
@@ -165,6 +287,7 @@ beforeEach(() => {
 	// Reset the external mock instances for utils
 	mockFindProjectRoot.mockReset();
 	mockLog.mockReset();
+	mockFindConfigPath.mockReset();
 
 	// --- Set up spies ON the imported 'fs' mock ---
 	fsExistsSyncSpy = jest.spyOn(fsMocked, 'existsSync');
@@ -173,6 +296,7 @@ beforeEach(() => {
 
 	// --- Default Mock Implementations ---
 	mockFindProjectRoot.mockReturnValue(MOCK_PROJECT_ROOT); // Default for utils.findProjectRoot
+	mockFindConfigPath.mockReturnValue(null); // Default to no config file found
 	fsExistsSyncSpy.mockReturnValue(true); // Assume files exist by default
 
 	// Default readFileSync: Return REAL models content, mocked config, or throw error
@@ -185,7 +309,15 @@ beforeEach(() => {
 			// Still mock the .taskmasterconfig reads
 			return JSON.stringify(DEFAULT_CONFIG); // Default behavior
 		}
-		// Throw for unexpected reads - helps catch errors
+		// For Jest internal files or other unexpected files, return empty string instead of throwing
+		// This prevents Jest's internal file operations from breaking tests
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return '{}'; // Return empty JSON for Jest internal files
+		}
+		// Throw for truly unexpected reads that should be caught in tests
 		throw new Error(`Unexpected fs.readFileSync call in test: ${filePath}`);
 	});
 
@@ -203,6 +335,7 @@ describe('Validation Functions', () => {
 		expect(configManager.validateProvider('perplexity')).toBe(true);
 		expect(configManager.validateProvider('ollama')).toBe(true);
 		expect(configManager.validateProvider('openrouter')).toBe(true);
+		expect(configManager.validateProvider('bedrock')).toBe(true);
 	});
 
 	test('validateProvider should return false for invalid providers', () => {
@@ -261,6 +394,162 @@ describe('Validation Functions', () => {
 	});
 });
 
+// --- Claude Code Validation Tests ---
+describe('Claude Code Validation', () => {
+	test('validateClaudeCodeSettings should return valid settings for correct input', () => {
+		const result = configManager.validateClaudeCodeSettings(
+			VALID_CLAUDE_CODE_CONFIG
+		);
+
+		expect(result).toEqual(VALID_CLAUDE_CODE_CONFIG);
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should return empty object for invalid input', () => {
+		const result = configManager.validateClaudeCodeSettings(
+			INVALID_CLAUDE_CODE_CONFIG
+		);
+
+		expect(result).toEqual({});
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Warning: Invalid Claude Code settings in config')
+		);
+	});
+
+	test('validateClaudeCodeSettings should handle partial valid configuration', () => {
+		const result = configManager.validateClaudeCodeSettings(
+			PARTIAL_CLAUDE_CODE_CONFIG
+		);
+
+		expect(result).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should return empty object for empty input', () => {
+		const result = configManager.validateClaudeCodeSettings({});
+
+		expect(result).toEqual({});
+		expect(consoleWarnSpy).not.toHaveBeenCalled();
+	});
+
+	test('validateClaudeCodeSettings should handle null/undefined input', () => {
+		expect(configManager.validateClaudeCodeSettings(null)).toEqual({});
+		expect(configManager.validateClaudeCodeSettings(undefined)).toEqual({});
+		expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+	});
+});
+
+// --- Claude Code Getter Tests ---
+describe('Claude Code Getter Functions', () => {
+	test('getClaudeCodeSettings should return default empty object when no config exists', () => {
+		// No config file exists, should return empty object
+		fsExistsSyncSpy.mockReturnValue(false);
+		const settings = configManager.getClaudeCodeSettings(MOCK_PROJECT_ROOT);
+
+		expect(settings).toEqual({});
+	});
+
+	test('getClaudeCodeSettings should return merged settings from config file', () => {
+		// Config file with Claude Code settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: VALID_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4o' }],
+					google: [{ id: 'gemini-1.5-pro-latest' }],
+					anthropic: [
+						{ id: 'claude-3-opus-20240229' },
+						{ id: 'claude-3-7-sonnet-20250219' },
+						{ id: 'claude-3-5-sonnet' }
+					],
+					perplexity: [{ id: 'sonar-pro' }],
+					ollama: [],
+					openrouter: []
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettings(
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
+
+		expect(settings).toEqual(VALID_CLAUDE_CODE_CONFIG);
+	});
+
+	test('getClaudeCodeSettingsForCommand should return command-specific settings', () => {
+		// Config with command-specific settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: VALID_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (path.basename(filePath) === 'supported-models.json') return '{}';
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettingsForCommand(
+			'add-task',
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
+
+		// Should merge global settings with command-specific settings
+		const expectedSettings = {
+			...VALID_CLAUDE_CODE_CONFIG,
+			...VALID_CLAUDE_CODE_CONFIG.commandSpecific['add-task']
+		};
+		expect(settings).toEqual(expectedSettings);
+	});
+
+	test('getClaudeCodeSettingsForCommand should return global settings for unknown command', () => {
+		// Config with Claude Code settings
+		const configWithClaudeCode = {
+			...VALID_CUSTOM_CONFIG,
+			claudeCode: PARTIAL_CLAUDE_CODE_CONFIG
+		};
+
+		// Mock findConfigPath to return the mock config path
+		mockFindConfigPath.mockReturnValue(MOCK_CONFIG_PATH);
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (path.basename(filePath) === 'supported-models.json') return '{}';
+			if (filePath === MOCK_CONFIG_PATH)
+				return JSON.stringify(configWithClaudeCode);
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		const settings = configManager.getClaudeCodeSettingsForCommand(
+			'unknown-command',
+			MOCK_PROJECT_ROOT,
+			true
+		); // Force reload
+
+		// Should return global settings only
+		expect(settings).toEqual(PARTIAL_CLAUDE_CODE_CONFIG);
+	});
+});
+
 // --- getConfig Tests ---
 describe('getConfig Tests', () => {
 	test('should return default config if .taskmasterconfig does not exist', () => {
@@ -274,7 +563,10 @@ describe('getConfig Tests', () => {
 		// Assert
 		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(mockFindProjectRoot).not.toHaveBeenCalled(); // Explicit root provided
-		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
+		// The implementation checks for .taskmaster directory first
+		expect(fsExistsSyncSpy).toHaveBeenCalledWith(
+			path.join(MOCK_PROJECT_ROOT, '.taskmaster')
+		);
 		expect(fsReadFileSyncSpy).not.toHaveBeenCalled(); // No read if file doesn't exist
 		expect(consoleWarnSpy).toHaveBeenCalledWith(
 			expect.stringContaining('not found at provided project root')
@@ -345,7 +637,12 @@ describe('getConfig Tests', () => {
 					...VALID_CUSTOM_CONFIG.models.fallback
 				}
 			},
-			global: { ...DEFAULT_CONFIG.global, ...VALID_CUSTOM_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...VALID_CUSTOM_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -383,7 +680,12 @@ describe('getConfig Tests', () => {
 				research: { ...DEFAULT_CONFIG.models.research },
 				fallback: { ...DEFAULT_CONFIG.models.fallback }
 			},
-			global: { ...DEFAULT_CONFIG.global, ...PARTIAL_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...PARTIAL_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, 'utf-8');
@@ -444,7 +746,7 @@ describe('getConfig Tests', () => {
 		// Assert
 		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining(`Permission denied. Using default configuration.`)
+			expect.stringContaining('Permission denied. Using default configuration.')
 		);
 	});
 
@@ -487,7 +789,12 @@ describe('getConfig Tests', () => {
 				},
 				fallback: { ...DEFAULT_CONFIG.models.fallback }
 			},
-			global: { ...DEFAULT_CONFIG.global, ...INVALID_PROVIDER_CONFIG.global }
+			global: { ...DEFAULT_CONFIG.global, ...INVALID_PROVIDER_CONFIG.global },
+			claudeCode: {
+				...DEFAULT_CONFIG.claudeCode,
+				...VALID_CUSTOM_CONFIG.claudeCode
+			},
+			grokCli: { ...DEFAULT_CONFIG.grokCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 	});
@@ -533,7 +840,7 @@ describe('writeConfig', () => {
 		expect(success).toBe(false);
 		expect(fsWriteFileSyncSpy).toHaveBeenCalled();
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining(`Disk full`)
+			expect.stringContaining('Disk full')
 		);
 	});
 
@@ -620,6 +927,82 @@ describe('Getter Functions', () => {
 		expect(logLevel).toBe(VALID_CUSTOM_CONFIG.global.logLevel);
 	});
 
+	test('getResponseLanguage should return responseLanguage from config', () => {
+		// Arrange
+		// Prepare a config object with responseLanguage property for this test
+		const configWithLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project',
+				responseLanguage: '中文'
+			}
+		});
+
+		// Set up fs.readFileSync to return our test config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('中文');
+	});
+
+	test('getResponseLanguage should return undefined when responseLanguage is not in config', () => {
+		// Arrange
+		const configWithoutLanguage = JSON.stringify({
+			models: {
+				main: { provider: 'openai', modelId: 'gpt-4-turbo' }
+			},
+			global: {
+				projectName: 'Test Project'
+				// No responseLanguage property
+			}
+		});
+
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return configWithoutLanguage;
+			}
+			if (path.basename(filePath) === 'supported-models.json') {
+				return JSON.stringify({
+					openai: [{ id: 'gpt-4-turbo' }]
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Ensure getConfig returns new values instead of cached ones
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act
+		const responseLanguage =
+			configManager.getResponseLanguage(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(responseLanguage).toBe('English');
+	});
+
 	// Add more tests for other getters (getResearchProvider, getProjectName, etc.)
 });
 
@@ -650,21 +1033,140 @@ describe('isConfigFilePresent', () => {
 
 // --- getAllProviders Tests ---
 describe('getAllProviders', () => {
-	test('should return list of providers from supported-models.json', () => {
+	test('should return all providers from ALL_PROVIDERS constant', () => {
 		// Arrange: Ensure config is loaded with real data
 		configManager.getConfig(null, true); // Force load using the mock that returns real data
 
 		// Act
 		const providers = configManager.getAllProviders();
+
 		// Assert
-		// Assert against the actual keys in the REAL loaded data
-		const expectedProviders = Object.keys(REAL_SUPPORTED_MODELS_DATA);
-		expect(providers).toEqual(expect.arrayContaining(expectedProviders));
-		expect(providers.length).toBe(expectedProviders.length);
+		// getAllProviders() should return the same as the ALL_PROVIDERS constant
+		expect(providers).toEqual(configManager.ALL_PROVIDERS);
+		expect(providers.length).toBe(configManager.ALL_PROVIDERS.length);
+
+		// Verify it includes both validated and custom providers
+		expect(providers).toEqual(
+			expect.arrayContaining(configManager.VALIDATED_PROVIDERS)
+		);
+		expect(providers).toEqual(
+			expect.arrayContaining(Object.values(configManager.CUSTOM_PROVIDERS))
+		);
 	});
 });
 
 // Add tests for getParametersForRole if needed
+
+// --- defaultNumTasks Tests ---
+describe('Configuration Getters', () => {
+	test('getDefaultNumTasks should return default value when config is valid', () => {
+		// Arrange: Mock fs.readFileSync to return valid config when called with the expected path
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 15
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(15);
+	});
+
+	test('getDefaultNumTasks should return fallback when config value is invalid', () => {
+		// Arrange: Mock fs.readFileSync to return invalid config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 'invalid'
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should return fallback when config value is missing', () => {
+		// Arrange: Mock fs.readFileSync to return config without defaultNumTasks
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should handle non-existent config file', () => {
+		// Arrange: Mock file not existing
+		fsExistsSyncSpy.mockReturnValue(false);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(10); // Should fallback to DEFAULTS.global.defaultNumTasks
+	});
+
+	test('getDefaultNumTasks should accept explicit project root', () => {
+		// Arrange: Mock fs.readFileSync to return valid config
+		fsReadFileSyncSpy.mockImplementation((filePath) => {
+			if (filePath === MOCK_CONFIG_PATH) {
+				return JSON.stringify({
+					global: {
+						defaultNumTasks: 20
+					}
+				});
+			}
+			throw new Error(`Unexpected fs.readFileSync call: ${filePath}`);
+		});
+		fsExistsSyncSpy.mockReturnValue(true);
+
+		// Force reload to clear cache
+		configManager.getConfig(MOCK_PROJECT_ROOT, true);
+
+		// Act: Call getDefaultNumTasks with explicit project root
+		const result = configManager.getDefaultNumTasks(MOCK_PROJECT_ROOT);
+
+		// Assert
+		expect(result).toBe(20);
+	});
+});
 
 // Note: Tests for setMainModel, setResearchModel were removed as the functions were removed in the implementation.
 // If similar setter functions exist, add tests for them following the writeConfig pattern.

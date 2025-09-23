@@ -1,4 +1,4 @@
-``# Taskmaster AI Installation Guide
+# Taskmaster AI Installation Guide
 
 This guide helps AI assistants install and configure Taskmaster for users in their development projects.
 
@@ -17,7 +17,7 @@ Add the following configuration to the user's MCP settings file (`.cursor/mcp.js
 	"mcpServers": {
 		"taskmaster-ai": {
 			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
+			"args": ["-y", "task-master-ai"],
 			"env": {
 				"ANTHROPIC_API_KEY": "user_will_add_their_key_here",
 				"PERPLEXITY_API_KEY": "user_will_add_their_key_here",

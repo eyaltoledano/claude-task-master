@@ -1,22 +1,23 @@
 /**
  * tools/next-task.js
- * Tool to find the next task to work on
+ * Tool to find the next task to work on based on dependencies and status
  */
 
 import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from './utils.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
-	findComplexityReportPath
+	resolveTasksPath,
+	resolveComplexityReportPath
 } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
- * Register the next-task tool with the MCP server
+ * Register the nextTask tool with the MCP server
  * @param {Object} server - FastMCP server instance
  */
 export function registerNextTaskTool(server) {
@@ -34,19 +35,21 @@ export function registerNextTaskTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Finding next task with args: ${JSON.stringify(args)}`);
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
+					tasksJsonPath = resolveTasksPath(args, session);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -54,38 +57,40 @@ export function registerNextTaskTool(server) {
 					);
 				}
 
-				// Resolve the path to complexity report
+				// Resolve the path to complexity report (optional)
 				let complexityReportPath;
 				try {
-					complexityReportPath = findComplexityReportPath(
-						args.projectRoot,
-						args.complexityReport,
-						log
+					complexityReportPath = resolveComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						session
 					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
+					// This is optional, so we don't fail the operation
+					complexityReportPath = null;
 				}
+
 				const result = await nextTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						reportPath: complexityReportPath
+						reportPath: complexityReportPath,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
-				if (result.success) {
-					log.info(
-						`Successfully found next task: ${result.data?.task?.id || 'No available tasks'}`
-					);
-				} else {
-					log.error(
-						`Failed to find next task: ${result.error?.message || 'Unknown error'}`
-					);
-				}
-
-				return handleApiResult(result, log, 'Error finding next task');
+				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);
+				return handleApiResult(
+					result,
+					log,
+					'Error finding next task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
-				log.error(`Error in nextTask tool: ${error.message}`);
+				log.error(`Error finding next task: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

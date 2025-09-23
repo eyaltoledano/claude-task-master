@@ -2,6 +2,10 @@
  * Tests for the analyze-task-complexity.js module
  */
 import { jest } from '@jest/globals';
+import {
+	createGetTagAwareFilePathMock,
+	createSlugifyTagForFilePathMock
+} from './setup.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
@@ -28,7 +32,17 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	disableSilentMode: jest.fn(),
 	truncate: jest.fn((text) => text),
 	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
-	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {})
+	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {}),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj),
+	getCurrentTag: jest.fn(() => 'master'),
+	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
+	getTagAwareFilePath: createGetTagAwareFilePathMock(),
+	slugifyTagForFilePath: createSlugifyTagForFilePathMock(),
+	markMigrationForNotice: jest.fn(),
+	performCompleteTagMigration: jest.fn(),
+	setTasksForTag: jest.fn(),
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
+	traverseDependencies: jest.fn((tasks, taskId, visited) => [])
 }));
 
 jest.unstable_mockModule(
@@ -65,6 +79,38 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: async function* () {
+				yield '{"tasks":[';
+				yield '{"id":1,"title":"Test Task","priority":"high"}';
+				yield ']}';
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
+		streamObjectService: jest.fn().mockImplementation(async () => {
+			return {
+				get partialObjectStream() {
+					return (async function* () {
+						yield { tasks: [] };
+						yield { tasks: [{ id: 1, title: 'Test Task', priority: 'high' }] };
+					})();
+				},
+				object: Promise.resolve({
+					tasks: [{ id: 1, title: 'Test Task', priority: 'high' }]
+				})
+			};
 		})
 	})
 );
@@ -127,6 +173,7 @@ jest.unstable_mockModule(
 		getProjectName: jest.fn(() => 'Test Project'),
 		getOllamaBaseURL: jest.fn(() => 'http://localhost:11434/api'),
 		getAzureBaseURL: jest.fn(() => undefined),
+		getBedrockBaseURL: jest.fn(() => undefined),
 		getParametersForRole: jest.fn(() => ({
 			maxTokens: 4000,
 			temperature: 0.7
@@ -140,18 +187,47 @@ jest.unstable_mockModule(
 		// Additional functions
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
-		getVertexLocation: jest.fn(() => undefined)
+		getVertexLocation: jest.fn(() => undefined),
+		hasCodebaseAnalysis: jest.fn(() => false)
+	})
+);
+
+// Mock fs module
+const mockWriteFileSync = jest.fn();
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		existsSync: jest.fn(() => false),
+		readFileSync: jest.fn(),
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: jest.fn()
+	},
+	existsSync: jest.fn(() => false),
+	readFileSync: jest.fn(),
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: jest.fn()
+}));
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockResolvedValue({
+				systemPrompt: 'Mocked system prompt',
+				userPrompt: 'Mocked user prompt'
+			})
+		})
 	})
 );
 
 // Import the mocked modules
-const { readJSON, writeJSON, log, CONFIG } = await import(
+const { readJSON, writeJSON, log, CONFIG, findTaskById } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateObjectService, generateTextService } = await import(
-	'../../../../../scripts/modules/ai-services-unified.js'
-);
+const { generateObjectService, generateTextService, streamTextService } =
+	await import('../../../../../scripts/modules/ai-services-unified.js');
+
+const fs = await import('fs');
 
 // Import the module under test
 const { default: analyzeTaskComplexity } = await import(
@@ -183,40 +259,54 @@ describe('analyzeTaskComplexity', () => {
 	};
 
 	const sampleTasks = {
-		meta: { projectName: 'Test Project' },
-		tasks: [
-			{
-				id: 1,
-				title: 'Task 1',
-				description: 'First task description',
-				status: 'pending',
-				dependencies: [],
-				priority: 'high'
-			},
-			{
-				id: 2,
-				title: 'Task 2',
-				description: 'Second task description',
-				status: 'pending',
-				dependencies: [1],
-				priority: 'medium'
-			},
-			{
-				id: 3,
-				title: 'Task 3',
-				description: 'Third task description',
-				status: 'done',
-				dependencies: [1, 2],
-				priority: 'high'
-			}
-		]
+		master: {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					description: 'First task description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'high'
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					description: 'Second task description',
+					status: 'pending',
+					dependencies: [1],
+					priority: 'medium'
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					description: 'Third task description',
+					status: 'done',
+					dependencies: [1, 2],
+					priority: 'high'
+				}
+			]
+		}
 	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		// Default mock implementations
-		readJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
+		// Default mock implementations - readJSON should return the resolved view with tasks at top level
+		readJSON.mockImplementation((tasksPath, projectRoot, tag) => {
+			return {
+				...sampleTasks.master,
+				tag: tag || 'master',
+				_rawTaggedData: sampleTasks
+			};
+		});
+
+		// Mock findTaskById to return the expected structure
+		findTaskById.mockImplementation((tasks, taskId) => {
+			const task = tasks?.find((t) => t.id === parseInt(taskId));
+			return { task: task || null, originalSubtaskCount: null };
+		});
+
 		generateTextService.mockResolvedValue(sampleApiResponse);
 	});
 
@@ -226,11 +316,13 @@ describe('analyzeTaskComplexity', () => {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
 			threshold: '5',
-			research: false
+			research: false,
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -241,17 +333,16 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(
+			'tasks/tasks.json',
+			'/mock/project/root',
+			undefined
+		);
 		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
-		expect(writeJSON).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 5,
-					projectName: 'Test Project'
-				}),
-				complexityAnalysis: expect.any(Array)
-			})
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
+			expect.stringContaining('task-complexity-report.json'),
+			expect.stringContaining('"thresholdScore": 5'),
+			'utf8'
 		);
 	});
 
@@ -261,11 +352,13 @@ describe('analyzeTaskComplexity', () => {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
 			threshold: '5',
-			research: true
+			research: true,
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(researchOptions, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -288,10 +381,12 @@ describe('analyzeTaskComplexity', () => {
 		let options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '7'
+			threshold: '7',
+			projectRoot: '/mock/project/root'
 		};
 
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -301,13 +396,10 @@ describe('analyzeTaskComplexity', () => {
 			}
 		});
 
-		expect(writeJSON).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 7
-				})
-			})
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
+			expect.stringContaining('task-complexity-report.json'),
+			expect.stringContaining('"thresholdScore": 7'),
+			'utf8'
 		);
 
 		// Reset mocks
@@ -317,10 +409,12 @@ describe('analyzeTaskComplexity', () => {
 		options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: 8
+			threshold: 8,
+			projectRoot: '/mock/project/root'
 		};
 
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -330,13 +424,10 @@ describe('analyzeTaskComplexity', () => {
 			}
 		});
 
-		expect(writeJSON).toHaveBeenCalledWith(
-			'scripts/task-complexity-report.json',
-			expect.objectContaining({
-				meta: expect.objectContaining({
-					thresholdScore: 8
-				})
-			})
+		expect(mockWriteFileSync).toHaveBeenCalledWith(
+			expect.stringContaining('task-complexity-report.json'),
+			expect.stringContaining('"thresholdScore": 8'),
+			'utf8'
 		);
 	});
 
@@ -345,11 +436,13 @@ describe('analyzeTaskComplexity', () => {
 		const options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '5'
+			threshold: '5',
+			projectRoot: '/mock/project/root'
 		};
 
 		// Act
 		await analyzeTaskComplexity(options, {
+			projectRoot: '/mock/project/root',
 			mcpLog: {
 				info: jest.fn(),
 				warn: jest.fn(),
@@ -373,7 +466,8 @@ describe('analyzeTaskComplexity', () => {
 		const options = {
 			file: 'tasks/tasks.json',
 			output: 'scripts/task-complexity-report.json',
-			threshold: '5'
+			threshold: '5',
+			projectRoot: '/mock/project/root'
 		};
 
 		// Force API error
@@ -390,6 +484,7 @@ describe('analyzeTaskComplexity', () => {
 		// Act & Assert
 		await expect(
 			analyzeTaskComplexity(options, {
+				projectRoot: '/mock/project/root',
 				mcpLog: mockMcpLog
 			})
 		).rejects.toThrow('API Error');

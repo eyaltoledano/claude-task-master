@@ -20,19 +20,21 @@ alwaysApply: false
   - **[`task-manager.js`](mdc:scripts/modules/task-manager.js) & `task-manager/` directory: Task Data & Core Logic**
     - **Purpose**: Contains core functions for task data manipulation (CRUD), AI interactions, and related logic.
     - **Responsibilities**:
-      - Reading/writing `tasks.json`.
+      - Reading/writing `tasks.json` with tagged task lists support.
       - Implementing functions for task CRUD, parsing PRDs, expanding tasks, updating status, etc.
+      - **Tagged Task Lists**: Handles task organization across multiple contexts (tags) like "master", branch names, or project phases.
+      - **Tag Resolution**: Provides backward compatibility by resolving tagged format to legacy format transparently.
       - **Delegating AI interactions** to the `ai-services-unified.js` layer.
       - Accessing non-AI configuration via `config-manager.js` getters.
     - **Key Files**: Individual files within `scripts/modules/task-manager/` handle specific actions (e.g., `add-task.js`, `expand-task.js`).
 
   - **[`dependency-manager.js`](mdc:scripts/modules/dependency-manager.js): Dependency Management**
     - **Purpose**: Manages task dependencies.
-    - **Responsibilities**: Add/remove/validate/fix dependencies.
+    - **Responsibilities**: Add/remove/validate/fix dependencies across tagged task contexts.
 
   - **[`ui.js`](mdc:scripts/modules/ui.js): User Interface Components**
     - **Purpose**: Handles CLI output formatting (tables, colors, boxes, spinners).
-    - **Responsibilities**: Displaying tasks, reports, progress, suggestions.
+    - **Responsibilities**: Displaying tasks, reports, progress, suggestions, and migration notices for tagged systems.
 
   - **[`ai-services-unified.js`](mdc:scripts/modules/ai-services-unified.js): Unified AI Service Layer**
     - **Purpose**: Centralized interface for all LLM interactions using Vercel AI SDK.
@@ -53,6 +55,7 @@ alwaysApply: false
     - **Responsibilities** (See also: [`utilities.mdc`](mdc:.cursor/rules/utilities.mdc)):
       - Reads and merges `.taskmasterconfig` with defaults.
       - Provides getters (e.g., `getMainProvider`, `getLogLevel`, `getDefaultSubtasks`) for accessing settings.
+      - **Tag Configuration**: Manages `global.defaultTag` and `tags` section for tag system settings.
       - **Note**: Does **not** store or directly handle API keys (keys are in `.env` or MCP `session.env`).
 
   - **[`utils.js`](mdc:scripts/modules/utils.js): Core Utility Functions**
@@ -62,6 +65,8 @@ alwaysApply: false
       - Task utils (`findTaskById`), Dependency utils (`findCycles`).
       - API Key Resolution (`resolveEnvVariable`).
       - Silent Mode Control (`enableSilentMode`, `disableSilentMode`).
+      - **Tagged Task Lists**: Silent migration system, tag resolution, current tag management.
+      - **Migration System**: `performCompleteTagMigration`, `migrateConfigJson`, `createStateJson`.
 
   - **[`mcp-server/`](mdc:mcp-server/): MCP Server Integration**
     - **Purpose**: Provides MCP interface using FastMCP.
@@ -71,16 +76,42 @@ alwaysApply: false
       - Tool `execute` methods call **direct function wrappers** (`mcp-server/src/core/direct-functions/*.js`), passing the normalized `projectRoot` and other args.
       - Direct functions use path utilities (`mcp-server/src/core/utils/`) to resolve paths based on `projectRoot` from session.
       - Direct functions implement silent mode, logger wrappers, and call core logic functions from `scripts/modules/`.
+      - **Tagged Task Lists**: MCP tools fully support the tagged format with complete tag management capabilities.
       - Manages MCP caching and response formatting.
 
   - **[`init.js`](mdc:scripts/init.js): Project Initialization Logic**
     - **Purpose**: Sets up new Task Master project structure.
-    - **Responsibilities**: Creates directories, copies templates, manages `package.json`, sets up `.cursor/mcp.json`.
+    - **Responsibilities**: Creates directories, copies templates, manages `package.json`, sets up `.cursor/mcp.json`, initializes state.json for tagged system.
+
+## Tagged Task Lists System Architecture
+
+**Data Structure**: Task Master now uses a tagged task lists system where the `tasks.json` file contains multiple named task lists as top-level keys:
+
+```json
+{
+  "master": {
+    "tasks": [/* standard task objects */]
+  },
+  "feature-branch": {
+    "tasks": [/* separate task context */]
+  }
+}
+```
+
+**Key Components:**
+
+- **Silent Migration**: Automatically transforms legacy `{"tasks": [...]}` format to tagged format `{"master": {"tasks": [...]}}` on first read
+- **Tag Resolution Layer**: Provides 100% backward compatibility by intercepting tagged format and returning legacy format to existing code
+- **Configuration Integration**: `global.defaultTag` and `tags` section in config.json manage tag system settings
+- **State Management**: `.taskmaster/state.json` tracks current tag, migration status, and tag-branch mappings
+- **Migration Notice**: User-friendly notification system for seamless migration experience
+
+**Backward Compatibility**: All existing CLI commands and MCP tools continue to work unchanged. The tag resolution layer ensures that existing code receives the expected legacy format while the underlying storage uses the new tagged structure.
 
 - **Data Flow and Module Dependencies (Updated)**:
 
-  - **CLI**: `bin/task-master.js` -> `scripts/dev.js` (loads `.env`) -> `scripts/modules/commands.js` -> Core Logic (`scripts/modules/*`) -> Unified AI Service (`ai-services-unified.js`) -> Provider Adapters -> LLM API.
-  - **MCP**: External Tool -> `mcp-server/server.js` -> Tool (`mcp-server/src/tools/*`) -> Direct Function (`mcp-server/src/core/direct-functions/*`) -> Core Logic (`scripts/modules/*`) -> Unified AI Service (`ai-services-unified.js`) -> Provider Adapters -> LLM API.
+  - **CLI**: `bin/task-master.js` -> `scripts/dev.js` (loads `.env`) -> `scripts/modules/commands.js` -> Core Logic (`scripts/modules/*`) -> **Tag Resolution Layer** -> Unified AI Service (`ai-services-unified.js`) -> Provider Adapters -> LLM API.
+  - **MCP**: External Tool -> `mcp-server/server.js` -> Tool (`mcp-server/src/tools/*`) -> Direct Function (`mcp-server/src/core/direct-functions/*`) -> Core Logic (`scripts/modules/*`) -> **Tag Resolution Layer** -> Unified AI Service (`ai-services-unified.js`) -> Provider Adapters -> LLM API.
   - **Configuration**: Core logic needing non-AI settings calls `config-manager.js` getters (passing `session.env` via `explicitRoot` if from MCP). Unified AI Service internally calls `config-manager.js` getters (using `role`) for AI params and `utils.js` (`resolveEnvVariable` with `session.env`) for API keys.
 
 ## Silent Mode Implementation Pattern in MCP Direct Functions
@@ -197,6 +228,7 @@ By following these patterns consistently, direct functions will properly manage 
     - **Integration Tests**: Located in `tests/integration/`, test interactions between modules
     - **End-to-End Tests**: Located in `tests/e2e/`, test complete workflows from a user perspective
     - **Test Fixtures**: Located in `tests/fixtures/`, provide reusable test data
+    - **Tagged System Tests**: Test migration, tag resolution, and multi-context functionality
 
   - **Module Design for Testability**:
     - **Explicit Dependencies**: Functions accept their dependencies as parameters rather than using globals
@@ -205,12 +237,14 @@ By following these patterns consistently, direct functions will properly manage 
     - **Clear Module Interfaces**: Each module has well-defined exports that can be mocked in tests
     - **Callback Isolation**: Callbacks are defined as separate functions for easier testing
     - **Stateless Design**: Modules avoid maintaining internal state where possible
+    - **Tag Resolution Testing**: Test both tagged and legacy format handling
 
   - **Mock Integration Patterns**:
     - **External Libraries**: Libraries like `fs`, `commander`, and `@anthropic-ai/sdk` are mocked at module level
     - **Internal Modules**: Application modules are mocked with appropriate spy functions
     - **Testing Function Callbacks**: Callbacks are extracted from mock call arguments and tested in isolation
     - **UI Elements**: Output functions from `ui.js` are mocked to verify display calls
+    - **Tagged Data Mocking**: Test both legacy and tagged task data structures
 
   - **Testing Flow**:
     - Module dependencies are mocked (following Jest's hoisting behavior)
@@ -218,6 +252,7 @@ By following these patterns consistently, direct functions will properly manage 
     - Spy functions are set up on module methods
     - Tests call the functions under test and verify behavior
     - Mocks are reset between test cases to maintain isolation
+    - Tagged system behavior is tested for both migration and normal operation
 
 - **Benefits of this Architecture**:
 
@@ -226,8 +261,11 @@ By following these patterns consistently, direct functions will properly manage 
     - **Mocking Support**: The clear dependency boundaries make mocking straightforward
     - **Test Isolation**: Each component can be tested without affecting others
     - **Callback Testing**: Function callbacks can be extracted and tested independently
+    - **Multi-Context Testing**: Tagged system enables testing different task contexts independently
   - **Reusability**: Utility functions and UI components can be reused across different parts of the application.
   - **Scalability**:  New features can be added as new modules or by extending existing ones without significantly impacting other parts of the application.
+  - **Multi-Context Support**: Tagged task lists enable working across different contexts (branches, environments, phases) without conflicts.
+  - **Backward Compatibility**: Seamless migration and tag resolution ensure existing workflows continue unchanged.
   - **Clarity**: The modular structure provides a clear separation of concerns, making the codebase easier to navigate and understand for developers.
 
 This architectural overview should help AI models understand the structure and organization of the Task Master CLI codebase, enabling them to more effectively assist with code generation, modification, and understanding.
@@ -249,6 +287,7 @@ Follow these steps to add MCP support for an existing Task Master command (see [
         - Call core logic.
         - Return `{ success: true/false, data/error, fromCache: boolean }`.
     - Export the wrapper function.
+    - **Note**: Tag-aware MCP tools are fully implemented with complete tag management support.
 
 3.  **Update `task-master-core.js` with Import/Export**: Add imports/exports for the new `*Direct` function.
 
@@ -275,12 +314,8 @@ The `initialize_project` command provides a way to set up a new Task Master proj
 - **MCP Tool**: `initialize_project`
 - **Functionality**:
   - Creates necessary directories and files for a new project
-  - Sets up `tasks.json` and initial task files
+  - Sets up `tasks.json` with tagged structure and initial task files
   - Configures project metadata (name, description, version)
-  - Handles shell alias creation if requested
-  - Works in both interactive and non-interactive modes
-  - Creates necessary directories and files for a new project
-  - Sets up `tasks.json` and initial task files
-  - Configures project metadata (name, description, version)
+  - Initializes state.json for tag system
   - Handles shell alias creation if requested
   - Works in both interactive and non-interactive modes

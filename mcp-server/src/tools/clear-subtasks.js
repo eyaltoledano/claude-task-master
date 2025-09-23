@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the clearSubtasks tool with the MCP server
@@ -35,7 +36,8 @@ export function registerClearSubtasksTool(server) {
 					),
 				projectRoot: z
 					.string()
-					.describe('The directory of the project. Must be an absolute path.')
+					.describe('The directory of the project. Must be an absolute path.'),
+				tag: z.string().optional().describe('Tag context to operate on')
 			})
 			.refine((data) => data.id || data.all, {
 				message: "Either 'id' or 'all' parameter must be provided",
@@ -45,10 +47,15 @@ export function registerClearSubtasksTool(server) {
 			try {
 				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -63,9 +70,13 @@ export function registerClearSubtasksTool(server) {
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
-						all: args.all
+						all: args.all,
+
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -74,7 +85,13 @@ export function registerClearSubtasksTool(server) {
 					log.error(`Failed to clear subtasks: ${result.error.message}`);
 				}
 
-				return handleApiResult(result, log, 'Error clearing subtasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error clearing subtasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);

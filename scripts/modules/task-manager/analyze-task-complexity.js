@@ -3,7 +3,7 @@ import boxen from 'boxen';
 import readline from 'readline';
 import fs from 'fs';
 
-import { log, readJSON, writeJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, isSilentMode } from '../utils.js';
 
 import {
 	startLoadingIndicator,
@@ -13,20 +13,44 @@ import {
 
 import { generateTextService } from '../ai-services-unified.js';
 
-import { getDebugFlag, getProjectName } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getProjectName,
+	hasCodebaseAnalysis
+} from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import {
+	COMPLEXITY_REPORT_FILE,
+	LEGACY_TASKS_FILE
+} from '../../../src/constants/paths.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { flattenTasksWithSubtasks } from '../utils.js';
 
 /**
  * Generates the prompt for complexity analysis.
  * (Moved from ai-services.js and simplified)
  * @param {Object} tasksData - The tasks data object.
+ * @param {string} [gatheredContext] - The gathered context for the analysis.
  * @returns {string} The generated prompt.
  */
-function generateInternalComplexityAnalysisPrompt(tasksData) {
+function generateInternalComplexityAnalysisPrompt(
+	tasksData,
+	gatheredContext = ''
+) {
 	const tasksString = JSON.stringify(tasksData.tasks, null, 2);
-	return `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
+	let prompt = `Analyze the following tasks to determine their complexity (1-10 scale) and recommend the number of subtasks for expansion. Provide a brief reasoning and an initial expansion prompt for each.
 
 Tasks:
-${tasksString}
+${tasksString}`;
+
+	if (gatheredContext) {
+		prompt += `\n\n# Project Context\n\n${gatheredContext}`;
+	}
+
+	prompt += `
 
 Respond ONLY with a valid JSON array matching the schema:
 [
@@ -42,6 +66,7 @@ Respond ONLY with a valid JSON array matching the schema:
 ]
 
 Do not include any explanatory text, markdown formatting, or code block markers before or after the JSON array.`;
+	return prompt;
 }
 
 /**
@@ -52,6 +77,7 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  * @param {string|number} [options.threshold] - Complexity threshold
  * @param {boolean} [options.research] - Use research role
  * @param {string} [options.projectRoot] - Project root path (for MCP/env fallback).
+ * @param {string} [options.tag] - Tag for the task
  * @param {string} [options.id] - Comma-separated list of task IDs to analyze specifically
  * @param {number} [options.from] - Starting task ID in a range to analyze
  * @param {number} [options.to] - Ending task ID in a range to analyze
@@ -64,17 +90,17 @@ Do not include any explanatory text, markdown formatting, or code block markers 
  */
 async function analyzeTaskComplexity(options, context = {}) {
 	const { session, mcpLog } = context;
-	const tasksPath = options.file || 'tasks/tasks.json';
-	const outputPath = options.output || 'scripts/task-complexity-report.json';
+	const tasksPath = options.file || LEGACY_TASKS_FILE;
 	const thresholdScore = parseFloat(options.threshold || '5');
 	const useResearch = options.research || false;
 	const projectRoot = options.projectRoot;
+	const tag = options.tag;
 	// New parameters for task ID filtering
 	const specificIds = options.id
 		? options.id
 				.split(',')
 				.map((id) => parseInt(id.trim(), 10))
-				.filter((id) => !isNaN(id))
+				.filter((id) => !Number.isNaN(id))
 		: null;
 	const fromId = options.from !== undefined ? parseInt(options.from, 10) : null;
 	const toId = options.to !== undefined ? parseInt(options.to, 10) : null;
@@ -89,10 +115,17 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 	};
 
+	// Resolve output path using tag-aware resolution
+	const outputPath = resolveComplexityReportOutputPath(
+		options.output,
+		{ projectRoot, tag },
+		reportLog
+	);
+
 	if (outputFormat === 'text') {
 		console.log(
 			chalk.blue(
-				`Analyzing task complexity and generating expansion recommendations...`
+				'Analyzing task complexity and generating expansion recommendations...'
 			)
 		);
 	}
@@ -108,7 +141,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			originalTaskCount = options._originalTaskCount || tasksData.tasks.length;
 			if (!options._originalTaskCount) {
 				try {
-					originalData = readJSON(tasksPath);
+					originalData = readJSON(tasksPath, projectRoot, tag);
 					if (originalData && originalData.tasks) {
 						originalTaskCount = originalData.tasks.length;
 					}
@@ -117,7 +150,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 		} else {
-			originalData = readJSON(tasksPath);
+			originalData = readJSON(tasksPath, projectRoot, tag);
 			if (
 				!originalData ||
 				!originalData.tasks ||
@@ -196,6 +229,41 @@ async function analyzeTaskComplexity(options, context = {}) {
 			};
 		}
 
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		if (originalData && originalData.tasks.length > 0) {
+			try {
+				const contextGatherer = new ContextGatherer(projectRoot, tag);
+				const allTasksFlat = flattenTasksWithSubtasks(originalData.tasks);
+				const fuzzySearch = new FuzzyTaskSearch(
+					allTasksFlat,
+					'analyze-complexity'
+				);
+				// Create a query from the tasks being analyzed
+				const searchQuery = tasksData.tasks
+					.map((t) => `${t.title} ${t.description}`)
+					.join(' ');
+				const searchResults = fuzzySearch.findRelevantTasks(searchQuery, {
+					maxResults: 10
+				});
+				const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+				if (relevantTaskIds.length > 0) {
+					const contextResult = await contextGatherer.gather({
+						tasks: relevantTaskIds,
+						format: 'research'
+					});
+					gatheredContext = contextResult.context || '';
+				}
+			} catch (contextError) {
+				reportLog(
+					`Could not gather additional context: ${contextError.message}`,
+					'warn'
+				);
+			}
+		}
+		// --- End Context Gathering ---
+
 		const skippedCount = originalTaskCount - tasksData.tasks.length;
 		reportLog(
 			`Found ${originalTaskCount} total tasks in the task file.`,
@@ -222,10 +290,10 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 		// Check for existing report before doing analysis
 		let existingReport = null;
-		let existingAnalysisMap = new Map(); // For quick lookups by task ID
+		const existingAnalysisMap = new Map(); // For quick lookups by task ID
 		try {
 			if (fs.existsSync(outputPath)) {
-				existingReport = readJSON(outputPath);
+				existingReport = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 				reportLog(`Found existing complexity report at ${outputPath}`, 'info');
 
 				if (
@@ -256,13 +324,13 @@ async function analyzeTaskComplexity(options, context = {}) {
 			// If using ID filtering but no matching tasks, return existing report or empty
 			if (existingReport && (specificIds || fromId !== null || toId !== null)) {
 				reportLog(
-					`No matching tasks found for analysis. Keeping existing report.`,
+					'No matching tasks found for analysis. Keeping existing report.',
 					'info'
 				);
 				if (outputFormat === 'text') {
 					console.log(
 						chalk.yellow(
-							`No matching tasks found for analysis. Keeping existing report.`
+							'No matching tasks found for analysis. Keeping existing report.'
 						)
 					);
 				}
@@ -284,7 +352,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: existingReport?.complexityAnalysis || []
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
-			writeJSON(outputPath, emptyReport);
+			fs.writeFileSync(
+				outputPath,
+				JSON.stringify(emptyReport, null, '\t'),
+				'utf8'
+			);
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
 				'success'
@@ -338,9 +410,28 @@ async function analyzeTaskComplexity(options, context = {}) {
 		}
 
 		// Continue with regular analysis path
-		const prompt = generateInternalComplexityAnalysisPrompt(tasksData);
-		const systemPrompt =
-			'You are an expert software architect and project manager analyzing task complexity. Respond only with the requested valid JSON array.';
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
+
+		// Check if Claude Code is being used as the provider
+
+		const promptParams = {
+			tasks: tasksData.tasks,
+			gatheredContext: gatheredContext || '',
+			useResearch: useResearch,
+			hasCodebaseAnalysis: hasCodebaseAnalysis(
+				useResearch,
+				projectRoot,
+				session
+			),
+			projectRoot: projectRoot || ''
+		};
+
+		const { systemPrompt, userPrompt: prompt } = await promptManager.loadPrompt(
+			'analyze-complexity',
+			promptParams,
+			'default'
+		);
 
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
@@ -377,7 +468,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				);
 			}
 
-			reportLog(`Parsing complexity analysis from text response...`, 'info');
+			reportLog('Parsing complexity analysis from text response...', 'info');
 			try {
 				let cleanedResponse = aiServiceResponse.mainResult;
 				cleanedResponse = cleanedResponse.trim();
@@ -465,7 +556,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 
-			// Merge with existing report
+			// Merge with existing report - only keep entries from the current tag
 			let finalComplexityAnalysis = [];
 
 			if (existingReport && Array.isArray(existingReport.complexityAnalysis)) {
@@ -474,10 +565,14 @@ async function analyzeTaskComplexity(options, context = {}) {
 					complexityAnalysis.map((item) => item.taskId)
 				);
 
-				// Keep existing entries that weren't in this analysis run
+				// Keep existing entries that weren't in this analysis run AND belong to the current tag
+				// We determine tag membership by checking if the task ID exists in the current tag's tasks
+				const currentTagTaskIds = new Set(tasksData.tasks.map((t) => t.id));
 				const existingEntriesNotAnalyzed =
 					existingReport.complexityAnalysis.filter(
-						(item) => !analyzedTaskIds.has(item.taskId)
+						(item) =>
+							!analyzedTaskIds.has(item.taskId) &&
+							currentTagTaskIds.has(item.taskId) // Only keep entries for tasks in current tag
 					);
 
 				// Combine with new analysis
@@ -487,7 +582,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				];
 
 				reportLog(
-					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`,
+					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries from current tag`,
 					'info'
 				);
 			} else {
@@ -508,7 +603,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				complexityAnalysis: finalComplexityAnalysis
 			};
 			reportLog(`Writing complexity report to ${outputPath}...`, 'info');
-			writeJSON(outputPath, report);
+			fs.writeFileSync(outputPath, JSON.stringify(report, null, '\t'), 'utf8');
 
 			reportLog(
 				`Task complexity analysis complete. Report written to ${outputPath}`,
@@ -588,7 +683,8 @@ async function analyzeTaskComplexity(options, context = {}) {
 
 			return {
 				report: report,
-				telemetryData: aiServiceResponse?.telemetryData
+				telemetryData: aiServiceResponse?.telemetryData,
+				tagInfo: aiServiceResponse?.tagInfo
 			};
 		} catch (aiError) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

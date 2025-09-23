@@ -133,7 +133,7 @@ jest.mock('../../../scripts/modules/utils.js', () => ({
 	readComplexityReport: mockReadComplexityReport,
 	CONFIG: {
 		model: 'claude-3-7-sonnet-20250219',
-		maxTokens: 64000,
+		maxTokens: 8192,
 		temperature: 0.2,
 		defaultSubtasks: 5
 	}
@@ -253,8 +253,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'FILE_NOT_FOUND_ERROR',
 						message: 'Tasks file not found'
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -288,8 +287,7 @@ describe('MCP Server Direct Functions', () => {
 								.length,
 							pending: tasksData.filter((t) => t.status === 'pending').length
 						}
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -305,8 +303,7 @@ describe('MCP Server Direct Functions', () => {
 							total: tasksData.length,
 							filtered: filteredTasks.length
 						}
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -320,8 +317,7 @@ describe('MCP Server Direct Functions', () => {
 						stats: {
 							total: tasksData.length
 						}
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -441,8 +437,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'INPUT_VALIDATION_ERROR',
 						message: 'Task ID is required'
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -454,8 +449,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'TASK_NOT_FOUND',
 						message: `Task with ID ${args.id} not found`
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -469,8 +463,7 @@ describe('MCP Server Direct Functions', () => {
 					error: {
 						code: 'TASK_COMPLETED',
 						message: `Task ${args.id} is already marked as done and cannot be expanded`
-					},
-					fromCache: false
+					}
 				};
 			}
 
@@ -495,8 +488,7 @@ describe('MCP Server Direct Functions', () => {
 					task: expandedTask,
 					subtasksAdded: expandedTask.subtasks.length,
 					hasExistingSubtasks: false
-				},
-				fromCache: false
+				}
 			};
 		}
 
@@ -633,19 +625,38 @@ describe('MCP Server Direct Functions', () => {
 			// For successful cases, record that functions were called but don't make real calls
 			mockEnableSilentMode();
 
-			// Mock expandAllTasks
+			// Mock expandAllTasks - now returns a structured object instead of undefined
 			const mockExpandAll = jest.fn().mockImplementation(async () => {
-				// Just simulate success without any real operations
-				return undefined; // expandAllTasks doesn't return anything
+				// Return the new structured response that matches the actual implementation
+				return {
+					success: true,
+					expandedCount: 2,
+					failedCount: 0,
+					skippedCount: 1,
+					tasksToExpand: 3,
+					telemetryData: {
+						timestamp: new Date().toISOString(),
+						commandName: 'expand-all-tasks',
+						totalCost: 0.05,
+						totalTokens: 1000,
+						inputTokens: 600,
+						outputTokens: 400
+					}
+				};
 			});
 
-			// Call mock expandAllTasks
-			await mockExpandAll(
-				args.num,
-				args.research || false,
-				args.prompt || '',
-				args.force || false,
-				{ mcpLog: mockLogger, session: options.session }
+			// Call mock expandAllTasks with the correct signature
+			const result = await mockExpandAll(
+				args.file, // tasksPath
+				args.num, // numSubtasks
+				args.research || false, // useResearch
+				args.prompt || '', // additionalContext
+				args.force || false, // force
+				{
+					mcpLog: mockLogger,
+					session: options.session,
+					projectRoot: args.projectRoot
+				}
 			);
 
 			mockDisableSilentMode();
@@ -653,13 +664,14 @@ describe('MCP Server Direct Functions', () => {
 			return {
 				success: true,
 				data: {
-					message: 'Successfully expanded all pending tasks with subtasks',
+					message: `Expand all operation completed. Expanded: ${result.expandedCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}`,
 					details: {
-						numSubtasks: args.num,
-						research: args.research || false,
-						prompt: args.prompt || '',
-						force: args.force || false
-					}
+						expandedCount: result.expandedCount,
+						failedCount: result.failedCount,
+						skippedCount: result.skippedCount,
+						tasksToExpand: result.tasksToExpand
+					},
+					telemetryData: result.telemetryData
 				}
 			};
 		}
@@ -679,10 +691,13 @@ describe('MCP Server Direct Functions', () => {
 
 			// Assert
 			expect(result.success).toBe(true);
-			expect(result.data.message).toBe(
-				'Successfully expanded all pending tasks with subtasks'
-			);
-			expect(result.data.details.numSubtasks).toBe(3);
+			expect(result.data.message).toMatch(/Expand all operation completed/);
+			expect(result.data.details.expandedCount).toBe(2);
+			expect(result.data.details.failedCount).toBe(0);
+			expect(result.data.details.skippedCount).toBe(1);
+			expect(result.data.details.tasksToExpand).toBe(3);
+			expect(result.data.telemetryData).toBeDefined();
+			expect(result.data.telemetryData.commandName).toBe('expand-all-tasks');
 			expect(mockEnableSilentMode).toHaveBeenCalled();
 			expect(mockDisableSilentMode).toHaveBeenCalled();
 		});
@@ -703,7 +718,8 @@ describe('MCP Server Direct Functions', () => {
 
 			// Assert
 			expect(result.success).toBe(true);
-			expect(result.data.details.research).toBe(true);
+			expect(result.data.details.expandedCount).toBe(2);
+			expect(result.data.telemetryData).toBeDefined();
 			expect(mockEnableSilentMode).toHaveBeenCalled();
 			expect(mockDisableSilentMode).toHaveBeenCalled();
 		});
@@ -723,7 +739,8 @@ describe('MCP Server Direct Functions', () => {
 
 			// Assert
 			expect(result.success).toBe(true);
-			expect(result.data.details.force).toBe(true);
+			expect(result.data.details.expandedCount).toBe(2);
+			expect(result.data.telemetryData).toBeDefined();
 			expect(mockEnableSilentMode).toHaveBeenCalled();
 			expect(mockDisableSilentMode).toHaveBeenCalled();
 		});
@@ -743,11 +760,77 @@ describe('MCP Server Direct Functions', () => {
 
 			// Assert
 			expect(result.success).toBe(true);
-			expect(result.data.details.prompt).toBe(
-				'Additional context for subtasks'
-			);
+			expect(result.data.details.expandedCount).toBe(2);
+			expect(result.data.telemetryData).toBeDefined();
 			expect(mockEnableSilentMode).toHaveBeenCalled();
 			expect(mockDisableSilentMode).toHaveBeenCalled();
+		});
+
+		test('should handle case with no eligible tasks', async () => {
+			// Arrange
+			const args = {
+				projectRoot: testProjectRoot,
+				file: testTasksPath,
+				num: 3
+			};
+
+			// Act - Mock the scenario where no tasks are eligible for expansion
+			async function testNoEligibleTasks(args, mockLogger, options = {}) {
+				mockEnableSilentMode();
+
+				const mockExpandAll = jest.fn().mockImplementation(async () => {
+					return {
+						success: true,
+						expandedCount: 0,
+						failedCount: 0,
+						skippedCount: 0,
+						tasksToExpand: 0,
+						telemetryData: null,
+						message: 'No tasks eligible for expansion.'
+					};
+				});
+
+				const result = await mockExpandAll(
+					args.file,
+					args.num,
+					false,
+					'',
+					false,
+					{
+						mcpLog: mockLogger,
+						session: options.session,
+						projectRoot: args.projectRoot
+					},
+					'json'
+				);
+
+				mockDisableSilentMode();
+
+				return {
+					success: true,
+					data: {
+						message: result.message,
+						details: {
+							expandedCount: result.expandedCount,
+							failedCount: result.failedCount,
+							skippedCount: result.skippedCount,
+							tasksToExpand: result.tasksToExpand
+						},
+						telemetryData: result.telemetryData
+					}
+				};
+			}
+
+			const result = await testNoEligibleTasks(args, mockLogger, {
+				session: mockSession
+			});
+
+			// Assert
+			expect(result.success).toBe(true);
+			expect(result.data.message).toBe('No tasks eligible for expansion.');
+			expect(result.data.details.expandedCount).toBe(0);
+			expect(result.data.details.tasksToExpand).toBe(0);
+			expect(result.data.telemetryData).toBeNull();
 		});
 	});
 });

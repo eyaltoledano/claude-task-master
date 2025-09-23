@@ -1,0 +1,91 @@
+<context>
+# Overview
+Add a new CLI command: `task-master start <task_id>` (alias: `tm start <task_id>`). This command hard-codes `claude-code` as the executor, fetches task details, builds a standardized prompt, runs claude-code, shows the result, checks for git changes, and auto-marks the task as done if successful.
+
+We follow the Commander class pattern, reuse task retrieval from `show` command flow. Extremely minimal for 1-hour hackathon timeline.
+
+# Core Features
+- `start` command (Commander class style) 
+- Hard-coded executor: `claude-code`
+- Standardized prompt designed for minimal changes following existing patterns
+- Shows claude-code output (no streaming)
+- Git status check for success detection
+- Auto-mark task done if successful
+
+# User Experience
+```
+task-master start 12
+```
+1) Fetches Task #12 details
+2) Builds standardized prompt with task context
+3) Runs claude-code with the prompt
+4) Shows output
+5) Checks git status for changes
+6) Auto-marks task done if changes detected
+</context>
+
+<PRD>
+# Technical Architecture
+
+- Command pattern:
+  - Create `apps/cli/src/commands/start.command.ts` modeled on [list.command.ts](mdc:apps/cli/src/commands/list.command.ts) and task lookup from [show.command.ts](mdc:apps/cli/src/commands/show.command.ts)
+
+- Task retrieval:
+  - Use `@tm/core` via `createTaskMasterCore` to get task by ID
+  - Extract: id, title, description, details
+
+- Executor (ultra-simple approach):
+  - Execute `claude "full prompt here"` command directly
+  - The prompt tells Claude to first run `tm show <task_id>` to get task details
+  - Then tells Claude to implement the code changes
+  - This opens Claude CLI interface naturally in the current terminal
+  - No subprocess management needed - just execute the command
+
+- Execution flow:
+  1) Validate `<task_id>` exists; exit with error if not
+  2) Build standardized prompt that includes instructions to run `tm show <task_id>`
+  3) Execute `claude "prompt"` command directly in terminal
+  4) Claude CLI opens, runs `tm show`, then implements changes
+  5) After Claude session ends, run `git status --porcelain` to detect changes
+  6) If changes detected, auto-run `task-master set-status --id=<task_id> --status=done`
+
+- Success criteria:
+  - Success = exit code 0 AND git shows modified/created files
+  - Print changed file paths; warn if no changes detected
+
+# Development Roadmap
+
+MVP (ship in ~1 hour):
+1) Implement `start.command.ts` (Commander class), parse `<task_id>`
+2) Validate task exists via tm-core 
+3) Build prompt that tells Claude to run `tm show <task_id>` then implement
+4) Execute `claude "prompt"` command, then check git status and auto-mark done
+
+# Risks and Mitigations
+- Executor availability: Error clearly if `claude-code` provider fails
+- False success: Git-change heuristic acceptable for hackathon MVP
+
+# Appendix
+
+**Standardized Prompt Template:**
+```
+You are an AI coding assistant with access to this repository's codebase.
+
+First, run this command to get the task details:
+tm show <task_id>
+
+Then implement the task with these requirements:
+- Make the SMALLEST number of code changes possible
+- Follow ALL existing patterns in the codebase (you have access to analyze the code)
+- Do NOT over-engineer the solution
+- Use existing files/functions/patterns wherever possible
+- When complete, print: COMPLETED: <brief summary of changes>
+
+Begin by running tm show <task_id> to understand what needs to be implemented.
+```
+
+**Key References:**
+- [list.command.ts](mdc:apps/cli/src/commands/list.command.ts) - Command structure
+- [show.command.ts](mdc:apps/cli/src/commands/show.command.ts) - Task validation
+- Node.js `child_process.exec()` - For executing `claude "prompt"` command
+</PRD>

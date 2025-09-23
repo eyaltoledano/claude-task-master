@@ -7,11 +7,11 @@ import { z } from 'zod';
 import {
 	handleApiResult,
 	createErrorResponse,
-	getProjectRootFromSession,
 	withNormalizedProjectRoot
 } from './utils.js';
 import { addDependencyDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the addDependency tool with the MCP server
@@ -41,17 +41,21 @@ export function registerAddDependencyTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(
 					`Adding dependency for task ${args.id} to depend on ${args.dependsOn}`
 				);
-
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -69,7 +73,9 @@ export function registerAddDependencyTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						// Pass other relevant args
 						id: args.id,
-						dependsOn: args.dependsOn
+						dependsOn: args.dependsOn,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log
 					// Remove context object
@@ -83,7 +89,13 @@ export function registerAddDependencyTool(server) {
 				}
 
 				// Use handleApiResult to format the response
-				return handleApiResult(result, log, 'Error adding dependency');
+				return handleApiResult(
+					result,
+					log,
+					'Error adding dependency',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in addDependency tool: ${error.message}`);
 				return createErrorResponse(error.message);

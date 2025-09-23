@@ -4,7 +4,7 @@
  */
 
 import { findTaskById } from './utils.js';
-import parsePRD from './task-manager/parse-prd.js';
+import parsePRD from './task-manager/parse-prd/index.js';
 import updateTasks from './task-manager/update-tasks.js';
 import updateTaskById from './task-manager/update-task-by-id.js';
 import generateTaskFiles from './task-manager/generate-task-files.js';
@@ -23,8 +23,17 @@ import updateSubtaskById from './task-manager/update-subtask-by-id.js';
 import removeTask from './task-manager/remove-task.js';
 import taskExists from './task-manager/task-exists.js';
 import isTaskDependentOn from './task-manager/is-task-dependent.js';
+import setResponseLanguage from './task-manager/response-language.js';
 import moveTask from './task-manager/move-task.js';
+import { migrateProject } from './task-manager/migrate.js';
+import { performResearch } from './task-manager/research.js';
 import { readComplexityReport } from './utils.js';
+import {
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
+} from './task-manager/scope-adjustment.js';
+
 // Export task manager functions
 export {
 	parsePRD,
@@ -47,6 +56,12 @@ export {
 	findTaskById,
 	taskExists,
 	isTaskDependentOn,
+	setResponseLanguage,
 	moveTask,
-	readComplexityReport
+	readComplexityReport,
+	migrateProject,
+	performResearch,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 };

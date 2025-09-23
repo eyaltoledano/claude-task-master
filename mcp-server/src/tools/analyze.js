@@ -12,7 +12,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -41,7 +44,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Output file path relative to project root (default: scripts/task-complexity-report.json).'
+					`Output file path relative to project root (default: ${COMPLEXITY_REPORT_FILE}).`
 				),
 			file: z
 				.string()
@@ -69,18 +72,25 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('Ending task ID in a range to analyze.'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'analyze_project_complexity'; // Define tool name for logging
+
 			try {
 				log.info(
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -92,13 +102,14 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					);
 				}
 
-				const outputPath = args.output
-					? path.resolve(args.projectRoot, args.output)
-					: path.resolve(
-							args.projectRoot,
-							'scripts',
-							'task-complexity-report.json'
-						);
+				const outputPath = resolveComplexityReportOutputPath(
+					args.output,
+					{
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
+					},
+					log
+				);
 
 				log.info(`${toolName}: Report output path: ${outputPath}`);
 
@@ -126,6 +137,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 						threshold: args.threshold,
 						research: args.research,
 						projectRoot: args.projectRoot,
+						tag: resolvedTag,
 						ids: args.ids,
 						from: args.from,
 						to: args.to
@@ -138,7 +150,13 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				return handleApiResult(result, log, 'Error analyzing task complexity');
+				return handleApiResult(
+					result,
+					log,
+					'Error analyzing task complexity',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the update-task tool with the MCP server
@@ -34,21 +35,32 @@ export function registerUpdateTaskTool(server) {
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
+			append: z
+				.boolean()
+				.optional()
+				.describe(
+					'Append timestamped information to task details instead of full update'
+				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_task';
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(
 					`Executing ${toolName} tool with args: ${JSON.stringify(args)}`
 				);
 
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -67,7 +79,9 @@ export function registerUpdateTaskTool(server) {
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						projectRoot: args.projectRoot
+						append: args.append,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }
@@ -77,7 +91,13 @@ export function registerUpdateTaskTool(server) {
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				return handleApiResult(result, log, 'Error updating task');
+				return handleApiResult(
+					result,
+					log,
+					'Error updating task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "[TM] Task Dependency Auto-Progression",
+  "description": "Automatically progress tasks when dependencies are completed",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".taskmaster/tasks/tasks.json",
+      ".taskmaster/tasks/*.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check the tasks.json file for any tasks that just changed status to 'done'. For each completed task:\n\n1. Find all tasks that depend on it\n2. Check if those dependent tasks now have all their dependencies satisfied\n3. If a task has all dependencies met and is still 'pending', use the command 'tm set-status --id=<task_id> --status=in-progress' to start it\n4. Show me which tasks were auto-started and why"
+  }
+}

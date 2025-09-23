@@ -15,13 +15,19 @@ import {
  * Direct function wrapper for updating tasks based on new context.
  *
  * @param {Object} args - Command arguments containing projectRoot, from, prompt, research options.
+ * @param {string} args.from - The ID of the task to update.
+ * @param {string} args.prompt - The prompt to update the task with.
+ * @param {boolean} args.research - Whether to use research mode.
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function updateTasksDirect(args, log, context = {}) {
 	const { session } = context;
-	const { from, prompt, research, file: fileArg, projectRoot } = args;
+	const { from, prompt, research, tasksJsonPath, projectRoot, tag } = args;
 
 	// Create the standard logger wrapper
 	const logWrapper = createLogWrapper(log);
@@ -60,27 +66,23 @@ export async function updateTasksDirect(args, log, context = {}) {
 		};
 	}
 
-	// Resolve tasks file path
-	const tasksFile = fileArg
-		? path.resolve(projectRoot, fileArg)
-		: path.resolve(projectRoot, 'tasks', 'tasks.json');
-
 	logWrapper.info(
-		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksFile}, ProjectRoot: ${projectRoot}`
+		`Updating tasks via direct function. From: ${from}, Research: ${research}, File: ${tasksJsonPath}, ProjectRoot: ${projectRoot}`
 	);
 
 	enableSilentMode(); // Enable silent mode
 	try {
 		// Call the core updateTasks function
 		const result = await updateTasks(
-			tasksFile,
+			tasksJsonPath,
 			from,
 			prompt,
 			research,
 			{
 				session,
 				mcpLog: logWrapper,
-				projectRoot
+				projectRoot,
+				tag
 			},
 			'json'
 		);
@@ -93,9 +95,10 @@ export async function updateTasksDirect(args, log, context = {}) {
 				success: true,
 				data: {
 					message: `Successfully updated ${result.updatedTasks.length} tasks.`,
-					tasksFile,
+					tasksPath: tasksJsonPath,
 					updatedCount: result.updatedTasks.length,
-					telemetryData: result.telemetryData
+					telemetryData: result.telemetryData,
+					tagInfo: result.tagInfo
 				}
 			};
 		} else {

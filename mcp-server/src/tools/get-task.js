@@ -11,9 +11,10 @@ import {
 } from './utils.js';
 import { showTaskDirect } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
+	findTasksPath,
 	findComplexityReportPath
 } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Custom processor function that removes allTasks from the response
@@ -44,7 +45,11 @@ export function registerShowTaskTool(server) {
 		name: 'get_task',
 		description: 'Get detailed information about a specific task',
 		parameters: z.object({
-			id: z.string().describe('Task ID to get'),
+			id: z
+				.string()
+				.describe(
+					'Task ID(s) to get (can be comma-separated for multiple tasks)'
+				),
 			status: z
 				.string()
 				.optional()
@@ -61,23 +66,27 @@ export function registerShowTaskTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.optional()
 				.describe(
 					'Absolute path to the project root directory (Optional, usually from session)'
-				)
+				),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const { id, file, status, projectRoot } = args;
 
 			try {
 				log.info(
 					`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${projectRoot}`
 				);
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 
 				// Resolve the path to tasks.json using the NORMALIZED projectRoot from args
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: projectRoot, file: file },
 						log
 					);
@@ -94,8 +103,11 @@ export function registerShowTaskTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						projectRoot,
-						args.complexityReport,
+						{
+							projectRoot: projectRoot,
+							complexityReport: args.complexityReport,
+							tag: resolvedTag
+						},
 						log
 					);
 				} catch (error) {
@@ -108,15 +120,15 @@ export function registerShowTaskTool(server) {
 						// Pass other relevant args
 						id: id,
 						status: status,
-						projectRoot: projectRoot
+						projectRoot: projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
-					log.info(
-						`Successfully retrieved task details for ID: ${args.id}${result.fromCache ? ' (from cache)' : ''}`
-					);
+					log.info(`Successfully retrieved task details for ID: ${args.id}`);
 				} else {
 					log.error(`Failed to get task: ${result.error.message}`);
 				}
@@ -126,7 +138,8 @@ export function registerShowTaskTool(server) {
 					result,
 					log,
 					'Error retrieving task details',
-					processTaskResponse
+					processTaskResponse,
+					projectRoot
 				);
 			} catch (error) {
 				log.error(`Error in get-task tool: ${error.message}\n${error.stack}`);

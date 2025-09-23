@@ -329,6 +329,60 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   };
   ```
 
+## Context-Aware Command Pattern
+
+For AI-powered commands that benefit from project context, follow the research command pattern:
+
+- **Context Integration**:
+  - ✅ DO: Use `ContextGatherer` utility for multi-source context extraction
+  - ✅ DO: Support task IDs, file paths, custom context, and project tree
+  - ✅ DO: Implement fuzzy search for automatic task discovery
+  - ✅ DO: Display detailed token breakdown for transparency
+
+  ```javascript
+  // ✅ DO: Follow this pattern for context-aware commands
+  programInstance
+    .command('research')
+    .description('Perform AI-powered research queries with project context')
+    .argument('<prompt>', 'Research prompt to investigate')
+    .option('-i, --id <ids>', 'Comma-separated task/subtask IDs to include as context')
+    .option('-f, --files <paths>', 'Comma-separated file paths to include as context')
+    .option('-c, --context <text>', 'Additional custom context')
+    .option('--tree', 'Include project file tree structure')
+    .option('-d, --detail <level>', 'Output detail level: low, medium, high', 'medium')
+    .action(async (prompt, options) => {
+      // 1. Parameter validation and parsing
+      const taskIds = options.id ? parseTaskIds(options.id) : [];
+      const filePaths = options.files ? parseFilePaths(options.files) : [];
+      
+      // 2. Initialize context gatherer
+      const projectRoot = findProjectRoot() || '.';
+      const gatherer = new ContextGatherer(projectRoot, tasksPath);
+      
+      // 3. Auto-discover relevant tasks if none specified
+      if (taskIds.length === 0) {
+        const fuzzySearch = new FuzzyTaskSearch(tasksData.tasks, 'research');
+        const discoveredIds = fuzzySearch.getTaskIds(
+          fuzzySearch.findRelevantTasks(prompt)
+        );
+        taskIds.push(...discoveredIds);
+      }
+      
+      // 4. Gather context with token breakdown
+      const contextResult = await gatherer.gather({
+        tasks: taskIds,
+        files: filePaths,
+        customContext: options.context,
+        includeProjectTree: options.projectTree,
+        format: 'research',
+        includeTokenCounts: true
+      });
+      
+      // 5. Display token breakdown and execute AI call
+      // Implementation continues...
+    });
+  ```
+
 ## Error Handling
 
 - **Exception Management**:
@@ -469,7 +523,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     .option('--details <details>', 'Implementation details for the new subtask, optional')
     .option('--dependencies <ids>', 'Comma-separated list of subtask IDs this subtask depends on')
     .option('--status <status>', 'Initial status for the subtask', 'pending')
-    .option('--skip-generate', 'Skip regenerating task files')
+    .option('--generate', 'Regenerate task files after adding subtask')
     .action(async (options) => {
       // Validate required parameters
       if (!options.parent) {
@@ -491,7 +545,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     .option('-f, --file <path>', 'Path to the tasks file', 'tasks/tasks.json')
     .option('-i, --id <id>', 'ID of the subtask to remove in format parentId.subtaskId, required')
     .option('-c, --convert', 'Convert the subtask to a standalone task instead of deleting')
-    .option('--skip-generate', 'Skip regenerating task files')
+    .option('--generate', 'Regenerate task files after removing subtask')
     .action(async (options) => {
       // Implementation with detailed error handling
     })
@@ -579,11 +633,11 @@ function showAddSubtaskHelp() {
     '  --dependencies <ids>      Comma-separated list of dependency IDs\n' +
     '  -s, --status <status>     Status for the new subtask (default: "pending")\n' +
     '  -f, --file <file>         Path to the tasks file (default: "tasks/tasks.json")\n' +
-    '  --skip-generate           Skip regenerating task files\n\n' +
+    '  --generate                Regenerate task files after adding subtask\n\n' +
     chalk.cyan('Examples:') + '\n' +
     '  task-master add-subtask --parent=\'5\' --task-id=\'8\'\n' +
     '  task-master add-subtask -p \'5\' -t \'Implement login UI\' -d \'Create the login form\'\n' +
-    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details $\'Handle 401 Unauthorized.\nHandle 500 Server Error.\'',
+    '  task-master add-subtask -p \'5\' -t \'Handle API Errors\' --details "Handle 401 Unauthorized.\\nHandle 500 Server Error." --generate',
     { padding: 1, borderColor: 'blue', borderStyle: 'round' }
   ));
 }
@@ -598,7 +652,7 @@ function showRemoveSubtaskHelp() {
     '  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
     '  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
     '  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
-    '  --skip-generate     Skip regenerating task files\n\n' +
+    '  --generate          Regenerate task files after removing subtask\n\n' +
     chalk.cyan('Examples:') + '\n' +
     '  task-master remove-subtask --id=\'5.2\'\n' +
     '  task-master remove-subtask --id=\'5.2,6.3,7.1\'\n' +

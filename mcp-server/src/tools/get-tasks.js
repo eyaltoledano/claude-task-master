@@ -11,9 +11,11 @@ import {
 } from './utils.js';
 import { listTasksDirect } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
-	findComplexityReportPath
+	resolveTasksPath,
+	resolveComplexityReportPath
 } from '../core/utils/path-utils.js';
+
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the getTasks tool with the MCP server
@@ -28,7 +30,9 @@ export function registerListTasksTool(server) {
 			status: z
 				.string()
 				.optional()
-				.describe("Filter tasks by status (e.g., 'pending', 'done')"),
+				.describe(
+					"Filter tasks by status (e.g., 'pending', 'done') or multiple statuses separated by commas (e.g., 'blocked,deferred')"
+				),
 			withSubtasks: z
 				.boolean()
 				.optional()
@@ -49,19 +53,21 @@ export function registerListTasksTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Getting tasks with filters: ${JSON.stringify(args)}`);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
+				// Resolve the path to tasks.json using new path utilities
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
-					);
+					tasksJsonPath = resolveTasksPath(args, log);
 				} catch (error) {
 					log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
@@ -72,28 +78,39 @@ export function registerListTasksTool(server) {
 				// Resolve the path to complexity report
 				let complexityReportPath;
 				try {
-					complexityReportPath = findComplexityReportPath(
-						args.projectRoot,
-						args.complexityReport,
-						log
+					complexityReportPath = resolveComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						session
 					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
+					// This is optional, so we don't fail the operation
+					complexityReportPath = null;
 				}
+
 				const result = await listTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						status: args.status,
 						withSubtasks: args.withSubtasks,
-						reportPath: complexityReportPath
+						reportPath: complexityReportPath,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				log.info(
-					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks${result.fromCache ? ' (from cache)' : ''}`
+					`Retrieved ${result.success ? result.data?.tasks?.length || 0 : 0} tasks`
 				);
-				return handleApiResult(result, log, 'Error getting tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error getting tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error getting tasks: ${error.message}`);
 				return createErrorResponse(error.message);

@@ -20,6 +20,8 @@ import {
  * @param {string} [args.status] - Status for new subtask (default: 'pending')
  * @param {string} [args.dependencies] - Comma-separated list of dependency IDs
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
+ * @param {string} [args.projectRoot] - Project root directory
+ * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
@@ -34,7 +36,9 @@ export async function addSubtaskDirect(args, log) {
 		details,
 		status,
 		dependencies: dependenciesStr,
-		skipGenerate
+		skipGenerate,
+		projectRoot,
+		tag
 	} = args;
 	try {
 		log.info(`Adding subtask with args: ${JSON.stringify(args)}`);
@@ -96,6 +100,8 @@ export async function addSubtaskDirect(args, log) {
 		// Enable silent mode to prevent console logs from interfering with JSON response
 		enableSilentMode();
 
+		const context = { projectRoot, tag };
+
 		// Case 1: Convert existing task to subtask
 		if (existingTaskId) {
 			log.info(`Converting task ${existingTaskId} to a subtask of ${parentId}`);
@@ -104,7 +110,8 @@ export async function addSubtaskDirect(args, log) {
 				parentId,
 				existingTaskId,
 				null,
-				generateFiles
+				generateFiles,
+				context
 			);
 
 			// Restore normal logging
@@ -135,7 +142,8 @@ export async function addSubtaskDirect(args, log) {
 				parentId,
 				null,
 				newSubtaskData,
-				generateFiles
+				generateFiles,
+				context
 			);
 
 			// Restore normal logging

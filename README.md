@@ -1,13 +1,77 @@
-# Task Master [![GitHub stars](https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social)](https://github.com/eyaltoledano/claude-task-master/stargazers)
+<a name="readme-top"></a>
 
-[![CI](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg)](https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml) [![npm version](https://badge.fury.io/js/task-master-ai.svg)](https://badge.fury.io/js/task-master-ai) [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat)](https://discord.gg/taskmasterai) [![License: MIT with Commons Clause](https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg)](LICENSE)
+<div align='center'>
+<a href="https://trendshift.io/repositories/13971" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13971" alt="eyaltoledano%2Fclaude-task-master | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</div>
 
-### By [@eyaltoledano](https://x.com/eyaltoledano) & [@RalphEcom](https://x.com/RalphEcom)
+<p align="center">
+  <a href="https://task-master.dev"><img src="./images/logo.png?raw=true" alt="Taskmaster logo"></a>
+</p>
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano?style=flat)](https://x.com/eyaltoledano)
-[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom?style=flat)](https://x.com/RalphEcom)
+<p align="center">
+<b>Taskmaster</b>: A task management system for AI-driven development, designed to work seamlessly with any AI chat.
+</p>
+
+<p align="center">
+  <a href="https://discord.gg/taskmasterai" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat" alt="Discord"></a> |
+  <a href="https://docs.task-master.dev" target="_blank">Docs</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml"><img src="https://github.com/eyaltoledano/claude-task-master/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/eyaltoledano/claude-task-master/stargazers"><img src="https://img.shields.io/github/stars/eyaltoledano/claude-task-master?style=social" alt="GitHub stars"></a>
+  <a href="https://badge.fury.io/js/task-master-ai"><img src="https://badge.fury.io/js/task-master-ai.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT%20with%20Commons%20Clause-blue.svg" alt="License"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/d18m/task-master-ai?style=flat" alt="NPM Downloads"></a>
+  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/dm/task-master-ai?style=flat" alt="NPM Downloads"></a>
+  <a href="https://www.npmjs.com/package/task-master-ai"><img src="https://img.shields.io/npm/dw/task-master-ai?style=flat" alt="NPM Downloads"></a>
+</p>
+
+## By [@eyaltoledano](https://x.com/eyaltoledano) & [@RalphEcom](https://x.com/RalphEcom)
+
+[![Twitter Follow](https://img.shields.io/twitter/follow/eyaltoledano)](https://x.com/eyaltoledano)
+[![Twitter Follow](https://img.shields.io/twitter/follow/RalphEcom)](https://x.com/RalphEcom)
 
 A task management system for AI-driven development with Claude, designed to work seamlessly with Cursor AI.
+
+## Documentation
+
+📚 **[View Full Documentation](https://docs.task-master.dev)**
+
+For detailed guides, API references, and comprehensive examples, visit our documentation site.
+
+### Quick Reference
+
+The following documentation is also available in the `docs` directory:
+
+- [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
+- [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
+- [Command Reference](docs/command-reference.md) - Complete list of all available commands
+- [Task Structure](docs/task-structure.md) - Understanding the task format and features
+- [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
+- [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
+
+#### Quick Install for Cursor 1.0+ (One-Click)
+
+[![Add task-master-ai MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=task-master-ai&config=eyJjb21tYW5kIjoibnB4IC15IC0tcGFja2FnZT10YXNrLW1hc3Rlci1haSB0YXNrLW1hc3Rlci1haSIsImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIkdST1FfQVBJX0tFWSI6IllPVVJfR1JPUV9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUlfQVBJX0tFWSI6IllPVVJfQVpVUkVfS0VZX0hFUkUiLCJPTExBTUFfQVBJX0tFWSI6IllPVVJfT0xMQU1BX0FQSV9LRVlfSEVSRSJ9fQ%3D%3D)
+
+> **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
+
+#### Claude Code Quick Install
+
+For Claude Code users:
+
+```bash
+claude mcp add taskmaster-ai -- npx -y task-master-ai
+```
+
+Don't forget to add your API keys to the configuration:
+- in the root .env of your Project
+- in the "env" section of your mcp config for taskmaster-ai
+
 
 ## Requirements
 
@@ -23,8 +87,9 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
+- Claude Code (no API key required - requires Claude Code CLI)
 
-Using the research model is optional but highly recommended. You will need at least ONE API key. Adding all API keys enables you to seamlessly switch between model providers at will.
+Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
 
 ## Quick Start
 
@@ -39,55 +104,62 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 | **Cursor**   | Global  | `~/.cursor/mcp.json`                  | `%USERPROFILE%\.cursor\mcp.json`                  | `mcpServers` |
 |              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
 | **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
-| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
+| **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
 
-##### Cursor & Windsurf (`mcpServers`)
+##### Manual Configuration
 
-```jsonc
+###### Cursor & Windsurf (`mcpServers`)
+
+```json
 {
-	"mcpServers": {
-		"taskmaster-ai": {
-			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
-			"env": {
-				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
-			}
-		}
-	}
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
+        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+      }
+    }
+  }
 }
 ```
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
-##### VS Code (`servers` + `type`)
+> **Note**: If you see `0 tools enabled` in the MCP settings, restart your editor and check that your API keys are correctly configured.
 
-```jsonc
+###### VS Code (`servers` + `type`)
+
+```json
 {
-	"servers": {
-		"taskmaster-ai": {
-			"command": "npx",
-			"args": ["-y", "--package=task-master-ai", "task-master-ai"],
-			"env": {
-				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
-				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
-				"OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
-				"GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
-				"MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
-				"OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
-				"XAI_API_KEY": "YOUR_XAI_KEY_HERE",
-				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
-			},
-			"type": "stdio"
-		}
-	}
+  "servers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "GROQ_API_KEY": "YOUR_GROQ_KEY_HERE",
+        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+      },
+      "type": "stdio"
+    }
+  }
 }
 ```
 
@@ -99,25 +171,36 @@ Open Cursor Settings (Ctrl+Shift+J) ➡ Click on MCP tab on the left ➡ Enable 
 
 #### 3. (Optional) Configure the models you want to use
 
-In your editor’s AI chat pane, say:
+In your editor's AI chat pane, say:
 
 ```txt
 Change the main, research and fallback models to <model_name>, <model_name> and <model_name> respectively.
 ```
 
-[Table of available models](docs/models.md)
+For example, to use Claude Code (no API key required):
+```txt
+Change the main model to claude-code/sonnet
+```
+
+[Table of available models](docs/models.md) | [Claude Code setup](docs/examples/claude-code-usage.md)
 
 #### 4. Initialize Task Master
 
-In your editor’s AI chat pane, say:
+In your editor's AI chat pane, say:
 
 ```txt
 Initialize taskmaster-ai in my project
 ```
 
-#### 5. Make sure you have a PRD in `<project_folder>/scripts/prd.txt`
+#### 5. Make sure you have a PRD (Recommended)
 
-An example of a PRD is located into `<project_folder>/scripts/example_prd.txt`.
+For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`  
+For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
+
+An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
+
+> [!NOTE]
+> While a PRD is recommended for complex projects, you can always create individual tasks by asking "Can you help me implement [description of what you want to do]?" in chat.
 
 **Always start with a detailed PRD.**
 
@@ -128,9 +211,12 @@ The more detailed your PRD, the better the generated tasks will be.
 Use your AI assistant to:
 
 - Parse requirements: `Can you parse my PRD at scripts/prd.txt?`
-- Plan next step: `What’s the next task I should work on?`
+- Plan next step: `What's the next task I should work on?`
 - Implement a task: `Can you help me implement task 3?`
+- View multiple tasks: `Can you show me tasks 1, 3, and 5?`
 - Expand a task: `Can you help me expand task 4?`
+- **Research fresh information**: `Research the latest best practices for implementing JWT authentication with Node.js`
+- **Research with context**: `Research React Query v5 migration strategies for our current API implementation in src/api.js`
 
 [More examples on how to use Task Master in chat](docs/examples.md)
 
@@ -154,6 +240,9 @@ task-master init
 
 # If installed locally
 npx task-master init
+
+# Initialize project with specific rules
+task-master init --rules cursor,windsurf,vscode
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
@@ -173,23 +262,37 @@ task-master list
 # Show the next task to work on
 task-master next
 
+# Show specific task(s) - supports comma-separated IDs
+task-master show 1,3,5
+
+# Research fresh information with project context
+task-master research "What are the latest best practices for JWT authentication?"
+
+# Move tasks between tags (cross-tag movement)
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress
+task-master move --from=5,6,7 --from-tag=backlog --to-tag=done --with-dependencies
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
+
 # Generate task files
 task-master generate
+
+# Add rules after initialization
+task-master rules add windsurf,roo,vscode
 ```
 
-## Documentation
+## Claude Code Support
 
-For more detailed information, check out the documentation in the `docs` directory:
+Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
 
-- [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
-- [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
-- [Command Reference](docs/command-reference.md) - Complete list of all available commands
-- [Task Structure](docs/task-structure.md) - Understanding the task format and features
-- [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
+- **Models**: `claude-code/opus` and `claude-code/sonnet`
+- **Requirements**: Claude Code CLI installed
+- **Benefits**: No API key needed, uses your local Claude instance
+
+[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
 
 ## Troubleshooting
 
-### If `task-master init` doesn't respond:
+### If `task-master init` doesn't respond
 
 Try running it with Node directly:
 

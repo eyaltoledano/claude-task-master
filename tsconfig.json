@@ -1,0 +1,37 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["ES2022"],
+		"types": ["node"],
+		"allowJs": true,
+		"resolveJsonModule": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"@tm/core": ["./packages/tm-core/src/index.ts"],
+			"@tm/core/*": ["./packages/tm-core/src/*"],
+			"@tm/cli": ["./apps/cli/src/index.ts"],
+			"@tm/cli/*": ["./apps/cli/src/*"],
+			"@tm/build-config": ["./packages/build-config/src/index.ts"],
+			"@tm/build-config/*": ["./packages/build-config/src/*"]
+		}
+	},
+	"tsx": {
+		"tsconfig": {
+			"allowImportingTsExtensions": false
+		}
+	},
+	"include": [
+		"bin/**/*",
+		"scripts/**/*",
+		"packages/*/src/**/*",
+		"apps/*/src/**/*"
+	],
+	"exclude": ["node_modules", "dist", "**/dist"]
+}

@@ -1,4 +1,4 @@
-import { log, readJSON, isSilentMode } from '../utils.js';
+import { log, readJSON, isSilentMode, findProjectRoot } from '../utils.js';
 import {
 	startLoadingIndicator,
 	stopLoadingIndicator,
@@ -20,6 +20,9 @@ import boxen from 'boxen';
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
+ * @param {string} [context.complexityReportPath] - Path to the complexity report file
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
  * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
  */
@@ -32,8 +35,19 @@ async function expandAllTasks(
 	context = {},
 	outputFormat = 'text' // Assume text default for CLI
 ) {
-	const { session, mcpLog } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		complexityReportPath
+	} = context;
 	const isMCPCall = !!mcpLog; // Determine if called from MCP
+
+	const projectRoot = providedProjectRoot || findProjectRoot();
+	if (!projectRoot) {
+		throw new Error('Could not determine project root directory');
+	}
 
 	// Use mcpLog if available, otherwise use the default console log wrapper respecting silent mode
 	const logger =
@@ -69,7 +83,7 @@ async function expandAllTasks(
 
 	try {
 		logger.info(`Reading tasks from ${tasksPath}`);
-		const data = readJSON(tasksPath);
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {
 			throw new Error(`Invalid tasks data in ${tasksPath}`);
 		}
@@ -119,7 +133,12 @@ async function expandAllTasks(
 					numSubtasks,
 					useResearch,
 					additionalContext,
-					context, // Pass the whole context object { session, mcpLog }
+					{
+						...context,
+						projectRoot,
+						tag: data.tag || tag,
+						complexityReportPath
+					}, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
 				expandedCount++;

@@ -19,10 +19,14 @@ import {
 	displayAiUsageSummary
 } from '../ui.js';
 
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getModelConfiguration } from './models.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 // Zod schema for validating the structure of tasks AFTER parsing
 const updatedTaskSchema = z
@@ -32,13 +36,45 @@ const updatedTaskSchema = z
 		description: z.string(),
 		status: z.string(),
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z.string().optional(),
-		details: z.string().optional(),
-		testStrategy: z.string().optional(),
-		subtasks: z.array(z.any()).optional() // Keep subtasks flexible for now
+		priority: z.string().nullable(),
+		details: z.string().nullable(),
+		testStrategy: z.string().nullable(),
+		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
 	})
 	.strip(); // Allow potential extra fields during parsing if needed, then validate structure
+
+// Preprocessing schema that adds defaults before validation
+const preprocessTaskSchema = z.preprocess((task) => {
+	// Ensure task is an object
+	if (typeof task !== 'object' || task === null) {
+		return {};
+	}
+
+	// Return task with defaults for missing fields
+	return {
+		...task,
+		// Add defaults for required fields if missing
+		id: task.id ?? 0,
+		title: task.title ?? 'Untitled Task',
+		description: task.description ?? '',
+		status: task.status ?? 'pending',
+		dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
+		// Optional fields - preserve undefined/null distinction
+		priority: task.hasOwnProperty('priority') ? task.priority : null,
+		details: task.hasOwnProperty('details') ? task.details : null,
+		testStrategy: task.hasOwnProperty('testStrategy')
+			? task.testStrategy
+			: null,
+		subtasks: Array.isArray(task.subtasks)
+			? task.subtasks
+			: task.subtasks === null
+				? null
+				: []
+	};
+}, updatedTaskSchema);
+
 const updatedTaskArraySchema = z.array(updatedTaskSchema);
+const preprocessedTaskArraySchema = z.array(preprocessTaskSchema);
 
 /**
  * Parses an array of task objects from AI's text response.
@@ -191,21 +227,50 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
 		);
 	}
 
-	const validationResult = updatedTaskArraySchema.safeParse(parsedTasks);
-	if (!validationResult.success) {
-		report('error', 'Parsed task array failed Zod validation.');
-		validationResult.error.errors.forEach((err) => {
-			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
-		});
-		throw new Error(
-			`AI response failed task structure validation: ${validationResult.error.message}`
+	// Log missing fields for debugging before preprocessing
+	let hasWarnings = false;
+	parsedTasks.forEach((task, index) => {
+		const missingFields = [];
+		if (!task.hasOwnProperty('id')) missingFields.push('id');
+		if (!task.hasOwnProperty('status')) missingFields.push('status');
+		if (!task.hasOwnProperty('dependencies'))
+			missingFields.push('dependencies');
+
+		if (missingFields.length > 0) {
+			hasWarnings = true;
+			report(
+				'warn',
+				`Task ${index} is missing fields: ${missingFields.join(', ')} - will use defaults`
+			);
+		}
+	});
+
+	if (hasWarnings) {
+		report(
+			'warn',
+			'Some tasks were missing required fields. Applying defaults...'
 		);
 	}
 
-	report('info', 'Successfully validated task structure.');
-	return validationResult.data.slice(
+	// Use the preprocessing schema to add defaults and validate
+	const preprocessResult = preprocessedTaskArraySchema.safeParse(parsedTasks);
+
+	if (!preprocessResult.success) {
+		// This should rarely happen now since preprocessing adds defaults
+		report('error', 'Failed to validate task array even after preprocessing.');
+		preprocessResult.error.errors.forEach((err) => {
+			report('error', `  - Path '${err.path.join('.')}': ${err.message}`);
+		});
+
+		throw new Error(
+			`AI response failed validation: ${preprocessResult.error.message}`
+		);
+	}
+
+	report('info', 'Successfully validated and transformed task structure.');
+	return preprocessResult.data.slice(
 		0,
-		expectedCount || validationResult.data.length
+		expectedCount || preprocessResult.data.length
 	);
 }
 
@@ -218,6 +283,7 @@ function parseUpdatedTasksFromText(text, expectedCount, logFn, isMCP) {
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP server.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.tag] - Tag for the task
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json').
  */
 async function updateTasks(
@@ -228,7 +294,7 @@ async function updateTasks(
 	context = {},
 	outputFormat = 'text' // Default to text for CLI
 ) {
-	const { session, mcpLog, projectRoot } = context;
+	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
 	// Use mcpLog if available, otherwise use the imported consoleLog function
 	const logFn = mcpLog || consoleLog;
 	// Flag to easily check which logger type we have
@@ -246,8 +312,14 @@ async function updateTasks(
 				`Updating tasks from ID ${fromId} with prompt: "${prompt}"`
 			);
 
-		// --- Task Loading/Filtering (Unchanged) ---
-		const data = readJSON(tasksPath);
+		// Determine project root
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
+		// --- Task Loading/Filtering (Updated to pass projectRoot and tag) ---
+		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		const tasksToUpdate = data.tasks.filter(
@@ -262,6 +334,38 @@ async function updateTasks(
 			return; // Nothing to do
 		}
 		// --- End Task Loading/Filtering ---
+
+		// --- Context Gathering ---
+		let gatheredContext = '';
+		try {
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
+			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
+			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'update');
+			const searchResults = fuzzySearch.findRelevantTasks(prompt, {
+				maxResults: 5,
+				includeSelf: true
+			});
+			const relevantTaskIds = fuzzySearch.getTaskIds(searchResults);
+
+			const tasksToUpdateIds = tasksToUpdate.map((t) => t.id.toString());
+			const finalTaskIds = [
+				...new Set([...tasksToUpdateIds, ...relevantTaskIds])
+			];
+
+			if (finalTaskIds.length > 0) {
+				const contextResult = await contextGatherer.gather({
+					tasks: finalTaskIds,
+					format: 'research'
+				});
+				gatheredContext = contextResult.context || '';
+			}
+		} catch (contextError) {
+			logFn(
+				'warn',
+				`Could not gather additional context: ${contextError.message}`
+			);
+		}
+		// --- End Context Gathering ---
 
 		// --- Display Tasks to Update (CLI Only - Unchanged) ---
 		if (outputFormat === 'text') {
@@ -322,29 +426,24 @@ async function updateTasks(
 		}
 		// --- End Display Tasks ---
 
-		// --- Build Prompts (Unchanged Core Logic) ---
-		// Keep the original system prompt logic
-		const systemPrompt = `You are an AI assistant helping to update software development tasks based on new context.
-You will be given a set of tasks and a prompt describing changes or new implementation details.
-Your job is to update the tasks to reflect these changes, while preserving their basic structure.
-
-Guidelines:
-1. Maintain the same IDs, statuses, and dependencies unless specifically mentioned in the prompt
-2. Update titles, descriptions, details, and test strategies to reflect the new information
-3. Do not change anything unnecessarily - just adapt what needs to change based on the prompt
-4. You should return ALL the tasks in order, not just the modified ones
-5. Return a complete valid JSON object with the updated tasks array
-6. VERY IMPORTANT: Preserve all subtasks marked as "done" or "completed" - do not modify their content
-7. For tasks with completed subtasks, build upon what has already been done rather than rewriting everything
-8. If an existing completed subtask needs to be changed/undone based on the new context, DO NOT modify it directly
-9. Instead, add a new subtask that clearly indicates what needs to be changed or replaced
-10. Use the existence of completed subtasks as an opportunity to make new subtasks more specific and targeted
-
-The changes described in the prompt should be applied to ALL tasks in the list.`;
-
-		// Keep the original user prompt logic
-		const taskDataString = JSON.stringify(tasksToUpdate, null, 2);
-		const userPrompt = `Here are the tasks to update:\n${taskDataString}\n\nPlease update these tasks based on the following new context:\n${prompt}\n\nIMPORTANT: In the tasks JSON above, any subtasks with "status": "done" or "status": "completed" should be preserved exactly as is. Build your changes around these completed items.\n\nReturn only the updated tasks as a valid JSON array.`;
+		// --- Build Prompts (Using PromptManager) ---
+		// Load prompts using PromptManager
+		const promptManager = getPromptManager();
+		const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
+			'update-tasks',
+			{
+				tasks: tasksToUpdate,
+				updatePrompt: prompt,
+				useResearch,
+				projectContext: gatheredContext,
+				hasCodebaseAnalysis: hasCodebaseAnalysis(
+					useResearch,
+					projectRoot,
+					session
+				),
+				projectRoot: projectRoot
+			}
+		);
 		// --- End Build Prompts ---
 
 		// --- AI Call ---
@@ -381,7 +480,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 				isMCP
 			);
 
-			// --- Update Tasks Data (Unchanged) ---
+			// --- Update Tasks Data (Updated writeJSON call) ---
 			if (!Array.isArray(parsedUpdatedTasks)) {
 				// Should be caught by parser, but extra check
 				throw new Error(
@@ -406,7 +505,17 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 			data.tasks.forEach((task, index) => {
 				if (updatedTasksMap.has(task.id)) {
 					// Only update if the task was part of the set sent to AI
-					data.tasks[index] = updatedTasksMap.get(task.id);
+					const updatedTask = updatedTasksMap.get(task.id);
+					// Merge the updated task with the existing one to preserve fields like subtasks
+					data.tasks[index] = {
+						...task, // Keep all existing fields
+						...updatedTask, // Override with updated fields
+						// Ensure subtasks field is preserved if not provided by AI
+						subtasks:
+							updatedTask.subtasks !== undefined
+								? updatedTask.subtasks
+								: task.subtasks
+					};
 					actualUpdateCount++;
 				}
 			});
@@ -420,7 +529,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					`Applied updates to ${actualUpdateCount} tasks in the dataset.`
 				);
 
-			writeJSON(tasksPath, data);
+			// Fix: Pass projectRoot and currentTag to writeJSON
+			writeJSON(tasksPath, data, projectRoot, tag);
 			if (isMCP)
 				logFn.info(
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
@@ -430,7 +540,7 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 					'success',
 					`Successfully updated ${actualUpdateCount} tasks in ${tasksPath}`
 				);
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 			if (outputFormat === 'text' && aiServiceResponse.telemetryData) {
 				displayAiUsageSummary(aiServiceResponse.telemetryData, 'cli');
@@ -439,7 +549,8 @@ The changes described in the prompt should be applied to ALL tasks in the list.`
 			return {
 				success: true,
 				updatedTasks: parsedUpdatedTasks,
-				telemetryData: aiServiceResponse.telemetryData
+				telemetryData: aiServiceResponse.telemetryData,
+				tagInfo: aiServiceResponse.tagInfo
 			};
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

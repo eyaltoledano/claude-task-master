@@ -24,6 +24,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} [args.tasksJsonPath] - Path to the tasks.json file (resolved by tool)
  * @param {boolean} [args.research=false] - Whether to use research capabilities for task creation
  * @param {string} [args.projectRoot] - Project root path
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object
  * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object { success: boolean, data?: any, error?: { code: string, message: string } }
@@ -36,7 +37,8 @@ export async function addTaskDirect(args, log, context = {}) {
 		dependencies,
 		priority,
 		research,
-		projectRoot
+		projectRoot,
+		tag
 	} = args;
 	const { session } = context; // Destructure session from context
 
@@ -95,6 +97,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		let manualTaskData = null;
 		let newTaskId;
 		let telemetryData;
+		let tagInfo;
 
 		if (isManualCreation) {
 			// Create manual task data object
@@ -120,15 +123,16 @@ export async function addTaskDirect(args, log, context = {}) {
 					mcpLog,
 					projectRoot,
 					commandName: 'add-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					tag
 				},
 				'json', // outputFormat
 				manualTaskData, // Pass the manual task data
-				false, // research flag is false for manual creation
-				projectRoot // Pass projectRoot
+				false // research flag is false for manual creation
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
+			tagInfo = result.tagInfo;
 		} else {
 			// AI-driven task creation
 			log.info(
@@ -146,7 +150,8 @@ export async function addTaskDirect(args, log, context = {}) {
 					mcpLog,
 					projectRoot,
 					commandName: 'add-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					tag
 				},
 				'json', // outputFormat
 				null, // manualTaskData is null for AI creation
@@ -154,6 +159,7 @@ export async function addTaskDirect(args, log, context = {}) {
 			);
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
+			tagInfo = result.tagInfo;
 		}
 
 		// Restore normal logging
@@ -164,7 +170,8 @@ export async function addTaskDirect(args, log, context = {}) {
 			data: {
 				taskId: newTaskId,
 				message: `Successfully added new task #${newTaskId}`,
-				telemetryData: telemetryData
+				telemetryData: telemetryData,
+				tagInfo: tagInfo
 			}
 		};
 	} catch (error) {

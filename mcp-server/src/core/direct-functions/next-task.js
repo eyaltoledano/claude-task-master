@@ -18,12 +18,16 @@ import {
  *
  * @param {Object} args - Command arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
+ * @param {string} args.reportPath - Path to the report file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object
- * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string }, fromCache: boolean }
+ * @returns {Promise<Object>} - Next task result { success: boolean, data?: any, error?: { code: string, message: string } }
  */
-export async function nextTaskDirect(args, log) {
+export async function nextTaskDirect(args, log, context = {}) {
 	// Destructure expected args
-	const { tasksJsonPath, reportPath } = args;
+	const { tasksJsonPath, reportPath, projectRoot, tag } = args;
+	const { session } = context;
 
 	if (!tasksJsonPath) {
 		log.error('nextTaskDirect called without tasksJsonPath');
@@ -32,8 +36,7 @@ export async function nextTaskDirect(args, log) {
 			error: {
 				code: 'MISSING_ARGUMENT',
 				message: 'tasksJsonPath is required'
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -46,7 +49,7 @@ export async function nextTaskDirect(args, log) {
 			log.info(`Finding next task from ${tasksJsonPath}`);
 
 			// Read tasks data using the provided path
-			const data = readJSON(tasksJsonPath);
+			const data = readJSON(tasksJsonPath, projectRoot, tag);
 			if (!data || !data.tasks) {
 				disableSilentMode(); // Disable before return
 				return {
@@ -121,7 +124,7 @@ export async function nextTaskDirect(args, log) {
 	// Use the caching utility
 	try {
 		const result = await coreNextTaskAction();
-		log.info(`nextTaskDirect completed.`);
+		log.info('nextTaskDirect completed.');
 		return result;
 	} catch (error) {
 		log.error(`Unexpected error during nextTask: ${error.message}`);
@@ -130,8 +133,7 @@ export async function nextTaskDirect(args, log) {
 			error: {
 				code: 'UNEXPECTED_ERROR',
 				message: error.message
-			},
-			fromCache: false
+			}
 		};
 	}
 }

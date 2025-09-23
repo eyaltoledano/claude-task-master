@@ -3,8 +3,78 @@
  */
 
 import { jest } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
+
+// Mock modules first before any imports
+jest.mock('fs', () => ({
+	existsSync: jest.fn((filePath) => {
+		// Prevent Jest internal file access
+		if (
+			filePath.includes('jest-message-util') ||
+			filePath.includes('node_modules')
+		) {
+			return false;
+		}
+		return false; // Default to false for config discovery prevention
+	}),
+	readFileSync: jest.fn(() => '{}'),
+	writeFileSync: jest.fn(),
+	mkdirSync: jest.fn()
+}));
+
+jest.mock('path', () => ({
+	join: jest.fn((...paths) => paths.join('/')),
+	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
+	resolve: jest.fn((...paths) => paths.join('/')),
+	basename: jest.fn((filePath) => filePath.split('/').pop()),
+	parse: jest.fn((filePath) => {
+		const parts = filePath.split('/');
+		const fileName = parts[parts.length - 1];
+		const extIndex = fileName.lastIndexOf('.');
+		return {
+			dir: parts.length > 1 ? parts.slice(0, -1).join('/') : '',
+			name: extIndex > 0 ? fileName.substring(0, extIndex) : fileName,
+			ext: extIndex > 0 ? fileName.substring(extIndex) : '',
+			base: fileName
+		};
+	}),
+	format: jest.fn((pathObj) => {
+		const dir = pathObj.dir || '';
+		const base = pathObj.base || `${pathObj.name || ''}${pathObj.ext || ''}`;
+		return dir ? `${dir}/${base}` : base;
+	})
+}));
+
+jest.mock('chalk', () => ({
+	red: jest.fn((text) => text),
+	blue: jest.fn((text) => text),
+	green: jest.fn((text) => text),
+	yellow: jest.fn((text) => text),
+	white: jest.fn((text) => ({
+		bold: jest.fn((text) => text)
+	})),
+	reset: jest.fn((text) => text),
+	dim: jest.fn((text) => text) // Add dim function to prevent chalk errors
+}));
+
+// Mock console to prevent Jest internal access
+const mockConsole = {
+	log: jest.fn(),
+	info: jest.fn(),
+	warn: jest.fn(),
+	error: jest.fn()
+};
+global.console = mockConsole;
+
+// Mock path-utils to prevent file system discovery issues
+jest.mock('../../src/utils/path-utils.js', () => ({
+	__esModule: true,
+	findProjectRoot: jest.fn(() => '/mock/project'),
+	findConfigPath: jest.fn(() => null), // Always return null to prevent config discovery
+	findTasksPath: jest.fn(() => '/mock/tasks.json'),
+	findComplexityReportPath: jest.fn(() => null),
+	resolveTasksOutputPath: jest.fn(() => '/mock/tasks.json'),
+	resolveComplexityReportOutputPath: jest.fn(() => '/mock/report.json')
+}));
 
 // Import the actual module to test
 import {
@@ -18,13 +88,21 @@ import {
 	taskExists,
 	formatTaskId,
 	findCycles,
-	toKebabCase
+	toKebabCase,
+	slugifyTagForFilePath,
+	getTagAwareFilePath
 } from '../../scripts/modules/utils.js';
+
+// Import the mocked modules for use in tests
+import fs from 'fs';
+import path from 'path';
 
 // Mock config-manager to provide config values
 const mockGetLogLevel = jest.fn(() => 'info'); // Default log level for tests
+const mockGetDebugFlag = jest.fn(() => false); // Default debug flag for tests
 jest.mock('../../scripts/modules/config-manager.js', () => ({
-	getLogLevel: mockGetLogLevel
+	getLogLevel: mockGetLogLevel,
+	getDebugFlag: mockGetDebugFlag
 	// Mock other getters if needed by utils.js functions under test
 }));
 
@@ -56,29 +134,11 @@ function testDetectCamelCaseFlags(args) {
 }
 
 describe('Utils Module', () => {
-	// Setup fs mocks for each test
-	let fsReadFileSyncSpy;
-	let fsWriteFileSyncSpy;
-	let fsExistsSyncSpy;
-	let pathJoinSpy;
-
 	beforeEach(() => {
-		// Setup fs spy functions for each test
-		fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockImplementation();
-		fsWriteFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation();
-		fsExistsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation();
-		pathJoinSpy = jest.spyOn(path, 'join').mockImplementation();
-
 		// Clear all mocks before each test
 		jest.clearAllMocks();
-	});
-
-	afterEach(() => {
-		// Restore all mocked functions
-		fsReadFileSyncSpy.mockRestore();
-		fsWriteFileSyncSpy.mockRestore();
-		fsExistsSyncSpy.mockRestore();
-		pathJoinSpy.mockRestore();
+		// Restore the original path.join mock
+		jest.spyOn(path, 'join').mockImplementation((...paths) => paths.join('/'));
 	});
 
 	describe('truncate function', () => {
@@ -340,14 +400,16 @@ describe('Utils Module', () => {
 				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
 			};
 
-			fsExistsSyncSpy.mockReturnValue(true);
-			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
-			pathJoinSpy.mockReturnValue('/path/to/report.json');
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue(JSON.stringify(testReport));
+			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
 
 			const result = readComplexityReport();
 
-			expect(fsExistsSyncSpy).toHaveBeenCalled();
-			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(
+			expect(fs.existsSync).toHaveBeenCalled();
+			expect(fs.readFileSync).toHaveBeenCalledWith(
 				'/path/to/report.json',
 				'utf8'
 			);
@@ -355,13 +417,13 @@ describe('Utils Module', () => {
 		});
 
 		test('should handle missing report file', () => {
-			fsExistsSyncSpy.mockReturnValue(false);
-			pathJoinSpy.mockReturnValue('/path/to/report.json');
+			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
 
 			const result = readComplexityReport();
 
 			expect(result).toBeNull();
-			expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
+			expect(fs.readFileSync).not.toHaveBeenCalled();
 		});
 
 		test('should handle custom report path', () => {
@@ -370,14 +432,16 @@ describe('Utils Module', () => {
 				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
 			};
 
-			fsExistsSyncSpy.mockReturnValue(true);
-			fsReadFileSyncSpy.mockReturnValue(JSON.stringify(testReport));
+			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+			jest
+				.spyOn(fs, 'readFileSync')
+				.mockReturnValue(JSON.stringify(testReport));
 
 			const customPath = '/custom/path/report.json';
 			const result = readComplexityReport(customPath);
 
-			expect(fsExistsSyncSpy).toHaveBeenCalledWith(customPath);
-			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(customPath, 'utf8');
+			expect(fs.existsSync).toHaveBeenCalledWith(customPath);
+			expect(fs.readFileSync).toHaveBeenCalledWith(customPath, 'utf8');
 			expect(result).toEqual(testReport);
 		});
 	});
@@ -632,4 +696,52 @@ describe('CLI Flag Format Validation', () => {
 			kebabCase: 'prompt-text'
 		});
 	});
+});
+
+test('slugifyTagForFilePath should create filesystem-safe tag names', () => {
+	expect(slugifyTagForFilePath('feature/user-auth')).toBe('feature-user-auth');
+	expect(slugifyTagForFilePath('Feature Branch')).toBe('feature-branch');
+	expect(slugifyTagForFilePath('test@special#chars')).toBe(
+		'test-special-chars'
+	);
+	expect(slugifyTagForFilePath('UPPERCASE')).toBe('uppercase');
+	expect(slugifyTagForFilePath('multiple---hyphens')).toBe('multiple-hyphens');
+	expect(slugifyTagForFilePath('--leading-trailing--')).toBe(
+		'leading-trailing'
+	);
+	expect(slugifyTagForFilePath('')).toBe('unknown-tag');
+	expect(slugifyTagForFilePath(null)).toBe('unknown-tag');
+	expect(slugifyTagForFilePath(undefined)).toBe('unknown-tag');
+});
+
+test('getTagAwareFilePath should use slugified tags in file paths', () => {
+	const basePath = '.taskmaster/reports/complexity-report.json';
+	const projectRoot = '/test/project';
+
+	// Master tag should not be slugified
+	expect(getTagAwareFilePath(basePath, 'master', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report.json'
+	);
+
+	// Null/undefined tags should use base path
+	expect(getTagAwareFilePath(basePath, null, projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report.json'
+	);
+
+	// Regular tag should be slugified
+	expect(getTagAwareFilePath(basePath, 'feature-branch', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-branch.json'
+	);
+
+	// Tag with special characters should be slugified
+	expect(getTagAwareFilePath(basePath, 'feature/user-auth', projectRoot)).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-user-auth.json'
+	);
+
+	// Tag with spaces and special characters
+	expect(
+		getTagAwareFilePath(basePath, 'Feature Branch @Test', projectRoot)
+	).toBe(
+		'/test/project/.taskmaster/reports/complexity-report_feature-branch-test.json'
+	);
 });

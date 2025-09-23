@@ -6,7 +6,8 @@
 			".changeset",
 			"tasks",
 			"package-lock.json",
-			"tests/fixture/*.json"
+			"tests/fixture/*.json",
+			"dist"
 		]
 	},
 	"formatter": {
@@ -23,10 +24,15 @@
 		}
 	},
 	"linter": {
+		"enabled": true,
+		"include": ["apps/extension/**/*.ts", "apps/extension/**/*.tsx"],
+		"ignore": ["**/*", "!apps/extension/**/*"],
 		"rules": {
+			"recommended": true,
 			"complexity": {
 				"noForEach": "off",
-				"useOptionalChain": "off"
+				"useOptionalChain": "off",
+				"useArrowFunction": "off"
 			},
 			"correctness": {
 				"noConstantCondition": "off",
@@ -40,7 +46,10 @@
 				"noUselessElse": "off",
 				"useNodejsImportProtocol": "off",
 				"useNumberNamespace": "off",
-				"noParameterAssign": "off"
+				"noParameterAssign": "off",
+				"useTemplate": "off",
+				"noUnusedTemplateLiteral": "off",
+				"noNonNullAssertion": "warn"
 			}
 		}
 	}

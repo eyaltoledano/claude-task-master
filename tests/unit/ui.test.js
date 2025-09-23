@@ -82,19 +82,19 @@ describe('UI Module', () => {
 		test('should return done status with emoji for console output', () => {
 			const result = getStatusWithColor('done');
 			expect(result).toMatch(/done/);
-			expect(result).toContain('✅');
+			expect(result).toContain('✓');
 		});
 
 		test('should return pending status with emoji for console output', () => {
 			const result = getStatusWithColor('pending');
 			expect(result).toMatch(/pending/);
-			expect(result).toContain('⏱️');
+			expect(result).toContain('○');
 		});
 
 		test('should return deferred status with emoji for console output', () => {
 			const result = getStatusWithColor('deferred');
 			expect(result).toMatch(/deferred/);
-			expect(result).toContain('⏱️');
+			expect(result).toContain('x');
 		});
 
 		test('should return in-progress status with emoji for console output', () => {
@@ -222,25 +222,25 @@ describe('UI Module', () => {
 		test('should return high complexity in red', () => {
 			const result = getComplexityWithColor(8);
 			expect(result).toMatch(/8/);
-			expect(result).toContain('🔴');
+			expect(result).toContain('●');
 		});
 
 		test('should return medium complexity in yellow', () => {
 			const result = getComplexityWithColor(5);
 			expect(result).toMatch(/5/);
-			expect(result).toContain('🟡');
+			expect(result).toContain('●');
 		});
 
 		test('should return low complexity in green', () => {
 			const result = getComplexityWithColor(3);
 			expect(result).toMatch(/3/);
-			expect(result).toContain('🟢');
+			expect(result).toContain('●');
 		});
 
 		test('should handle non-numeric inputs', () => {
 			const result = getComplexityWithColor('high');
 			expect(result).toMatch(/high/);
-			expect(result).toContain('🔴');
+			expect(result).toContain('●');
 		});
 	});
 });

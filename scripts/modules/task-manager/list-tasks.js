@@ -22,10 +22,13 @@ import {
 /**
  * List all tasks
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {string} statusFilter - Filter by status
+ * @param {string} statusFilter - Filter by status (single status or comma-separated list, e.g., 'pending' or 'blocked,deferred')
  * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
+ * @param {Object} context - Context object (required)
+ * @param {string} context.projectRoot - Project root path
+ * @param {string} context.tag - Tag for the task
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
@@ -33,35 +36,42 @@ function listTasks(
 	statusFilter,
 	reportPath = null,
 	withSubtasks = false,
-	outputFormat = 'text'
+	outputFormat = 'text',
+	context = {}
 ) {
+	const { projectRoot, tag } = context;
 	try {
-		// Only display banner for text output
-		if (outputFormat === 'text') {
-			displayBanner();
-		}
-
-		const data = readJSON(tasksPath); // Reads the whole tasks.json
+		// Extract projectRoot from context if provided
+		const data = readJSON(tasksPath, projectRoot, tag); // Pass projectRoot to readJSON
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}
 
 		// Add complexity scores to tasks if report exists
+		// `reportPath` is already tag-aware (resolved at the CLI boundary).
 		const complexityReport = readComplexityReport(reportPath);
 		// Apply complexity scores to tasks
 		if (complexityReport && complexityReport.complexityAnalysis) {
 			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
 		}
 
-		// Filter tasks by status if specified
-		const filteredTasks =
-			statusFilter && statusFilter.toLowerCase() !== 'all' // <-- Added check for 'all'
-				? data.tasks.filter(
-						(task) =>
-							task.status &&
-							task.status.toLowerCase() === statusFilter.toLowerCase()
-					)
-				: data.tasks; // Default to all tasks if no filter or filter is 'all'
+		// Filter tasks by status if specified - now supports comma-separated statuses
+		let filteredTasks;
+		if (statusFilter && statusFilter.toLowerCase() !== 'all') {
+			// Handle comma-separated statuses
+			const allowedStatuses = statusFilter
+				.split(',')
+				.map((s) => s.trim().toLowerCase())
+				.filter((s) => s.length > 0); // Remove empty strings
+
+			filteredTasks = data.tasks.filter(
+				(task) =>
+					task.status && allowedStatuses.includes(task.status.toLowerCase())
+			);
+		} else {
+			// Default to all tasks if no filter or filter is 'all'
+			filteredTasks = data.tasks;
+		}
 
 		// Calculate completion statistics
 		const totalTasks = data.tasks.length;
@@ -88,6 +98,9 @@ function listTasks(
 		const cancelledCount = data.tasks.filter(
 			(task) => task.status === 'cancelled'
 		).length;
+		const reviewCount = data.tasks.filter(
+			(task) => task.status === 'review'
+		).length;
 
 		// Count subtasks and their statuses
 		let totalSubtasks = 0;
@@ -97,6 +110,7 @@ function listTasks(
 		let blockedSubtasks = 0;
 		let deferredSubtasks = 0;
 		let cancelledSubtasks = 0;
+		let reviewSubtasks = 0;
 
 		data.tasks.forEach((task) => {
 			if (task.subtasks && task.subtasks.length > 0) {
@@ -119,92 +133,16 @@ function listTasks(
 				cancelledSubtasks += task.subtasks.filter(
 					(st) => st.status === 'cancelled'
 				).length;
+				reviewSubtasks += task.subtasks.filter(
+					(st) => st.status === 'review'
+				).length;
 			}
 		});
 
 		const subtaskCompletionPercentage =
 			totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
 
-		// For JSON output, return structured data
-		if (outputFormat === 'json') {
-			// *** Modification: Remove 'details' field for JSON output ***
-			const tasksWithoutDetails = filteredTasks.map((task) => {
-				// <-- USES filteredTasks!
-				// Omit 'details' from the parent task
-				const { details, ...taskRest } = task;
-
-				// If subtasks exist, omit 'details' from them too
-				if (taskRest.subtasks && Array.isArray(taskRest.subtasks)) {
-					taskRest.subtasks = taskRest.subtasks.map((subtask) => {
-						const { details: subtaskDetails, ...subtaskRest } = subtask;
-						return subtaskRest;
-					});
-				}
-				return taskRest;
-			});
-			// *** End of Modification ***
-
-			return {
-				tasks: tasksWithoutDetails, // <--- THIS IS THE ARRAY BEING RETURNED
-				filter: statusFilter || 'all', // Return the actual filter used
-				stats: {
-					total: totalTasks,
-					completed: doneCount,
-					inProgress: inProgressCount,
-					pending: pendingCount,
-					blocked: blockedCount,
-					deferred: deferredCount,
-					cancelled: cancelledCount,
-					completionPercentage,
-					subtasks: {
-						total: totalSubtasks,
-						completed: completedSubtasks,
-						inProgress: inProgressSubtasks,
-						pending: pendingSubtasks,
-						blocked: blockedSubtasks,
-						deferred: deferredSubtasks,
-						cancelled: cancelledSubtasks,
-						completionPercentage: subtaskCompletionPercentage
-					}
-				}
-			};
-		}
-
-		// ... existing code for text output ...
-
-		// Calculate status breakdowns as percentages of total
-		const taskStatusBreakdown = {
-			'in-progress': totalTasks > 0 ? (inProgressCount / totalTasks) * 100 : 0,
-			pending: totalTasks > 0 ? (pendingCount / totalTasks) * 100 : 0,
-			blocked: totalTasks > 0 ? (blockedCount / totalTasks) * 100 : 0,
-			deferred: totalTasks > 0 ? (deferredCount / totalTasks) * 100 : 0,
-			cancelled: totalTasks > 0 ? (cancelledCount / totalTasks) * 100 : 0
-		};
-
-		const subtaskStatusBreakdown = {
-			'in-progress':
-				totalSubtasks > 0 ? (inProgressSubtasks / totalSubtasks) * 100 : 0,
-			pending: totalSubtasks > 0 ? (pendingSubtasks / totalSubtasks) * 100 : 0,
-			blocked: totalSubtasks > 0 ? (blockedSubtasks / totalSubtasks) * 100 : 0,
-			deferred:
-				totalSubtasks > 0 ? (deferredSubtasks / totalSubtasks) * 100 : 0,
-			cancelled:
-				totalSubtasks > 0 ? (cancelledSubtasks / totalSubtasks) * 100 : 0
-		};
-
-		// Create progress bars with status breakdowns
-		const taskProgressBar = createProgressBar(
-			completionPercentage,
-			30,
-			taskStatusBreakdown
-		);
-		const subtaskProgressBar = createProgressBar(
-			subtaskCompletionPercentage,
-			30,
-			subtaskStatusBreakdown
-		);
-
-		// Calculate dependency statistics
+		// Calculate dependency statistics (moved up to be available for all output formats)
 		const completedTaskIds = new Set(
 			data.tasks
 				.filter((t) => t.status === 'done' || t.status === 'completed')
@@ -275,6 +213,127 @@ function listTasks(
 
 		// Find next task to work on, passing the complexity report
 		const nextItem = findNextTask(data.tasks, complexityReport);
+
+		// For JSON output, return structured data
+		if (outputFormat === 'json') {
+			// *** Modification: Remove 'details' field for JSON output ***
+			const tasksWithoutDetails = filteredTasks.map((task) => {
+				// <-- USES filteredTasks!
+				// Omit 'details' from the parent task
+				const { details, ...taskRest } = task;
+
+				// If subtasks exist, omit 'details' from them too
+				if (taskRest.subtasks && Array.isArray(taskRest.subtasks)) {
+					taskRest.subtasks = taskRest.subtasks.map((subtask) => {
+						const { details: subtaskDetails, ...subtaskRest } = subtask;
+						return subtaskRest;
+					});
+				}
+				return taskRest;
+			});
+			// *** End of Modification ***
+
+			return {
+				tasks: tasksWithoutDetails, // <--- THIS IS THE ARRAY BEING RETURNED
+				filter: statusFilter || 'all', // Return the actual filter used
+				stats: {
+					total: totalTasks,
+					completed: doneCount,
+					inProgress: inProgressCount,
+					pending: pendingCount,
+					blocked: blockedCount,
+					deferred: deferredCount,
+					cancelled: cancelledCount,
+					review: reviewCount,
+					completionPercentage,
+					subtasks: {
+						total: totalSubtasks,
+						completed: completedSubtasks,
+						inProgress: inProgressSubtasks,
+						pending: pendingSubtasks,
+						blocked: blockedSubtasks,
+						deferred: deferredSubtasks,
+						cancelled: cancelledSubtasks,
+						completionPercentage: subtaskCompletionPercentage
+					}
+				}
+			};
+		}
+
+		// For markdown-readme output, return formatted markdown
+		if (outputFormat === 'markdown-readme') {
+			return generateMarkdownOutput(data, filteredTasks, {
+				totalTasks,
+				completedTasks,
+				completionPercentage,
+				doneCount,
+				inProgressCount,
+				pendingCount,
+				blockedCount,
+				deferredCount,
+				cancelledCount,
+				totalSubtasks,
+				completedSubtasks,
+				subtaskCompletionPercentage,
+				inProgressSubtasks,
+				pendingSubtasks,
+				blockedSubtasks,
+				deferredSubtasks,
+				cancelledSubtasks,
+				reviewSubtasks,
+				tasksWithNoDeps,
+				tasksReadyToWork,
+				tasksWithUnsatisfiedDeps,
+				mostDependedOnTask,
+				mostDependedOnTaskId,
+				maxDependents,
+				avgDependenciesPerTask,
+				complexityReport,
+				withSubtasks,
+				nextItem
+			});
+		}
+
+		// For compact output, return minimal one-line format
+		if (outputFormat === 'compact') {
+			return renderCompactOutput(filteredTasks, withSubtasks);
+		}
+
+		// ... existing code for text output ...
+
+		// Calculate status breakdowns as percentages of total
+		const taskStatusBreakdown = {
+			'in-progress': totalTasks > 0 ? (inProgressCount / totalTasks) * 100 : 0,
+			pending: totalTasks > 0 ? (pendingCount / totalTasks) * 100 : 0,
+			blocked: totalTasks > 0 ? (blockedCount / totalTasks) * 100 : 0,
+			deferred: totalTasks > 0 ? (deferredCount / totalTasks) * 100 : 0,
+			cancelled: totalTasks > 0 ? (cancelledCount / totalTasks) * 100 : 0,
+			review: totalTasks > 0 ? (reviewCount / totalTasks) * 100 : 0
+		};
+
+		const subtaskStatusBreakdown = {
+			'in-progress':
+				totalSubtasks > 0 ? (inProgressSubtasks / totalSubtasks) * 100 : 0,
+			pending: totalSubtasks > 0 ? (pendingSubtasks / totalSubtasks) * 100 : 0,
+			blocked: totalSubtasks > 0 ? (blockedSubtasks / totalSubtasks) * 100 : 0,
+			deferred:
+				totalSubtasks > 0 ? (deferredSubtasks / totalSubtasks) * 100 : 0,
+			cancelled:
+				totalSubtasks > 0 ? (cancelledSubtasks / totalSubtasks) * 100 : 0,
+			review: totalSubtasks > 0 ? (reviewSubtasks / totalSubtasks) * 100 : 0
+		};
+
+		// Create progress bars with status breakdowns
+		const taskProgressBar = createProgressBar(
+			completionPercentage,
+			30,
+			taskStatusBreakdown
+		);
+		const subtaskProgressBar = createProgressBar(
+			subtaskCompletionPercentage,
+			30,
+			subtaskStatusBreakdown
+		);
 
 		// Get terminal width - more reliable method
 		let terminalWidth;
@@ -762,6 +821,244 @@ function getWorkItemDescription(item, allTasks) {
 		const task = allTasks.find((t) => String(t.id) === String(item.id));
 		return task?.description || 'No description available.';
 	}
+}
+
+/**
+ * Generate markdown-formatted output for README files
+ * @param {Object} data - Full tasks data
+ * @param {Array} filteredTasks - Filtered tasks array
+ * @param {Object} stats - Statistics object
+ * @returns {string} - Formatted markdown string
+ */
+function generateMarkdownOutput(data, filteredTasks, stats) {
+	const {
+		totalTasks,
+		completedTasks,
+		completionPercentage,
+		doneCount,
+		inProgressCount,
+		pendingCount,
+		blockedCount,
+		deferredCount,
+		cancelledCount,
+		totalSubtasks,
+		completedSubtasks,
+		subtaskCompletionPercentage,
+		inProgressSubtasks,
+		pendingSubtasks,
+		blockedSubtasks,
+		deferredSubtasks,
+		cancelledSubtasks,
+		tasksWithNoDeps,
+		tasksReadyToWork,
+		tasksWithUnsatisfiedDeps,
+		mostDependedOnTask,
+		mostDependedOnTaskId,
+		maxDependents,
+		avgDependenciesPerTask,
+		complexityReport,
+		withSubtasks,
+		nextItem
+	} = stats;
+
+	let markdown = '';
+
+	// Create progress bars for markdown (using Unicode block characters)
+	const createMarkdownProgressBar = (percentage, width = 20) => {
+		const filled = Math.round((percentage / 100) * width);
+		const empty = width - filled;
+		return '█'.repeat(filled) + '░'.repeat(empty);
+	};
+
+	const taskProgressBar = createMarkdownProgressBar(completionPercentage, 20);
+	const subtaskProgressBar = createMarkdownProgressBar(
+		subtaskCompletionPercentage,
+		20
+	);
+
+	// Dashboard section
+	// markdown += '```\n';
+	markdown += '| Project Dashboard |  |\n';
+	markdown += '| :-                |:-|\n';
+	markdown += `| Task Progress     | ${taskProgressBar} ${Math.round(completionPercentage)}% |\n`;
+	markdown += `| Done | ${doneCount} |\n`;
+	markdown += `| In Progress | ${inProgressCount} |\n`;
+	markdown += `| Pending | ${pendingCount} |\n`;
+	markdown += `| Deferred | ${deferredCount} |\n`;
+	markdown += `| Cancelled | ${cancelledCount} |\n`;
+	markdown += `|-|-|\n`;
+	markdown += `| Subtask Progress | ${subtaskProgressBar} ${Math.round(subtaskCompletionPercentage)}% |\n`;
+	markdown += `| Completed | ${completedSubtasks} |\n`;
+	markdown += `| In Progress | ${inProgressSubtasks} |\n`;
+	markdown += `| Pending | ${pendingSubtasks} |\n`;
+
+	markdown += '\n\n';
+
+	// Tasks table
+	markdown +=
+		'| ID | Title | Status | Priority | Dependencies | Complexity |\n';
+	markdown +=
+		'| :- | :-    | :-     | :-       | :-           | :-         |\n';
+
+	// Helper function to format status with symbols
+	const getStatusSymbol = (status) => {
+		switch (status) {
+			case 'done':
+			case 'completed':
+				return '✓&nbsp;done';
+			case 'in-progress':
+				return '►&nbsp;in-progress';
+			case 'pending':
+				return '○&nbsp;pending';
+			case 'blocked':
+				return '⭕&nbsp;blocked';
+			case 'deferred':
+				return 'x&nbsp;deferred';
+			case 'cancelled':
+				return 'x&nbsp;cancelled';
+			case 'review':
+				return '?&nbsp;review';
+			default:
+				return status || 'pending';
+		}
+	};
+
+	// Helper function to format dependencies without color codes
+	const formatDependenciesForMarkdown = (deps, allTasks) => {
+		if (!deps || deps.length === 0) return 'None';
+		return deps
+			.map((depId) => {
+				const depTask = allTasks.find((t) => t.id === depId);
+				return depTask ? depId.toString() : depId.toString();
+			})
+			.join(', ');
+	};
+
+	// Process all tasks
+	filteredTasks.forEach((task) => {
+		const taskTitle = task.title; // No truncation for README
+		const statusSymbol = getStatusSymbol(task.status);
+		const priority = task.priority || 'medium';
+		const deps = formatDependenciesForMarkdown(task.dependencies, data.tasks);
+		const complexity = task.complexityScore
+			? `● ${task.complexityScore}`
+			: 'N/A';
+
+		markdown += `| ${task.id} | ${taskTitle} | ${statusSymbol} | ${priority} | ${deps} | ${complexity} |\n`;
+
+		// Add subtasks if requested
+		if (withSubtasks && task.subtasks && task.subtasks.length > 0) {
+			task.subtasks.forEach((subtask) => {
+				const subtaskTitle = `${subtask.title}`; // No truncation
+				const subtaskStatus = getStatusSymbol(subtask.status);
+				const subtaskDeps = formatDependenciesForMarkdown(
+					subtask.dependencies,
+					data.tasks
+				);
+				const subtaskComplexity = subtask.complexityScore
+					? subtask.complexityScore.toString()
+					: 'N/A';
+
+				markdown += `| ${task.id}.${subtask.id} | ${subtaskTitle} | ${subtaskStatus} | -            | ${subtaskDeps} | ${subtaskComplexity} |\n`;
+			});
+		}
+	});
+
+	return markdown;
+}
+
+/**
+ * Format dependencies for compact output with truncation and coloring
+ * @param {Array} dependencies - Array of dependency IDs
+ * @returns {string} - Formatted dependency string with arrow prefix
+ */
+function formatCompactDependencies(dependencies) {
+	if (!dependencies || dependencies.length === 0) {
+		return '';
+	}
+
+	if (dependencies.length > 5) {
+		const visible = dependencies.slice(0, 5).join(',');
+		const remaining = dependencies.length - 5;
+		return ` → ${chalk.cyan(visible)}${chalk.gray('... (+' + remaining + ' more)')}`;
+	} else {
+		return ` → ${chalk.cyan(dependencies.join(','))}`;
+	}
+}
+
+/**
+ * Format a single task in compact one-line format
+ * @param {Object} task - Task object
+ * @param {number} maxTitleLength - Maximum title length before truncation
+ * @returns {string} - Formatted task line
+ */
+function formatCompactTask(task, maxTitleLength = 50) {
+	const status = task.status || 'pending';
+	const priority = task.priority || 'medium';
+	const title = truncate(task.title || 'Untitled', maxTitleLength);
+
+	// Use colored status from existing function
+	const coloredStatus = getStatusWithColor(status, true);
+
+	// Color priority based on level
+	const priorityColors = {
+		high: chalk.red,
+		medium: chalk.yellow,
+		low: chalk.gray
+	};
+	const priorityColor = priorityColors[priority] || chalk.white;
+
+	// Format dependencies using shared helper
+	const depsText = formatCompactDependencies(task.dependencies);
+
+	return `${chalk.cyan(task.id)} ${coloredStatus} ${chalk.white(title)} ${priorityColor('(' + priority + ')')}${depsText}`;
+}
+
+/**
+ * Format a subtask in compact format with indentation
+ * @param {Object} subtask - Subtask object
+ * @param {string|number} parentId - Parent task ID
+ * @param {number} maxTitleLength - Maximum title length before truncation
+ * @returns {string} - Formatted subtask line
+ */
+function formatCompactSubtask(subtask, parentId, maxTitleLength = 47) {
+	const status = subtask.status || 'pending';
+	const title = truncate(subtask.title || 'Untitled', maxTitleLength);
+
+	// Use colored status from existing function
+	const coloredStatus = getStatusWithColor(status, true);
+
+	// Format dependencies using shared helper
+	const depsText = formatCompactDependencies(subtask.dependencies);
+
+	return `  ${chalk.cyan(parentId + '.' + subtask.id)} ${coloredStatus} ${chalk.dim(title)}${depsText}`;
+}
+
+/**
+ * Render complete compact output
+ * @param {Array} filteredTasks - Tasks to display
+ * @param {boolean} withSubtasks - Whether to include subtasks
+ * @returns {void} - Outputs directly to console
+ */
+function renderCompactOutput(filteredTasks, withSubtasks) {
+	if (filteredTasks.length === 0) {
+		console.log('No tasks found');
+		return;
+	}
+
+	const output = [];
+
+	filteredTasks.forEach((task) => {
+		output.push(formatCompactTask(task));
+
+		if (withSubtasks && task.subtasks && task.subtasks.length > 0) {
+			task.subtasks.forEach((subtask) => {
+				output.push(formatCompactSubtask(subtask, task.id));
+			});
+		}
+	});
+
+	console.log(output.join('\n'));
 }
 
 export default listTasks;

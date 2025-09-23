@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "[TM] Git Commit Task Linker",
+  "description": "Link commits to tasks for traceability",
+  "version": "1",
+  "when": {
+    "type": "manual"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "I'm about to commit code. Please:\n\n1. Run 'git diff --staged' to see what's being committed\n2. Analyze the changes and suggest which tasks they relate to\n3. Generate a commit message in format: 'feat(task-<id>): <description>'\n4. Update the relevant tasks with a note about this commit\n5. Show the proposed commit message for approval"
+  }
+}

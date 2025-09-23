@@ -13,13 +13,21 @@ import { nextTaskDirect } from './next-task.js';
 /**
  * Direct function wrapper for setTaskStatus with error handling.
  *
- * @param {Object} args - Command arguments containing id, status and tasksJsonPath.
+ * @param {Object} args - Command arguments containing id, status, tasksJsonPath, and projectRoot.
+ * @param {string} args.id - The ID of the task to update.
+ * @param {string} args.status - The new status to set for the task.
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
+ * @param {Object} context - Additional context (session)
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
-export async function setTaskStatusDirect(args, log) {
-	// Destructure expected args, including the resolved tasksJsonPath
-	const { tasksJsonPath, id, status, complexityReportPath } = args;
+export async function setTaskStatusDirect(args, log, context = {}) {
+	// Destructure expected args, including the resolved tasksJsonPath and projectRoot
+	const { tasksJsonPath, id, status, complexityReportPath, projectRoot, tag } =
+		args;
+	const { session } = context;
 	try {
 		log.info(`Setting task status with args: ${JSON.stringify(args)}`);
 
@@ -29,8 +37,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -41,8 +48,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_TASK_ID', message: errorMessage }
 			};
 		}
 
@@ -52,8 +58,7 @@ export async function setTaskStatusDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_STATUS', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_STATUS', message: errorMessage }
 			};
 		}
 
@@ -70,7 +75,12 @@ export async function setTaskStatusDirect(args, log) {
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
-			await setTaskStatus(tasksPath, taskId, newStatus, { mcpLog: log });
+			await setTaskStatus(tasksPath, taskId, newStatus, {
+				mcpLog: log,
+				projectRoot,
+				session,
+				tag
+			});
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
 
@@ -82,8 +92,7 @@ export async function setTaskStatusDirect(args, log) {
 					taskId,
 					status: newStatus,
 					tasksPath: tasksPath // Return the path used
-				},
-				fromCache: false // This operation always modifies state and should never be cached
+				}
 			};
 
 			// If the task was completed, attempt to fetch the next task
@@ -93,9 +102,12 @@ export async function setTaskStatusDirect(args, log) {
 					const nextResult = await nextTaskDirect(
 						{
 							tasksJsonPath: tasksJsonPath,
-							reportPath: complexityReportPath
+							reportPath: complexityReportPath,
+							projectRoot: projectRoot,
+							tag
 						},
-						log
+						log,
+						{ session }
 					);
 
 					if (nextResult.success) {
@@ -126,8 +138,7 @@ export async function setTaskStatusDirect(args, log) {
 				error: {
 					code: 'SET_STATUS_ERROR',
 					message: error.message || 'Unknown error setting task status'
-				},
-				fromCache: false
+				}
 			};
 		} finally {
 			// ALWAYS restore normal logging in finally block
@@ -145,8 +156,7 @@ export async function setTaskStatusDirect(args, log) {
 			error: {
 				code: 'SET_STATUS_ERROR',
 				message: error.message || 'Unknown error setting task status'
-			},
-			fromCache: false
+			}
 		};
 	}
 }

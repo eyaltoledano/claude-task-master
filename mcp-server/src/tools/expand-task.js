@@ -10,7 +10,11 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import {
+	findTasksPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expand-task tool with the MCP server
@@ -45,16 +49,20 @@ export function registerExpandTaskTool(server) {
 				.boolean()
 				.optional()
 				.default(false)
-				.describe('Force expansion even if subtasks exist')
+				.describe('Force expansion even if subtasks exist'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);
-
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -65,6 +73,11 @@ export function registerExpandTaskTool(server) {
 					);
 				}
 
+				const complexityReportPath = findComplexityReportPath(
+					{ ...args, tag: resolvedTag },
+					log
+				);
+
 				const result = await expandTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -73,13 +86,21 @@ export function registerExpandTaskTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: args.projectRoot
+						complexityReportPath,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }
 				);
 
-				return handleApiResult(result, log, 'Error expanding task');
+				return handleApiResult(
+					result,
+					log,
+					'Error expanding task',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in expand-task tool: ${error.message}`);
 				return createErrorResponse(error.message);

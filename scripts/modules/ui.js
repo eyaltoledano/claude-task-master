@@ -9,12 +9,14 @@ import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
+import readline from 'readline';
 import {
 	log,
 	findTaskById,
 	readJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	formatTaskId
 } from './utils.js';
 import fs from 'fs';
 import {
@@ -24,6 +26,10 @@ import {
 } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import {
+	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_TASKS_FILE
+} from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
@@ -31,12 +37,60 @@ const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
+ * Display FYI notice about tagged task lists (only if migration occurred)
+ * @param {Object} data - Data object that may contain _migrationHappened flag
+ */
+function displayTaggedTasksFYI(data) {
+	if (isSilentMode() || !data || !data._migrationHappened) return;
+
+	console.log(
+		boxen(
+			chalk.white.bold('FYI: ') +
+				chalk.gray('Taskmaster now supports separate task lists per tag. ') +
+				chalk.cyan(
+					'Use the --tag flag to create/read/update/filter tasks by tag.'
+				),
+			{
+				padding: { top: 0, bottom: 0, left: 2, right: 2 },
+				borderColor: 'cyan',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			}
+		)
+	);
+}
+
+/**
+ * Display a small, non-intrusive indicator showing the current tag context
+ * @param {string} tagName - The tag name to display
+ * @param {Object} options - Display options
+ * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
+ * @param {boolean} [options.dim=false] - Use dimmed styling
+ */
+function displayCurrentTagIndicator(tag, options = {}) {
+	if (isSilentMode()) return;
+
+	const { skipIfMaster = false, dim = false } = options;
+
+	// Skip display for master tag only if explicitly requested
+	if (skipIfMaster && tag === 'master') return;
+
+	// Create a small, tasteful tag indicator
+	const tagIcon = '🏷️';
+	const tagText = dim
+		? chalk.gray(`${tagIcon} tag: ${tag}`)
+		: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+
+	console.log(tagText);
+}
+
+/**
  * Display a fancy banner for the CLI
  */
 function displayBanner() {
 	if (isSilentMode()) return;
 
-	console.clear();
+	// console.clear(); // Removing this to avoid clearing the terminal per command
 	const bannerText = figlet.textSync('Task Master', {
 		font: 'Standard',
 		horizontalLayout: 'default',
@@ -74,6 +128,8 @@ function displayBanner() {
  * @returns {Object} Spinner object
  */
 function startLoadingIndicator(message) {
+	if (isSilentMode()) return null;
+
 	const spinner = ora({
 		text: message,
 		color: 'cyan'
@@ -83,12 +139,72 @@ function startLoadingIndicator(message) {
 }
 
 /**
- * Stop a loading indicator
+ * Stop a loading indicator (basic stop, no success/fail indicator)
  * @param {Object} spinner - Spinner object to stop
  */
 function stopLoadingIndicator(spinner) {
-	if (spinner && spinner.stop) {
+	if (spinner && typeof spinner.stop === 'function') {
 		spinner.stop();
+	}
+}
+
+/**
+ * Complete a loading indicator with success (shows checkmark)
+ * @param {Object} spinner - Spinner object to complete
+ * @param {string} message - Optional success message (defaults to current text)
+ */
+function succeedLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.succeed === 'function') {
+		if (message) {
+			spinner.succeed(message);
+		} else {
+			spinner.succeed();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with failure (shows X)
+ * @param {Object} spinner - Spinner object to fail
+ * @param {string} message - Optional failure message (defaults to current text)
+ */
+function failLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.fail === 'function') {
+		if (message) {
+			spinner.fail(message);
+		} else {
+			spinner.fail();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with warning (shows warning symbol)
+ * @param {Object} spinner - Spinner object to warn
+ * @param {string} message - Optional warning message (defaults to current text)
+ */
+function warnLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.warn === 'function') {
+		if (message) {
+			spinner.warn(message);
+		} else {
+			spinner.warn();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with info (shows info symbol)
+ * @param {Object} spinner - Spinner object to complete with info
+ * @param {string} message - Optional info message (defaults to current text)
+ */
+function infoLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.info === 'function') {
+		if (message) {
+			spinner.info(message);
+		} else {
+			spinner.info();
+		}
 	}
 }
 
@@ -228,14 +344,14 @@ function getStatusWithColor(status, forTable = false) {
 	}
 
 	const statusConfig = {
-		done: { color: chalk.green, icon: '✅', tableIcon: '✓' },
-		completed: { color: chalk.green, icon: '✅', tableIcon: '✓' },
-		pending: { color: chalk.yellow, icon: '⏱️', tableIcon: '⏱' },
+		done: { color: chalk.green, icon: '✓', tableIcon: '✓' },
+		completed: { color: chalk.green, icon: '✓', tableIcon: '✓' },
+		pending: { color: chalk.yellow, icon: '○', tableIcon: '⏱' },
 		'in-progress': { color: chalk.hex('#FFA500'), icon: '🔄', tableIcon: '►' },
-		deferred: { color: chalk.gray, icon: '⏱️', tableIcon: '⏱' },
-		blocked: { color: chalk.red, icon: '❌', tableIcon: '✗' },
-		review: { color: chalk.magenta, icon: '👀', tableIcon: '👁' },
-		cancelled: { color: chalk.gray, icon: '❌', tableIcon: '✗' }
+		deferred: { color: chalk.gray, icon: 'x', tableIcon: '⏱' },
+		blocked: { color: chalk.red, icon: '!', tableIcon: '✗' },
+		review: { color: chalk.magenta, icon: '?', tableIcon: '?' },
+		cancelled: { color: chalk.gray, icon: '❌', tableIcon: 'x' }
 	};
 
 	const config = statusConfig[status.toLowerCase()] || {
@@ -290,9 +406,44 @@ function formatDependenciesWithStatus(
 
 		// Check if it's already a fully qualified subtask ID (like "22.1")
 		if (depIdStr.includes('.')) {
-			const [parentId, subtaskId] = depIdStr
-				.split('.')
-				.map((id) => parseInt(id, 10));
+			const parts = depIdStr.split('.');
+			// Validate that it's a proper subtask format (parentId.subtaskId)
+			if (parts.length !== 2 || !parts[0] || !parts[1]) {
+				// Invalid format - treat as regular dependency
+				const numericDepId =
+					typeof depId === 'string' ? parseInt(depId, 10) : depId;
+				const depTaskResult = findTaskById(
+					allTasks,
+					numericDepId,
+					complexityReport
+				);
+				const depTask = depTaskResult.task;
+
+				if (!depTask) {
+					return forConsole
+						? chalk.red(`${depIdStr} (Not found)`)
+						: `${depIdStr} (Not found)`;
+				}
+
+				const status = depTask.status || 'pending';
+				const isDone =
+					status.toLowerCase() === 'done' ||
+					status.toLowerCase() === 'completed';
+				const isInProgress = status.toLowerCase() === 'in-progress';
+
+				if (forConsole) {
+					if (isDone) {
+						return chalk.green.bold(depIdStr);
+					} else if (isInProgress) {
+						return chalk.yellow.bold(depIdStr);
+					} else {
+						return chalk.red.bold(depIdStr);
+					}
+				}
+				return depIdStr;
+			}
+
+			const [parentId, subtaskId] = parts.map((id) => parseInt(id, 10));
 
 			// Find the parent task
 			const parentTask = allTasks.find((t) => t.id === parentId);
@@ -379,8 +530,6 @@ function formatDependenciesWithStatus(
  * Display a comprehensive help guide
  */
 function displayHelp() {
-	displayBanner();
-
 	// Get terminal width - moved to top of function to make it available throughout
 	const terminalWidth = process.stdout.columns || 100; // Default to 100 if can't detect
 
@@ -460,6 +609,11 @@ function displayHelp() {
 					name: 'set-status',
 					args: '--id=<id> --status=<status>',
 					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
+				},
+				{
+					name: 'sync-readme',
+					args: '[--with-subtasks] [--status=<status>]',
+					desc: 'Export tasks to README.md with professional formatting'
 				},
 				{
 					name: 'update',
@@ -542,6 +696,11 @@ function displayHelp() {
 					name: 'expand --all',
 					args: '[--force] [--research]',
 					desc: 'Expand all pending tasks with subtasks'
+				},
+				{
+					name: 'research',
+					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--tree] [-s=<save_file>] [-d=<detail_level>]',
+					desc: 'Perform AI-powered research queries with project context'
 				}
 			]
 		},
@@ -558,6 +717,42 @@ function displayHelp() {
 					name: 'show',
 					args: '<id>',
 					desc: 'Display detailed information about a specific task'
+				}
+			]
+		},
+		{
+			title: 'Tag Management',
+			color: 'magenta',
+			commands: [
+				{
+					name: 'tags',
+					args: '[--show-metadata]',
+					desc: 'List all available tags with task counts'
+				},
+				{
+					name: 'add-tag',
+					args: '<tagName> [--copy-from-current] [--copy-from=<tag>] [-d="<desc>"]',
+					desc: 'Create a new tag context for organizing tasks'
+				},
+				{
+					name: 'use-tag',
+					args: '<tagName>',
+					desc: 'Switch to a different tag context'
+				},
+				{
+					name: 'delete-tag',
+					args: '<tagName> [--yes]',
+					desc: 'Delete an existing tag and all its tasks'
+				},
+				{
+					name: 'rename-tag',
+					args: '<oldName> <newName>',
+					desc: 'Rename an existing tag'
+				},
+				{
+					name: 'copy-tag',
+					args: '<sourceName> <targetName> [-d="<desc>"]',
+					desc: 'Copy an existing tag to create a new tag with the same tasks'
 				}
 			]
 		},
@@ -686,7 +881,7 @@ function displayHelp() {
 
 	configTable.push(
 		[
-			`${chalk.yellow('.taskmasterconfig')}${chalk.reset('')}`,
+			`${chalk.yellow(TASKMASTER_CONFIG_FILE)}${chalk.reset('')}`,
 			`${chalk.white('AI model configuration file (project root)')}${chalk.reset('')}`,
 			`${chalk.dim('Managed by models cmd')}${chalk.reset('')}`
 		],
@@ -741,9 +936,9 @@ function displayHelp() {
  * @returns {string} Colored complexity score
  */
 function getComplexityWithColor(score) {
-	if (score <= 3) return chalk.green(`🟢 ${score}`);
-	if (score <= 6) return chalk.yellow(`🟡 ${score}`);
-	return chalk.red(`🔴 ${score}`);
+	if (score <= 3) return chalk.green(`● ${score}`);
+	if (score <= 6) return chalk.yellow(`● ${score}`);
+	return chalk.red(`● ${score}`);
 }
 
 /**
@@ -761,12 +956,19 @@ function truncateString(str, maxLength) {
 /**
  * Display the next task to work on
  * @param {string} tasksPath - Path to the tasks.json file
+ * @param {string} complexityReportPath - Path to the complexity report file
+ * @param {string} tag - Optional tag to override current tag resolution
  */
-async function displayNextTask(tasksPath, complexityReportPath = null) {
-	displayBanner();
+async function displayNextTask(
+	tasksPath,
+	complexityReportPath = null,
+	context = {}
+) {
+	// Extract parameters from context
+	const { projectRoot, tag } = context;
 
-	// Read the tasks file
-	const data = readJSON(tasksPath);
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -1021,24 +1223,32 @@ async function displayNextTask(tasksPath, complexityReportPath = null) {
 			margin: { top: 1 }
 		})
 	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
  * Display a specific task by ID
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {string|number} taskId - The ID of the task to display
+ * @param {string} complexityReportPath - Path to the complexity report file
  * @param {string} [statusFilter] - Optional status to filter subtasks by
+ * @param {object} context - Context object containing projectRoot and tag
+ * @param {string} context.projectRoot - Project root path
+ * @param {string} context.tag - Tag for the task
  */
 async function displayTaskById(
 	tasksPath,
 	taskId,
 	complexityReportPath = null,
-	statusFilter = null
+	statusFilter = null,
+	context = {}
 ) {
-	displayBanner();
+	const { projectRoot, tag } = context;
 
-	// Read the tasks file
-	const data = readJSON(tasksPath);
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
 	if (!data || !data.tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
@@ -1466,24 +1676,84 @@ async function displayTaskById(
 	}
 
 	// --- Suggested Actions ---
-	console.log(
-		boxen(
-			chalk.white.bold('Suggested Actions:') +
-				'\n' +
-				`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}\n` +
-				`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}\n` +
-				// Determine action 3 based on whether subtasks *exist* (use the source list for progress)
-				(subtasksForProgress && subtasksForProgress.length > 0
-					? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${task.id}.1 --status=done`)}` // Example uses .1
-					: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${task.id}`)}`),
-			{
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				borderColor: 'green',
-				borderStyle: 'round',
-				margin: { top: 1 }
-			}
-		)
+	const actions = [];
+	let actionNumber = 1;
+
+	// Basic actions
+	actions.push(
+		`${chalk.cyan(`${actionNumber}.`)} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}`
 	);
+	actionNumber++;
+	actions.push(
+		`${chalk.cyan(`${actionNumber}.`)} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`
+	);
+	actionNumber++;
+
+	// Subtask-related action
+	if (subtasksForProgress && subtasksForProgress.length > 0) {
+		actions.push(
+			`${chalk.cyan(`${actionNumber}.`)} Update subtask status: ${chalk.yellow(`task-master set-status --id=${task.id}.1 --status=done`)}`
+		);
+	} else {
+		actions.push(
+			`${chalk.cyan(`${actionNumber}.`)} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${task.id}`)}`
+		);
+	}
+	actionNumber++;
+
+	// Complexity-based scope adjustment actions
+	if (task.complexityScore) {
+		const complexityScore = task.complexityScore;
+		actions.push(
+			`${chalk.cyan(`${actionNumber}.`)} Re-analyze complexity: ${chalk.yellow(`task-master analyze-complexity --id=${task.id}`)}`
+		);
+		actionNumber++;
+
+		// Add scope adjustment suggestions based on current complexity
+		if (complexityScore >= 7) {
+			// High complexity - suggest scoping down
+			actions.push(
+				`${chalk.cyan(`${actionNumber}.`)} Scope down (simplify): ${chalk.yellow(`task-master scope-down --id=${task.id} --strength=regular`)}`
+			);
+			actionNumber++;
+			if (complexityScore >= 9) {
+				actions.push(
+					`${chalk.cyan(`${actionNumber}.`)} Heavy scope down: ${chalk.yellow(`task-master scope-down --id=${task.id} --strength=heavy`)}`
+				);
+				actionNumber++;
+			}
+		} else if (complexityScore <= 4) {
+			// Low complexity - suggest scoping up
+			actions.push(
+				`${chalk.cyan(`${actionNumber}.`)} Scope up (add detail): ${chalk.yellow(`task-master scope-up --id=${task.id} --strength=regular`)}`
+			);
+			actionNumber++;
+			if (complexityScore <= 2) {
+				actions.push(
+					`${chalk.cyan(`${actionNumber}.`)} Heavy scope up: ${chalk.yellow(`task-master scope-up --id=${task.id} --strength=heavy`)}`
+				);
+				actionNumber++;
+			}
+		} else {
+			// Medium complexity (5-6) - offer both options
+			actions.push(
+				`${chalk.cyan(`${actionNumber}.`)} Scope up/down: ${chalk.yellow(`task-master scope-up --id=${task.id} --strength=light`)} or ${chalk.yellow(`scope-down --id=${task.id} --strength=light`)}`
+			);
+			actionNumber++;
+		}
+	}
+
+	console.log(
+		boxen(chalk.white.bold('Suggested Actions:') + '\n' + actions.join('\n'), {
+			padding: { top: 0, bottom: 0, left: 1, right: 1 },
+			borderColor: 'green',
+			borderStyle: 'round',
+			margin: { top: 1 }
+		})
+	);
+
+	// Show FYI notice if migration occurred
+	displayTaggedTasksFYI(data);
 }
 
 /**
@@ -1491,8 +1761,6 @@ async function displayTaskById(
  * @param {string} reportPath - Path to the complexity report file
  */
 async function displayComplexityReport(reportPath) {
-	displayBanner();
-
 	// Check if the report exists
 	if (!fs.existsSync(reportPath)) {
 		console.log(
@@ -1508,26 +1776,31 @@ async function displayComplexityReport(reportPath) {
 			)
 		);
 
-		const readline = require('readline').createInterface({
+		const rl = readline.createInterface({
 			input: process.stdin,
 			output: process.stdout
 		});
 
 		const answer = await new Promise((resolve) => {
-			readline.question(
-				chalk.cyan('Generate complexity report? (y/n): '),
-				resolve
-			);
+			rl.question(chalk.cyan('Generate complexity report? (y/n): '), resolve);
 		});
-		readline.close();
+		rl.close();
 
 		if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 			// Call the analyze-complexity command
 			console.log(chalk.blue('Generating complexity report...'));
+			const tasksPath = TASKMASTER_TASKS_FILE;
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					'❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file.'
+				);
+				return null;
+			}
+
 			await analyzeTaskComplexity({
 				output: reportPath,
 				research: false, // Default to no research for speed
-				file: 'tasks/tasks.json'
+				file: tasksPath
 			});
 			// Read the newly generated report
 			return displayComplexityReport(reportPath);
@@ -1792,8 +2065,6 @@ async function confirmTaskOverwrite(tasksPath) {
 		)
 	);
 
-	// Use dynamic import to get the readline module
-	const readline = await import('readline');
 	const rl = readline.createInterface({
 		input: process.stdin,
 		output: process.stdout
@@ -1842,7 +2113,7 @@ function displayApiKeyStatus(statusReport) {
 	console.log(table.toString());
 	console.log(
 		chalk.gray(
-			'  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in .taskmasterconfig.'
+			`  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in ${TASKMASTER_CONFIG_FILE}.`
 		)
 	);
 }
@@ -2063,9 +2334,483 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	);
 }
 
+/**
+ * Display multiple tasks in a compact summary format with interactive drill-down
+ * @param {string} tasksPath - Path to the tasks.json file
+ * @param {Array<string>} taskIds - Array of task IDs to display
+ * @param {string} complexityReportPath - Path to complexity report
+ * @param {string} statusFilter - Optional status filter for subtasks
+ * @param {Object} context - Context object containing projectRoot and tag
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
+ */
+async function displayMultipleTasksSummary(
+	tasksPath,
+	taskIds,
+	complexityReportPath = null,
+	statusFilter = null,
+	context = {}
+) {
+	displayBanner();
+
+	// Extract projectRoot and tag from context
+	const projectRoot = context.projectRoot || null;
+	const tag = context.tag || null;
+
+	// Read the tasks file with proper projectRoot for tag resolution
+	const data = readJSON(tasksPath, projectRoot, tag);
+	if (!data || !data.tasks) {
+		log('error', 'No valid tasks found.');
+		process.exit(1);
+	}
+
+	// Read complexity report once
+	const complexityReport = readComplexityReport(complexityReportPath);
+
+	// Find all requested tasks
+	const foundTasks = [];
+	const notFoundIds = [];
+
+	taskIds.forEach((id) => {
+		const { task } = findTaskById(
+			data.tasks,
+			id,
+			complexityReport,
+			statusFilter
+		);
+		if (task) {
+			foundTasks.push(task);
+		} else {
+			notFoundIds.push(id);
+		}
+	});
+
+	// Show not found tasks
+	if (notFoundIds.length > 0) {
+		console.log(
+			boxen(chalk.yellow(`Tasks not found: ${notFoundIds.join(', ')}`), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'yellow',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 1 }
+			})
+		);
+	}
+
+	if (foundTasks.length === 0) {
+		console.log(
+			boxen(chalk.red('No valid tasks found to display'), {
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'red',
+				borderStyle: 'round',
+				margin: { top: 1 }
+			})
+		);
+		return;
+	}
+
+	// Display header
+	console.log(
+		boxen(
+			chalk.white.bold(
+				`Task Summary (${foundTasks.length} task${foundTasks.length === 1 ? '' : 's'})`
+			),
+			{
+				padding: { top: 0, bottom: 0, left: 1, right: 1 },
+				borderColor: 'blue',
+				borderStyle: 'round',
+				margin: { top: 1, bottom: 0 }
+			}
+		)
+	);
+
+	// Calculate terminal width for responsive layout
+	const terminalWidth = process.stdout.columns || 100;
+	const availableWidth = terminalWidth - 10;
+
+	// Create compact summary table
+	const summaryTable = new Table({
+		head: [
+			chalk.cyan.bold('ID'),
+			chalk.cyan.bold('Title'),
+			chalk.cyan.bold('Status'),
+			chalk.cyan.bold('Priority'),
+			chalk.cyan.bold('Subtasks'),
+			chalk.cyan.bold('Progress')
+		],
+		colWidths: [
+			Math.floor(availableWidth * 0.08), // ID: 8%
+			Math.floor(availableWidth * 0.35), // Title: 35%
+			Math.floor(availableWidth * 0.12), // Status: 12%
+			Math.floor(availableWidth * 0.1), // Priority: 10%
+			Math.floor(availableWidth * 0.15), // Subtasks: 15%
+			Math.floor(availableWidth * 0.2) // Progress: 20%
+		],
+		style: {
+			head: [],
+			border: [],
+			'padding-top': 0,
+			'padding-bottom': 0,
+			compact: true
+		},
+		chars: { mid: '', 'left-mid': '', 'mid-mid': '', 'right-mid': '' },
+		wordWrap: true
+	});
+
+	// Add each task to the summary table
+	foundTasks.forEach((task) => {
+		// Handle subtask case
+		if (task.isSubtask || task.parentTask) {
+			const parentId = task.parentTask ? task.parentTask.id : 'Unknown';
+			summaryTable.push([
+				`${parentId}.${task.id}`,
+				truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+				getStatusWithColor(task.status || 'pending', true),
+				chalk.gray('(subtask)'),
+				chalk.gray('N/A'),
+				chalk.gray('N/A')
+			]);
+			return;
+		}
+
+		// Handle regular task
+		const priorityColors = {
+			high: chalk.red.bold,
+			medium: chalk.yellow,
+			low: chalk.gray
+		};
+		const priorityColor =
+			priorityColors[task.priority || 'medium'] || chalk.white;
+
+		// Calculate subtask summary
+		let subtaskSummary = chalk.gray('None');
+		let progressBar = chalk.gray('N/A');
+
+		if (task.subtasks && task.subtasks.length > 0) {
+			const total = task.subtasks.length;
+			const completed = task.subtasks.filter(
+				(st) => st.status === 'done' || st.status === 'completed'
+			).length;
+			const inProgress = task.subtasks.filter(
+				(st) => st.status === 'in-progress'
+			).length;
+			const pending = task.subtasks.filter(
+				(st) => st.status === 'pending'
+			).length;
+
+			// Compact subtask count with status indicators
+			subtaskSummary = `${chalk.green(completed)}/${total}`;
+			if (inProgress > 0)
+				subtaskSummary += ` ${chalk.hex('#FFA500')(`+${inProgress}`)}`;
+			if (pending > 0) subtaskSummary += ` ${chalk.yellow(`(${pending})`)}`;
+
+			// Mini progress bar (shorter than usual)
+			const completionPercentage = (completed / total) * 100;
+			const barLength = 8; // Compact bar
+			const statusBreakdown = {
+				'in-progress': (inProgress / total) * 100,
+				pending: (pending / total) * 100
+			};
+			progressBar = createProgressBar(
+				completionPercentage,
+				barLength,
+				statusBreakdown
+			);
+		}
+
+		summaryTable.push([
+			task.id.toString(),
+			truncate(task.title, Math.floor(availableWidth * 0.35) - 3),
+			getStatusWithColor(task.status || 'pending', true),
+			priorityColor(task.priority || 'medium'),
+			subtaskSummary,
+			progressBar
+		]);
+	});
+
+	console.log(summaryTable.toString());
+
+	// Interactive drill-down prompt
+	if (foundTasks.length > 1) {
+		console.log(
+			boxen(
+				chalk.white.bold('Interactive Options:') +
+					'\n' +
+					chalk.cyan('• Press Enter to view available actions for all tasks') +
+					'\n' +
+					chalk.cyan(
+						'• Type a task ID (e.g., "3" or "3.2") to view that specific task'
+					) +
+					'\n' +
+					chalk.cyan('• Type "q" to quit'),
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+
+		const rl = readline.createInterface({
+			input: process.stdin,
+			output: process.stdout
+		});
+
+		const choice = await new Promise((resolve) => {
+			rl.question(chalk.cyan('Your choice: '), resolve);
+		});
+		rl.close();
+
+		if (choice.toLowerCase() === 'q') {
+			return;
+		} else if (choice.trim() === '') {
+			// Show action menu for selected tasks
+			console.log(
+				boxen(
+					chalk.white.bold('Available Actions for Selected Tasks:') +
+						'\n' +
+						chalk.cyan('1.') +
+						' Mark all as in-progress' +
+						'\n' +
+						chalk.cyan('2.') +
+						' Mark all as done' +
+						'\n' +
+						chalk.cyan('3.') +
+						' Show next available task' +
+						'\n' +
+						chalk.cyan('4.') +
+						' Expand all tasks (generate subtasks)' +
+						'\n' +
+						chalk.cyan('5.') +
+						' View dependency relationships' +
+						'\n' +
+						chalk.cyan('6.') +
+						' Generate task files' +
+						'\n' +
+						chalk.gray('Or type a task ID to view details'),
+					{
+						padding: { top: 0, bottom: 0, left: 1, right: 1 },
+						borderColor: 'blue',
+						borderStyle: 'round',
+						margin: { top: 1 }
+					}
+				)
+			);
+
+			const rl2 = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout
+			});
+
+			const actionChoice = await new Promise((resolve) => {
+				rl2.question(chalk.cyan('Choose action (1-6): '), resolve);
+			});
+			rl2.close();
+
+			const taskIdList = foundTasks.map((t) => t.id).join(',');
+
+			switch (actionChoice.trim()) {
+				case '1':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=in-progress`
+						)
+					);
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to mark all tasks as in-progress'
+						)
+					);
+					break;
+				case '2':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master set-status --id=${taskIdList} --status=done`
+						)
+					);
+					console.log(
+						chalk.green('✓ Copy and run this command to mark all tasks as done')
+					);
+					break;
+				case '3':
+					console.log(chalk.blue(`\n→ Command: task-master next`));
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to see the next available task'
+						)
+					);
+					break;
+				case '4':
+					console.log(
+						chalk.blue(
+							`\n→ Command: task-master expand --id=${taskIdList} --research`
+						)
+					);
+					console.log(
+						chalk.green(
+							'✓ Copy and run this command to expand all selected tasks into subtasks'
+						)
+					);
+					break;
+				case '5': {
+					// Show dependency visualization
+					console.log(chalk.white.bold('\nDependency Relationships:'));
+					let hasDependencies = false;
+					foundTasks.forEach((task) => {
+						if (task.dependencies && task.dependencies.length > 0) {
+							console.log(
+								chalk.cyan(
+									`Task ${task.id} depends on: ${task.dependencies.join(', ')}`
+								)
+							);
+							hasDependencies = true;
+						}
+					});
+					if (!hasDependencies) {
+						console.log(chalk.gray('No dependencies found for selected tasks'));
+					}
+					break;
+				}
+				case '6':
+					console.log(chalk.blue(`\n→ Command: task-master generate`));
+					console.log(
+						chalk.green('✓ Copy and run this command to generate task files')
+					);
+					break;
+				default:
+					if (actionChoice.trim().length > 0) {
+						console.log(chalk.yellow(`Invalid choice: ${actionChoice.trim()}`));
+						console.log(chalk.gray('Please choose 1-6 or type a task ID'));
+					}
+			}
+		} else {
+			// Show specific task
+			await displayTaskById(
+				tasksPath,
+				choice.trim(),
+				complexityReportPath,
+				statusFilter,
+				context
+			);
+		}
+	} else {
+		// Single task - show suggested actions
+		const task = foundTasks[0];
+		console.log(
+			boxen(
+				chalk.white.bold('Suggested Actions:') +
+					'\n' +
+					`${chalk.cyan('1.')} View full details: ${chalk.yellow(`task-master show ${task.id}`)}\n` +
+					`${chalk.cyan('2.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}\n` +
+					`${chalk.cyan('3.')} Mark as done: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`,
+				{
+					padding: { top: 0, bottom: 0, left: 1, right: 1 },
+					borderColor: 'green',
+					borderStyle: 'round',
+					margin: { top: 1 }
+				}
+			)
+		);
+	}
+}
+
+/**
+ * Display context analysis results with beautiful formatting
+ * @param {Object} analysisData - Analysis data from ContextGatherer
+ * @param {string} semanticQuery - The original query used for semantic search
+ * @param {number} contextSize - Size of gathered context in characters
+ */
+function displayContextAnalysis(analysisData, semanticQuery, contextSize) {
+	if (isSilentMode() || !analysisData) return;
+
+	const { highRelevance, mediumRelevance, recentTasks, allRelevantTasks } =
+		analysisData;
+
+	// Create the context analysis display
+	let analysisContent = chalk.white.bold('Context Analysis') + '\n\n';
+
+	// Query info
+	analysisContent +=
+		chalk.gray('Query: ') + chalk.white(`"${semanticQuery}"`) + '\n';
+	analysisContent +=
+		chalk.gray('Context size: ') +
+		chalk.cyan(`${contextSize.toLocaleString()} characters`) +
+		'\n';
+	analysisContent +=
+		chalk.gray('Tasks found: ') +
+		chalk.yellow(`${allRelevantTasks.length} relevant tasks`) +
+		'\n\n';
+
+	// High relevance matches
+	if (highRelevance.length > 0) {
+		analysisContent += chalk.green.bold('🎯 High Relevance Matches:') + '\n';
+		highRelevance.slice(0, 3).forEach((task) => {
+			analysisContent +=
+				chalk.green(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (highRelevance.length > 3) {
+			analysisContent +=
+				chalk.green(
+					`  • ... and ${highRelevance.length - 3} more high relevance tasks`
+				) + '\n';
+		}
+		analysisContent += '\n';
+	}
+
+	// Medium relevance matches
+	if (mediumRelevance.length > 0) {
+		analysisContent += chalk.yellow.bold('📋 Medium Relevance Matches:') + '\n';
+		mediumRelevance.slice(0, 3).forEach((task) => {
+			analysisContent +=
+				chalk.yellow(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (mediumRelevance.length > 3) {
+			analysisContent +=
+				chalk.yellow(
+					`  • ... and ${mediumRelevance.length - 3} more medium relevance tasks`
+				) + '\n';
+		}
+		analysisContent += '\n';
+	}
+
+	// Recent tasks (if they contributed)
+	const recentTasksNotInRelevance = recentTasks.filter(
+		(task) =>
+			!highRelevance.some((hr) => hr.id === task.id) &&
+			!mediumRelevance.some((mr) => mr.id === task.id)
+	);
+
+	if (recentTasksNotInRelevance.length > 0) {
+		analysisContent += chalk.cyan.bold('🕒 Recent Tasks (for context):') + '\n';
+		recentTasksNotInRelevance.slice(0, 2).forEach((task) => {
+			analysisContent +=
+				chalk.cyan(`  • Task ${task.id}: ${truncate(task.title, 50)}`) + '\n';
+		});
+		if (recentTasksNotInRelevance.length > 2) {
+			analysisContent +=
+				chalk.cyan(
+					`  • ... and ${recentTasksNotInRelevance.length - 2} more recent tasks`
+				) + '\n';
+		}
+	}
+
+	console.log(
+		boxen(analysisContent, {
+			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			margin: { top: 1, bottom: 0 },
+			borderStyle: 'round',
+			borderColor: 'blue',
+			title: chalk.blue('🔍 Context Gathering'),
+			titleAlignment: 'center'
+		})
+	);
+}
+
 // Export UI functions
 export {
 	displayBanner,
+	displayTaggedTasksFYI,
 	startLoadingIndicator,
 	stopLoadingIndicator,
 	createProgressBar,
@@ -2081,5 +2826,180 @@ export {
 	displayApiKeyStatus,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	displayMultipleTasksSummary,
+	succeedLoadingIndicator,
+	failLoadingIndicator,
+	warnLoadingIndicator,
+	infoLoadingIndicator,
+	displayContextAnalysis,
+	displayCurrentTagIndicator,
+	formatTaskIdForDisplay
 };
+
+/**
+ * Display enhanced error message for cross-tag dependency conflicts
+ * @param {Array} conflicts - Array of cross-tag dependency conflicts
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {string} sourceIds - Source task IDs (comma-separated)
+ */
+export function displayCrossTagDependencyError(
+	conflicts,
+	sourceTag,
+	targetTag,
+	sourceIds
+) {
+	console.log(
+		chalk.red(`\n❌ Cannot move tasks from "${sourceTag}" to "${targetTag}"`)
+	);
+	console.log(chalk.yellow(`\nCross-tag dependency conflicts detected:`));
+
+	if (conflicts.length > 0) {
+		conflicts.forEach((conflict) => {
+			console.log(`  • ${conflict.message}`);
+		});
+	}
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(
+		`  1. Move with dependencies: task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
+	);
+	console.log(
+		`  2. Break dependencies: task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --ignore-dependencies`
+	);
+	console.log(
+		`  3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies`
+	);
+	if (conflicts.length > 0) {
+		console.log(
+			`  4. Move dependencies first: task-master move --from=${conflicts.map((c) => c.dependencyId).join(',')} --from-tag=${conflicts[0].dependencyTag} --to-tag=${targetTag}`
+		);
+	}
+}
+
+/**
+ * Helper function to format task ID for display, handling edge cases with explicit labels
+ * Builds on the existing formatTaskId utility but adds user-friendly display for edge cases
+ * @param {*} taskId - The task ID to format
+ * @returns {string} Formatted task ID for display
+ */
+function formatTaskIdForDisplay(taskId) {
+	if (taskId === null) return 'null';
+	if (taskId === undefined) return 'undefined';
+	if (taskId === '') return '(empty)';
+
+	// Use existing formatTaskId for normal cases, with fallback to 'unknown'
+	return formatTaskId(taskId) || 'unknown';
+}
+
+/**
+ * Display enhanced error message for subtask movement restriction
+ * @param {string} taskId - The subtask ID that cannot be moved
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ */
+export function displaySubtaskMoveError(taskId, sourceTag, targetTag) {
+	// Handle null/undefined taskId but preserve the actual value for display
+	const displayTaskId = formatTaskIdForDisplay(taskId);
+
+	// Safe taskId for operations that need a valid string
+	const safeTaskId = taskId || 'unknown';
+
+	// Validate taskId format before splitting
+	let parentId = safeTaskId;
+	if (safeTaskId.includes('.')) {
+		const parts = safeTaskId.split('.');
+		// Check if it's a valid subtask format (parentId.subtaskId)
+		if (parts.length === 2 && parts[0] && parts[1]) {
+			parentId = parts[0];
+		} else {
+			// Invalid format - log warning and use the original taskId
+			console.log(
+				chalk.yellow(
+					`\n⚠️  Warning: Unexpected taskId format "${safeTaskId}". Using as-is for command suggestions.`
+				)
+			);
+			parentId = safeTaskId;
+		}
+	}
+
+	console.log(
+		chalk.red(`\n❌ Cannot move subtask ${displayTaskId} directly between tags`)
+	);
+	console.log(chalk.yellow(`\nSubtask movement restriction:`));
+	console.log(`  • Subtasks cannot be moved directly between tags`);
+	console.log(`  • They must be promoted to full tasks first`);
+	console.log(`  • Source tag: "${sourceTag}"`);
+	console.log(`  • Target tag: "${targetTag}"`);
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(
+		`  1. Promote subtask to full task: task-master remove-subtask --id=${displayTaskId} --convert`
+	);
+	console.log(
+		`  2. Then move the promoted task: task-master move --from=${parentId} --from-tag=${sourceTag} --to-tag=${targetTag}`
+	);
+	console.log(
+		`  3. Or move the parent task with all subtasks: task-master move --from=${parentId} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
+	);
+}
+
+/**
+ * Display enhanced error message for invalid tag combinations
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {string} reason - Reason for the error
+ */
+export function displayInvalidTagCombinationError(
+	sourceTag,
+	targetTag,
+	reason
+) {
+	console.log(chalk.red(`\n❌ Invalid tag combination`));
+	console.log(chalk.yellow(`\nError details:`));
+	console.log(`  • Source tag: "${sourceTag}"`);
+	console.log(`  • Target tag: "${targetTag}"`);
+	console.log(`  • Reason: ${reason}`);
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(`  1. Use different tags for cross-tag moves`);
+	console.log(
+		`  2. Use within-tag move: task-master move --from=<id> --to=<id> --tag=${sourceTag}`
+	);
+	console.log(`  3. Check available tags: task-master tags`);
+}
+
+/**
+ * Display helpful hints for dependency validation commands
+ * @param {string} context - Context for the hints (e.g., 'before-move', 'after-error')
+ */
+export function displayDependencyValidationHints(context = 'general') {
+	const hints = {
+		'before-move': [
+			'💡 Tip: Run "task-master validate-dependencies" to check for dependency issues before moving tasks',
+			'💡 Tip: Use "task-master fix-dependencies" to automatically resolve common dependency problems',
+			'💡 Tip: Consider using --with-dependencies flag to move dependent tasks together'
+		],
+		'after-error': [
+			'🔧 Quick fix: Run "task-master validate-dependencies" to identify specific issues',
+			'🔧 Quick fix: Use "task-master fix-dependencies" to automatically resolve problems',
+			'🔧 Quick fix: Check "task-master show <id>" to see task dependencies before moving'
+		],
+		general: [
+			'💡 Use "task-master validate-dependencies" to check for dependency issues',
+			'💡 Use "task-master fix-dependencies" to automatically resolve problems',
+			'💡 Use "task-master show <id>" to view task dependencies',
+			'💡 Use --with-dependencies flag to move dependent tasks together'
+		]
+	};
+
+	const relevantHints = hints[context] || hints.general;
+
+	console.log(chalk.cyan(`\nHelpful hints:`));
+	// Convert to Set to ensure only unique hints are displayed
+	const uniqueHints = new Set(relevantHints);
+	uniqueHints.forEach((hint) => {
+		console.log(`  ${hint}`);
+	});
+}

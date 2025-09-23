@@ -13,12 +13,16 @@ import {
  * Direct function wrapper for generateTaskFiles with error handling.
  *
  * @param {Object} args - Command arguments containing tasksJsonPath and outputDir.
+ * @param {string} args.tasksJsonPath - Path to the tasks.json file.
+ * @param {string} args.outputDir - Path to the output directory.
+ * @param {string} args.projectRoot - Project root path (for MCP/env fallback)
+ * @param {string} args.tag - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function generateTaskFilesDirect(args, log) {
 	// Destructure expected args
-	const { tasksJsonPath, outputDir } = args;
+	const { tasksJsonPath, outputDir, projectRoot, tag } = args;
 	try {
 		log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
@@ -28,8 +32,7 @@ export async function generateTaskFilesDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 		if (!outputDir) {
@@ -37,8 +40,7 @@ export async function generateTaskFilesDirect(args, log) {
 			log.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -53,8 +55,12 @@ export async function generateTaskFilesDirect(args, log) {
 			// Enable silent mode to prevent logs from being written to stdout
 			enableSilentMode();
 
-			// The function is synchronous despite being awaited elsewhere
-			generateTaskFiles(tasksPath, resolvedOutputDir);
+			// Pass projectRoot and tag so the core respects context
+			generateTaskFiles(tasksPath, resolvedOutputDir, {
+				projectRoot,
+				tag,
+				mcpLog: log
+			});
 
 			// Restore normal logging after task generation
 			disableSilentMode();
@@ -65,8 +71,7 @@ export async function generateTaskFilesDirect(args, log) {
 			log.error(`Error in generateTaskFiles: ${genError.message}`);
 			return {
 				success: false,
-				error: { code: 'GENERATE_FILES_ERROR', message: genError.message },
-				fromCache: false
+				error: { code: 'GENERATE_FILES_ERROR', message: genError.message }
 			};
 		}
 
@@ -79,8 +84,7 @@ export async function generateTaskFilesDirect(args, log) {
 				outputDir: resolvedOutputDir,
 				taskFiles:
 					'Individual task files have been generated in the output directory'
-			},
-			fromCache: false // This operation always modifies state and should never be cached
+			}
 		};
 	} catch (error) {
 		// Make sure to restore normal logging if an outer error occurs
@@ -92,8 +96,7 @@ export async function generateTaskFilesDirect(args, log) {
 			error: {
 				code: 'GENERATE_TASKS_ERROR',
 				message: error.message || 'Unknown error generating task files'
-			},
-			fromCache: false
+			}
 		};
 	}
 }

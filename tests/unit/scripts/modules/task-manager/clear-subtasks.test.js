@@ -16,7 +16,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	},
 	findTaskById: jest.fn(),
 	isSilentMode: jest.fn(() => false),
-	truncate: jest.fn((text) => text)
+	truncate: jest.fn((text) => text),
+	ensureTagMetadata: jest.fn()
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
@@ -59,14 +60,19 @@ jest.unstable_mockModule('cli-table3', () => ({
 	}))
 }));
 
-// Import the mocked modules
-const { readJSON, writeJSON, log } = await import(
-	'../../../../../scripts/modules/utils.js'
-);
+// Mock process.exit to prevent Jest worker crashes
+const mockExit = jest.spyOn(process, 'exit').mockImplementation((code) => {
+	throw new Error(`process.exit called with "${code}"`);
+});
 
-const generateTaskFiles = await import(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js'
-);
+// Import the mocked modules
+const { readJSON, writeJSON, log, findTaskById, ensureTagMetadata } =
+	await import('../../../../../scripts/modules/utils.js');
+const generateTaskFiles = (
+	await import(
+		'../../../../../scripts/modules/task-manager/generate-task-files.js'
+	)
+).default;
 
 // Import the module under test
 const { default: clearSubtasks } = await import(
@@ -75,160 +81,167 @@ const { default: clearSubtasks } = await import(
 
 describe('clearSubtasks', () => {
 	const sampleTasks = {
-		tasks: [
-			{
-				id: 1,
-				title: 'Task 1',
-				description: 'First task',
-				status: 'pending',
-				dependencies: []
-			},
-			{
-				id: 2,
-				title: 'Task 2',
-				description: 'Second task',
-				status: 'pending',
-				dependencies: [],
-				subtasks: [
-					{
-						id: 1,
-						title: 'Subtask 2.1',
-						description: 'First subtask of task 2',
-						status: 'pending',
-						dependencies: []
-					}
-				]
-			},
-			{
-				id: 3,
-				title: 'Task 3',
-				description: 'Third task',
-				status: 'pending',
-				dependencies: [],
-				subtasks: [
-					{
-						id: 1,
-						title: 'Subtask 3.1',
-						description: 'First subtask of task 3',
-						status: 'pending',
-						dependencies: []
-					},
-					{
-						id: 2,
-						title: 'Subtask 3.2',
-						description: 'Second subtask of task 3',
-						status: 'done',
-						dependencies: []
-					}
-				]
-			}
-		]
+		master: {
+			tasks: [
+				{ id: 1, title: 'Task 1', subtasks: [] },
+				{ id: 2, title: 'Task 2', subtasks: [] },
+				{
+					id: 3,
+					title: 'Task 3',
+					subtasks: [{ id: 1, title: 'Subtask 3.1' }]
+				},
+				{
+					id: 4,
+					title: 'Task 4',
+					subtasks: [{ id: 1, title: 'Subtask 4.1' }]
+				}
+			]
+		}
 	};
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		readJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
-
-		// Mock process.exit since this function doesn't have MCP mode support
-		jest.spyOn(process, 'exit').mockImplementation(() => {
-			throw new Error('process.exit called');
+		mockExit.mockClear();
+		readJSON.mockImplementation((tasksPath, projectRoot, tag) => {
+			// Ensure tag contract is honoured
+			expect(tag).toBeDefined();
+			expect(tag).toBe('master');
+			// Create a deep copy to avoid mutation issues between tests
+			const sampleTasksCopy = JSON.parse(JSON.stringify(sampleTasks));
+			// Return the data for the 'master' tag, which is what the tests use
+			return {
+				...sampleTasksCopy.master,
+				tag: tag || 'master',
+				_rawTaggedData: sampleTasksCopy
+			};
 		});
-
-		// Mock console.log to avoid output during tests
-		jest.spyOn(console, 'log').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		// Restore process.exit
-		process.exit.mockRestore();
-		console.log.mockRestore();
+		writeJSON.mockResolvedValue();
+		generateTaskFiles.mockResolvedValue();
+		log.mockImplementation(() => {});
 	});
 
 	test('should clear subtasks from a specific task', () => {
+		// Arrange
+		const taskId = '3';
+		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
+
 		// Act
-		clearSubtasks('tasks/tasks.json', '3');
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
-			'tasks/tasks.json',
+			tasksPath,
 			expect.objectContaining({
-				tasks: expect.arrayContaining([
-					expect.objectContaining({
-						id: 3,
-						subtasks: []
+				_rawTaggedData: expect.objectContaining({
+					master: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 3,
+								subtasks: [] // Should be empty
+							})
+						])
 					})
-				])
-			})
+				})
+			}),
+			undefined,
+			'master'
 		);
-		expect(generateTaskFiles.default).toHaveBeenCalled();
 	});
 
 	test('should clear subtasks from multiple tasks when given comma-separated IDs', () => {
+		// Arrange
+		const taskIds = '3,4';
+		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
+
 		// Act
-		clearSubtasks('tasks/tasks.json', '2,3');
+		clearSubtasks(tasksPath, taskIds, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(writeJSON).toHaveBeenCalledWith(
-			'tasks/tasks.json',
+			tasksPath,
 			expect.objectContaining({
-				tasks: expect.arrayContaining([
-					expect.objectContaining({
-						id: 2,
-						subtasks: []
-					}),
-					expect.objectContaining({
-						id: 3,
-						subtasks: []
+				_rawTaggedData: expect.objectContaining({
+					master: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({ id: 3, subtasks: [] }),
+							expect.objectContaining({ id: 4, subtasks: [] })
+						])
 					})
-				])
-			})
+				})
+			}),
+			undefined,
+			'master'
 		);
-		expect(generateTaskFiles.default).toHaveBeenCalled();
 	});
 
 	test('should handle tasks with no subtasks', () => {
+		// Arrange
+		const taskId = '1'; // Task 1 already has no subtasks
+		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
+
 		// Act
-		clearSubtasks('tasks/tasks.json', '1');
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
-		expect(generateTaskFiles.default).not.toHaveBeenCalled();
+		expect(generateTaskFiles).not.toHaveBeenCalled();
 	});
 
 	test('should handle non-existent task IDs gracefully', () => {
+		// Arrange
+		const taskId = '99'; // Non-existent task
+		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
+
 		// Act
-		clearSubtasks('tasks/tasks.json', '99');
+		clearSubtasks(tasksPath, taskId, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(log).toHaveBeenCalledWith('error', 'Task 99 not found');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
+		expect(generateTaskFiles).not.toHaveBeenCalled();
 	});
 
 	test('should handle multiple task IDs including both valid and non-existent IDs', () => {
+		// Arrange
+		const taskIds = '3,99'; // Mix of valid and invalid IDs
+		const tasksPath = 'tasks/tasks.json';
+		const context = { tag: 'master' };
+
 		// Act
-		clearSubtasks('tasks/tasks.json', '3,99');
+		clearSubtasks(tasksPath, taskIds, context);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith('tasks/tasks.json');
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(log).toHaveBeenCalledWith('error', 'Task 99 not found');
+		// Since task 3 has subtasks that should be cleared, writeJSON should be called
 		expect(writeJSON).toHaveBeenCalledWith(
-			'tasks/tasks.json',
+			tasksPath,
 			expect.objectContaining({
 				tasks: expect.arrayContaining([
-					expect.objectContaining({
-						id: 3,
-						subtasks: []
+					expect.objectContaining({ id: 3, subtasks: [] })
+				]),
+				tag: 'master',
+				_rawTaggedData: expect.objectContaining({
+					master: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({ id: 3, subtasks: [] })
+						])
 					})
-				])
-			})
+				})
+			}),
+			undefined,
+			'master'
 		);
-		expect(generateTaskFiles.default).toHaveBeenCalled();
 	});
 
 	test('should handle file read errors', () => {
@@ -239,7 +252,7 @@ describe('clearSubtasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('File read failed');
 	});
 
@@ -249,7 +262,7 @@ describe('clearSubtasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('process.exit called');
 
 		expect(log).toHaveBeenCalledWith('error', 'No valid tasks found.');
@@ -257,13 +270,28 @@ describe('clearSubtasks', () => {
 
 	test('should handle file write errors', () => {
 		// Arrange
+		// Ensure task 3 has subtasks to clear so writeJSON gets called
+		readJSON.mockReturnValue({
+			...sampleTasks.master,
+			tag: 'master',
+			_rawTaggedData: sampleTasks,
+			tasks: [
+				...sampleTasks.master.tasks.slice(0, 2),
+				{
+					...sampleTasks.master.tasks[2],
+					subtasks: [{ id: 1, title: 'Subtask to clear' }]
+				},
+				...sampleTasks.master.tasks.slice(3)
+			]
+		});
+
 		writeJSON.mockImplementation(() => {
 			throw new Error('File write failed');
 		});
 
 		// Act & Assert
 		expect(() => {
-			clearSubtasks('tasks/tasks.json', '3');
+			clearSubtasks('tasks/tasks.json', '3', { tag: 'master' });
 		}).toThrow('File write failed');
 	});
 });

@@ -13,17 +13,26 @@ import {
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
+import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.
  *
  * @param {Object} args - Command arguments containing projectRoot, input, output, numTasks options.
+ * @param {string} args.input - Path to the input PRD file.
+ * @param {string} args.output - Path to the output directory.
+ * @param {string} args.numTasks - Number of tasks to generate.
+ * @param {boolean} args.force - Whether to force parsing.
+ * @param {boolean} args.append - Whether to append to the output file.
+ * @param {boolean} args.research - Whether to use research mode.
+ * @param {string} args.tag - Tag context for organizing tasks into separate task lists.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function parsePRDDirect(args, log, context = {}) {
-	const { session } = context;
+	const { session, reportProgress } = context;
 	// Extract projectRoot from args
 	const {
 		input: inputArg,
@@ -32,7 +41,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 		force,
 		append,
 		research,
-		projectRoot
+		projectRoot,
+		tag
 	} = args;
 
 	// Create the standard logger wrapper
@@ -49,7 +59,20 @@ export async function parsePRDDirect(args, log, context = {}) {
 			}
 		};
 	}
-	if (!inputArg) {
+
+	// Resolve input path using path utilities
+	let inputPath;
+	if (inputArg) {
+		try {
+			inputPath = resolvePrdPath({ input: inputArg, projectRoot }, session);
+		} catch (error) {
+			logWrapper.error(`Error resolving PRD path: ${error.message}`);
+			return {
+				success: false,
+				error: { code: 'FILE_NOT_FOUND', message: error.message }
+			};
+		}
+	} else {
 		logWrapper.error('parsePRDDirect called without input path');
 		return {
 			success: false,
@@ -57,11 +80,13 @@ export async function parsePRDDirect(args, log, context = {}) {
 		};
 	}
 
-	// Resolve input and output paths relative to projectRoot
-	const inputPath = path.resolve(projectRoot, inputArg);
+	// Resolve output path - use new path utilities for default
 	const outputPath = outputArg
-		? path.resolve(projectRoot, outputArg)
-		: path.resolve(projectRoot, 'tasks', 'tasks.json'); // Default output path
+		? path.isAbsolute(outputArg)
+			? outputArg
+			: path.resolve(projectRoot, outputArg)
+		: resolveProjectPath(TASKMASTER_TASKS_FILE, args) ||
+			path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	// Check if input file exists
 	if (!fs.existsSync(inputPath)) {
@@ -79,17 +104,12 @@ export async function parsePRDDirect(args, log, context = {}) {
 			logWrapper.info(`Creating output directory: ${outputDir}`);
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
-	} catch (dirError) {
-		logWrapper.error(
-			`Failed to create output directory ${outputDir}: ${dirError.message}`
-		);
-		// Return an error response immediately if dir creation fails
+	} catch (error) {
+		const errorMsg = `Failed to create output directory ${outputDir}: ${error.message}`;
+		logWrapper.error(errorMsg);
 		return {
 			success: false,
-			error: {
-				code: 'DIRECTORY_CREATION_ERROR',
-				message: `Failed to create output directory: ${dirError.message}`
-			}
+			error: { code: 'DIRECTORY_CREATE_FAILED', message: errorMsg }
 		};
 	}
 
@@ -97,7 +117,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 	if (numTasksArg) {
 		numTasks =
 			typeof numTasksArg === 'string' ? parseInt(numTasksArg, 10) : numTasksArg;
-		if (isNaN(numTasks) || numTasks <= 0) {
+		if (Number.isNaN(numTasks) || numTasks < 0) {
 			// Ensure positive number
 			numTasks = getDefaultNumTasks(projectRoot); // Fallback to default if parsing fails or invalid
 			logWrapper.warn(
@@ -140,9 +160,11 @@ export async function parsePRDDirect(args, log, context = {}) {
 				session,
 				mcpLog: logWrapper,
 				projectRoot,
+				tag,
 				force,
 				append,
 				research,
+				reportProgress,
 				commandName: 'parse-prd',
 				outputType: 'mcp'
 			},
@@ -158,7 +180,8 @@ export async function parsePRDDirect(args, log, context = {}) {
 				data: {
 					message: successMsg,
 					outputPath: result.tasksPath,
-					telemetryData: result.telemetryData
+					telemetryData: result.telemetryData,
+					tagInfo: result.tagInfo
 				}
 			};
 		} else {

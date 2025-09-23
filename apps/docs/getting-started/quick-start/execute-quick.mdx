@@ -1,0 +1,59 @@
+---
+title: Executing Tasks
+sidebarTitle: "Executing Tasks"
+---
+
+Now that your tasks are generated and reviewed you are ready to begin executing.
+
+## Select the Task to Work on: Next Task
+
+Task Master has the "next" command to find the next task to work on. You can access it with the following request:
+```
+What's the next task I should work on? Please consider dependencies and priorities.
+```
+Alternatively you can use the CLI to show the next task
+```bash
+task-master next
+```
+
+## Discuss Task
+When you know what task to work on next you can then start chatting with the agent to make sure it understands the plan of action.
+
+You can tag relevant files and folders so it knows what context to pull up as it generates its plan. For example:
+```
+Please review Task 5 and confirm you understand how to execute before beginning. Refer to @models @api and @schema 
+```
+The agent will begin analyzing the task and files and respond with the steps to complete the task. 
+
+## Agent Task execution
+
+If you agree with the plan of action, tell the agent to get started.
+```
+You may begin. I believe in you.
+```
+
+## Review and Test
+
+Once the agent is finished with the task you can refer to the task testing strategy to make sure it was completed correctly.
+
+## Update Task Status
+
+If the task was completed correctly you can update the status to done
+
+```
+Please mark Task 5 as done
+```
+The agent will execute
+```bash
+task-master set-status --id=5 --status=done
+```
+
+## Rules and Context
+
+If you ran into problems and had to debug errors you can create new rules as you go. This helps build context on your codebase that helps the creation and execution of future tasks.
+
+## On to the Next Task!
+
+By now you have all you need to get started executing code faster and smarter with Task Master.
+
+If you have any questions please check out [Frequently Asked Questions](/getting-started/faq)

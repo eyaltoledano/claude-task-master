@@ -8,6 +8,7 @@ const mockGetResearchModelId = jest.fn();
 const mockGetFallbackProvider = jest.fn();
 const mockGetFallbackModelId = jest.fn();
 const mockGetParametersForRole = jest.fn();
+const mockGetResponseLanguage = jest.fn();
 const mockGetUserId = jest.fn();
 const mockGetDebugFlag = jest.fn();
 const mockIsApiKeySet = jest.fn();
@@ -43,6 +44,7 @@ const mockGetBaseUrlForRole = jest.fn();
 const mockGetAllProviders = jest.fn();
 const mockGetOllamaBaseURL = jest.fn();
 const mockGetAzureBaseURL = jest.fn();
+const mockGetBedrockBaseURL = jest.fn();
 const mockGetVertexProjectId = jest.fn();
 const mockGetVertexLocation = jest.fn();
 const mockGetAvailableModels = jest.fn();
@@ -97,6 +99,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getFallbackMaxTokens: mockGetFallbackMaxTokens,
 	getFallbackTemperature: mockGetFallbackTemperature,
 	getParametersForRole: mockGetParametersForRole,
+	getResponseLanguage: mockGetResponseLanguage,
 	getUserId: mockGetUserId,
 	getDebugFlag: mockGetDebugFlag,
 	getBaseUrlForRole: mockGetBaseUrlForRole,
@@ -113,34 +116,46 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getAllProviders: mockGetAllProviders,
 	getOllamaBaseURL: mockGetOllamaBaseURL,
 	getAzureBaseURL: mockGetAzureBaseURL,
+	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
-	getMcpApiKeyStatus: mockGetMcpApiKeyStatus
+	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
+
+	// Providers without API keys
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
 }));
 
 // Mock AI Provider Classes with proper methods
 const mockAnthropicProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'ANTHROPIC_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockPerplexityProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'PERPLEXITY_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockOpenAIProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
 };
 
 const mockOllamaProvider = {
 	generateText: jest.fn(),
 	streamText: jest.fn(),
-	generateObject: jest.fn()
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => null),
+	isRequiredApiKey: jest.fn(() => false)
 };
 
 // Mock the provider classes to return our mock instances
@@ -150,34 +165,74 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	GoogleAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'GOOGLE_GENERATIVE_AI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OpenAIProvider: jest.fn(() => mockOpenAIProvider),
 	XAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'XAI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
+	})),
+	GroqProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'GROQ_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OpenRouterAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'OPENROUTER_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OllamaAIProvider: jest.fn(() => mockOllamaProvider),
 	BedrockAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AWS_ACCESS_KEY_ID'),
+		isRequiredApiKey: jest.fn(() => false)
 	})),
 	AzureProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AZURE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	})),
 	VertexAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
-		generateObject: jest.fn()
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => null),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
+	ClaudeCodeProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
+	GeminiCliProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
+	GrokCliProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'XAI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
 	}))
 }));
 
@@ -204,6 +259,9 @@ const mockSanitizePrompt = jest.fn();
 const mockReadComplexityReport = jest.fn();
 const mockFindTaskInComplexityReport = jest.fn();
 const mockAggregateTelemetry = jest.fn();
+const mockGetCurrentTag = jest.fn(() => 'master');
+const mockResolveTag = jest.fn(() => 'master');
+const mockGetTasksForTag = jest.fn(() => []);
 
 jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	LOG_LEVELS: { error: 0, warn: 1, info: 2, debug: 3 },
@@ -228,7 +286,10 @@ jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	sanitizePrompt: mockSanitizePrompt,
 	readComplexityReport: mockReadComplexityReport,
 	findTaskInComplexityReport: mockFindTaskInComplexityReport,
-	aggregateTelemetry: mockAggregateTelemetry
+	aggregateTelemetry: mockAggregateTelemetry,
+	getCurrentTag: mockGetCurrentTag,
+	resolveTag: mockResolveTag,
+	getTasksForTag: mockGetTasksForTag
 }));
 
 // Import the module to test (AFTER mocks)
@@ -256,6 +317,7 @@ describe('Unified AI Services', () => {
 			if (role === 'fallback') return { maxTokens: 150, temperature: 0.6 };
 			return { maxTokens: 100, temperature: 0.5 }; // Default
 		});
+		mockGetResponseLanguage.mockReturnValue('English');
 		mockResolveEnvVariable.mockImplementation((key) => {
 			if (key === 'ANTHROPIC_API_KEY') return 'mock-anthropic-key';
 			if (key === 'PERPLEXITY_API_KEY') return 'mock-perplexity-key';
@@ -336,7 +398,7 @@ describe('Unified AI Services', () => {
 				expect.stringContaining('Service call failed for role main')
 			);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				expect.stringContaining('New AI service call with role: fallback')
 			);
 		});
@@ -380,7 +442,7 @@ describe('Unified AI Services', () => {
 				expect.stringContaining('Service call failed for role fallback')
 			);
 			expect(mockLog).toHaveBeenCalledWith(
-				'info',
+				'debug',
 				expect.stringContaining('New AI service call with role: research')
 			);
 		});
@@ -442,6 +504,68 @@ describe('Unified AI Services', () => {
 			expect(mockAnthropicProvider.generateText).toHaveBeenCalledTimes(1);
 		});
 
+		test('should use configured responseLanguage in system prompt', async () => {
+			mockGetResponseLanguage.mockReturnValue('中文');
+			mockAnthropicProvider.generateText.mockResolvedValue('中文回复');
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello'
+			};
+			await generateTextService(params);
+
+			expect(mockAnthropicProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in 中文')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(fakeProjectRoot);
+		});
+
+		test('should pass custom projectRoot to getResponseLanguage', async () => {
+			const customRoot = '/custom/project/root';
+			mockGetResponseLanguage.mockReturnValue('Español');
+			mockAnthropicProvider.generateText.mockResolvedValue(
+				'Respuesta en Español'
+			);
+
+			const params = {
+				role: 'main',
+				systemPrompt: 'You are an assistant',
+				prompt: 'Hello',
+				projectRoot: customRoot
+			};
+			await generateTextService(params);
+
+			expect(mockGetResponseLanguage).toHaveBeenCalledWith(customRoot);
+			expect(mockAnthropicProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: 'system',
+							content: expect.stringContaining('Always respond in Español')
+						},
+						{ role: 'user', content: 'Hello' }
+					]
+				})
+			);
+		});
+
+		// Add more tests for edge cases:
+		// - Missing API keys (should throw from _resolveApiKey)
+		// - Unsupported provider configured (should skip and log)
+		// - Missing provider/model config for a role (should skip and log)
+		// - Missing prompt
+		// - Different initial roles (research, fallback)
+		// - generateObjectService (mock schema, check object result)
+		// - streamTextService (more complex to test, might need stream helpers)
 		test('should skip provider with missing API key and try next in fallback sequence', async () => {
 			// Setup isApiKeySet to return false for anthropic but true for perplexity
 			mockIsApiKeySet.mockImplementation((provider, session, root) => {

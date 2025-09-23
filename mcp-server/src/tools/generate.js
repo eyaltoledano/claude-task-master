@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { generateTaskFilesDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import path from 'path';
 
 /**
@@ -30,16 +31,21 @@ export function registerGenerateTool(server) {
 				.describe('Output directory (default: same directory as tasks file)'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Generating task files with args: ${JSON.stringify(args)}`);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -57,9 +63,12 @@ export function registerGenerateTool(server) {
 				const result = await generateTaskFilesDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
-						outputDir: outputDir
+						outputDir: outputDir,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -70,7 +79,13 @@ export function registerGenerateTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error generating task files');
+				return handleApiResult(
+					result,
+					log,
+					'Error generating task files',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in generate tool: ${error.message}`);
 				return createErrorResponse(error.message);

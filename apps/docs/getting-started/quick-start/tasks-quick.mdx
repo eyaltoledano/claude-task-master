@@ -1,0 +1,85 @@
+---
+title: Tasks Setup
+sidebarTitle: "Tasks Setup"
+---
+Now that your tasks are generated you can review the plan and prepare for execution.
+
+<Tip>
+Not all of the setup steps are required but they are recommended in order to ensure your coding agents work on accurate tasks.
+</Tip>
+
+## Expand Tasks
+Used to add detail to tasks and create subtasks. We recommend expanding all tasks using the MCP request below:
+```
+Expand all tasks into subtasks.
+```
+The agent will execute
+```bash
+task-master expand --all
+```
+## List/Show Tasks
+
+Used to view task details. It is important to review the plan and ensure it makes sense in your project. Check for correct folder structures, dependencies, out of scope subtasks, etc.
+
+To see a list of tasks and descriptions use the following command:
+
+```
+List all pending tasks so I can review.
+```
+To see all tasks in the CLI you can use:
+```bash
+task-master list
+```
+
+To see all implementation details of an individual task, including subtasks and testing strategy, you can use Show Task:
+
+```
+Show task 2 so I can review.
+```
+
+```bash
+task-master show --id=<##>
+```
+
+## Update Tasks
+
+If the task details need to be edited you can update the task using this request: 
+
+```
+Update Task 2 to use Postgres instead of MongoDB and remove the sharding subtask
+```
+Or this CLI command:
+
+```bash
+task-master update-task --id=2 --prompt="use Postgres instead of MongoDB and remove the sharding subtask"
+```
+## Analyze complexity
+
+Task Master can provide a complexity report which can be helpful to read before you begin. If you didn't already expand all your tasks, it could help identify which could be broken down further with subtasks.
+
+```
+Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
+```
+
+The agent will use the `analyze_project_complexity` MCP tool, or you can run it directly with the CLI command:
+```bash
+task-master analyze-complexity
+```
+
+For more comprehensive analysis using your configured research model, you can use:
+```bash
+task-master analyze-complexity --research
+```
+
+<Tip>
+The `--research` flag uses whatever research model you have configured in `.taskmaster/config.json` (configurable via `task-master models --setup`) for research-backed complexity analysis, providing more informed recommendations.
+</Tip>
+
+You can view the report in a friendly table using:
+```
+Can you show me the complexity report in a more readable format?
+```
+
+For more detailed CLI options, see the [Analyze Task Complexity](/capabilities/cli-root-commands#analyze-task-complexity) section.
+
+<Check>Now you are ready to begin [executing tasks](/getting-started/quick-start/execute-quick)</Check>

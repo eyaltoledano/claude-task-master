@@ -1,0 +1,145 @@
+name: Claude Documentation Updater
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'The commit SHA that triggered this update'
+        required: true
+        type: string
+      commit_message:
+        description: 'The commit message'
+        required: true
+        type: string
+      changed_files:
+        description: 'List of changed files'
+        required: true
+        type: string
+      commit_diff:
+        description: 'Diff summary of changes'
+        required: true
+        type: string
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: next
+          fetch-depth: 0 # Need full history to checkout specific commit
+
+      - name: Create docs update branch
+        id: create-branch
+        run: |
+          BRANCH_NAME="docs/auto-update-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Code to Update Documentation
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          timeout_minutes: "30"
+          mode: "agent"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          experimental_allowed_domains: |
+            .anthropic.com
+            .github.com
+            api.github.com
+            .githubusercontent.com
+            registry.npmjs.org
+            .task-master.dev
+          base_branch: "next"
+          direct_prompt: |
+            You are a documentation specialist. Analyze the recent changes pushed to the 'next' branch and update the documentation accordingly.
+
+            Recent changes:
+            - Commit: ${{ inputs.commit_message }}
+            - Changed files:
+            ${{ inputs.changed_files }}
+
+            - Changes summary:
+            ${{ inputs.commit_diff }}
+
+            Your task:
+            1. Analyze the changes to understand what functionality was added, modified, or removed
+            2. Check if these changes require documentation updates in apps/docs/
+            3. If documentation updates are needed:
+               - Update relevant documentation files in apps/docs/
+               - Ensure examples are updated if APIs changed
+               - Update any configuration documentation if config options changed
+               - Add new documentation pages if new features were added
+               - Update the changelog or release notes if applicable
+            4. If no documentation updates are needed, skip creating changes
+
+            Guidelines:
+            - Focus only on user-facing changes that need documentation
+            - Keep documentation clear, concise, and helpful
+            - Include code examples where appropriate
+            - Maintain consistent documentation style with existing docs
+            - Don't document internal implementation details unless they affect users
+            - Update navigation/menu files if new pages are added
+
+            Only make changes if the documentation truly needs updating based on the code changes.
+
+      - name: Check if changes were made
+        id: check-changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git add -A
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+            git commit -m "docs: auto-update documentation based on changes in next branch
+
+            This PR was automatically generated to update documentation based on recent changes.
+            
+            Original commit: ${{ inputs.commit_message }}
+            
+            Co-authored-by: Claude <claude-assistant@anthropic.com>"
+          fi
+
+      - name: Push changes and create PR
+        if: steps.check-changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin ${{ steps.create-branch.outputs.branch_name }}
+
+          # Create PR using GitHub CLI
+          gh pr create \
+            --title "docs: update documentation for recent changes" \
+            --body "## 📚 Documentation Update
+
+            This PR automatically updates documentation based on recent changes merged to the \`next\` branch.
+
+            ### Original Changes
+            **Commit:** ${{ inputs.commit_sha }}
+            **Message:** ${{ inputs.commit_message }}
+            
+            ### Changed Files in Original Commit
+            \`\`\`
+            ${{ inputs.changed_files }}
+            \`\`\`
+
+            ### Documentation Updates
+            This PR includes documentation updates to reflect the changes above. Please review to ensure:
+            - [ ] Documentation accurately reflects the changes
+            - [ ] Examples are correct and working
+            - [ ] No important details are missing
+            - [ ] Style is consistent with existing documentation
+
+            ---
+            *This PR was automatically generated by Claude Code GitHub Action*" \
+            --base next \
+            --head ${{ steps.create-branch.outputs.branch_name }} \
+            --label "documentation" \
+            --label "automated"

@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "[TM] Code Change Task Tracker",
+  "description": "Track implementation progress by monitoring code changes",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.{js,ts,jsx,tsx,py,go,rs,java,cpp,c,h,hpp,cs,rb,php,swift,kt,scala,clj}",
+      "!**/node_modules/**",
+      "!**/vendor/**",
+      "!**/.git/**",
+      "!**/build/**",
+      "!**/dist/**",
+      "!**/target/**",
+      "!**/__pycache__/**"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "I just saved a source code file. Please:\n\n1. Check what task is currently 'in-progress' using 'tm list --status=in-progress'\n2. Look at the file I saved and summarize what was changed (considering the programming language and context)\n3. Update the task's notes with: 'tm update-subtask --id=<task_id> --prompt=\"Implemented: <summary_of_changes> in <file_path>\"'\n4. If the changes seem to complete the task based on its description, ask if I want to mark it as done"
+  }
+}

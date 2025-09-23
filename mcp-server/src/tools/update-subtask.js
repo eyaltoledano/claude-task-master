@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { updateSubtaskByIdDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the update-subtask tool with the MCP server
@@ -20,7 +21,7 @@ export function registerUpdateSubtaskTool(server) {
 	server.addTool({
 		name: 'update_subtask',
 		description:
-			'Appends timestamped information to a specific subtask without replacing existing content',
+			'Appends timestamped information to a specific subtask without replacing existing content. If you just want to update the subtask status, use set_task_status instead.',
 		parameters: z.object({
 			id: z
 				.string()
@@ -35,16 +36,22 @@ export function registerUpdateSubtaskTool(server) {
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_subtask';
+
 			try {
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				log.info(`Updating subtask with args: ${JSON.stringify(args)}`);
 
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -61,7 +68,8 @@ export function registerUpdateSubtaskTool(server) {
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }
@@ -75,7 +83,13 @@ export function registerUpdateSubtaskTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error updating subtask');
+				return handleApiResult(
+					result,
+					log,
+					'Error updating subtask',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

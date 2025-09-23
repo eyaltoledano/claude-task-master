@@ -5,11 +5,13 @@ import {
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
 import os from 'os'; // Import os module for home directory check
+import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
+import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transformer.js';
 
 /**
  * Direct function wrapper for initializing a project.
  * Derives target directory from session, sets CWD, and calls core init logic.
- * @param {object} args - Arguments containing initialization options (addAliases, skipInstall, yes, projectRoot)
+ * @param {object} args - Arguments containing initialization options (addAliases, initGit, storeTasksInGit, skipInstall, yes, projectRoot, rules)
  * @param {object} log - The FastMCP logger instance.
  * @param {object} context - The context object, must contain { session }.
  * @returns {Promise<{success: boolean, data?: any, error?: {code: string, message: string}}>} - Standard result object.
@@ -41,8 +43,7 @@ export async function initializeProjectDirect(args, log, context = {}) {
 				code: 'INVALID_TARGET_DIRECTORY',
 				message: `Cannot initialize project: Invalid target directory '${targetDirectory}' received. Please ensure a valid workspace/folder is open or specified.`,
 				details: `Received args.projectRoot: ${args.projectRoot}` // Show what was received
-			},
-			fromCache: false
+			}
 		};
 	}
 
@@ -64,10 +65,24 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		// Construct options ONLY from the relevant flags in args
 		// The core initializeProject operates in the current CWD, which we just set
 		const options = {
-			aliases: args.addAliases,
+			addAliases: args.addAliases,
+			initGit: args.initGit,
+			storeTasksInGit: args.storeTasksInGit,
 			skipInstall: args.skipInstall,
 			yes: true // Force yes mode
 		};
+
+		// Handle rules option with MCP-specific defaults
+		if (Array.isArray(args.rules) && args.rules.length > 0) {
+			options.rules = args.rules;
+			options.rulesExplicitlyProvided = true;
+			log.info(`Including rules: ${args.rules.join(', ')}`);
+		} else {
+			// For MCP initialization, default to Cursor profile only
+			options.rules = ['cursor'];
+			options.rulesExplicitlyProvided = true;
+			log.info(`No rule profiles specified, defaulting to: Cursor`);
+		}
 
 		log.info(`Initializing project with options: ${JSON.stringify(options)}`);
 		const result = await initializeProject(options); // Call core logic
@@ -75,7 +90,7 @@ export async function initializeProjectDirect(args, log, context = {}) {
 		resultData = {
 			message: 'Project initialized successfully.',
 			next_step:
-				'Now that the project is initialized, the next step is to create the tasks by parsing a PRD. This will create the tasks folder and the initial task files (tasks folder will be created when parse-prd is run). The parse-prd tool will require a prd.txt file as input (typically found in the project root directory, scripts/ directory). You can create a prd.txt file by asking the user about their idea, and then using the scripts/example_prd.txt file as a template to genrate a prd.txt file in scripts/. You may skip all of this if the user already has a prd.txt file. You can THEN use the parse-prd tool to create the tasks. So: step 1 after initialization is to create a prd.txt file in scripts/prd.txt or confirm the user already has one. Step 2 is to use the parse-prd tool to create the tasks. Do not bother looking for tasks after initialization, just use the parse-prd tool to create the tasks after creating a prd.txt from which to parse the tasks. You do NOT need to reinitialize the project to parse-prd.',
+				'Now that the project is initialized, the next step is to create the tasks by parsing a PRD. This will create the tasks folder and the initial task files (tasks folder will be created when parse-prd is run). The parse-prd tool will require a prd.txt file as input (typically found in .taskmaster/docs/ directory). You can create a prd.txt file by asking the user about their idea, and then using the .taskmaster/templates/example_prd.txt file as a template to generate a prd.txt file in .taskmaster/docs/. You may skip all of this if the user already has a prd.txt file. You can THEN use the parse-prd tool to create the tasks. So: step 1 after initialization is to create a prd.txt file in .taskmaster/docs/prd.txt or confirm the user already has one. Step 2 is to use the parse-prd tool to create the tasks. Do not bother looking for tasks after initialization, just use the parse-prd tool to create the tasks after creating a prd.txt from which to parse the tasks. You do NOT need to reinitialize the project to parse-prd.',
 			...result
 		};
 		success = true;
@@ -97,8 +112,8 @@ export async function initializeProjectDirect(args, log, context = {}) {
 	}
 
 	if (success) {
-		return { success: true, data: resultData, fromCache: false };
+		return { success: true, data: resultData };
 	} else {
-		return { success: false, error: errorResult, fromCache: false };
+		return { success: false, error: errorResult };
 	}
 }

@@ -3,8 +3,6 @@
  * Core functionality for managing AI model configurations
  */
 
-import path from 'path';
-import fs from 'fs';
 import https from 'https';
 import http from 'http';
 import {
@@ -23,6 +21,13 @@ import {
 	getAllProviders,
 	getBaseUrlForRole
 } from '../config-manager.js';
+import { findConfigPath } from '../../../src/utils/path-utils.js';
+import { log } from '../utils.js';
+import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+
+// Constants
+const CONFIG_MISSING_ERROR =
+	'The configuration file is missing. Run "task-master init" to create it.';
 
 /**
  * Fetches the list of models from OpenRouter API.
@@ -149,34 +154,25 @@ async function getModelConfiguration(options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	try {
@@ -286,34 +282,25 @@ async function getAvailableModelsList(options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	try {
@@ -386,34 +373,25 @@ async function setModel(role, modelId, options = {}) {
 		}
 	};
 
-	// Check if configuration file exists using provided project root
-	let configPath;
-	let configExists = false;
-
-	if (projectRoot) {
-		configPath = path.join(projectRoot, '.taskmasterconfig');
-		configExists = fs.existsSync(configPath);
-		report(
-			'info',
-			`Checking for .taskmasterconfig at: ${configPath}, exists: ${configExists}`
-		);
-	} else {
-		configExists = isConfigFilePresent();
-		report(
-			'info',
-			`Checking for .taskmasterconfig using isConfigFilePresent(), exists: ${configExists}`
-		);
+	if (!projectRoot) {
+		throw new Error('Project root is required but not found.');
 	}
 
+	// Use centralized config path finding instead of hardcoded path
+	const configPath = findConfigPath(null, { projectRoot });
+	const configExists = isConfigFilePresent(projectRoot);
+
+	log(
+		'debug',
+		`Checking for config file using findConfigPath, found: ${configPath}`
+	);
+	log(
+		'debug',
+		`Checking config file using isConfigFilePresent(), exists: ${configExists}`
+	);
+
 	if (!configExists) {
-		return {
-			success: false,
-			error: {
-				code: 'CONFIG_MISSING',
-				message:
-					'The .taskmasterconfig file is missing. Run "task-master models --setup" to create it.'
-			}
-		};
+		throw new Error(CONFIG_MISSING_ERROR);
 	}
 
 	// Validate role
@@ -461,7 +439,7 @@ async function setModel(role, modelId, options = {}) {
 			} else {
 				// Either not found internally, OR found but under a DIFFERENT provider than hinted.
 				// Proceed with custom logic based ONLY on the hint.
-				if (providerHint === 'openrouter') {
+				if (providerHint === CUSTOM_PROVIDERS.OPENROUTER) {
 					// Check OpenRouter ONLY because hint was openrouter
 					report('info', `Checking OpenRouter for ${modelId} (as hinted)...`);
 					const openRouterModels = await fetchOpenRouterModels();
@@ -470,8 +448,15 @@ async function setModel(role, modelId, options = {}) {
 						openRouterModels &&
 						openRouterModels.some((m) => m.id === modelId)
 					) {
-						determinedProvider = 'openrouter';
-						warningMessage = `Warning: Custom OpenRouter model '${modelId}' set. This model is not officially validated by Taskmaster and may not function as expected.`;
+						determinedProvider = CUSTOM_PROVIDERS.OPENROUTER;
+
+						// Check if this is a free model (ends with :free)
+						if (modelId.endsWith(':free')) {
+							warningMessage = `Warning: OpenRouter free model '${modelId}' selected. Free models have significant limitations including lower context windows, reduced rate limits, and may not support advanced features like tool_use. Consider using the paid version '${modelId.replace(':free', '')}' for full functionality.`;
+						} else {
+							warningMessage = `Warning: Custom OpenRouter model '${modelId}' set. This model is not officially validated by Taskmaster and may not function as expected.`;
+						}
+
 						report('warn', warningMessage);
 					} else {
 						// Hinted as OpenRouter but not found in live check
@@ -479,7 +464,7 @@ async function setModel(role, modelId, options = {}) {
 							`Model ID "${modelId}" not found in the live OpenRouter model list. Please verify the ID and ensure it's available on OpenRouter.`
 						);
 					}
-				} else if (providerHint === 'ollama') {
+				} else if (providerHint === CUSTOM_PROVIDERS.OLLAMA) {
 					// Check Ollama ONLY because hint was ollama
 					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
 
@@ -493,7 +478,7 @@ async function setModel(role, modelId, options = {}) {
 							`Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
 						);
 					} else if (ollamaModels.some((m) => m.model === modelId)) {
-						determinedProvider = 'ollama';
+						determinedProvider = CUSTOM_PROVIDERS.OLLAMA;
 						warningMessage = `Warning: Custom Ollama model '${modelId}' set. Ensure your Ollama server is running and has pulled this model. Taskmaster cannot guarantee compatibility.`;
 						report('warn', warningMessage);
 					} else {
@@ -503,8 +488,59 @@ async function setModel(role, modelId, options = {}) {
 							`Model ID "${modelId}" not found in the Ollama instance. Please verify the model is pulled and available. You can check available models with: curl ${tagsUrl}`
 						);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.BEDROCK) {
+					// Set provider without model validation since Bedrock models are managed by AWS
+					determinedProvider = CUSTOM_PROVIDERS.BEDROCK;
+					warningMessage = `Warning: Custom Bedrock model '${modelId}' set. Please ensure the model ID is valid and accessible in your AWS account.`;
+					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.CLAUDE_CODE) {
+					// Claude Code provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.CLAUDE_CODE;
+					// Re-find modelData specifically for claude-code provider
+					const claudeCodeModels = availableModels.filter(
+						(m) => m.provider === 'claude-code'
+					);
+					const claudeCodeModelData = claudeCodeModels.find(
+						(m) => m.id === modelId
+					);
+					if (claudeCodeModelData) {
+						// Update modelData to the found claude-code model
+						modelData = claudeCodeModelData;
+						report('info', `Setting Claude Code model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: Claude Code model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
+				} else if (providerHint === CUSTOM_PROVIDERS.AZURE) {
+					// Set provider without model validation since Azure models are managed by Azure
+					determinedProvider = CUSTOM_PROVIDERS.AZURE;
+					warningMessage = `Warning: Custom Azure model '${modelId}' set. Please ensure the model deployment is valid and accessible in your Azure account.`;
+					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.VERTEX) {
+					// Set provider without model validation since Vertex models are managed by Google Cloud
+					determinedProvider = CUSTOM_PROVIDERS.VERTEX;
+					warningMessage = `Warning: Custom Vertex AI model '${modelId}' set. Please ensure the model is valid and accessible in your Google Cloud project.`;
+					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.GEMINI_CLI) {
+					// Gemini CLI provider - check if model exists in our list
+					determinedProvider = CUSTOM_PROVIDERS.GEMINI_CLI;
+					// Re-find modelData specifically for gemini-cli provider
+					const geminiCliModels = availableModels.filter(
+						(m) => m.provider === 'gemini-cli'
+					);
+					const geminiCliModelData = geminiCliModels.find(
+						(m) => m.id === modelId
+					);
+					if (geminiCliModelData) {
+						// Update modelData to the found gemini-cli model
+						modelData = geminiCliModelData;
+						report('info', `Setting Gemini CLI model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: Gemini CLI model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else {
-					// Invalid provider hint - should not happen
+					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
 				}
 			}
@@ -523,7 +559,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter or --ollama.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, or --vertex.`
 					}
 				};
 			}
@@ -545,10 +581,15 @@ async function setModel(role, modelId, options = {}) {
 
 		// Update configuration
 		currentConfig.models[role] = {
-			...currentConfig.models[role], // Keep existing params like maxTokens
+			...currentConfig.models[role], // Keep existing params like temperature
 			provider: determinedProvider,
 			modelId: modelId
 		};
+
+		// If model data is available, update maxTokens from supported-models.json
+		if (modelData && modelData.max_tokens) {
+			currentConfig.models[role].maxTokens = modelData.max_tokens;
+		}
 
 		// Write updated configuration
 		const writeResult = writeConfig(currentConfig, projectRoot);
@@ -556,8 +597,8 @@ async function setModel(role, modelId, options = {}) {
 			return {
 				success: false,
 				error: {
-					code: 'WRITE_ERROR',
-					message: 'Error writing updated configuration to .taskmasterconfig'
+					code: 'CONFIG_WRITE_ERROR',
+					message: 'Error writing updated configuration to configuration file'
 				}
 			};
 		}

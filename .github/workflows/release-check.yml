@@ -1,0 +1,21 @@
+name: Release Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: release-check-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-release-mode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check release mode
+        run: node ./.github/scripts/check-pre-release-mode.mjs "pull_request"

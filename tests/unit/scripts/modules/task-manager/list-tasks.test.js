@@ -21,7 +21,11 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		tasks.find((t) => t.id === parseInt(id))
 	),
 	addComplexityToTask: jest.fn(),
-	readComplexityReport: jest.fn(() => null)
+	readComplexityReport: jest.fn(() => null),
+	getTagAwareFilePath: jest.fn((tag, path) => '/mock/tagged/report.json'),
+	stripAnsiCodes: jest.fn((text) =>
+		text ? text.replace(/\x1b\[[0-9;]*m/g, '') : text
+	)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
@@ -44,8 +48,13 @@ jest.unstable_mockModule(
 );
 
 // Import the mocked modules
-const { readJSON, log, readComplexityReport, addComplexityToTask } =
-	await import('../../../../../scripts/modules/utils.js');
+const {
+	readJSON,
+	log,
+	readComplexityReport,
+	addComplexityToTask,
+	stripAnsiCodes
+} = await import('../../../../../scripts/modules/utils.js');
 const { displayTaskList } = await import(
 	'../../../../../scripts/modules/ui.js'
 );
@@ -109,6 +118,14 @@ const sampleTasks = {
 			status: 'cancelled',
 			dependencies: [2, 3],
 			priority: 'low'
+		},
+		{
+			id: 5,
+			title: 'Code Review',
+			description: 'Review code for quality and standards',
+			status: 'review',
+			dependencies: [3],
+			priority: 'medium'
 		}
 	]
 };
@@ -144,17 +161,20 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(result).toEqual(
 			expect.objectContaining({
 				tasks: expect.arrayContaining([
 					expect.objectContaining({ id: 1 }),
 					expect.objectContaining({ id: 2 }),
 					expect.objectContaining({ id: 3 }),
-					expect.objectContaining({ id: 4 })
+					expect.objectContaining({ id: 4 }),
+					expect.objectContaining({ id: 5 })
 				])
 			})
 		);
@@ -166,14 +186,17 @@ describe('listTasks', () => {
 		const statusFilter = 'pending';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 
 		// Verify only pending tasks are returned
 		expect(result.tasks).toHaveLength(1);
 		expect(result.tasks[0].status).toBe('pending');
+		expect(result.tasks[0].id).toBe(2);
 	});
 
 	test('should filter tasks by done status', async () => {
@@ -182,7 +205,9 @@ describe('listTasks', () => {
 		const statusFilter = 'done';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify only done tasks are returned
@@ -190,12 +215,31 @@ describe('listTasks', () => {
 		expect(result.tasks[0].status).toBe('done');
 	});
 
+	test('should filter tasks by review status', async () => {
+		// Arrange
+		const tasksPath = 'tasks/tasks.json';
+		const statusFilter = 'review';
+
+		// Act
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
+
+		// Assert
+		// Verify only review tasks are returned
+		expect(result.tasks).toHaveLength(1);
+		expect(result.tasks[0].status).toBe('review');
+		expect(result.tasks[0].id).toBe(5);
+	});
+
 	test('should include subtasks when withSubtasks option is true', async () => {
 		// Arrange
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, true, 'json');
+		const result = listTasks(tasksPath, null, null, true, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify that the task with subtasks is included
@@ -210,7 +254,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// For JSON output, subtasks should still be included in the data structure
@@ -228,7 +274,9 @@ describe('listTasks', () => {
 		const statusFilter = 'blocked'; // Status that doesn't exist in sample data
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// Verify empty array is returned
@@ -244,7 +292,7 @@ describe('listTasks', () => {
 
 		// Act & Assert
 		expect(() => {
-			listTasks(tasksPath, null, null, false, 'json');
+			listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
 		}).toThrow('File not found');
 	});
 
@@ -253,10 +301,10 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		listTasks(tasksPath, null, null, false, 'json');
+		listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath);
+		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Note: validateAndFixDependencies is not called by listTasks function
 		// This test just verifies the function runs without error
 	});
@@ -266,7 +314,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, 'pending', null, true, 'json');
+		const result = listTasks(tasksPath, 'pending', null, true, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		// For JSON output, we don't call displayTaskList, so just verify the result structure
@@ -285,7 +335,9 @@ describe('listTasks', () => {
 		const statusFilter = 'in-progress';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -299,7 +351,9 @@ describe('listTasks', () => {
 		const statusFilter = 'cancelled';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json');
+		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -312,7 +366,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json');
+		const result = listTasks(tasksPath, null, null, false, 'json', {
+			tag: 'master'
+		});
 
 		// Assert
 		expect(result).toEqual(
@@ -320,13 +376,356 @@ describe('listTasks', () => {
 				tasks: expect.any(Array),
 				filter: 'all',
 				stats: expect.objectContaining({
-					total: 4,
+					total: 5,
 					completed: expect.any(Number),
 					inProgress: expect.any(Number),
 					pending: expect.any(Number)
 				})
 			})
 		);
-		expect(result.tasks).toHaveLength(4);
+		expect(result.tasks).toHaveLength(5);
+	});
+
+	// Tests for comma-separated status filtering
+	describe('Comma-separated status filtering', () => {
+		test('should filter tasks by multiple statuses separated by commas', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done,pending';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
+
+			// Should return tasks with 'done' or 'pending' status
+			expect(result.tasks).toHaveLength(2);
+			expect(result.tasks.map((t) => t.status)).toEqual(
+				expect.arrayContaining(['done', 'pending'])
+			);
+		});
+
+		test('should filter tasks by three or more statuses', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done,pending,in-progress';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return tasks with 'done', 'pending', or 'in-progress' status
+			expect(result.tasks).toHaveLength(3);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(
+				expect.arrayContaining(['done', 'pending', 'in-progress'])
+			);
+
+			// Verify all matching tasks are included
+			const taskIds = result.tasks.map((task) => task.id);
+			expect(taskIds).toContain(1); // done
+			expect(taskIds).toContain(2); // pending
+			expect(taskIds).toContain(3); // in-progress
+			expect(taskIds).not.toContain(4); // cancelled - should not be included
+		});
+
+		test('should handle spaces around commas in status filter', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done, pending , in-progress';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should trim spaces and work correctly
+			expect(result.tasks).toHaveLength(3);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(
+				expect.arrayContaining(['done', 'pending', 'in-progress'])
+			);
+		});
+
+		test('should handle empty status values in comma-separated list', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done,,pending,';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should ignore empty values and work with valid ones
+			expect(result.tasks).toHaveLength(2);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(expect.arrayContaining(['done', 'pending']));
+		});
+
+		test('should handle case-insensitive matching for comma-separated statuses', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'DONE,Pending,IN-PROGRESS';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should match case-insensitively
+			expect(result.tasks).toHaveLength(3);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(
+				expect.arrayContaining(['done', 'pending', 'in-progress'])
+			);
+		});
+
+		test('should return empty array when no tasks match comma-separated statuses', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'blocked,deferred';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return empty array as no tasks have these statuses
+			expect(result.tasks).toHaveLength(0);
+		});
+
+		test('should work with single status when using comma syntax', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'pending,';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should work the same as single status filter
+			expect(result.tasks).toHaveLength(1);
+			expect(result.tasks[0].status).toBe('pending');
+		});
+
+		test('should set correct filter value in response for comma-separated statuses', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done,pending';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return the original filter string
+			expect(result.filter).toBe('done,pending');
+		});
+
+		test('should handle all statuses filter with comma syntax', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'all';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return all tasks when filter is 'all'
+			expect(result.tasks).toHaveLength(5);
+			expect(result.filter).toBe('all');
+		});
+
+		test('should handle mixed existing and non-existing statuses', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'done,nonexistent,pending';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return only tasks with existing statuses
+			expect(result.tasks).toHaveLength(2);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(expect.arrayContaining(['done', 'pending']));
+		});
+
+		test('should filter by review status in comma-separated list', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const statusFilter = 'review,cancelled';
+
+			// Act
+			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
+				tag: 'master'
+			});
+
+			// Assert
+			// Should return tasks with 'review' or 'cancelled' status
+			expect(result.tasks).toHaveLength(2);
+			const statusValues = result.tasks.map((task) => task.status);
+			expect(statusValues).toEqual(
+				expect.arrayContaining(['review', 'cancelled'])
+			);
+
+			// Verify specific tasks
+			const taskIds = result.tasks.map((task) => task.id);
+			expect(taskIds).toContain(4); // cancelled task
+			expect(taskIds).toContain(5); // review task
+		});
+	});
+
+	describe('Compact output format', () => {
+		test('should output compact format when outputFormat is compact', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should contain compact format elements: ID status title (priority) [→ dependencies]
+			expect(cleanOutput).toContain('1 done Setup Project (high)');
+			expect(cleanOutput).toContain(
+				'2 pending Implement Core Features (high) → 1'
+			);
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should format single task compactly', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+
+			// Should be compact (no verbose headers)
+			expect(output).not.toContain('Project Dashboard');
+			expect(output).not.toContain('Progress:');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should handle compact format with subtasks', async () => {
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(
+				tasksPath,
+				null,
+				null,
+				true, // withSubtasks = true
+				'compact',
+				{ tag: 'master' }
+			);
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should handle both tasks and subtasks
+			expect(cleanOutput).toContain('1 done Setup Project (high)');
+			expect(cleanOutput).toContain('3.1 done Create Header Component');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should handle empty task list in compact format', async () => {
+			readJSON.mockReturnValue({ tasks: [] });
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalledWith('No tasks found');
+
+			consoleSpy.mockRestore();
+		});
+
+		test('should format dependencies correctly with shared helper', async () => {
+			// Create mock tasks with various dependency scenarios
+			const tasksWithDeps = {
+				tasks: [
+					{
+						id: 1,
+						title: 'Task with no dependencies',
+						status: 'pending',
+						priority: 'medium',
+						dependencies: []
+					},
+					{
+						id: 2,
+						title: 'Task with few dependencies',
+						status: 'pending',
+						priority: 'high',
+						dependencies: [1, 3]
+					},
+					{
+						id: 3,
+						title: 'Task with many dependencies',
+						status: 'pending',
+						priority: 'low',
+						dependencies: [1, 2, 4, 5, 6, 7, 8, 9]
+					}
+				]
+			};
+
+			readJSON.mockReturnValue(tasksWithDeps);
+			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+			const tasksPath = 'tasks/tasks.json';
+
+			await listTasks(tasksPath, null, null, false, 'compact', {
+				tag: 'master'
+			});
+
+			expect(consoleSpy).toHaveBeenCalled();
+			const output = consoleSpy.mock.calls.map((call) => call[0]).join('\n');
+			// Strip ANSI color codes for testing
+			const cleanOutput = stripAnsiCodes(output);
+
+			// Should format tasks correctly with compact output including priority
+			expect(cleanOutput).toContain(
+				'1 pending Task with no dependencies (medium)'
+			);
+			expect(cleanOutput).toContain('Task with few dependencies');
+			expect(cleanOutput).toContain('Task with many dependencies');
+			// Should show dependencies with arrow when they exist
+			expect(cleanOutput).toMatch(/2.*→.*1,3/);
+			// Should truncate many dependencies with "+X more" format
+			expect(cleanOutput).toMatch(/3.*→.*1,2,4,5,6.*\(\+\d+ more\)/);
+
+			consoleSpy.mockRestore();
+		});
 	});
 });

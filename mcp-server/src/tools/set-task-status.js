@@ -14,10 +14,11 @@ import {
 	nextTaskDirect
 } from '../core/task-master-core.js';
 import {
-	findTasksJsonPath,
+	findTasksPath,
 	findComplexityReportPath
 } from '../core/utils/path-utils.js';
 import { TASK_STATUS_OPTIONS } from '../../../src/constants/task-status.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the setTaskStatus tool with the MCP server
@@ -47,16 +48,24 @@ export function registerSetTaskStatusTool(server) {
 				),
 			projectRoot: z
 				.string()
-				.describe('The directory of the project. Must be an absolute path.')
+				.describe('The directory of the project. Must be an absolute path.'),
+			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log }) => {
+		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.info(`Setting status of task(s) ${args.id} to: ${args.status}`);
-
+				log.info(
+					`Setting status of task(s) ${args.id} to: ${args.status} ${
+						args.tag ? `in tag: ${args.tag}` : 'in current tag'
+					}`
+				);
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -70,8 +79,11 @@ export function registerSetTaskStatusTool(server) {
 				let complexityReportPath;
 				try {
 					complexityReportPath = findComplexityReportPath(
-						args.projectRoot,
-						args.complexityReport,
+						{
+							projectRoot: args.projectRoot,
+							complexityReport: args.complexityReport,
+							tag: resolvedTag
+						},
 						log
 					);
 				} catch (error) {
@@ -83,9 +95,12 @@ export function registerSetTaskStatusTool(server) {
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						status: args.status,
-						complexityReportPath
+						complexityReportPath,
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
-					log
+					log,
+					{ session }
 				);
 
 				if (result.success) {
@@ -98,7 +113,13 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				return handleApiResult(result, log, 'Error setting task status');
+				return handleApiResult(
+					result,
+					log,
+					'Error setting task status',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);
 				return createErrorResponse(

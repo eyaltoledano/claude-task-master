@@ -10,7 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
-import { findTasksJsonPath } from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expandAll tool with the MCP server
@@ -57,7 +58,8 @@ export function registerExpandAllTool(server) {
 				.optional()
 				.describe(
 					'Absolute path to the project root directory (derived from session if possible)'
-				)
+				),
+			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -65,9 +67,13 @@ export function registerExpandAllTool(server) {
 					`Tool expand_all execution started with args: ${JSON.stringify(args)}`
 				);
 
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				let tasksJsonPath;
 				try {
-					tasksJsonPath = findTasksJsonPath(
+					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
 						log
 					);
@@ -86,13 +92,20 @@ export function registerExpandAllTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					},
 					log,
 					{ session }
 				);
 
-				return handleApiResult(result, log, 'Error expanding all tasks');
+				return handleApiResult(
+					result,
+					log,
+					'Error expanding all tasks',
+					undefined,
+					args.projectRoot
+				);
 			} catch (error) {
 				log.error(
 					`Unexpected error in expand_all tool execute: ${error.message}`

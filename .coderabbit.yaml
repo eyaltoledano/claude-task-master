@@ -1,0 +1,10 @@
+reviews:
+  profile: assertive
+  poem: false
+  auto_review:
+    base_branches:
+      - rc
+      - beta
+      - alpha
+      - production
+      - next

@@ -19,7 +19,9 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {string} args.id - Task ID (or subtask ID like "1.2").
  * @param {string} args.prompt - New information/context prompt.
  * @param {boolean} [args.research] - Whether to use research role.
+ * @param {boolean} [args.append] - Whether to append timestamped information instead of full update.
  * @param {string} [args.projectRoot] - Project root path.
+ * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -27,7 +29,8 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot } = args;
+	const { tasksJsonPath, id, prompt, research, append, projectRoot, tag } =
+		args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -42,8 +45,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
 			};
 		}
 
@@ -54,8 +56,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_TASK_ID', message: errorMessage }
 			};
 		}
 
@@ -65,8 +66,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage },
-				fromCache: false
+				error: { code: 'MISSING_PROMPT', message: errorMessage }
 			};
 		}
 
@@ -79,13 +79,12 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			} else {
 				// Parse as integer for main task IDs
 				taskId = parseInt(id, 10);
-				if (isNaN(taskId)) {
+				if (Number.isNaN(taskId)) {
 					const errorMessage = `Invalid task ID: ${id}. Task ID must be a positive integer or subtask ID (e.g., "5.2").`;
 					logWrapper.error(errorMessage);
 					return {
 						success: false,
-						error: { code: 'INVALID_TASK_ID', message: errorMessage },
-						fromCache: false
+						error: { code: 'INVALID_TASK_ID', message: errorMessage }
 					};
 				}
 			}
@@ -119,10 +118,12 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					mcpLog: logWrapper,
 					session,
 					projectRoot,
+					tag,
 					commandName: 'update-task',
 					outputType: 'mcp'
 				},
-				'json'
+				'json',
+				append || false
 			);
 
 			// Check if the core function returned null or an object without success
@@ -136,9 +137,9 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 						message: message,
 						taskId: taskId,
 						updated: false,
-						telemetryData: coreResult?.telemetryData
-					},
-					fromCache: false
+						telemetryData: coreResult?.telemetryData,
+						tagInfo: coreResult?.tagInfo
+					}
 				};
 			}
 
@@ -154,9 +155,9 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					useResearch: useResearch,
 					updated: true,
 					updatedTask: coreResult.updatedTask,
-					telemetryData: coreResult.telemetryData
-				},
-				fromCache: false
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
+				}
 			};
 		} catch (error) {
 			logWrapper.error(`Error updating task by ID: ${error.message}`);
@@ -165,8 +166,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				error: {
 					code: 'UPDATE_TASK_CORE_ERROR',
 					message: error.message || 'Unknown error updating task'
-				},
-				fromCache: false
+				}
 			};
 		} finally {
 			if (!wasSilent && isSilentMode()) {
@@ -181,8 +181,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			error: {
 				code: 'DIRECT_FUNCTION_SETUP_ERROR',
 				message: error.message || 'Unknown setup error'
-			},
-			fromCache: false
+			}
 		};
 	}
 }
