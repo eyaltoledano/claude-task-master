@@ -3,7 +3,7 @@
  * Command-line interface for the Task Master CLI
  */
 
-import { program } from 'commander';
+import { Command } from 'commander';
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
@@ -5076,7 +5076,7 @@ Examples:
  */
 function setupCLI() {
 	// Create a new program instance
-	const programInstance = program
+	const programInstance = new Command()
 		.name('dev')
 		.description('AI-driven development task management')
 		.version(() => {
