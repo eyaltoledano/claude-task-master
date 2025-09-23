@@ -1847,7 +1847,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-r, --research',
-			'Use Perplexity AI for research-backed complexity analysis'
+			'Use configured research model for research-backed complexity analysis'
 		)
 		.option(
 			'-i, --id <ids>',
