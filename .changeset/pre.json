@@ -7,6 +7,7 @@
     "extension": "0.25.1"
   },
   "changesets": [
-    "fluffy-clocks-cross"
+    "fluffy-clocks-cross",
+    "soft-dingos-grow"
   ]
 }

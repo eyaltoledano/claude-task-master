@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.25.2-rc.1
+
+### Patch Changes
+
+- Updated dependencies [[`1a18794`](https://github.com/eyaltoledano/claude-task-master/commit/1a1879483b86c118a4e46c02cbf4acebfcf6bcf9)]:
+  - task-master-ai@0.27.1-rc.1
+
 ## 0.25.2-rc.0
 
 ### Patch Changes

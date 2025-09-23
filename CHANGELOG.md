@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.27.1-rc.1
+
+### Patch Changes
+
+- [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`1a18794`](https://github.com/eyaltoledano/claude-task-master/commit/1a1879483b86c118a4e46c02cbf4acebfcf6bcf9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - One last testing final final
+
 ## 0.27.1-rc.0
 
 ### Patch Changes
