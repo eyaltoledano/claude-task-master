@@ -263,7 +263,6 @@ describe('Commands Module - CLI Setup and Integration', () => {
 
 // Test utility functions that commands rely on
 describe('Version comparison utility', () => {
-
 	test('compareVersions correctly compares semantic versions', () => {
 		expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
 		expect(compareVersions('1.0.0', '1.0.1')).toBe(-1);

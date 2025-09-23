@@ -19,7 +19,7 @@ export {
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification,
-	compareVersions,
+	compareVersions
 } from './utils/auto-update.js';
 
 // Re-export commonly used types from tm-core
