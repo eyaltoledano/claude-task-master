@@ -35,7 +35,7 @@ function getCurrentVersion(): string {
  * @param v2 - Second version
  * @returns -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
  */
-function compareVersions(v1: string, v2: string): number {
+export function compareVersions(v1: string, v2: string): number {
 	const toParts = (v: string) => {
 		const [core, pre = ''] = v.split('-', 2);
 		const nums = core.split('.').map((n) => Number.parseInt(n, 10) || 0);
