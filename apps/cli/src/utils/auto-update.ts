@@ -7,7 +7,6 @@ import https from 'https';
 import chalk from 'chalk';
 import ora from 'ora';
 import boxen from 'boxen';
-import packageJson from '../../../../package.json' with { type: 'json' };
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -16,15 +15,18 @@ export interface UpdateInfo {
 }
 
 /**
- * Get current version from package.json
+ * Get current version from build-time injected environment variable
  */
 function getCurrentVersion(): string {
-	try {
-		return packageJson.version;
-	} catch (error) {
-		console.warn('Could not read package.json for version info');
-		return '0.0.0';
+	// Version is injected at build time via TM_PUBLIC_VERSION
+	const version = process.env.TM_PUBLIC_VERSION;
+	if (version && version !== 'unknown') {
+		return version;
 	}
+
+	// Fallback for development or if injection failed
+	console.warn('Could not read version from TM_PUBLIC_VERSION, using fallback');
+	return '0.0.0';
 }
 
 /**

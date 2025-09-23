@@ -5079,25 +5079,7 @@ function setupCLI() {
 	const programInstance = new Command()
 		.name('dev')
 		.description('AI-driven development task management')
-		.version(() => {
-			// Read version directly from package.json ONLY
-			try {
-				const packageJsonPath = path.join(process.cwd(), 'package.json');
-				if (fs.existsSync(packageJsonPath)) {
-					const packageJson = JSON.parse(
-						fs.readFileSync(packageJsonPath, 'utf8')
-					);
-					return packageJson.version;
-				}
-			} catch (error) {
-				// Silently fall back to 'unknown'
-				log(
-					'warn',
-					'Could not read package.json for version info in .version()'
-				);
-			}
-			return 'unknown'; // Default fallback if package.json fails
-		})
+		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false); // Disable default help command
 
