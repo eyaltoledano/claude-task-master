@@ -60,6 +60,19 @@ The following documentation is also available in the `docs` directory:
 
 > **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
 
+#### Claude Code Quick Install
+
+For Claude Code users:
+
+```bash
+claude mcp add taskmaster-ai -- npx -y task-master-ai
+```
+
+Don't forget to add your API keys to the configuration:
+- in the root .env of your Project
+- in the "env" section of your mcp config for taskmaster-ai
+
+
 ## Requirements
 
 Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
