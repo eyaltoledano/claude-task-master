@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.27.1-rc.0
+
+### Patch Changes
+
+- [#1232](https://github.com/eyaltoledano/claude-task-master/pull/1232) [`f487736`](https://github.com/eyaltoledano/claude-task-master/commit/f487736670ef8c484059f676293777eabb249c9e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix module not found for new 0.27.0 release
+
 ## 0.27.0
 
 ### Minor Changes

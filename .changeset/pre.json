@@ -1,0 +1,12 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.27.0",
+    "docs": "0.0.3",
+    "extension": "0.25.1"
+  },
+  "changesets": [
+    "fluffy-clocks-cross"
+  ]
+}
