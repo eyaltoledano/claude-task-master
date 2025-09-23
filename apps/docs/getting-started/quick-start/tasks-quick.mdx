@@ -61,9 +61,25 @@ Task Master can provide a complexity report which can be helpful to read before 
 Can you analyze the complexity of our tasks to help me understand which ones need to be broken down further?
 ```
 
+The agent will use the `analyze_project_complexity` MCP tool, or you can run it directly with the CLI command:
+```bash
+task-master analyze-complexity
+```
+
+For more comprehensive analysis using your configured research model, you can use:
+```bash
+task-master analyze-complexity --research
+```
+
+<Tip>
+The `--research` flag uses whatever research model you have configured in `.taskmaster/config.json` (configurable via `task-master models --setup`) for research-backed complexity analysis, providing more informed recommendations.
+</Tip>
+
 You can view the report in a friendly table using:
 ```
 Can you show me the complexity report in a more readable format?
 ```
+
+For more detailed CLI options, see the [Analyze Task Complexity](/docs/capabilities/cli-root-commands#analyze-task-complexity) section.
 
 <Check>Now you are ready to begin [executing tasks](/docs/getting-started/quick-start/execute-quick)</Check>
