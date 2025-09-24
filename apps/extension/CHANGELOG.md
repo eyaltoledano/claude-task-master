@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.25.2
+
+### Patch Changes
+
+- Updated dependencies [[`f487736`](https://github.com/eyaltoledano/claude-task-master/commit/f487736670ef8c484059f676293777eabb249c9e), [`c911608`](https://github.com/eyaltoledano/claude-task-master/commit/c911608f60454253f4e024b57ca84e5a5a53f65c), [`1a18794`](https://github.com/eyaltoledano/claude-task-master/commit/1a1879483b86c118a4e46c02cbf4acebfcf6bcf9)]:
+  - task-master-ai@0.27.1
+
 ## 0.25.2-rc.1
 
 ### Patch Changes
