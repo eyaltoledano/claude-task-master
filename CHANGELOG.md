@@ -1,5 +1,14 @@
 # task-master-ai
 
+## 0.27.1
+
+### Patch Changes
+
+- [#1232](https://github.com/eyaltoledano/claude-task-master/pull/1232) [`f487736`](https://github.com/eyaltoledano/claude-task-master/commit/f487736670ef8c484059f676293777eabb249c9e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix module not found for new 0.27.0 release
+
+- [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`c911608`](https://github.com/eyaltoledano/claude-task-master/commit/c911608f60454253f4e024b57ca84e5a5a53f65c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix Zed MCP configuration by adding required "source" property
+  - Add "source": "custom" property to task-master-ai server in Zed settings.json
+
 ## 0.27.1-rc.1
 
 ### Patch Changes
