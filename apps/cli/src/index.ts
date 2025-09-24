@@ -18,7 +18,8 @@ export * as ui from './utils/ui.js';
 export {
 	checkForUpdate,
 	performAutoUpdate,
-	displayUpgradeNotification
+	displayUpgradeNotification,
+	compareVersions
 } from './utils/auto-update.js';
 
 // Re-export commonly used types from tm-core

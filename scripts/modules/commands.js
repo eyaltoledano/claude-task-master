@@ -3,7 +3,7 @@
  * Command-line interface for the Task Master CLI
  */
 
-import { program } from 'commander';
+import { Command } from 'commander';
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
@@ -5076,28 +5076,10 @@ Examples:
  */
 function setupCLI() {
 	// Create a new program instance
-	const programInstance = program
-		.name('dev')
+	const programInstance = new Command()
+		.name('task-master')
 		.description('AI-driven development task management')
-		.version(() => {
-			// Read version directly from package.json ONLY
-			try {
-				const packageJsonPath = path.join(process.cwd(), 'package.json');
-				if (fs.existsSync(packageJsonPath)) {
-					const packageJson = JSON.parse(
-						fs.readFileSync(packageJsonPath, 'utf8')
-					);
-					return packageJson.version;
-				}
-			} catch (error) {
-				// Silently fall back to 'unknown'
-				log(
-					'warn',
-					'Could not read package.json for version info in .version()'
-				);
-			}
-			return 'unknown'; // Default fallback if package.json fails
-		})
+		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false); // Disable default help command
 
@@ -5126,8 +5108,9 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
-		if (process.stdout.isTTY) {
+		// Display banner if not in a pipe (except for init command which has its own banner)
+		const isInitCommand = argv.includes('init');
+		if (process.stdout.isTTY && !isInitCommand) {
 			displayBanner();
 		}
 
