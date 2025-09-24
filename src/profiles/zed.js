@@ -143,7 +143,10 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 		const zedConfig = transformToZedFormat(mcpConfig);
 
 		// Add "source": "custom" to task-master-ai server for Zed
-		if (zedConfig['context_servers'] && zedConfig['context_servers']['task-master-ai']) {
+		if (
+			zedConfig['context_servers'] &&
+			zedConfig['context_servers']['task-master-ai']
+		) {
 			zedConfig['context_servers']['task-master-ai'].source = 'custom';
 		}
 
