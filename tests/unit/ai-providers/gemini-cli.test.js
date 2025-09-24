@@ -524,7 +524,7 @@ describe('GeminiCliProvider', () => {
 					}),
 					system: 'You are a helpful assistant',
 					messages: [{ role: 'user', content: 'Hello' }],
-					maxTokens: 100,
+					maxOutputTokens: 100,
 					temperature: 0.7
 				});
 				expect(result.text).toBe('Hello! How can I help you?');
@@ -550,7 +550,7 @@ describe('GeminiCliProvider', () => {
 					}),
 					system: undefined,
 					messages: [{ role: 'user', content: 'Hello' }],
-					maxTokens: 100,
+					maxOutputTokens: 100,
 					temperature: 0.7
 				});
 			});
@@ -570,7 +570,7 @@ describe('GeminiCliProvider', () => {
 					}),
 					system: 'You are a helpful assistant',
 					messages: [{ role: 'user', content: 'Hello' }],
-					maxTokens: 100,
+					maxOutputTokens: 100,
 					temperature: 0.7
 				});
 				expect(result).toBe(mockStream);
@@ -609,7 +609,7 @@ describe('GeminiCliProvider', () => {
 					messages: [{ role: 'user', content: 'Hello' }],
 					schema: mockObjectParams.schema,
 					mode: 'json',
-					maxTokens: 100,
+					maxOutputTokens: 100,
 					temperature: 0.7
 				});
 				expect(result.object).toEqual({ result: 'success' });
