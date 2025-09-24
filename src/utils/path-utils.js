@@ -463,6 +463,17 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 		}
 	}
 
-	logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+	// Only warn once per command execution to prevent spam during init
+	const warningKey = `config_warning_${projectRoot}`;
+
+	if (!global._tmConfigWarningsThisRun) {
+		global._tmConfigWarningsThisRun = new Set();
+	}
+
+	if (!global._tmConfigWarningsThisRun.has(warningKey)) {
+		global._tmConfigWarningsThisRun.add(warningKey);
+		logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+	}
+
 	return null;
 }

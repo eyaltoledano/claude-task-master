@@ -16,9 +16,9 @@ describe('Rules Files Inclusion in Package', () => {
 		expect(packageJson.files).toContain('dist/**');
 	});
 
-	test('source rules files exist in public/assets/rules directory', () => {
+	test('source rules files exist in assets/rules directory', () => {
 		// Verify that the actual rules files exist
-		const rulesDir = path.join(process.cwd(), 'public', 'assets', 'rules');
+		const rulesDir = path.join(process.cwd(), 'assets', 'rules');
 		expect(fs.existsSync(rulesDir)).toBe(true);
 
 		// Check for the 4 files that currently exist
@@ -86,17 +86,13 @@ describe('Rules Files Inclusion in Package', () => {
 		expect(rooJsContent.includes('${mode}-rules')).toBe(true);
 	});
 
-	test('source Roo files exist in public/assets directory', () => {
+	test('source Roo files exist in assets directory', () => {
 		// Verify that the source files for Roo integration exist
 		expect(
-			fs.existsSync(
-				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roo')
-			)
+			fs.existsSync(path.join(process.cwd(), 'assets', 'roocode', '.roo'))
 		).toBe(true);
 		expect(
-			fs.existsSync(
-				path.join(process.cwd(), 'public', 'assets', 'roocode', '.roomodes')
-			)
+			fs.existsSync(path.join(process.cwd(), 'assets', 'roocode', '.roomodes'))
 		).toBe(true);
 	});
 });
