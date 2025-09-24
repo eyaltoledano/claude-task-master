@@ -9,8 +9,6 @@
 - [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`c911608`](https://github.com/eyaltoledano/claude-task-master/commit/c911608f60454253f4e024b57ca84e5a5a53f65c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix Zed MCP configuration by adding required "source" property
   - Add "source": "custom" property to task-master-ai server in Zed settings.json
 
-- [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`1a18794`](https://github.com/eyaltoledano/claude-task-master/commit/1a1879483b86c118a4e46c02cbf4acebfcf6bcf9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - One last testing final final
-
 ## 0.27.1-rc.1
 
 ### Patch Changes
