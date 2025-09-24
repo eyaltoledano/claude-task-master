@@ -311,7 +311,7 @@ function validateClaudeCodeSettings(settings) {
 	// Define the base settings schema without commandSpecific first
 	const BaseSettingsSchema = z.object({
 		pathToClaudeCodeExecutable: z.string().optional(),
-		maxTurns: z.number().int().positive().optional(),
+		maxTurns: z.int().positive().optional(),
 		customSystemPrompt: z.string().optional(),
 		appendSystemPrompt: z.string().optional(),
 		permissionMode: z
@@ -326,16 +326,16 @@ function validateClaudeCodeSettings(settings) {
 					type: z.enum(['stdio', 'sse']).optional(),
 					command: z.string(),
 					args: z.array(z.string()).optional(),
-					env: z.record(z.string()).optional(),
-					url: z.string().url().optional(),
-					headers: z.record(z.string()).optional()
+					env: z.record(z.string(), z.string()).optional(),
+					url: z.url().optional(),
+					headers: z.record(z.string(), z.string()).optional()
 				})
 			)
 			.optional()
 	});
 
 	// Define CommandSpecificSchema using the base schema
-	const CommandSpecificSchema = z.record(
+	const CommandSpecificSchema = z.partialRecord(
 		z.enum(AI_COMMAND_NAMES),
 		BaseSettingsSchema
 	);

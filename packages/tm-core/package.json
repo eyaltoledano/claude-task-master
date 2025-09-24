@@ -31,7 +31,7 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.57.4",
-		"zod": "^3.23.8"
+		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

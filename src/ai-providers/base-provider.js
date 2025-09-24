@@ -127,16 +127,6 @@ export class BaseAIProvider {
 	}
 
 	/**
-	 * Determines if a model requires max_completion_tokens instead of maxTokens
-	 * Can be overridden by providers to specify their model requirements
-	 * @param {string} modelId - The model ID to check
-	 * @returns {boolean} True if the model requires max_completion_tokens
-	 */
-	requiresMaxCompletionTokens(modelId) {
-		return false; // Default behavior - most models use maxTokens
-	}
-
-	/**
 	 * Prepares token limit parameter based on model requirements
 	 * @param {string} modelId - The model ID
 	 * @param {number} maxTokens - The maximum tokens value
@@ -150,11 +140,7 @@ export class BaseAIProvider {
 		// Ensure maxTokens is an integer
 		const tokenValue = Math.floor(Number(maxTokens));
 
-		if (this.requiresMaxCompletionTokens(modelId)) {
-			return { max_completion_tokens: tokenValue };
-		} else {
-			return { maxTokens: tokenValue };
-		}
+		return { maxOutputTokens: tokenValue };
 	}
 
 	/**
@@ -248,7 +234,7 @@ export class BaseAIProvider {
 				messages: params.messages,
 				schema: zodSchema(params.schema),
 				mode: params.mode || 'auto',
-				maxTokens: params.maxTokens,
+				maxOutputTokens: params.maxTokens,
 				temperature: params.temperature
 			});
 
