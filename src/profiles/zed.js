@@ -142,6 +142,11 @@ function onPostConvertRulesProfile(targetDir, assetsDir) {
 		// Transform to Zed format
 		const zedConfig = transformToZedFormat(mcpConfig);
 
+		// Add "source": "custom" to task-master-ai server for Zed
+		if (zedConfig['context_servers'] && zedConfig['context_servers']['task-master-ai']) {
+			zedConfig['context_servers']['task-master-ai'].source = 'custom';
+		}
+
 		// Write back the transformed config with proper formatting
 		fs.writeFileSync(
 			mcpConfigPath,

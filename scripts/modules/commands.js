@@ -5077,7 +5077,7 @@ Examples:
 function setupCLI() {
 	// Create a new program instance
 	const programInstance = new Command()
-		.name('dev')
+		.name('task-master')
 		.description('AI-driven development task management')
 		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
@@ -5108,8 +5108,9 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
-		if (process.stdout.isTTY) {
+		// Display banner if not in a pipe (except for init command which has its own banner)
+		const isInitCommand = argv.includes('init');
+		if (process.stdout.isTTY && !isInitCommand) {
 			displayBanner();
 		}
 
