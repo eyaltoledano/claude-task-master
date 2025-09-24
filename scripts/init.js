@@ -16,8 +16,6 @@
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
@@ -48,9 +46,6 @@ import {
 	ENV_EXAMPLE_FILE,
 	GITIGNORE_FILE
 } from '../src/constants/paths.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Define log levels
 const LOG_LEVELS = {
@@ -619,13 +614,7 @@ function createProjectStructure(
 
 	// Copy .gitignore with GitTasks preference
 	try {
-		const gitignoreTemplatePath = path.join(
-			__dirname,
-			'..',
-			'assets',
-			'gitignore'
-		);
-		const templateContent = fs.readFileSync(gitignoreTemplatePath, 'utf8');
+		const templateContent = readAsset('gitignore', 'utf8');
 		manageGitignoreFile(
 			path.join(targetDir, GITIGNORE_FILE),
 			templateContent,
