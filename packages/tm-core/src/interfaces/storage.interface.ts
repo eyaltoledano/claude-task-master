@@ -3,7 +3,17 @@
  * This file defines the contract for all storage implementations
  */
 
-import type { Task, TaskMetadata } from '../types/index.js';
+import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
+
+/**
+ * Result type for updateTaskStatus operations
+ */
+export interface UpdateStatusResult {
+	success: boolean;
+	oldStatus: TaskStatus;
+	newStatus: TaskStatus;
+	taskId: string;
+}
 
 /**
  * Interface for storage operations on tasks
@@ -53,6 +63,19 @@ export interface IStorage {
 		updates: Partial<Task>,
 		tag?: string
 	): Promise<void>;
+
+	/**
+	 * Update task or subtask status by ID
+	 * @param taskId - ID of the task or subtask (e.g., "1" or "1.2")
+	 * @param newStatus - New status to set
+	 * @param tag - Optional tag context for the task
+	 * @returns Promise that resolves to update result with old and new status
+	 */
+	updateTaskStatus(
+		taskId: string,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<UpdateStatusResult>;
 
 	/**
 	 * Delete a task by ID
@@ -191,6 +214,11 @@ export abstract class BaseStorage implements IStorage {
 		updates: Partial<Task>,
 		tag?: string
 	): Promise<void>;
+	abstract updateTaskStatus(
+		taskId: string,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<UpdateStatusResult>;
 	abstract deleteTask(taskId: string, tag?: string): Promise<void>;
 	abstract exists(tag?: string): Promise<boolean>;
 	abstract loadMetadata(tag?: string): Promise<TaskMetadata | null>;
