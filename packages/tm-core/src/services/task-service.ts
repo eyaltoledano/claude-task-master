@@ -481,7 +481,13 @@ export class TaskService {
 			throw new TaskMasterError(
 				`Failed to update task status for ${taskIdStr}`,
 				ERROR_CODES.STORAGE_ERROR,
-				{ taskId: taskIdStr, newStatus, tag: activeTag },
+				{
+					operation: 'updateTaskStatus',
+					resource: 'task',
+					taskId: taskIdStr,
+					newStatus,
+					tag: activeTag
+				},
 				error as Error
 			);
 		}

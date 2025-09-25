@@ -5,7 +5,8 @@
 
 import type {
 	IStorage,
-	StorageStats
+	StorageStats,
+	UpdateStatusResult
 } from '../interfaces/storage.interface.js';
 import type {
 	Task,
@@ -497,12 +498,7 @@ export class ApiStorage implements IStorage {
 		taskId: string,
 		newStatus: TaskStatus,
 		tag?: string
-	): Promise<{
-		success: boolean;
-		oldStatus: TaskStatus;
-		newStatus: TaskStatus;
-		taskId: string;
-	}> {
+	): Promise<UpdateStatusResult> {
 		await this.ensureInitialized();
 
 		try {

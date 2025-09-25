@@ -5,7 +5,8 @@
 import type { Task, TaskMetadata, TaskStatus } from '../../types/index.js';
 import type {
 	IStorage,
-	StorageStats
+	StorageStats,
+	UpdateStatusResult
 } from '../../interfaces/storage.interface.js';
 import { FormatHandler } from './format-handler.js';
 import { FileOperations } from './file-operations.js';
@@ -288,12 +289,7 @@ export class FileStorage implements IStorage {
 		taskId: string,
 		newStatus: TaskStatus,
 		tag?: string
-	): Promise<{
-		success: boolean;
-		oldStatus: TaskStatus;
-		newStatus: TaskStatus;
-		taskId: string;
-	}> {
+	): Promise<UpdateStatusResult> {
 		const tasks = await this.loadTasks(tag);
 
 		// Check if this is a subtask (contains a dot)
@@ -309,6 +305,15 @@ export class FileStorage implements IStorage {
 		}
 
 		const oldStatus = tasks[taskIndex].status;
+		if (oldStatus === newStatus) {
+			return {
+				success: true,
+				oldStatus,
+				newStatus,
+				taskId: String(taskId)
+			};
+		}
+
 		tasks[taskIndex] = {
 			...tasks[taskIndex],
 			status: newStatus,
@@ -333,12 +338,7 @@ export class FileStorage implements IStorage {
 		subtaskId: string,
 		newStatus: TaskStatus,
 		tag?: string
-	): Promise<{
-		success: boolean;
-		oldStatus: TaskStatus;
-		newStatus: TaskStatus;
-		taskId: string;
-	}> {
+	): Promise<UpdateStatusResult> {
 		// Parse the subtask ID to get parent ID and subtask ID
 		const parts = subtaskId.split('.');
 		if (parts.length !== 2) {
@@ -378,7 +378,7 @@ export class FileStorage implements IStorage {
 			);
 		}
 
-		const oldStatus = parentTask.subtasks[subtaskIndex].status;
+		const oldStatus = parentTask.subtasks[subtaskIndex].status || 'pending';
 
 		// Update the subtask status
 		parentTask.subtasks[subtaskIndex] = {
@@ -399,14 +399,14 @@ export class FileStorage implements IStorage {
 			else if (anyInProgress) parentNewStatus = 'in-progress';
 		}
 
-		// Update parent task if status changed
-		if (parentNewStatus !== parentTask.status) {
-			tasks[parentTaskIndex] = {
-				...parentTask,
-				status: parentNewStatus,
-				updatedAt: new Date().toISOString()
-			};
-		}
+		// Always bump updatedAt; update status only if changed
+		tasks[parentTaskIndex] = {
+			...parentTask,
+			...(parentNewStatus !== parentTask.status
+				? { status: parentNewStatus }
+				: {}),
+			updatedAt: new Date().toISOString()
+		};
 
 		await this.saveTasks(tasks, tag);
 

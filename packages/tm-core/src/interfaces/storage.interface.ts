@@ -6,6 +6,16 @@
 import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 
 /**
+ * Result type for updateTaskStatus operations
+ */
+export interface UpdateStatusResult {
+	success: boolean;
+	oldStatus: TaskStatus;
+	newStatus: TaskStatus;
+	taskId: string;
+}
+
+/**
  * Interface for storage operations on tasks
  * All storage implementations must implement this interface
  */
@@ -65,12 +75,7 @@ export interface IStorage {
 		taskId: string,
 		newStatus: TaskStatus,
 		tag?: string
-	): Promise<{
-		success: boolean;
-		oldStatus: TaskStatus;
-		newStatus: TaskStatus;
-		taskId: string;
-	}>;
+	): Promise<UpdateStatusResult>;
 
 	/**
 	 * Delete a task by ID
@@ -213,12 +218,7 @@ export abstract class BaseStorage implements IStorage {
 		taskId: string,
 		newStatus: TaskStatus,
 		tag?: string
-	): Promise<{
-		success: boolean;
-		oldStatus: TaskStatus;
-		newStatus: TaskStatus;
-		taskId: string;
-	}>;
+	): Promise<UpdateStatusResult>;
 	abstract deleteTask(taskId: string, tag?: string): Promise<void>;
 	abstract exists(tag?: string): Promise<boolean>;
 	abstract loadMetadata(tag?: string): Promise<TaskMetadata | null>;
