@@ -111,7 +111,13 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		args: string[],
 		options: { timeout?: number } = {}
 	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-		const timeout = options.timeout || this.settings.timeout || 120000; // 2 minutes default
+		// Default timeout based on model type
+		let defaultTimeout = 120000; // 2 minutes default
+		if (this.modelId.includes('grok-4')) {
+			defaultTimeout = 300000; // 5 minutes for grok-4 models
+		}
+
+		const timeout = options.timeout ?? this.settings.timeout ?? defaultTimeout;
 
 		return new Promise((resolve, reject) => {
 			const child = spawn('grok', args, {
@@ -268,9 +274,7 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		}
 
 		try {
-			const result = await this.executeGrokCli(args, {
-				timeout: this.settings.timeout
-			});
+			const result = await this.executeGrokCli(args);
 
 			if (result.exitCode !== 0) {
 				// Handle authentication errors
