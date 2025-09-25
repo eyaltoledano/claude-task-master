@@ -347,14 +347,14 @@ export class FileStorage implements IStorage {
 			);
 		}
 
-		const [parentId, subId] = parts;
-		const subtaskNumericId = parseInt(subId, 10);
-
-		if (isNaN(subtaskNumericId)) {
+		const [parentId, subIdRaw] = parts;
+		const subId = subIdRaw.trim();
+		if (!/^\d+$/.test(subId)) {
 			throw new Error(
-				`Invalid subtask ID: ${subId}. Subtask ID must be numeric.`
+				`Invalid subtask ID: ${subId}. Subtask ID must be a positive integer.`
 			);
 		}
+		const subtaskNumericId = Number(subId);
 
 		// Find the parent task
 		const parentTaskIndex = tasks.findIndex(
@@ -388,11 +388,13 @@ export class FileStorage implements IStorage {
 			};
 		}
 
+		const now = new Date().toISOString();
+
 		// Update the subtask status
 		parentTask.subtasks[subtaskIndex] = {
 			...parentTask.subtasks[subtaskIndex],
 			status: newStatus,
-			updatedAt: new Date().toISOString()
+			updatedAt: now
 		};
 
 		// Auto-adjust parent status based on subtask statuses
@@ -400,9 +402,13 @@ export class FileStorage implements IStorage {
 		let parentNewStatus = parentTask.status;
 		if (subs.length > 0) {
 			const norm = (s: any) => s.status || 'pending';
-			const allDone = subs.every((s) => norm(s) === 'done');
+			const isDoneLike = (s: any) => {
+				const st = norm(s);
+				return st === 'done' || st === 'completed';
+			};
+			const allDone = subs.every(isDoneLike);
 			const anyInProgress = subs.some((s) => norm(s) === 'in-progress');
-			const anyDone = subs.some((s) => norm(s) === 'done');
+			const anyDone = subs.some(isDoneLike);
 			if (allDone) parentNewStatus = 'done';
 			else if (anyInProgress || anyDone) parentNewStatus = 'in-progress';
 		}
@@ -413,7 +419,7 @@ export class FileStorage implements IStorage {
 			...(parentNewStatus !== parentTask.status
 				? { status: parentNewStatus }
 				: {}),
-			updatedAt: new Date().toISOString()
+			updatedAt: now
 		};
 
 		await this.saveTasks(tasks, tag);
