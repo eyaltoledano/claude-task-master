@@ -9,7 +9,11 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
@@ -61,6 +65,8 @@
 		"@ai-sdk/mistral": "^2.0.16",
 		"@ai-sdk/openai": "^2.0.34",
 		"@ai-sdk/perplexity": "^2.0.10",
+		"@ai-sdk/provider": "^2.0.0",
+		"@ai-sdk/provider-utils": "^3.0.9",
 		"@ai-sdk/xai": "^2.0.22",
 		"@aws-sdk/credential-providers": "^3.895.0",
 		"@inquirer/search": "^3.0.15",
@@ -115,7 +121,12 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
@@ -124,8 +135,8 @@
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
-		"@tm/cli": "*",
 		"@manypkg/cli": "^0.25.1",
+		"@tm/cli": "*",
 		"@types/jest": "^29.5.14",
 		"@types/marked-terminal": "^6.1.1",
 		"concurrently": "^9.2.1",

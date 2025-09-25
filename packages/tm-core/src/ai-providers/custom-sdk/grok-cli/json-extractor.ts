@@ -1,13 +1,13 @@
 /**
- * @fileoverview Extract JSON from Grok's response, handling markdown blocks and other formatting
+ * Extract JSON from Grok's response, handling markdown blocks and other formatting
  */
 
 /**
  * Extract JSON from Grok's response
- * @param {string} text - The text to extract JSON from
- * @returns {string} - The extracted JSON string
+ * @param text - The text to extract JSON from
+ * @returns The extracted JSON string
  */
-export function extractJson(text) {
+export function extractJson(text: string): string {
 	// Remove markdown code blocks if present
 	let jsonText = text.trim();
 

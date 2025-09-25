@@ -1,53 +1,50 @@
 /**
- * @fileoverview Grok CLI Language Model implementation
+ * Grok CLI Language Model implementation for AI SDK v5
  */
 
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+import type {
+	LanguageModelV2,
+	LanguageModelV2CallOptions
+} from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
-import {
-	createPromptFromMessages,
-	convertFromGrokCliResponse,
-	escapeShellArg
-} from './message-converter.js';
-import { extractJson } from './json-extractor.js';
+
 import {
 	createAPICallError,
 	createAuthenticationError,
 	createInstallationError,
 	createTimeoutError
 } from './errors.js';
-import { spawn } from 'child_process';
-import { promises as fs } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
+import { extractJson } from './json-extractor.js';
+import {
+	convertFromGrokCliResponse,
+	createPromptFromMessages,
+	escapeShellArg
+} from './message-converter.js';
+import type {
+	GrokCliLanguageModelOptions,
+	GrokCliModelId,
+	GrokCliSettings
+} from './types.js';
 
 /**
- * @typedef {import('./types.js').GrokCliSettings} GrokCliSettings
- * @typedef {import('./types.js').GrokCliModelId} GrokCliModelId
+ * Grok CLI Language Model implementation for AI SDK v5
  */
+export class GrokCliLanguageModel implements LanguageModelV2 {
+	readonly specificationVersion = 'v2' as const;
+	readonly defaultObjectGenerationMode = 'json' as const;
+	readonly supportsImageUrls = false;
+	readonly supportsStructuredOutputs = false;
+	readonly supportedUrls: Record<string, RegExp[]> = {};
 
-/**
- * @typedef {Object} GrokCliLanguageModelOptions
- * @property {GrokCliModelId} id - Model ID
- * @property {GrokCliSettings} [settings] - Model settings
- */
+	readonly modelId: GrokCliModelId;
+	readonly settings: GrokCliSettings;
 
-export class GrokCliLanguageModel {
-	specificationVersion = 'v1';
-	defaultObjectGenerationMode = 'json';
-	supportsImageUrls = false;
-	supportsStructuredOutputs = false;
-
-	/** @type {GrokCliModelId} */
-	modelId;
-
-	/** @type {GrokCliSettings} */
-	settings;
-
-	/**
-	 * @param {GrokCliLanguageModelOptions} options
-	 */
-	constructor(options) {
+	constructor(options: GrokCliLanguageModelOptions) {
 		this.modelId = options.id;
 		this.settings = options.settings ?? {};
 
@@ -64,15 +61,14 @@ export class GrokCliLanguageModel {
 		}
 	}
 
-	get provider() {
+	get provider(): string {
 		return 'grok-cli';
 	}
 
 	/**
 	 * Check if Grok CLI is installed and available
-	 * @returns {Promise<boolean>}
 	 */
-	async checkGrokCliInstallation() {
+	private async checkGrokCliInstallation(): Promise<boolean> {
 		return new Promise((resolve) => {
 			const child = spawn('grok', ['--version'], {
 				stdio: 'pipe'
@@ -85,9 +81,8 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Get API key from settings or environment
-	 * @returns {Promise<string|null>}
 	 */
-	async getApiKey() {
+	private async getApiKey(): Promise<string | null> {
 		// Check settings first
 		if (this.settings.apiKey) {
 			return this.settings.apiKey;
@@ -111,11 +106,11 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Execute Grok CLI command
-	 * @param {Array<string>} args - Command line arguments
-	 * @param {Object} options - Execution options
-	 * @returns {Promise<{stdout: string, stderr: string, exitCode: number}>}
 	 */
-	async executeGrokCli(args, options = {}) {
+	private async executeGrokCli(
+		args: string[],
+		options: { timeout?: number } = {}
+	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 		const timeout = options.timeout || this.settings.timeout || 120000; // 2 minutes default
 
 		return new Promise((resolve, reject) => {
@@ -126,7 +121,7 @@ export class GrokCliLanguageModel {
 
 			let stdout = '';
 			let stderr = '';
-			let timeoutId;
+			let timeoutId: NodeJS.Timeout | undefined;
 
 			// Set up timeout
 			if (timeout > 0) {
@@ -142,24 +137,24 @@ export class GrokCliLanguageModel {
 				}, timeout);
 			}
 
-			child.stdout.on('data', (data) => {
+			child.stdout?.on('data', (data) => {
 				stdout += data.toString();
 			});
 
-			child.stderr.on('data', (data) => {
+			child.stderr?.on('data', (data) => {
 				stderr += data.toString();
 			});
 
 			child.on('error', (error) => {
 				if (timeoutId) clearTimeout(timeoutId);
 
-				if (error.code === 'ENOENT') {
+				if ((error as any).code === 'ENOENT') {
 					reject(createInstallationError({}));
 				} else {
 					reject(
 						createAPICallError({
 							message: `Failed to execute Grok CLI: ${error.message}`,
-							code: error.code,
+							code: (error as any).code,
 							stderr: error.message,
 							isRetryable: false
 						})
@@ -181,23 +176,38 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Generate unsupported parameter warnings
-	 * @param {Object} options - Generation options
-	 * @returns {Array} Warnings array
 	 */
-	generateUnsupportedWarnings(options) {
-		const warnings = [];
-		const unsupportedParams = [];
+	private generateUnsupportedWarnings(
+		options: LanguageModelV2CallOptions
+	): Array<{
+		type: 'unsupported-setting';
+		setting: string;
+		details?: string;
+	}> {
+		const warnings: Array<{
+			type: 'unsupported-setting';
+			setting: string;
+			details?: string;
+		}> = [];
+		const unsupportedParams: string[] = [];
 
 		// Grok CLI supports some parameters but not all AI SDK parameters
-		if (options.topP !== undefined) unsupportedParams.push('topP');
-		if (options.topK !== undefined) unsupportedParams.push('topK');
-		if (options.presencePenalty !== undefined)
+		if ('topP' in options && options.topP !== undefined)
+			unsupportedParams.push('topP');
+		if ('topK' in options && options.topK !== undefined)
+			unsupportedParams.push('topK');
+		if ('presencePenalty' in options && options.presencePenalty !== undefined)
 			unsupportedParams.push('presencePenalty');
-		if (options.frequencyPenalty !== undefined)
+		if ('frequencyPenalty' in options && options.frequencyPenalty !== undefined)
 			unsupportedParams.push('frequencyPenalty');
-		if (options.stopSequences !== undefined && options.stopSequences.length > 0)
+		if (
+			'stopSequences' in options &&
+			options.stopSequences !== undefined &&
+			options.stopSequences.length > 0
+		)
 			unsupportedParams.push('stopSequences');
-		if (options.seed !== undefined) unsupportedParams.push('seed');
+		if ('seed' in options && options.seed !== undefined)
+			unsupportedParams.push('seed');
 
 		if (unsupportedParams.length > 0) {
 			for (const param of unsupportedParams) {
@@ -214,10 +224,8 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Generate text using Grok CLI
-	 * @param {Object} options - Generation options
-	 * @returns {Promise<Object>}
 	 */
-	async doGenerate(options) {
+	async doGenerate(options: LanguageModelV2CallOptions) {
 		// Check CLI installation
 		const isInstalled = await this.checkGrokCliInstallation();
 		if (!isInstalled) {
@@ -290,19 +298,34 @@ export class GrokCliLanguageModel {
 			let text = response.text || '';
 
 			// Extract JSON if in object-json mode
-			if (options.mode?.type === 'object-json' && text) {
+			if (
+				'mode' in options &&
+				(options as any).mode?.type === 'object-json' &&
+				text
+			) {
 				text = extractJson(text);
 			}
 
 			return {
-				text: text || undefined,
-				usage: response.usage || { promptTokens: 0, completionTokens: 0 },
-				finishReason: 'stop',
+				content: [
+					{
+						type: 'text' as const,
+						text: text || ''
+					}
+				],
+				usage: response.usage
+					? {
+							inputTokens: response.usage.promptTokens,
+							outputTokens: response.usage.completionTokens,
+							totalTokens: response.usage.totalTokens
+						}
+					: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+				finishReason: 'stop' as const,
 				rawCall: {
 					rawPrompt: prompt,
 					rawSettings: args
 				},
-				warnings: warnings.length > 0 ? warnings : undefined,
+				warnings: warnings,
 				response: {
 					id: generateId(),
 					timestamp: new Date(),
@@ -314,20 +337,23 @@ export class GrokCliLanguageModel {
 				providerMetadata: {
 					'grok-cli': {
 						exitCode: result.exitCode,
-						stderr: result.stderr || undefined
+						...(result.stderr && { stderr: result.stderr })
 					}
 				}
 			};
 		} catch (error) {
 			// Re-throw our custom errors
-			if (error.name === 'APICallError' || error.name === 'LoadAPIKeyError') {
+			if (
+				(error as any).name === 'APICallError' ||
+				(error as any).name === 'LoadAPIKeyError'
+			) {
 				throw error;
 			}
 
 			// Wrap other errors
 			throw createAPICallError({
-				message: `Grok CLI execution failed: ${error.message}`,
-				code: error.code,
+				message: `Grok CLI execution failed: ${(error as Error).message}`,
+				code: (error as any).code,
 				promptExcerpt: prompt.substring(0, 200),
 				isRetryable: false
 			});
@@ -338,10 +364,8 @@ export class GrokCliLanguageModel {
 	 * Stream text using Grok CLI
 	 * Note: Grok CLI doesn't natively support streaming, so this simulates streaming
 	 * by generating the full response and then streaming it in chunks
-	 * @param {Object} options - Stream options
-	 * @returns {Promise<Object>}
 	 */
-	async doStream(options) {
+	async doStream(options: LanguageModelV2CallOptions) {
 		const warnings = this.generateUnsupportedWarnings(options);
 
 		const stream = new ReadableStream({
@@ -359,7 +383,11 @@ export class GrokCliLanguageModel {
 					});
 
 					// Simulate streaming by chunking the text
-					const text = result.text || '';
+					const content = result.content || [];
+					const text =
+						content.length > 0 && content[0].type === 'text'
+							? content[0].text
+							: '';
 					const chunkSize = 50; // Characters per chunk
 
 					for (let i = 0; i < text.length; i += chunkSize) {
@@ -398,7 +426,7 @@ export class GrokCliLanguageModel {
 				rawPrompt: createPromptFromMessages(options.prompt),
 				rawSettings: {}
 			},
-			warnings: warnings.length > 0 ? warnings : undefined,
+			warnings: warnings,
 			request: {
 				body: createPromptFromMessages(options.prompt)
 			}
