@@ -379,6 +379,14 @@ export class FileStorage implements IStorage {
 		}
 
 		const oldStatus = parentTask.subtasks[subtaskIndex].status || 'pending';
+		if (oldStatus === newStatus) {
+			return {
+				success: true,
+				oldStatus,
+				newStatus,
+				taskId: subtaskId
+			};
+		}
 
 		// Update the subtask status
 		parentTask.subtasks[subtaskIndex] = {
