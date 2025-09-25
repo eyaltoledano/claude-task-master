@@ -391,7 +391,7 @@ export class FileStorage implements IStorage {
 		const subs = parentTask.subtasks;
 		let parentNewStatus = parentTask.status;
 		if (subs.length > 0) {
-			const norm = (s: any) => (s.status || 'pending');
+			const norm = (s: any) => s.status || 'pending';
 			const allDone = subs.every((s) => norm(s) === 'done');
 			const anyInProgress = subs.some((s) => norm(s) === 'in-progress');
 			const anyDone = subs.some((s) => norm(s) === 'done');
