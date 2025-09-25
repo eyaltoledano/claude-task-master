@@ -471,15 +471,12 @@ export class TaskService {
 
 		const taskIdStr = String(taskId);
 
-		// TODO: For now, assume it's a regular task and just try to update directly
-		// In the future, we can add subtask support if needed
+		// Check if this is a subtask (contains a dot)
 		if (taskIdStr.includes('.')) {
-			throw new TaskMasterError(
-				'Subtask status updates not yet supported in API storage',
-				ERROR_CODES.NOT_IMPLEMENTED
-			);
+			return this.updateSubtaskStatus(taskIdStr, newStatus, activeTag);
 		}
 
+		// Handle regular task update
 		// Get the current task to get old status (simple, direct approach)
 		let currentTask: Task | null;
 		try {
@@ -511,6 +508,93 @@ export class TaskService {
 			oldStatus,
 			newStatus,
 			taskId: taskIdStr
+		};
+	}
+
+	/**
+	 * Update subtask status
+	 * Handles subtask IDs in the format "parentId.subtaskId" (e.g., "21.1")
+	 */
+	private async updateSubtaskStatus(
+		subtaskId: string,
+		newStatus: TaskStatus,
+		activeTag: string
+	): Promise<{
+		success: boolean;
+		oldStatus: TaskStatus;
+		newStatus: TaskStatus;
+		taskId: string;
+	}> {
+		// Parse the subtask ID to get parent ID and subtask ID
+		const parts = subtaskId.split('.');
+		if (parts.length !== 2) {
+			throw new TaskMasterError(
+				`Invalid subtask ID format: ${subtaskId}. Expected format: parentId.subtaskId`,
+				ERROR_CODES.VALIDATION_ERROR
+			);
+		}
+
+		const [parentId, subId] = parts;
+		const subtaskNumericId = parseInt(subId, 10);
+
+		if (isNaN(subtaskNumericId)) {
+			throw new TaskMasterError(
+				`Invalid subtask ID: ${subId}. Subtask ID must be numeric.`,
+				ERROR_CODES.VALIDATION_ERROR
+			);
+		}
+
+		// Get the parent task
+		let parentTask: Task | null;
+		try {
+			parentTask = await this.storage.loadTask(parentId, activeTag);
+		} catch (error) {
+			throw new TaskMasterError(
+				`Failed to load parent task ${parentId}`,
+				ERROR_CODES.TASK_NOT_FOUND,
+				{ parentId, subtaskId },
+				error as Error
+			);
+		}
+
+		if (!parentTask) {
+			throw new TaskMasterError(
+				`Parent task ${parentId} not found`,
+				ERROR_CODES.TASK_NOT_FOUND,
+				{ parentId, subtaskId }
+			);
+		}
+
+		// Find the subtask within the parent task
+		const subtaskIndex = parentTask.subtasks.findIndex(
+			(st) => st.id === subtaskNumericId
+		);
+
+		if (subtaskIndex === -1) {
+			throw new TaskMasterError(
+				`Subtask ${subtaskId} not found in parent task ${parentId}`,
+				ERROR_CODES.TASK_NOT_FOUND,
+				{ parentId, subtaskId, availableSubtasks: parentTask.subtasks.map(st => st.id) }
+			);
+		}
+
+		const oldStatus = parentTask.subtasks[subtaskIndex].status;
+
+		// Update the subtask status
+		parentTask.subtasks[subtaskIndex] = {
+			...parentTask.subtasks[subtaskIndex],
+			status: newStatus,
+			updatedAt: new Date().toISOString()
+		};
+
+		// Save the updated parent task
+		await this.storage.updateTask(parentId, parentTask, activeTag);
+
+		return {
+			success: true,
+			oldStatus,
+			newStatus,
+			taskId: subtaskId
 		};
 	}
 }
