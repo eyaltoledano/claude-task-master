@@ -511,6 +511,14 @@ export class ApiStorage implements IStorage {
 			}
 
 			const oldStatus = existingTask.status;
+			if (oldStatus === newStatus) {
+				return {
+					success: true,
+					oldStatus,
+					newStatus,
+					taskId
+				};
+			}
 
 			// Update the task/subtask status
 			await this.retryOperation(() =>
@@ -520,9 +528,8 @@ export class ApiStorage implements IStorage {
 				})
 			);
 
-			// For subtasks, we might want to auto-adjust parent status
-			// but in API storage, we'd need to query for the parent and its other subtasks
-			// This is left as future enhancement since API storage handles relationships differently
+			// Note: Parent status auto-adjustment is handled by the backend API service
+			// which has its own business logic for managing task relationships
 
 			return {
 				success: true,

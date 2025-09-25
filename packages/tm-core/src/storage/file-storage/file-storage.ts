@@ -391,12 +391,12 @@ export class FileStorage implements IStorage {
 		const subs = parentTask.subtasks;
 		let parentNewStatus = parentTask.status;
 		if (subs.length > 0) {
-			const allDone = subs.every((s) => (s.status || 'pending') === 'done');
-			const anyInProgress = subs.some(
-				(s) => (s.status || 'pending') === 'in-progress'
-			);
+			const norm = (s: any) => (s.status || 'pending');
+			const allDone = subs.every((s) => norm(s) === 'done');
+			const anyInProgress = subs.some((s) => norm(s) === 'in-progress');
+			const anyDone = subs.some((s) => norm(s) === 'done');
 			if (allDone) parentNewStatus = 'done';
-			else if (anyInProgress) parentNewStatus = 'in-progress';
+			else if (anyInProgress || anyDone) parentNewStatus = 'in-progress';
 		}
 
 		// Always bump updatedAt; update status only if changed
