@@ -2,7 +2,7 @@
  * @fileoverview Refactored file-based storage implementation for Task Master
  */
 
-import type { Task, TaskMetadata } from '../../types/index.js';
+import type { Task, TaskMetadata, TaskStatus } from '../../types/index.js';
 import type {
 	IStorage,
 	StorageStats
@@ -279,6 +279,143 @@ export class FileStorage implements IStorage {
 			id: String(taskId) // Keep consistent with normalizeTaskIds
 		};
 		await this.saveTasks(tasks, tag);
+	}
+
+	/**
+	 * Update task or subtask status by ID - handles file storage logic with parent/subtask relationships
+	 */
+	async updateTaskStatus(
+		taskId: string,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<{
+		success: boolean;
+		oldStatus: TaskStatus;
+		newStatus: TaskStatus;
+		taskId: string;
+	}> {
+		const tasks = await this.loadTasks(tag);
+
+		// Check if this is a subtask (contains a dot)
+		if (taskId.includes('.')) {
+			return this.updateSubtaskStatusInFile(tasks, taskId, newStatus, tag);
+		}
+
+		// Handle regular task update
+		const taskIndex = tasks.findIndex((t) => String(t.id) === String(taskId));
+
+		if (taskIndex === -1) {
+			throw new Error(`Task ${taskId} not found`);
+		}
+
+		const oldStatus = tasks[taskIndex].status;
+		tasks[taskIndex] = {
+			...tasks[taskIndex],
+			status: newStatus,
+			updatedAt: new Date().toISOString()
+		};
+
+		await this.saveTasks(tasks, tag);
+
+		return {
+			success: true,
+			oldStatus,
+			newStatus,
+			taskId: String(taskId)
+		};
+	}
+
+	/**
+	 * Update subtask status within file storage - handles parent status auto-adjustment
+	 */
+	private async updateSubtaskStatusInFile(
+		tasks: Task[],
+		subtaskId: string,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<{
+		success: boolean;
+		oldStatus: TaskStatus;
+		newStatus: TaskStatus;
+		taskId: string;
+	}> {
+		// Parse the subtask ID to get parent ID and subtask ID
+		const parts = subtaskId.split('.');
+		if (parts.length !== 2) {
+			throw new Error(
+				`Invalid subtask ID format: ${subtaskId}. Expected format: parentId.subtaskId`
+			);
+		}
+
+		const [parentId, subId] = parts;
+		const subtaskNumericId = parseInt(subId, 10);
+
+		if (isNaN(subtaskNumericId)) {
+			throw new Error(
+				`Invalid subtask ID: ${subId}. Subtask ID must be numeric.`
+			);
+		}
+
+		// Find the parent task
+		const parentTaskIndex = tasks.findIndex(
+			(t) => String(t.id) === String(parentId)
+		);
+
+		if (parentTaskIndex === -1) {
+			throw new Error(`Parent task ${parentId} not found`);
+		}
+
+		const parentTask = tasks[parentTaskIndex];
+
+		// Find the subtask within the parent task
+		const subtaskIndex = parentTask.subtasks.findIndex(
+			(st) => st.id === subtaskNumericId || String(st.id) === subId
+		);
+
+		if (subtaskIndex === -1) {
+			throw new Error(
+				`Subtask ${subtaskId} not found in parent task ${parentId}`
+			);
+		}
+
+		const oldStatus = parentTask.subtasks[subtaskIndex].status;
+
+		// Update the subtask status
+		parentTask.subtasks[subtaskIndex] = {
+			...parentTask.subtasks[subtaskIndex],
+			status: newStatus,
+			updatedAt: new Date().toISOString()
+		};
+
+		// Auto-adjust parent status based on subtask statuses
+		const subs = parentTask.subtasks;
+		let parentNewStatus = parentTask.status;
+		if (subs.length > 0) {
+			const allDone = subs.every((s) => (s.status || 'pending') === 'done');
+			const anyInProgress = subs.some(
+				(s) => (s.status || 'pending') === 'in-progress'
+			);
+			if (allDone) parentNewStatus = 'done';
+			else if (anyInProgress) parentNewStatus = 'in-progress';
+		}
+
+		// Update parent task if status changed
+		if (parentNewStatus !== parentTask.status) {
+			tasks[parentTaskIndex] = {
+				...parentTask,
+				status: parentNewStatus,
+				updatedAt: new Date().toISOString()
+			};
+		}
+
+		await this.saveTasks(tasks, tag);
+
+		return {
+			success: true,
+			oldStatus,
+			newStatus,
+			taskId: subtaskId
+		};
 	}
 
 	/**
