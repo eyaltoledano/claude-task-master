@@ -101,7 +101,12 @@ sidebarTitle: "CLI Commands"
     task-master set-status --id=1.1,1.2 --status=<status>
     ```
 
-    When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
+    **Automatic Parent Status Management:**
+    When updating subtask statuses, parent task statuses are automatically adjusted:
+    - When **all subtasks** are marked `done`, the parent task becomes `done`
+    - When **at least one subtask** is `in-progress` or `done`, the parent task becomes `in-progress`
+    
+    When marking a parent task as "done", all of its subtasks will automatically be marked as "done" as well.
   </Accordion>
 
   <Accordion title="Expand Tasks">

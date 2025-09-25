@@ -3,4 +3,31 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## Version 0.27.2 - Automatic Parent Status Management
+
+### ✨ New Features
+
+**Automatic Parent Status Management**
+- Parent tasks now automatically update their status based on subtask progress
+- When all subtasks are marked as `done`, the parent task automatically becomes `done`  
+- When at least one subtask is `in-progress` or `done`, the parent task automatically becomes `in-progress`
+- This eliminates manual parent status updates and ensures task hierarchy consistency
+
+### 🔧 How It Works
+
+The new system tracks subtask status changes and intelligently updates parent statuses:
+
+1. **Subtask Progress Tracking**: Each subtask status change triggers parent evaluation
+2. **Smart Status Rules**: Parent status reflects the collective progress of all subtasks
+3. **Seamless Integration**: Works automatically with existing `set-status` commands and MCP tools
+
+### 📈 Benefits
+
+- **Reduced Manual Work**: No need to manually update parent task statuses
+- **Better Visibility**: Parent tasks accurately reflect overall progress
+- **Consistency**: Eliminates mismatched parent/subtask status combinations
+- **AI-Friendly**: Provides clearer status hierarchy for AI assistants
+
+---
+
+For a complete list of changes, see the [CHANGELOG.md](https://github.com/eyaltoledano/claude-task-master/blob/main/CHANGELOG.md).

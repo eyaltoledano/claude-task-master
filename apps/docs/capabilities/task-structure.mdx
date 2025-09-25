@@ -120,6 +120,23 @@ The `show` command:
 - Provides contextual action suggestions based on the task's state
 - Works with both regular tasks and subtasks (using the format taskId.subtaskId)
 </Accordion>
+
+<Accordion title="Automatic Parent Status Management">
+Task Master automatically manages parent task statuses based on subtask changes:
+
+**Status Rules:**
+- When **all subtasks** are marked as `done`, the parent task is automatically set to `done`
+- When **at least one subtask** is `in-progress` or `done`, the parent task is automatically set to `in-progress`
+- This ensures parent tasks accurately reflect the progress of their subtasks
+
+**Example Workflow:**
+1. Parent task starts as `pending`
+2. First subtask marked `in-progress` → Parent becomes `in-progress`
+3. Some subtasks completed (`done`) → Parent remains `in-progress`
+4. All subtasks completed (`done`) → Parent automatically becomes `done`
+
+This automation eliminates the need to manually update parent task statuses and ensures consistency across your task hierarchy.
+</Accordion>
 </AccordionGroup>
 
 ## Best Practices for AI-Driven Development
