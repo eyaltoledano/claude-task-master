@@ -1,5 +1,13 @@
 # task-master-ai
 
+## 0.27.2
+
+### Patch Changes
+
+- [#1248](https://github.com/eyaltoledano/claude-task-master/pull/1248) [`044a7bf`](https://github.com/eyaltoledano/claude-task-master/commit/044a7bfc98049298177bc655cf341d7a8b6a0011) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix set-status for subtasks:
+  - Parent tasks are now set as `done` when subtasks are all `done`
+  - Parent tasks are now set as `in-progress` when at least one subtask is `in-progress` or `done`
+
 ## 0.27.1
 
 ### Patch Changes

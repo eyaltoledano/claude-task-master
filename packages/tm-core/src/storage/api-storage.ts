@@ -5,9 +5,15 @@
 
 import type {
 	IStorage,
-	StorageStats
+	StorageStats,
+	UpdateStatusResult
 } from '../interfaces/storage.interface.js';
-import type { Task, TaskMetadata, TaskTag } from '../types/index.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskTag,
+	TaskStatus
+} from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { TaskRepository } from '../repositories/task-repository.interface.js';
 import { SupabaseTaskRepository } from '../repositories/supabase-task-repository.js';
@@ -480,6 +486,62 @@ export class ApiStorage implements IStorage {
 				'Failed to update task via API',
 				ERROR_CODES.STORAGE_ERROR,
 				{ operation: 'updateTask', taskId, tag },
+				error as Error
+			);
+		}
+	}
+
+	/**
+	 * Update task or subtask status by ID - for API storage
+	 */
+	async updateTaskStatus(
+		taskId: string,
+		newStatus: TaskStatus,
+		tag?: string
+	): Promise<UpdateStatusResult> {
+		await this.ensureInitialized();
+
+		try {
+			const existingTask = await this.retryOperation(() =>
+				this.repository.getTask(this.projectId, taskId)
+			);
+
+			if (!existingTask) {
+				throw new Error(`Task ${taskId} not found`);
+			}
+
+			const oldStatus = existingTask.status;
+			if (oldStatus === newStatus) {
+				return {
+					success: true,
+					oldStatus,
+					newStatus,
+					taskId
+				};
+			}
+
+			// Update the task/subtask status
+			await this.retryOperation(() =>
+				this.repository.updateTask(this.projectId, taskId, {
+					status: newStatus,
+					updatedAt: new Date().toISOString()
+				})
+			);
+
+			// Note: Parent status auto-adjustment is handled by the backend API service
+			// which has its own business logic for managing task relationships
+
+			return {
+				success: true,
+				oldStatus,
+				newStatus,
+				taskId
+			};
+		} catch (error) {
+			throw new TaskMasterError(
+				'Failed to update task status via API',
+				ERROR_CODES.STORAGE_ERROR,
+				{ operation: 'updateTaskStatus', taskId, newStatus, tag },
 				error as Error
 			);
 		}

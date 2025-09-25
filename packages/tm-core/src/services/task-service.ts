@@ -446,7 +446,7 @@ export class TaskService {
 	}
 
 	/**
-	 * Update task status
+	 * Update task status - delegates to storage layer which handles storage-specific logic
 	 */
 	async updateTaskStatus(
 		taskId: string | number,
@@ -468,49 +468,28 @@ export class TaskService {
 
 		// Use provided tag or get active tag
 		const activeTag = tag || this.getActiveTag();
-
 		const taskIdStr = String(taskId);
 
-		// TODO: For now, assume it's a regular task and just try to update directly
-		// In the future, we can add subtask support if needed
-		if (taskIdStr.includes('.')) {
-			throw new TaskMasterError(
-				'Subtask status updates not yet supported in API storage',
-				ERROR_CODES.NOT_IMPLEMENTED
-			);
-		}
-
-		// Get the current task to get old status (simple, direct approach)
-		let currentTask: Task | null;
 		try {
-			// Try to get the task directly
-			currentTask = await this.storage.loadTask(taskIdStr, activeTag);
+			// Delegate to storage layer which handles the specific logic for tasks vs subtasks
+			return await this.storage.updateTaskStatus(
+				taskIdStr,
+				newStatus,
+				activeTag
+			);
 		} catch (error) {
 			throw new TaskMasterError(
-				`Failed to load task ${taskIdStr}`,
-				ERROR_CODES.TASK_NOT_FOUND,
-				{ taskId: taskIdStr },
+				`Failed to update task status for ${taskIdStr}`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'updateTaskStatus',
+					resource: 'task',
+					taskId: taskIdStr,
+					newStatus,
+					tag: activeTag
+				},
 				error as Error
 			);
 		}
-
-		if (!currentTask) {
-			throw new TaskMasterError(
-				`Task ${taskIdStr} not found`,
-				ERROR_CODES.TASK_NOT_FOUND
-			);
-		}
-
-		const oldStatus = currentTask.status;
-
-		// Simple, direct update - just change the status
-		await this.storage.updateTask(taskIdStr, { status: newStatus }, activeTag);
-
-		return {
-			success: true,
-			oldStatus,
-			newStatus,
-			taskId: taskIdStr
-		};
 	}
 }
