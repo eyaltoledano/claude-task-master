@@ -7,7 +7,12 @@ import type {
 	IStorage,
 	StorageStats
 } from '../interfaces/storage.interface.js';
-import type { Task, TaskMetadata, TaskTag, TaskStatus } from '../types/index.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskTag,
+	TaskStatus
+} from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { TaskRepository } from '../repositories/task-repository.interface.js';
 import { SupabaseTaskRepository } from '../repositories/supabase-task-repository.js';
