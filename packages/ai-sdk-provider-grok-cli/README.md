@@ -4,7 +4,7 @@ A provider for the [AI SDK](https://sdk.vercel.ai) that integrates with [Grok CL
 
 ## Features
 
-- ✅ **AI SDK v2 Compatible** - Full support for the latest AI SDK interfaces
+- ✅ **AI SDK v5 Compatible** - Full support for the latest AI SDK interfaces
 - ✅ **Streaming & Non-streaming** - Both generation modes supported
 - ✅ **Error Handling** - Comprehensive error handling with retry logic
 - ✅ **Type Safety** - Full TypeScript support with proper type definitions
@@ -22,12 +22,14 @@ yarn add @tm/ai-sdk-provider-grok-cli
 ## Prerequisites
 
 1. Install the Grok CLI:
+
    ```bash
    npm install -g grok-cli
    # or follow xAI's installation instructions
    ```
 
 2. Set up authentication:
+
    ```bash
    export GROK_CLI_API_KEY="your-api-key"
    # or configure via grok CLI: grok config set api-key your-key

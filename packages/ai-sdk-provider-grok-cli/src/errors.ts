@@ -141,11 +141,15 @@ export function isAuthenticationError(
 	error: unknown
 ): error is LoadAPIKeyError {
 	if (error instanceof LoadAPIKeyError) return true;
-	if (
-		error instanceof APICallError &&
-		(error.data as GrokCliErrorMetadata)?.exitCode === 401
-	)
-		return true;
+	if (error instanceof APICallError) {
+		const metadata = error.data as GrokCliErrorMetadata | undefined;
+		if (!metadata) return false;
+		return (
+			metadata.exitCode === 401 ||
+			metadata.code === 'AUTHENTICATION_ERROR' ||
+			metadata.code === 'UNAUTHORIZED'
+		);
+	}
 	return false;
 }
 

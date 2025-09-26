@@ -55,6 +55,8 @@ export interface GrokCliMessage {
  * Response format from Grok CLI
  */
 export interface GrokCliResponse {
+	/** Message role */
+	role: string;
 	/** Response content */
 	content: string;
 	/** Token usage information */

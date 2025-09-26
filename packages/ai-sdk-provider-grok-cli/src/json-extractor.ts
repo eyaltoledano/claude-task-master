@@ -58,6 +58,77 @@ export function extractJson(text: string): string {
 		return undefined;
 	};
 
+	const decodeSingleQuotedString = (value: string): string => {
+		let result = '';
+		for (let i = 0; i < value.length; i++) {
+			const char = value[i];
+			if (char !== '\\') {
+				result += char;
+				continue;
+			}
+
+			i++;
+			if (i >= value.length) {
+				result += '\\';
+				break;
+			}
+
+			const next = value[i];
+			switch (next) {
+				case "'":
+					result += "'";
+					break;
+				case '\\':
+					result += '\\';
+					break;
+				case 'n':
+					result += '\n';
+					break;
+				case 'r':
+					result += '\r';
+					break;
+				case 't':
+					result += '\t';
+					break;
+				case 'b':
+					result += '\b';
+					break;
+				case 'f':
+					result += '\f';
+					break;
+				case 'v':
+					result += '\v';
+					break;
+				case '0':
+					result += '\0';
+					break;
+				case 'u': {
+					const hex = value.slice(i + 1, i + 5);
+					if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+						result += String.fromCharCode(parseInt(hex, 16));
+						i += 4;
+						break;
+					}
+					result += 'u';
+					break;
+				}
+				case 'x': {
+					const hex = value.slice(i + 1, i + 3);
+					if (/^[0-9a-fA-F]{2}$/.test(hex)) {
+						result += String.fromCharCode(parseInt(hex, 16));
+						i += 2;
+						break;
+					}
+					result += 'x';
+					break;
+				}
+				default:
+					result += next;
+			}
+		}
+		return result;
+	};
+
 	const normalizeJavaScriptObjectLiteral = (value: string): string =>
 		value
 			.replace(
@@ -65,9 +136,8 @@ export function extractJson(text: string): string {
 				(_match, prefix: string, key: string, spacing: string) =>
 					`${prefix}"${key}"${spacing}:`
 			)
-			.replace(
-				/'([^'\\]*(?:\\.[^'\\]*)*)'/g,
-				(_match, inner: string) => `"${inner.replace(/"/g, '\\"')}"`
+			.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, inner: string) =>
+				JSON.stringify(decodeSingleQuotedString(inner))
 			);
 
 	const candidates = [content];
