@@ -35,6 +35,7 @@ export function extractJson(text: string): string {
 	const findFirstStructuralBracket = (value: string): number => {
 		let inDouble = false;
 		let inSingle = false;
+		let inBacktick = false;
 		let escapeNext = false;
 
 		for (let i = 0; i < value.length; i++) {
@@ -50,17 +51,22 @@ export function extractJson(text: string): string {
 				continue;
 			}
 
-			if (char === '"' && !inSingle) {
+			if (!inBacktick && char === '"' && !inSingle) {
 				inDouble = !inDouble;
 				continue;
 			}
 
-			if (char === "'" && !inDouble) {
+			if (!inBacktick && char === "'" && !inDouble) {
 				inSingle = !inSingle;
 				continue;
 			}
 
-			if (!inDouble && !inSingle && (char === '{' || char === '[')) {
+			if (!inDouble && !inSingle && char === '`') {
+				inBacktick = !inBacktick;
+				continue;
+			}
+
+			if (!inDouble && !inSingle && !inBacktick && (char === '{' || char === '[')) {
 				return i;
 			}
 		}
@@ -176,16 +182,73 @@ export function extractJson(text: string): string {
 		return result;
 	};
 
-	const normalizeJavaScriptObjectLiteral = (value: string): string =>
-		value
-			.replace(
-				/([{\s,])([A-Za-z0-9_$]+)(\s*):/g,
-				(_match, prefix: string, key: string, spacing: string) =>
-					`${prefix}"${key}"${spacing}:`
-			)
-			.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, inner: string) =>
-				JSON.stringify(decodeSingleQuotedString(inner))
-			);
+	const normalizeJavaScriptObjectLiteral = (value: string): string => {
+		let out = '';
+		let i = 0;
+		let inDouble = false;
+		let inSingle = false;
+		let escapeNext = false;
+
+		const isIdentStart = (ch: string) => /[A-Za-z_$]/.test(ch);
+		const isIdentPart = (ch: string) => /[A-Za-z0-9_$]/.test(ch);
+
+		while (i < value.length) {
+			const ch = value[i];
+
+			if (escapeNext) { out += ch; escapeNext = false; i++; continue; }
+			if (ch === '\\') { out += ch; escapeNext = true; i++; continue; }
+
+			if (!inSingle && ch === '"') { inDouble = !inDouble; out += ch; i++; continue; }
+
+			if (!inDouble && ch === "'") {
+				// consume single-quoted literal and emit JSON-compatible double-quoted string
+				let j = i + 1;
+				let inner = '';
+				let esc = false;
+				while (j < value.length) {
+					const c = value[j];
+					if (esc) { inner += c; esc = false; j++; continue; }
+					if (c === '\\') { esc = true; j++; continue; }
+					if (c === "'") break;
+					inner += c;
+					j++;
+				}
+				out += JSON.stringify(decodeSingleQuotedString(inner));
+				i = j < value.length ? j + 1 : j;
+				continue;
+			}
+
+			if (!inDouble && !inSingle && (ch === '{' || ch === ',')) {
+				out += ch;
+				i++;
+				// preserve whitespace after { or ,
+				while (i < value.length && /\s/.test(value[i])) { out += value[i]; i++; }
+				// quote bare identifier key if followed by colon
+				const keyStart = i;
+				if (i < value.length && isIdentStart(value[i])) {
+					i++;
+					while (i < value.length && isIdentPart(value[i])) i++;
+					const ident = value.slice(keyStart, i);
+					const wsStart = i;
+					while (i < value.length && /\s/.test(value[i])) i++;
+					if (value[i] === ':') {
+						out += `"${ident}"${value.slice(wsStart, i)}:`;
+						i++; // skip colon
+						continue;
+					} else {
+						out += value.slice(keyStart, i);
+						continue;
+					}
+				}
+				continue;
+			}
+
+			out += ch;
+			i++;
+		}
+
+		return out;
+	};
 
 	const candidates = [content];
 	const normalizedContent = normalizeJavaScriptObjectLiteral(content);
