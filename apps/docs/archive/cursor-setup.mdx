@@ -93,3 +93,57 @@ task-master generate
 ```
 
 This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
+
+## Custom Slash Commands
+
+<Check>
+  When you initialize Task Master with Cursor (`task-master init --cursor`), it automatically sets up custom slash commands for enhanced productivity.
+</Check>
+
+Task Master automatically copies its complete set of slash commands to `.cursor/commands/` during project initialization. This provides you with convenient shortcuts for all Task Master operations directly within Cursor's interface.
+
+### Available Slash Commands
+
+The following slash commands become available in Cursor after initialization:
+
+<Accordion title="Core Workflow Commands">
+  - `/tm-main` - Main Task Master help and overview
+  - `/tm-next-task` - Get the next available task to work on
+  - `/tm-show-task` - View detailed information about a specific task
+  - `/tm-list-tasks` - Display all tasks with various filtering options
+  - `/tm-project-status` - View overall project status
+</Accordion>
+
+<Accordion title="Task Management Commands">
+  - `/tm-add-task` - Add a new task to your project
+  - `/tm-update-task` - Update an existing task
+  - `/tm-set-status-*` - Change task status (to-pending, to-in-progress, to-done, etc.)
+  - `/tm-remove-task` - Remove a task from your project
+</Accordion>
+
+<Accordion title="Analysis and Planning Commands">
+  - `/tm-parse-prd` - Generate tasks from a PRD document
+  - `/tm-analyze-complexity` - Analyze task complexity
+  - `/tm-complexity-report` - View complexity analysis report
+  - `/tm-expand-task` - Break down tasks into subtasks
+</Accordion>
+
+<Accordion title="Advanced Workflow Commands">
+  - `/tm-smart-workflow` - Intelligent task workflow management
+  - `/tm-auto-implement-tasks` - Automated task implementation pipeline
+  - `/tm-command-pipeline` - Execute multiple Task Master commands in sequence
+</Accordion>
+
+### Using Slash Commands
+
+Simply type the command name in Cursor's chat interface, and the AI will execute the corresponding Task Master operation:
+
+```
+/tm-next-task
+```
+
+The AI will understand the context and execute the appropriate `task-master` CLI command, providing you with the results directly in the chat.
+
+### Command Cleanup
+
+If you remove the Cursor profile from your project using `task-master remove --cursor`, the slash commands directory is automatically cleaned up to keep your project tidy.

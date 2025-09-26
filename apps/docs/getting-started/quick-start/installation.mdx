@@ -166,7 +166,14 @@ npx task-master init
 
 # Initialize project with specific rules
 task-master init --rules cursor,windsurf,vscode
+
+# Initialize project for Cursor (sets up rules and custom slash commands)
+task-master init --cursor
 ```
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
+
+<Note>
+When using the `--cursor` flag, Task Master automatically copies custom slash commands to `.cursor/commands/` for enhanced Cursor IDE integration. See the [Cursor Setup Guide](/archive/cursor-setup) for more details about these commands.
+</Note>
 </Accordion>
