@@ -135,49 +135,28 @@ export class TaskService {
 	}
 
 	/**
-	 * Get a single task by ID
+	 * Get a single task by ID - delegates to storage layer
 	 */
 	async getTask(taskId: string, tag?: string): Promise<Task | null> {
-		const result = await this.getTaskList({
-			tag,
-			includeSubtasks: true
-		});
+		// Use provided tag or get active tag
+		const activeTag = tag || this.getActiveTag();
 
-		// Check if this is a subtask (contains a dot)
-		if (taskId.includes('.')) {
-			const [parentId, subtaskId] = taskId.split('.');
-			const parentTask = result.tasks.find((t) => String(t.id) === parentId);
-			
-			if (!parentTask || !parentTask.subtasks) {
-				return null;
-			}
-
-			const subtask = parentTask.subtasks.find((st) => String(st.id) === subtaskId);
-			if (!subtask) {
-				return null;
-			}
-
-			// Return a Task-like object for the subtask with the full dotted ID
-			return {
-				id: taskId,
-				title: subtask.title || `Subtask ${subtaskId}`,
-				description: subtask.description || '',
-				status: subtask.status || 'pending',
-				priority: subtask.priority || parentTask.priority || 'medium',
-				dependencies: subtask.dependencies || [],
-				details: subtask.details || '',
-				testStrategy: subtask.testStrategy || '',
-				subtasks: [],
-				tags: parentTask.tags || [],
-				assignee: subtask.assignee || parentTask.assignee,
-				complexity: subtask.complexity || parentTask.complexity,
-				createdAt: parentTask.createdAt,
-				updatedAt: parentTask.updatedAt
-			};
+		try {
+			// Delegate to storage layer which handles the specific logic for tasks vs subtasks
+			return await this.storage.loadTask(String(taskId), activeTag);
+		} catch (error) {
+			throw new TaskMasterError(
+				`Failed to get task ${taskId}`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'getTask',
+					resource: 'task',
+					taskId: String(taskId),
+					tag: activeTag
+				},
+				error as Error
+			);
 		}
-
-		// Handle regular task lookup
-		return result.tasks.find((t) => String(t.id) === String(taskId)) || null;
 	}
 
 	/**
