@@ -210,7 +210,7 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	if (typeof profile.onAddRulesProfile === 'function') {
 		try {
 			const assetsDir = getAssetsDir();
-			profile.onAddRulesProfile(projectRoot, assetsDir);
+			profile.onAddRulesProfile(targetDir, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onAddRulesProfile for ${profile.profileName}`
@@ -305,7 +305,7 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	if (typeof profile.onPostConvertRulesProfile === 'function') {
 		try {
 			const assetsDir = getAssetsDir();
-			profile.onPostConvertRulesProfile(projectRoot, assetsDir);
+			profile.onPostConvertRulesProfile(targetDir, assetsDir);
 			log(
 				'debug',
 				`[Rule Transformer] Called onPostConvertRulesProfile for ${profile.profileName}`
@@ -347,7 +347,7 @@ export function removeProfileRules(projectRoot, profile) {
 		// 1. Call onRemoveRulesProfile first (for custom cleanup like removing assets)
 		if (typeof profile.onRemoveRulesProfile === 'function') {
 			try {
-				profile.onRemoveRulesProfile(projectRoot);
+				profile.onRemoveRulesProfile(targetDir);
 				log(
 					'debug',
 					`[Rule Transformer] Called onRemoveRulesProfile for ${profile.profileName}`
