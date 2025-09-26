@@ -107,7 +107,10 @@ export function extractJson(text: string): string {
 						const endBrace = value.indexOf('}', i + 2);
 						if (endBrace !== -1) {
 							const codePointHex = value.slice(i + 2, endBrace);
-							if (codePointHex.length > 0 && /^[0-9a-fA-F]+$/.test(codePointHex)) {
+							if (
+								codePointHex.length > 0 &&
+								/^[0-9a-fA-F]+$/.test(codePointHex)
+							) {
 								const codePoint = parseInt(codePointHex, 16);
 								if (codePoint <= 0x10ffff) {
 									result += String.fromCodePoint(codePoint);
