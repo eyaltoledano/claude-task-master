@@ -20,7 +20,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/provider": "^2.0.0",
-		"@ai-sdk/provider-utils": "^2.2.8",
+		"@ai-sdk/provider-utils": "^3.0.10",
 		"jsonc-parser": "^3.3.1"
 	},
 	"devDependencies": {

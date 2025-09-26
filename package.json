@@ -62,7 +62,7 @@
 		"@ai-sdk/openai": "^2.0.34",
 		"@ai-sdk/perplexity": "^2.0.10",
 		"@ai-sdk/provider": "^2.0.0",
-		"@ai-sdk/provider-utils": "^3.0.9",
+		"@ai-sdk/provider-utils": "^3.0.10",
 		"@ai-sdk/xai": "^2.0.22",
 		"@aws-sdk/credential-providers": "^3.895.0",
 		"@inquirer/search": "^3.0.15",

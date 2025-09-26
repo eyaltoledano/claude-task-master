@@ -16,8 +16,6 @@ A provider for the [AI SDK](https://sdk.vercel.ai) that integrates with [Grok CL
 ```bash
 npm install ai-sdk-provider-grok-cli
 # or
-pnpm add ai-sdk-provider-grok-cli
-# or
 yarn add ai-sdk-provider-grok-cli
 ```
 
@@ -149,17 +147,20 @@ try {
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
-# Run tests
-pnpm test
-
-# Build the package
-pnpm build
+# Start development mode (keep running during development)
+npm run dev
 
 # Type check
-pnpm type-check
+npm run typecheck
+
+# Run tests (requires build first)
+NODE_ENV=production npm run build
+npm test
 ```
+
+**Important**: Always run `npm run dev` and keep it running during development. This ensures proper compilation and hot-reloading of TypeScript files.
 
 ## License
 

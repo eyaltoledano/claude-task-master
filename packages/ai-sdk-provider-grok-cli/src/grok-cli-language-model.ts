@@ -8,7 +8,8 @@ import { homedir } from 'os';
 import { join } from 'path';
 import type {
 	LanguageModelV2,
-	LanguageModelV2CallOptions
+	LanguageModelV2CallOptions,
+	LanguageModelV2CallWarning
 } from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
@@ -119,7 +120,6 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 
 		const timeout = options.timeout ?? this.settings.timeout ?? defaultTimeout;
 
-
 		return new Promise((resolve, reject) => {
 			const child = spawn('grok', args, {
 				stdio: 'pipe',
@@ -129,7 +129,6 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			let stdout = '';
 			let stderr = '';
 			let timeoutId: NodeJS.Timeout | undefined;
-			let dataReceived = false;
 
 			// Set up timeout
 			if (timeout > 0) {
@@ -148,13 +147,11 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			child.stdout?.on('data', (data) => {
 				const chunk = data.toString();
 				stdout += chunk;
-				dataReceived = true;
 			});
 
 			child.stderr?.on('data', (data) => {
 				const chunk = data.toString();
 				stderr += chunk;
-				dataReceived = true;
 			});
 
 			child.on('error', (error) => {
@@ -192,44 +189,37 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 	private generateAllWarnings(
 		options: LanguageModelV2CallOptions,
 		prompt: string
-	): Array<{
-		type: 'unsupported-setting' | 'other';
-		setting?: string;
-		message?: string;
-		details?: string;
-	}> {
-		const warnings: Array<{
-			type: 'unsupported-setting' | 'other';
-			setting?: string;
-			message?: string;
-			details?: string;
-		}> = [];
+	): LanguageModelV2CallWarning[] {
+		const warnings: LanguageModelV2CallWarning[] = [];
+		const unsupportedParams: string[] = [];
 
-		// Check for unsupported parameters with proper typing
-		const unsupportedChecks = [
-			{ key: 'temperature', value: options.temperature },
-			{ key: 'topP', value: options.topP },
-			{ key: 'topK', value: options.topK },
-			{ key: 'presencePenalty', value: options.presencePenalty },
-			{ key: 'frequencyPenalty', value: options.frequencyPenalty },
-			{
-				key: 'stopSequences',
-				value: options.stopSequences,
-				condition: (val: any) => Array.isArray(val) && val.length > 0
-			},
-			{ key: 'seed', value: options.seed }
-		];
+		// Check for unsupported parameters
+		if (options.temperature !== undefined)
+			unsupportedParams.push('temperature');
+		if (options.topP !== undefined) unsupportedParams.push('topP');
+		if (options.topK !== undefined) unsupportedParams.push('topK');
+		if (options.presencePenalty !== undefined)
+			unsupportedParams.push('presencePenalty');
+		if (options.frequencyPenalty !== undefined)
+			unsupportedParams.push('frequencyPenalty');
+		if (options.stopSequences !== undefined && options.stopSequences.length > 0)
+			unsupportedParams.push('stopSequences');
+		if (options.seed !== undefined) unsupportedParams.push('seed');
 
-		for (const check of unsupportedChecks) {
-			const shouldWarn = check.condition
-				? check.condition(check.value)
-				: check.value !== undefined;
-
-			if (shouldWarn) {
+		if (unsupportedParams.length > 0) {
+			// Add a warning for each unsupported parameter
+			for (const param of unsupportedParams) {
 				warnings.push({
 					type: 'unsupported-setting',
-					setting: check.key,
-					details: `Grok CLI does not support the ${check.key} parameter. It will be ignored.`
+					setting: param as
+						| 'temperature'
+						| 'topP'
+						| 'topK'
+						| 'presencePenalty'
+						| 'frequencyPenalty'
+						| 'stopSequences'
+						| 'seed',
+					details: `Grok CLI does not support the ${param} parameter. It will be ignored.`
 				});
 			}
 		}

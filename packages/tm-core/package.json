@@ -30,8 +30,6 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@ai-sdk/provider": "^2.0.0",
-		"@ai-sdk/provider-utils": "^3.0.9",
 		"@supabase/supabase-js": "^2.57.4",
 		"zod": "^4.1.11"
 	},

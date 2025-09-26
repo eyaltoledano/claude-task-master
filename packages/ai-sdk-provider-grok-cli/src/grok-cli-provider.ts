@@ -30,6 +30,7 @@ export interface GrokCliProvider extends ProviderV2 {
 	 */
 	chat(modelId: GrokCliModelId, settings?: GrokCliSettings): LanguageModelV2;
 
+	textEmbeddingModel(modelId: string): never;
 	imageModel(modelId: string): never;
 }
 
