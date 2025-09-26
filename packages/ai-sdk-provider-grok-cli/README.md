@@ -163,7 +163,3 @@ npm test
 ```
 
 **Important**: Always run `npm run dev` and keep it running during development. This ensures proper compilation and hot-reloading of TypeScript files.
-
-## License
-
-MIT

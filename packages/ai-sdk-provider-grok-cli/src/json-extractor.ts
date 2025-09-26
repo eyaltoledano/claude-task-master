@@ -103,6 +103,20 @@ export function extractJson(text: string): string {
 					result += '\0';
 					break;
 				case 'u': {
+					if (value[i + 1] === '{') {
+						const endBrace = value.indexOf('}', i + 2);
+						if (endBrace !== -1) {
+							const codePointHex = value.slice(i + 2, endBrace);
+							if (codePointHex.length > 0 && /^[0-9a-fA-F]+$/.test(codePointHex)) {
+								const codePoint = parseInt(codePointHex, 16);
+								if (codePoint <= 0x10ffff) {
+									result += String.fromCodePoint(codePoint);
+									i = endBrace;
+									break;
+								}
+							}
+						}
+					}
 					const hex = value.slice(i + 1, i + 5);
 					if (/^[0-9a-fA-F]{4}$/.test(hex)) {
 						result += String.fromCharCode(parseInt(hex, 16));
