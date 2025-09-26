@@ -30,18 +30,41 @@ export function extractJson(text: string): string {
 		}
 	}
 
-	// Find the first opening bracket
-	const firstObj = content.indexOf('{');
-	const firstArr = content.indexOf('[');
-	if (firstObj === -1 && firstArr === -1) {
+	// Find the first opening bracket outside of quoted strings
+	const findFirstStructuralBracket = (value: string): number => {
+		let inString = false;
+		let escapeNext = false;
+
+		for (let i = 0; i < value.length; i++) {
+			const char = value[i];
+
+			if (escapeNext) {
+				escapeNext = false;
+				continue;
+			}
+
+			if (char === '\\') {
+				escapeNext = true;
+				continue;
+			}
+
+			if (char === '"') {
+				inString = !inString;
+				continue;
+			}
+
+			if (!inString && (char === '{' || char === '[')) {
+				return i;
+			}
+		}
+
+		return -1;
+	};
+
+	const start = findFirstStructuralBracket(content);
+	if (start === -1) {
 		return text;
 	}
-	const start =
-		firstArr === -1
-			? firstObj
-			: firstObj === -1
-				? firstArr
-				: Math.min(firstObj, firstArr);
 	content = content.slice(start);
 
 	// Try to parse the entire string with jsonc-parser
