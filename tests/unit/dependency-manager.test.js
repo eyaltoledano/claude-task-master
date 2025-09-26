@@ -45,7 +45,8 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	writeJSON: mockWriteJSON,
 	taskExists: mockTaskExists,
 	formatTaskId: mockFormatTaskId,
-	findCycles: mockFindCycles
+	findCycles: mockFindCycles,
+	isSilentMode: jest.fn(() => true)
 }));
 
 jest.mock('../../scripts/modules/ui.js', () => ({
@@ -918,6 +919,145 @@ describe('Dependency Manager Module', () => {
 			expect(result.error).toBe('Task not found');
 			expect(result.dependentTaskIds).toEqual([]);
 			expect(result.conflicts).toEqual([]);
+		});
+	});
+
+	describe('Cross-level dependency tests (Issue #542)', () => {
+		let originalExit;
+
+		beforeEach(() => {
+			originalExit = process.exit;
+			process.exit = jest.fn();
+			// Set up test data that matches the issue report
+			mockReadJSON.mockReturnValue({
+				tasks: [
+					{
+						id: 2,
+						title: "Task 2 with subtasks",
+						description: "Parent task",
+						status: "pending",
+						dependencies: [],
+						subtasks: [
+							{
+								id: 1,
+								title: "Subtask 2.1",
+								description: "First subtask",
+								status: "pending",
+								dependencies: []
+							},
+							{
+								id: 2,
+								title: "Subtask 2.2",
+								description: "Second subtask that should depend on Task 11",
+								status: "pending",
+								dependencies: []
+							}
+						]
+					},
+					{
+						id: 11,
+						title: "Task 11",
+						description: "Top-level task that 2.2 should depend on",
+						status: "done",
+						dependencies: []
+					}
+				]
+			});
+
+			// Configure mockTaskExists to properly validate cross-level dependencies
+			mockTaskExists.mockImplementation((tasks, taskId) => {
+				if (typeof taskId === 'string' && taskId.includes('.')) {
+					const [parentId, subtaskId] = taskId.split('.').map(Number);
+					const task = tasks.find((t) => t.id === parentId);
+					return (
+						task &&
+						task.subtasks &&
+						task.subtasks.some((st) => st.id === subtaskId)
+					);
+				}
+
+				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				return tasks.some((task) => task.id === numericId);
+			});
+
+			mockFormatTaskId.mockImplementation((id) => {
+				if (typeof id === 'string' && id.includes('.')) return id; // keep dot notation
+				return parseInt(id, 10);              // normalize top-level task IDs to number
+			});
+		});
+
+		afterEach(() => {
+			process.exit = originalExit;
+		});
+
+		test('should allow subtask to depend on top-level task', async () => {
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+
+			// Test the specific scenario from Issue #542: subtask 2.2 depending on task 11
+			await addDependency(TEST_TASKS_PATH, '2.2', 11, { projectRoot: '/test' });
+
+			// Verify we wrote to the test path (and not the real tasks.json)
+			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
+			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
+			// Get the specific write call for TEST_TASKS_PATH
+			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			expect(writeCall).toBeDefined();
+			const savedData = writeCall[1];
+			const parent2 = savedData.tasks.find((t) => t.id === 2);
+			const subtask22 = parent2.subtasks.find((st) => st.id === 2);
+			
+			// Verify the dependency was actually added to subtask 2.2
+			expect(subtask22.dependencies).toContain(11);
+		});
+
+		test('should allow top-level task to depend on subtask', async () => {
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+
+			// Test reverse scenario: task 11 depending on subtask 2.1
+			await addDependency(TEST_TASKS_PATH, 11, '2.1', { projectRoot: '/test' });
+
+			// Stronger assertions for writeJSON call and locating the correct task
+			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
+			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
+			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			expect(writeCall).toBeDefined();
+			const savedData = writeCall[1];
+			const task11 = savedData.tasks.find((t) => t.id === 11);
+			
+			// Verify the dependency was actually added to task 11
+			expect(task11.dependencies).toContain('2.1');
+		});
+
+		test('should properly validate cross-level dependencies exist', async () => {
+			// Test that validation correctly identifies when a cross-level dependency target doesn't exist
+			mockTaskExists.mockImplementation((tasks, taskId) => {
+				// Simulate task 99 not existing
+				if (taskId === '99' || taskId === 99) {
+					return false;
+				}
+				
+				if (typeof taskId === 'string' && taskId.includes('.')) {
+					const [parentId, subtaskId] = taskId.split('.').map(Number);
+					const task = tasks.find((t) => t.id === parentId);
+					return (
+						task &&
+						task.subtasks &&
+						task.subtasks.some((st) => st.id === subtaskId)
+					);
+				}
+
+				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				return tasks.some((task) => task.id === numericId);
+			});
+
+			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+
+			await addDependency(TEST_TASKS_PATH, '2.2', 99, { projectRoot: '/test' });
+			
+			// Verify that process.exit was called due to non-existent dependency target
+			expect(process.exit).toHaveBeenCalledWith(1);
+			// And that no writes were attempted
+			expect(mockWriteJSON).not.toHaveBeenCalled();
 		});
 	});
 });
