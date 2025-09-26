@@ -2532,9 +2532,18 @@ ${result.result}
 	// add-dependency command
 	programInstance
 		.command('add-dependency')
-		.description('Add a dependency to a task')
-		.option('-i, --id <id>', 'Task ID to add dependency to')
-		.option('-d, --depends-on <id>', 'Task ID that will become a dependency')
+		.description(
+			'Add dependencies to task(s). Supports ranges and comma-separated lists.'
+		)
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to add dependencies to (e.g., "7", "7-10", "7,8,9")'
+		)
+		.option(
+			'-d, --depends-on <id>',
+			'Task ID(s) that will become dependencies (e.g., "1", "1-5", "1,3,5")'
+		)
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -2589,9 +2598,18 @@ ${result.result}
 	// remove-dependency command
 	programInstance
 		.command('remove-dependency')
-		.description('Remove a dependency from a task')
-		.option('-i, --id <id>', 'Task ID to remove dependency from')
-		.option('-d, --depends-on <id>', 'Task ID to remove as a dependency')
+		.description(
+			'Remove dependencies from task(s). Supports ranges and comma-separated lists.'
+		)
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to remove dependencies from (e.g., "7", "7-10", "7,8,9")'
+		)
+		.option(
+			'-d, --depends-on <id>',
+			'Task ID(s) to remove as dependencies (e.g., "1", "1-5", "1,3,5")'
+		)
+		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',

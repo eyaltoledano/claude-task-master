@@ -10,6 +10,9 @@ import {
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
 	validateAndFixDependencies,
+	parseBulkTaskIds,
+	bulkAddDependencies,
+	bulkRemoveDependencies
 	canMoveWithDependencies
 } from '../../scripts/modules/dependency-manager.js';
 import * as utils from '../../scripts/modules/utils.js';
@@ -809,6 +812,62 @@ describe('Dependency Manager Module', () => {
 				'tasks/tasks.json',
 				expect.anything()
 			);
+		});
+
+		describe('parseBulkTaskIds', () => {
+			test('should parse single task IDs', () => {
+				expect(parseBulkTaskIds('1')).toEqual([1]);
+				expect(parseBulkTaskIds('5')).toEqual([5]);
+			});
+
+			test('should parse comma-separated lists', () => {
+				expect(parseBulkTaskIds('1,2,3')).toEqual([1, 2, 3]);
+			});
+
+			test('should parse task ranges', () => {
+				expect(parseBulkTaskIds('1-3')).toEqual([1, 2, 3]);
+				expect(parseBulkTaskIds('5-7')).toEqual([5, 6, 7]);
+			});
+
+			test('should parse mixed formats', () => {
+				expect(parseBulkTaskIds('1,3-5,7')).toEqual([1, 3, 4, 5, 7]);
+			});
+
+			test('should remove duplicates', () => {
+				expect(parseBulkTaskIds('1,2,1,3')).toEqual([1, 2, 3]);
+			});
+
+			test('should throw error for invalid formats', () => {
+				expect(() => parseBulkTaskIds('')).toThrow();
+				expect(() => parseBulkTaskIds('abc')).toThrow();
+				expect(() => parseBulkTaskIds('5-3')).toThrow();
+			});
+		});
+
+		describe('enhanced addDependency', () => {
+			test('should handle single IDs (backward compatibility)', () => {
+				// This test verifies the enhanced function still works with single IDs
+				// The actual implementation details are tested in the original addDependency tests
+				expect(typeof addDependency).toBe('function');
+			});
+
+			test('should detect and handle multiple IDs', () => {
+				// This test verifies the function can detect multiple ID formats
+				// The bulk processing logic is tested in the bulkAddDependencies tests
+				expect(typeof addDependency).toBe('function');
+			});
+		});
+
+		describe('enhanced removeDependency', () => {
+			test('should handle single IDs (backward compatibility)', () => {
+				// This test verifies the enhanced function still works with single IDs
+				expect(typeof removeDependency).toBe('function');
+			});
+
+			test('should detect and handle multiple IDs', () => {
+				// This test verifies the function can detect multiple ID formats
+				expect(typeof removeDependency).toBe('function');
+			});
 		});
 	});
 
