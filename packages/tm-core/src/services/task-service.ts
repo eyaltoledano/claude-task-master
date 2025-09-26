@@ -143,7 +143,41 @@ export class TaskService {
 			includeSubtasks: true
 		});
 
-		return result.tasks.find((t) => t.id === taskId) || null;
+		// Check if this is a subtask (contains a dot)
+		if (taskId.includes('.')) {
+			const [parentId, subtaskId] = taskId.split('.');
+			const parentTask = result.tasks.find((t) => String(t.id) === parentId);
+			
+			if (!parentTask || !parentTask.subtasks) {
+				return null;
+			}
+
+			const subtask = parentTask.subtasks.find((st) => String(st.id) === subtaskId);
+			if (!subtask) {
+				return null;
+			}
+
+			// Return a Task-like object for the subtask with the full dotted ID
+			return {
+				id: taskId,
+				title: subtask.title || `Subtask ${subtaskId}`,
+				description: subtask.description || '',
+				status: subtask.status || 'pending',
+				priority: subtask.priority || parentTask.priority || 'medium',
+				dependencies: subtask.dependencies || [],
+				details: subtask.details || '',
+				testStrategy: subtask.testStrategy || '',
+				subtasks: [],
+				tags: parentTask.tags || [],
+				assignee: subtask.assignee || parentTask.assignee,
+				complexity: subtask.complexity || parentTask.complexity,
+				createdAt: parentTask.createdAt,
+				updatedAt: parentTask.updatedAt
+			};
+		}
+
+		// Handle regular task lookup
+		return result.tasks.find((t) => String(t.id) === String(taskId)) || null;
 	}
 
 	/**
