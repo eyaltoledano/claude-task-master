@@ -1,17 +1,28 @@
 /**
- * @fileoverview Message format conversion utilities for Grok CLI provider
+ * Message format conversion utilities for Grok CLI provider
  */
 
+import type { GrokCliMessage, GrokCliResponse } from './types.js';
+
 /**
- * @typedef {import('./types.js').GrokCliMessage} GrokCliMessage
+ * AI SDK message type (simplified interface)
  */
+interface AISDKMessage {
+	role: string;
+	content:
+		| string
+		| Array<{ type: string; text?: string }>
+		| { text?: string; [key: string]: unknown };
+}
 
 /**
  * Convert AI SDK messages to Grok CLI compatible format
- * @param {Array<Object>} messages - AI SDK message array
- * @returns {Array<GrokCliMessage>} Grok CLI compatible messages
+ * @param messages - AI SDK message array
+ * @returns Grok CLI compatible messages
  */
-export function convertToGrokCliMessages(messages) {
+export function convertToGrokCliMessages(
+	messages: AISDKMessage[]
+): GrokCliMessage[] {
 	return messages.map((message) => {
 		// Handle different message content types
 		let content = '';
@@ -22,7 +33,7 @@ export function convertToGrokCliMessages(messages) {
 			// Handle multi-part content (text and images)
 			content = message.content
 				.filter((part) => part.type === 'text')
-				.map((part) => part.text)
+				.map((part) => part.text || '')
 				.join('\n');
 		} else if (message.content && typeof message.content === 'object') {
 			// Handle object content
@@ -38,10 +49,17 @@ export function convertToGrokCliMessages(messages) {
 
 /**
  * Convert Grok CLI response to AI SDK format
- * @param {string} responseText - Raw response text from Grok CLI (JSONL format)
- * @returns {Object} AI SDK compatible response object
+ * @param responseText - Raw response text from Grok CLI (JSONL format)
+ * @returns AI SDK compatible response object
  */
-export function convertFromGrokCliResponse(responseText) {
+export function convertFromGrokCliResponse(responseText: string): {
+	text: string;
+	usage?: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+	};
+} {
 	try {
 		// Grok CLI outputs JSONL format - each line is a separate JSON message
 		const lines = responseText
@@ -50,10 +68,10 @@ export function convertFromGrokCliResponse(responseText) {
 			.filter((line) => line.trim());
 
 		// Parse each line as JSON and find assistant messages
-		const messages = [];
+		const messages: GrokCliResponse[] = [];
 		for (const line of lines) {
 			try {
-				const message = JSON.parse(line);
+				const message = JSON.parse(line) as GrokCliResponse;
 				messages.push(message);
 			} catch (parseError) {
 				// Skip invalid JSON lines
@@ -63,7 +81,7 @@ export function convertFromGrokCliResponse(responseText) {
 
 		// Find the last assistant message
 		const assistantMessage = messages
-			.filter((msg) => msg.role === 'assistant')
+			.filter((msg: any) => msg.role === 'assistant')
 			.pop();
 
 		if (assistantMessage && assistantMessage.content) {
@@ -95,10 +113,10 @@ export function convertFromGrokCliResponse(responseText) {
 
 /**
  * Create a prompt string for Grok CLI from messages
- * @param {Array<Object>} messages - AI SDK message array
- * @returns {string} Formatted prompt string
+ * @param messages - AI SDK message array
+ * @returns Formatted prompt string
  */
-export function createPromptFromMessages(messages) {
+export function createPromptFromMessages(messages: AISDKMessage[]): string {
 	const grokMessages = convertToGrokCliMessages(messages);
 
 	// Create a conversation-style prompt
@@ -122,14 +140,14 @@ export function createPromptFromMessages(messages) {
 
 /**
  * Escape shell arguments for safe CLI execution
- * @param {string} arg - Argument to escape
- * @returns {string} Shell-escaped argument
+ * @param arg - Argument to escape
+ * @returns Shell-escaped argument
  */
-export function escapeShellArg(arg) {
+export function escapeShellArg(arg: string | unknown): string {
 	if (typeof arg !== 'string') {
 		arg = String(arg);
 	}
 
 	// Replace single quotes with '\''
-	return "'" + arg.replace(/'/g, "'\\''") + "'";
+	return "'" + (arg as string).replace(/'/g, "'\\''") + "'";
 }
