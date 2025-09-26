@@ -19,7 +19,13 @@
 			"@tm/cli": ["./apps/cli/src/index.ts"],
 			"@tm/cli/*": ["./apps/cli/src/*"],
 			"@tm/build-config": ["./packages/build-config/src/index.ts"],
-			"@tm/build-config/*": ["./packages/build-config/src/*"]
+			"@tm/build-config/*": ["./packages/build-config/src/*"],
+			"@tm/ai-sdk-provider-grok-cli": [
+				"./packages/ai-sdk-provider-grok-cli/src/index.ts"
+			],
+			"@tm/ai-sdk-provider-grok-cli/*": [
+				"./packages/ai-sdk-provider-grok-cli/src/*"
+			]
 		}
 	},
 	"tsx": {

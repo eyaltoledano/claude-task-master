@@ -114,10 +114,11 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		// Default timeout based on model type
 		let defaultTimeout = 120000; // 2 minutes default
 		if (this.modelId.includes('grok-4')) {
-			defaultTimeout = 300000; // 5 minutes for grok-4 models
+			defaultTimeout = 600000; // 10 minutes for grok-4 models (they seem to hang during setup)
 		}
 
 		const timeout = options.timeout ?? this.settings.timeout ?? defaultTimeout;
+
 
 		return new Promise((resolve, reject) => {
 			const child = spawn('grok', args, {
@@ -128,6 +129,7 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			let stdout = '';
 			let stderr = '';
 			let timeoutId: NodeJS.Timeout | undefined;
+			let dataReceived = false;
 
 			// Set up timeout
 			if (timeout > 0) {
@@ -144,11 +146,15 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			}
 
 			child.stdout?.on('data', (data) => {
-				stdout += data.toString();
+				const chunk = data.toString();
+				stdout += chunk;
+				dataReceived = true;
 			});
 
 			child.stderr?.on('data', (data) => {
-				stderr += data.toString();
+				const chunk = data.toString();
+				stderr += chunk;
+				dataReceived = true;
 			});
 
 			child.on('error', (error) => {
@@ -181,48 +187,67 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 	}
 
 	/**
-	 * Generate unsupported parameter warnings
+	 * Generate comprehensive warnings for unsupported parameters and validation issues
 	 */
-	private generateUnsupportedWarnings(
-		options: LanguageModelV2CallOptions
+	private generateAllWarnings(
+		options: LanguageModelV2CallOptions,
+		prompt: string
 	): Array<{
-		type: 'unsupported-setting';
-		setting: string;
+		type: 'unsupported-setting' | 'other';
+		setting?: string;
+		message?: string;
 		details?: string;
 	}> {
 		const warnings: Array<{
-			type: 'unsupported-setting';
-			setting: string;
+			type: 'unsupported-setting' | 'other';
+			setting?: string;
+			message?: string;
 			details?: string;
 		}> = [];
-		const unsupportedParams: string[] = [];
 
-		// Grok CLI supports some parameters but not all AI SDK parameters
-		if ('topP' in options && options.topP !== undefined)
-			unsupportedParams.push('topP');
-		if ('topK' in options && options.topK !== undefined)
-			unsupportedParams.push('topK');
-		if ('presencePenalty' in options && options.presencePenalty !== undefined)
-			unsupportedParams.push('presencePenalty');
-		if ('frequencyPenalty' in options && options.frequencyPenalty !== undefined)
-			unsupportedParams.push('frequencyPenalty');
-		if (
-			'stopSequences' in options &&
-			options.stopSequences !== undefined &&
-			options.stopSequences.length > 0
-		)
-			unsupportedParams.push('stopSequences');
-		if ('seed' in options && options.seed !== undefined)
-			unsupportedParams.push('seed');
+		// Check for unsupported parameters with proper typing
+		const unsupportedChecks = [
+			{ key: 'temperature', value: options.temperature },
+			{ key: 'topP', value: options.topP },
+			{ key: 'topK', value: options.topK },
+			{ key: 'presencePenalty', value: options.presencePenalty },
+			{ key: 'frequencyPenalty', value: options.frequencyPenalty },
+			{
+				key: 'stopSequences',
+				value: options.stopSequences,
+				condition: (val: any) => Array.isArray(val) && val.length > 0
+			},
+			{ key: 'seed', value: options.seed }
+		];
 
-		if (unsupportedParams.length > 0) {
-			for (const param of unsupportedParams) {
+		for (const check of unsupportedChecks) {
+			const shouldWarn = check.condition
+				? check.condition(check.value)
+				: check.value !== undefined;
+
+			if (shouldWarn) {
 				warnings.push({
 					type: 'unsupported-setting',
-					setting: param,
-					details: `Grok CLI does not support the ${param} parameter. It will be ignored.`
+					setting: check.key,
+					details: `Grok CLI does not support the ${check.key} parameter. It will be ignored.`
 				});
 			}
+		}
+
+		// Add model validation warnings if needed
+		if (!this.modelId || this.modelId.trim() === '') {
+			warnings.push({
+				type: 'other',
+				message: 'Model ID is empty or invalid'
+			});
+		}
+
+		// Add prompt validation
+		if (!prompt || prompt.trim() === '') {
+			warnings.push({
+				type: 'other',
+				message: 'Prompt is empty'
+			});
 		}
 
 		return warnings;
@@ -232,6 +257,11 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 	 * Generate text using Grok CLI
 	 */
 	async doGenerate(options: LanguageModelV2CallOptions) {
+		// Handle abort signal early
+		if (options.abortSignal?.aborted) {
+			throw options.abortSignal.reason || new Error('Request aborted');
+		}
+
 		// Check CLI installation
 		const isInstalled = await this.checkGrokCliInstallation();
 		if (!isInstalled) {
@@ -248,7 +278,7 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		}
 
 		const prompt = createPromptFromMessages(options.prompt);
-		const warnings = this.generateUnsupportedWarnings(options);
+		const warnings = this.generateAllWarnings(options, prompt);
 
 		// Build command arguments
 		const args = ['--prompt', escapeShellArg(prompt)];
@@ -258,10 +288,11 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			args.push('--model', this.modelId);
 		}
 
-		// Add API key if available
-		if (apiKey) {
-			args.push('--api-key', apiKey);
-		}
+		// Skip API key parameter if it's likely already configured to avoid hanging
+		// The CLI seems to hang when trying to save API keys for grok-4 models
+		// if (apiKey) {
+		//	args.push('--api-key', apiKey);
+		// }
 
 		// Add base URL if provided in settings
 		if (this.settings.baseURL) {
@@ -370,11 +401,37 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 	 * by generating the full response and then streaming it in chunks
 	 */
 	async doStream(options: LanguageModelV2CallOptions) {
-		const warnings = this.generateUnsupportedWarnings(options);
+		const prompt = createPromptFromMessages(options.prompt);
+		const warnings = this.generateAllWarnings(options, prompt);
 
 		const stream = new ReadableStream({
 			start: async (controller) => {
+				let abortListener: (() => void) | undefined;
+
 				try {
+					// Handle abort signal
+					if (options.abortSignal?.aborted) {
+						throw options.abortSignal.reason || new Error('Request aborted');
+					}
+
+					// Set up abort listener
+					if (options.abortSignal) {
+						abortListener = () => {
+							controller.enqueue({
+								type: 'error',
+								error:
+									options.abortSignal?.reason || new Error('Request aborted')
+							});
+							controller.close();
+						};
+						options.abortSignal.addEventListener('abort', abortListener, {
+							once: true
+						});
+					}
+
+					// Emit stream-start with warnings
+					controller.enqueue({ type: 'stream-start', warnings });
+
 					// Generate the full response first
 					const result = await this.doGenerate(options);
 
@@ -393,16 +450,40 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 							? content[0].text
 							: '';
 					const chunkSize = 50; // Characters per chunk
+					let textPartId: string | undefined;
+
+					// Emit text-start if we have content
+					if (text.length > 0) {
+						textPartId = generateId();
+						controller.enqueue({
+							type: 'text-start',
+							id: textPartId
+						});
+					}
 
 					for (let i = 0; i < text.length; i += chunkSize) {
+						// Check for abort during streaming
+						if (options.abortSignal?.aborted) {
+							throw options.abortSignal.reason || new Error('Request aborted');
+						}
+
 						const chunk = text.slice(i, i + chunkSize);
 						controller.enqueue({
 							type: 'text-delta',
-							textDelta: chunk
+							id: textPartId!,
+							delta: chunk
 						});
 
 						// Add small delay to simulate streaming
 						await new Promise((resolve) => setTimeout(resolve, 20));
+					}
+
+					// Close text part if opened
+					if (textPartId) {
+						controller.enqueue({
+							type: 'text-end',
+							id: textPartId
+						});
 					}
 
 					// Emit finish event
@@ -420,19 +501,22 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 						error
 					});
 					controller.close();
+				} finally {
+					// Clean up abort listener
+					if (options.abortSignal && abortListener) {
+						options.abortSignal.removeEventListener('abort', abortListener);
+					}
 				}
+			},
+			cancel: () => {
+				// Clean up if stream is cancelled
 			}
 		});
 
 		return {
 			stream,
-			rawCall: {
-				rawPrompt: createPromptFromMessages(options.prompt),
-				rawSettings: {}
-			},
-			warnings: warnings,
 			request: {
-				body: createPromptFromMessages(options.prompt)
+				body: prompt
 			}
 		};
 	}
