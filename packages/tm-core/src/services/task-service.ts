@@ -135,15 +135,28 @@ export class TaskService {
 	}
 
 	/**
-	 * Get a single task by ID
+	 * Get a single task by ID - delegates to storage layer
 	 */
 	async getTask(taskId: string, tag?: string): Promise<Task | null> {
-		const result = await this.getTaskList({
-			tag,
-			includeSubtasks: true
-		});
+		// Use provided tag or get active tag
+		const activeTag = tag || this.getActiveTag();
 
-		return result.tasks.find((t) => t.id === taskId) || null;
+		try {
+			// Delegate to storage layer which handles the specific logic for tasks vs subtasks
+			return await this.storage.loadTask(String(taskId), activeTag);
+		} catch (error) {
+			throw new TaskMasterError(
+				`Failed to get task ${taskId}`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'getTask',
+					resource: 'task',
+					taskId: String(taskId),
+					tag: activeTag
+				},
+				error as Error
+			);
+		}
 	}
 
 	/**

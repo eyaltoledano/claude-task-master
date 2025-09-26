@@ -105,9 +105,65 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Load a single task by ID from the tasks.json file
+	 * Handles both regular tasks and subtasks (with dotted notation like "1.2")
 	 */
 	async loadTask(taskId: string, tag?: string): Promise<Task | null> {
 		const tasks = await this.loadTasks(tag);
+
+		// Check if this is a subtask (contains a dot)
+		if (taskId.includes('.')) {
+			const [parentId, subtaskId] = taskId.split('.');
+			const parentTask = tasks.find((t) => String(t.id) === parentId);
+
+			if (!parentTask || !parentTask.subtasks) {
+				return null;
+			}
+
+			const subtask = parentTask.subtasks.find(
+				(st) => String(st.id) === subtaskId
+			);
+			if (!subtask) {
+				return null;
+			}
+
+			const toFullSubId = (maybeDotId: string | number): string => {
+				const depId = String(maybeDotId);
+				return depId.includes('.') ? depId : `${parentTask.id}.${depId}`;
+			};
+			const resolvedDependencies =
+				subtask.dependencies?.map((dep) => toFullSubId(dep)) ?? [];
+
+			// Return a Task-like object for the subtask with the full dotted ID
+			// Following the same pattern as findTaskById in utils.js
+			const subtaskResult = {
+				...subtask,
+				id: taskId, // Use the full dotted ID
+				title: subtask.title || `Subtask ${subtaskId}`,
+				description: subtask.description || '',
+				status: subtask.status || 'pending',
+				priority: subtask.priority || parentTask.priority || 'medium',
+				dependencies: resolvedDependencies,
+				details: subtask.details || '',
+				testStrategy: subtask.testStrategy || '',
+				subtasks: [],
+				tags: parentTask.tags || [],
+				assignee: subtask.assignee || parentTask.assignee,
+				complexity: subtask.complexity || parentTask.complexity,
+				createdAt: subtask.createdAt || parentTask.createdAt,
+				updatedAt: subtask.updatedAt || parentTask.updatedAt,
+				// Add reference to parent task for context (like utils.js does)
+				parentTask: {
+					id: parentTask.id,
+					title: parentTask.title,
+					status: parentTask.status
+				},
+				isSubtask: true
+			};
+
+			return subtaskResult;
+		}
+
+		// Handle regular task lookup
 		return tasks.find((task) => String(task.id) === String(taskId)) || null;
 	}
 
