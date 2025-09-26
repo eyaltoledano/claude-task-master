@@ -14,9 +14,9 @@ A provider for the [AI SDK](https://sdk.vercel.ai) that integrates with [Grok CL
 ## Installation
 
 ```bash
-npm install ai-sdk-provider-grok-cli
+npm install @tm/ai-sdk-provider-grok-cli
 # or
-yarn add ai-sdk-provider-grok-cli
+yarn add @tm/ai-sdk-provider-grok-cli
 ```
 
 ## Prerequisites
@@ -38,7 +38,7 @@ yarn add ai-sdk-provider-grok-cli
 ### Basic Usage
 
 ```typescript
-import { grokCli } from 'ai-sdk-provider-grok-cli';
+import { grokCli } from '@tm/ai-sdk-provider-grok-cli';
 import { generateText } from 'ai';
 
 const result = await generateText({
@@ -52,7 +52,7 @@ console.log(result.text);
 ### Streaming
 
 ```typescript
-import { grokCli } from 'ai-sdk-provider-grok-cli';
+import { grokCli } from '@tm/ai-sdk-provider-grok-cli';
 import { streamText } from 'ai';
 
 const { textStream } = await streamText({
@@ -68,7 +68,7 @@ for await (const delta of textStream) {
 ### JSON Mode
 
 ```typescript
-import { grokCli } from 'ai-sdk-provider-grok-cli';
+import { grokCli } from '@tm/ai-sdk-provider-grok-cli';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 
@@ -97,7 +97,7 @@ console.log(result.object);
 ### Provider Settings
 
 ```typescript
-import { createGrokCli } from 'ai-sdk-provider-grok-cli';
+import { createGrokCli } from '@tm/ai-sdk-provider-grok-cli';
 
 const grok = createGrokCli({
   apiKey: 'your-api-key', // Optional if set via env/CLI
@@ -125,7 +125,7 @@ import {
   isAuthenticationError,
   isTimeoutError,
   isInstallationError
-} from 'ai-sdk-provider-grok-cli';
+} from '@tm/ai-sdk-provider-grok-cli';
 
 try {
   const result = await generateText({

@@ -48,9 +48,9 @@ export function extractJson(text: string): string {
 	const tryParse = (value: string): string | undefined => {
 		const errors: ParseError[] = [];
 		try {
-			const result = parse(value, errors, { allowTrailingComma: true });
+			parse(value, errors, { allowTrailingComma: true });
 			if (errors.length === 0) {
-				return JSON.stringify(result, null, 2);
+				return value.trim();
 			}
 		} catch {
 			// ignore
@@ -58,10 +58,32 @@ export function extractJson(text: string): string {
 		return undefined;
 	};
 
-	const parsed = tryParse(content);
-	if (parsed !== undefined) {
-		return parsed;
+	const normalizeJavaScriptObjectLiteral = (value: string): string =>
+		value
+			.replace(
+				/([{\s,])([A-Za-z0-9_$]+)(\s*):/g,
+				(_match, prefix: string, key: string, spacing: string) =>
+					`${prefix}"${key}"${spacing}:`
+			)
+			.replace(
+				/'([^'\\]*(?:\\.[^'\\]*)*)'/g,
+				(_match, inner: string) => `"${inner.replace(/"/g, '\\"')}"`
+			);
+
+	const candidates = [content];
+	const normalizedContent = normalizeJavaScriptObjectLiteral(content);
+	if (normalizedContent !== content) {
+		candidates.push(normalizedContent);
 	}
+
+	for (const candidate of candidates) {
+		const parsed = tryParse(candidate);
+		if (parsed !== undefined) {
+			return parsed;
+		}
+	}
+
+	content = candidates[candidates.length - 1];
 
 	// If parsing the full string failed, use a more efficient approach
 	// to find valid JSON boundaries

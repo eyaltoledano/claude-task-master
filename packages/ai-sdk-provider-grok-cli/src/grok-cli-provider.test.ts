@@ -8,7 +8,7 @@ import { GrokCliLanguageModel } from './grok-cli-language-model.js';
 import { createGrokCli, grokCli } from './grok-cli-provider.js';
 
 // Mock the GrokCliLanguageModel
-vi.mock('../grok-cli-language-model.js', () => ({
+vi.mock('./grok-cli-language-model.js', () => ({
 	GrokCliLanguageModel: vi.fn().mockImplementation((options) => ({
 		modelId: options.id,
 		settings: options.settings,
