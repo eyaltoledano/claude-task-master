@@ -14,8 +14,9 @@ import { parse, type ParseError } from 'jsonc-parser';
 export function extractJson(text: string): string {
 	let content = text.trim();
 
-	// Strip ```json or ``` fences
-	const fenceMatch = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(content);
+	// Strip triple‑backtick fences and ignore any language tag on the opening line
+	// Matches: ```json\n..., ```js\n..., or ```\n...
+	const fenceMatch = /```[^\n]*\n([\s\S]*?)\n?```/i.exec(content);
 	if (fenceMatch) {
 		content = fenceMatch[1];
 	}
@@ -32,7 +33,8 @@ export function extractJson(text: string): string {
 
 	// Find the first opening bracket outside of quoted strings
 	const findFirstStructuralBracket = (value: string): number => {
-		let inString = false;
+		let inDouble = false;
+		let inSingle = false;
 		let escapeNext = false;
 
 		for (let i = 0; i < value.length; i++) {
@@ -48,12 +50,17 @@ export function extractJson(text: string): string {
 				continue;
 			}
 
-			if (char === '"') {
-				inString = !inString;
+			if (char === '"' && !inSingle) {
+				inDouble = !inDouble;
 				continue;
 			}
 
-			if (!inString && (char === '{' || char === '[')) {
+			if (char === "'" && !inDouble) {
+				inSingle = !inSingle;
+				continue;
+			}
+
+			if (!inDouble && !inSingle && (char === '{' || char === '[')) {
 				return i;
 			}
 		}
