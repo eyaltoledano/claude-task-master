@@ -409,8 +409,11 @@ export class FileStorage implements IStorage {
 			const allDone = subs.every(isDoneLike);
 			const anyInProgress = subs.some((s) => norm(s) === 'in-progress');
 			const anyDone = subs.some(isDoneLike);
+			const allPending = subs.every((s) => norm(s) === 'pending');
+
 			if (allDone) parentNewStatus = 'done';
 			else if (anyInProgress || anyDone) parentNewStatus = 'in-progress';
+			else if (allPending) parentNewStatus = 'pending';
 		}
 
 		// Always bump updatedAt; update status only if changed
