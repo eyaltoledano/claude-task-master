@@ -355,7 +355,7 @@ Ensure the JSON is valid and properly formatted.`;
 		const subtaskSchema = z.object({
 			subtasks: z.array(
 				z.object({
-					id: z.number().int().positive(),
+					id: z.int().positive(),
 					title: z.string().min(5),
 					description: z.string().min(10),
 					dependencies: z.array(z.string()),
@@ -386,8 +386,21 @@ Ensure the JSON is valid and properly formatted.`;
 			testStrategy: subtask.testStrategy || ''
 		}));
 
+		// Ensure new subtasks have unique sequential IDs after the preserved ones
+		const maxPreservedId = preservedSubtasks.reduce(
+			(max, st) => Math.max(max, st.id || 0),
+			0
+		);
+		let nextId = maxPreservedId + 1;
+		const normalizedGeneratedSubtasks = processedGeneratedSubtasks.map(
+			(st) => ({
+				...st,
+				id: nextId++
+			})
+		);
+
 		// Update task with preserved subtasks + newly generated ones
-		task.subtasks = [...preservedSubtasks, ...processedGeneratedSubtasks];
+		task.subtasks = [...preservedSubtasks, ...normalizedGeneratedSubtasks];
 
 		return {
 			updatedTask: task,

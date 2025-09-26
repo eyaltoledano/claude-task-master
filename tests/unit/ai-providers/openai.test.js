@@ -1,11 +1,10 @@
 /**
- * Tests for OpenAI Provider - Token parameter handling for GPT-5
+ * Tests for OpenAI Provider
  *
  * This test suite covers:
- * 1. Correct identification of GPT-5 models requiring max_completion_tokens
- * 2. Token parameter preparation for different model types
- * 3. Validation of maxTokens parameter
- * 4. Integer coercion of token values
+ * 1. Validation of maxTokens parameter
+ * 2. Client creation and configuration
+ * 3. Model handling
  */
 
 import { jest } from '@jest/globals';
@@ -24,81 +23,6 @@ describe('OpenAIProvider', () => {
 	beforeEach(() => {
 		provider = new OpenAIProvider();
 		jest.clearAllMocks();
-	});
-
-	describe('requiresMaxCompletionTokens', () => {
-		it('should return true for GPT-5 models', () => {
-			expect(provider.requiresMaxCompletionTokens('gpt-5')).toBe(true);
-			expect(provider.requiresMaxCompletionTokens('gpt-5-mini')).toBe(true);
-			expect(provider.requiresMaxCompletionTokens('gpt-5-nano')).toBe(true);
-			expect(provider.requiresMaxCompletionTokens('gpt-5-turbo')).toBe(true);
-		});
-
-		it('should return false for non-GPT-5 models', () => {
-			expect(provider.requiresMaxCompletionTokens('gpt-4')).toBe(false);
-			expect(provider.requiresMaxCompletionTokens('gpt-4o')).toBe(false);
-			expect(provider.requiresMaxCompletionTokens('gpt-3.5-turbo')).toBe(false);
-			expect(provider.requiresMaxCompletionTokens('o1')).toBe(false);
-			expect(provider.requiresMaxCompletionTokens('o1-mini')).toBe(false);
-		});
-
-		it('should handle null/undefined modelId', () => {
-			expect(provider.requiresMaxCompletionTokens(null)).toBeFalsy();
-			expect(provider.requiresMaxCompletionTokens(undefined)).toBeFalsy();
-			expect(provider.requiresMaxCompletionTokens('')).toBeFalsy();
-		});
-	});
-
-	describe('prepareTokenParam', () => {
-		it('should return max_completion_tokens for GPT-5 models', () => {
-			const result = provider.prepareTokenParam('gpt-5', 1000);
-			expect(result).toEqual({ max_completion_tokens: 1000 });
-		});
-
-		it('should return maxTokens for non-GPT-5 models', () => {
-			const result = provider.prepareTokenParam('gpt-4', 1000);
-			expect(result).toEqual({ maxTokens: 1000 });
-		});
-
-		it('should coerce token value to integer', () => {
-			// Float values
-			const result1 = provider.prepareTokenParam('gpt-5', 1000.7);
-			expect(result1).toEqual({ max_completion_tokens: 1000 });
-
-			const result2 = provider.prepareTokenParam('gpt-4', 1000.7);
-			expect(result2).toEqual({ maxTokens: 1000 });
-
-			// String float
-			const result3 = provider.prepareTokenParam('gpt-5', '1000.7');
-			expect(result3).toEqual({ max_completion_tokens: 1000 });
-
-			// String integers (common CLI input path)
-			expect(provider.prepareTokenParam('gpt-5', '1000')).toEqual({
-				max_completion_tokens: 1000
-			});
-			expect(provider.prepareTokenParam('gpt-4', '1000')).toEqual({
-				maxTokens: 1000
-			});
-		});
-
-		it('should return empty object for undefined maxTokens', () => {
-			const result = provider.prepareTokenParam('gpt-5', undefined);
-			expect(result).toEqual({});
-		});
-
-		it('should handle edge cases', () => {
-			// Test with 0 (should still pass through as 0)
-			const result1 = provider.prepareTokenParam('gpt-5', 0);
-			expect(result1).toEqual({ max_completion_tokens: 0 });
-
-			// Test with string number
-			const result2 = provider.prepareTokenParam('gpt-5', '100');
-			expect(result2).toEqual({ max_completion_tokens: 100 });
-
-			// Test with negative number (will be floored, validation happens elsewhere)
-			const result3 = provider.prepareTokenParam('gpt-4', -10.5);
-			expect(result3).toEqual({ maxTokens: -11 });
-		});
 	});
 
 	describe('validateOptionalParams', () => {

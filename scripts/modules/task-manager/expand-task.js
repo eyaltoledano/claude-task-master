@@ -31,36 +31,30 @@ import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 // --- Zod Schemas (Keep from previous step) ---
-const subtaskSchema = z
-	.object({
-		id: z
-			.number()
-			.int()
-			.positive()
-			.describe('Sequential subtask ID starting from 1'),
-		title: z.string().min(5).describe('Clear, specific title for the subtask'),
-		description: z
-			.string()
-			.min(10)
-			.describe('Detailed description of the subtask'),
-		dependencies: z
-			.array(z.string())
-			.describe(
-				'Array of subtask dependencies within the same parent task. Use format ["parentTaskId.1", "parentTaskId.2"]. Subtasks can only depend on siblings, not external tasks.'
-			),
-		details: z.string().min(20).describe('Implementation details and guidance'),
-		status: z
-			.string()
-			.describe(
-				'The current status of the subtask (should be pending initially)'
-			),
-		testStrategy: z
-			.string()
-			.nullable()
-			.describe('Approach for testing this subtask')
-			.default('')
-	})
-	.strict();
+const subtaskSchema = z.strictObject({
+	id: z.int().positive().describe('Sequential subtask ID starting from 1'),
+	title: z.string().min(5).describe('Clear, specific title for the subtask'),
+	description: z
+		.string()
+		.min(10)
+		.describe('Detailed description of the subtask'),
+	dependencies: z
+		.array(z.string())
+		.describe(
+			'Array of subtask dependencies within the same parent task. Use format ["parentTaskId.1", "parentTaskId.2"]. Subtasks can only depend on siblings, not external tasks.'
+		),
+	details: z.string().min(20).describe('Implementation details and guidance'),
+	status: z
+		.string()
+		.describe(
+			'The current status of the subtask (should be pending initially)'
+		),
+	testStrategy: z
+		.string()
+		.nullable()
+		.describe('Approach for testing this subtask')
+		.prefault('')
+});
 const subtaskArraySchema = z.array(subtaskSchema);
 const subtaskWrapperSchema = z.object({
 	subtasks: subtaskArraySchema.describe('The array of generated subtasks.')

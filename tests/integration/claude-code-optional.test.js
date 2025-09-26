@@ -1,95 +1,128 @@
 import { jest } from '@jest/globals';
 
-// Mock the base provider to avoid circular dependencies
-jest.unstable_mockModule('../../src/ai-providers/base-provider.js', () => ({
-	BaseAIProvider: class {
-		constructor() {
-			this.name = 'Base Provider';
-		}
-		handleError(context, error) {
-			throw error;
-		}
-	}
+// Mock AI SDK functions at the top level
+const generateText = jest.fn();
+const streamText = jest.fn();
+
+jest.unstable_mockModule('ai', () => ({
+	generateObject: jest.fn(),
+	generateText,
+	streamText,
+	streamObject: jest.fn(),
+	zodSchema: jest.fn(),
+	JSONParseError: class JSONParseError extends Error {},
+	NoObjectGeneratedError: class NoObjectGeneratedError extends Error {}
 }));
 
-// Mock the claude-code SDK to simulate it not being installed
-jest.unstable_mockModule('@anthropic-ai/claude-code', () => {
-	throw new Error("Cannot find module '@anthropic-ai/claude-code'");
-});
+// Mock successful provider creation for all tests
+const mockProvider = jest.fn((modelId) => ({
+	id: modelId,
+	doGenerate: jest.fn(),
+	doStream: jest.fn()
+}));
+mockProvider.languageModel = jest.fn((id, settings) => ({ id, settings }));
+mockProvider.chat = mockProvider.languageModel;
 
-// Import after mocking
+jest.unstable_mockModule('ai-sdk-provider-claude-code', () => ({
+	createClaudeCode: jest.fn(() => mockProvider)
+}));
+
+// Import the provider after mocking
 const { ClaudeCodeProvider } = await import(
 	'../../src/ai-providers/claude-code.js'
 );
 
-describe('Claude Code Optional Dependency Integration', () => {
-	describe('when @anthropic-ai/claude-code is not installed', () => {
-		it('should allow provider instantiation', () => {
-			// Provider should instantiate without error
-			const provider = new ClaudeCodeProvider();
-			expect(provider).toBeDefined();
-			expect(provider.name).toBe('Claude Code');
+describe('Claude Code Integration (Optional)', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('should create a working provider instance', () => {
+		const provider = new ClaudeCodeProvider();
+		expect(provider.name).toBe('Claude Code');
+		expect(provider.getSupportedModels()).toEqual(['sonnet', 'opus']);
+	});
+
+	it('should support model validation', () => {
+		const provider = new ClaudeCodeProvider();
+		expect(provider.isModelSupported('sonnet')).toBe(true);
+		expect(provider.isModelSupported('opus')).toBe(true);
+		expect(provider.isModelSupported('haiku')).toBe(false);
+		expect(provider.isModelSupported('unknown')).toBe(false);
+	});
+
+	it('should create a client successfully', () => {
+		const provider = new ClaudeCodeProvider();
+		const client = provider.getClient();
+
+		expect(client).toBeDefined();
+		expect(typeof client).toBe('function');
+		expect(client.languageModel).toBeDefined();
+		expect(client.chat).toBeDefined();
+		expect(client.chat).toBe(client.languageModel);
+	});
+
+	it('should pass command-specific settings to client', async () => {
+		const provider = new ClaudeCodeProvider();
+		const client = provider.getClient({ commandName: 'test-command' });
+
+		expect(client).toBeDefined();
+		expect(typeof client).toBe('function');
+		const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+		expect(createClaudeCode).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle AI SDK generateText integration', async () => {
+		const provider = new ClaudeCodeProvider();
+		const client = provider.getClient();
+
+		// Mock successful generation
+		generateText.mockResolvedValueOnce({
+			text: 'Hello from Claude Code!',
+			usage: { totalTokens: 10 }
 		});
 
-		it('should allow client creation', () => {
-			const provider = new ClaudeCodeProvider();
-			// Client creation should work
-			const client = provider.getClient({});
-			expect(client).toBeDefined();
-			expect(typeof client).toBe('function');
+		const result = await generateText({
+			model: client('sonnet'),
+			messages: [{ role: 'user', content: 'Hello' }]
 		});
 
-		it('should fail with clear error when trying to use the model', async () => {
-			const provider = new ClaudeCodeProvider();
-			const client = provider.getClient({});
-			const model = client('opus');
-
-			// The actual usage should fail with the lazy loading error
-			await expect(
-				model.doGenerate({
-					prompt: [{ role: 'user', content: 'Hello' }],
-					mode: { type: 'regular' }
-				})
-			).rejects.toThrow(
-				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
-			);
-		});
-
-		it('should provide helpful error message for streaming', async () => {
-			const provider = new ClaudeCodeProvider();
-			const client = provider.getClient({});
-			const model = client('sonnet');
-
-			await expect(
-				model.doStream({
-					prompt: [{ role: 'user', content: 'Hello' }],
-					mode: { type: 'regular' }
-				})
-			).rejects.toThrow(
-				"Claude Code SDK is not installed. Please install '@anthropic-ai/claude-code' to use the claude-code provider."
-			);
+		expect(result.text).toBe('Hello from Claude Code!');
+		expect(generateText).toHaveBeenCalledWith({
+			model: expect.any(Object),
+			messages: [{ role: 'user', content: 'Hello' }]
 		});
 	});
 
-	describe('provider behavior', () => {
-		it('should not require API key', () => {
-			const provider = new ClaudeCodeProvider();
-			// Should not throw
-			expect(() => provider.validateAuth()).not.toThrow();
-			expect(() => provider.validateAuth({ apiKey: null })).not.toThrow();
+	it('should handle AI SDK streamText integration', async () => {
+		const provider = new ClaudeCodeProvider();
+		const client = provider.getClient();
+
+		// Mock successful streaming
+		const mockStream = {
+			textStream: (async function* () {
+				yield 'Streamed response';
+			})()
+		};
+		streamText.mockResolvedValueOnce(mockStream);
+
+		const streamResult = await streamText({
+			model: client('sonnet'),
+			messages: [{ role: 'user', content: 'Stream test' }]
 		});
 
-		it('should work with ai-services-unified when provider is configured', async () => {
-			// This tests that the provider can be selected but will fail appropriately
-			// when the actual model is used
-			const provider = new ClaudeCodeProvider();
-			expect(provider).toBeDefined();
-
-			// In real usage, ai-services-unified would:
-			// 1. Get the provider instance (works)
-			// 2. Call provider.getClient() (works)
-			// 3. Create a model (works)
-			// 4. Try to generate (fails with clear error)
+		expect(streamResult.textStream).toBeDefined();
+		expect(streamText).toHaveBeenCalledWith({
+			model: expect.any(Object),
+			messages: [{ role: 'user', content: 'Stream test' }]
 		});
+	});
+
+	it('should not require authentication validation', () => {
+		const provider = new ClaudeCodeProvider();
+		expect(provider.isRequiredApiKey()).toBe(false);
+		expect(() => provider.validateAuth()).not.toThrow();
+		expect(() => provider.validateAuth({})).not.toThrow();
+		expect(() => provider.validateAuth({ commandName: 'test' })).not.toThrow();
 	});
 });

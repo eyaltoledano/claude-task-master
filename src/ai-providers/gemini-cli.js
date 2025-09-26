@@ -9,21 +9,7 @@ import { generateObject, generateText, streamText } from 'ai';
 import { parse } from 'jsonc-parser';
 import { BaseAIProvider } from './base-provider.js';
 import { log } from '../../scripts/modules/utils.js';
-
-let createGeminiProvider;
-
-async function loadGeminiCliModule() {
-	if (!createGeminiProvider) {
-		try {
-			const mod = await import('ai-sdk-provider-gemini-cli');
-			createGeminiProvider = mod.createGeminiProvider;
-		} catch (err) {
-			throw new Error(
-				"Gemini CLI SDK is not installed. Please install 'ai-sdk-provider-gemini-cli' to use the gemini-cli provider."
-			);
-		}
-	}
-}
+import { createGeminiProvider } from 'ai-sdk-provider-gemini-cli';
 
 export class GeminiCliProvider extends BaseAIProvider {
 	constructor() {
@@ -54,8 +40,6 @@ export class GeminiCliProvider extends BaseAIProvider {
 	 */
 	async getClient(params) {
 		try {
-			// Load the Gemini CLI module dynamically
-			await loadGeminiCliModule();
 			// Primary use case: Use existing gemini CLI authentication
 			// Secondary use case: Direct API key (for compatibility)
 			let authOptions = {};
@@ -441,7 +425,7 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 				model: client(params.modelId),
 				system: systemPrompt,
 				messages: messages,
-				maxTokens: params.maxTokens,
+				maxOutputTokens: params.maxTokens,
 				temperature: params.temperature
 			});
 
@@ -545,7 +529,7 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 				model: client(params.modelId),
 				system: systemPrompt,
 				messages: messages,
-				maxTokens: params.maxTokens,
+				maxOutputTokens: params.maxTokens,
 				temperature: params.temperature
 			});
 
@@ -604,7 +588,7 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 						messages: messages,
 						schema: params.schema,
 						mode: 'json', // Use json mode instead of auto for Gemini
-						maxTokens: params.maxTokens,
+						maxOutputTokens: params.maxTokens,
 						temperature: params.temperature
 					});
 

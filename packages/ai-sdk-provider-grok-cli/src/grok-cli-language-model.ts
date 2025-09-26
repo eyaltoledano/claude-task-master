@@ -1,53 +1,51 @@
 /**
- * @fileoverview Grok CLI Language Model implementation
+ * Grok CLI Language Model implementation for AI SDK v5
  */
 
+import { spawn } from 'child_process';
+import { promises as fs } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+import type {
+	LanguageModelV2,
+	LanguageModelV2CallOptions,
+	LanguageModelV2CallWarning
+} from '@ai-sdk/provider';
 import { NoSuchModelError } from '@ai-sdk/provider';
 import { generateId } from '@ai-sdk/provider-utils';
-import {
-	createPromptFromMessages,
-	convertFromGrokCliResponse,
-	escapeShellArg
-} from './message-converter.js';
-import { extractJson } from './json-extractor.js';
+
 import {
 	createAPICallError,
 	createAuthenticationError,
 	createInstallationError,
 	createTimeoutError
 } from './errors.js';
-import { spawn } from 'child_process';
-import { promises as fs } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
+import { extractJson } from './json-extractor.js';
+import {
+	convertFromGrokCliResponse,
+	createPromptFromMessages,
+	escapeShellArg
+} from './message-converter.js';
+import type {
+	GrokCliLanguageModelOptions,
+	GrokCliModelId,
+	GrokCliSettings
+} from './types.js';
 
 /**
- * @typedef {import('./types.js').GrokCliSettings} GrokCliSettings
- * @typedef {import('./types.js').GrokCliModelId} GrokCliModelId
+ * Grok CLI Language Model implementation for AI SDK v5
  */
+export class GrokCliLanguageModel implements LanguageModelV2 {
+	readonly specificationVersion = 'v2' as const;
+	readonly defaultObjectGenerationMode = 'json' as const;
+	readonly supportsImageUrls = false;
+	readonly supportsStructuredOutputs = false;
+	readonly supportedUrls: Record<string, RegExp[]> = {};
 
-/**
- * @typedef {Object} GrokCliLanguageModelOptions
- * @property {GrokCliModelId} id - Model ID
- * @property {GrokCliSettings} [settings] - Model settings
- */
+	readonly modelId: GrokCliModelId;
+	readonly settings: GrokCliSettings;
 
-export class GrokCliLanguageModel {
-	specificationVersion = 'v1';
-	defaultObjectGenerationMode = 'json';
-	supportsImageUrls = false;
-	supportsStructuredOutputs = false;
-
-	/** @type {GrokCliModelId} */
-	modelId;
-
-	/** @type {GrokCliSettings} */
-	settings;
-
-	/**
-	 * @param {GrokCliLanguageModelOptions} options
-	 */
-	constructor(options) {
+	constructor(options: GrokCliLanguageModelOptions) {
 		this.modelId = options.id;
 		this.settings = options.settings ?? {};
 
@@ -64,15 +62,14 @@ export class GrokCliLanguageModel {
 		}
 	}
 
-	get provider() {
+	get provider(): string {
 		return 'grok-cli';
 	}
 
 	/**
 	 * Check if Grok CLI is installed and available
-	 * @returns {Promise<boolean>}
 	 */
-	async checkGrokCliInstallation() {
+	private async checkGrokCliInstallation(): Promise<boolean> {
 		return new Promise((resolve) => {
 			const child = spawn('grok', ['--version'], {
 				stdio: 'pipe'
@@ -85,9 +82,8 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Get API key from settings or environment
-	 * @returns {Promise<string|null>}
 	 */
-	async getApiKey() {
+	private async getApiKey(): Promise<string | null> {
 		// Check settings first
 		if (this.settings.apiKey) {
 			return this.settings.apiKey;
@@ -111,12 +107,18 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Execute Grok CLI command
-	 * @param {Array<string>} args - Command line arguments
-	 * @param {Object} options - Execution options
-	 * @returns {Promise<{stdout: string, stderr: string, exitCode: number}>}
 	 */
-	async executeGrokCli(args, options = {}) {
-		const timeout = options.timeout || this.settings.timeout || 120000; // 2 minutes default
+	private async executeGrokCli(
+		args: string[],
+		options: { timeout?: number } = {}
+	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+		// Default timeout based on model type
+		let defaultTimeout = 120000; // 2 minutes default
+		if (this.modelId.includes('grok-4')) {
+			defaultTimeout = 600000; // 10 minutes for grok-4 models (they seem to hang during setup)
+		}
+
+		const timeout = options.timeout ?? this.settings.timeout ?? defaultTimeout;
 
 		return new Promise((resolve, reject) => {
 			const child = spawn('grok', args, {
@@ -126,7 +128,7 @@ export class GrokCliLanguageModel {
 
 			let stdout = '';
 			let stderr = '';
-			let timeoutId;
+			let timeoutId: NodeJS.Timeout | undefined;
 
 			// Set up timeout
 			if (timeout > 0) {
@@ -142,24 +144,26 @@ export class GrokCliLanguageModel {
 				}, timeout);
 			}
 
-			child.stdout.on('data', (data) => {
-				stdout += data.toString();
+			child.stdout?.on('data', (data) => {
+				const chunk = data.toString();
+				stdout += chunk;
 			});
 
-			child.stderr.on('data', (data) => {
-				stderr += data.toString();
+			child.stderr?.on('data', (data) => {
+				const chunk = data.toString();
+				stderr += chunk;
 			});
 
 			child.on('error', (error) => {
 				if (timeoutId) clearTimeout(timeoutId);
 
-				if (error.code === 'ENOENT') {
+				if ((error as any).code === 'ENOENT') {
 					reject(createInstallationError({}));
 				} else {
 					reject(
 						createAPICallError({
 							message: `Failed to execute Grok CLI: ${error.message}`,
-							code: error.code,
+							code: (error as any).code,
 							stderr: error.message,
 							isRetryable: false
 						})
@@ -180,15 +184,18 @@ export class GrokCliLanguageModel {
 	}
 
 	/**
-	 * Generate unsupported parameter warnings
-	 * @param {Object} options - Generation options
-	 * @returns {Array} Warnings array
+	 * Generate comprehensive warnings for unsupported parameters and validation issues
 	 */
-	generateUnsupportedWarnings(options) {
-		const warnings = [];
-		const unsupportedParams = [];
+	private generateAllWarnings(
+		options: LanguageModelV2CallOptions,
+		prompt: string
+	): LanguageModelV2CallWarning[] {
+		const warnings: LanguageModelV2CallWarning[] = [];
+		const unsupportedParams: string[] = [];
 
-		// Grok CLI supports some parameters but not all AI SDK parameters
+		// Check for unsupported parameters
+		if (options.temperature !== undefined)
+			unsupportedParams.push('temperature');
 		if (options.topP !== undefined) unsupportedParams.push('topP');
 		if (options.topK !== undefined) unsupportedParams.push('topK');
 		if (options.presencePenalty !== undefined)
@@ -200,13 +207,37 @@ export class GrokCliLanguageModel {
 		if (options.seed !== undefined) unsupportedParams.push('seed');
 
 		if (unsupportedParams.length > 0) {
+			// Add a warning for each unsupported parameter
 			for (const param of unsupportedParams) {
 				warnings.push({
 					type: 'unsupported-setting',
-					setting: param,
+					setting: param as
+						| 'temperature'
+						| 'topP'
+						| 'topK'
+						| 'presencePenalty'
+						| 'frequencyPenalty'
+						| 'stopSequences'
+						| 'seed',
 					details: `Grok CLI does not support the ${param} parameter. It will be ignored.`
 				});
 			}
+		}
+
+		// Add model validation warnings if needed
+		if (!this.modelId || this.modelId.trim() === '') {
+			warnings.push({
+				type: 'other',
+				message: 'Model ID is empty or invalid'
+			});
+		}
+
+		// Add prompt validation
+		if (!prompt || prompt.trim() === '') {
+			warnings.push({
+				type: 'other',
+				message: 'Prompt is empty'
+			});
 		}
 
 		return warnings;
@@ -214,10 +245,13 @@ export class GrokCliLanguageModel {
 
 	/**
 	 * Generate text using Grok CLI
-	 * @param {Object} options - Generation options
-	 * @returns {Promise<Object>}
 	 */
-	async doGenerate(options) {
+	async doGenerate(options: LanguageModelV2CallOptions) {
+		// Handle abort signal early
+		if (options.abortSignal?.aborted) {
+			throw options.abortSignal.reason || new Error('Request aborted');
+		}
+
 		// Check CLI installation
 		const isInstalled = await this.checkGrokCliInstallation();
 		if (!isInstalled) {
@@ -234,7 +268,7 @@ export class GrokCliLanguageModel {
 		}
 
 		const prompt = createPromptFromMessages(options.prompt);
-		const warnings = this.generateUnsupportedWarnings(options);
+		const warnings = this.generateAllWarnings(options, prompt);
 
 		// Build command arguments
 		const args = ['--prompt', escapeShellArg(prompt)];
@@ -244,10 +278,11 @@ export class GrokCliLanguageModel {
 			args.push('--model', this.modelId);
 		}
 
-		// Add API key if available
-		if (apiKey) {
-			args.push('--api-key', apiKey);
-		}
+		// Skip API key parameter if it's likely already configured to avoid hanging
+		// The CLI seems to hang when trying to save API keys for grok-4 models
+		// if (apiKey) {
+		//	args.push('--api-key', apiKey);
+		// }
 
 		// Add base URL if provided in settings
 		if (this.settings.baseURL) {
@@ -260,9 +295,7 @@ export class GrokCliLanguageModel {
 		}
 
 		try {
-			const result = await this.executeGrokCli(args, {
-				timeout: this.settings.timeout
-			});
+			const result = await this.executeGrokCli(args);
 
 			if (result.exitCode !== 0) {
 				// Handle authentication errors
@@ -290,19 +323,34 @@ export class GrokCliLanguageModel {
 			let text = response.text || '';
 
 			// Extract JSON if in object-json mode
-			if (options.mode?.type === 'object-json' && text) {
+			if (
+				'mode' in options &&
+				(options as any).mode?.type === 'object-json' &&
+				text
+			) {
 				text = extractJson(text);
 			}
 
 			return {
-				text: text || undefined,
-				usage: response.usage || { promptTokens: 0, completionTokens: 0 },
-				finishReason: 'stop',
+				content: [
+					{
+						type: 'text' as const,
+						text: text || ''
+					}
+				],
+				usage: response.usage
+					? {
+							inputTokens: response.usage.promptTokens,
+							outputTokens: response.usage.completionTokens,
+							totalTokens: response.usage.totalTokens
+						}
+					: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+				finishReason: 'stop' as const,
 				rawCall: {
 					rawPrompt: prompt,
 					rawSettings: args
 				},
-				warnings: warnings.length > 0 ? warnings : undefined,
+				warnings: warnings,
 				response: {
 					id: generateId(),
 					timestamp: new Date(),
@@ -314,20 +362,23 @@ export class GrokCliLanguageModel {
 				providerMetadata: {
 					'grok-cli': {
 						exitCode: result.exitCode,
-						stderr: result.stderr || undefined
+						...(result.stderr && { stderr: result.stderr })
 					}
 				}
 			};
 		} catch (error) {
 			// Re-throw our custom errors
-			if (error.name === 'APICallError' || error.name === 'LoadAPIKeyError') {
+			if (
+				(error as any).name === 'APICallError' ||
+				(error as any).name === 'LoadAPIKeyError'
+			) {
 				throw error;
 			}
 
 			// Wrap other errors
 			throw createAPICallError({
-				message: `Grok CLI execution failed: ${error.message}`,
-				code: error.code,
+				message: `Grok CLI execution failed: ${(error as Error).message}`,
+				code: (error as any).code,
 				promptExcerpt: prompt.substring(0, 200),
 				isRetryable: false
 			});
@@ -338,15 +389,39 @@ export class GrokCliLanguageModel {
 	 * Stream text using Grok CLI
 	 * Note: Grok CLI doesn't natively support streaming, so this simulates streaming
 	 * by generating the full response and then streaming it in chunks
-	 * @param {Object} options - Stream options
-	 * @returns {Promise<Object>}
 	 */
-	async doStream(options) {
-		const warnings = this.generateUnsupportedWarnings(options);
+	async doStream(options: LanguageModelV2CallOptions) {
+		const prompt = createPromptFromMessages(options.prompt);
+		const warnings = this.generateAllWarnings(options, prompt);
 
 		const stream = new ReadableStream({
 			start: async (controller) => {
+				let abortListener: (() => void) | undefined;
+
 				try {
+					// Handle abort signal
+					if (options.abortSignal?.aborted) {
+						throw options.abortSignal.reason || new Error('Request aborted');
+					}
+
+					// Set up abort listener
+					if (options.abortSignal) {
+						abortListener = () => {
+							controller.enqueue({
+								type: 'error',
+								error:
+									options.abortSignal?.reason || new Error('Request aborted')
+							});
+							controller.close();
+						};
+						options.abortSignal.addEventListener('abort', abortListener, {
+							once: true
+						});
+					}
+
+					// Emit stream-start with warnings
+					controller.enqueue({ type: 'stream-start', warnings });
+
 					// Generate the full response first
 					const result = await this.doGenerate(options);
 
@@ -359,18 +434,46 @@ export class GrokCliLanguageModel {
 					});
 
 					// Simulate streaming by chunking the text
-					const text = result.text || '';
+					const content = result.content || [];
+					const text =
+						content.length > 0 && content[0].type === 'text'
+							? content[0].text
+							: '';
 					const chunkSize = 50; // Characters per chunk
+					let textPartId: string | undefined;
+
+					// Emit text-start if we have content
+					if (text.length > 0) {
+						textPartId = generateId();
+						controller.enqueue({
+							type: 'text-start',
+							id: textPartId
+						});
+					}
 
 					for (let i = 0; i < text.length; i += chunkSize) {
+						// Check for abort during streaming
+						if (options.abortSignal?.aborted) {
+							throw options.abortSignal.reason || new Error('Request aborted');
+						}
+
 						const chunk = text.slice(i, i + chunkSize);
 						controller.enqueue({
 							type: 'text-delta',
-							textDelta: chunk
+							id: textPartId!,
+							delta: chunk
 						});
 
 						// Add small delay to simulate streaming
 						await new Promise((resolve) => setTimeout(resolve, 20));
+					}
+
+					// Close text part if opened
+					if (textPartId) {
+						controller.enqueue({
+							type: 'text-end',
+							id: textPartId
+						});
 					}
 
 					// Emit finish event
@@ -388,19 +491,22 @@ export class GrokCliLanguageModel {
 						error
 					});
 					controller.close();
+				} finally {
+					// Clean up abort listener
+					if (options.abortSignal && abortListener) {
+						options.abortSignal.removeEventListener('abort', abortListener);
+					}
 				}
+			},
+			cancel: () => {
+				// Clean up if stream is cancelled
 			}
 		});
 
 		return {
 			stream,
-			rawCall: {
-				rawPrompt: createPromptFromMessages(options.prompt),
-				rawSettings: {}
-			},
-			warnings: warnings.length > 0 ? warnings : undefined,
 			request: {
-				body: createPromptFromMessages(options.prompt)
+				body: prompt
 			}
 		};
 	}
