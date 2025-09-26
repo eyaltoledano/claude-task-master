@@ -3,7 +3,7 @@
  * AI provider implementation for Grok models using Grok CLI.
  */
 
-import { createGrokCli } from './custom-sdk/grok-cli/index.js';
+import { createGrokCli } from '@tm/ai-sdk-provider-grok-cli';
 import { BaseAIProvider } from './base-provider.js';
 import { getGrokCliSettingsForCommand } from '../../scripts/modules/config-manager.js';
 

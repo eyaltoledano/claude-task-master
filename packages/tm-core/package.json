@@ -34,18 +34,11 @@
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
-		"@tm/build-config": "*",
 		"@types/node": "^22.10.5",
-		"@vitest/coverage-v8": "^2.0.5",
+		"@vitest/coverage-v8": "^3.2.4",
 		"dotenv-mono": "^1.5.1",
-		"ts-node": "^10.9.2",
-		"tsup": "^8.5.0",
-		"typescript": "^5.7.3",
-		"vitest": "^2.1.8"
-	},
-	"engines": {
-		"node": ">=18.0.0"
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
 	},
 	"files": ["src", "README.md", "CHANGELOG.md"],
 	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
