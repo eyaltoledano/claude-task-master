@@ -121,6 +121,19 @@ describe('createPromptFromMessages', () => {
 
 		expect(result).toBe('custom: Custom message');
 	});
+
+	it('should trim whitespace from message content', () => {
+		const messages = [
+			{ role: 'user', content: '  Hello with spaces  ' },
+			{ role: 'assistant', content: '\n\nResponse with newlines\n\n' }
+		];
+
+		const result = createPromptFromMessages(messages);
+
+		expect(result).toBe(
+			'User: Hello with spaces\n\nAssistant: Response with newlines'
+		);
+	});
 });
 
 describe('escapeShellArg', () => {

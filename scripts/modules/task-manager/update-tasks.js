@@ -29,17 +29,19 @@ import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 // Zod schema for validating the structure of tasks AFTER parsing
-const updatedTaskSchema = z.object({
-	id: z.int(),
-	title: z.string(),
-	description: z.string(),
-	status: z.string(),
-	dependencies: z.array(z.union([z.int(), z.string()])),
-	priority: z.string().nullable(),
-	details: z.string().nullable(),
-	testStrategy: z.string().nullable(),
-	subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
-}); // Allow potential extra fields during parsing if needed, then validate structure
+const updatedTaskSchema = z
+	.object({
+		id: z.int(),
+		title: z.string(),
+		description: z.string(),
+		status: z.string(),
+		dependencies: z.array(z.union([z.int(), z.string()])),
+		priority: z.string().nullable(),
+		details: z.string().nullable(),
+		testStrategy: z.string().nullable(),
+		subtasks: z.array(z.any()).nullable() // Keep subtasks flexible for now
+	})
+	.strip(); // Enforce the canonical task shape and drop unknown fields
 
 // Preprocessing schema that adds defaults before validation
 const preprocessTaskSchema = z.preprocess((task) => {

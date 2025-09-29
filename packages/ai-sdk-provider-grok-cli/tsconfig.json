@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"target": "ES2022",
-		"module": "NodeNext",
+		"module": "ESNext",
 		"lib": ["ES2022"],
 		"declaration": true,
 		"declarationMap": true,
@@ -24,7 +24,7 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
-		"moduleResolution": "NodeNext",
+		"moduleResolution": "bundler",
 		"moduleDetection": "force",
 		"types": ["node"],
 		"resolveJsonModule": true,

@@ -33,33 +33,36 @@ import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 
 // Zod schema for post-parsing validation of the updated task object
-const updatedTaskSchema = z.object({
-	id: z.int(),
-	title: z.string(), // Title should be preserved, but check it exists
-	description: z.string(),
-	status: z.string(),
-	dependencies: z.array(z.union([z.int(), z.string()])),
-	priority: z.string().nullable().prefault('medium'),
-	details: z.string().nullable().prefault(''),
-	testStrategy: z.string().nullable().prefault(''),
-	subtasks: z
-		.array(
-			z.object({
-				id: z
-					.int()
-					.positive()
-					.describe('Sequential subtask ID starting from 1'),
-				title: z.string(),
-				description: z.string(),
-				status: z.string(),
-				dependencies: z.array(z.int()).nullable().prefault([]),
-				details: z.string().nullable().prefault(''),
-				testStrategy: z.string().nullable().prefault('')
-			})
-		)
-		.nullable()
-		.prefault([])
-}); // Allows parsing even if AI adds extra fields, but validation focuses on schema
+const updatedTaskSchema = z
+	.object({
+		id: z.number().int(),
+		title: z.string(), // Title should be preserved, but check it exists
+		description: z.string(),
+		status: z.string(),
+		dependencies: z.array(z.union([z.number().int(), z.string()])),
+		priority: z.string().nullable().prefault('medium'),
+		details: z.string().nullable().prefault(''),
+		testStrategy: z.string().nullable().prefault(''),
+		subtasks: z
+			.array(
+				z.object({
+					id: z
+						.number()
+						.int()
+						.positive()
+						.describe('Sequential subtask ID starting from 1'),
+					title: z.string(),
+					description: z.string(),
+					status: z.string(),
+					dependencies: z.array(z.number().int()).nullable().prefault([]),
+					details: z.string().nullable().prefault(''),
+					testStrategy: z.string().nullable().prefault('')
+				})
+			)
+			.nullable()
+			.prefault([])
+	})
+	.strip(); // Enforce the canonical task shape and drop unknown fields
 
 /**
  * Parses a single updated task object from AI's text response.

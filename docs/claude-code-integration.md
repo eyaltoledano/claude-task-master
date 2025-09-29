@@ -15,12 +15,14 @@ The Claude Code provider uses token authentication managed by the Claude Code CL
 ### Prerequisites
 
 1. **Install Claude Code CLI** (if not already installed):
+
    ```bash
    # Installation method depends on your system
    # Follow Claude Code documentation for installation
    ```
 
 2. **Set up OAuth token** using Claude Code CLI:
+
    ```bash
    claude setup-token
    ```
@@ -75,6 +77,7 @@ export CLAUDE_CODE_OAUTH_TOKEN="your_oauth_token_here"
 ```
 
 This is only needed in specific scenarios like:
+
 - CI/CD pipelines
 - Docker containers
 - When you want to use a different token than the CLI default
@@ -110,6 +113,7 @@ task-master models --setup
 **Problem**: Task Master cannot connect to Claude Code CLI.
 
 **Solutions**:
+
 - Ensure Claude Code CLI is installed and in your PATH
 - Run `claude setup-token` to configure authentication
 - Verify Claude Code CLI works: `claude --help`
@@ -119,6 +123,7 @@ task-master models --setup
 **Problem**: Token authentication is failing.
 
 **Solutions**:
+
 - Re-run `claude setup-token` to refresh your OAuth token
 - Check if your token has expired
 - Verify Claude Code CLI can authenticate: try a simple `claude` command
@@ -128,6 +133,7 @@ task-master models --setup
 **Problem**: Specified Claude Code model is not supported.
 
 **Solutions**:
+
 - Use supported models: `sonnet` or `opus`
 - Check model availability: `task-master models --list`
 - Verify your Claude Code CLI has access to the requested model
@@ -135,18 +141,21 @@ task-master models --setup
 ### Debug Steps
 
 1. **Test Claude Code CLI directly**:
+
    ```bash
    claude --help
    # Should show help without errors
    ```
 
 2. **Test authentication**:
+
    ```bash
    claude setup-token --verify
    # Should confirm token is valid
    ```
 
 3. **Test Task Master integration**:
+
    ```bash
    task-master models --test claude-code:sonnet
    # Should successfully connect and test the model
@@ -164,6 +173,7 @@ When running in Docker, you'll need to:
 
 1. Install Claude Code CLI in your container
 2. Set up authentication via environment variable:
+
    ```dockerfile
    ENV CLAUDE_CODE_OAUTH_TOKEN="your_token_here"
    ```
