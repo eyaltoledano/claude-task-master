@@ -21,7 +21,7 @@
 	},
 	"devDependencies": {
 		"dotenv-mono": "^1.5.1",
-		"typescript": "^5.7.3"
+		"typescript": "^5.9.2"
 	},
 	"dependencies": {
 		"tsup": "^8.5.0"

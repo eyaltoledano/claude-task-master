@@ -110,7 +110,7 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 	 */
 	private async executeGrokCli(
 		args: string[],
-		options: { timeout?: number } = {}
+		options: { timeout?: number; apiKey?: string } = {}
 	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 		// Default timeout based on model type
 		let defaultTimeout = 120000; // 2 minutes default
@@ -123,7 +123,11 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		return new Promise((resolve, reject) => {
 			const child = spawn('grok', args, {
 				stdio: 'pipe',
-				cwd: this.settings.workingDirectory || process.cwd()
+				cwd: this.settings.workingDirectory || process.cwd(),
+				env:
+					options.apiKey === undefined
+						? process.env
+						: { ...process.env, GROK_CLI_API_KEY: options.apiKey }
 			});
 
 			let stdout = '';
@@ -295,7 +299,7 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 		}
 
 		try {
-			const result = await this.executeGrokCli(args);
+			const result = await this.executeGrokCli(args, { apiKey });
 
 			if (result.exitCode !== 0) {
 				// Handle authentication errors
@@ -323,11 +327,14 @@ export class GrokCliLanguageModel implements LanguageModelV2 {
 			let text = response.text || '';
 
 			// Extract JSON if in object-json mode
-			if (
-				'mode' in options &&
-				(options as any).mode?.type === 'object-json' &&
-				text
-			) {
+			const isObjectJson = (
+				o: unknown
+			): o is { mode: { type: 'object-json' } } =>
+				!!o &&
+				typeof o === 'object' &&
+				'mode' in o &&
+				(o as any).mode?.type === 'object-json';
+			if (isObjectJson(options) && text) {
 				text = extractJson(text);
 			}
 

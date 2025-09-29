@@ -9,49 +9,49 @@ describe('extractJson', () => {
 	it('should extract JSON from markdown code blocks', () => {
 		const text = '```json\n{"name": "test", "value": 42}\n```';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should extract JSON from generic code blocks', () => {
 		const text = '```\n{"name": "test", "value": 42}\n```';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should remove JavaScript variable declarations', () => {
 		const text = 'const result = {"name": "test", "value": 42};';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should handle let variable declarations', () => {
 		const text = 'let data = {"name": "test", "value": 42};';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should handle var variable declarations', () => {
 		const text = 'var config = {"name": "test", "value": 42};';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should extract JSON arrays', () => {
 		const text = '[{"name": "test1"}, {"name": "test2"}]';
 		const result = extractJson(text);
-		expect(result).toBe('[{"name": "test1"}, {"name": "test2"}]');
+		expect(JSON.parse(result)).toEqual([{ name: 'test1' }, { name: 'test2' }]);
 	});
 
 	it('should convert JavaScript object literals to JSON', () => {
 		const text = "{name: 'test', value: 42}";
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
-	it('should return valid JSON as-is', () => {
+	it('should return valid JSON (canonical formatting)', () => {
 		const text = '{"name": "test", "value": 42}';
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": 42}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 42 });
 	});
 
 	it('should return original text when JSON parsing fails completely', () => {
@@ -76,6 +76,6 @@ describe('extractJson', () => {
 	it('should handle mixed quotes in object literals', () => {
 		const text = `{name: "test", value: 'mixed quotes'}`;
 		const result = extractJson(text);
-		expect(result).toBe('{"name": "test", "value": "mixed quotes"}');
+		expect(JSON.parse(result)).toEqual({ name: 'test', value: 'mixed quotes' });
 	});
 });

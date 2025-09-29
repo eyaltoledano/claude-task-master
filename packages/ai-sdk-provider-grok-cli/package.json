@@ -2,16 +2,12 @@
 	"name": "@tm/ai-sdk-provider-grok-cli",
 	"private": true,
 	"description": "AI SDK provider for Grok CLI integration",
-	"keywords": ["ai", "grok", "x.ai", "cli", "language-model", "provider"],
-	"license": "MIT",
-	"sideEffects": false,
+	"type": "module",
+	"types": "./src/index.ts",
 	"main": "./dist/index.js",
-	"module": "./dist/index.mjs",
-	"types": "./dist/index.d.ts",
 	"exports": {
 		".": "./src/index.ts"
 	},
-	"files": ["dist/**/*", "README.md"],
 	"scripts": {
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -28,14 +24,11 @@
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
-	"peerDependencies": {
-		"@ai-sdk/provider": "^2.0.0",
-		"@ai-sdk/provider-utils": "^3.0.10",
-		"jsonc-parser": "^3.3.1"
-	},
 	"engines": {
 		"node": ">=18"
 	},
+	"keywords": ["ai", "grok", "x.ai", "cli", "language-model", "provider"],
+	"files": ["dist/**/*", "README.md"],
 	"publishConfig": {
 		"access": "public"
 	}

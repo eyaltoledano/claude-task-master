@@ -81,7 +81,7 @@ export function convertFromGrokCliResponse(responseText: string): {
 
 		// Find the last assistant message
 		const assistantMessage = messages
-			.filter((msg: any) => msg.role === 'assistant')
+			.filter((msg) => msg.role === 'assistant')
 			.pop();
 
 		if (assistantMessage && assistantMessage.content) {

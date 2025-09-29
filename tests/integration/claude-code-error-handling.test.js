@@ -24,23 +24,16 @@ const { ClaudeCodeProvider } = await import(
 );
 
 describe('Claude Code Error Handling', () => {
-	it('should handle missing Claude Code CLI gracefully', () => {
-		const provider = new ClaudeCodeProvider();
-
-		expect(() => provider.getClient()).toThrow(/Claude Code CLI not available/);
+	beforeEach(() => {
+		jest.clearAllMocks();
 	});
 
-	it('should handle CLI errors during client creation', () => {
-		const provider = new ClaudeCodeProvider();
-
-		expect(() => provider.getClient({ commandName: 'test' })).toThrow(
-			/Claude Code CLI not available/
-		);
-	});
-
-	it('should provide a helpful CLI-not-available error', () => {
+	it('should throw a CLI-not-available error (with or without commandName)', () => {
 		const provider = new ClaudeCodeProvider();
 		expect(() => provider.getClient()).toThrow(
+			/Claude Code CLI not available/i
+		);
+		expect(() => provider.getClient({ commandName: 'test' })).toThrow(
 			/Claude Code CLI not available/i
 		);
 	});
@@ -52,6 +45,7 @@ describe('Claude Code Error Handling', () => {
 		expect(provider.name).toBe('Claude Code');
 		expect(provider.getSupportedModels()).toEqual(['sonnet', 'opus']);
 		expect(provider.isModelSupported('sonnet')).toBe(true);
+		expect(provider.isModelSupported('haiku')).toBe(false);
 		expect(provider.isRequiredApiKey()).toBe(false);
 		expect(() => provider.validateAuth()).not.toThrow();
 	});

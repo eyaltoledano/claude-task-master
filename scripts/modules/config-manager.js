@@ -335,7 +335,7 @@ function validateClaudeCodeSettings(settings) {
 	});
 
 	// Define CommandSpecificSchema using the base schema
-	const CommandSpecificSchema = z.partialRecord(
+	const CommandSpecificSchema = z.record(
 		z.enum(AI_COMMAND_NAMES),
 		BaseSettingsSchema
 	);
