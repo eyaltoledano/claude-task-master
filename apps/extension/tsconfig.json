@@ -5,7 +5,6 @@
 		"outDir": "out",
 		"lib": ["ES2022", "DOM"],
 		"sourceMap": true,
-		"rootDir": "src",
 		"strict": true /* enable all strict type-checking options */,
 		"moduleResolution": "Node",
 		"esModuleInterop": true,
@@ -21,8 +20,10 @@
 			"@/*": ["./src/*"],
 			"@/components/*": ["./src/components/*"],
 			"@/lib/*": ["./src/lib/*"],
-			"@tm/core": ["../core/src"]
+			"@tm/core": ["../../packages/tm-core/src/index.ts"],
+			"@tm/core/*": ["../../packages/tm-core/src/*"]
 		}
 	},
+	"include": ["src/**/*"],
 	"exclude": ["node_modules", ".vscode-test", "out", "dist"]
 }
