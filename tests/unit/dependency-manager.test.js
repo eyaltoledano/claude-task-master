@@ -4,18 +4,47 @@
 
 import { jest } from '@jest/globals';
 import {
-	validateTaskDependencies,
-	isCircularDependency,
-	removeDuplicateDependencies,
-	cleanupSubtaskDependencies,
-	ensureAtLeastOneIndependentSubtask,
-	validateAndFixDependencies,
-	canMoveWithDependencies
-} from '../../scripts/modules/dependency-manager.js';
-import * as utils from '../../scripts/modules/utils.js';
-import { sampleTasks } from '../fixtures/sample-tasks.js';
+	sampleTasks,
+	crossLevelDependencyTasks
+} from '../fixtures/sample-tasks.js';
 
-// Mock dependencies
+// Create mock functions that we can control in tests
+const mockTaskExists = jest.fn();
+const mockFormatTaskId = jest.fn();
+const mockFindCycles = jest.fn();
+const mockLog = jest.fn();
+const mockReadJSON = jest.fn();
+const mockWriteJSON = jest.fn();
+
+// Mock the utils module using the same pattern as move-task-cross-tag.test.js
+jest.mock('../../scripts/modules/utils.js', () => ({
+	log: mockLog,
+	readJSON: mockReadJSON,
+	writeJSON: mockWriteJSON,
+	taskExists: mockTaskExists,
+	formatTaskId: mockFormatTaskId,
+	findCycles: mockFindCycles,
+	traverseDependencies: jest.fn(() => []),
+	isSilentMode: jest.fn(() => true),
+	findProjectRoot: jest.fn(() => '/test'),
+	resolveEnvVariable: jest.fn(() => undefined),
+	isEmpty: jest.fn((v) =>
+		v == null
+			? true
+			: Array.isArray(v)
+				? v.length === 0
+				: typeof v === 'object'
+					? Object.keys(v).length === 0
+					: false
+	),
+	// Common extras
+	enableSilentMode: jest.fn(),
+	disableSilentMode: jest.fn(),
+	getTaskManager: jest.fn(async () => ({})),
+	getTagAwareFilePath: jest.fn((basePath, _tag, projectRoot = '.') => basePath),
+	readComplexityReport: jest.fn(() => null)
+}));
+
 jest.mock('path');
 jest.mock('chalk', () => ({
 	green: jest.fn((text) => `<green>${text}</green>`),
@@ -27,23 +56,16 @@ jest.mock('chalk', () => ({
 
 jest.mock('boxen', () => jest.fn((text) => `[boxed: ${text}]`));
 
-// Mock utils module
-const mockTaskExists = jest.fn();
-const mockFormatTaskId = jest.fn();
-const mockFindCycles = jest.fn();
-const mockLog = jest.fn();
-const mockReadJSON = jest.fn();
-const mockWriteJSON = jest.fn();
-
-jest.mock('../../scripts/modules/utils.js', () => ({
-	log: mockLog,
-	readJSON: mockReadJSON,
-	writeJSON: mockWriteJSON,
-	taskExists: mockTaskExists,
-	formatTaskId: mockFormatTaskId,
-	findCycles: mockFindCycles,
-	isSilentMode: jest.fn(() => true)
-}));
+// Now import SUT after mocks are in place
+import {
+	validateTaskDependencies,
+	isCircularDependency,
+	removeDuplicateDependencies,
+	cleanupSubtaskDependencies,
+	ensureAtLeastOneIndependentSubtask,
+	validateAndFixDependencies,
+	canMoveWithDependencies
+} from '../../scripts/modules/dependency-manager.js';
 
 jest.mock('../../scripts/modules/ui.js', () => ({
 	displayBanner: jest.fn()
@@ -53,8 +75,8 @@ jest.mock('../../scripts/modules/task-manager.js', () => ({
 	generateTaskFiles: jest.fn()
 }));
 
-// Create a path for test files
-const TEST_TASKS_PATH = 'tests/fixture/test-tasks.json';
+// Use a temporary path for test files - Jest will clean up the temp directory
+const TEST_TASKS_PATH = '/tmp/jest-test-tasks.json';
 
 describe('Dependency Manager Module', () => {
 	beforeEach(() => {
@@ -685,6 +707,8 @@ describe('Dependency Manager Module', () => {
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
 				expect.anything()
 			);
 		});
@@ -738,6 +762,8 @@ describe('Dependency Manager Module', () => {
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
 				expect.anything()
 			);
 		});
@@ -751,6 +777,8 @@ describe('Dependency Manager Module', () => {
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
 				expect.anything()
 			);
 		});
@@ -804,6 +832,8 @@ describe('Dependency Manager Module', () => {
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
 				expect.anything()
 			);
 		});
@@ -921,44 +951,52 @@ describe('Dependency Manager Module', () => {
 	describe('Cross-level dependency tests (Issue #542)', () => {
 		let originalExit;
 
-		beforeEach(() => {
+		beforeEach(async () => {
+			// Ensure a fresh module instance so ESM mocks apply to dynamic imports
+			jest.resetModules();
 			originalExit = process.exit;
 			process.exit = jest.fn();
+
+			// For ESM dynamic imports, use the same pattern
+			await jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
+				log: mockLog,
+				readJSON: mockReadJSON,
+				writeJSON: mockWriteJSON,
+				taskExists: mockTaskExists,
+				formatTaskId: mockFormatTaskId,
+				findCycles: mockFindCycles,
+				traverseDependencies: jest.fn(() => []),
+				isSilentMode: jest.fn(() => true),
+				findProjectRoot: jest.fn(() => '/test'),
+				resolveEnvVariable: jest.fn(() => undefined),
+				isEmpty: jest.fn((v) =>
+					v == null
+						? true
+						: Array.isArray(v)
+							? v.length === 0
+							: typeof v === 'object'
+								? Object.keys(v).length === 0
+								: false
+				),
+				enableSilentMode: jest.fn(),
+				disableSilentMode: jest.fn(),
+				getTaskManager: jest.fn(async () => ({})),
+				getTagAwareFilePath: jest.fn(
+					(basePath, _tag, projectRoot = '.') => basePath
+				),
+				readComplexityReport: jest.fn(() => null)
+			}));
+
+			// Also mock transitive imports to keep dependency surface minimal
+			await jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
+				displayBanner: jest.fn()
+			}));
+			await jest.unstable_mockModule(
+				'../../scripts/modules/task-manager/generate-task-files.js',
+				() => ({ default: jest.fn() })
+			);
 			// Set up test data that matches the issue report
-			mockReadJSON.mockReturnValue({
-				tasks: [
-					{
-						id: 2,
-						title: "Task 2 with subtasks",
-						description: "Parent task",
-						status: "pending",
-						dependencies: [],
-						subtasks: [
-							{
-								id: 1,
-								title: "Subtask 2.1",
-								description: "First subtask",
-								status: "pending",
-								dependencies: []
-							},
-							{
-								id: 2,
-								title: "Subtask 2.2",
-								description: "Second subtask that should depend on Task 11",
-								status: "pending",
-								dependencies: []
-							}
-						]
-					},
-					{
-						id: 11,
-						title: "Task 11",
-						description: "Top-level task that 2.2 should depend on",
-						status: "done",
-						dependencies: []
-					}
-				]
-			});
+			mockReadJSON.mockReturnValue(crossLevelDependencyTasks);
 
 			// Configure mockTaskExists to properly validate cross-level dependencies
 			mockTaskExists.mockImplementation((tasks, taskId) => {
@@ -972,13 +1010,14 @@ describe('Dependency Manager Module', () => {
 					);
 				}
 
-				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				const numericId =
+					typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
 				return tasks.some((task) => task.id === numericId);
 			});
 
 			mockFormatTaskId.mockImplementation((id) => {
 				if (typeof id === 'string' && id.includes('.')) return id; // keep dot notation
-				return parseInt(id, 10);              // normalize top-level task IDs to number
+				return parseInt(id, 10); // normalize top-level task IDs to number
 			});
 		});
 
@@ -987,41 +1026,72 @@ describe('Dependency Manager Module', () => {
 		});
 
 		test('should allow subtask to depend on top-level task', async () => {
-			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const { addDependency } = await import(
+				'../../scripts/modules/dependency-manager.js'
+			);
 
 			// Test the specific scenario from Issue #542: subtask 2.2 depending on task 11
 			await addDependency(TEST_TASKS_PATH, '2.2', 11, { projectRoot: '/test' });
 
 			// Verify we wrote to the test path (and not the real tasks.json)
-			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
-			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
+			expect(mockWriteJSON).toHaveBeenCalledWith(
+				TEST_TASKS_PATH,
+				expect.anything(),
+				'/test',
+				undefined
+			);
+			expect(mockWriteJSON).not.toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
+				expect.anything()
+			);
 			// Get the specific write call for TEST_TASKS_PATH
-			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			const writeCall = mockWriteJSON.mock.calls.find(
+				([p]) => p === TEST_TASKS_PATH
+			);
 			expect(writeCall).toBeDefined();
 			const savedData = writeCall[1];
 			const parent2 = savedData.tasks.find((t) => t.id === 2);
 			const subtask22 = parent2.subtasks.find((st) => st.id === 2);
-			
+
 			// Verify the dependency was actually added to subtask 2.2
 			expect(subtask22.dependencies).toContain(11);
+			// Also verify a success log was emitted
+			expect(mockLog).toHaveBeenCalled();
 		});
 
 		test('should allow top-level task to depend on subtask', async () => {
-			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const { addDependency } = await import(
+				'../../scripts/modules/dependency-manager.js'
+			);
 
 			// Test reverse scenario: task 11 depending on subtask 2.1
 			await addDependency(TEST_TASKS_PATH, 11, '2.1', { projectRoot: '/test' });
 
 			// Stronger assertions for writeJSON call and locating the correct task
-			expect(mockWriteJSON).toHaveBeenCalledWith(TEST_TASKS_PATH, expect.anything());
-			expect(mockWriteJSON).not.toHaveBeenCalledWith('tasks/tasks.json', expect.anything());
-			const writeCall = mockWriteJSON.mock.calls.find(([p]) => p === TEST_TASKS_PATH);
+			expect(mockWriteJSON).toHaveBeenCalledWith(
+				TEST_TASKS_PATH,
+				expect.anything(),
+				'/test',
+				undefined
+			);
+			expect(mockWriteJSON).not.toHaveBeenCalledWith(
+				'tasks/tasks.json',
+				expect.anything(),
+				expect.anything(),
+				expect.anything()
+			);
+			const writeCall = mockWriteJSON.mock.calls.find(
+				([p]) => p === TEST_TASKS_PATH
+			);
 			expect(writeCall).toBeDefined();
 			const savedData = writeCall[1];
 			const task11 = savedData.tasks.find((t) => t.id === 11);
-			
+
 			// Verify the dependency was actually added to task 11
 			expect(task11.dependencies).toContain('2.1');
+			expect(mockLog).toHaveBeenCalled();
 		});
 
 		test('should properly validate cross-level dependencies exist', async () => {
@@ -1031,7 +1101,7 @@ describe('Dependency Manager Module', () => {
 				if (taskId === '99' || taskId === 99) {
 					return false;
 				}
-				
+
 				if (typeof taskId === 'string' && taskId.includes('.')) {
 					const [parentId, subtaskId] = taskId.split('.').map(Number);
 					const task = tasks.find((t) => t.id === parentId);
@@ -1042,18 +1112,28 @@ describe('Dependency Manager Module', () => {
 					);
 				}
 
-				const numericId = typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+				const numericId =
+					typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
 				return tasks.some((task) => task.id === numericId);
 			});
 
-			const { addDependency } = await import('../../scripts/modules/dependency-manager.js');
+			const { addDependency } = await import(
+				'../../scripts/modules/dependency-manager.js'
+			);
 
-			await addDependency(TEST_TASKS_PATH, '2.2', 99, { projectRoot: '/test' });
-			
-			// Verify that process.exit was called due to non-existent dependency target
+			const exitError = new Error('process.exit invoked');
+			process.exit.mockImplementation(() => {
+				throw exitError;
+			});
+
+			await expect(
+				addDependency(TEST_TASKS_PATH, '2.2', 99, { projectRoot: '/test' })
+			).rejects.toBe(exitError);
+
 			expect(process.exit).toHaveBeenCalledWith(1);
-			// And that no writes were attempted
 			expect(mockWriteJSON).not.toHaveBeenCalled();
+			// Verify that an error was reported to the user
+			expect(mockLog).toHaveBeenCalled();
 		});
 	});
 });
