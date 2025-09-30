@@ -12,7 +12,7 @@ import { AuthCommand } from './commands/auth.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { StartCommand } from './commands/start.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
-import { ExtractCommand } from './commands/extract.command.js';
+import { ExportCommand } from './commands/export.command.js';
 
 /**
  * Command metadata for registration
@@ -58,9 +58,9 @@ export class CommandRegistry {
 			category: 'task'
 		},
 		{
-			name: 'extract',
-			description: 'Extract tasks to external systems',
-			commandClass: ExtractCommand as any,
+			name: 'export',
+			description: 'Export tasks to external systems',
+			commandClass: ExportCommand as any,
 			category: 'task'
 		},
 

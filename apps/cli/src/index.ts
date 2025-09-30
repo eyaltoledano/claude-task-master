@@ -10,7 +10,7 @@ export { AuthCommand } from './commands/auth.command.js';
 export { ContextCommand } from './commands/context.command.js';
 export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
-export { ExtractCommand } from './commands/extract.command.js';
+export { ExportCommand } from './commands/export.command.js';
 
 // Command Registry
 export {

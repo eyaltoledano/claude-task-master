@@ -14,6 +14,7 @@ import { ConfigManager } from '../config/config-manager.js';
 import { StorageFactory } from '../storage/storage-factory.js';
 import { TaskEntity } from '../entities/task.entity.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
+import { getLogger } from '../logger/factory.js';
 
 /**
  * Result returned by getTaskList
@@ -51,6 +52,7 @@ export class TaskService {
 	private configManager: ConfigManager;
 	private storage: IStorage;
 	private initialized = false;
+	private logger = getLogger('TaskService');
 
 	constructor(configManager: ConfigManager) {
 		this.configManager = configManager;
@@ -121,6 +123,7 @@ export class TaskService {
 				storageType: this.getStorageType()
 			};
 		} catch (error) {
+			this.logger.error('Failed to get task list', error);
 			throw new TaskMasterError(
 				'Failed to get task list',
 				ERROR_CODES.INTERNAL_ERROR,

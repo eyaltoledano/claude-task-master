@@ -15,10 +15,10 @@ import {
 	type ConflictCheckResult
 } from './services/task-execution-service.js';
 import {
-	ExtractService,
-	type ExtractTasksOptions,
-	type ExtractResult
-} from './services/extract.service.js';
+	ExportService,
+	type ExportTasksOptions,
+	type ExportResult
+} from './services/export.service.js';
 import { AuthManager } from './auth/auth-manager.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
@@ -54,9 +54,9 @@ export type {
 	ConflictCheckResult
 } from './services/task-execution-service.js';
 export type {
-	ExtractTasksOptions,
-	ExtractResult
-} from './services/extract.service.js';
+	ExportTasksOptions,
+	ExportResult
+} from './services/export.service.js';
 
 /**
  * TaskMasterCore facade class
@@ -66,7 +66,7 @@ export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
 	private taskExecutionService: TaskExecutionService;
-	private extractService: ExtractService;
+	private exportService: ExportService;
 	private executorService: ExecutorService | null = null;
 
 	/**
@@ -91,7 +91,7 @@ export class TaskMasterCore {
 		this.configManager = null as any;
 		this.taskService = null as any;
 		this.taskExecutionService = null as any;
-		this.extractService = null as any;
+		this.exportService = null as any;
 	}
 
 	/**
@@ -122,9 +122,9 @@ export class TaskMasterCore {
 			// Create task execution service
 			this.taskExecutionService = new TaskExecutionService(this.taskService);
 
-			// Create extract service
+			// Create export service
 			const authManager = AuthManager.getInstance();
-			this.extractService = new ExtractService(
+			this.exportService = new ExportService(
 				this.configManager,
 				this.taskService,
 				authManager
@@ -262,31 +262,31 @@ export class TaskMasterCore {
 		return this.taskExecutionService.getNextAvailableTask();
 	}
 
-	// ==================== Extract Service Methods ====================
+	// ==================== Export Service Methods ====================
 
 	/**
-	 * Extract tasks to an external system (e.g., Hamster brief)
+	 * Export tasks to an external system (e.g., Hamster brief)
 	 */
-	async extractTasks(options: ExtractTasksOptions): Promise<ExtractResult> {
-		return this.extractService.extractTasks(options);
+	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
+		return this.exportService.exportTasks(options);
 	}
 
 	/**
-	 * Extract tasks from a brief ID or URL
+	 * Export tasks from a brief ID or URL
 	 */
-	async extractFromBriefInput(briefInput: string): Promise<ExtractResult> {
-		return this.extractService.extractFromBriefInput(briefInput);
+	async exportFromBriefInput(briefInput: string): Promise<ExportResult> {
+		return this.exportService.exportFromBriefInput(briefInput);
 	}
 
 	/**
-	 * Validate extraction context before prompting
+	 * Validate export context before prompting
 	 */
-	async validateExtractionContext(): Promise<{
+	async validateExportContext(): Promise<{
 		hasOrg: boolean;
 		hasBrief: boolean;
 		context: any;
 	}> {
-		return this.extractService.validateContext();
+		return this.exportService.validateContext();
 	}
 
 	// ==================== Executor Service Methods ====================

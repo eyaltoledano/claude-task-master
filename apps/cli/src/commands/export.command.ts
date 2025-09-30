@@ -1,6 +1,6 @@
 /**
- * @fileoverview Extract command for exporting tasks to external systems
- * Provides functionality to extract tasks to Hamster briefs
+ * @fileoverview Export command for exporting tasks to external systems
+ * Provides functionality to export tasks to Hamster briefs
  */
 
 import { Command } from 'commander';
@@ -12,48 +12,48 @@ import {
 	AuthenticationError,
 	type UserContext
 } from '@tm/core/auth';
-import { TaskMasterCore, type ExtractResult } from '@tm/core';
+import { TaskMasterCore, type ExportResult } from '@tm/core';
 import * as ui from '../utils/ui.js';
 
 /**
- * Result type from extract command
+ * Result type from export command
  */
-export interface ExtractCommandResult {
+export interface ExportCommandResult {
 	success: boolean;
-	action: 'extract' | 'validate' | 'cancelled';
-	result?: ExtractResult;
+	action: 'export' | 'validate' | 'cancelled';
+	result?: ExportResult;
 	message?: string;
 }
 
 /**
- * ExtractCommand extending Commander's Command class
- * Handles task extraction to external systems
+ * ExportCommand extending Commander's Command class
+ * Handles task export to external systems
  */
-export class ExtractCommand extends Command {
+export class ExportCommand extends Command {
 	private authManager: AuthManager;
 	private taskMasterCore?: TaskMasterCore;
-	private lastResult?: ExtractCommandResult;
+	private lastResult?: ExportCommandResult;
 
 	constructor(name?: string) {
-		super(name || 'extract');
+		super(name || 'export');
 
 		// Initialize auth manager
 		this.authManager = AuthManager.getInstance();
 
 		// Configure the command
 		this.description(
-			'Extract tasks to external systems (e.g., Hamster briefs)'
+			'Export tasks to external systems (e.g., Hamster briefs)'
 		);
 
 		// Add options
-		this.option('--org <id>', 'Organization ID to extract to');
-		this.option('--brief <id>', 'Brief ID to extract tasks to');
-		this.option('--tag <tag>', 'Extract tasks from a specific tag');
+		this.option('--org <id>', 'Organization ID to export to');
+		this.option('--brief <id>', 'Brief ID to export tasks to');
+		this.option('--tag <tag>', 'Export tasks from a specific tag');
 		this.option(
 			'--status <status>',
 			'Filter tasks by status (pending, in-progress, done, etc.)'
 		);
-		this.option('--with-subtasks', 'Include subtasks in extraction');
+		this.option('--with-subtasks', 'Include subtasks in export');
 		this.option('-y, --yes', 'Skip confirmation prompt');
 
 		// Accept optional positional argument for brief ID or Hamster URL
@@ -61,7 +61,7 @@ export class ExtractCommand extends Command {
 
 		// Default action
 		this.action(async (briefOrUrl?: string, options?: any) => {
-			await this.executeExtract(briefOrUrl, options);
+			await this.executeExport(briefOrUrl, options);
 		});
 	}
 
@@ -86,9 +86,9 @@ export class ExtractCommand extends Command {
 	}
 
 	/**
-	 * Execute the extract command
+	 * Execute the export command
 	 */
-	private async executeExtract(
+	private async executeExport(
 		briefOrUrl?: string,
 		options?: any
 	): Promise<void> {
@@ -140,24 +140,24 @@ export class ExtractCommand extends Command {
 				process.exit(1);
 			}
 
-			// Confirm extraction if not auto-confirmed
+			// Confirm export if not auto-confirmed
 			if (!options?.yes) {
-				const confirmed = await this.confirmExtraction(orgId, briefId, context);
+				const confirmed = await this.confirmExport(orgId, briefId, context);
 				if (!confirmed) {
-					ui.displayWarning('Extraction cancelled');
-					this.setLastResult({
+					ui.displayWarning('Export cancelled');
+					this.lastResult = {
 						success: false,
 						action: 'cancelled',
-						message: 'User cancelled extraction'
-					});
+						message: 'User cancelled export'
+					};
 					process.exit(0);
 				}
 			}
 
-			// Perform extraction
-			spinner = ora('Extracting tasks...').start();
+			// Perform export
+			spinner = ora('Exporting tasks...').start();
 
-			const extractResult = await this.taskMasterCore!.extractTasks({
+			const exportResult = await this.taskMasterCore!.exportTasks({
 				orgId,
 				briefId,
 				tag: options?.tag,
@@ -165,17 +165,17 @@ export class ExtractCommand extends Command {
 				includeSubtasks: options?.withSubtasks
 			});
 
-			if (extractResult.success) {
+			if (exportResult.success) {
 				spinner.succeed(
-					`Successfully extracted ${extractResult.taskCount} task(s) to brief`
+					`Successfully exported ${exportResult.taskCount} task(s) to brief`
 				);
 
 				// Display summary
-				console.log(chalk.cyan('\n📤 Extraction Summary\n'));
+				console.log(chalk.cyan('\n📤 Export Summary\n'));
 				console.log(chalk.white(`  Organization: ${orgId}`));
 				console.log(chalk.white(`  Brief: ${briefId}`));
 				console.log(
-					chalk.white(`  Tasks extracted: ${extractResult.taskCount}`)
+					chalk.white(`  Tasks exported: ${exportResult.taskCount}`)
 				);
 				if (options?.tag) {
 					console.log(chalk.gray(`  Tag: ${options.tag}`));
@@ -184,23 +184,23 @@ export class ExtractCommand extends Command {
 					console.log(chalk.gray(`  Status filter: ${options.status}`));
 				}
 
-				if (extractResult.message) {
-					console.log(chalk.gray(`\n  ${extractResult.message}`));
+				if (exportResult.message) {
+					console.log(chalk.gray(`\n  ${exportResult.message}`));
 				}
 			} else {
-				spinner.fail('Extraction failed');
-				if (extractResult.error) {
-					console.error(chalk.red(`\n✗ ${extractResult.error.message}`));
+				spinner.fail('Export failed');
+				if (exportResult.error) {
+					console.error(chalk.red(`\n✗ ${exportResult.error.message}`));
 				}
 			}
 
-			this.setLastResult({
-				success: extractResult.success,
-				action: 'extract',
-				result: extractResult
-			});
+			this.lastResult = {
+				success: exportResult.success,
+				action: 'export',
+				result: exportResult
+			};
 		} catch (error: any) {
-			if (spinner?.isSpinning) spinner.fail('Extraction failed');
+			if (spinner?.isSpinning) spinner.fail('Export failed');
 			this.handleError(error);
 			process.exit(1);
 		}
@@ -301,14 +301,14 @@ export class ExtractCommand extends Command {
 	}
 
 	/**
-	 * Confirm extraction with the user
+	 * Confirm export with the user
 	 */
-	private async confirmExtraction(
+	private async confirmExport(
 		orgId: string,
 		briefId: string,
 		context: UserContext | null
 	): Promise<boolean> {
-		console.log(chalk.cyan('\n📤 Extract Tasks\n'));
+		console.log(chalk.cyan('\n📤 Export Tasks\n'));
 
 		// Show org name if available
 		if (context?.orgName) {
@@ -330,7 +330,7 @@ export class ExtractCommand extends Command {
 			{
 				type: 'confirm',
 				name: 'confirmed',
-				message: 'Do you want to proceed with extraction?',
+				message: 'Do you want to proceed with export?',
 				default: true
 			}
 		]);
@@ -369,17 +369,17 @@ export class ExtractCommand extends Command {
 	 * Static method to register this command on an existing program
 	 */
 	static registerOn(program: Command): Command {
-		const extractCommand = new ExtractCommand();
-		program.addCommand(extractCommand);
-		return extractCommand;
+		const exportCommand = new ExportCommand();
+		program.addCommand(exportCommand);
+		return exportCommand;
 	}
 
 	/**
 	 * Alternative registration that returns the command for chaining
 	 */
-	static register(program: Command, name?: string): ExtractCommand {
-		const extractCommand = new ExtractCommand(name);
-		program.addCommand(extractCommand);
-		return extractCommand;
+	static register(program: Command, name?: string): ExportCommand {
+		const exportCommand = new ExportCommand(name);
+		program.addCommand(exportCommand);
+		return exportCommand;
 	}
 }
