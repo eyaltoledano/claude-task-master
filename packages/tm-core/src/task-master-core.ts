@@ -14,6 +14,12 @@ import {
 	type StartTaskResult,
 	type ConflictCheckResult
 } from './services/task-execution-service.js';
+import {
+	ExtractService,
+	type ExtractTasksOptions,
+	type ExtractResult
+} from './services/extract.service.js';
+import { AuthManager } from './auth/auth-manager.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
 import type {
@@ -47,6 +53,10 @@ export type {
 	StartTaskResult,
 	ConflictCheckResult
 } from './services/task-execution-service.js';
+export type {
+	ExtractTasksOptions,
+	ExtractResult
+} from './services/extract.service.js';
 
 /**
  * TaskMasterCore facade class
@@ -56,6 +66,7 @@ export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
 	private taskExecutionService: TaskExecutionService;
+	private extractService: ExtractService;
 	private executorService: ExecutorService | null = null;
 
 	/**
@@ -80,6 +91,7 @@ export class TaskMasterCore {
 		this.configManager = null as any;
 		this.taskService = null as any;
 		this.taskExecutionService = null as any;
+		this.extractService = null as any;
 	}
 
 	/**
@@ -109,6 +121,14 @@ export class TaskMasterCore {
 
 			// Create task execution service
 			this.taskExecutionService = new TaskExecutionService(this.taskService);
+
+			// Create extract service
+			const authManager = AuthManager.getInstance();
+			this.extractService = new ExtractService(
+				this.configManager,
+				this.taskService,
+				authManager
+			);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TaskMasterCore',
@@ -240,6 +260,33 @@ export class TaskMasterCore {
 	 */
 	async getNextAvailableTask(): Promise<string | null> {
 		return this.taskExecutionService.getNextAvailableTask();
+	}
+
+	// ==================== Extract Service Methods ====================
+
+	/**
+	 * Extract tasks to an external system (e.g., Hamster brief)
+	 */
+	async extractTasks(options: ExtractTasksOptions): Promise<ExtractResult> {
+		return this.extractService.extractTasks(options);
+	}
+
+	/**
+	 * Extract tasks from a brief ID or URL
+	 */
+	async extractFromBriefInput(briefInput: string): Promise<ExtractResult> {
+		return this.extractService.extractFromBriefInput(briefInput);
+	}
+
+	/**
+	 * Validate extraction context before prompting
+	 */
+	async validateExtractionContext(): Promise<{
+		hasOrg: boolean;
+		hasBrief: boolean;
+		context: any;
+	}> {
+		return this.extractService.validateContext();
 	}
 
 	// ==================== Executor Service Methods ====================

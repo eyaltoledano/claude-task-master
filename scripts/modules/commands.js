@@ -12,17 +12,11 @@ import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
-import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
-// Import new commands from @tm/cli
+// Import command registry and utilities from @tm/cli
 import {
-	ListTasksCommand,
-	ShowCommand,
-	AuthCommand,
-	ContextCommand,
-	StartCommand,
-	SetStatusCommand,
+	registerAllCommands,
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification
@@ -32,7 +26,6 @@ import {
 	parsePRD,
 	updateTasks,
 	generateTaskFiles,
-	listTasks,
 	expandTask,
 	expandAllTasks,
 	clearSubtasks,
@@ -53,11 +46,7 @@ import {
 	validateStrength
 } from './task-manager.js';
 
-import {
-	moveTasksBetweenTags,
-	MoveTaskError,
-	MOVE_ERROR_CODES
-} from './task-manager/move-task.js';
+import { moveTasksBetweenTags } from './task-manager/move-task.js';
 
 import {
 	createTag,
@@ -72,9 +61,7 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand,
-	DependencyError,
-	DEPENDENCY_ERROR_CODES
+	fixDependenciesCommand
 } from './dependency-manager.js';
 
 import {
@@ -103,7 +90,6 @@ import {
 	displayBanner,
 	displayHelp,
 	displayNextTask,
-	displayTaskById,
 	displayComplexityReport,
 	getStatusWithColor,
 	confirmTaskOverwrite,
@@ -112,8 +98,6 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary,
-	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator,
 	displayCrossTagDependencyError,
@@ -142,7 +126,6 @@ import {
 	TASK_STATUS_OPTIONS
 } from '../../src/constants/task-status.js';
 import {
-	isValidRulesAction,
 	RULES_ACTIONS,
 	RULES_SETUP_ACTION
 } from '../../src/constants/rules-actions.js';
@@ -1687,29 +1670,12 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// Register the set-status command from @tm/cli
-	// Handles task status updates with proper error handling and validation
-	SetStatusCommand.registerOn(programInstance);
-
-	// NEW: Register the new list command from @tm/cli
-	// This command handles all its own configuration and logic
-	ListTasksCommand.registerOn(programInstance);
-
-	// Register the auth command from @tm/cli
-	// Handles authentication with tryhamster.com
-	AuthCommand.registerOn(programInstance);
-
-	// Register the context command from @tm/cli
-	// Manages workspace context (org/brief selection)
-	ContextCommand.registerOn(programInstance);
-
-	// Register the show command from @tm/cli
-	// Displays detailed information about tasks
-	ShowCommand.registerOn(programInstance);
-
-	// Register the start command from @tm/cli
-	// Starts working on a task by launching claude-code with a standardized prompt
-	StartCommand.registerOn(programInstance);
+	// ========================================
+	// Register All Commands from @tm/cli
+	// ========================================
+	// Use the centralized command registry to register all CLI commands
+	// This replaces individual command registrations and reduces duplication
+	registerAllCommands(programInstance);
 
 	// expand command
 	programInstance
