@@ -41,9 +41,7 @@ export class ExportCommand extends Command {
 		this.authManager = AuthManager.getInstance();
 
 		// Configure the command
-		this.description(
-			'Export tasks to external systems (e.g., Hamster briefs)'
-		);
+		this.description('Export tasks to external systems (e.g., Hamster briefs)');
 
 		// Add options
 		this.option('--org <id>', 'Organization ID to export to');
@@ -174,9 +172,7 @@ export class ExportCommand extends Command {
 				console.log(chalk.cyan('\n📤 Export Summary\n'));
 				console.log(chalk.white(`  Organization: ${orgId}`));
 				console.log(chalk.white(`  Brief: ${briefId}`));
-				console.log(
-					chalk.white(`  Tasks exported: ${exportResult.taskCount}`)
-				);
+				console.log(chalk.white(`  Tasks exported: ${exportResult.taskCount}`));
 				if (options?.tag) {
 					console.log(chalk.gray(`  Tag: ${options.tag}`));
 				}

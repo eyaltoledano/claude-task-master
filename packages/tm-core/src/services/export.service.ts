@@ -147,7 +147,7 @@ export class ExportService {
 		// Filter tasks if status is specified
 		let filteredTasks = rawTasks;
 		if (options.status) {
-			filteredTasks = rawTasks.filter(task => task.status === options.status);
+			filteredTasks = rawTasks.filter((task) => task.status === options.status);
 		}
 
 		const taskListResult = {
@@ -259,15 +259,19 @@ export class ExportService {
 			flatTasks.push({
 				externalId: String(task.id),
 				title: task.title,
-				description: task.description || '',
+				description: this.enrichDescription(task),
 				status: this.mapStatusForAPI(task.status),
 				priority: task.priority || 'medium',
 				dependencies: task.dependencies?.map(String) || [],
 				details: task.details,
 				testStrategy: task.testStrategy,
+				complexity: task.complexity,
 				metadata: {
 					complexity: task.complexity,
-					originalId: task.id
+					originalId: task.id,
+					originalDescription: task.description,
+					originalDetails: task.details,
+					originalTestStrategy: task.testStrategy
 				}
 			});
 
@@ -278,21 +282,26 @@ export class ExportService {
 						externalId: `${task.id}.${subtask.id}`,
 						parentExternalId: String(task.id),
 						title: subtask.title,
-						description: subtask.description || '',
+						description: this.enrichDescription(subtask),
 						status: this.mapStatusForAPI(subtask.status),
 						priority: subtask.priority || 'medium',
-						dependencies: subtask.dependencies?.map(dep => {
-							// Convert subtask dependencies to full ID format
-							if (String(dep).includes('.')) {
-								return String(dep);
-							}
-							return `${task.id}.${dep}`;
-						}) || [],
+						dependencies:
+							subtask.dependencies?.map((dep) => {
+								// Convert subtask dependencies to full ID format
+								if (String(dep).includes('.')) {
+									return String(dep);
+								}
+								return `${task.id}.${dep}`;
+							}) || [],
 						details: subtask.details,
 						testStrategy: subtask.testStrategy,
+						complexity: subtask.complexity,
 						metadata: {
 							complexity: subtask.complexity,
-							originalId: subtask.id
+							originalId: subtask.id,
+							originalDescription: subtask.description,
+							originalDetails: subtask.details,
+							originalTestStrategy: subtask.testStrategy
 						}
 					});
 				});
@@ -300,6 +309,34 @@ export class ExportService {
 		});
 
 		return flatTasks;
+	}
+
+	/**
+	 * Enrich task/subtask description with implementation details and test strategy
+	 * Creates a comprehensive markdown-formatted description
+	 */
+	private enrichDescription(taskOrSubtask: Task | any): string {
+		const sections: string[] = [];
+
+		// Start with original description if it exists
+		if (taskOrSubtask.description) {
+			sections.push(taskOrSubtask.description);
+		}
+
+		// Add implementation details section
+		if (taskOrSubtask.details) {
+			sections.push('## Implementation Details\n');
+			sections.push(taskOrSubtask.details);
+		}
+
+		// Add test strategy section
+		if (taskOrSubtask.testStrategy) {
+			sections.push('## Test Strategy\n');
+			sections.push(taskOrSubtask.testStrategy);
+		}
+
+		// Join sections with double newlines for better markdown formatting
+		return sections.join('\n\n').trim() || 'No description provided';
 	}
 
 	/**
@@ -331,7 +368,7 @@ export class ExportService {
 
 		if (useAPIEndpoint) {
 			// Use the new bulk import API endpoint
-			const apiUrl = `${process.env.TM_PUBLIC_BASE_DOMAIN}/ai/api/v1/${briefId}/tasks/bulk`;
+			const apiUrl = `${process.env.TM_PUBLIC_BASE_DOMAIN}/ai/api/v1/briefs/${briefId}/tasks/bulk`;
 
 			// Transform tasks to flat structure for API
 			const flatTasks = this.transformTasksForBulkImport(tasks);
@@ -339,6 +376,7 @@ export class ExportService {
 			// Prepare request body
 			const requestBody = {
 				source: 'task-master-cli',
+				accountId: orgId,
 				options: {
 					dryRun: false,
 					stopOnError: false
@@ -357,24 +395,28 @@ export class ExportService {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${credentials.token}`
+					Authorization: `Bearer ${credentials.token}`
 				},
 				body: JSON.stringify(requestBody)
 			});
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				throw new Error(`API request failed: ${response.status} - ${errorText}`);
+				throw new Error(
+					`API request failed: ${response.status} - ${errorText}`
+				);
 			}
 
-			const result: BulkTasksResponse = await response.json();
+			const result = (await response.json()) as BulkTasksResponse;
 
 			if (result.failedCount > 0) {
 				const failedTasks = result.results
 					.filter((r) => !r.success)
 					.map((r) => `${r.externalId}: ${r.error}`)
 					.join(', ');
-				console.warn(`Warning: ${result.failedCount} tasks failed to import: ${failedTasks}`);
+				console.warn(
+					`Warning: ${result.failedCount} tasks failed to import: ${failedTasks}`
+				);
 			}
 
 			console.log(
