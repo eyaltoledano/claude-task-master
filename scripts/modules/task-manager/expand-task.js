@@ -299,7 +299,7 @@ async function expandTask(
 			);
 		}
 
-		const responseText = '';
+		let aiServiceResponse = null;
 		let aiServiceResponse = null;
 
 		try {
