@@ -620,25 +620,22 @@ async function tags(
 			}
 
 			// Calculate dynamic column widths based on terminal width
-			const terminalWidth = process.stdout.columns * 0.95 || 100;
-			
+			const terminalWidth = Math.max(process.stdout.columns || 120, 80);
+			const usableWidth = Math.floor(terminalWidth * 0.95);
+
 			let colWidths;
 			if (showMetadata) {
 				// With metadata: Tag Name, Tasks, Completed, Created, Description
-				colWidths = [
-					Math.floor(terminalWidth * 0.25), // Tag Name (25%)
-					Math.floor(terminalWidth * 0.1),  // Tasks (10%)
-					Math.floor(terminalWidth * 0.12), // Completed (12%)
-					Math.floor(terminalWidth * 0.15), // Created (15%)
-					Math.floor(terminalWidth * 0.38)  // Description (38%)
-				];
+				const widths = [0.25, 0.1, 0.12, 0.15, 0.38];
+				colWidths = widths.map((w, i) =>
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 15 : 8)
+				);
 			} else {
 				// Without metadata: Tag Name, Tasks, Completed
-				colWidths = [
-					Math.floor(terminalWidth * 0.7),  // Tag Name (70%)
-					Math.floor(terminalWidth * 0.15), // Tasks (15%)
-					Math.floor(terminalWidth * 0.15)  // Completed (15%)
-				];
+				const widths = [0.7, 0.15, 0.15];
+				colWidths = widths.map((w, i) =>
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 10)
+				);
 			}
 
 			const table = new Table({
