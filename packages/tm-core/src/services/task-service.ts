@@ -92,32 +92,66 @@ export class TaskService {
 		const tag = options.tag || activeTag;
 
 		try {
-			// Load raw tasks from storage - storage only knows about tags
-			const rawTasks = await this.storage.loadTasks(tag);
+			// Determine if we can push filters to storage layer
+			const canPushStatusFilter =
+				options.filter?.status &&
+				!options.filter.priority &&
+				!options.filter.tags &&
+				!options.filter.assignee &&
+				!options.filter.complexity &&
+				!options.filter.search &&
+				options.filter.hasSubtasks === undefined;
+
+			// Build storage-level options
+			const storageOptions: any = {};
+
+			// Push status filter to storage if it's the only filter
+			if (canPushStatusFilter) {
+				const statuses = Array.isArray(options.filter!.status)
+					? options.filter!.status
+					: [options.filter!.status];
+				// Only push single status to storage (multiple statuses need in-memory filtering)
+				if (statuses.length === 1) {
+					storageOptions.status = statuses[0];
+				}
+			}
+
+			// Push subtask exclusion to storage
+			if (options.includeSubtasks === false) {
+				storageOptions.excludeSubtasks = true;
+			}
+
+			// Load tasks from storage with pushed-down filters
+			const rawTasks = await this.storage.loadTasks(tag, storageOptions);
+
+			// Get total count without filters for comparison
+			const allTasks =
+				Object.keys(storageOptions).length > 0
+					? await this.storage.loadTasks(tag)
+					: rawTasks;
 
 			// Convert to TaskEntity for business logic operations
 			const taskEntities = TaskEntity.fromArray(rawTasks);
 
-			// Apply filters if provided
+			// Apply remaining filters in-memory if needed
 			let filteredEntities = taskEntities;
-			if (options.filter) {
+			if (options.filter && !canPushStatusFilter) {
+				filteredEntities = this.applyFilters(taskEntities, options.filter);
+			} else if (
+				options.filter?.status &&
+				Array.isArray(options.filter.status) &&
+				options.filter.status.length > 1
+			) {
+				// Multiple statuses - filter in-memory
 				filteredEntities = this.applyFilters(taskEntities, options.filter);
 			}
 
 			// Convert back to plain objects
-			let tasks = filteredEntities.map((entity) => entity.toJSON());
-
-			// Handle subtasks option
-			if (options.includeSubtasks === false) {
-				tasks = tasks.map((task) => ({
-					...task,
-					subtasks: []
-				}));
-			}
+			const tasks = filteredEntities.map((entity) => entity.toJSON());
 
 			return {
 				tasks,
-				total: rawTasks.length,
+				total: allTasks.length,
 				filtered: filteredEntities.length,
 				tag: tag, // Return the actual tag being used (either explicitly provided or active tag)
 				storageType: this.getStorageType()

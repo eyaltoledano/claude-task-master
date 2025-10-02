@@ -122,10 +122,7 @@ import {
 	getApiKeyStatusReport
 } from './task-manager/models.js';
 import {
-	isValidTaskStatus,
-	TASK_STATUS_OPTIONS
-} from '../../src/constants/task-status.js';
-import {
+	isValidRulesAction,
 	RULES_ACTIONS,
 	RULES_SETUP_ACTION
 } from '../../src/constants/rules-actions.js';

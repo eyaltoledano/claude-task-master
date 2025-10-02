@@ -51,7 +51,7 @@ export class ExportCommand extends Command {
 			'--status <status>',
 			'Filter tasks by status (pending, in-progress, done, etc.)'
 		);
-		this.option('--with-subtasks', 'Include subtasks in export');
+		this.option('--exclude-subtasks', 'Exclude subtasks from export');
 		this.option('-y, --yes', 'Skip confirmation prompt');
 
 		// Accept optional positional argument for brief ID or Hamster URL
@@ -160,7 +160,7 @@ export class ExportCommand extends Command {
 				briefId,
 				tag: options?.tag,
 				status: options?.status,
-				includeSubtasks: options?.withSubtasks
+				excludeSubtasks: !options?.excludeSubtasks
 			});
 
 			if (exportResult.success) {

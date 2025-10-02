@@ -45,8 +45,8 @@ export interface ExportTasksOptions {
 	orgId?: string;
 	/** Filter by task status */
 	status?: TaskStatus;
-	/** Include subtasks in export */
-	includeSubtasks?: boolean;
+	/** Exclude subtasks from export (default: false, subtasks included by default) */
+	excludeSubtasks?: boolean;
 }
 
 /**
@@ -135,17 +135,18 @@ export class ExportService {
 		const fileStorage = new FileStorage(this.configManager.getProjectRoot());
 		await fileStorage.initialize();
 
-		const rawTasks = await fileStorage.loadTasks(tag);
+		// Load tasks with filters applied at storage layer
+		const filteredTasks = await fileStorage.loadTasks(tag, {
+			status: options.status,
+			excludeSubtasks: options.excludeSubtasks
+		});
 
-		// Filter tasks if status is specified
-		let filteredTasks = rawTasks;
-		if (options.status) {
-			filteredTasks = rawTasks.filter((task) => task.status === options.status);
-		}
+		// Get total count (without filters) for comparison
+		const allTasks = await fileStorage.loadTasks(tag);
 
 		const taskListResult = {
 			tasks: filteredTasks,
-			total: rawTasks.length,
+			total: allTasks.length,
 			filtered: filteredTasks.length,
 			tag,
 			storageType: 'file' as const
