@@ -179,9 +179,9 @@ export class BaseAIProvider {
 			return {
 				text: result.text,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens: result.usage?.inputTokens || 0,
+					outputTokens: result.usage?.outputTokens || 0,
+					totalTokens: result.usage?.totalTokens || 0
 				}
 			};
 		} catch (error) {
@@ -299,9 +299,9 @@ export class BaseAIProvider {
 			return {
 				object: result.object,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens: result.usage?.inputTokens || 0,
+					outputTokens: result.usage?.outputTokens || 0,
+					totalTokens: result.usage?.totalTokens || 0
 				}
 			};
 		} catch (error) {
