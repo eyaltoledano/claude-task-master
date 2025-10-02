@@ -38,17 +38,16 @@ describe('Prompt Migration Validation', () => {
 				if (lowerContent.includes(lowerPhrase)) {
 					// Check if this phrase is allowed in its context
 					const allowedInContext = allowedContexts[lowerPhrase];
-					if (allowedInContext) {
-						const isAllowed = allowedInContext.some((context) =>
+					const isAllowed =
+						allowedInContext &&
+						allowedInContext.some((context) =>
 							lowerContent.includes(context.toLowerCase())
 						);
-						if (isAllowed) {
-							return; // Skip this phrase - it's allowed in this context
-						}
-					}
 
-					// If we get here, the phrase is not allowed
-					expect(lowerContent).not.toContain(lowerPhrase);
+					expect(isAllowed).toBe(
+						true,
+						`File ${file} contains banned phrase "${phrase}" without allowed context`
+					);
 				}
 			});
 		});

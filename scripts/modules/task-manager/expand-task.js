@@ -24,8 +24,6 @@ import {
 	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import generateTaskFiles from './generate-task-files.js';
-import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';

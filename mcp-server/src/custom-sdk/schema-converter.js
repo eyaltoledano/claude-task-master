@@ -79,9 +79,7 @@ function generateExampleFromSchema(schema) {
 			if (def.checks) {
 				const minCheck = def.checks.find((c) => c.kind === 'min');
 				const maxCheck = def.checks.find((c) => c.kind === 'max');
-				if (minCheck && minCheck.value >= 20) {
-					return '<string with at least ' + minCheck.value + ' characters>';
-				} else if (minCheck && maxCheck) {
+				if (minCheck && maxCheck) {
 					return (
 						'<string between ' +
 						minCheck.value +
@@ -89,6 +87,8 @@ function generateExampleFromSchema(schema) {
 						maxCheck.value +
 						' characters>'
 					);
+				} else if (minCheck) {
+					return '<string with at least ' + minCheck.value + ' characters>';
 				} else if (maxCheck) {
 					return '<string up to ' + maxCheck.value + ' characters>';
 				}
