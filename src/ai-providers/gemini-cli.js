@@ -15,6 +15,8 @@ export class GeminiCliProvider extends BaseAIProvider {
 	constructor() {
 		super();
 		this.name = 'Gemini CLI';
+		// Gemini CLI requires explicit JSON schema mode
+		this.needsExplicitJsonSchema = true;
 	}
 
 	/**
@@ -587,7 +589,7 @@ Generate ${subtaskCount} subtasks based on the original task context. Return ONL
 						system: systemPrompt,
 						messages: messages,
 						schema: params.schema,
-						mode: 'json', // Use json mode instead of auto for Gemini
+						mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
 						maxOutputTokens: params.maxTokens,
 						temperature: params.temperature
 					});

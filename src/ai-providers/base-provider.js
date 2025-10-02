@@ -21,6 +21,13 @@ export class BaseAIProvider {
 
 		// Each provider must set their name
 		this.name = this.constructor.name;
+
+		/**
+		 * Whether this provider needs explicit schema in JSON mode
+		 * Can be overridden by subclasses
+		 * @type {boolean}
+		 */
+		this.needsExplicitJsonSchema = false;
 	}
 
 	/**
@@ -272,12 +279,15 @@ export class BaseAIProvider {
 			);
 
 			const client = await this.getClient(params);
+
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: zodSchema(params.schema),
-				mode: params.mode || 'auto',
-				...this.prepareTokenParam(params.modelId, params.maxTokens),
+				schema: params.schema,
+				mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
+				schemaName: params.objectName,
+				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
+				maxTokens: params.maxTokens,
 				temperature: params.temperature
 			});
 
@@ -298,7 +308,7 @@ export class BaseAIProvider {
 			// Check if this is a JSON parsing error that we can potentially fix
 			if (
 				NoObjectGeneratedError.isInstance(error) &&
-				JSONParseError.isInstance(error.cause) &&
+				error.cause instanceof JSONParseError &&
 				error.cause.text
 			) {
 				log(

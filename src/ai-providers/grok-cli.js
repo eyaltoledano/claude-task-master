@@ -11,6 +11,8 @@ export class GrokCliProvider extends BaseAIProvider {
 	constructor() {
 		super();
 		this.name = 'Grok CLI';
+		// Grok CLI requires explicit JSON schema mode
+		this.needsExplicitJsonSchema = true;
 	}
 
 	/**

@@ -158,10 +158,18 @@ export function displayUpgradeNotification(
 export async function performAutoUpdate(
 	latestVersion: string
 ): Promise<boolean> {
-	if (process.env.TASKMASTER_SKIP_AUTO_UPDATE === '1' || process.env.CI) {
-		console.log(
-			chalk.dim('Skipping auto-update (TASKMASTER_SKIP_AUTO_UPDATE/CI).')
-		);
+	if (
+		process.env.TASKMASTER_SKIP_AUTO_UPDATE === '1' ||
+		process.env.CI ||
+		process.env.NODE_ENV === 'test'
+	) {
+		const reason =
+			process.env.TASKMASTER_SKIP_AUTO_UPDATE === '1'
+				? 'TASKMASTER_SKIP_AUTO_UPDATE=1'
+				: process.env.CI
+					? 'CI environment'
+					: 'NODE_ENV=test';
+		console.log(chalk.dim(`Skipping auto-update (${reason})`));
 		return false;
 	}
 	const spinner = ora({
