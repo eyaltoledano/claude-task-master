@@ -1,5 +1,12 @@
 # task-master-ai
 
+## 0.27.3
+
+### Patch Changes
+
+- [#1254](https://github.com/eyaltoledano/claude-task-master/pull/1254) [`af53525`](https://github.com/eyaltoledano/claude-task-master/commit/af53525cbc660a595b67d4bb90d906911c71f45d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixed issue where `tm show` command could not find subtasks using dotted notation IDs (e.g., '8.1').
+  - The command now properly searches within parent task subtasks and returns the correct subtask information.
+
 ## 0.27.2
 
 ### Patch Changes
