@@ -1,8 +1,6 @@
 import { defineConfig } from 'tsdown';
 import { baseConfig, mergeConfig } from '@tm/build-config';
-import { load as dotenvLoad } from 'dotenv-mono';
-
-dotenvLoad();
+import 'dotenv/config';
 
 // Get all TM_PUBLIC_* env variables for build-time injection
 const getBuildTimeEnvs = () => {
