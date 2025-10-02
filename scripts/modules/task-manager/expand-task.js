@@ -300,8 +300,6 @@ async function expandTask(
 		}
 
 		let aiServiceResponse = null;
-		let aiServiceResponse = null;
-
 		try {
 			const role = useResearch ? 'research' : 'main';
 
