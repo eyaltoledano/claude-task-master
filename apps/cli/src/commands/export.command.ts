@@ -355,6 +355,13 @@ export class ExportCommand extends Command {
 	}
 
 	/**
+	 * Get the last export result (useful for testing)
+	 */
+	public getLastResult(): ExportCommandResult | undefined {
+		return this.lastResult;
+	}
+
+	/**
 	 * Clean up resources
 	 */
 	async cleanup(): Promise<void> {

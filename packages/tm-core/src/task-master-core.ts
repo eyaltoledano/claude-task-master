@@ -21,6 +21,7 @@ import {
 } from './services/export.service.js';
 import { AuthManager } from './auth/auth-manager.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
+import type { UserContext } from './auth/types.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
 import type {
 	Task,
@@ -124,11 +125,7 @@ export class TaskMasterCore {
 
 			// Create export service
 			const authManager = AuthManager.getInstance();
-			this.exportService = new ExportService(
-				this.configManager,
-				this.taskService,
-				authManager
-			);
+			this.exportService = new ExportService(this.configManager, authManager);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TaskMasterCore',
@@ -284,7 +281,7 @@ export class TaskMasterCore {
 	async validateExportContext(): Promise<{
 		hasOrg: boolean;
 		hasBrief: boolean;
-		context: any;
+		context: UserContext | null;
 	}> {
 		return this.exportService.validateContext();
 	}

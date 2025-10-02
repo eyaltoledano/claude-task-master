@@ -3,10 +3,9 @@
  * Core service for exporting tasks to external systems (e.g., Hamster briefs)
  */
 
-import type { Task, TaskStatus, Subtask } from '../types/index.js';
+import type { Task, TaskStatus } from '../types/index.js';
 import type { UserContext } from '../auth/types.js';
 import { ConfigManager } from '../config/config-manager.js';
-import { TaskService } from './task-service.js';
 import { AuthManager } from '../auth/auth-manager.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { FileStorage } from '../storage/file-storage/index.js';
@@ -86,16 +85,10 @@ export interface Brief {
  */
 export class ExportService {
 	private configManager: ConfigManager;
-	private taskService: TaskService;
 	private authManager: AuthManager;
 
-	constructor(
-		configManager: ConfigManager,
-		taskService: TaskService,
-		authManager: AuthManager
-	) {
+	constructor(configManager: ConfigManager, authManager: AuthManager) {
 		this.configManager = configManager;
-		this.taskService = taskService;
 		this.authManager = authManager;
 	}
 
