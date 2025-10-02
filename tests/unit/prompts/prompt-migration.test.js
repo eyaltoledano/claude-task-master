@@ -15,9 +15,10 @@ describe('Prompt Migration Validation', () => {
 		'code block markers'
 	];
 
-	// Special cases where phrases are okay in different contexts
+	// Map banned phrases to contexts where they're allowed
 	const allowedContexts = {
-		'markdown formatting': ['Use markdown formatting for better readability']
+		'respond only with': ['Use markdown formatting for better readability'],
+		'return only the': ['Use markdown formatting for better readability']
 	};
 
 	test('prompts should not contain JSON formatting instructions', () => {
@@ -29,7 +30,6 @@ describe('Prompt Migration Validation', () => {
 
 		promptFiles.forEach((file) => {
 			const content = fs.readFileSync(path.join(promptsDir, file), 'utf8');
-			const promptData = JSON.parse(content);
 
 			bannedPhrases.forEach((phrase) => {
 				const lowerContent = content.toLowerCase();

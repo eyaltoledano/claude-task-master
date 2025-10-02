@@ -379,9 +379,24 @@ describe('Complex Cross-Tag Scenarios', () => {
 
 			// Verify the move was successful
 			const tasksAfter = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
-			expect(
-				tasksAfter['in-progress'].tasks.find((t) => t.id === 25)
-			).toBeDefined();
+
+			// Verify all tasks in the dependency chain were moved
+			for (let i = 1; i <= 25; i++) {
+				expect(tasksAfter.master.tasks.find((t) => t.id === i)).toBeUndefined();
+				expect(
+					tasksAfter['in-progress'].tasks.find((t) => t.id === i)
+				).toBeDefined();
+			}
+
+			// Verify in-progress still has its original tasks (26-50)
+			for (let i = 26; i <= 50; i++) {
+				expect(
+					tasksAfter['in-progress'].tasks.find((t) => t.id === i)
+				).toBeDefined();
+			}
+
+			// Final count check
+			expect(tasksAfter['in-progress'].tasks).toHaveLength(50); // 25 moved + 25 original
 		});
 	});
 

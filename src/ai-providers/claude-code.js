@@ -32,6 +32,8 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 		super();
 		this.name = 'Claude Code';
 		this.supportedModels = ['sonnet', 'opus'];
+		// Claude Code requires explicit JSON schema mode
+		this.needsExplicitJsonSchema = true;
 	}
 
 	/**

@@ -1,4 +1,6 @@
 import { PromptManager } from '../../../scripts/modules/prompt-manager.js';
+import { ExpandTaskResponseSchema } from '../../../src/schemas/expand-task.js';
+import { SubtaskSchema } from '../../../src/schemas/base-schemas.js';
 
 describe('expand-task prompt template', () => {
 	let promptManager;
@@ -77,29 +79,21 @@ describe('expand-task prompt template', () => {
 		expect(userPrompt).toContain(params.complexityReasoningContext);
 	});
 
-	test('all variants request structured subtasks with required fields', () => {
-		const variants = ['default', 'research', 'complexity-report'];
+	test('ExpandTaskResponseSchema defines required subtask fields', () => {
+		// Test the schema definition directly instead of weak substring matching
+		const schema = ExpandTaskResponseSchema;
+		const subtasksSchema = schema.shape.subtasks;
+		const subtaskSchema = subtasksSchema.element;
 
-		variants.forEach((variant) => {
-			const params =
-				variant === 'complexity-report'
-					? { ...baseParams, expansionPrompt: 'test' }
-					: baseParams;
-
-			const { systemPrompt, userPrompt } = promptManager.loadPrompt(
-				'expand-task',
-				params,
-				variant
-			);
-			const combined = systemPrompt + userPrompt;
-
-			// Verify prompts describe the structured output format
-			expect(combined.toLowerCase()).toContain('subtasks');
-			expect(combined).toContain('id');
-			expect(combined).toContain('title');
-			expect(combined).toContain('description');
-			expect(combined).toContain('dependencies');
-		});
+		// Verify the schema has the required fields
+		expect(subtaskSchema).toBe(SubtaskSchema);
+		expect(SubtaskSchema.shape).toHaveProperty('id');
+		expect(SubtaskSchema.shape).toHaveProperty('title');
+		expect(SubtaskSchema.shape).toHaveProperty('description');
+		expect(SubtaskSchema.shape).toHaveProperty('dependencies');
+		expect(SubtaskSchema.shape).toHaveProperty('details');
+		expect(SubtaskSchema.shape).toHaveProperty('status');
+		expect(SubtaskSchema.shape).toHaveProperty('testStrategy');
 	});
 
 	test('complexity-report variant fails without task context regression test', () => {

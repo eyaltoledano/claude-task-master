@@ -660,25 +660,38 @@ describe('expandTask', () => {
 			// Act
 			await expandTask(tasksPath, taskId, 3, false, '', context, false);
 
-			// Assert - Should append to existing subtasks with proper ID increments
-			expect(writeJSON).toHaveBeenCalledWith(
-				tasksPath,
+			// Assert - Verify generateObjectService was called correctly
+			expect(generateObjectService).toHaveBeenCalledWith(
 				expect.objectContaining({
-					tasks: expect.arrayContaining([
-						expect.objectContaining({
-							id: 4,
-							subtasks: expect.arrayContaining([
-								// Should contain both existing and new subtasks
-								expect.any(Object),
-								expect.any(Object),
-								expect.any(Object),
-								expect.any(Object) // 1 existing + 3 new = 4 total
-							])
-						})
-					])
-				}),
-				'/mock/project/root',
-				undefined
+					role: 'main',
+					commandName: 'expand-task',
+					objectName: 'subtasks'
+				})
+			);
+
+			// Assert - Verify data was written with appended subtasks
+			expect(writeJSON).toHaveBeenCalled();
+			const writeCall = writeJSON.mock.calls[0];
+			const savedData = writeCall[1]; // Second argument is the data
+			const task4 = savedData.tasks.find((t) => t.id === 4);
+
+			// Should have 4 subtasks total (1 existing + 3 new)
+			expect(task4.subtasks).toHaveLength(4);
+
+			// Verify existing subtask is preserved at index 0
+			expect(task4.subtasks[0]).toEqual(
+				expect.objectContaining({
+					id: 1,
+					title: 'Existing subtask'
+				})
+			);
+
+			// Verify new subtasks were appended (they start with id=1 from AI)
+			expect(task4.subtasks[1]).toEqual(
+				expect.objectContaining({
+					id: 1,
+					title: 'Set up project structure'
+				})
 			);
 		});
 	});
@@ -839,6 +852,54 @@ describe('expandTask', () => {
 			await expect(
 				expandTask(tasksPath, taskId, 3, false, '', context, false)
 			).rejects.toThrow('AI service error');
+
+			expect(writeJSON).not.toHaveBeenCalled();
+		});
+
+		test('should handle missing mainResult from AI response', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				mcpLog: createMcpLogMock(),
+				projectRoot: '/mock/project/root'
+			};
+
+			// Mock AI service returning response without mainResult
+			generateObjectService.mockResolvedValueOnce({
+				telemetryData: { inputTokens: 100, outputTokens: 50 }
+				// Missing mainResult
+			});
+
+			// Act & Assert
+			await expect(
+				expandTask(tasksPath, taskId, 3, false, '', context, false)
+			).rejects.toThrow('AI response did not include a valid subtasks array.');
+
+			expect(writeJSON).not.toHaveBeenCalled();
+		});
+
+		test('should handle invalid subtasks array from AI response', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '2';
+			const context = {
+				mcpLog: createMcpLogMock(),
+				projectRoot: '/mock/project/root'
+			};
+
+			// Mock AI service returning response with invalid subtasks
+			generateObjectService.mockResolvedValueOnce({
+				mainResult: {
+					subtasks: 'not-an-array' // Invalid: should be an array
+				},
+				telemetryData: { inputTokens: 100, outputTokens: 50 }
+			});
+
+			// Act & Assert
+			await expect(
+				expandTask(tasksPath, taskId, 3, false, '', context, false)
+			).rejects.toThrow('AI response did not include a valid subtasks array.');
 
 			expect(writeJSON).not.toHaveBeenCalled();
 		});

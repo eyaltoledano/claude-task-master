@@ -290,7 +290,7 @@ async function expandTask(
 		);
 		// --- End Complexity Report / Prompt Logic ---
 
-		// --- AI Subtask Generation using generateTextService ---
+		// --- AI Subtask Generation using generateObjectService ---
 		let generatedSubtasks = [];
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {
@@ -318,8 +318,12 @@ async function expandTask(
 				outputType: outputFormat
 			});
 
-			// With generateObject, we get structured data directly
-			generatedSubtasks = aiServiceResponse.mainResult.subtasks;
+			// With generateObject, we expect structured data – verify it before use
+			const mainResult = aiServiceResponse?.mainResult;
+			if (!mainResult || !Array.isArray(mainResult.subtasks)) {
+				throw new Error('AI response did not include a valid subtasks array.');
+			}
+			generatedSubtasks = mainResult.subtasks;
 			logger.info(`Received ${generatedSubtasks.length} subtasks from AI.`);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
