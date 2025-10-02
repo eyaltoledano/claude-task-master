@@ -24,12 +24,9 @@ import {
 	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import { getDebugFlag, getDefaultSubtasks } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).

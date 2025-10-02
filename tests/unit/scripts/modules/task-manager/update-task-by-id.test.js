@@ -223,7 +223,9 @@ describe('updateTaskById success path with generateObjectService', () => {
 			objectName: 'task'
 		});
 		expect(callArgs.schema).toBeDefined();
-		expect(callArgs.systemPrompt).toContain('update a software development task');
+		expect(callArgs.systemPrompt).toContain(
+			'update a software development task'
+		);
 		expect(callArgs.prompt).toContain('Update task with new requirements');
 
 		// Verify the returned task contains all expected fields

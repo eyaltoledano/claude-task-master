@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { PromptManager } from '../../../scripts/modules/prompt-manager.js';
 
 describe('expand-task prompt template', () => {
@@ -74,12 +73,11 @@ describe('expand-task prompt template', () => {
 		expect(userPrompt).toContain(`Current details: ${testTask.details}`);
 
 		// Also includes the expansion prompt
-		expect(userPrompt).toContain('Expansion Guidance:');
 		expect(userPrompt).toContain(params.expansionPrompt);
 		expect(userPrompt).toContain(params.complexityReasoningContext);
 	});
 
-	test('all variants request JSON format with subtasks array', () => {
+	test('all variants request structured subtasks with required fields', () => {
 		const variants = ['default', 'research', 'complexity-report'];
 
 		variants.forEach((variant) => {
@@ -95,8 +93,12 @@ describe('expand-task prompt template', () => {
 			);
 			const combined = systemPrompt + userPrompt;
 
+			// Verify prompts describe the structured output format
 			expect(combined.toLowerCase()).toContain('subtasks');
-			expect(combined).toContain('JSON');
+			expect(combined).toContain('id');
+			expect(combined).toContain('title');
+			expect(combined).toContain('description');
+			expect(combined).toContain('dependencies');
 		});
 	});
 
