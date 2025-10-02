@@ -619,9 +619,32 @@ async function tags(
 				headers.push(chalk.cyan.bold('Description'));
 			}
 
+			// Calculate dynamic column widths based on terminal width
+			const terminalWidth = process.stdout.columns * 0.95 || 100;
+			
+			let colWidths;
+			if (showMetadata) {
+				// With metadata: Tag Name, Tasks, Completed, Created, Description
+				colWidths = [
+					Math.floor(terminalWidth * 0.25), // Tag Name (25%)
+					Math.floor(terminalWidth * 0.1),  // Tasks (10%)
+					Math.floor(terminalWidth * 0.12), // Completed (12%)
+					Math.floor(terminalWidth * 0.15), // Created (15%)
+					Math.floor(terminalWidth * 0.38)  // Description (38%)
+				];
+			} else {
+				// Without metadata: Tag Name, Tasks, Completed
+				colWidths = [
+					Math.floor(terminalWidth * 0.7),  // Tag Name (70%)
+					Math.floor(terminalWidth * 0.15), // Tasks (15%)
+					Math.floor(terminalWidth * 0.15)  // Completed (15%)
+				];
+			}
+
 			const table = new Table({
 				head: headers,
-				colWidths: showMetadata ? [20, 10, 12, 15, 50] : [25, 10, 12]
+				colWidths: colWidths,
+				wordWrap: true
 			});
 
 			// Add rows
