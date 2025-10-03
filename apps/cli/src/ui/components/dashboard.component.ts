@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import type { Task, TaskPriority } from '@tm/core/types';
-import { getComplexityWithScore } from '../../utils/ui.js';
+import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**
  * Statistics for task collection
@@ -480,7 +480,7 @@ export function displayDependencyDashboard(
 				? chalk.cyan(nextTask.dependencies.join(', '))
 				: chalk.gray('None')
 		}\n` +
-		`Complexity: ${getComplexityWithScore(nextTask?.complexity as number | undefined)}`;
+		`Complexity: ${nextTask?.complexity !== undefined ? getComplexityWithColor(nextTask.complexity) : chalk.gray('N/A')}`;
 
 	return content;
 }

@@ -90,17 +90,17 @@ function getComplexityLevel(score: number): {
 	color: (text: string) => string;
 	label: string;
 } {
-	if (score >= 8) {
-		return { color: chalk.red.bold, label: 'High' };
-	} else if (score >= 5) {
-		return { color: chalk.yellow, label: 'Medium' };
+	if (score >= 7) {
+		return { color: chalk.hex('#CC0000'), label: 'High' };
+	} else if (score >= 4) {
+		return { color: chalk.hex('#FF8800'), label: 'Medium' };
 	} else {
 		return { color: chalk.green, label: 'Low' };
 	}
 }
 
 /**
- * Get colored complexity display
+ * Get colored complexity display with dot indicator (simple format)
  */
 export function getComplexityWithColor(complexity: number | string): string {
 	const score =
@@ -110,8 +110,8 @@ export function getComplexityWithColor(complexity: number | string): string {
 		return chalk.gray('N/A');
 	}
 
-	const { color, label } = getComplexityLevel(score);
-	return color(`${score} (${label})`);
+	const { color } = getComplexityLevel(score);
+	return color(`● ${score}`);
 }
 
 /**

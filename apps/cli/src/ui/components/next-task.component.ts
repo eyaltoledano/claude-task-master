@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import type { Task } from '@tm/core/types';
-import { getComplexityWithScore } from '../../utils/ui.js';
+import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**
  * Next task display options
@@ -86,7 +86,7 @@ export function displayRecommendedNextTask(
 
 	// Complexity with color and label
 	if (typeof task.complexity === 'number') {
-		content.push(`Complexity: ${getComplexityWithScore(task.complexity)}`);
+		content.push(`Complexity: ${getComplexityWithColor(task.complexity)}`);
 	}
 
 	// Description if available
