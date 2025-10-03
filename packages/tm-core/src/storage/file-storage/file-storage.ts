@@ -11,6 +11,7 @@ import type {
 import { FormatHandler } from './format-handler.js';
 import { FileOperations } from './file-operations.js';
 import { PathResolver } from './path-resolver.js';
+import { ComplexityReportManager } from '../../reports/complexity-report-manager.js';
 
 /**
  * File-based storage implementation using a single tasks.json file with separated concerns
@@ -19,11 +20,13 @@ export class FileStorage implements IStorage {
 	private formatHandler: FormatHandler;
 	private fileOps: FileOperations;
 	private pathResolver: PathResolver;
+	private complexityManager: ComplexityReportManager;
 
 	constructor(projectPath: string) {
 		this.formatHandler = new FormatHandler();
 		this.fileOps = new FileOperations();
 		this.pathResolver = new PathResolver(projectPath);
+		this.complexityManager = new ComplexityReportManager(projectPath);
 	}
 
 	/**
@@ -87,6 +90,7 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Load tasks from the single tasks.json file for a specific tag
+	 * Enriches tasks with complexity data from the complexity report
 	 */
 	async loadTasks(tag?: string): Promise<Task[]> {
 		const filePath = this.pathResolver.getTasksPath();
@@ -94,7 +98,10 @@ export class FileStorage implements IStorage {
 
 		try {
 			const rawData = await this.fileOps.readJson(filePath);
-			return this.formatHandler.extractTasks(rawData, resolvedTag);
+			const tasks = this.formatHandler.extractTasks(rawData, resolvedTag);
+
+			// Enrich tasks with complexity data
+			return await this.enrichTasksWithComplexity(tasks, resolvedTag);
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				return []; // File doesn't exist, return empty array
@@ -595,6 +602,46 @@ export class FileStorage implements IStorage {
 		}
 
 		await this.saveTasks(tasks, targetTag);
+	}
+
+	/**
+	 * Enrich tasks with complexity data from the complexity report
+	 * Private helper method called by loadTasks()
+	 */
+	private async enrichTasksWithComplexity(
+		tasks: Task[],
+		tag: string
+	): Promise<Task[]> {
+		// Get all task IDs for bulk lookup
+		const taskIds = tasks.map((t) => t.id);
+
+		// Load complexity data for all tasks at once (more efficient)
+		const complexityMap = await this.complexityManager.getComplexityForTasks(
+			taskIds,
+			tag
+		);
+
+		// If no complexity data found, return tasks as-is
+		if (complexityMap.size === 0) {
+			return tasks;
+		}
+
+		// Enrich each task with its complexity data
+		return tasks.map((task) => {
+			const complexityData = complexityMap.get(String(task.id));
+			if (!complexityData) {
+				return task;
+			}
+
+			// Merge complexity data into the task
+			return {
+				...task,
+				complexity: complexityData.complexityScore,
+				recommendedSubtasks: complexityData.recommendedSubtasks,
+				expansionPrompt: complexityData.expansionPrompt,
+				complexityReasoning: complexityData.complexityReasoning
+			};
+		});
 	}
 }
 

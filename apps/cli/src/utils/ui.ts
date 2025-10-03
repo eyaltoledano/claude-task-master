@@ -104,6 +104,24 @@ export function getComplexityWithColor(complexity: number | string): string {
 }
 
 /**
+ * Get colored complexity display with /10 format (for dashboards)
+ */
+export function getComplexityWithScore(complexity: number | undefined): string {
+	if (typeof complexity !== 'number') {
+		return chalk.gray('N/A');
+	}
+
+	const score = complexity;
+	if (score >= 8) {
+		return chalk.red.bold(`${score}/10 (High)`);
+	} else if (score >= 5) {
+		return chalk.yellow(`${score}/10 (Medium)`);
+	} else {
+		return chalk.green(`${score}/10 (Low)`);
+	}
+}
+
+/**
  * Truncate text to specified length
  */
 export function truncate(text: string, maxLength: number): string {
@@ -323,8 +341,12 @@ export function createTaskTable(
 		}
 
 		if (showComplexity) {
-			// Show N/A if no complexity score
-			row.push(chalk.gray('N/A'));
+			// Show complexity score from report if available
+			if (typeof task.complexity === 'number') {
+				row.push(getComplexityWithColor(task.complexity));
+			} else {
+				row.push(chalk.gray('N/A'));
+			}
 		}
 
 		table.push(row);

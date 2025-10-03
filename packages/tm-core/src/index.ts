@@ -61,3 +61,12 @@ export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
 
 // Re-export executors
 export * from './executors/index.js';
+
+// Re-export reports
+export {
+	ComplexityReportManager,
+	type ComplexityReport,
+	type ComplexityReportMetadata,
+	type ComplexityAnalysis,
+	type TaskComplexityData
+} from './reports/index.js';
