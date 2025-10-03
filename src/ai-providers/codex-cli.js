@@ -34,6 +34,16 @@ export class CodexCliProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Returns the environment variable name used when an API key is provided.
+	 * Even though the API key is optional for Codex CLI (OAuth-first),
+	 * downstream resolution expects a non-throwing implementation.
+	 * @returns {string}
+	 */
+	getRequiredApiKeyName() {
+		return 'OPENAI_API_KEY';
+	}
+
+	/**
 	 * Optional CLI availability check; provide helpful guidance if missing.
 	 */
 	validateAuth() {
