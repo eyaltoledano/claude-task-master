@@ -158,6 +158,15 @@ const mockOllamaProvider = {
 	isRequiredApiKey: jest.fn(() => false)
 };
 
+// Codex CLI mock provider instance
+const mockCodexProvider = {
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
+	isRequiredApiKey: jest.fn(() => false)
+};
+
 // Mock the provider classes to return our mock instances
 jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	AnthropicAIProvider: jest.fn(() => mockAnthropicProvider),
@@ -227,13 +236,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
-	CodexCliProvider: jest.fn(() => ({
-		generateText: jest.fn(),
-		streamText: jest.fn(),
-		generateObject: jest.fn(),
-		getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
-		isRequiredApiKey: jest.fn(() => false)
-	})),
+	CodexCliProvider: jest.fn(() => mockCodexProvider),
 	GrokCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
