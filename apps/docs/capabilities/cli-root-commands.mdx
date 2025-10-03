@@ -29,6 +29,11 @@ sidebarTitle: "CLI Commands"
     # List tasks with a specific status and include subtasks
     task-master list --status=<status> --with-subtasks
     ```
+    
+    **Complexity Display**: If you've run `analyze-complexity`, task complexity scores will be displayed with color-coded indicators:
+    - 🟢 **Easy** (1-3): Green
+    - 🟡 **Medium** (4-6): Yellow  
+    - 🔴 **Hard** (7-10): Red
   </Accordion>
 
   <Accordion title="Show Next Task">
@@ -36,6 +41,8 @@ sidebarTitle: "CLI Commands"
     # Show the next task to work on based on dependencies and status
     task-master next
     ```
+    
+    **Complexity Display**: If complexity analysis has been performed, the next task will display its complexity score with a color-coded indicator.
   </Accordion>
 
   <Accordion title="Show Specific Task">
@@ -48,6 +55,8 @@ sidebarTitle: "CLI Commands"
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
     ```
+    
+    **Complexity Display**: If complexity analysis has been performed, the task details will include the complexity score with a color-coded indicator and the recommended number of subtasks.
   </Accordion>
 
   <Accordion title="Update Tasks">
