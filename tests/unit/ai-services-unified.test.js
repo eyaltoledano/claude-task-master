@@ -819,5 +819,79 @@ describe('Unified AI Services', () => {
 			// Should have gotten the anthropic response
 			expect(result.mainResult).toBe('Anthropic response with session key');
 		});
+
+		// --- Codex CLI specific tests ---
+		test('should use codex-cli provider without API key (OAuth)', async () => {
+			// Arrange codex-cli as main provider
+			mockGetMainProvider.mockReturnValue('codex-cli');
+			mockGetMainModelId.mockReturnValue('gpt-5-codex');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 128000,
+				temperature: 1
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			// No API key in env
+			mockResolveEnvVariable.mockReturnValue(null);
+			// Mock codex generateText response
+			mockCodexProvider.generateText.mockResolvedValueOnce({
+				text: 'ok',
+				usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Codex',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok');
+			expect(mockCodexProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'gpt-5-codex',
+					apiKey: null,
+					maxTokens: 128000
+				})
+			);
+		});
+
+		test('should pass apiKey to codex-cli when provided', async () => {
+			// Arrange codex-cli as main provider
+			mockGetMainProvider.mockReturnValue('codex-cli');
+			mockGetMainModelId.mockReturnValue('gpt-5-codex');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 128000,
+				temperature: 1
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			// Provide API key via env resolver
+			mockResolveEnvVariable.mockReturnValue('sk-test');
+			// Mock codex generateText response
+			mockCodexProvider.generateText.mockResolvedValueOnce({
+				text: 'ok-with-key',
+				usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Codex',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok-with-key');
+			expect(mockCodexProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'gpt-5-codex',
+					apiKey: 'sk-test'
+				})
+			);
+		});
 	});
 });
