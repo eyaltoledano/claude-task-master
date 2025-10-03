@@ -167,6 +167,15 @@ const mockCodexProvider = {
 	isRequiredApiKey: jest.fn(() => false)
 };
 
+// Claude Code mock provider instance
+const mockClaudeProvider = {
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
+	isRequiredApiKey: jest.fn(() => false)
+};
+
 // Mock the provider classes to return our mock instances
 jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	AnthropicAIProvider: jest.fn(() => mockAnthropicProvider),
@@ -222,13 +231,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => null),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
-	ClaudeCodeProvider: jest.fn(() => ({
-		generateText: jest.fn(),
-		streamText: jest.fn(),
-		generateObject: jest.fn(),
-		getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
-		isRequiredApiKey: jest.fn(() => false)
-	})),
+	ClaudeCodeProvider: jest.fn(() => mockClaudeProvider),
 	GeminiCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
@@ -892,6 +895,40 @@ describe('Unified AI Services', () => {
 					apiKey: 'sk-test'
 				})
 			);
+		});
+
+		// --- Claude Code specific test ---
+		test('should omit temperature for claude-code provider', async () => {
+			mockGetMainProvider.mockReturnValue('claude-code');
+			mockGetMainModelId.mockReturnValue('sonnet');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 64000,
+				temperature: 0.7
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			mockResolveEnvVariable.mockReturnValue(null);
+
+			mockClaudeProvider.generateText.mockResolvedValueOnce({
+				text: 'ok-claude',
+				usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Claude',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok-claude');
+			// Ensure temperature was not sent
+			const callArgs = mockClaudeProvider.generateText.mock.calls[0][0];
+			expect(callArgs).not.toHaveProperty('temperature');
+			// But maxTokens should still be present
+			expect(callArgs.maxTokens).toBe(64000);
 		});
 	});
 });

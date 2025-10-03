@@ -663,11 +663,21 @@ async function _unifiedServiceRunner(serviceType, params) {
 				throw new Error('User prompt content is missing.');
 			}
 
+			// Some CLI-backed providers do not support temperature
+			const lowerProvider = providerName?.toLowerCase();
+			const providerSupportsTemperature = ![
+				'codex-cli',
+				'claude-code'
+			].includes(lowerProvider);
+
 			const callParams = {
 				apiKey,
 				modelId,
 				maxTokens: roleParams.maxTokens,
-				temperature: roleParams.temperature,
+				...(providerSupportsTemperature &&
+				typeof roleParams.temperature === 'number'
+					? { temperature: roleParams.temperature }
+					: {}),
 				messages,
 				...(baseURL && { baseURL }),
 				...((serviceType === 'generateObject' ||
