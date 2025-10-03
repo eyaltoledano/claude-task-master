@@ -122,7 +122,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
 
 	// Providers without API keys
-	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli', 'codex-cli']
 }));
 
 // Mock AI Provider Classes with proper methods
