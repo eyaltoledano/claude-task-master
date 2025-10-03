@@ -87,7 +87,7 @@ export function getPriorityWithColor(priority: TaskPriority): string {
  * Get complexity color and label based on score thresholds
  */
 function getComplexityLevel(score: number): {
-	color: typeof chalk.red;
+	color: (text: string) => string;
 	label: string;
 } {
 	if (score >= 8) {

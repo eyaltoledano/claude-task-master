@@ -158,6 +158,7 @@ export class ComplexityReportManager {
 
 	/**
 	 * Clear the report cache
+	 * @param tag - Specific tag to clear, or undefined to clear all cached reports
 	 * Useful when reports are regenerated or modified externally
 	 */
 	clearCache(tag?: string): void {
