@@ -160,7 +160,7 @@ export class ExportCommand extends Command {
 				briefId,
 				tag: options?.tag,
 				status: options?.status,
-				excludeSubtasks: !options?.excludeSubtasks
+				excludeSubtasks: options?.excludeSubtasks || false
 			});
 
 			if (exportResult.success) {

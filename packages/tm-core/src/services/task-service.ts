@@ -98,7 +98,6 @@ export class TaskService {
 				!options.filter.priority &&
 				!options.filter.tags &&
 				!options.filter.assignee &&
-				!options.filter.complexity &&
 				!options.filter.search &&
 				options.filter.hasSubtasks === undefined;
 
