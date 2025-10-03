@@ -72,7 +72,13 @@ export interface Task {
 	actualEffort?: number;
 	tags?: string[];
 	assignee?: string;
-	complexity?: TaskComplexity;
+
+	// Complexity analysis (from complexity report)
+	// Can be either enum ('simple' | 'moderate' | 'complex' | 'very-complex') or numeric score (1-10)
+	complexity?: TaskComplexity | number;
+	recommendedSubtasks?: number;
+	expansionPrompt?: string;
+	complexityReasoning?: string;
 }
 
 /**
@@ -145,7 +151,6 @@ export interface TaskFilter {
 	hasSubtasks?: boolean;
 	search?: string;
 	assignee?: string;
-	complexity?: TaskComplexity | TaskComplexity[];
 }
 
 /**

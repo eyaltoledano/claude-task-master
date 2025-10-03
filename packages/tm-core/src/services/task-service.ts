@@ -397,16 +397,6 @@ export class TaskService {
 				}
 			}
 
-			// Complexity filter
-			if (filter.complexity) {
-				const complexities = Array.isArray(filter.complexity)
-					? filter.complexity
-					: [filter.complexity];
-				if (!task.complexity || !complexities.includes(task.complexity)) {
-					return false;
-				}
-			}
-
 			// Search filter
 			if (filter.search) {
 				const searchLower = filter.search.toLowerCase();

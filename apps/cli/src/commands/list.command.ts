@@ -281,9 +281,14 @@ export class ListTasksCommand extends Command {
 		const priorityBreakdown = getPriorityBreakdown(tasks);
 
 		// Find next task following the same logic as findNextTask
-		const nextTask = this.findNextTask(tasks);
+		const nextTaskInfo = this.findNextTask(tasks);
 
-		// Display dashboard boxes
+		// Get the full task object with complexity data already included
+		const nextTask = nextTaskInfo
+			? tasks.find((t) => String(t.id) === String(nextTaskInfo.id))
+			: undefined;
+
+		// Display dashboard boxes (nextTask already has complexity from storage enrichment)
 		displayDashboards(
 			taskStats,
 			subtaskStats,
@@ -303,14 +308,16 @@ export class ListTasksCommand extends Command {
 
 		// Display recommended next task section immediately after table
 		if (nextTask) {
-			// Find the full task object to get description
-			const fullTask = tasks.find((t) => String(t.id) === String(nextTask.id));
-			const description = fullTask ? getTaskDescription(fullTask) : undefined;
+			const description = getTaskDescription(nextTask);
 
 			displayRecommendedNextTask({
-				...nextTask,
-				status: 'pending', // Next task is typically pending
-				description
+				id: nextTask.id,
+				title: nextTask.title,
+				priority: nextTask.priority,
+				status: nextTask.status,
+				dependencies: nextTask.dependencies,
+				description,
+				complexity: nextTask.complexity as number | undefined
 			});
 		} else {
 			displayRecommendedNextTask(undefined);
