@@ -69,6 +69,24 @@
 			"supported": true
 		}
 	],
+	"codex-cli": [
+		{
+			"id": "gpt-5",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-5-codex",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		}
+	],
 	"mcp": [
 		{
 			"id": "mcp-sampling",

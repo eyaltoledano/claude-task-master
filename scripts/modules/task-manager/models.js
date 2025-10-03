@@ -539,6 +539,22 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Gemini CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.CODEX_CLI) {
+					// Codex CLI provider - enforce supported model list
+					determinedProvider = CUSTOM_PROVIDERS.CODEX_CLI;
+					const codexCliModels = availableModels.filter(
+						(m) => m.provider === 'codex-cli'
+					);
+					const codexCliModelData = codexCliModels.find(
+						(m) => m.id === modelId
+					);
+					if (codexCliModelData) {
+						modelData = codexCliModelData;
+						report('info', `Setting Codex CLI model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: Codex CLI model '${modelId}' not found in supported models. Setting without validation.`;
+						report('warn', warningMessage);
+					}
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -559,7 +575,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, or --vertex.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --gemini-cli, or --codex-cli.`
 					}
 				};
 			}
