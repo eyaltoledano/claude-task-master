@@ -1,6 +1,10 @@
 import { defineConfig } from 'tsdown';
 import { baseConfig, mergeConfig } from '@tm/build-config';
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env file explicitly with absolute path
+config({ path: resolve(process.cwd(), '.env') });
 
 // Get all TM_PUBLIC_* env variables for build-time injection
 const getBuildTimeEnvs = () => {
