@@ -397,7 +397,6 @@ export class TaskService {
 				}
 			}
 
-
 			// Search filter
 			if (filter.search) {
 				const searchLower = filter.search.toLowerCase();

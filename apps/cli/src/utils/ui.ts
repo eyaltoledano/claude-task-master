@@ -84,6 +84,22 @@ export function getPriorityWithColor(priority: TaskPriority): string {
 }
 
 /**
+ * Get complexity color and label based on score thresholds
+ */
+function getComplexityLevel(score: number): {
+	color: typeof chalk.red;
+	label: string;
+} {
+	if (score >= 8) {
+		return { color: chalk.red.bold, label: 'High' };
+	} else if (score >= 5) {
+		return { color: chalk.yellow, label: 'Medium' };
+	} else {
+		return { color: chalk.green, label: 'Low' };
+	}
+}
+
+/**
  * Get colored complexity display
  */
 export function getComplexityWithColor(complexity: number | string): string {
@@ -94,13 +110,8 @@ export function getComplexityWithColor(complexity: number | string): string {
 		return chalk.gray('N/A');
 	}
 
-	if (score >= 8) {
-		return chalk.red.bold(`${score} (High)`);
-	} else if (score >= 5) {
-		return chalk.yellow(`${score} (Medium)`);
-	} else {
-		return chalk.green(`${score} (Low)`);
-	}
+	const { color, label } = getComplexityLevel(score);
+	return color(`${score} (${label})`);
 }
 
 /**
@@ -111,14 +122,8 @@ export function getComplexityWithScore(complexity: number | undefined): string {
 		return chalk.gray('N/A');
 	}
 
-	const score = complexity;
-	if (score >= 8) {
-		return chalk.red.bold(`${score}/10 (High)`);
-	} else if (score >= 5) {
-		return chalk.yellow(`${score}/10 (Medium)`);
-	} else {
-		return chalk.green(`${score}/10 (Low)`);
-	}
+	const { color, label } = getComplexityLevel(complexity);
+	return color(`${complexity}/10 (${label})`);
 }
 
 /**

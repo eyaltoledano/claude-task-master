@@ -115,7 +115,7 @@ export class ComplexityReportManager {
 			complexityScore: analysis.complexityScore,
 			recommendedSubtasks: analysis.recommendedSubtasks,
 			expansionPrompt: analysis.expansionPrompt,
-			complexityReasoning: analysis.reasoning
+			complexityReasoning: analysis.complexityReasoning
 		};
 	}
 
@@ -148,7 +148,7 @@ export class ComplexityReportManager {
 					complexityScore: analysis.complexityScore,
 					recommendedSubtasks: analysis.recommendedSubtasks,
 					expansionPrompt: analysis.expansionPrompt,
-					complexityReasoning: analysis.reasoning
+					complexityReasoning: analysis.complexityReasoning
 				});
 			}
 		});
@@ -162,8 +162,7 @@ export class ComplexityReportManager {
 	 */
 	clearCache(tag?: string): void {
 		if (tag) {
-			const cacheKey = tag || 'master';
-			this.reportCache.delete(cacheKey);
+			this.reportCache.delete(tag);
 		} else {
 			// Clear all cached reports
 			this.reportCache.clear();

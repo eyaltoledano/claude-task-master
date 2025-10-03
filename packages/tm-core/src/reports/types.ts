@@ -17,7 +17,7 @@ export interface ComplexityAnalysis {
 	/** AI-generated prompt for task expansion */
 	expansionPrompt: string;
 	/** Reasoning behind the complexity assessment */
-	reasoning: string;
+	complexityReasoning: string;
 }
 
 /**
