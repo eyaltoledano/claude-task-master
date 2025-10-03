@@ -7,7 +7,7 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 64000,
 			"supported": true
 		},
@@ -18,7 +18,7 @@
 				"input": 15.0,
 				"output": 75.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 32000,
 			"supported": true
 		},
@@ -74,7 +74,7 @@
 			"id": "gpt-5",
 			"swe_score": 0.749,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
 			"supported": true
 		},
@@ -82,7 +82,7 @@
 			"id": "gpt-5-codex",
 			"swe_score": 0.749,
 			"cost_per_1m_tokens": null,
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
 			"supported": true
 		}

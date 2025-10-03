@@ -123,6 +123,8 @@ The Codex CLI provider supports only models available through ChatGPT subscripti
 
 **Note**: These models are only available via OAuth subscription through Codex CLI (ChatGPT Plus, Pro, Business, Edu, or Enterprise plans). For other OpenAI models, use the standard `openai` provider with an API key.
 
+**Research Capabilities**: Both GPT-5 models support web search tools, making them suitable for the `research` role in addition to `main` and `fallback` roles.
+
 ## Configuration
 
 ### Basic Configuration
