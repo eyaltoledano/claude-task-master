@@ -176,12 +176,19 @@ export class BaseAIProvider {
 				`${this.name} generateText completed successfully for model: ${params.modelId}`
 			);
 
+			const inputTokens =
+				result.usage?.inputTokens ?? result.usage?.promptTokens ?? 0;
+			const outputTokens =
+				result.usage?.outputTokens ?? result.usage?.completionTokens ?? 0;
+			const totalTokens =
+				result.usage?.totalTokens ?? inputTokens + outputTokens;
+
 			return {
 				text: result.text,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens,
+					outputTokens,
+					totalTokens
 				}
 			};
 		} catch (error) {
@@ -296,12 +303,19 @@ export class BaseAIProvider {
 				`${this.name} generateObject completed successfully for model: ${params.modelId}`
 			);
 
+			const inputTokens =
+				result.usage?.inputTokens ?? result.usage?.promptTokens ?? 0;
+			const outputTokens =
+				result.usage?.outputTokens ?? result.usage?.completionTokens ?? 0;
+			const totalTokens =
+				result.usage?.totalTokens ?? inputTokens + outputTokens;
+
 			return {
 				object: result.object,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens,
+					outputTokens,
+					totalTokens
 				}
 			};
 		} catch (error) {
