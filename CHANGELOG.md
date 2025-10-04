@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.28.0-rc.1
+
+### Patch Changes
+
+- [#1274](https://github.com/eyaltoledano/claude-task-master/pull/1274) [`4f984f8`](https://github.com/eyaltoledano/claude-task-master/commit/4f984f8a6965da9f9c7edd60ddfd6560ac022917) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Do a quick fix on build
+
 ## 0.28.0-rc.0
 
 ### Minor Changes
