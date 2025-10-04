@@ -423,7 +423,7 @@ To verify or configure:
 
 2. **Subscription not active**:
    - Verify your ChatGPT subscription is active
-   - Check subscription status at https://platform.openai.com
+   - Check subscription status at <https://platform.openai.com>
 
 3. **Wrong provider selected**:
    - Verify you're using `--codex-cli` flag when setting models
