@@ -1,0 +1,22 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.27.3",
+    "docs": "0.0.4",
+    "extension": "0.25.4"
+  },
+  "changesets": [
+    "chore-fix-docs",
+    "cursor-slash-commands",
+    "curvy-weeks-flow",
+    "flat-cities-say",
+    "forty-tables-invite",
+    "gentle-cats-dance",
+    "mcp-timeout-configuration",
+    "petite-ideas-grab",
+    "silly-pandas-find",
+    "sweet-maps-rule",
+    "whole-pigs-say"
+  ]
+}
