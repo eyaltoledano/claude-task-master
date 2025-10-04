@@ -19,10 +19,10 @@ const getBuildTimeEnvs = () => {
 
 	for (const [key, value] of Object.entries(process.env)) {
 		if (key.startsWith('TM_PUBLIC_')) {
-			// Return the actual value, not JSON.stringify'd
 			envs[key] = value || '';
 		}
 	}
+
 	return envs;
 };
 
