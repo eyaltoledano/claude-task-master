@@ -1,4 +1,4 @@
-# Available Models as of September 23, 2025
+# Available Models as of October 5, 2025
 
 ## Main Models
 
@@ -10,6 +10,8 @@
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
+| codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
@@ -100,6 +102,8 @@
 | ----------- | -------------------------------------------- | --------- | ---------- | ----------- |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| codex-cli   | gpt-5                                        | 0.749     | 0          | 0           |
+| codex-cli   | gpt-5-codex                                  | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
@@ -140,6 +144,8 @@
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
+| codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
