@@ -40,7 +40,12 @@ jest.unstable_mockModule('jsonrepair', () => ({
 jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
 	findProjectRoot: jest.fn(() => '/mock/project/root'),
-	isEmpty: jest.fn((val) => !val || (Array.isArray(val) && val.length === 0) || (typeof val === 'object' && Object.keys(val).length === 0)),
+	isEmpty: jest.fn(
+		(val) =>
+			!val ||
+			(Array.isArray(val) && val.length === 0) ||
+			(typeof val === 'object' && Object.keys(val).length === 0)
+	),
 	resolveEnvVariable: jest.fn((key) => process.env[key])
 }));
 
@@ -78,93 +83,119 @@ describe('BaseAIProvider', () => {
 	describe('1. Parameter Validation - Catches Invalid Inputs', () => {
 		describe('validateAuth', () => {
 			it('should throw when API key is missing', () => {
-				expect(() => testProvider.validateAuth({}))
-					.toThrow('TestProvider API key is required');
+				expect(() => testProvider.validateAuth({})).toThrow(
+					'TestProvider API key is required'
+				);
 			});
 
 			it('should pass when API key is provided', () => {
-				expect(() => testProvider.validateAuth({ apiKey: 'test-key' }))
-					.not.toThrow();
+				expect(() =>
+					testProvider.validateAuth({ apiKey: 'test-key' })
+				).not.toThrow();
 			});
 		});
 
 		describe('validateParams', () => {
 			it('should throw when model ID is missing', () => {
-				expect(() => testProvider.validateParams({ apiKey: 'key' }))
-					.toThrow('TestProvider Model ID is required');
+				expect(() => testProvider.validateParams({ apiKey: 'key' })).toThrow(
+					'TestProvider Model ID is required'
+				);
 			});
 
 			it('should throw when both API key and model ID are missing', () => {
-				expect(() => testProvider.validateParams({}))
-					.toThrow('TestProvider API key is required');
+				expect(() => testProvider.validateParams({})).toThrow(
+					'TestProvider API key is required'
+				);
 			});
 		});
 
 		describe('validateOptionalParams', () => {
 			it('should throw for temperature below 0', () => {
-				expect(() => testProvider.validateOptionalParams({ temperature: -0.1 }))
-					.toThrow('Temperature must be between 0 and 1');
+				expect(() =>
+					testProvider.validateOptionalParams({ temperature: -0.1 })
+				).toThrow('Temperature must be between 0 and 1');
 			});
 
 			it('should throw for temperature above 1', () => {
-				expect(() => testProvider.validateOptionalParams({ temperature: 1.1 }))
-					.toThrow('Temperature must be between 0 and 1');
+				expect(() =>
+					testProvider.validateOptionalParams({ temperature: 1.1 })
+				).toThrow('Temperature must be between 0 and 1');
 			});
 
 			it('should accept temperature at boundaries', () => {
-				expect(() => testProvider.validateOptionalParams({ temperature: 0 }))
-					.not.toThrow();
-				expect(() => testProvider.validateOptionalParams({ temperature: 1 }))
-					.not.toThrow();
+				expect(() =>
+					testProvider.validateOptionalParams({ temperature: 0 })
+				).not.toThrow();
+				expect(() =>
+					testProvider.validateOptionalParams({ temperature: 1 })
+				).not.toThrow();
 			});
 
 			it('should throw for invalid maxTokens values', () => {
-				expect(() => testProvider.validateOptionalParams({ maxTokens: 0 }))
-					.toThrow('maxTokens must be a finite number greater than 0');
-				expect(() => testProvider.validateOptionalParams({ maxTokens: -100 }))
-					.toThrow('maxTokens must be a finite number greater than 0');
-				expect(() => testProvider.validateOptionalParams({ maxTokens: Infinity }))
-					.toThrow('maxTokens must be a finite number greater than 0');
-				expect(() => testProvider.validateOptionalParams({ maxTokens: 'invalid' }))
-					.toThrow('maxTokens must be a finite number greater than 0');
+				expect(() =>
+					testProvider.validateOptionalParams({ maxTokens: 0 })
+				).toThrow('maxTokens must be a finite number greater than 0');
+				expect(() =>
+					testProvider.validateOptionalParams({ maxTokens: -100 })
+				).toThrow('maxTokens must be a finite number greater than 0');
+				expect(() =>
+					testProvider.validateOptionalParams({ maxTokens: Infinity })
+				).toThrow('maxTokens must be a finite number greater than 0');
+				expect(() =>
+					testProvider.validateOptionalParams({ maxTokens: 'invalid' })
+				).toThrow('maxTokens must be a finite number greater than 0');
 			});
 		});
 
 		describe('validateMessages', () => {
 			it('should throw for null/undefined messages', async () => {
-				await expect(testProvider.generateText({
-					apiKey: 'key',
-					modelId: 'model',
-					messages: null
-				})).rejects.toThrow('Invalid or empty messages array provided');
+				await expect(
+					testProvider.generateText({
+						apiKey: 'key',
+						modelId: 'model',
+						messages: null
+					})
+				).rejects.toThrow('Invalid or empty messages array provided');
 
-				await expect(testProvider.generateText({
-					apiKey: 'key',
-					modelId: 'model',
-					messages: undefined
-				})).rejects.toThrow('Invalid or empty messages array provided');
+				await expect(
+					testProvider.generateText({
+						apiKey: 'key',
+						modelId: 'model',
+						messages: undefined
+					})
+				).rejects.toThrow('Invalid or empty messages array provided');
 			});
 
 			it('should throw for empty messages array', async () => {
-				await expect(testProvider.generateText({
-					apiKey: 'key',
-					modelId: 'model',
-					messages: []
-				})).rejects.toThrow('Invalid or empty messages array provided');
+				await expect(
+					testProvider.generateText({
+						apiKey: 'key',
+						modelId: 'model',
+						messages: []
+					})
+				).rejects.toThrow('Invalid or empty messages array provided');
 			});
 
 			it('should throw for messages without role or content', async () => {
-				await expect(testProvider.generateText({
-					apiKey: 'key',
-					modelId: 'model',
-					messages: [{ content: 'test' }] // missing role
-				})).rejects.toThrow('Invalid message format. Each message must have role and content');
+				await expect(
+					testProvider.generateText({
+						apiKey: 'key',
+						modelId: 'model',
+						messages: [{ content: 'test' }] // missing role
+					})
+				).rejects.toThrow(
+					'Invalid message format. Each message must have role and content'
+				);
 
-				await expect(testProvider.generateText({
-					apiKey: 'key',
-					modelId: 'model',
-					messages: [{ role: 'user' }] // missing content
-				})).rejects.toThrow('Invalid message format. Each message must have role and content');
+				await expect(
+					testProvider.generateText({
+						apiKey: 'key',
+						modelId: 'model',
+						messages: [{ role: 'user' }] // missing content
+					})
+				).rejects.toThrow(
+					'Invalid message format. Each message must have role and content'
+				);
 			});
 		});
 	});
@@ -174,29 +205,38 @@ describe('BaseAIProvider', () => {
 			const apiError = new Error('API rate limit exceeded');
 			mockGenerateText.mockRejectedValue(apiError);
 
-			await expect(testProvider.generateText({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }]
-			})).rejects.toThrow('TestProvider API error during text generation: API rate limit exceeded');
+			await expect(
+				testProvider.generateText({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }]
+				})
+			).rejects.toThrow(
+				'TestProvider API error during text generation: API rate limit exceeded'
+			);
 		});
 
 		it('should handle errors without message property', async () => {
 			const apiError = { code: 'NETWORK_ERROR' };
 			mockGenerateText.mockRejectedValue(apiError);
 
-			await expect(testProvider.generateText({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }]
-			})).rejects.toThrow('TestProvider API error during text generation: Unknown error occurred');
+			await expect(
+				testProvider.generateText({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }]
+				})
+			).rejects.toThrow(
+				'TestProvider API error during text generation: Unknown error occurred'
+			);
 		});
 	});
 
 	describe('3. Abstract Class Protection', () => {
 		it('should prevent direct instantiation of BaseAIProvider', () => {
-			expect(() => new BaseAIProvider())
-				.toThrow('BaseAIProvider cannot be instantiated directly');
+			expect(() => new BaseAIProvider()).toThrow(
+				'BaseAIProvider cannot be instantiated directly'
+			);
 		});
 
 		it('should throw when abstract methods are not implemented', () => {
@@ -207,10 +247,12 @@ describe('BaseAIProvider', () => {
 			}
 			const provider = new IncompleteProvider();
 
-			expect(() => provider.getClient())
-				.toThrow('getClient must be implemented by provider');
-			expect(() => provider.getRequiredApiKeyName())
-				.toThrow('getRequiredApiKeyName must be implemented by provider');
+			expect(() => provider.getClient()).toThrow(
+				'getClient must be implemented by provider'
+			);
+			expect(() => provider.getRequiredApiKeyName()).toThrow(
+				'getRequiredApiKeyName must be implemented by provider'
+			);
 		});
 	});
 
@@ -281,26 +323,32 @@ describe('BaseAIProvider', () => {
 				throw new Error('Cannot repair this JSON');
 			});
 
-			await expect(testProvider.generateObject({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }],
-				schema: { type: 'object' },
-				objectName: 'TestObject'
-			})).rejects.toThrow('TestProvider API error during object generation');
+			await expect(
+				testProvider.generateObject({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }],
+					schema: { type: 'object' },
+					objectName: 'TestObject'
+				})
+			).rejects.toThrow('TestProvider API error during object generation');
 		});
 
 		it('should handle non-JSON parse errors normally', async () => {
 			const regularError = new Error('Network timeout');
 			mockGenerateObject.mockRejectedValue(regularError);
 
-			await expect(testProvider.generateObject({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }],
-				schema: { type: 'object' },
-				objectName: 'TestObject'
-			})).rejects.toThrow('TestProvider API error during object generation: Network timeout');
+			await expect(
+				testProvider.generateObject({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }],
+					schema: { type: 'object' },
+					objectName: 'TestObject'
+				})
+			).rejects.toThrow(
+				'TestProvider API error during object generation: Network timeout'
+			);
 
 			expect(mockJsonrepair).not.toHaveBeenCalled();
 		});
@@ -382,32 +430,38 @@ describe('BaseAIProvider', () => {
 
 	describe('7. Schema Validation for Object Methods', () => {
 		it('should throw when schema is missing for generateObject', async () => {
-			await expect(testProvider.generateObject({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }],
-				objectName: 'TestObject'
-				// missing schema
-			})).rejects.toThrow('Schema is required for object generation');
+			await expect(
+				testProvider.generateObject({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }],
+					objectName: 'TestObject'
+					// missing schema
+				})
+			).rejects.toThrow('Schema is required for object generation');
 		});
 
 		it('should throw when objectName is missing for generateObject', async () => {
-			await expect(testProvider.generateObject({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }],
-				schema: { type: 'object' }
-				// missing objectName
-			})).rejects.toThrow('Object name is required for object generation');
+			await expect(
+				testProvider.generateObject({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }],
+					schema: { type: 'object' }
+					// missing objectName
+				})
+			).rejects.toThrow('Object name is required for object generation');
 		});
 
 		it('should throw when schema is missing for streamObject', async () => {
-			await expect(testProvider.streamObject({
-				apiKey: 'key',
-				modelId: 'model',
-				messages: [{ role: 'user', content: 'test' }]
-				// missing schema
-			})).rejects.toThrow('Schema is required for object streaming');
+			await expect(
+				testProvider.streamObject({
+					apiKey: 'key',
+					modelId: 'model',
+					messages: [{ role: 'user', content: 'test' }]
+					// missing schema
+				})
+			).rejects.toThrow('Schema is required for object streaming');
 		});
 
 		it('should use json mode when needsExplicitJsonSchema is true', async () => {
@@ -477,8 +531,9 @@ describe('BaseAIProvider', () => {
 	describe('9. Edge Cases - Boundary Conditions', () => {
 		it('should handle zero maxTokens gracefully', () => {
 			// This should throw in validation
-			expect(() => testProvider.validateOptionalParams({ maxTokens: 0 }))
-				.toThrow('maxTokens must be a finite number greater than 0');
+			expect(() =>
+				testProvider.validateOptionalParams({ maxTokens: 0 })
+			).toThrow('maxTokens must be a finite number greater than 0');
 		});
 
 		it('should handle very large maxTokens', () => {
@@ -491,8 +546,9 @@ describe('BaseAIProvider', () => {
 			// But NaN is not between 0 and 1, so we need to check the actual behavior
 			// The current implementation doesn't explicitly check for NaN,
 			// it passes because NaN < 0 and NaN > 1 are both false
-			expect(() => testProvider.validateOptionalParams({ temperature: NaN }))
-				.not.toThrow();
+			expect(() =>
+				testProvider.validateOptionalParams({ temperature: NaN })
+			).not.toThrow();
 			// This is actually a bug - NaN should be rejected
 			// But we're testing current behavior, not desired behavior
 		});
@@ -620,10 +676,18 @@ describe('BaseAIProvider', () => {
 		});
 
 		it('should verify CLI providers have supportsTemperature = false', async () => {
-			const { ClaudeCodeProvider } = await import('../../../src/ai-providers/claude-code.js');
-			const { CodexCliProvider } = await import('../../../src/ai-providers/codex-cli.js');
-			const { GeminiCliProvider } = await import('../../../src/ai-providers/gemini-cli.js');
-			const { GrokCliProvider } = await import('../../../src/ai-providers/grok-cli.js');
+			const { ClaudeCodeProvider } = await import(
+				'../../../src/ai-providers/claude-code.js'
+			);
+			const { CodexCliProvider } = await import(
+				'../../../src/ai-providers/codex-cli.js'
+			);
+			const { GeminiCliProvider } = await import(
+				'../../../src/ai-providers/gemini-cli.js'
+			);
+			const { GrokCliProvider } = await import(
+				'../../../src/ai-providers/grok-cli.js'
+			);
 
 			expect(new ClaudeCodeProvider().supportsTemperature).toBe(false);
 			expect(new CodexCliProvider().supportsTemperature).toBe(false);
@@ -632,8 +696,12 @@ describe('BaseAIProvider', () => {
 		});
 
 		it('should verify standard providers have supportsTemperature = true', async () => {
-			const { AnthropicAIProvider } = await import('../../../src/ai-providers/anthropic.js');
-			const { OpenAIProvider } = await import('../../../src/ai-providers/openai.js');
+			const { AnthropicAIProvider } = await import(
+				'../../../src/ai-providers/anthropic.js'
+			);
+			const { OpenAIProvider } = await import(
+				'../../../src/ai-providers/openai.js'
+			);
 
 			expect(new AnthropicAIProvider().supportsTemperature).toBe(true);
 			expect(new OpenAIProvider().supportsTemperature).toBe(true);
