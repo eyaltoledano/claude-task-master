@@ -12,9 +12,6 @@ import { execSync } from 'child_process';
 import { log } from '../../scripts/modules/utils.js';
 import { getCodexCliSettingsForCommand } from '../../scripts/modules/config-manager.js';
 
-let _codexCliChecked = false;
-let _codexCliAvailable = null;
-
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {
 		super();
@@ -23,6 +20,9 @@ export class CodexCliProvider extends BaseAIProvider {
 		this.needsExplicitJsonSchema = false;
 		// Restrict to supported models for OAuth subscription usage
 		this.supportedModels = ['gpt-5', 'gpt-5-codex'];
+		// CLI availability check cache
+		this._codexCliChecked = false;
+		this._codexCliAvailable = null;
 	}
 
 	/**
@@ -50,18 +50,18 @@ export class CodexCliProvider extends BaseAIProvider {
 	validateAuth() {
 		if (process.env.NODE_ENV === 'test') return;
 
-		if (!_codexCliChecked) {
+		if (!this._codexCliChecked) {
 			try {
 				execSync('codex --version', { stdio: 'pipe', timeout: 1000 });
-				_codexCliAvailable = true;
+				this._codexCliAvailable = true;
 			} catch (error) {
-				_codexCliAvailable = false;
+				this._codexCliAvailable = false;
 				log(
 					'warn',
 					'Codex CLI not detected. Install with: npm i -g @openai/codex or enable fallback with allowNpx.'
 				);
 			} finally {
-				_codexCliChecked = true;
+				this._codexCliChecked = true;
 			}
 		}
 	}
