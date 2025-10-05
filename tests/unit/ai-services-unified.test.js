@@ -898,7 +898,7 @@ describe('Unified AI Services', () => {
 		});
 
 		// --- Claude Code specific test ---
-		test('should omit temperature for claude-code provider', async () => {
+		test('should pass temperature to claude-code provider (provider handles filtering)', async () => {
 			mockGetMainProvider.mockReturnValue('claude-code');
 			mockGetMainModelId.mockReturnValue('sonnet');
 			mockGetParametersForRole.mockReturnValue({
@@ -924,10 +924,9 @@ describe('Unified AI Services', () => {
 			});
 
 			expect(result.mainResult).toBe('ok-claude');
-			// Ensure temperature was not sent
+			// The provider (BaseAIProvider) is responsible for filtering it based on supportsTemperature
 			const callArgs = mockClaudeProvider.generateText.mock.calls[0][0];
-			expect(callArgs).not.toHaveProperty('temperature');
-			// But maxTokens should still be present
+			expect(callArgs).toHaveProperty('temperature', 0.7);
 			expect(callArgs.maxTokens).toBe(64000);
 		});
 	});
