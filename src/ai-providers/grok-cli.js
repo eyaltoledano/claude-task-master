@@ -13,6 +13,8 @@ export class GrokCliProvider extends BaseAIProvider {
 		this.name = 'Grok CLI';
 		// Grok CLI requires explicit JSON schema mode
 		this.needsExplicitJsonSchema = true;
+		// Grok CLI does not support temperature parameter
+		this.supportsTemperature = false;
 	}
 
 	/**

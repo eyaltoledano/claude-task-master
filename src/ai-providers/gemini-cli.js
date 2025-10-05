@@ -17,6 +17,8 @@ export class GeminiCliProvider extends BaseAIProvider {
 		this.name = 'Gemini CLI';
 		// Gemini CLI requires explicit JSON schema mode
 		this.needsExplicitJsonSchema = true;
+		// Gemini CLI does not support temperature parameter
+		this.supportsTemperature = false;
 	}
 
 	/**

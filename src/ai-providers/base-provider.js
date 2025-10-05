@@ -28,6 +28,13 @@ export class BaseAIProvider {
 		 * @type {boolean}
 		 */
 		this.needsExplicitJsonSchema = false;
+
+		/**
+		 * Whether this provider supports temperature parameter
+		 * Can be overridden by subclasses
+		 * @type {boolean}
+		 */
+		this.supportsTemperature = true;
 	}
 
 	/**
@@ -168,7 +175,9 @@ export class BaseAIProvider {
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -211,7 +220,9 @@ export class BaseAIProvider {
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -249,7 +260,9 @@ export class BaseAIProvider {
 				schema: zodSchema(params.schema),
 				mode: params.mode || 'auto',
 				maxOutputTokens: params.maxTokens,
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -295,7 +308,9 @@ export class BaseAIProvider {
 				schemaName: params.objectName,
 				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
 				maxTokens: params.maxTokens,
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(

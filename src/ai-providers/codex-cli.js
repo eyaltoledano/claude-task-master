@@ -18,6 +18,8 @@ export class CodexCliProvider extends BaseAIProvider {
 		this.name = 'Codex CLI';
 		// Codex CLI has native schema support, no explicit JSON schema mode required
 		this.needsExplicitJsonSchema = false;
+		// Codex CLI does not support temperature parameter
+		this.supportsTemperature = false;
 		// Restrict to supported models for OAuth subscription usage
 		this.supportedModels = ['gpt-5', 'gpt-5-codex'];
 		// CLI availability check cache

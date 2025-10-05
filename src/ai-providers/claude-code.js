@@ -34,6 +34,8 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 		this.supportedModels = ['sonnet', 'opus'];
 		// Claude Code requires explicit JSON schema mode
 		this.needsExplicitJsonSchema = true;
+		// Claude Code does not support temperature parameter
+		this.supportsTemperature = false;
 	}
 
 	/**
