@@ -607,15 +607,6 @@ describe('BaseAIProvider', () => {
 		const mockStreamObject = jest.fn();
 
 		beforeEach(() => {
-			jest.unstable_mockModule('ai', () => ({
-				generateText: mockGenerateText,
-				streamText: mockStreamText,
-				generateObject: mockGenerateObject,
-				streamObject: mockStreamObject,
-				zodSchema: jest.fn((schema) => schema),
-				NoObjectGeneratedError: mockNoObjectGeneratedError,
-				JSONParseError: mockJSONParseError
-			}));
 			mockStreamText.mockReset();
 			mockStreamObject.mockReset();
 		});
