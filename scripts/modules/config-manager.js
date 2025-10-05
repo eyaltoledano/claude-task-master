@@ -58,6 +58,7 @@ const DEFAULTS = {
 		enableCodebaseAnalysis: true
 	},
 	claudeCode: {},
+	codexCli: {},
 	grokCli: {
 		timeout: 120000,
 		workingDirectory: null,
@@ -138,6 +139,7 @@ function _loadAndValidateConfig(explicitRoot = null) {
 				},
 				global: { ...defaults.global, ...parsedConfig?.global },
 				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
+				codexCli: { ...defaults.codexCli, ...parsedConfig?.codexCli },
 				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
@@ -183,6 +185,9 @@ function _loadAndValidateConfig(explicitRoot = null) {
 			}
 			if (config.claudeCode && !isEmpty(config.claudeCode)) {
 				config.claudeCode = validateClaudeCodeSettings(config.claudeCode);
+			}
+			if (config.codexCli && !isEmpty(config.codexCli)) {
+				config.codexCli = validateCodexCliSettings(config.codexCli);
 			}
 		} catch (error) {
 			// Use console.error for actual errors during parsing
@@ -366,12 +371,80 @@ function validateClaudeCodeSettings(settings) {
 	return validatedSettings;
 }
 
+/**
+ * Validates Codex CLI provider custom settings
+ * Mirrors the ai-sdk-provider-codex-cli options
+ * @param {object} settings The settings to validate
+ * @returns {object} The validated settings
+ */
+function validateCodexCliSettings(settings) {
+	const BaseSettingsSchema = z.object({
+		codexPath: z.string().optional(),
+		cwd: z.string().optional(),
+		approvalMode: z
+			.enum(['untrusted', 'on-failure', 'on-request', 'never'])
+			.optional(),
+		sandboxMode: z
+			.enum(['read-only', 'workspace-write', 'danger-full-access'])
+			.optional(),
+		fullAuto: z.boolean().optional(),
+		dangerouslyBypassApprovalsAndSandbox: z.boolean().optional(),
+		skipGitRepoCheck: z.boolean().optional(),
+		color: z.enum(['always', 'never', 'auto']).optional(),
+		allowNpx: z.boolean().optional(),
+		outputLastMessageFile: z.string().optional(),
+		env: z.record(z.string(), z.string()).optional(),
+		verbose: z.boolean().optional(),
+		logger: z.union([z.object({}).passthrough(), z.literal(false)]).optional()
+	});
+
+	const CommandSpecificSchema = z
+		.record(z.string(), BaseSettingsSchema)
+		.refine(
+			(obj) =>
+				Object.keys(obj || {}).every((k) => AI_COMMAND_NAMES.includes(k)),
+			{ message: 'Invalid command name in commandSpecific' }
+		);
+
+	const SettingsSchema = BaseSettingsSchema.extend({
+		commandSpecific: CommandSpecificSchema.optional()
+	});
+
+	try {
+		return SettingsSchema.parse(settings);
+	} catch (error) {
+		console.warn(
+			chalk.yellow(
+				`Warning: Invalid Codex CLI settings in config: ${error.message}. Falling back to default.`
+			)
+		);
+		return {};
+	}
+}
+
 // --- Claude Code Settings Getters ---
 
 function getClaudeCodeSettings(explicitRoot = null, forceReload = false) {
 	const config = getConfig(explicitRoot, forceReload);
 	// Ensure Claude Code defaults are applied if Claude Code section is missing
 	return { ...DEFAULTS.claudeCode, ...(config?.claudeCode || {}) };
+}
+
+// --- Codex CLI Settings Getters ---
+
+function getCodexCliSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	return { ...DEFAULTS.codexCli, ...(config?.codexCli || {}) };
+}
+
+function getCodexCliSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getCodexCliSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
 }
 
 function getClaudeCodeSettingsForCommand(
@@ -491,7 +564,8 @@ function hasCodebaseAnalysis(
 	return (
 		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
 		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI ||
-		currentProvider === CUSTOM_PROVIDERS.GROK_CLI
+		currentProvider === CUSTOM_PROVIDERS.GROK_CLI ||
+		currentProvider === CUSTOM_PROVIDERS.CODEX_CLI
 	);
 }
 
@@ -721,7 +795,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
 		CUSTOM_PROVIDERS.GEMINI_CLI,
-		CUSTOM_PROVIDERS.GROK_CLI
+		CUSTOM_PROVIDERS.GROK_CLI,
+		CUSTOM_PROVIDERS.CODEX_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -731,6 +806,11 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	// Claude Code doesn't require an API key
 	if (providerName?.toLowerCase() === 'claude-code') {
 		return true; // No API key needed
+	}
+
+	// Codex CLI supports OAuth via codex login; API key optional
+	if (providerName?.toLowerCase() === 'codex-cli') {
+		return true; // Treat as OK even without key
 	}
 
 	const keyMap = {
@@ -836,6 +916,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				return true; // No key needed
 			case 'claude-code':
 				return true; // No key needed
+			case 'codex-cli':
+				return true; // OAuth/subscription via Codex CLI
 			case 'mistral':
 				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
 				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
@@ -1028,7 +1110,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
 	CUSTOM_PROVIDERS.GROK_CLI,
-	CUSTOM_PROVIDERS.MCP
+	CUSTOM_PROVIDERS.MCP,
+	CUSTOM_PROVIDERS.CODEX_CLI
 ];
 
 export {
@@ -1040,6 +1123,9 @@ export {
 	// Claude Code settings
 	getClaudeCodeSettings,
 	getClaudeCodeSettingsForCommand,
+	// Codex CLI settings
+	getCodexCliSettings,
+	getCodexCliSettingsForCommand,
 	// Grok CLI settings
 	getGrokCliSettings,
 	getGrokCliSettingsForCommand,
@@ -1047,6 +1133,7 @@ export {
 	validateProvider,
 	validateProviderModelCombination,
 	validateClaudeCodeSettings,
+	validateCodexCliSettings,
 	VALIDATED_PROVIDERS,
 	CUSTOM_PROVIDERS,
 	ALL_PROVIDERS,
