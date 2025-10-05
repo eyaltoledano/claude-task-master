@@ -304,9 +304,9 @@ jobs:
       - name: Configure Codex CLI
         run: |
           npm install -g @openai/codex
-          echo "${{ secrets.OPENAI_API_KEY }}" > ~/.codex-auth
+          echo "${{ secrets.OPENAI_CODEX_API_KEY }}" > ~/.codex-auth
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_CODEX_API_KEY: ${{ secrets.OPENAI_CODEX_API_KEY }}
 
       - name: Configure Task Master
         run: |

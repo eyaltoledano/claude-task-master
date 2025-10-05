@@ -3,7 +3,7 @@
  *
  * Codex CLI provider implementation using the ai-sdk-provider-codex-cli package.
  * This provider uses the local OpenAI Codex CLI with OAuth (preferred) or
- * an optional OPENAI_API_KEY if provided.
+ * an optional OPENAI_CODEX_API_KEY if provided.
  */
 
 import { createCodexCli } from 'ai-sdk-provider-codex-cli';
@@ -37,10 +37,11 @@ export class CodexCliProvider extends BaseAIProvider {
 	 * Returns the environment variable name used when an API key is provided.
 	 * Even though the API key is optional for Codex CLI (OAuth-first),
 	 * downstream resolution expects a non-throwing implementation.
+	 * Uses OPENAI_CODEX_API_KEY to avoid conflicts with OpenAI provider.
 	 * @returns {string}
 	 */
 	getRequiredApiKeyName() {
-		return 'OPENAI_API_KEY';
+		return 'OPENAI_CODEX_API_KEY';
 	}
 
 	/**
@@ -69,7 +70,7 @@ export class CodexCliProvider extends BaseAIProvider {
 	 * Creates a Codex CLI client instance
 	 * @param {object} params
 	 * @param {string} [params.commandName] - Command name for settings lookup
-	 * @param {string} [params.apiKey] - Optional OPENAI_API_KEY injection
+	 * @param {string} [params.apiKey] - Optional API key (injected as OPENAI_API_KEY for Codex CLI)
 	 * @returns {Function}
 	 */
 	getClient(params = {}) {

@@ -7,7 +7,7 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback", "research"],
+			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 64000,
 			"supported": true
 		},
@@ -18,7 +18,7 @@
 				"input": 15.0,
 				"output": 75.0
 			},
-			"allowed_roles": ["main", "fallback", "research"],
+			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 32000,
 			"supported": true
 		},

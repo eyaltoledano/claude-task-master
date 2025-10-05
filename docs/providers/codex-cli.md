@@ -1,6 +1,6 @@
 # Codex CLI Provider
 
-The `codex-cli` provider integrates Task Master with OpenAI's Codex CLI via the community AI SDK provider [`ai-sdk-provider-codex-cli`](https://github.com/ben-vargas/ai-sdk-provider-codex-cli). It uses your ChatGPT subscription (OAuth) via `codex login`, with optional `OPENAI_API_KEY` support.
+The `codex-cli` provider integrates Task Master with OpenAI's Codex CLI via the community AI SDK provider [`ai-sdk-provider-codex-cli`](https://github.com/ben-vargas/ai-sdk-provider-codex-cli). It uses your ChatGPT subscription (OAuth) via `codex login`, with optional `OPENAI_CODEX_API_KEY` support.
 
 ## Why Use Codex CLI?
 
@@ -103,7 +103,7 @@ While OAuth is the primary and recommended method, you can optionally use an Ope
 
 ```bash
 # In your .env file
-OPENAI_API_KEY=sk-your-openai-api-key-here
+OPENAI_CODEX_API_KEY=sk-your-openai-api-key-here
 ```
 
 **Important Notes**:
@@ -111,6 +111,7 @@ OPENAI_API_KEY=sk-your-openai-api-key-here
 - OAuth authentication is always preferred when available
 - Using an API key doesn't provide access to subscription-only models like GPT-5-Codex
 - For full OpenAI API access with non-subscription models, consider using the standard `openai` provider instead
+- `OPENAI_CODEX_API_KEY` is specific to the codex-cli provider to avoid conflicts with the `openai` provider's `OPENAI_API_KEY`
 
 ## Available Models
 
@@ -431,7 +432,7 @@ To verify or configure:
 
 ### API Key Not Being Used
 
-**Symptoms**: You've set `OPENAI_API_KEY` but it's not being used.
+**Symptoms**: You've set `OPENAI_CODEX_API_KEY` but it's not being used.
 
 **Expected Behavior**:
 - OAuth authentication is always preferred
@@ -453,6 +454,9 @@ To verify or configure:
    ```bash
    # Check if .env exists in project root
    ls -la .env
+
+   # Verify OPENAI_CODEX_API_KEY is set
+   grep OPENAI_CODEX_API_KEY .env
    ```
 
 ### Approval/Sandbox Issues
