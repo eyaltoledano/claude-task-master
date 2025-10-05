@@ -112,6 +112,19 @@ AWS_ACCESS_KEY_ID="your-aws-access-key"
 AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
 ```
 
+### OPENAI_CODEX_API_KEY
+- **Provider**: Codex CLI
+- **Required**: ❌ **No** (uses OAuth authentication)
+- **Purpose**: Optional API key for Codex CLI provider
+- **Authentication**: OAuth via `codex login` is preferred, API key is optional fallback
+- **Models**: GPT-5, GPT-5-Codex (subscription required)
+- **Get Key**: [OpenAI Platform](https://platform.openai.com/api-keys)
+
+```bash
+# Optional - OAuth authentication is preferred
+OPENAI_CODEX_API_KEY="sk-your-openai-api-key-here"
+```
+
 ### CLAUDE_CODE_API_KEY
 - **Provider**: Claude Code CLI
 - **Required**: ❌ **No** (uses OAuth tokens)

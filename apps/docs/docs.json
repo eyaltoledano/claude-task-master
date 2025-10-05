@@ -52,6 +52,18 @@
 							"capabilities/cli-root-commands",
 							"capabilities/task-structure"
 						]
+					},
+					{
+						"group": "AI Providers",
+						"pages": [
+							"providers/codex-cli"
+						]
+					},
+					{
+						"group": "Usage Examples",
+						"pages": [
+							"examples/codex-cli-usage"
+						]
 					}
 				]
 			}
