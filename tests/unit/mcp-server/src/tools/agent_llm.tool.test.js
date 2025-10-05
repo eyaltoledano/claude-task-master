@@ -12,12 +12,12 @@ jest.unstable_mockModule('uuid', () => ({
 
 // Mock parts of the utils module
 jest.unstable_mockModule('../../../../../mcp-server/src/tools/utils.js', () => {
-	// Since agent_llm.js uses withNormalizedProjectRoot and createErrorResponse, they must be mocked.
-	// Other functions from utils.js might not need explicit mocks if not directly called by agent_llm.js
+	// Since agent-llm.js uses withNormalizedProjectRoot and createErrorResponse, they must be mocked.
+	// Other functions from utils.js might not need explicit mocks if not directly called by agent-llm.js
 	// or if their actual implementation is fine for these tests.
 	// const originalModule = jest.requireActual('../../../../../mcp-server/src/tools/utils.js'); // Not strictly needed if we mock all used ones
 	return {
-		// ...originalModule, // Spread original if some non-mocked functions are needed by agent_llm.js
+		// ...originalModule, // Spread original if some non-mocked functions are needed by agent-llm.js
 		__esModule: true, // Good practice for ESM mocks
 		withNormalizedProjectRoot: jest.fn((fn) => fn), // Pass-through for HOF
 		createErrorResponse: jest.fn((message, options) => ({
@@ -40,7 +40,7 @@ describe('agent_llm MCP Tool', () => {
 	beforeAll(async () => {
 		// Dynamically import modules after mocks are set up
 		const agentLLMModule = await import(
-			'../../../../../mcp-server/src/tools/agent_llm.js'
+			'../../../../../mcp-server/src/tools/agent-llm.js'
 		);
 		registerAgentLLMTool = agentLLMModule.registerAgentLLMTool;
 		utilsModule = await import('../../../../../mcp-server/src/tools/utils.js');
@@ -64,9 +64,9 @@ describe('agent_llm MCP Tool', () => {
 		if (registerAgentLLMTool) {
 			registerAgentLLMTool(mockServer);
 		} else {
-			// This might happen if beforeAll didn't complete or agent_llm.js failed to import
+			// This might happen if beforeAll didn't complete or agent-llm.js failed to import
 			throw new Error(
-				'registerAgentLLMTool was not loaded by beforeAll. Ensure agent_llm.js can be imported.'
+				'registerAgentLLMTool was not loaded by beforeAll. Ensure agent-llm.js can be imported.'
 			);
 		}
 

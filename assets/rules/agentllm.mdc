@@ -57,5 +57,6 @@ Your arguments for the `agent_llm` tool must include:
 Do not use `get_tasks` tool  before `expand_all`.
 **Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
 **Note on `research`:** When a research is made for a specific task always fill `saveTo` parameter unless user explicitly asks you not to save the result.
+**Note on `scope_up_task` and `scope_down_task`:** After scoping the tasks, reanalyze them with the `analyze_project_complexity` tool.
 
 The project is already initialized.

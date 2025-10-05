@@ -93,6 +93,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 
 ## Research Models
 
@@ -122,7 +123,6 @@
 | perplexity  | sonar-deep-research                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
-| agentllm    | agent-delegated-model                        | 0         | 0          | 0           |
 | bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0 | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0 | 0.49      | 3          | 15          |
@@ -130,6 +130,7 @@
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0   | 0.727     | 3          | 15          |
 | bedrock     | us.deepseek.r1-v1:0                          | —         | 1.35       | 5.4         |
+| agentllm    | agent-delegated-model                        | 0         | 0          | 0           |
 
 ## Fallback Models
 
@@ -211,6 +212,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | 0         | 0          | 0           |
 
 ## Unsupported Models
 

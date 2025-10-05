@@ -101,7 +101,8 @@ export function registerTaskMasterTools(server) {
 
 		// Group 8: Research Features
 		registerResearchTool(server);
-		// AgentLLM Integration
+		
+		//AgentLLMProvider Integration
 		registerAgentLLMTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
