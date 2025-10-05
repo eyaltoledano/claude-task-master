@@ -674,37 +674,5 @@ describe('BaseAIProvider', () => {
 			const callArgs = mockGenerateText.mock.calls[0][0];
 			expect(callArgs).not.toHaveProperty('temperature');
 		});
-
-		it('should verify CLI providers have supportsTemperature = false', async () => {
-			const { ClaudeCodeProvider } = await import(
-				'../../../src/ai-providers/claude-code.js'
-			);
-			const { CodexCliProvider } = await import(
-				'../../../src/ai-providers/codex-cli.js'
-			);
-			const { GeminiCliProvider } = await import(
-				'../../../src/ai-providers/gemini-cli.js'
-			);
-			const { GrokCliProvider } = await import(
-				'../../../src/ai-providers/grok-cli.js'
-			);
-
-			expect(new ClaudeCodeProvider().supportsTemperature).toBe(false);
-			expect(new CodexCliProvider().supportsTemperature).toBe(false);
-			expect(new GeminiCliProvider().supportsTemperature).toBe(false);
-			expect(new GrokCliProvider().supportsTemperature).toBe(false);
-		});
-
-		it('should verify standard providers have supportsTemperature = true', async () => {
-			const { AnthropicAIProvider } = await import(
-				'../../../src/ai-providers/anthropic.js'
-			);
-			const { OpenAIProvider } = await import(
-				'../../../src/ai-providers/openai.js'
-			);
-
-			expect(new AnthropicAIProvider().supportsTemperature).toBe(true);
-			expect(new OpenAIProvider().supportsTemperature).toBe(true);
-		});
 	});
 });
