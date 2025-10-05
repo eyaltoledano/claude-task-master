@@ -3,7 +3,7 @@
 	"private": true,
 	"displayName": "TaskMaster",
 	"description": "A visual Kanban board interface for TaskMaster projects in VS Code",
-	"version": "0.22.3",
+	"version": "0.25.5-rc.0",
 	"publisher": "Hamster",
 	"icon": "assets/icon.png",
 	"engines": {
@@ -64,16 +64,16 @@
 			"properties": {
 				"taskmaster.mcp.command": {
 					"type": "string",
-					"default": "npx",
-					"description": "The command or absolute path to execute for the MCP server (e.g., 'npx' or '/usr/local/bin/task-master-ai')."
+					"default": "node",
+					"description": "The command to execute for the MCP server (e.g., 'node' for bundled server or 'npx' for remote)."
 				},
 				"taskmaster.mcp.args": {
 					"type": "array",
 					"items": {
 						"type": "string"
 					},
-					"default": ["task-master-ai"],
-					"description": "An array of arguments to pass to the MCP server command."
+					"default": [],
+					"description": "Arguments for the MCP server (leave empty to use bundled server)."
 				},
 				"taskmaster.mcp.cwd": {
 					"type": "string",
@@ -229,6 +229,7 @@
 		"build": "npm run build:js && npm run build:css",
 		"build:js": "node ./esbuild.js --production",
 		"build:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
+		"dev": "npm run watch",
 		"package": "npm exec node ./package.mjs",
 		"package:direct": "node ./package.mjs",
 		"debug:env": "node ./debug-env.mjs",
@@ -237,6 +238,9 @@
 		"watch:js": "node ./esbuild.js --watch",
 		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
 		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"task-master-ai": "*"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",
@@ -250,8 +254,9 @@
 		"@radix-ui/react-separator": "^1.1.7",
 		"@radix-ui/react-slot": "^1.2.3",
 		"@tailwindcss/postcss": "^4.1.11",
+		"@tanstack/react-query": "^5.83.0",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "20.x",
+		"@types/node": "^22.10.5",
 		"@types/react": "19.1.8",
 		"@types/react-dom": "19.1.6",
 		"@types/vscode": "^1.101.0",
@@ -267,12 +272,12 @@
 		"lucide-react": "^0.525.0",
 		"npm-run-all": "^4.1.5",
 		"postcss": "8.5.6",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
 		"tailwind-merge": "^3.3.1",
 		"tailwindcss": "4.1.11",
-		"typescript": "^5.8.3",
-		"@tanstack/react-query": "^5.83.0",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0"
+		"typescript": "^5.9.2",
+		"@tm/core": "*"
 	},
 	"overrides": {
 		"glob@<8": "^10.4.5",

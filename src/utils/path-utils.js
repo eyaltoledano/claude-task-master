@@ -275,7 +275,11 @@ export function findComplexityReportPath(
 		'' // Project root
 	];
 
-	const fileNames = ['task-complexity', 'complexity-report'].map((fileName) => {
+	const fileNames = [
+		'task-complexity-report',
+		'task-complexity',
+		'complexity-report'
+	].map((fileName) => {
 		if (args?.tag && args?.tag !== 'master') {
 			return `${fileName}_${args.tag}.json`;
 		}
@@ -459,6 +463,17 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 		}
 	}
 
-	logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+	// Only warn once per command execution to prevent spam during init
+	const warningKey = `config_warning_${projectRoot}`;
+
+	if (!global._tmConfigWarningsThisRun) {
+		global._tmConfigWarningsThisRun = new Set();
+	}
+
+	if (!global._tmConfigWarningsThisRun.has(warningKey)) {
+		global._tmConfigWarningsThisRun.add(warningKey);
+		logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+	}
+
 	return null;
 }

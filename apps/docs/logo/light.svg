@@ -1,0 +1,19 @@
+<svg width="800" height="240" viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="240" fill="transparent"/>
+
+  <!-- Curly braces -->
+  <text x="40" y="156" font-size="140" fill="#000000" font-family="monospace">{</text>
+  <text x="230" y="156" font-size="140" fill="#000000" font-family="monospace">}</text>
+
+  <!-- Blue form with check -->
+  <rect x="120" y="50" width="120" height="140" rx="16" fill="#3366CC"/>
+  <polyline points="150,110 164,128 190,84" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+  <circle cx="150" cy="144" r="7" fill="#FFFFFF"/>
+  <rect x="168" y="140" width="48" height="10" fill="#FFFFFF"/>
+  <circle cx="150" cy="168" r="7" fill="#FFFFFF"/>
+  <rect x="168" y="164" width="48" height="10" fill="#FFFFFF"/>
+
+  <!-- Text -->
+  <text x="340" y="156" font-family="Arial, sans-serif" font-size="76" font-weight="bold" fill="#000000">Task Master</text>
+</svg>

@@ -1,4 +1,4 @@
-# Available Models as of July 23, 2025
+# Available Models as of October 5, 2025
 
 ## Main Models
 
@@ -13,6 +13,10 @@
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                  | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                    | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                               | 0.55      | 0          | 0           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o1                                             | 0.489     | 15         | 60          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
@@ -24,6 +28,7 @@
 | openai      | gpt-4-1-mini                                   | —         | 0.4        | 1.6         |
 | openai      | gpt-4-1-nano                                   | —         | 0.1        | 0.4         |
 | openai      | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
+| openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
@@ -67,6 +72,9 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |
@@ -95,6 +103,10 @@
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                  | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                             | 0.55      | 0          | 0           |
 | openai      | gpt-4o-search-preview                        | 0.33      | 2.5        | 10          |
 | openai      | gpt-4o-mini-search-preview                   | 0.3       | 0.15       | 0.6         |
 | xai         | grok-3                                       | —         | 3          | 15          |
@@ -107,7 +119,7 @@
 | groq        | deepseek-r1-distill-llama-70b                | 0.52      | 0.75       | 0.99        |
 | perplexity  | sonar-pro                                    | —         | 3          | 15          |
 | perplexity  | sonar                                        | —         | 1          | 1           |
-| perplexity  | deep-research                                | 0.211     | 2          | 8           |
+| perplexity  | sonar-deep-research                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
 | agentllm    | agent-delegated-model                        | 0         | 0          | 0           |
@@ -132,9 +144,14 @@
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
+| grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
+| grok-cli    | grok-3-latest                                  | 0.65      | 0          | 0           |
+| grok-cli    | grok-3-fast                                    | 0.6       | 0          | 0           |
+| grok-cli    | grok-3-mini-fast                               | 0.55      | 0          | 0           |
 | openai      | gpt-4o                                         | 0.332     | 2.5        | 10          |
 | openai      | o3                                             | 0.5       | 2          | 8           |
 | openai      | o4-mini                                        | 0.45      | 1.1        | 4.4         |
+| openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
@@ -173,6 +190,9 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
+| ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
 | ollama      | devstral:latest                                | —         | 0          | 0           |
 | ollama      | qwen3:latest                                   | —         | 0          | 0           |
 | ollama      | qwen3:14b                                      | —         | 0          | 0           |

@@ -1,5 +1,715 @@
 # task-master-ai
 
+## 0.28.0-rc.1
+
+### Patch Changes
+
+- [#1274](https://github.com/eyaltoledano/claude-task-master/pull/1274) [`4f984f8`](https://github.com/eyaltoledano/claude-task-master/commit/4f984f8a6965da9f9c7edd60ddfd6560ac022917) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Do a quick fix on build
+
+## 0.28.0-rc.0
+
+### Minor Changes
+
+- [#1215](https://github.com/eyaltoledano/claude-task-master/pull/1215) [`0079b7d`](https://github.com/eyaltoledano/claude-task-master/commit/0079b7defdad550811f704c470fdd01955d91d4d) Thanks [@joedanz](https://github.com/joedanz)! - Add Cursor IDE custom slash command support
+
+  Expose Task Master commands as Cursor slash commands by copying assets/claude/commands to .cursor/commands on profile add and cleaning up on remove.
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Added api keys page on docs website: docs.task-master.dev/getting-started/api-keys
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Move to AI SDK v5:
+  - Works better with claude-code and gemini-cli as ai providers
+  - Improved openai model family compatibility
+  - Migrate ollama provider to v2
+  - Closes #1223, #1013, #1161, #1174
+
+- [#1262](https://github.com/eyaltoledano/claude-task-master/pull/1262) [`738ec51`](https://github.com/eyaltoledano/claude-task-master/commit/738ec51c049a295a12839b2dfddaf05e23b8fede) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Migrate AI services to use generateObject for structured data generation
+
+  This update migrates all AI service calls from generateText to generateObject, ensuring more reliable and structured responses across all commands.
+
+  ### Key Changes:
+  - **Unified AI Service**: Replaced separate generateText implementations with a single generateObjectService that handles structured data generation
+  - **JSON Mode Support**: Added proper JSON mode configuration for providers that support it (OpenAI, Anthropic, Google, Groq)
+  - **Schema Validation**: Integrated Zod schemas for all AI-generated content with automatic validation
+  - **Provider Compatibility**: Maintained compatibility with all existing providers while leveraging their native structured output capabilities
+  - **Improved Reliability**: Structured output generation reduces parsing errors and ensures consistent data formats
+
+  ### Technical Improvements:
+  - Centralized provider configuration in `ai-providers-unified.js`
+  - Added `generateObject` support detection for each provider
+  - Implemented proper error handling for schema validation failures
+  - Maintained backward compatibility with existing prompt structures
+
+  ### Bug Fixes:
+  - Fixed subtask ID numbering issue where AI was generating inconsistent IDs (101-105, 601-603) instead of sequential numbering (1, 2, 3...)
+  - Enhanced prompt instructions to enforce proper ID generation patterns
+  - Ensured subtasks display correctly as X.1, X.2, X.3 format
+
+  This migration improves the reliability and consistency of AI-generated content throughout the Task Master application.
+
+- [#1112](https://github.com/eyaltoledano/claude-task-master/pull/1112) [`d67b81d`](https://github.com/eyaltoledano/claude-task-master/commit/d67b81d25ddd927fabb6f5deb368e8993519c541) Thanks [@olssonsten](https://github.com/olssonsten)! - Enhanced Roo Code profile with MCP timeout configuration for improved reliability during long-running AI operations. The Roo profile now automatically configures a 300-second timeout for MCP server operations, preventing timeouts during complex tasks like `parse-prd`, `expand-all`, `analyze-complexity`, and `research` operations. This change also replaces static MCP configuration files with programmatic generation for better maintainability.
+
+  **What's New:**
+  - 300-second timeout for MCP operations (up from default 60 seconds)
+  - Programmatic MCP configuration generation (replaces static asset files)
+  - Enhanced reliability for AI-powered operations
+  - Consistent with other AI coding assistant profiles
+
+  **Migration:** No user action required - existing Roo Code installations will automatically receive the enhanced MCP configuration on next initialization.
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`986ac11`](https://github.com/eyaltoledano/claude-task-master/commit/986ac117aee00bcd3e6830a0f76e1ad6d10e0bca) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Upgrade grok-cli ai provider to ai sdk v5
+
+### Patch Changes
+
+- [#1235](https://github.com/eyaltoledano/claude-task-master/pull/1235) [`aaacc3d`](https://github.com/eyaltoledano/claude-task-master/commit/aaacc3dae36247b4de72b2d2697f49e5df6d01e3) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve `analyze-complexity` cli docs and `--research` flag documentation
+
+- [#1251](https://github.com/eyaltoledano/claude-task-master/pull/1251) [`0b2c696`](https://github.com/eyaltoledano/claude-task-master/commit/0b2c6967c4605c33a100cff16f6ce8ff09ad06f0) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Change parent task back to "pending" when all subtasks are in "pending" state
+
+- [#1172](https://github.com/eyaltoledano/claude-task-master/pull/1172) [`b5fe723`](https://github.com/eyaltoledano/claude-task-master/commit/b5fe723f8ead928e9f2dbde13b833ee70ac3382d) Thanks [@jujax](https://github.com/jujax)! - Fix Claude Code settings validation for pathToClaudeCodeExecutable
+
+- [#1192](https://github.com/eyaltoledano/claude-task-master/pull/1192) [`2b69936`](https://github.com/eyaltoledano/claude-task-master/commit/2b69936ee7b34346d6de5175af20e077359e2e2a) Thanks [@nukunga](https://github.com/nukunga)! - Fix sonar deep research model failing, should be called `sonar-deep-research`
+
+- [#1270](https://github.com/eyaltoledano/claude-task-master/pull/1270) [`20004a3`](https://github.com/eyaltoledano/claude-task-master/commit/20004a39ea848f747e1ff48981bfe176554e4055) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix complexity score not showing for `task-master show` and `task-master list`
+  - Added complexity score on "next task" when running `task-master list`
+  - Added colors to complexity to reflect complexity (easy, medium, hard)
+
+## 0.27.3
+
+### Patch Changes
+
+- [#1254](https://github.com/eyaltoledano/claude-task-master/pull/1254) [`af53525`](https://github.com/eyaltoledano/claude-task-master/commit/af53525cbc660a595b67d4bb90d906911c71f45d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixed issue where `tm show` command could not find subtasks using dotted notation IDs (e.g., '8.1').
+  - The command now properly searches within parent task subtasks and returns the correct subtask information.
+
+## 0.27.2
+
+### Patch Changes
+
+- [#1248](https://github.com/eyaltoledano/claude-task-master/pull/1248) [`044a7bf`](https://github.com/eyaltoledano/claude-task-master/commit/044a7bfc98049298177bc655cf341d7a8b6a0011) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix set-status for subtasks:
+  - Parent tasks are now set as `done` when subtasks are all `done`
+  - Parent tasks are now set as `in-progress` when at least one subtask is `in-progress` or `done`
+
+## 0.27.1
+
+### Patch Changes
+
+- [#1232](https://github.com/eyaltoledano/claude-task-master/pull/1232) [`f487736`](https://github.com/eyaltoledano/claude-task-master/commit/f487736670ef8c484059f676293777eabb249c9e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix module not found for new 0.27.0 release
+
+- [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`c911608`](https://github.com/eyaltoledano/claude-task-master/commit/c911608f60454253f4e024b57ca84e5a5a53f65c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix Zed MCP configuration by adding required "source" property
+  - Add "source": "custom" property to task-master-ai server in Zed settings.json
+
+## 0.27.1-rc.1
+
+### Patch Changes
+
+- [#1233](https://github.com/eyaltoledano/claude-task-master/pull/1233) [`1a18794`](https://github.com/eyaltoledano/claude-task-master/commit/1a1879483b86c118a4e46c02cbf4acebfcf6bcf9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - One last testing final final
+
+## 0.27.1-rc.0
+
+### Patch Changes
+
+- [#1232](https://github.com/eyaltoledano/claude-task-master/pull/1232) [`f487736`](https://github.com/eyaltoledano/claude-task-master/commit/f487736670ef8c484059f676293777eabb249c9e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix module not found for new 0.27.0 release
+
+## 0.27.0
+
+### Minor Changes
+
+- [#1220](https://github.com/eyaltoledano/claude-task-master/pull/1220) [`4e12643`](https://github.com/eyaltoledano/claude-task-master/commit/4e126430a092fb54afb035514fb3d46115714f97) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - No longer need --package=task-master-ai in mcp server
+  - A lot of users were having issues with Taskmaster and usually a simple fix was to remove --package from your mcp.json
+  - we now bundle our whole package, so we no longer need the --package
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `task-master start` command for automated task execution with Claude Code
+  - You can now start working on tasks directly by running `task-master start <task-id>` which will automatically launch Claude Code with a comprehensive prompt containing all task details, implementation guidelines, and context.
+  - `task-master start` will automatically detect next-task when no ID is provided.
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Move from javascript to typescript, not a full refactor but we now have a typescript environment and are moving our javascript commands slowly into typescript
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add grok-cli as a provider with full codebase context support. You can now use Grok models (grok-2, grok-3, grok-4, etc.) with Task Master for AI operations that have access to your entire codebase context, enabling more informed task generation and PRD parsing.
+
+  ## Setup Instructions
+  1. **Get your Grok API key** from [console.x.ai](https://console.x.ai)
+  2. **Set the environment variable**:
+     ```bash
+     export GROK_CLI_API_KEY="your-api-key-here"
+     ```
+  3. **Configure Task Master to use Grok**:
+     ```bash
+     task-master models --set-main grok-beta
+     # or
+     task-master models --set-research grok-beta
+     # or
+     task-master models --set-fallback grok-beta
+     ```
+
+  ## Key Features
+  - **Full codebase context**: Grok models can analyze your entire project when generating tasks or parsing PRDs
+  - **xAI model access**: Support for latest Grok models (grok-2, grok-3, grok-4, etc.)
+  - **Code-aware task generation**: Create more accurate and contextual tasks based on your actual codebase
+  - **Intelligent PRD parsing**: Parse requirements with understanding of your existing code structure
+
+  ## Available Models
+  - `grok-beta` - Latest Grok model with codebase context
+  - `grok-vision-beta` - Grok with vision capabilities and codebase context
+
+  The Grok CLI provider integrates with xAI's Grok models via grok-cli and can also use the local Grok CLI configuration file (`~/.grok/user-settings.json`) if available.
+
+  ## Credits
+
+  Built using the [grok-cli](https://github.com/superagent-ai/grok-cli) by Superagent AI for seamless integration with xAI's Grok models.
+
+- [#1225](https://github.com/eyaltoledano/claude-task-master/pull/1225) [`a621ff0`](https://github.com/eyaltoledano/claude-task-master/commit/a621ff05eafb51a147a9aabd7b37ddc0e45b0869) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve taskmaster ai provider defaults
+  - moving from main anthropic 3.7 to anthropic sonnet 4
+  - moving from fallback anthropic 3.5 to anthropic 3.7
+
+- [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
+
+- [#1200](https://github.com/eyaltoledano/claude-task-master/pull/1200) [`fce8414`](https://github.com/eyaltoledano/claude-task-master/commit/fce841490a9ebbf1801a42dd8a29397379cf1142) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix Grok model configuration validation and update deprecated Claude fallback model. Grok models now properly support their full 131K token capacity, and the fallback model has been upgraded to Claude Sonnet 4 for better performance and future compatibility.
+
+## 0.27.0-rc.2
+
+### Minor Changes
+
+- [#1217](https://github.com/eyaltoledano/claude-task-master/pull/1217) [`e6de285`](https://github.com/eyaltoledano/claude-task-master/commit/e6de285ceacb0a397e952a63435cd32a9c731515) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - @tm/cli: add auto-update functionality to every command
+
+## 0.27.0-rc.1
+
+### Minor Changes
+
+- [`255b9f0`](https://github.com/eyaltoledano/claude-task-master/commit/255b9f0334555b0063280abde701445cd62fa11b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Testing one more pre-release iteration
+
+## 0.27.0-rc.0
+
+### Minor Changes
+
+- [#1213](https://github.com/eyaltoledano/claude-task-master/pull/1213) [`137ef36`](https://github.com/eyaltoledano/claude-task-master/commit/137ef362789a9cdfdb1925e35e0438c1fa6c69ee) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Test out the RC
+
+### Patch Changes
+
+- Updated dependencies [[`137ef36`](https://github.com/eyaltoledano/claude-task-master/commit/137ef362789a9cdfdb1925e35e0438c1fa6c69ee)]:
+  - @tm/cli@0.27.0-rc.0
+
+## 0.26.0
+
+### Minor Changes
+
+- [#1133](https://github.com/eyaltoledano/claude-task-master/pull/1133) [`df26c65`](https://github.com/eyaltoledano/claude-task-master/commit/df26c65632000874a73504963b08f18c46283144) Thanks [@neonwatty](https://github.com/neonwatty)! - Restore Taskmaster claude-code commands and move clear commands under /remove to avoid collision with the claude-code /clear command.
+
+- [#1163](https://github.com/eyaltoledano/claude-task-master/pull/1163) [`37af0f1`](https://github.com/eyaltoledano/claude-task-master/commit/37af0f191227a68d119b7f89a377bf932ee3ac66) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Gemini CLI provider with codebase-aware task generation
+
+  Added automatic codebase analysis for Gemini CLI provider in parse-prd, and analyze-complexity, add-task, udpate-task, update, update-subtask commands
+  When using Gemini CLI as the AI provider, Task Master now instructs the AI to analyze the project structure, existing implementations, and patterns before generating tasks or subtasks
+  Tasks and subtasks generated by Claude Code are now informed by actual codebase analysis, resulting in more accurate and contextual outputs
+
+- [#1165](https://github.com/eyaltoledano/claude-task-master/pull/1165) [`c4f92f6`](https://github.com/eyaltoledano/claude-task-master/commit/c4f92f6a0aee3435c56eb8d27d9aa9204284833e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add configurable codebase analysis feature flag with multiple configuration sources
+
+  Users can now control whether codebase analysis features (Claude Code and Gemini CLI integration) are enabled through environment variables, MCP configuration, or project config files.
+
+  Priority order: .env > MCP session env > .taskmaster/config.json.
+
+  Set `TASKMASTER_ENABLE_CODEBASE_ANALYSIS=false` in `.env` to disable codebase analysis prompts and tool integration.
+
+- [#1135](https://github.com/eyaltoledano/claude-task-master/pull/1135) [`8783708`](https://github.com/eyaltoledano/claude-task-master/commit/8783708e5e3389890a78fcf685d3da0580e73b3f) Thanks [@mm-parthy](https://github.com/mm-parthy)! - feat(move): improve cross-tag move UX and safety
+  - CLI: print "Next Steps" tips after cross-tag moves that used --ignore-dependencies (validate/fix guidance)
+  - CLI: show dedicated help block on ID collisions (destination tag already has the ID)
+  - Core: add structured suggestions to TASK_ALREADY_EXISTS errors
+  - MCP: map ID collision errors to TASK_ALREADY_EXISTS and include suggestions
+  - Tests: cover MCP options, error suggestions, CLI tips printing, and integration error payload suggestions
+
+  ***
+
+- [#1162](https://github.com/eyaltoledano/claude-task-master/pull/1162) [`4dad2fd`](https://github.com/eyaltoledano/claude-task-master/commit/4dad2fd613ceac56a65ae9d3c1c03092b8860ac9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Claude Code and Google CLI integration with automatic codebase analysis for task operations
+
+  When using Claude Code as the AI provider, task management commands now automatically analyze your codebase before generating or updating tasks. This provides more accurate, context-aware implementation details that align with your project's existing architecture and patterns.
+
+  Commands contextualised:
+  - add-task
+  - update-subtask
+  - update-task
+  - update
+
+### Patch Changes
+
+- [#1135](https://github.com/eyaltoledano/claude-task-master/pull/1135) [`8783708`](https://github.com/eyaltoledano/claude-task-master/commit/8783708e5e3389890a78fcf685d3da0580e73b3f) Thanks [@mm-parthy](https://github.com/mm-parthy)! - docs(move): clarify cross-tag move docs; deprecate "force"; add explicit --with-dependencies/--ignore-dependencies examples
+
+## 0.26.0-rc.1
+
+### Minor Changes
+
+- [#1165](https://github.com/eyaltoledano/claude-task-master/pull/1165) [`c4f92f6`](https://github.com/eyaltoledano/claude-task-master/commit/c4f92f6a0aee3435c56eb8d27d9aa9204284833e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add configurable codebase analysis feature flag with multiple configuration sources
+
+  Users can now control whether codebase analysis features (Claude Code and Gemini CLI integration) are enabled through environment variables, MCP configuration, or project config files.
+
+  Priority order: .env > MCP session env > .taskmaster/config.json.
+
+  Set `TASKMASTER_ENABLE_CODEBASE_ANALYSIS=false` in `.env` to disable codebase analysis prompts and tool integration.
+
+## 0.26.0-rc.0
+
+### Minor Changes
+
+- [#1163](https://github.com/eyaltoledano/claude-task-master/pull/1163) [`37af0f1`](https://github.com/eyaltoledano/claude-task-master/commit/37af0f191227a68d119b7f89a377bf932ee3ac66) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Gemini CLI provider with codebase-aware task generation
+
+  Added automatic codebase analysis for Gemini CLI provider in parse-prd, and analyze-complexity, add-task, udpate-task, update, update-subtask commands
+  When using Gemini CLI as the AI provider, Task Master now instructs the AI to analyze the project structure, existing implementations, and patterns before generating tasks or subtasks
+  Tasks and subtasks generated by Claude Code are now informed by actual codebase analysis, resulting in more accurate and contextual outputs
+
+- [#1135](https://github.com/eyaltoledano/claude-task-master/pull/1135) [`8783708`](https://github.com/eyaltoledano/claude-task-master/commit/8783708e5e3389890a78fcf685d3da0580e73b3f) Thanks [@mm-parthy](https://github.com/mm-parthy)! - feat(move): improve cross-tag move UX and safety
+  - CLI: print "Next Steps" tips after cross-tag moves that used --ignore-dependencies (validate/fix guidance)
+  - CLI: show dedicated help block on ID collisions (destination tag already has the ID)
+  - Core: add structured suggestions to TASK_ALREADY_EXISTS errors
+  - MCP: map ID collision errors to TASK_ALREADY_EXISTS and include suggestions
+  - Tests: cover MCP options, error suggestions, CLI tips printing, and integration error payload suggestions
+
+  ***
+
+- [#1162](https://github.com/eyaltoledano/claude-task-master/pull/1162) [`4dad2fd`](https://github.com/eyaltoledano/claude-task-master/commit/4dad2fd613ceac56a65ae9d3c1c03092b8860ac9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Claude Code and Google CLI integration with automatic codebase analysis for task operations
+
+  When using Claude Code as the AI provider, task management commands now automatically analyze your codebase before generating or updating tasks. This provides more accurate, context-aware implementation details that align with your project's existing architecture and patterns.
+
+  Commands contextualised:
+  - add-task
+  - update-subtask
+  - update-task
+  - update
+
+### Patch Changes
+
+- [#1135](https://github.com/eyaltoledano/claude-task-master/pull/1135) [`8783708`](https://github.com/eyaltoledano/claude-task-master/commit/8783708e5e3389890a78fcf685d3da0580e73b3f) Thanks [@mm-parthy](https://github.com/mm-parthy)! - docs(move): clarify cross-tag move docs; deprecate "force"; add explicit --with-dependencies/--ignore-dependencies examples
+
+## 0.25.1
+
+### Patch Changes
+
+- [#1152](https://github.com/eyaltoledano/claude-task-master/pull/1152) [`8933557`](https://github.com/eyaltoledano/claude-task-master/commit/89335578ffffc65504b2055c0c85aa7521e5e79b) Thanks [@ben-vargas](https://github.com/ben-vargas)! - fix(claude-code): prevent crash/hang when the optional `@anthropic-ai/claude-code` SDK is missing by guarding `AbortError instanceof` checks and adding explicit SDK presence checks in `doGenerate`/`doStream`. Also bump the optional dependency to `^1.0.88` for improved export consistency.
+
+  Related to JSON truncation handling in #920; this change addresses a separate error-path crash reported in #1142.
+
+- [#1151](https://github.com/eyaltoledano/claude-task-master/pull/1151) [`db720a9`](https://github.com/eyaltoledano/claude-task-master/commit/db720a954d390bb44838cd021b8813dde8f3d8de) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Temporarily disable streaming for improved model compatibility - will be re-enabled in upcoming release
+
+## 0.25.0
+
+### Minor Changes
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Add cross-tag task movement functionality for organizing tasks across different contexts.
+
+  This feature enables moving tasks between different tags (contexts) in your project, making it easier to organize work across different branches, environments, or project phases.
+
+  ## CLI Usage Examples
+
+  Move a single task from one tag to another:
+
+  ```bash
+  # Move task 5 from backlog tag to in-progress tag
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-1
+
+  # Move task with its dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-2 --with-dependencies
+
+  # Move task without checking dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=bug-3 --ignore-dependencies
+  ```
+
+  Move multiple tasks at once:
+
+  ```bash
+  # Move multiple tasks between tags
+  task-master move --from=5,6,7 --from-tag=backlog --to-tag=bug-4 --with-dependencies
+  ```
+
+- [#1040](https://github.com/eyaltoledano/claude-task-master/pull/1040) [`fc47714`](https://github.com/eyaltoledano/claude-task-master/commit/fc477143400fd11d953727bf1b4277af5ad308d1) Thanks [@DomVidja](https://github.com/DomVidja)! - "Add Kilo Code profile integration with custom modes and MCP configuration"
+
+- [#1054](https://github.com/eyaltoledano/claude-task-master/pull/1054) [`782728f`](https://github.com/eyaltoledano/claude-task-master/commit/782728ff95aa2e3b766d48273b57f6c6753e8573) Thanks [@martincik](https://github.com/martincik)! - Add compact mode --compact / -c flag to the `tm list` CLI command
+  - outputs tasks in a minimal, git-style one-line format. This reduces verbose output from ~30+ lines of dashboards and tables to just 1 line per task, making it much easier to quickly scan available tasks.
+    - Git-style format: ID STATUS TITLE (PRIORITY) → DEPS
+    - Color-coded status, priority, and dependencies
+    - Smart title truncation and dependency abbreviation
+    - Subtask support with indentation
+    - Full backward compatibility with existing list options
+
+- [#1048](https://github.com/eyaltoledano/claude-task-master/pull/1048) [`e3ed4d7`](https://github.com/eyaltoledano/claude-task-master/commit/e3ed4d7c14b56894d7da675eb2b757423bea8f9d) Thanks [@joedanz](https://github.com/joedanz)! - Add CLI & MCP progress tracking for parse-prd command.
+
+- [#1124](https://github.com/eyaltoledano/claude-task-master/pull/1124) [`95640dc`](https://github.com/eyaltoledano/claude-task-master/commit/95640dcde87ce7879858c0a951399fb49f3b6397) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for ollama `gpt-oss:20b` and `gpt-oss:120b`
+
+- [#1123](https://github.com/eyaltoledano/claude-task-master/pull/1123) [`311b243`](https://github.com/eyaltoledano/claude-task-master/commit/311b2433e23c771c8d3a4d3f5ac577302b8321e5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Remove `clear` Taskmaster claude code commands since they were too close to the claude-code clear command
+
+### Patch Changes
+
+- [#1131](https://github.com/eyaltoledano/claude-task-master/pull/1131) [`3dee60d`](https://github.com/eyaltoledano/claude-task-master/commit/3dee60dc3d566e3cff650accb30f994b8bb3a15e) Thanks [@joedanz](https://github.com/joedanz)! - Update Cursor one-click install link to new URL format
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Fix `add-tag --from-branch` command error where `projectRoot` was not properly referenced
+
+  The command was failing with "projectRoot is not defined" error because the code was directly referencing `projectRoot` instead of `context.projectRoot` in the git repository checks. This fix corrects the variable references to use the proper context object.
+
+## 0.25.0-rc.0
+
+### Minor Changes
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Add cross-tag task movement functionality for organizing tasks across different contexts.
+
+  This feature enables moving tasks between different tags (contexts) in your project, making it easier to organize work across different branches, environments, or project phases.
+
+  ## CLI Usage Examples
+
+  Move a single task from one tag to another:
+
+  ```bash
+  # Move task 5 from backlog tag to in-progress tag
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-1
+
+  # Move task with its dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=feature-2 --with-dependencies
+
+  # Move task without checking dependencies
+  task-master move --from=5 --from-tag=backlog --to-tag=bug-3 --ignore-dependencies
+  ```
+
+  Move multiple tasks at once:
+
+  ```bash
+  # Move multiple tasks between tags
+  task-master move --from=5,6,7 --from-tag=backlog --to-tag=bug-4 --with-dependencies
+  ```
+
+- [#1040](https://github.com/eyaltoledano/claude-task-master/pull/1040) [`fc47714`](https://github.com/eyaltoledano/claude-task-master/commit/fc477143400fd11d953727bf1b4277af5ad308d1) Thanks [@DomVidja](https://github.com/DomVidja)! - "Add Kilo Code profile integration with custom modes and MCP configuration"
+
+- [#1054](https://github.com/eyaltoledano/claude-task-master/pull/1054) [`782728f`](https://github.com/eyaltoledano/claude-task-master/commit/782728ff95aa2e3b766d48273b57f6c6753e8573) Thanks [@martincik](https://github.com/martincik)! - Add compact mode --compact / -c flag to the `tm list` CLI command
+  - outputs tasks in a minimal, git-style one-line format. This reduces verbose output from ~30+ lines of dashboards and tables to just 1 line per task, making it much easier to quickly scan available tasks.
+    - Git-style format: ID STATUS TITLE (PRIORITY) → DEPS
+    - Color-coded status, priority, and dependencies
+    - Smart title truncation and dependency abbreviation
+    - Subtask support with indentation
+    - Full backward compatibility with existing list options
+
+- [#1048](https://github.com/eyaltoledano/claude-task-master/pull/1048) [`e3ed4d7`](https://github.com/eyaltoledano/claude-task-master/commit/e3ed4d7c14b56894d7da675eb2b757423bea8f9d) Thanks [@joedanz](https://github.com/joedanz)! - Add CLI & MCP progress tracking for parse-prd command.
+
+- [#1124](https://github.com/eyaltoledano/claude-task-master/pull/1124) [`95640dc`](https://github.com/eyaltoledano/claude-task-master/commit/95640dcde87ce7879858c0a951399fb49f3b6397) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for ollama `gpt-oss:20b` and `gpt-oss:120b`
+
+- [#1123](https://github.com/eyaltoledano/claude-task-master/pull/1123) [`311b243`](https://github.com/eyaltoledano/claude-task-master/commit/311b2433e23c771c8d3a4d3f5ac577302b8321e5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Remove `clear` Taskmaster claude code commands since they were too close to the claude-code clear command
+
+### Patch Changes
+
+- [#1131](https://github.com/eyaltoledano/claude-task-master/pull/1131) [`3dee60d`](https://github.com/eyaltoledano/claude-task-master/commit/3dee60dc3d566e3cff650accb30f994b8bb3a15e) Thanks [@joedanz](https://github.com/joedanz)! - Update Cursor one-click install link to new URL format
+
+- [#1088](https://github.com/eyaltoledano/claude-task-master/pull/1088) [`04e11b5`](https://github.com/eyaltoledano/claude-task-master/commit/04e11b5e828597c0ba5b82ca7d5fb6f933e4f1e8) Thanks [@mm-parthy](https://github.com/mm-parthy)! - Fix `add-tag --from-branch` command error where `projectRoot` was not properly referenced
+
+  The command was failing with "projectRoot is not defined" error because the code was directly referencing `projectRoot` instead of `context.projectRoot` in the git repository checks. This fix corrects the variable references to use the proper context object.
+
+## 0.24.0
+
+### Minor Changes
+
+- [#1098](https://github.com/eyaltoledano/claude-task-master/pull/1098) [`36468f3`](https://github.com/eyaltoledano/claude-task-master/commit/36468f3c93faf4035a5c442ccbc501077f3440f1) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Claude Code provider with codebase-aware task generation
+  - Added automatic codebase analysis for Claude Code provider in `parse-prd`, `expand-task`, and `analyze-complexity` commands
+  - When using Claude Code as the AI provider, Task Master now instructs the AI to analyze the project structure, existing implementations, and patterns before generating tasks or subtasks
+  - Tasks and subtasks generated by Claude Code are now informed by actual codebase analysis, resulting in more accurate and contextual outputs
+
+- [#1105](https://github.com/eyaltoledano/claude-task-master/pull/1105) [`75c514c`](https://github.com/eyaltoledano/claude-task-master/commit/75c514cf5b2ca47f95c0ad7fa92654a4f2a6be4b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add GPT-5 support with proper parameter handling
+  - Added GPT-5 model to supported models configuration with SWE score of 0.749
+
+- [#1091](https://github.com/eyaltoledano/claude-task-master/pull/1091) [`4bb6370`](https://github.com/eyaltoledano/claude-task-master/commit/4bb63706b80c28d1b2d782ba868a725326f916c7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Claude Code subagent support with task-orchestrator, task-executor, and task-checker
+
+  ## New Claude Code Agents
+
+  Added specialized agents for Claude Code users to enable parallel task execution, intelligent task orchestration, and quality assurance:
+
+  ### task-orchestrator
+
+  Coordinates and manages the execution of Task Master tasks with intelligent dependency analysis:
+  - Analyzes task dependencies to identify parallelizable work
+  - Deploys multiple task-executor agents for concurrent execution
+  - Monitors task completion and updates the dependency graph
+  - Automatically identifies and starts newly unblocked tasks
+
+  ### task-executor
+
+  Handles the actual implementation of individual tasks:
+  - Executes specific tasks identified by the orchestrator
+  - Works on concrete implementation rather than planning
+  - Updates task status and logs progress
+  - Can work in parallel with other executors on independent tasks
+
+  ### task-checker
+
+  Verifies that completed tasks meet their specifications:
+  - Reviews tasks marked as 'review' status
+  - Validates implementation against requirements
+  - Runs tests and checks for best practices
+  - Ensures quality before marking tasks as 'done'
+
+  ## Installation
+
+  When using the Claude profile (`task-master rules add claude`), the agents are automatically installed to `.claude/agents/` directory.
+
+  ## Usage Example
+
+  ```bash
+  # In Claude Code, after initializing a project with tasks:
+
+  # Use task-orchestrator to analyze and coordinate work
+  # The orchestrator will:
+  # 1. Check task dependencies
+  # 2. Identify tasks that can run in parallel
+  # 3. Deploy executors for available work
+  # 4. Monitor progress and deploy new executors as tasks complete
+
+  # Use task-executor for specific task implementation
+  # When the orchestrator identifies task 2.3 needs work:
+  # The executor will implement that specific task
+  ```
+
+  ## Benefits
+  - **Parallel Execution**: Multiple independent tasks can be worked on simultaneously
+  - **Intelligent Scheduling**: Orchestrator understands dependencies and optimizes execution order
+  - **Separation of Concerns**: Planning (orchestrator) is separated from execution (executor)
+  - **Progress Tracking**: Real-time updates as tasks are completed
+  - **Automatic Progression**: As tasks complete, newly unblocked tasks are automatically started
+
+### Patch Changes
+
+- [#1094](https://github.com/eyaltoledano/claude-task-master/pull/1094) [`4357af3`](https://github.com/eyaltoledano/claude-task-master/commit/4357af3f13859d90bca8795215e5d5f1d94abde5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix expand task generating unrelated generic subtasks
+
+  Fixed an issue where `task-master expand` would generate generic authentication-related subtasks regardless of the parent task context when using complexity reports. The expansion now properly includes the parent task details alongside any expansion guidance.
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix scope-up/down prompts to include all required fields for better AI model compatibility
+  - Added missing `priority` field to scope adjustment prompts to prevent validation errors with Claude-code and other models
+  - Ensures generated JSON includes all fields required by the schema
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP scope-up/down tools not finding tasks
+  - Fixed task ID parsing in MCP layer - now correctly converts string IDs to numbers
+  - scope_up_task and scope_down_task MCP tools now work properly
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve AI provider compatibility for JSON generation
+  - Fixed schema compatibility issues between Perplexity and OpenAI o3 models
+  - Removed nullable/default modifiers from Zod schemas for broader compatibility
+  - Added automatic JSON repair for malformed AI responses (handles cases like missing array values)
+  - Perplexity now uses JSON mode for more reliable structured output
+  - Post-processing handles default values separately from schema validation
+
+## 0.24.0-rc.2
+
+### Minor Changes
+
+- [#1105](https://github.com/eyaltoledano/claude-task-master/pull/1105) [`75c514c`](https://github.com/eyaltoledano/claude-task-master/commit/75c514cf5b2ca47f95c0ad7fa92654a4f2a6be4b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add GPT-5 support with proper parameter handling
+  - Added GPT-5 model to supported models configuration with SWE score of 0.749
+
+## 0.24.0-rc.1
+
+### Minor Changes
+
+- [#1093](https://github.com/eyaltoledano/claude-task-master/pull/1093) [`36468f3`](https://github.com/eyaltoledano/claude-task-master/commit/36468f3c93faf4035a5c442ccbc501077f3440f1) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced Claude Code provider with codebase-aware task generation
+  - Added automatic codebase analysis for Claude Code provider in `parse-prd`, `expand-task`, and `analyze-complexity` commands
+  - When using Claude Code as the AI provider, Task Master now instructs the AI to analyze the project structure, existing implementations, and patterns before generating tasks or subtasks
+  - Tasks and subtasks generated by Claude Code are now informed by actual codebase analysis, resulting in more accurate and contextual outputs
+
+- [#1091](https://github.com/eyaltoledano/claude-task-master/pull/1091) [`4bb6370`](https://github.com/eyaltoledano/claude-task-master/commit/4bb63706b80c28d1b2d782ba868a725326f916c7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Claude Code subagent support with task-orchestrator, task-executor, and task-checker
+
+  ## New Claude Code Agents
+
+  Added specialized agents for Claude Code users to enable parallel task execution, intelligent task orchestration, and quality assurance:
+
+  ### task-orchestrator
+
+  Coordinates and manages the execution of Task Master tasks with intelligent dependency analysis:
+  - Analyzes task dependencies to identify parallelizable work
+  - Deploys multiple task-executor agents for concurrent execution
+  - Monitors task completion and updates the dependency graph
+  - Automatically identifies and starts newly unblocked tasks
+
+  ### task-executor
+
+  Handles the actual implementation of individual tasks:
+  - Executes specific tasks identified by the orchestrator
+  - Works on concrete implementation rather than planning
+  - Updates task status and logs progress
+  - Can work in parallel with other executors on independent tasks
+
+  ### task-checker
+
+  Verifies that completed tasks meet their specifications:
+  - Reviews tasks marked as 'review' status
+  - Validates implementation against requirements
+  - Runs tests and checks for best practices
+  - Ensures quality before marking tasks as 'done'
+
+  ## Installation
+
+  When using the Claude profile (`task-master rules add claude`), the agents are automatically installed to `.claude/agents/` directory.
+
+  ## Usage Example
+
+  ```bash
+  # In Claude Code, after initializing a project with tasks:
+
+  # Use task-orchestrator to analyze and coordinate work
+  # The orchestrator will:
+  # 1. Check task dependencies
+  # 2. Identify tasks that can run in parallel
+  # 3. Deploy executors for available work
+  # 4. Monitor progress and deploy new executors as tasks complete
+
+  # Use task-executor for specific task implementation
+  # When the orchestrator identifies task 2.3 needs work:
+  # The executor will implement that specific task
+  ```
+
+  ## Benefits
+  - **Parallel Execution**: Multiple independent tasks can be worked on simultaneously
+  - **Intelligent Scheduling**: Orchestrator understands dependencies and optimizes execution order
+  - **Separation of Concerns**: Planning (orchestrator) is separated from execution (executor)
+  - **Progress Tracking**: Real-time updates as tasks are completed
+  - **Automatic Progression**: As tasks complete, newly unblocked tasks are automatically started
+
+### Patch Changes
+
+- [#1094](https://github.com/eyaltoledano/claude-task-master/pull/1094) [`4357af3`](https://github.com/eyaltoledano/claude-task-master/commit/4357af3f13859d90bca8795215e5d5f1d94abde5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix expand task generating unrelated generic subtasks
+
+  Fixed an issue where `task-master expand` would generate generic authentication-related subtasks regardless of the parent task context when using complexity reports. The expansion now properly includes the parent task details alongside any expansion guidance.
+
+## 0.23.1-rc.0
+
+### Patch Changes
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix scope-up/down prompts to include all required fields for better AI model compatibility
+  - Added missing `priority` field to scope adjustment prompts to prevent validation errors with Claude-code and other models
+  - Ensures generated JSON includes all fields required by the schema
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP scope-up/down tools not finding tasks
+  - Fixed task ID parsing in MCP layer - now correctly converts string IDs to numbers
+  - scope_up_task and scope_down_task MCP tools now work properly
+
+- [#1079](https://github.com/eyaltoledano/claude-task-master/pull/1079) [`e495b2b`](https://github.com/eyaltoledano/claude-task-master/commit/e495b2b55950ee54c7d0f1817d8530e28bd79c05) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve AI provider compatibility for JSON generation
+  - Fixed schema compatibility issues between Perplexity and OpenAI o3 models
+  - Removed nullable/default modifiers from Zod schemas for broader compatibility
+  - Added automatic JSON repair for malformed AI responses (handles cases like missing array values)
+  - Perplexity now uses JSON mode for more reliable structured output
+  - Post-processing handles default values separately from schema validation
+
+## 0.23.0
+
+### Minor Changes
+
+- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
+### Patch Changes
+
+- [#1063](https://github.com/eyaltoledano/claude-task-master/pull/1063) [`2ae6e7e`](https://github.com/eyaltoledano/claude-task-master/commit/2ae6e7e6be3605c3c4d353f34666e54750dba973) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix for tasks not found when using string IDs
+
+- [#1049](https://github.com/eyaltoledano/claude-task-master/pull/1049) [`45a14c3`](https://github.com/eyaltoledano/claude-task-master/commit/45a14c323d21071c15106335e89ad1f4a20976ab) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Fix tag-specific complexity report detection in expand command
+
+  The expand command now correctly finds and uses tag-specific complexity reports (e.g., `task-complexity-report_feature-xyz.json`) when operating in a tag context. Previously, it would always look for the generic `task-complexity-report.json` file due to a default value in the CLI option definition.
+
+## 0.23.0-rc.2
+
+### Minor Changes
+
+- [#1064](https://github.com/eyaltoledano/claude-task-master/pull/1064) [`53903f1`](https://github.com/eyaltoledano/claude-task-master/commit/53903f1e8eee23ac512eb13a6d81d8cbcfe658cb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
+## 0.22.1-rc.1
+
+### Patch Changes
+
+- [#1069](https://github.com/eyaltoledano/claude-task-master/pull/1069) [`72ca68e`](https://github.com/eyaltoledano/claude-task-master/commit/72ca68edeb870ff7a3b0d2d632e09dae921dc16a) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add new `scope-up` and `scope-down` commands for dynamic task complexity adjustment
+
+  This release introduces two powerful new commands that allow you to dynamically adjust the complexity of your tasks and subtasks without recreating them from scratch.
+
+  **New CLI Commands:**
+  - `task-master scope-up` - Increase task complexity (add more detail, requirements, or implementation steps)
+  - `task-master scope-down` - Decrease task complexity (simplify, remove unnecessary details, or streamline)
+
+  **Key Features:**
+  - **Multiple tasks**: Support comma-separated IDs to adjust multiple tasks at once (`--id=5,7,12`)
+  - **Strength levels**: Choose adjustment intensity with `--strength=light|regular|heavy` (defaults to regular)
+  - **Custom prompts**: Use `--prompt` flag to specify exactly how you want tasks adjusted
+  - **MCP integration**: Available as `scope_up_task` and `scope_down_task` tools in Cursor and other MCP environments
+  - **Smart context**: AI considers your project context and task dependencies when making adjustments
+
+  **Usage Examples:**
+
+  ```bash
+  # Make a task more detailed
+  task-master scope-up --id=5
+
+  # Simplify multiple tasks with light touch
+  task-master scope-down --id=10,11,12 --strength=light
+
+  # Custom adjustment with specific instructions
+  task-master scope-up --id=7 --prompt="Add more error handling and edge cases"
+  ```
+
+  **Why use this?**
+  - **Iterative refinement**: Adjust task complexity as your understanding evolves
+  - **Project phase adaptation**: Scale tasks up for implementation, down for planning
+  - **Team coordination**: Adjust complexity based on team member experience levels
+  - **Milestone alignment**: Fine-tune tasks to match project phase requirements
+
+  Perfect for agile workflows where task requirements change as you learn more about the problem space.
+
 ## 0.22.1-rc.0
 
 ### Patch Changes

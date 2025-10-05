@@ -4,12 +4,7 @@
  */
 
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import supportedModels from './supported-models.json' with { type: 'json' };
 
 /**
  * Updates the config file with correct maxTokens values from supported-models.json
@@ -18,12 +13,6 @@ const __dirname = dirname(__filename);
  */
 export function updateConfigMaxTokens(configPath) {
 	try {
-		// Load supported models
-		const supportedModelsPath = path.join(__dirname, 'supported-models.json');
-		const supportedModels = JSON.parse(
-			fs.readFileSync(supportedModelsPath, 'utf-8')
-		);
-
 		// Load config
 		const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 

@@ -1,16 +1,16 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { PriorityBadge } from './PriorityBadge';
 import type { TaskMasterTask } from '../../webview/types';
+import { useVSCodeContext } from '../../webview/contexts/VSCodeContext';
 
 interface TaskMetadataSidebarProps {
 	currentTask: TaskMasterTask;
 	tasks: TaskMasterTask[];
 	complexity: any;
 	isSubtask: boolean;
-	sendMessage: (message: any) => Promise<any>;
 	onStatusChange: (status: TaskMasterTask['status']) => void;
 	onDependencyClick: (depId: string) => void;
 	isRegenerating?: boolean;
@@ -22,16 +22,17 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 	tasks,
 	complexity,
 	isSubtask,
-	sendMessage,
 	onStatusChange,
 	onDependencyClick,
 	isRegenerating = false,
 	isAppending = false
 }) => {
+	const { sendMessage } = useVSCodeContext();
 	const [isLoadingComplexity, setIsLoadingComplexity] = useState(false);
 	const [mcpComplexityScore, setMcpComplexityScore] = useState<
 		number | undefined
 	>(undefined);
+	const [isStartingTask, setIsStartingTask] = useState(false);
 
 	// Get complexity score from task
 	const currentComplexityScore = complexity?.score;
@@ -94,6 +95,40 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 			console.error('Failed to run complexity analysis:', error);
 		} finally {
 			setIsLoadingComplexity(false);
+		}
+	};
+
+	// Handle starting a task
+	const handleStartTask = async () => {
+		if (!currentTask || isStartingTask) {
+			return;
+		}
+
+		setIsStartingTask(true);
+
+		try {
+			// Send message to extension to open terminal
+			const result = await sendMessage({
+				type: 'openTerminal',
+				data: {
+					taskId: currentTask.id,
+					taskTitle: currentTask.title
+				}
+			});
+
+			// Handle the response
+			if (result && !result.success) {
+				console.error('Terminal execution failed:', result.error);
+				// The extension will show VS Code error notification and webview toast
+			} else if (result && result.success) {
+				console.log('Terminal started successfully:', result.terminalName);
+			}
+		} catch (error) {
+			console.error('Failed to start task:', error);
+			// This handles network/communication errors
+		} finally {
+			// Reset loading state
+			setIsStartingTask(false);
 		}
 	};
 
@@ -284,6 +319,30 @@ export const TaskMetadataSidebar: React.FC<TaskMetadataSidebarProps> = ({
 					{currentTask.dependencies && currentTask.dependencies.length > 0 && (
 						<div className="border-b border-textSeparator-foreground" />
 					)}
+
+					{/* Start Task Button */}
+					<div className="mt-4">
+						<Button
+							onClick={handleStartTask}
+							variant="default"
+							size="sm"
+							className="w-full text-xs"
+							disabled={
+								isRegenerating ||
+								isAppending ||
+								isStartingTask ||
+								currentTask?.status === 'done' ||
+								currentTask?.status === 'in-progress'
+							}
+						>
+							{isStartingTask ? (
+								<Loader2 className="w-4 h-4 mr-2 animate-spin" />
+							) : (
+								<Play className="w-4 h-4 mr-2" />
+							)}
+							{isStartingTask ? 'Starting...' : 'Start Task'}
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>

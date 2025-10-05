@@ -1,0 +1,57 @@
+name: Trigger Claude Documentation Update
+
+on:
+  push:
+    branches:
+      - next
+    paths-ignore:
+      - "apps/docs/**"
+      - "*.md"
+      - ".github/workflows/**"
+
+jobs:
+  trigger-docs-update:
+    # Only run if changes were merged (not direct pushes from bots)
+    if: github.actor != 'github-actions[bot]' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit for comparison
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          echo "Changed files in this push:"
+          git diff --name-only HEAD^ HEAD | tee changed_files.txt
+
+          # Store changed files for Claude to analyze (escaped for JSON)
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | jq -Rs .)
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+
+          # Get the commit message (escaped for JSON)
+          COMMIT_MSG=$(git log -1 --pretty=%B | jq -Rs .)
+          echo "commit_message=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+          # Get diff for documentation context (escaped for JSON)
+          COMMIT_DIFF=$(git diff HEAD^ HEAD --stat | jq -Rs .)
+          echo "commit_diff=$COMMIT_DIFF" >> $GITHUB_OUTPUT
+
+          # Get commit SHA
+          echo "commit_sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Trigger Claude workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Trigger the Claude docs updater workflow with the change information
+          gh workflow run claude-docs-updater.yml \
+            --ref next \
+            -f commit_sha="${{ steps.changed-files.outputs.commit_sha }}" \
+            -f commit_message=${{ steps.changed-files.outputs.commit_message }} \
+            -f changed_files=${{ steps.changed-files.outputs.changed_files }} \
+            -f commit_diff=${{ steps.changed-files.outputs.commit_diff }}

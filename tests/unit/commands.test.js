@@ -96,11 +96,10 @@ import {
 	RULES_SETUP_ACTION,
 	RULES_ACTIONS
 } from '../../src/constants/rules-actions.js';
+import { compareVersions } from '@tm/cli';
 
 describe('Commands Module - CLI Setup and Integration', () => {
 	const mockExistsSync = jest.spyOn(fs, 'existsSync');
-	const mockReadFileSync = jest.spyOn(fs, 'readFileSync');
-	const mockJoin = jest.spyOn(path, 'join');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -115,55 +114,42 @@ describe('Commands Module - CLI Setup and Integration', () => {
 		test('should return Commander program instance', () => {
 			const program = setupCLI();
 			expect(program).toBeDefined();
-			expect(program.name()).toBe('dev');
+			expect(program.name()).toBe('task-master');
 		});
 
-		test('should read version from package.json when available', () => {
-			mockExistsSync.mockReturnValue(true);
-			mockReadFileSync.mockReturnValue('{"version": "1.0.0"}');
-			mockJoin.mockReturnValue('package.json');
+		test('should return version that matches package.json when TM_PUBLIC_VERSION is set', () => {
+			// Read actual version from package.json
+			const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+			const expectedVersion = packageJson.version;
+
+			// Set environment variable to match package.json
+			const originalEnv = process.env.TM_PUBLIC_VERSION;
+			process.env.TM_PUBLIC_VERSION = expectedVersion;
 
 			const program = setupCLI();
-			const version = program._version();
-			expect(mockReadFileSync).toHaveBeenCalledWith('package.json', 'utf8');
-			expect(version).toBe('1.0.0');
+			const version = program.version();
+			expect(version).toBe(expectedVersion);
+
+			// Restore original environment
+			if (originalEnv !== undefined) {
+				process.env.TM_PUBLIC_VERSION = originalEnv;
+			} else {
+				delete process.env.TM_PUBLIC_VERSION;
+			}
 		});
 
-		test('should use default version when package.json is not available', () => {
-			mockExistsSync.mockReturnValue(false);
+		test('should use default version when TM_PUBLIC_VERSION is not available', () => {
+			const originalEnv = process.env.TM_PUBLIC_VERSION;
+			delete process.env.TM_PUBLIC_VERSION;
 
 			const program = setupCLI();
-			const version = program._version();
-			expect(mockReadFileSync).not.toHaveBeenCalled();
-			expect(version).toBe('unknown');
-		});
-
-		test('should use default version when package.json reading throws an error', () => {
-			mockExistsSync.mockReturnValue(true);
-			mockReadFileSync.mockImplementation(() => {
-				throw new Error('Read error');
-			});
-
-			// Mock console methods to prevent chalk formatting conflicts
-			const consoleErrorSpy = jest
-				.spyOn(console, 'error')
-				.mockImplementation(() => {});
-			const consoleLogSpy = jest
-				.spyOn(console, 'log')
-				.mockImplementation(() => {});
-			const consoleWarnSpy = jest
-				.spyOn(console, 'warn')
-				.mockImplementation(() => {});
-
-			const program = setupCLI();
-			const version = program._version();
-			expect(mockReadFileSync).toHaveBeenCalled();
+			const version = program.version();
 			expect(version).toBe('unknown');
 
-			// Restore console methods
-			consoleErrorSpy.mockRestore();
-			consoleLogSpy.mockRestore();
-			consoleWarnSpy.mockRestore();
+			// Restore original environment
+			if (originalEnv !== undefined) {
+				process.env.TM_PUBLIC_VERSION = originalEnv;
+			}
 		});
 	});
 
@@ -277,13 +263,6 @@ describe('Commands Module - CLI Setup and Integration', () => {
 
 // Test utility functions that commands rely on
 describe('Version comparison utility', () => {
-	let compareVersions;
-
-	beforeAll(async () => {
-		const commandsModule = await import('../../scripts/modules/commands.js');
-		compareVersions = commandsModule.compareVersions;
-	});
-
 	test('compareVersions correctly compares semantic versions', () => {
 		expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
 		expect(compareVersions('1.0.0', '1.0.1')).toBe(-1);
@@ -303,8 +282,9 @@ describe('Update check functionality', () => {
 	let consoleLogSpy;
 
 	beforeAll(async () => {
-		const commandsModule = await import('../../scripts/modules/commands.js');
-		displayUpgradeNotification = commandsModule.displayUpgradeNotification;
+		// Import from @tm/cli instead of commands.js
+		const cliModule = await import('../../apps/cli/src/utils/auto-update.js');
+		displayUpgradeNotification = cliModule.displayUpgradeNotification;
 	});
 
 	beforeEach(() => {

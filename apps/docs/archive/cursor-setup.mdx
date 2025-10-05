@@ -1,0 +1,95 @@
+---
+title: "Cursor AI Integration"
+description: "Learn how to set up and use Task Master with Cursor AI"
+---
+
+## Setting up Cursor AI Integration
+
+<Check>
+  Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.
+</Check>
+
+<AccordionGroup>
+  <Accordion title="Using Cursor with MCP (Recommended)" icon="sparkles">
+    If you've already set up Task Master with MCP in Cursor, the integration is automatic. You can simply use natural language to interact with Task Master:
+
+    ```
+    What tasks are available to work on next?
+    Can you analyze the complexity of our tasks?
+    I'd like to implement task 4. What does it involve?
+    ```
+  </Accordion>
+  <Accordion title="Manual Cursor Setup">
+    If you're not using MCP, you can still set up Cursor integration:
+
+    <Steps>
+      <Step title="After initializing your project, open it in Cursor">
+        The `.cursor/rules/dev_workflow.mdc` file is automatically loaded by Cursor, providing the AI with knowledge about the task management system
+      </Step>
+      <Step title="Place your PRD document in the scripts/ directory (e.g., scripts/prd.txt)">
+        
+      </Step>
+      <Step title="Open Cursor's AI chat and switch to Agent mode">
+        
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="Alternative MCP Setup in Cursor">
+    <Steps>
+      <Step title="Go to Cursor settings">
+        
+      </Step>
+      <Step title="Navigate to the MCP section">
+        
+      </Step>
+      <Step title="Click on 'Add New MCP Server'">
+        
+      </Step>
+      <Step title="Configure with the following details:">
+        - Name: "Task Master"
+        - Type: "Command"
+        - Command: "npx -y task-master-ai"
+      </Step>
+      <Step title="Save Settings">
+        
+      </Step>
+    </Steps>
+    Once configured, you can interact with Task Master's task management commands directly through Cursor's interface, providing a more integrated experience.
+  </Accordion>
+</AccordionGroup>
+
+## Initial Task Generation
+
+In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
+
+```
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at scripts/prd.txt.
+```
+
+The agent will execute:
+
+```bash
+task-master parse-prd scripts/prd.txt
+```
+
+This will:
+
+- Parse your PRD document
+- Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+- The agent will understand this process due to the Cursor rules
+
+### Generate Individual Task Files
+
+Next, ask the agent to generate individual task files:
+
+```
+Please generate individual task files from tasks.json
+```
+
+The agent will execute:
+
+```bash
+task-master generate
+```
+
+This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.

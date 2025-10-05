@@ -38,7 +38,9 @@ import { registerRenameTagTool } from './rename-tag.js';
 import { registerCopyTagTool } from './copy-tag.js';
 import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
-import { registerAgentLLMTool } from './agent_llm.js';
+import { registerAgentLLMTool } from './agent-llm.js';
+import { registerScopeUpTool } from './scope-up.js';
+import { registerScopeDownTool } from './scope-down.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -58,6 +60,8 @@ export function registerTaskMasterTools(server) {
 		registerAnalyzeProjectComplexityTool(server);
 		registerExpandTaskTool(server);
 		registerExpandAllTool(server);
+		registerScopeUpTool(server);
+		registerScopeDownTool(server);
 
 		// Group 3: Task Listing & Viewing
 		registerListTasksTool(server);
@@ -97,7 +101,7 @@ export function registerTaskMasterTools(server) {
 
 		// Group 8: Research Features
 		registerResearchTool(server);
-		// Group 9: Agent Integration
+		// AgentLLM Integration
 		registerAgentLLMTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);

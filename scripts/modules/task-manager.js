@@ -4,7 +4,7 @@
  */
 
 import { findTaskById } from './utils.js';
-import parsePRD from './task-manager/parse-prd.js';
+import parsePRD from './task-manager/parse-prd/index.js';
 import updateTasks from './task-manager/update-tasks.js';
 import updateTaskById from './task-manager/update-task-by-id.js';
 import generateTaskFiles from './task-manager/generate-task-files.js';
@@ -28,6 +28,11 @@ import moveTask from './task-manager/move-task.js';
 import { migrateProject } from './task-manager/migrate.js';
 import { performResearch } from './task-manager/research.js';
 import { readComplexityReport } from './utils.js';
+import {
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
+} from './task-manager/scope-adjustment.js';
 
 // Export task manager functions
 export {
@@ -55,5 +60,8 @@ export {
 	moveTask,
 	readComplexityReport,
 	migrateProject,
-	performResearch
+	performResearch,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 };

@@ -1,0 +1,46 @@
+{
+	"name": "@tm/core",
+	"private": true,
+	"description": "Core library for Task Master - TypeScript task management system",
+	"type": "module",
+	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"exports": {
+		".": "./src/index.ts",
+		"./auth": "./src/auth/index.ts",
+		"./storage": "./src/storage/index.ts",
+		"./config": "./src/config/index.ts",
+		"./providers": "./src/providers/index.ts",
+		"./services": "./src/services/index.ts",
+		"./errors": "./src/errors/index.ts",
+		"./logger": "./src/logger/index.ts",
+		"./types": "./src/types/index.ts",
+		"./interfaces": "./src/interfaces/index.ts",
+		"./utils": "./src/utils/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"lint": "biome check --write",
+		"lint:check": "biome check",
+		"lint:fix": "biome check --fix --unsafe",
+		"format": "biome format --write",
+		"format:check": "biome format",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "^2.57.4",
+		"zod": "^4.1.11"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"@vitest/coverage-v8": "^3.2.4",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"files": ["src", "README.md", "CHANGELOG.md"],
+	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
+	"author": "Task Master AI",
+	"license": "MIT"
+}

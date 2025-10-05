@@ -41,7 +41,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	markMigrationForNotice: jest.fn(),
 	performCompleteTagMigration: jest.fn(),
 	setTasksForTag: jest.fn(),
-	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || [])
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
+	traverseDependencies: jest.fn((tasks, taskId, visited) => [])
 }));
 
 jest.unstable_mockModule(
@@ -49,7 +50,7 @@ jest.unstable_mockModule(
 	() => ({
 		generateObjectService: jest.fn().mockResolvedValue({
 			mainResult: {
-				tasks: []
+				complexityAnalysis: []
 			},
 			telemetryData: {
 				timestamp: new Date().toISOString(),
@@ -78,6 +79,38 @@ jest.unstable_mockModule(
 				totalCost: 0.012414,
 				currency: 'USD'
 			}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: async function* () {
+				yield '{"tasks":[';
+				yield '{"id":1,"title":"Test Task","priority":"high"}';
+				yield ']}';
+			},
+			telemetryData: {
+				timestamp: new Date().toISOString(),
+				userId: '1234567890',
+				commandName: 'analyze-complexity',
+				modelUsed: 'claude-3-5-sonnet',
+				providerName: 'anthropic',
+				inputTokens: 1000,
+				outputTokens: 500,
+				totalTokens: 1500,
+				totalCost: 0.012414,
+				currency: 'USD'
+			}
+		}),
+		streamObjectService: jest.fn().mockImplementation(async () => {
+			return {
+				get partialObjectStream() {
+					return (async function* () {
+						yield { tasks: [] };
+						yield { tasks: [{ id: 1, title: 'Test Task', priority: 'high' }] };
+					})();
+				},
+				object: Promise.resolve({
+					tasks: [{ id: 1, title: 'Test Task', priority: 'high' }]
+				})
+			};
 		})
 	})
 );
@@ -154,7 +187,8 @@ jest.unstable_mockModule(
 		// Additional functions
 		getAllProviders: jest.fn(() => ['anthropic', 'openai', 'perplexity']),
 		getVertexProjectId: jest.fn(() => undefined),
-		getVertexLocation: jest.fn(() => undefined)
+		getVertexLocation: jest.fn(() => undefined),
+		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
 
@@ -164,11 +198,13 @@ jest.unstable_mockModule('fs', () => ({
 	default: {
 		existsSync: jest.fn(() => false),
 		readFileSync: jest.fn(),
-		writeFileSync: mockWriteFileSync
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: jest.fn()
 	},
 	existsSync: jest.fn(() => false),
 	readFileSync: jest.fn(),
-	writeFileSync: mockWriteFileSync
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: jest.fn()
 }));
 
 jest.unstable_mockModule(
@@ -188,9 +224,8 @@ const { readJSON, writeJSON, log, CONFIG, findTaskById } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
 
-const { generateObjectService, generateTextService } = await import(
-	'../../../../../scripts/modules/ai-services-unified.js'
-);
+const { generateObjectService, generateTextService, streamTextService } =
+	await import('../../../../../scripts/modules/ai-services-unified.js');
 
 const fs = await import('fs');
 
@@ -272,10 +307,15 @@ describe('analyzeTaskComplexity', () => {
 			return { task: task || null, originalSubtaskCount: null };
 		});
 
-		generateTextService.mockResolvedValue(sampleApiResponse);
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				complexityAnalysis: JSON.parse(sampleApiResponse.mainResult).tasks
+			},
+			telemetryData: sampleApiResponse.telemetryData
+		});
 	});
 
-	test('should call generateTextService with the correct parameters', async () => {
+	test('should call generateObjectService with the correct parameters', async () => {
 		// Arrange
 		const options = {
 			file: 'tasks/tasks.json',
@@ -303,7 +343,7 @@ describe('analyzeTaskComplexity', () => {
 			'/mock/project/root',
 			undefined
 		);
-		expect(generateTextService).toHaveBeenCalledWith(expect.any(Object));
+		expect(generateObjectService).toHaveBeenCalledWith(expect.any(Object));
 		expect(mockWriteFileSync).toHaveBeenCalledWith(
 			expect.stringContaining('task-complexity-report.json'),
 			expect.stringContaining('"thresholdScore": 5'),
@@ -334,7 +374,7 @@ describe('analyzeTaskComplexity', () => {
 		});
 
 		// Assert
-		expect(generateTextService).toHaveBeenCalledWith(
+		expect(generateObjectService).toHaveBeenCalledWith(
 			expect.objectContaining({
 				role: 'research' // This should be present when research is true
 			})
@@ -419,7 +459,7 @@ describe('analyzeTaskComplexity', () => {
 
 		// Assert
 		// Check if the prompt sent to AI doesn't include the completed task (id: 3)
-		expect(generateTextService).toHaveBeenCalledWith(
+		expect(generateObjectService).toHaveBeenCalledWith(
 			expect.objectContaining({
 				prompt: expect.not.stringContaining('"id": 3')
 			})
@@ -436,7 +476,7 @@ describe('analyzeTaskComplexity', () => {
 		};
 
 		// Force API error
-		generateTextService.mockRejectedValueOnce(new Error('API Error'));
+		generateObjectService.mockRejectedValueOnce(new Error('API Error'));
 
 		const mockMcpLog = {
 			info: jest.fn(),

@@ -106,6 +106,56 @@
 			"supported": true
 		}
 	],
+	"grok-cli": [
+		{
+			"id": "grok-4-latest",
+			"name": "Grok 4 Latest",
+			"swe_score": 0.7,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-latest",
+			"name": "Grok 3 Latest",
+			"swe_score": 0.65,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-fast",
+			"name": "Grok 3 Fast",
+			"swe_score": 0.6,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 131072,
+			"supported": true
+		},
+		{
+			"id": "grok-3-mini-fast",
+			"name": "Grok 3 Mini Fast",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768,
+			"supported": true
+		}
+	],
 	"openai": [
 		{
 			"id": "gpt-4o",
@@ -238,6 +288,18 @@
 				"output": 0.6
 			},
 			"allowed_roles": ["research"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": {
+				"input": 5.0,
+				"output": 20.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 100000,
+			"temperature": 1,
 			"supported": true
 		}
 	],
@@ -460,7 +522,7 @@
 			"supported": true
 		},
 		{
-			"id": "deep-research",
+			"id": "sonar-deep-research",
 			"swe_score": 0.211,
 			"cost_per_1m_tokens": {
 				"input": 2,
@@ -774,6 +836,39 @@
 		}
 	],
 	"ollama": [
+		{
+			"id": "gpt-oss:latest",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:20b",
+			"swe_score": 0.607,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-oss:120b",
+			"swe_score": 0.624,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
 		{
 			"id": "devstral:latest",
 			"swe_score": 0,

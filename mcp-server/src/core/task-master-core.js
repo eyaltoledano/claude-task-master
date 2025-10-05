@@ -31,6 +31,7 @@ import { removeTaskDirect } from './direct-functions/remove-task.js';
 import { initializeProjectDirect } from './direct-functions/initialize-project.js';
 import { modelsDirect } from './direct-functions/models.js';
 import { moveTaskDirect } from './direct-functions/move-task.js';
+import { moveTaskCrossTagDirect } from './direct-functions/move-task-cross-tag.js';
 import { researchDirect } from './direct-functions/research.js';
 import { addTagDirect } from './direct-functions/add-tag.js';
 import { deleteTagDirect } from './direct-functions/delete-tag.js';
@@ -38,6 +39,8 @@ import { listTagsDirect } from './direct-functions/list-tags.js';
 import { useTagDirect } from './direct-functions/use-tag.js';
 import { renameTagDirect } from './direct-functions/rename-tag.js';
 import { copyTagDirect } from './direct-functions/copy-tag.js';
+import { scopeUpDirect } from './direct-functions/scope-up.js';
+import { scopeDownDirect } from './direct-functions/scope-down.js';
 
 // Re-export utility functions
 export { findTasksPath } from './utils/path-utils.js';
@@ -70,13 +73,16 @@ export const directFunctions = new Map([
 	['initializeProjectDirect', initializeProjectDirect],
 	['modelsDirect', modelsDirect],
 	['moveTaskDirect', moveTaskDirect],
+	['moveTaskCrossTagDirect', moveTaskCrossTagDirect],
 	['researchDirect', researchDirect],
 	['addTagDirect', addTagDirect],
 	['deleteTagDirect', deleteTagDirect],
 	['listTagsDirect', listTagsDirect],
 	['useTagDirect', useTagDirect],
 	['renameTagDirect', renameTagDirect],
-	['copyTagDirect', copyTagDirect]
+	['copyTagDirect', copyTagDirect],
+	['scopeUpDirect', scopeUpDirect],
+	['scopeDownDirect', scopeDownDirect]
 ]);
 
 // Re-export all direct function implementations
@@ -107,11 +113,14 @@ export {
 	initializeProjectDirect,
 	modelsDirect,
 	moveTaskDirect,
+	moveTaskCrossTagDirect,
 	researchDirect,
 	addTagDirect,
 	deleteTagDirect,
 	listTagsDirect,
 	useTagDirect,
 	renameTagDirect,
-	copyTagDirect
+	copyTagDirect,
+	scopeUpDirect,
+	scopeDownDirect
 };

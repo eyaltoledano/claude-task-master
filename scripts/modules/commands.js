@@ -3,7 +3,7 @@
  * Command-line interface for the Task Master CLI
  */
 
-import { program } from 'commander';
+import { Command } from 'commander';
 import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
@@ -14,19 +14,24 @@ import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora from 'ora'; // Import ora
 
+import { log, readJSON } from './utils.js';
+// Import new commands from @tm/cli
 import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	detectCamelCaseFlags,
-	toKebabCase
-} from './utils.js';
+	ListTasksCommand,
+	ShowCommand,
+	AuthCommand,
+	ContextCommand,
+	StartCommand,
+	SetStatusCommand,
+	checkForUpdate,
+	performAutoUpdate,
+	displayUpgradeNotification
+} from '@tm/cli';
+
 import {
 	parsePRD,
 	updateTasks,
 	generateTaskFiles,
-	setTaskStatus,
 	listTasks,
 	expandTask,
 	expandAllTasks,
@@ -42,8 +47,17 @@ import {
 	taskExists,
 	moveTask,
 	migrateProject,
-	setResponseLanguage
+	setResponseLanguage,
+	scopeUpTask,
+	scopeDownTask,
+	validateStrength
 } from './task-manager.js';
+
+import {
+	moveTasksBetweenTags,
+	MoveTaskError,
+	MOVE_ERROR_CODES
+} from './task-manager/move-task.js';
 
 import {
 	createTag,
@@ -58,7 +72,9 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand
+	fixDependenciesCommand,
+	DependencyError,
+	DEPENDENCY_ERROR_CODES
 } from './dependency-manager.js';
 
 import {
@@ -70,8 +86,7 @@ import {
 	isConfigFilePresent,
 	getAvailableModels,
 	getBaseUrlForRole,
-	getDefaultNumTasks,
-	getDefaultSubtasks
+	getDefaultNumTasks
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
@@ -100,7 +115,11 @@ import {
 	displayAiUsageSummary,
 	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
-	displayCurrentTagIndicator
+	displayCurrentTagIndicator,
+	displayCrossTagDependencyError,
+	displaySubtaskMoveError,
+	displayInvalidTagCombinationError,
+	displayDependencyValidationHints
 } from './ui.js';
 import {
 	confirmProfilesRemove,
@@ -897,8 +916,6 @@ function registerCommands(programInstance) {
 				return true;
 			}
 
-			let spinner;
-
 			try {
 				if (!(await confirmOverwriteIfNeeded())) return;
 
@@ -915,7 +932,6 @@ function registerCommands(programInstance) {
 					);
 				}
 
-				spinner = ora('Parsing PRD and generating tasks...\n').start();
 				// Handle case where getTasksPath() returns null
 				const outputPath =
 					taskMaster.getTasksPath() ||
@@ -927,13 +943,8 @@ function registerCommands(programInstance) {
 					projectRoot: taskMaster.getProjectRoot(),
 					tag: tag
 				});
-				spinner.succeed('Tasks generated successfully!');
 			} catch (error) {
-				if (spinner) {
-					spinner.fail(`Error parsing PRD: ${error.message}`);
-				} else {
-					console.error(chalk.red(`Error parsing PRD: ${error.message}`));
-				}
+				console.error(chalk.red(`Error parsing PRD: ${error.message}`));
 				process.exit(1);
 			}
 		});
@@ -1386,6 +1397,260 @@ function registerCommands(programInstance) {
 			}
 		});
 
+	// scope-up command
+	programInstance
+		.command('scope-up')
+		.description('Increase task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope up (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity increase strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-up --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping up ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-up',
+					outputType: 'cli',
+					research: options.research || false
+				};
+
+				const result = await scopeUpTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped up ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
+	// scope-down command
+	programInstance
+		.command('scope-down')
+		.description('Decrease task complexity with AI assistance')
+		.option(
+			'-f, --file <file>',
+			'Path to the tasks file',
+			TASKMASTER_TASKS_FILE
+		)
+		.option(
+			'-i, --id <ids>',
+			'Comma-separated task/subtask IDs to scope down (required)'
+		)
+		.option(
+			'-s, --strength <level>',
+			'Complexity decrease strength: light, regular, heavy',
+			'regular'
+		)
+		.option(
+			'-p, --prompt <text>',
+			'Custom instructions for targeted scope adjustments'
+		)
+		.option('-r, --research', 'Use research AI for more informed adjustments')
+		.option('--tag <tag>', 'Specify tag context for task operations')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster
+				const taskMaster = initTaskMaster({
+					tasksPath: options.file || true,
+					tag: options.tag
+				});
+				const tasksPath = taskMaster.getTasksPath();
+				const tag = taskMaster.getCurrentTag();
+
+				// Show current tag context
+				displayCurrentTagIndicator(tag);
+
+				// Validate required parameters
+				if (!options.id) {
+					console.error(chalk.red('Error: --id parameter is required'));
+					console.log(
+						chalk.yellow(
+							'Usage example: task-master scope-down --id=1,2,3 --strength=regular'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Parse and validate task IDs
+				const taskIds = options.id.split(',').map((id) => {
+					const parsed = parseInt(id.trim(), 10);
+					if (Number.isNaN(parsed) || parsed <= 0) {
+						console.error(chalk.red(`Error: Invalid task ID: ${id.trim()}`));
+						process.exit(1);
+					}
+					return parsed;
+				});
+
+				// Validate strength level
+				if (!validateStrength(options.strength)) {
+					console.error(
+						chalk.red(
+							`Error: Invalid strength level: ${options.strength}. Must be one of: light, regular, heavy`
+						)
+					);
+					process.exit(1);
+				}
+
+				// Validate tasks file exists
+				if (!fs.existsSync(tasksPath)) {
+					console.error(
+						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
+					);
+					process.exit(1);
+				}
+
+				console.log(
+					chalk.blue(
+						`Scoping down ${taskIds.length} task(s): ${taskIds.join(', ')}`
+					)
+				);
+				console.log(chalk.blue(`Strength level: ${options.strength}`));
+				if (options.prompt) {
+					console.log(chalk.blue(`Custom instructions: ${options.prompt}`));
+				}
+
+				const context = {
+					projectRoot: taskMaster.getProjectRoot(),
+					tag,
+					commandName: 'scope-down',
+					outputType: 'cli',
+					research: options.research || false
+				};
+
+				const result = await scopeDownTask(
+					tasksPath,
+					taskIds,
+					options.strength,
+					options.prompt || null,
+					context,
+					'text'
+				);
+
+				console.log(
+					chalk.green(
+						`✅ Successfully scoped down ${result.updatedTasks.length} task(s)`
+					)
+				);
+			} catch (error) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				if (error.message.includes('not found')) {
+					console.log(chalk.yellow('\nTo fix this issue:'));
+					console.log(
+						'  1. Run task-master list to see all available task IDs'
+					);
+					console.log('  2. Use valid task IDs with the --id parameter');
+				}
+
+				if (getDebugFlag()) {
+					console.error(error);
+				}
+
+				process.exit(1);
+			}
+		});
+
 	// generate command
 	programInstance
 		.command('generate')
@@ -1422,120 +1687,29 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// set-status command
-	programInstance
-		.command('set-status')
-		.alias('mark')
-		.alias('set')
-		.description('Set the status of a task')
-		.option(
-			'-i, --id <id>',
-			'Task ID (can be comma-separated for multiple tasks)'
-		)
-		.option(
-			'-s, --status <status>',
-			`New status (one of: ${TASK_STATUS_OPTIONS.join(', ')})`
-		)
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag
-			});
+	// Register the set-status command from @tm/cli
+	// Handles task status updates with proper error handling and validation
+	SetStatusCommand.registerOn(programInstance);
 
-			const taskId = options.id;
-			const status = options.status;
+	// NEW: Register the new list command from @tm/cli
+	// This command handles all its own configuration and logic
+	ListTasksCommand.registerOn(programInstance);
 
-			if (!taskId || !status) {
-				console.error(chalk.red('Error: Both --id and --status are required'));
-				process.exit(1);
-			}
+	// Register the auth command from @tm/cli
+	// Handles authentication with tryhamster.com
+	AuthCommand.registerOn(programInstance);
 
-			if (!isValidTaskStatus(status)) {
-				console.error(
-					chalk.red(
-						`Error: Invalid status value: ${status}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
-					)
-				);
+	// Register the context command from @tm/cli
+	// Manages workspace context (org/brief selection)
+	ContextCommand.registerOn(programInstance);
 
-				process.exit(1);
-			}
-			const tag = taskMaster.getCurrentTag();
+	// Register the show command from @tm/cli
+	// Displays detailed information about tasks
+	ShowCommand.registerOn(programInstance);
 
-			displayCurrentTagIndicator(tag);
-
-			console.log(
-				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
-			);
-
-			await setTaskStatus(taskMaster.getTasksPath(), taskId, status, {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			});
-		});
-
-	// list command
-	programInstance
-		.command('list')
-		.description('List all tasks')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('-s, --status <status>', 'Filter by status')
-		.option('--with-subtasks', 'Show subtasks for each task')
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-
-			const taskMaster = initTaskMaster(initOptions);
-
-			const statusFilter = options.status;
-			const withSubtasks = options.withSubtasks || false;
-			const tag = taskMaster.getCurrentTag();
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			console.log(
-				chalk.blue(`Listing tasks from: ${taskMaster.getTasksPath()}`)
-			);
-			if (statusFilter) {
-				console.log(chalk.blue(`Filtering by status: ${statusFilter}`));
-			}
-			if (withSubtasks) {
-				console.log(chalk.blue('Including subtasks in listing'));
-			}
-
-			await listTasks(
-				taskMaster.getTasksPath(),
-				statusFilter,
-				taskMaster.getComplexityReportPath(),
-				withSubtasks,
-				'text',
-				{ projectRoot: taskMaster.getProjectRoot(), tag }
-			);
-		});
+	// Register the start command from @tm/cli
+	// Starts working on a task by launching claude-code with a standardized prompt
+	StartCommand.registerOn(programInstance);
 
 	// expand command
 	programInstance
@@ -1673,7 +1847,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-r, --research',
-			'Use Perplexity AI for research-backed complexity analysis'
+			'Use configured research model for research-backed complexity analysis'
 		)
 		.option(
 			'-i, --id <ids>',
@@ -2353,80 +2527,6 @@ ${result.result}
 				taskMaster.getComplexityReportPath(),
 				context
 			);
-		});
-
-	// show command
-	programInstance
-		.command('show')
-		.description(
-			`Display detailed information about one or more tasks${chalk.reset('')}`
-		)
-		.argument('[id]', 'Task ID(s) to show (comma-separated for multiple)')
-		.option(
-			'-i, --id <id>',
-			'Task ID(s) to show (comma-separated for multiple)'
-		)
-		.option('-s, --status <status>', 'Filter subtasks by status')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (taskId, options) => {
-			// Initialize TaskMaster
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-			// Only pass complexityReportPath if user provided a custom path
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-			const taskMaster = initTaskMaster(initOptions);
-
-			const idArg = taskId || options.id;
-			const statusFilter = options.status;
-			const tag = taskMaster.getCurrentTag();
-
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			if (!idArg) {
-				console.error(chalk.red('Error: Please provide a task ID'));
-				process.exit(1);
-			}
-
-			// Check if multiple IDs are provided (comma-separated)
-			const taskIds = idArg
-				.split(',')
-				.map((id) => id.trim())
-				.filter((id) => id.length > 0);
-
-			if (taskIds.length > 1) {
-				// Multiple tasks - use compact summary view with interactive drill-down
-				await displayMultipleTasksSummary(
-					taskMaster.getTasksPath(),
-					taskIds,
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			} else {
-				// Single task - use detailed view
-				await displayTaskById(
-					taskMaster.getTasksPath(),
-					taskIds[0],
-					taskMaster.getComplexityReportPath(),
-					statusFilter,
-					{ projectRoot: taskMaster.getProjectRoot(), tag }
-				);
-			}
 		});
 
 	// add-dependency command
@@ -3777,7 +3877,9 @@ Examples:
 	// move-task command
 	programInstance
 		.command('move')
-		.description('Move a task or subtask to a new position')
+		.description(
+			'Move tasks between tags or reorder within tags. Supports cross-tag moves with dependency resolution options.'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -3792,55 +3894,199 @@ Examples:
 			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option('--from-tag <tag>', 'Source tag for cross-tag moves')
+		.option('--to-tag <tag>', 'Target tag for cross-tag moves')
+		.option('--with-dependencies', 'Move dependent tasks along with main task')
+		.option('--ignore-dependencies', 'Break cross-tag dependencies during move')
 		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag
-			});
-
-			const sourceId = options.from;
-			const destinationId = options.to;
-			const tag = taskMaster.getCurrentTag();
-
-			if (!sourceId || !destinationId) {
-				console.error(
-					chalk.red('Error: Both --from and --to parameters are required')
-				);
+			// Helper function to show move command help - defined in scope for proper encapsulation
+			function showMoveHelp() {
 				console.log(
-					chalk.yellow(
-						'Usage: task-master move --from=<sourceId> --to=<destinationId>'
-					)
+					chalk.white.bold('Move Command Help') +
+						'\n\n' +
+						chalk.cyan('Move tasks between tags or reorder within tags.') +
+						'\n\n' +
+						chalk.yellow.bold('Within-Tag Moves:') +
+						'\n' +
+						chalk.white('  task-master move --from=5 --to=7') +
+						'\n' +
+						chalk.white('  task-master move --from=5.2 --to=7.3') +
+						'\n' +
+						chalk.white('  task-master move --from=5,6,7 --to=10,11,12') +
+						'\n\n' +
+						chalk.yellow.bold('Cross-Tag Moves:') +
+						'\n' +
+						chalk.white(
+							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress'
+						) +
+						'\n' +
+						chalk.white(
+							'  task-master move --from=5,6 --from-tag=backlog --to-tag=done'
+						) +
+						'\n\n' +
+						chalk.yellow.bold('Dependency Resolution:') +
+						'\n' +
+						chalk.white('  # Move with dependencies') +
+						'\n' +
+						chalk.white(
+							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --with-dependencies'
+						) +
+						'\n\n' +
+						chalk.white('  # Break dependencies') +
+						'\n' +
+						chalk.white(
+							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies'
+						) +
+						'\n\n' +
+						'\n' +
+						chalk.yellow.bold('Best Practices:') +
+						'\n' +
+						chalk.white(
+							'  • Use --with-dependencies to move dependent tasks together'
+						) +
+						'\n' +
+						chalk.white(
+							'  • Use --ignore-dependencies to break cross-tag dependencies'
+						) +
+						'\n' +
+						chalk.white(
+							'  • Check dependencies first: task-master validate-dependencies'
+						) +
+						'\n' +
+						chalk.white(
+							'  • Fix dependency issues: task-master fix-dependencies'
+						) +
+						'\n\n' +
+						chalk.yellow.bold('Error Resolution:') +
+						'\n' +
+						chalk.white(
+							'  • Cross-tag dependency conflicts: Use --with-dependencies or --ignore-dependencies'
+						) +
+						'\n' +
+						chalk.white(
+							'  • Subtask movement: Promote subtask first with remove-subtask --convert'
+						) +
+						'\n' +
+						chalk.white(
+							'  • Invalid tags: Check available tags with task-master tags'
+						) +
+						'\n\n' +
+						chalk.gray('For more help, run: task-master move --help')
 				);
-				process.exit(1);
 			}
 
-			// Check if we're moving multiple tasks (comma-separated IDs)
-			const sourceIds = sourceId.split(',').map((id) => id.trim());
-			const destinationIds = destinationId.split(',').map((id) => id.trim());
+			// Helper function to handle cross-tag move logic
+			async function handleCrossTagMove(moveContext, options) {
+				const { sourceId, sourceTag, toTag, taskMaster } = moveContext;
 
-			// Validate that the number of source and destination IDs match
-			if (sourceIds.length !== destinationIds.length) {
-				console.error(
-					chalk.red(
-						'Error: The number of source and destination IDs must match'
-					)
-				);
-				console.log(
-					chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
-				);
-				process.exit(1);
-			}
+				if (!sourceId) {
+					console.error(
+						chalk.red('Error: --from parameter is required for cross-tag moves')
+					);
+					showMoveHelp();
+					process.exit(1);
+				}
 
-			// If moving multiple tasks
-			if (sourceIds.length > 1) {
+				const sourceIds = sourceId.split(',').map((id) => id.trim());
+				const moveOptions = {
+					withDependencies: options.withDependencies || false,
+					ignoreDependencies: options.ignoreDependencies || false
+				};
+
 				console.log(
 					chalk.blue(
-						`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+						`Moving tasks ${sourceIds.join(', ')} from "${sourceTag}" to "${toTag}"...`
 					)
 				);
 
-				try {
+				const result = await moveTasksBetweenTags(
+					taskMaster.getTasksPath(),
+					sourceIds,
+					sourceTag,
+					toTag,
+					moveOptions,
+					{ projectRoot: taskMaster.getProjectRoot() }
+				);
+
+				console.log(chalk.green(`✓ ${result.message}`));
+
+				// Print any tips returned from the move operation (e.g., after ignoring dependencies)
+				if (Array.isArray(result.tips) && result.tips.length > 0) {
+					console.log('\n' + chalk.yellow.bold('Next Steps:'));
+					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
+				}
+
+				// Check if source tag still contains tasks before regenerating files
+				const tasksData = readJSON(
+					taskMaster.getTasksPath(),
+					taskMaster.getProjectRoot(),
+					sourceTag
+				);
+				const sourceTagHasTasks =
+					tasksData &&
+					Array.isArray(tasksData.tasks) &&
+					tasksData.tasks.length > 0;
+
+				// Generate task files for the affected tags
+				await generateTaskFiles(
+					taskMaster.getTasksPath(),
+					path.dirname(taskMaster.getTasksPath()),
+					{ tag: toTag, projectRoot: taskMaster.getProjectRoot() }
+				);
+
+				// Only regenerate source tag files if it still contains tasks
+				if (sourceTagHasTasks) {
+					await generateTaskFiles(
+						taskMaster.getTasksPath(),
+						path.dirname(taskMaster.getTasksPath()),
+						{ tag: sourceTag, projectRoot: taskMaster.getProjectRoot() }
+					);
+				}
+			}
+
+			// Helper function to handle within-tag move logic
+			async function handleWithinTagMove(moveContext) {
+				const { sourceId, destinationId, tag, taskMaster } = moveContext;
+
+				if (!sourceId || !destinationId) {
+					console.error(
+						chalk.red(
+							'Error: Both --from and --to parameters are required for within-tag moves'
+						)
+					);
+					console.log(
+						chalk.yellow(
+							'Usage: task-master move --from=<sourceId> --to=<destinationId>'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Check if we're moving multiple tasks (comma-separated IDs)
+				const sourceIds = sourceId.split(',').map((id) => id.trim());
+				const destinationIds = destinationId.split(',').map((id) => id.trim());
+
+				// Validate that the number of source and destination IDs match
+				if (sourceIds.length !== destinationIds.length) {
+					console.error(
+						chalk.red(
+							'Error: The number of source and destination IDs must match'
+						)
+					);
+					console.log(
+						chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
+					);
+					process.exit(1);
+				}
+
+				// If moving multiple tasks
+				if (sourceIds.length > 1) {
+					console.log(
+						chalk.blue(
+							`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+						)
+					);
+
 					// Read tasks data once to validate destination IDs
 					const tasksData = readJSON(
 						taskMaster.getTasksPath(),
@@ -3849,10 +4095,16 @@ Examples:
 					);
 					if (!tasksData || !tasksData.tasks) {
 						console.error(
-							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
+							chalk.red(
+								`Error: Invalid or missing tasks file at ${taskMaster.getTasksPath()}`
+							)
 						);
 						process.exit(1);
 					}
+
+					// Collect errors during move attempts
+					const moveErrors = [];
+					const successfulMoves = [];
 
 					// Move tasks one by one
 					for (let i = 0; i < sourceIds.length; i++) {
@@ -3883,24 +4135,59 @@ Examples:
 									`✓ Successfully moved task/subtask ${fromId} to ${toId}`
 								)
 							);
+							successfulMoves.push({ fromId, toId });
 						} catch (error) {
+							const errorInfo = {
+								fromId,
+								toId,
+								error: error.message
+							};
+							moveErrors.push(errorInfo);
 							console.error(
 								chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`)
 							);
 							// Continue with the next task rather than exiting
 						}
 					}
-				} catch (error) {
-					console.error(chalk.red(`Error: ${error.message}`));
-					process.exit(1);
-				}
-			} else {
-				// Moving a single task (existing logic)
-				console.log(
-					chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
-				);
 
-				try {
+					// Display summary after all moves are attempted
+					if (moveErrors.length > 0) {
+						console.log(chalk.yellow('\n--- Move Operation Summary ---'));
+						console.log(
+							chalk.green(
+								`✓ Successfully moved: ${successfulMoves.length} tasks`
+							)
+						);
+						console.log(
+							chalk.red(`✗ Failed to move: ${moveErrors.length} tasks`)
+						);
+
+						if (successfulMoves.length > 0) {
+							console.log(chalk.cyan('\nSuccessful moves:'));
+							successfulMoves.forEach(({ fromId, toId }) => {
+								console.log(chalk.cyan(`  ${fromId} → ${toId}`));
+							});
+						}
+
+						console.log(chalk.red('\nFailed moves:'));
+						moveErrors.forEach(({ fromId, toId, error }) => {
+							console.log(chalk.red(`  ${fromId} → ${toId}: ${error}`));
+						});
+
+						console.log(
+							chalk.yellow(
+								'\nNote: Some tasks were moved successfully. Check the errors above for failed moves.'
+							)
+						);
+					} else {
+						console.log(chalk.green('\n✓ All tasks moved successfully!'));
+					}
+				} else {
+					// Moving a single task (existing logic)
+					console.log(
+						chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
+					);
+
 					const result = await moveTask(
 						taskMaster.getTasksPath(),
 						sourceId,
@@ -3913,10 +4200,110 @@ Examples:
 							`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`
 						)
 					);
-				} catch (error) {
-					console.error(chalk.red(`Error: ${error.message}`));
+				}
+			}
+
+			// Helper function to handle move errors
+			function handleMoveError(error, moveContext) {
+				console.error(chalk.red(`Error: ${error.message}`));
+
+				// Enhanced error handling with structured error objects
+				if (error.code === 'CROSS_TAG_DEPENDENCY_CONFLICTS') {
+					// Use structured error data
+					const conflicts = error.data.conflicts || [];
+					const taskIds = error.data.taskIds || [];
+					displayCrossTagDependencyError(
+						conflicts,
+						moveContext.sourceTag,
+						moveContext.toTag,
+						taskIds.join(', ')
+					);
+				} else if (error.code === 'CANNOT_MOVE_SUBTASK') {
+					// Use structured error data
+					const taskId =
+						error.data.taskId || moveContext.sourceId?.split(',')[0];
+					displaySubtaskMoveError(
+						taskId,
+						moveContext.sourceTag,
+						moveContext.toTag
+					);
+				} else if (
+					error.code === 'SOURCE_TARGET_TAGS_SAME' ||
+					error.code === 'SAME_SOURCE_TARGET_TAG'
+				) {
+					displayInvalidTagCombinationError(
+						moveContext.sourceTag,
+						moveContext.toTag,
+						'Source and target tags are identical'
+					);
+				} else {
+					// General error - show dependency validation hints
+					displayDependencyValidationHints('after-error');
+				}
+
+				process.exit(1);
+			}
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster({
+				tasksPath: options.file || true,
+				tag: options.tag
+			});
+
+			const sourceId = options.from;
+			const destinationId = options.to;
+			const fromTag = options.fromTag;
+			const toTag = options.toTag;
+
+			const tag = taskMaster.getCurrentTag();
+
+			// Get the source tag - fallback to current tag if not provided
+			const sourceTag = fromTag || taskMaster.getCurrentTag();
+
+			// Check if this is a cross-tag move (different tags)
+			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
+
+			// Initialize move context with all relevant data
+			const moveContext = {
+				sourceId,
+				destinationId,
+				sourceTag,
+				toTag,
+				tag,
+				taskMaster
+			};
+
+			try {
+				if (isCrossTagMove) {
+					// Cross-tag move logic
+					await handleCrossTagMove(moveContext, options);
+				} else {
+					// Within-tag move logic
+					await handleWithinTagMove(moveContext);
+				}
+			} catch (error) {
+				const errMsg = String(error && (error.message || error));
+				if (errMsg.includes('already exists in target tag')) {
+					console.error(chalk.red(`Error: ${errMsg}`));
+					console.log(
+						'\n' +
+							chalk.yellow.bold('Conflict: ID already exists in target tag') +
+							'\n' +
+							chalk.white(
+								'  • Choose a different target tag without conflicting IDs'
+							) +
+							'\n' +
+							chalk.white(
+								'  • Move a different set of IDs (avoid existing ones)'
+							) +
+							'\n' +
+							chalk.white(
+								'  • If needed, move within-tag to a new ID first, then cross-tag move'
+							)
+					);
 					process.exit(1);
 				}
+				handleMoveError(error, moveContext);
 			}
 		});
 
@@ -4337,7 +4724,7 @@ Examples:
 					const gitUtils = await import('./utils/git-utils.js');
 
 					// Check if we're in a git repository
-					if (!(await gitUtils.isGitRepository(projectRoot))) {
+					if (!(await gitUtils.isGitRepository(context.projectRoot))) {
 						console.error(
 							chalk.red(
 								'Error: Not in a git repository. Cannot use --from-branch option.'
@@ -4347,7 +4734,9 @@ Examples:
 					}
 
 					// Get current git branch
-					const currentBranch = await gitUtils.getCurrentBranch(projectRoot);
+					const currentBranch = await gitUtils.getCurrentBranch(
+						context.projectRoot
+					);
 					if (!currentBranch) {
 						console.error(
 							chalk.red('Error: Could not determine current git branch.')
@@ -4687,28 +5076,10 @@ Examples:
  */
 function setupCLI() {
 	// Create a new program instance
-	const programInstance = program
-		.name('dev')
+	const programInstance = new Command()
+		.name('task-master')
 		.description('AI-driven development task management')
-		.version(() => {
-			// Read version directly from package.json ONLY
-			try {
-				const packageJsonPath = path.join(process.cwd(), 'package.json');
-				if (fs.existsSync(packageJsonPath)) {
-					const packageJson = JSON.parse(
-						fs.readFileSync(packageJsonPath, 'utf8')
-					);
-					return packageJson.version;
-				}
-			} catch (error) {
-				// Silently fall back to 'unknown'
-				log(
-					'warn',
-					'Could not read package.json for version info in .version()'
-				);
-			}
-			return 'unknown'; // Default fallback if package.json fails
-		})
+		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
 		.addHelpCommand(false); // Disable default help command
 
@@ -4732,129 +5103,14 @@ function setupCLI() {
 }
 
 /**
- * Check for newer version of task-master-ai
- * @returns {Promise<{currentVersion: string, latestVersion: string, needsUpdate: boolean}>}
- */
-async function checkForUpdate() {
-	// Get current version from package.json ONLY
-	const currentVersion = getTaskMasterVersion();
-
-	return new Promise((resolve) => {
-		// Get the latest version from npm registry
-		const options = {
-			hostname: 'registry.npmjs.org',
-			path: '/task-master-ai',
-			method: 'GET',
-			headers: {
-				Accept: 'application/vnd.npm.install-v1+json' // Lightweight response
-			}
-		};
-
-		const req = https.request(options, (res) => {
-			let data = '';
-
-			res.on('data', (chunk) => {
-				data += chunk;
-			});
-
-			res.on('end', () => {
-				try {
-					const npmData = JSON.parse(data);
-					const latestVersion = npmData['dist-tags']?.latest || currentVersion;
-
-					// Compare versions
-					const needsUpdate =
-						compareVersions(currentVersion, latestVersion) < 0;
-
-					resolve({
-						currentVersion,
-						latestVersion,
-						needsUpdate
-					});
-				} catch (error) {
-					log('debug', `Error parsing npm response: ${error.message}`);
-					resolve({
-						currentVersion,
-						latestVersion: currentVersion,
-						needsUpdate: false
-					});
-				}
-			});
-		});
-
-		req.on('error', (error) => {
-			log('debug', `Error checking for updates: ${error.message}`);
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		// Set a timeout to avoid hanging if npm is slow
-		req.setTimeout(3000, () => {
-			req.abort();
-			log('debug', 'Update check timed out');
-			resolve({
-				currentVersion,
-				latestVersion: currentVersion,
-				needsUpdate: false
-			});
-		});
-
-		req.end();
-	});
-}
-
-/**
- * Compare semantic versions
- * @param {string} v1 - First version
- * @param {string} v2 - Second version
- * @returns {number} -1 if v1 < v2, 0 if v1 = v2, 1 if v1 > v2
- */
-function compareVersions(v1, v2) {
-	const v1Parts = v1.split('.').map((p) => parseInt(p, 10));
-	const v2Parts = v2.split('.').map((p) => parseInt(p, 10));
-
-	for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-		const v1Part = v1Parts[i] || 0;
-		const v2Part = v2Parts[i] || 0;
-
-		if (v1Part < v2Part) return -1;
-		if (v1Part > v2Part) return 1;
-	}
-
-	return 0;
-}
-
-/**
- * Display upgrade notification message
- * @param {string} currentVersion - Current version
- * @param {string} latestVersion - Latest version
- */
-function displayUpgradeNotification(currentVersion, latestVersion) {
-	const message = boxen(
-		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
-			`Run ${chalk.cyan('npm i task-master-ai@latest -g')} to update to the latest version with new features and bug fixes.`,
-		{
-			padding: 1,
-			margin: { top: 1, bottom: 1 },
-			borderColor: 'yellow',
-			borderStyle: 'round'
-		}
-	);
-
-	console.log(message);
-}
-
-/**
  * Parse arguments and run the CLI
  * @param {Array} argv - Command-line arguments
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe
-		if (process.stdout.isTTY) {
+		// Display banner if not in a pipe (except for init command which has its own banner)
+		const isInitCommand = argv.includes('init');
+		if (process.stdout.isTTY && !isInitCommand) {
 			displayBanner();
 		}
 
@@ -4865,7 +5121,8 @@ async function runCLI(argv = process.argv) {
 		}
 
 		// Start the update check in the background - don't await yet
-		const updateCheckPromise = checkForUpdate();
+		const currentVersion = getTaskMasterVersion();
+		const updateCheckPromise = checkForUpdate(currentVersion);
 
 		// Setup and parse
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
@@ -4876,10 +5133,18 @@ async function runCLI(argv = process.argv) {
 		// After command execution, check if an update is available
 		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
+			// Display the upgrade notification first
 			displayUpgradeNotification(
 				updateInfo.currentVersion,
 				updateInfo.latestVersion
 			);
+
+			// Then automatically perform the update
+			const updateSuccess = await performAutoUpdate(updateInfo.latestVersion);
+			if (updateSuccess) {
+				// Exit gracefully after successful update
+				process.exit(0);
+			}
 		}
 
 		// Check if migration has occurred and show FYI notice once
@@ -5003,11 +5268,4 @@ export function resolveComplexityReportPath({
 	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
-export {
-	registerCommands,
-	setupCLI,
-	runCLI,
-	checkForUpdate,
-	compareVersions,
-	displayUpgradeNotification
-};
+export { registerCommands, setupCLI, runCLI };

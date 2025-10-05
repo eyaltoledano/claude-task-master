@@ -8,7 +8,8 @@ import {
 	handleApiResult,
 	withNormalizedProjectRoot,
 	createErrorResponse,
-	createAgentDelegationResponse
+	createAgentDelegationResponse,
+	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -65,42 +66,47 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('Append generated tasks to existing file.')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				const result = await parsePRDDirect(
-					{
-						...args,
-						tag: resolvedTag
-					},
-					log,
-					{ session }
-				);
-				// Check if agent delegation is needed
-				if (
-					result &&
-					result.needsAgentDelegation === true
-				) {
-					log.info(
-						`parse_prd tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+		execute: withNormalizedProjectRoot(
+			async (args, { log, session }) => {
+				try {
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+					const progressCapability = checkProgressCapability(
+						reportProgress,
+						log
 					);
-					return createAgentDelegationResponse(
-						result.pendingInteraction
-					);
-				} else {
-					// If no delegation, process the result as usual
-					return handleApiResult(
-						result,
+					const result = await parsePRDDirect(
+						{
+							...args,
+							tag: resolvedTag
+						},
 						log,
-						'Error parsing PRD',
-						undefined,
-						args.projectRoot
+						{ session, reportProgress: progressCapability }
 					);
-				}
-			} catch (error) {
+					// Check if agent delegation is needed
+					if (
+						result &&
+						result.needsAgentDelegation === true
+					) {
+						log.info(
+							`parse_prd tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+						);
+						return createAgentDelegationResponse(
+							result.pendingInteraction
+						);
+					} else {
+						// If no delegation, process the result as usual
+					return handleApiResult(
+							result,
+							log,
+							'Error parsing PRD',
+							undefined,
+							args.projectRoot
+						);
+					}
+				} catch (error) {
 				log.error(`Error in parse_prd: ${error.message}`);
 				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
 			}

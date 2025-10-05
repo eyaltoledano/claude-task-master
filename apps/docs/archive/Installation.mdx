@@ -1,0 +1,114 @@
+---
+title: "Installation(2)"
+description: "This guide walks you through setting up Task Master in your development environment."
+---
+
+## Initial Setup
+
+<Tip>
+  MCP (Model Control Protocol) provides the easiest way to get started with Task Master directly in your editor.
+</Tip>
+
+<AccordionGroup>
+  <Accordion title="Option 1: Using MCP (Recommended)" icon="sparkles">
+    <Steps>
+      <Step title="Add the MCP config to your editor">
+        <Link href="https://cursor.sh">Cursor</Link> recommended, but it works with other text editors
+        ```json
+        {
+        	"mcpServers": {
+        		"taskmaster-ai": {
+        			"command": "npx",
+        			"args": ["-y", "task-master-ai"],
+        			"env": {
+        				"ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        				"PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        				"MODEL": "claude-3-7-sonnet-20250219",
+        				"PERPLEXITY_MODEL": "sonar-pro",
+        				"MAX_TOKENS": 128000,
+        				"TEMPERATURE": 0.2,
+        				"DEFAULT_SUBTASKS": 5,
+        				"DEFAULT_PRIORITY": "medium"
+        			}
+        		}
+        	}
+        }
+        ```
+      </Step>
+      <Step title="Enable the MCP in your editor settings">
+        
+      </Step>
+      <Step title="Prompt the AI to initialize Task Master">
+        > "Can you please initialize taskmaster-ai into my project?"
+
+        **The AI will:**
+
+        1. Create necessary project structure
+        2. Set up initial configuration files
+        3. Guide you through the rest of the process
+        4. Place your PRD document in the `scripts/` directory (e.g., `scripts/prd.txt`)
+        5. **Use natural language commands** to interact with Task Master:
+
+           > "Can you parse my PRD at scripts/prd.txt?"
+           >
+           > "What's the next task I should work on?"
+           >
+           > "Can you help me implement task 3?"
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="Option 2: Manual Installation">
+    If you prefer to use the command line interface directly:
+
+    <Steps>
+      <Step title="Install">
+        <CodeGroup>
+
+        ```bash Global
+        npm install -g task-master-ai
+        ```
+
+        
+        ```bash Local
+        npm install task-master-ai
+        ```
+
+        </CodeGroup>
+      </Step>
+      <Step title="Initialize a new project">
+        <CodeGroup>
+
+        ```bash Global
+        task-master init
+        ```
+
+        
+        ```bash Local
+        npx task-master-init
+        ```
+
+        </CodeGroup>
+      </Step>
+    </Steps>
+    This will prompt you for project details and set up a new project with the necessary files and structure.
+  </Accordion>
+</AccordionGroup>
+
+## Common Commands
+
+<Tip>
+  After setting up Task Master, you can use these commands (either via AI prompts or CLI)
+</Tip>
+
+```bash
+# Parse a PRD and generate tasks
+task-master parse-prd your-prd.txt
+
+# List all tasks
+task-master list
+
+# Show the next task to work on
+task-master next
+
+# Generate task files
+task-master generate 

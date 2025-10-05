@@ -1,0 +1,241 @@
+---
+title: Technical Capabilities
+sidebarTitle: "Technical Capabilities"
+---
+
+# Capabilities (Technical)
+
+Discover the technical capabilities of Task Master, including supported models, integrations, and more. 
+
+# CLI Interface Synopsis
+
+This document outlines the command-line interface (CLI) for the Task Master application, as defined in `bin/task-master.js` and the `scripts/modules/commands.js` file (which I will assume exists based on the context). This guide is intended for those writing user-facing documentation to understand how users interact with the application from the command line.
+
+## Entry Point
+
+The main entry point for the CLI is the `task-master` command, which is an executable script that spawns the main application logic in `scripts/dev.js`.
+
+## Global Options
+
+The following options are available for all commands:
+
+-   `-h, --help`: Display help information.
+-   `--version`: Display the application's version.
+
+## Commands
+
+The CLI is organized into a series of commands, each with its own set of options. The following is a summary of the available commands, categorized by their functionality.
+
+### 1. Task and Subtask Management
+
+-   **`add`**: Creates a new task using an AI-powered prompt.
+    -   `--prompt <prompt>`: The prompt to use for generating the task.
+    -   `--dependencies <dependencies>`: A comma-separated list of task IDs that this task depends on.
+    -   `--priority <priority>`: The priority of the task (e.g., `high`, `medium`, `low`).
+-   **`add-subtask`**: Adds a subtask to a parent task.
+    -   `--parent-id <parentId>`: The ID of the parent task.
+    -   `--task-id <taskId>`: The ID of an existing task to convert to a subtask.
+    -   `--title <title>`: The title of the new subtask.
+-   **`remove`**: Removes one or more tasks or subtasks.
+    -   `--ids <ids>`: A comma-separated list of task or subtask IDs to remove.
+-   **`remove-subtask`**: Removes a subtask from its parent.
+    -   `--id <subtaskId>`: The ID of the subtask to remove (in the format `parentId.subtaskId`).
+    -   `--convert-to-task`: Converts the subtask to a standalone task.
+-   **`update`**: Updates multiple tasks starting from a specific ID.
+    -   `--from <fromId>`: The ID of the task to start updating from.
+    -   `--prompt <prompt>`: The new context to apply to the tasks.
+-   **`update-task`**: Updates a single task.
+    -   `--id <taskId>`: The ID of the task to update.
+    -   `--prompt <prompt>`: The new context to apply to the task.
+-   **`update-subtask`**: Appends information to a subtask.
+    -   `--id <subtaskId>`: The ID of the subtask to update (in the format `parentId.subtaskId`).
+    -   `--prompt <prompt>`: The information to append to the subtask.
+-   **`move`**: Moves a task or subtask.
+    -   `--from <sourceId>`: The ID of the task or subtask to move.
+    -   `--to <destinationId>`: The destination ID.
+-   **`clear-subtasks`**: Clears all subtasks from one or more tasks.
+    -   `--ids <ids>`: A comma-separated list of task IDs.
+
+### 2. Task Information and Status
+
+-   **`list`**: Lists all tasks.
+    -   `--status <status>`: Filters tasks by status.
+    -   `--with-subtasks`: Includes subtasks in the list.
+-   **`show`**: Shows the details of a specific task.
+    -   `--id <taskId>`: The ID of the task to show.
+-   **`next`**: Shows the next task to work on.
+-   **`set-status`**: Sets the status of a task or subtask.
+    -   `--id <id>`: The ID of the task or subtask.
+    -   `--status <status>`: The new status.
+
+### 3. Task Analysis and Expansion
+
+-   **`parse-prd`**: Parses a PRD to generate tasks.
+    -   `--file <file>`: The path to the PRD file.
+    -   `--num-tasks <numTasks>`: The number of tasks to generate.
+-   **`expand`**: Expands a task into subtasks.
+    -   `--id <taskId>`: The ID of the task to expand.
+    -   `--num-subtasks <numSubtasks>`: The number of subtasks to generate.
+-   **`expand-all`**: Expands all eligible tasks.
+    -   `--num-subtasks <numSubtasks>`: The number of subtasks to generate for each task.
+-   **`analyze-complexity`**: Analyzes task complexity.
+    -   `--file <file>`: The path to the tasks file.
+-   **`complexity-report`**: Displays the complexity analysis report.
+
+### 4. Project and Configuration
+
+-   **`init`**: Initializes a new project.
+-   **`generate`**: Generates individual task files.
+-   **`migrate`**: Migrates a project to the new directory structure.
+-   **`research`**: Performs AI-powered research.
+    -   `--query <query>`: The research query.
+
+This synopsis provides a comprehensive overview of the CLI commands and their options, which should be helpful for creating user-facing documentation.
+
+
+# Core Implementation Synopsis
+
+This document provides a high-level overview of the core implementation of the Task Master application, focusing on the functionalities exposed through `scripts/modules/task-manager.js`. This serves as a guide for understanding the application's capabilities when writing user-facing documentation.
+
+## Core Concepts
+
+The application revolves around the management of tasks and subtasks, which are stored in a `tasks.json` file. The core logic provides functionalities to create, read, update, and delete tasks and subtasks, as well as manage their dependencies and statuses.
+
+### Task Structure
+
+A task is a JSON object with the following key properties:
+
+-   `id`: A unique number identifying the task.
+-   `title`: A string representing the task's title.
+-   `description`: A string providing a brief description of the task.
+-   `details`: A string containing detailed information about the task.
+-   `testStrategy`: A string describing how to test the task.
+-   `status`: A string representing the task's current status (e.g., `pending`, `in-progress`, `done`).
+-   `dependencies`: An array of task IDs that this task depends on.
+-   `priority`: A string representing the task's priority (e.g., `high`, `medium`, `low`).
+-   `subtasks`: An array of subtask objects.
+
+A subtask has a similar structure to a task but is nested within a parent task.
+
+## Feature Categories
+
+The core functionalities can be categorized as follows:
+
+### 1. Task and Subtask Management
+
+These functions are the bread and butter of the application, allowing for the creation, modification, and deletion of tasks and subtasks.
+
+-   **`addTask(prompt, dependencies, priority)`**: Creates a new task using an AI-powered prompt to generate the title, description, details, and test strategy. It can also be used to create a task manually by providing the task data directly.
+-   **`addSubtask(parentId, existingTaskId, newSubtaskData)`**: Adds a subtask to a parent task. It can either convert an existing task into a subtask or create a new subtask from scratch.
+-   **`removeTask(taskIds)`**: Removes one or more tasks or subtasks.
+-   **`removeSubtask(subtaskId, convertToTask)`**: Removes a subtask from its parent. It can optionally convert the subtask into a standalone task.
+-   **`updateTaskById(taskId, prompt)`**: Updates a task's information based on a prompt.
+-   **`updateSubtaskById(subtaskId, prompt)`**: Appends additional information to a subtask's details.
+-   **`updateTasks(fromId, prompt)`**: Updates multiple tasks starting from a specific ID based on a new context.
+-   **`moveTask(sourceId, destinationId)`**: Moves a task or subtask to a new position.
+-   **`clearSubtasks(taskIds)`**: Clears all subtasks from one or more tasks.
+
+### 2. Task Information and Status
+
+These functions are used to retrieve information about tasks and manage their status.
+
+-   **`listTasks(statusFilter, withSubtasks)`**: Lists all tasks, with options to filter by status and include subtasks.
+-   **`findTaskById(taskId)`**: Finds a task by its ID.
+-   **`taskExists(taskId)`**: Checks if a task with a given ID exists.
+-   **`setTaskStatus(taskIdInput, newStatus)`**: Sets the status of a task or subtask.
+-al
+-   **`updateSingleTaskStatus(taskIdInput, newStatus)`**: A helper function to update the status of a single task or subtask.
+-   **`findNextTask()`**: Determines the next task to work on based on dependencies and status.
+
+### 3. Task Analysis and Expansion
+
+These functions leverage AI to analyze and break down tasks.
+
+-   **`parsePRD(prdPath, numTasks)`**: Parses a Product Requirements Document (PRD) to generate an initial set of tasks.
+-   **`expandTask(taskId, numSubtasks)`**: Expands a task into a specified number of subtasks using AI.
+-   **`expandAllTasks(numSubtasks)`**: Expands all eligible pending or in-progress tasks.
+-   **`analyzeTaskComplexity(options)`**: Analyzes the complexity of tasks and generates recommendations for expansion.
+-   **`readComplexityReport()`**: Reads the complexity analysis report.
+
+### 4. Dependency Management
+
+These functions are crucial for managing the relationships between tasks.
+
+-   **`isTaskDependentOn(task, targetTaskId)`**: Checks if a task has a direct or indirect dependency on another task.
+
+### 5. Project and Configuration
+
+These functions are for managing the project and its configuration.
+
+-   **`generateTaskFiles()`**: Generates individual task files from `tasks.json`.
+-   **`migrateProject()`**: Migrates the project to the new `.taskmaster` directory structure.
+-   **`performResearch(query, options)`**: Performs AI-powered research with project context.
+
+This overview should provide a solid foundation for creating user-facing documentation. For more detailed information on each function, refer to the source code in `scripts/modules/task-manager/`.
+
+
+# MCP Interface Synopsis
+
+This document provides an overview of the MCP (Machine-to-Machine Communication Protocol) interface for the Task Master application. The MCP interface is defined in the `mcp-server/` directory and exposes the application's core functionalities as a set of tools that can be called remotely.
+
+## Core Concepts
+
+The MCP interface is built on top of the `fastmcp` library and registers a set of tools that correspond to the core functionalities of the Task Master application. These tools are defined in the `mcp-server/src/tools/` directory and are registered with the MCP server in `mcp-server/src/tools/index.js`.
+
+Each tool is defined with a name, a description, and a set of parameters that are validated using the `zod` library. The `execute` function of each tool calls the corresponding core logic function from `scripts/modules/task-manager.js`.
+
+## Tool Categories
+
+The MCP tools can be categorized in the same way as the core functionalities:
+
+### 1. Task and Subtask Management
+
+-   **`add_task`**: Creates a new task.
+-   **`add_subtask`**: Adds a subtask to a parent task.
+-   **`remove_task`**: Removes one or more tasks or subtasks.
+-   **`remove_subtask`**: Removes a subtask from its parent.
+-   **`update_task`**: Updates a single task.
+-   **`update_subtask`**: Appends information to a subtask.
+-   **`update`**: Updates multiple tasks.
+-   **`move_task`**: Moves a task or subtask.
+-   **`clear_subtasks`**: Clears all subtasks from one or more tasks.
+
+### 2. Task Information and Status
+
+-   **`get_tasks`**: Lists all tasks.
+-   **`get_task`**: Shows the details of a specific task.
+-   **`next_task`**: Shows the next task to work on.
+-   **`set_task_status`**: Sets the status of a task or subtask.
+
+### 3. Task Analysis and Expansion
+
+-   **`parse_prd`**: Parses a PRD to generate tasks.
+-   **`expand_task`**: Expands a task into subtasks.
+-   **`expand_all`**: Expands all eligible tasks.
+-   **`analyze_project_complexity`**: Analyzes task complexity.
+-   **`complexity_report`**: Displays the complexity analysis report.
+
+### 4. Dependency Management
+
+-   **`add_dependency`**: Adds a dependency to a task.
+-   **`remove_dependency`**: Removes a dependency from a task.
+-   **`validate_dependencies`**: Validates the dependencies of all tasks.
+-   **`fix_dependencies`**: Fixes any invalid dependencies.
+
+### 5. Project and Configuration
+
+-   **`initialize_project`**: Initializes a new project.
+-   **`generate`**: Generates individual task files.
+-   **`models`**: Manages AI model configurations.
+-   **`research`**: Performs AI-powered research.
+
+### 6. Tag Management
+
+-   **`add_tag`**: Creates a new tag.
+-   **`delete_tag`**: Deletes a tag.
+-   **`list_tags`**: Lists all tags.
+-   **`use_tag`**: Switches to a different tag.
+-   **`rename_tag`**: Renames a tag.
+-   **`copy_tag`**: Copies a tag.
+
+This synopsis provides a clear overview of the MCP interface and its available tools, which will be valuable for anyone writing documentation for developers who need to interact with the Task Master application programmatically.

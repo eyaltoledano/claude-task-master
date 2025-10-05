@@ -16,8 +16,6 @@
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
@@ -32,6 +30,9 @@ import {
 } from '../src/utils/rule-transformer.js';
 import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
 
+// Import asset resolver
+import { assetExists, readAsset } from '../src/utils/asset-resolver.js';
+
 import { execSync } from 'child_process';
 import {
 	EXAMPLE_PRD_FILE,
@@ -45,9 +46,6 @@ import {
 	ENV_EXAMPLE_FILE,
 	GITIGNORE_FILE
 } from '../src/constants/paths.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Define log levels
 const LOG_LEVELS = {
@@ -222,32 +220,14 @@ function createInitialStateFile(targetDir) {
 // Function to copy a file from the package to the target directory
 function copyTemplateFile(templateName, targetPath, replacements = {}) {
 	// Get the file content from the appropriate source directory
-	let sourcePath;
-
-	// Map template names to their actual source paths
-	switch (templateName) {
-		// case 'scripts_README.md':
-		// 	sourcePath = path.join(__dirname, '..', 'assets', 'scripts_README.md');
-		// 	break;
-		// case 'README-task-master.md':
-		// 	sourcePath = path.join(__dirname, '..', 'README-task-master.md');
-		// 	break;
-		default:
-			// For other files like env.example, gitignore, etc. that don't have direct equivalents
-			sourcePath = path.join(__dirname, '..', 'assets', templateName);
+	// Check if the asset exists
+	if (!assetExists(templateName)) {
+		log('error', `Source file not found: ${templateName}`);
+		return;
 	}
 
-	// Check if the source file exists
-	if (!fs.existsSync(sourcePath)) {
-		// Fall back to templates directory for files that might not have been moved yet
-		sourcePath = path.join(__dirname, '..', 'assets', templateName);
-		if (!fs.existsSync(sourcePath)) {
-			log('error', `Source file not found: ${sourcePath}`);
-			return;
-		}
-	}
-
-	let content = fs.readFileSync(sourcePath, 'utf8');
+	// Read the asset content using the resolver
+	let content = readAsset(templateName, 'utf8');
 
 	// Replace placeholders with actual values
 	Object.entries(replacements).forEach(([key, value]) => {
@@ -634,13 +614,7 @@ function createProjectStructure(
 
 	// Copy .gitignore with GitTasks preference
 	try {
-		const gitignoreTemplatePath = path.join(
-			__dirname,
-			'..',
-			'assets',
-			'gitignore'
-		);
-		const templateContent = fs.readFileSync(gitignoreTemplatePath, 'utf8');
+		const templateContent = readAsset('gitignore', 'utf8');
 		manageGitignoreFile(
 			path.join(targetDir, GITIGNORE_FILE),
 			templateContent,

@@ -7,13 +7,13 @@ import { execSync } from 'child_process';
 describe('Rules Files Inclusion in Package', () => {
 	// This test verifies that the required rules files are included in the final package
 
-	test('package.json includes assets/** in the "files" array for rules source files', () => {
+	test('package.json includes dist/** in the "files" array for bundled files', () => {
 		// Read the package.json file
 		const packageJsonPath = path.join(process.cwd(), 'package.json');
 		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
-		// Check if assets/** is included in the files array (which contains rules files)
-		expect(packageJson.files).toContain('assets/**');
+		// Check if dist/** is included in the files array (which contains bundled output including assets)
+		expect(packageJson.files).toContain('dist/**');
 	});
 
 	test('source rules files exist in assets/rules directory', () => {

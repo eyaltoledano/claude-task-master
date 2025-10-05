@@ -36,7 +36,7 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * @returns {Promise<Object>} - Result object with success status and data/error information.
  */
 export async function parsePRDDirect(args, log, context = {}) {
-	const { session } = context;
+	const { session, reportProgress } = context;
 	// Extract projectRoot from args
 	const {
 		input: inputArg,
@@ -168,6 +168,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 				force,
 				append,
 				research,
+				reportProgress,
 				commandName: 'parse-prd',
 				outputType: 'mcp'
 			},

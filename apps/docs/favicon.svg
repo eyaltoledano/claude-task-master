@@ -1,0 +1,9 @@
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Blue form with check from logo -->
+  <rect x="16" y="10" width="68" height="80" rx="9" fill="#3366CC"/>
+  <polyline points="33,44 41,55 56,29" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+  <circle cx="33" cy="64" r="4" fill="#FFFFFF"/>
+  <rect x="43" y="61" width="27" height="6" fill="#FFFFFF"/>
+  <circle cx="33" cy="77" r="4" fill="#FFFFFF"/>
+  <rect x="43" y="75" width="27" height="6" fill="#FFFFFF"/>
+</svg>

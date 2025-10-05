@@ -16,50 +16,32 @@ import {
 } from '../../src/constants/providers.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import MODEL_MAP from './supported-models.json' with { type: 'json' };
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Load supported models from JSON file using the calculated __dirname
-let MODEL_MAP;
-try {
-	const supportedModelsRaw = fs.readFileSync(
-		path.join(__dirname, 'supported-models.json'),
-		'utf-8'
-	);
-	MODEL_MAP = JSON.parse(supportedModelsRaw);
-} catch (error) {
-	console.error(
-		chalk.red(
-			'FATAL ERROR: Could not load supported-models.json. Please ensure the file exists and is valid JSON.'
-		),
-		error
-	);
-	MODEL_MAP = {}; // Default to empty map on error to avoid crashing, though functionality will be limited
-	process.exit(1); // Exit if models can't be loaded
-}
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
 	models: {
 		main: {
 			provider: 'anthropic',
-			modelId: 'claude-3-7-sonnet-20250219',
+			modelId: 'claude-sonnet-4-20250514',
 			maxTokens: 64000,
 			temperature: 0.2
 		},
 		research: {
 			provider: 'perplexity',
-			modelId: 'sonar-pro',
+			modelId: 'sonar',
 			maxTokens: 8700,
 			temperature: 0.1
 		},
 		fallback: {
 			// No default fallback provider/model initially
 			provider: 'anthropic',
-			modelId: 'claude-3-5-sonnet',
-			maxTokens: 8192, // Default parameters if fallback IS configured
+			modelId: 'claude-3-7-sonnet-20250219',
+			maxTokens: 120000, // Default parameters if fallback IS configured
 			temperature: 0.2
 		}
 	},
@@ -72,9 +54,15 @@ const DEFAULTS = {
 		projectName: 'Task Master',
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
-		responseLanguage: 'English'
+		responseLanguage: 'English',
+		enableCodebaseAnalysis: true
 	},
-	claudeCode: {}
+	claudeCode: {},
+	grokCli: {
+		timeout: 120000,
+		workingDirectory: null,
+		defaultModel: 'grok-4-latest'
+	}
 };
 
 // --- Internal Config Loading ---
@@ -149,7 +137,8 @@ function _loadAndValidateConfig(explicitRoot = null) {
 							: { ...defaults.models.fallback }
 				},
 				global: { ...defaults.global, ...parsedConfig?.global },
-				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode }
+				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
+				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
 
@@ -321,6 +310,8 @@ function validateProviderModelCombination(providerName, modelId) {
 function validateClaudeCodeSettings(settings) {
 	// Define the base settings schema without commandSpecific first
 	const BaseSettingsSchema = z.object({
+		pathToClaudeCodeExecutable: z.string().optional(),
+		// Use number().int() for integer validation in Zod
 		maxTurns: z.number().int().positive().optional(),
 		customSystemPrompt: z.string().optional(),
 		appendSystemPrompt: z.string().optional(),
@@ -336,19 +327,22 @@ function validateClaudeCodeSettings(settings) {
 					type: z.enum(['stdio', 'sse']).optional(),
 					command: z.string(),
 					args: z.array(z.string()).optional(),
-					env: z.record(z.string()).optional(),
-					url: z.string().url().optional(),
-					headers: z.record(z.string()).optional()
+					env: z.record(z.string(), z.string()).optional(),
+					url: z.url().optional(),
+					headers: z.record(z.string(), z.string()).optional()
 				})
 			)
 			.optional()
 	});
 
-	// Define CommandSpecificSchema using the base schema
-	const CommandSpecificSchema = z.record(
-		z.enum(AI_COMMAND_NAMES),
-		BaseSettingsSchema
-	);
+	// Define CommandSpecificSchema using flexible keys, but restrict to known commands
+	const CommandSpecificSchema = z
+		.record(z.string(), BaseSettingsSchema)
+		.refine(
+			(obj) =>
+				Object.keys(obj || {}).every((k) => AI_COMMAND_NAMES.includes(k)),
+			{ message: 'Invalid command name in commandSpecific' }
+		);
 
 	// Define the full settings schema with commandSpecific
 	const SettingsSchema = BaseSettingsSchema.extend({
@@ -390,6 +384,22 @@ function getClaudeCodeSettingsForCommand(
 	return { ...settings, ...commandSpecific[commandName] };
 }
 
+function getGrokCliSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	// Ensure Grok CLI defaults are applied if Grok CLI section is missing
+	return { ...DEFAULTS.grokCli, ...(config?.grokCli || {}) };
+}
+
+function getGrokCliSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getGrokCliSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
+}
+
 // --- Role-Specific Getters ---
 
 function getModelConfigForRole(role, explicitRoot = null) {
@@ -425,6 +435,64 @@ function getMainTemperature(explicitRoot = null) {
 
 function getResearchProvider(explicitRoot = null) {
 	return getModelConfigForRole('research', explicitRoot).provider;
+}
+
+/**
+ * Check if codebase analysis feature flag is enabled across all sources
+ * Priority: .env > MCP env > config.json
+ * @param {object|null} session - MCP session object (optional)
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @returns {boolean} True if codebase analysis is enabled
+ */
+function isCodebaseAnalysisEnabled(session = null, projectRoot = null) {
+	// Priority 1: Environment variable
+	const envFlag = resolveEnvVariable(
+		'TASKMASTER_ENABLE_CODEBASE_ANALYSIS',
+		session,
+		projectRoot
+	);
+	if (envFlag !== null && envFlag !== undefined && envFlag !== '') {
+		return envFlag.toLowerCase() === 'true' || envFlag === '1';
+	}
+
+	// Priority 2: MCP session environment
+	if (session?.env?.TASKMASTER_ENABLE_CODEBASE_ANALYSIS) {
+		const mcpFlag = session.env.TASKMASTER_ENABLE_CODEBASE_ANALYSIS;
+		return mcpFlag.toLowerCase() === 'true' || mcpFlag === '1';
+	}
+
+	// Priority 3: Configuration file
+	const globalConfig = getGlobalConfig(projectRoot);
+	return globalConfig.enableCodebaseAnalysis !== false; // Default to true
+}
+
+/**
+ * Check if codebase analysis is available and enabled
+ * @param {boolean} useResearch - Whether to check research provider or main provider
+ * @param {string|null} projectRoot - Project root path (optional)
+ * @param {object|null} session - MCP session object (optional)
+ * @returns {boolean} True if codebase analysis is available and enabled
+ */
+function hasCodebaseAnalysis(
+	useResearch = false,
+	projectRoot = null,
+	session = null
+) {
+	// First check if the feature is enabled
+	if (!isCodebaseAnalysisEnabled(session, projectRoot)) {
+		return false;
+	}
+
+	// Then check if a codebase analysis provider is configured
+	const currentProvider = useResearch
+		? getResearchProvider(projectRoot)
+		: getMainProvider(projectRoot);
+
+	return (
+		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI ||
+		currentProvider === CUSTOM_PROVIDERS.GROK_CLI
+	);
 }
 
 function getResearchModelId(explicitRoot = null) {
@@ -542,6 +610,11 @@ function getResponseLanguage(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).responseLanguage;
 }
 
+function getCodebaseAnalysisEnabled(explicitRoot = null) {
+	// Return boolean-safe value with default true
+	return getGlobalConfig(explicitRoot).enableCodebaseAnalysis !== false;
+}
+
 /**
  * Gets model parameters (maxTokens, temperature) for a specific role,
  * considering model-specific overrides from supported-models.json.
@@ -557,6 +630,7 @@ function getParametersForRole(role, explicitRoot = null) {
 	const providerName = roleConfig.provider;
 
 	let effectiveMaxTokens = roleMaxTokens; // Start with the role's default
+	let effectiveTemperature = roleTemperature; // Start with the role's default
 
 	try {
 		// Find the model definition in MODEL_MAP
@@ -583,6 +657,20 @@ function getParametersForRole(role, explicitRoot = null) {
 					`No valid model-specific max_tokens override found for ${modelId}. Using role default: ${roleMaxTokens}`
 				);
 			}
+
+			// Check if a model-specific temperature is defined
+			if (
+				modelDefinition &&
+				typeof modelDefinition.temperature === 'number' &&
+				modelDefinition.temperature >= 0 &&
+				modelDefinition.temperature <= 1
+			) {
+				effectiveTemperature = modelDefinition.temperature;
+				log(
+					'debug',
+					`Applying model-specific temperature (${modelDefinition.temperature}) for ${modelId}`
+				);
+			}
 		} else {
 			// Special handling for custom OpenRouter models
 			if (providerName === CUSTOM_PROVIDERS.OPENROUTER) {
@@ -603,15 +691,16 @@ function getParametersForRole(role, explicitRoot = null) {
 	} catch (lookupError) {
 		log(
 			'warn',
-			`Error looking up model-specific max_tokens for ${modelId}: ${lookupError.message}. Using role default: ${roleMaxTokens}`
+			`Error looking up model-specific parameters for ${modelId}: ${lookupError.message}. Using role defaults.`
 		);
-		// Fallback to role default on error
+		// Fallback to role defaults on error
 		effectiveMaxTokens = roleMaxTokens;
+		effectiveTemperature = roleTemperature;
 	}
 
 	return {
 		maxTokens: effectiveMaxTokens,
-		temperature: roleTemperature
+		temperature: effectiveTemperature
 	};
 }
 
@@ -632,7 +721,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.BEDROCK,
 		CUSTOM_PROVIDERS.MCP,
 		CUSTOM_PROVIDERS.GEMINI_CLI,
-		CUSTOM_PROVIDERS.AGENTLLM
+		CUSTOM_PROVIDERS.AGENTLLM,
+		CUSTOM_PROVIDERS.GROK_CLI
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -941,6 +1031,7 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
 	CUSTOM_PROVIDERS.BEDROCK,
 	CUSTOM_PROVIDERS.GEMINI_CLI,
+	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP,
 	CUSTOM_PROVIDERS.AGENTLLM
 ];
@@ -954,6 +1045,9 @@ export {
 	// Claude Code settings
 	getClaudeCodeSettings,
 	getClaudeCodeSettingsForCommand,
+	// Grok CLI settings
+	getGrokCliSettings,
+	getGrokCliSettingsForCommand,
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
@@ -972,6 +1066,7 @@ export {
 	getResearchModelId,
 	getResearchMaxTokens,
 	getResearchTemperature,
+	hasCodebaseAnalysis,
 	getFallbackProvider,
 	getFallbackModelId,
 	getFallbackMaxTokens,
@@ -988,6 +1083,8 @@ export {
 	getAzureBaseURL,
 	getBedrockBaseURL,
 	getResponseLanguage,
+	getCodebaseAnalysisEnabled,
+	isCodebaseAnalysisEnabled,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)
