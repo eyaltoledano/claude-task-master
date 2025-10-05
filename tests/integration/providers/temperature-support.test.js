@@ -10,22 +10,25 @@
  * base provider tests with concrete provider implementations.
  */
 
+import { ClaudeCodeProvider } from '../../../src/ai-providers/claude-code.js';
+import { CodexCliProvider } from '../../../src/ai-providers/codex-cli.js';
+import { GeminiCliProvider } from '../../../src/ai-providers/gemini-cli.js';
+import { GrokCliProvider } from '../../../src/ai-providers/grok-cli.js';
+import { AnthropicAIProvider } from '../../../src/ai-providers/anthropic.js';
+import { OpenAIProvider } from '../../../src/ai-providers/openai.js';
+import { GoogleAIProvider } from '../../../src/ai-providers/google.js';
+import { PerplexityAIProvider } from '../../../src/ai-providers/perplexity.js';
+import { XAIProvider } from '../../../src/ai-providers/xai.js';
+import { GroqProvider } from '../../../src/ai-providers/groq.js';
+import { OpenRouterAIProvider } from '../../../src/ai-providers/openrouter.js';
+import { OllamaAIProvider } from '../../../src/ai-providers/ollama.js';
+import { BedrockAIProvider } from '../../../src/ai-providers/bedrock.js';
+import { AzureProvider } from '../../../src/ai-providers/azure.js';
+import { VertexAIProvider } from '../../../src/ai-providers/google-vertex.js';
+
 describe('Provider Temperature Support', () => {
 	describe('CLI Providers', () => {
-		it('should verify CLI providers have supportsTemperature = false', async () => {
-			const { ClaudeCodeProvider } = await import(
-				'../../../src/ai-providers/claude-code.js'
-			);
-			const { CodexCliProvider } = await import(
-				'../../../src/ai-providers/codex-cli.js'
-			);
-			const { GeminiCliProvider } = await import(
-				'../../../src/ai-providers/gemini-cli.js'
-			);
-			const { GrokCliProvider } = await import(
-				'../../../src/ai-providers/grok-cli.js'
-			);
-
+		it('should verify CLI providers have supportsTemperature = false', () => {
 			expect(new ClaudeCodeProvider().supportsTemperature).toBe(false);
 			expect(new CodexCliProvider().supportsTemperature).toBe(false);
 			expect(new GeminiCliProvider().supportsTemperature).toBe(false);
@@ -34,27 +37,7 @@ describe('Provider Temperature Support', () => {
 	});
 
 	describe('Standard API Providers', () => {
-		it('should verify standard providers have supportsTemperature = true', async () => {
-			const { AnthropicAIProvider } = await import(
-				'../../../src/ai-providers/anthropic.js'
-			);
-			const { OpenAIProvider } = await import(
-				'../../../src/ai-providers/openai.js'
-			);
-			const { GoogleAIProvider } = await import(
-				'../../../src/ai-providers/google.js'
-			);
-			const { PerplexityAIProvider } = await import(
-				'../../../src/ai-providers/perplexity.js'
-			);
-			const { XAIProvider } = await import('../../../src/ai-providers/xai.js');
-			const { GroqProvider } = await import(
-				'../../../src/ai-providers/groq.js'
-			);
-			const { OpenRouterAIProvider } = await import(
-				'../../../src/ai-providers/openrouter.js'
-			);
-
+		it('should verify standard providers have supportsTemperature = true', () => {
 			expect(new AnthropicAIProvider().supportsTemperature).toBe(true);
 			expect(new OpenAIProvider().supportsTemperature).toBe(true);
 			expect(new GoogleAIProvider().supportsTemperature).toBe(true);
@@ -66,25 +49,11 @@ describe('Provider Temperature Support', () => {
 	});
 
 	describe('Special Case Providers', () => {
-		it('should verify Ollama provider has supportsTemperature = true', async () => {
-			const { OllamaAIProvider } = await import(
-				'../../../src/ai-providers/ollama.js'
-			);
-
+		it('should verify Ollama provider has supportsTemperature = true', () => {
 			expect(new OllamaAIProvider().supportsTemperature).toBe(true);
 		});
 
-		it('should verify cloud providers have supportsTemperature = true', async () => {
-			const { BedrockAIProvider } = await import(
-				'../../../src/ai-providers/bedrock.js'
-			);
-			const { AzureProvider } = await import(
-				'../../../src/ai-providers/azure.js'
-			);
-			const { VertexAIProvider } = await import(
-				'../../../src/ai-providers/google-vertex.js'
-			);
-
+		it('should verify cloud providers have supportsTemperature = true', () => {
 			expect(new BedrockAIProvider().supportsTemperature).toBe(true);
 			expect(new AzureProvider().supportsTemperature).toBe(true);
 			expect(new VertexAIProvider().supportsTemperature).toBe(true);
