@@ -258,9 +258,6 @@ export class SetStatusCommand extends Command {
 				)
 			);
 		}
-
-		// Show storage info
-		console.log(chalk.gray(`\nUsing ${result.storageType} storage`));
 	}
 
 	/**
