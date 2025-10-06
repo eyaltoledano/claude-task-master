@@ -1,0 +1,173 @@
+{
+	"meta": {
+		"generatedAt": "2025-10-03T09:04:22.505Z",
+		"tasksAnalyzed": 20,
+		"totalTasks": 20,
+		"analysisCount": 20,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 11,
+			"taskTitle": "Create WorkflowOrchestrator Core Service",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the WorkflowOrchestrator implementation into: 1) Core state machine with phase transitions and event emission, 2) Workflow state persistence and checkpoint system, 3) Resume/pause functionality with state restoration, 4) Integration points for adapters (test runner, git, executors), 5) Progress event system with EventEmitter, 6) Error handling and recovery mechanisms. Each subtask should focus on a specific aspect of the orchestrator.",
+			"reasoning": "High complexity due to state machine implementation, event-driven architecture, checkpoint persistence, and multiple integration points. Requires EventEmitter setup (not currently in codebase), state persistence to JSON files, and complex phase transition logic."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Implement Test Runner Adapter Service",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Divide test runner adapter into: 1) Test runner detection from package.json scripts, 2) Command execution wrapper with output capture, 3) Test output parser for various formats (Jest, Vitest, etc.), 4) Coverage metrics extraction and reporting, 5) Threshold enforcement and validation logic. Focus on framework-agnostic design with extensible parsers.",
+			"reasoning": "Requires parsing different test output formats, detecting test runners from package.json, implementing coverage threshold logic, and creating a framework-agnostic interface. Vitest is used in tm-core, need to support multiple runners."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Build Git Operations Adapter",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Split git adapter into: 1) Core git command wrapper using child_process, 2) Branch naming pattern system with template support, 3) Confirmation gates and default branch protection, 4) Push and commit operations with safety checks. Ensure proper error handling for git command failures.",
+			"reasoning": "Moderate complexity for git operations wrapper. No git library currently in use, will need child_process implementation. Includes branch naming patterns, confirmation prompts, and safety checks for default branch protection."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "Create Autopilot CLI Command",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement autopilot command in three parts: 1) Command setup with Commander.js and flag parsing following existing patterns in apps/cli/src/commands/, 2) WorkflowOrchestrator initialization and event subscription, 3) Progress UI rendering using existing dashboard components and graceful shutdown handling. Follow patterns from list.command.ts and start.command.ts.",
+			"reasoning": "Straightforward CLI command implementation following existing patterns. Commander.js is already used, UI components exist in apps/cli/src/ui/. Main complexity is in orchestrator integration and event handling."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "Integrate Surgical Test Generator",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down test generator integration: 1) Agent prompt loader from .claude/agents/surgical-test-generator.md, 2) Context formatter for subtask details and existing code, 3) Executor service integration using existing ExecutorFactory, 4) Test code parser and file writer with project convention detection. Leverage existing executor infrastructure.",
+			"reasoning": "Requires loading agent prompts, formatting context, integrating with existing ExecutorFactory and executor-service.ts, and parsing/writing generated test code. Builds on existing executor infrastructure."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Implement Code Generation Executor",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement code generation in phases: 1) Extend task-execution-service.ts with autopilot-specific prompt generation for making tests pass, 2) Integration with ExecutorFactory for multiple executor support (claude/codex/gemini), 3) Code change parser and conflict resolution handler. Build on existing executor patterns.",
+			"reasoning": "Extends existing task-execution-service.ts and uses ExecutorFactory. Main work is prompt generation for test-driven implementation and handling code application with conflict resolution."
+		},
+		{
+			"taskId": 17,
+			"taskTitle": "Add Branch and Tag Management Integration",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Integrate tag management: 1) Branch-to-tag mapping registration in tag-management.js, 2) Active tag switching when creating branches, 3) Tag-filtered task loading and branch naming with tag prefixes. Use existing tag management infrastructure.",
+			"reasoning": "Relatively simple integration with existing tag-management.js. Mainly involves calling existing functions for tag registration, switching, and filtering. Infrastructure already exists."
+		},
+		{
+			"taskId": 18,
+			"taskTitle": "Build Run State Persistence System",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Implement state persistence: 1) Checkpoint serialization to JSON after each phase, 2) JSONL logger for operation history, 3) State restoration logic for workflow resume, 4) Graceful handling of corrupted or partial state files. Use FileStorage from tm-core for consistency.",
+			"reasoning": "Requires implementing checkpoint system, JSONL logging, state restoration, and error recovery. Builds on existing FileStorage patterns in packages/tm-core/src/storage/."
+		},
+		{
+			"taskId": 19,
+			"taskTitle": "Implement Preflight Validation Service",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Create preflight validation: 1) Environment checks for git state, test runner, and CLI tools availability, 2) Task validation with auto-expansion trigger when no subtasks exist, 3) Structured validation report with errors/warnings and --force override support. Integrate with existing services.",
+			"reasoning": "Moderate complexity for various validation checks. Integrates with existing services for task expansion and test runner detection. Main work is aggregating checks and reporting."
+		},
+		{
+			"taskId": 20,
+			"taskTitle": "Create PR Generation Service",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement PR creation: 1) Extend git-adapter.ts with gh CLI wrapper for PR operations, 2) PR body formatter using run reports and task completion data, 3) Fallback instructions when gh is unavailable and PR URL persistence. Build on git adapter foundation.",
+			"reasoning": "Straightforward gh CLI integration extending git-adapter. Main work is formatting PR body from run reports. Relatively simple with clear requirements."
+		},
+		{
+			"taskId": 21,
+			"taskTitle": "Add Subtask Selection Logic",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement subtask selection: 1) Integration with existing find-next-task.js for dependency-aware selection, 2) Status filtering and update logic for in-progress/done transitions, 3) Blocked subtask handling and skip logic. Leverage existing task service methods.",
+			"reasoning": "Builds on existing find-next-task.js logic. Main complexity is in dependency resolution and status management. Most infrastructure exists in task-service.ts."
+		},
+		{
+			"taskId": 22,
+			"taskTitle": "Implement Test-Driven Commit Gating",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Create commit gating: 1) Test result and coverage validation against thresholds, 2) Retry logic with exponential backoff for flaky tests, 3) Commit creation only when tests pass with --force-commit override. Integrate with test runner adapter.",
+			"reasoning": "Moderate complexity for test validation, retry logic, and threshold enforcement. Builds on test runner adapter output. Main work is retry mechanism and gating logic."
+		},
+		{
+			"taskId": 23,
+			"taskTitle": "Build Progress Event System",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement event system: 1) EventEmitter setup with typed events for workflow phases, 2) Event aggregator for statistics collection, 3) Event filtering and buffering mechanisms. Create clean event API for UI consumption.",
+			"reasoning": "EventEmitter not currently in codebase but straightforward to add. Main work is defining event types, implementing aggregation, and creating clean API for consumers."
+		},
+		{
+			"taskId": 24,
+			"taskTitle": "Create Autopilot Configuration Schema",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Add autopilot config: 1) Extend existing config.json schema with autopilot section using Zod validation, 2) Config migration logic and environment variable overrides. Follow existing config patterns in config-manager.ts.",
+			"reasoning": "Simple schema extension to existing config.json. Config infrastructure exists in packages/tm-core/src/config/. Main work is schema definition and migration."
+		},
+		{
+			"taskId": 25,
+			"taskTitle": "Implement Dry Run Mode",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Add dry-run support: 1) Flag propagation through all adapter methods with simulation output, 2) Clear formatting to distinguish simulated vs actual operations. Ensure validation phases still execute normally.",
+			"reasoning": "Simple flag propagation and output formatting. Most complexity handled by individual adapters. Main work is consistent implementation across all operations."
+		},
+		{
+			"taskId": 26,
+			"taskTitle": "Add tmux Integration Support",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Implement tmux support: 1) Tmux availability detection and pane management commands, 2) Split-window layout with command execution in executor pane, 3) Graceful fallback when tmux unavailable. Handle cleanup and debugging scenarios.",
+			"reasoning": "Moderate complexity for tmux integration. Requires command wrapping, pane management, and fallback handling. Optional enhancement with clear boundaries."
+		},
+		{
+			"taskId": 27,
+			"taskTitle": "Build Run Report Generator",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Already has 5 subtasks defined. Focus on implementing each component: report generator service core, markdown formatter, JSONL logger, metrics collector, and archival system. Each subtask is well-scoped.",
+			"reasoning": "Already expanded with 5 subtasks. Moderate complexity for report generation, formatting, and archival. Clear separation of concerns across subtasks."
+		},
+		{
+			"taskId": 28,
+			"taskTitle": "Add MCP Tools Integration",
+			"complexityScore": 3,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Integrate MCP tools: 1) MCP tool availability detection and wrapper functions, 2) Fallback to direct service calls when MCP unavailable. Use existing MCP infrastructure in mcp-server/src/.",
+			"reasoning": "Simple integration with existing MCP infrastructure. Main work is detection and fallback logic. MCP server already implemented with all needed tools."
+		},
+		{
+			"taskId": 29,
+			"taskTitle": "Implement Retry and Backoff Logic",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Add retry mechanisms: 1) Exponential backoff calculator with configurable limits, 2) Retry wrapper for test execution, executor calls, and git operations, 3) Circuit breaker pattern for repeated failures. Track attempts in run state.",
+			"reasoning": "Moderate complexity for retry patterns, backoff calculation, and circuit breaker. Generic retry wrapper can be reused across different operations."
+		},
+		{
+			"taskId": 30,
+			"taskTitle": "Create End-to-End Integration Tests",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Build comprehensive test suite: 1) Test fixtures with mock git repo and task data setup, 2) Happy path scenario with all tests passing, 3) Retry and failure scenarios with flaky tests, 4) Resume from interruption testing, 5) Flag combination testing and artifact verification. Use Vitest for consistency.",
+			"reasoning": "High complexity for comprehensive integration testing. Requires extensive mocking, multiple scenarios, and artifact verification. Critical for validating entire workflow."
+		}
+	]
+}
