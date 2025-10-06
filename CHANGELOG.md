@@ -1,5 +1,22 @@
 # task-master-ai
 
+## 0.28.0-rc.2
+
+### Minor Changes
+
+- [#1273](https://github.com/eyaltoledano/claude-task-master/pull/1273) [`b43b7ce`](https://github.com/eyaltoledano/claude-task-master/commit/b43b7ce201625eee956fb2f8cd332f238bb78c21) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Add Codex CLI provider with OAuth authentication
+  - Added codex-cli provider for GPT-5 and GPT-5-Codex models (272K input / 128K output)
+  - OAuth-first authentication via `codex login` - no API key required
+  - Optional OPENAI_CODEX_API_KEY support
+  - Codebase analysis capabilities automatically enabled
+  - Command-specific settings and approval/sandbox modes
+
+### Patch Changes
+
+- [#1277](https://github.com/eyaltoledano/claude-task-master/pull/1277) [`7b5a7c4`](https://github.com/eyaltoledano/claude-task-master/commit/7b5a7c4495a68b782f7407fc5d0e0d3ae81f42f5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP connection errors caused by deprecated generateTaskFiles calls. Resolves "Cannot read properties of null (reading 'toString')" errors when using MCP tools for task management operations.
+
+- [#1276](https://github.com/eyaltoledano/claude-task-master/pull/1276) [`caee040`](https://github.com/eyaltoledano/claude-task-master/commit/caee040907f856d31a660171c9e6d966f23c632e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server error when file parameter not provided - now properly constructs default tasks.json path instead of failing with 'tasksJsonPath is required' error.
+
 ## 0.28.0-rc.1
 
 ### Patch Changes

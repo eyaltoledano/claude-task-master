@@ -7,10 +7,13 @@
     "extension": "0.25.4"
   },
   "changesets": [
+    "brave-lions-sing",
     "chore-fix-docs",
     "cursor-slash-commands",
     "curvy-weeks-flow",
     "easy-spiders-wave",
+    "fix-mcp-connection-errors",
+    "fix-mcp-default-tasks-path",
     "flat-cities-say",
     "forty-tables-invite",
     "gentle-cats-dance",
