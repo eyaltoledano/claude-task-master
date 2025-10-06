@@ -996,7 +996,10 @@ describe('Dependency Manager Module', () => {
 				() => ({ default: jest.fn() })
 			);
 			// Set up test data that matches the issue report
-			mockReadJSON.mockReturnValue(crossLevelDependencyTasks);
+			// Clone fixture data before each test to prevent mutation issues
+			mockReadJSON.mockImplementation(() =>
+				structuredClone(crossLevelDependencyTasks)
+			);
 
 			// Configure mockTaskExists to properly validate cross-level dependencies
 			mockTaskExists.mockImplementation((tasks, taskId) => {
@@ -1091,7 +1094,13 @@ describe('Dependency Manager Module', () => {
 
 			// Verify the dependency was actually added to task 11
 			expect(task11.dependencies).toContain('2.1');
-			expect(mockLog).toHaveBeenCalled();
+			// Verify a success log was emitted mentioning both task 11 and subtask 2.1
+			const successCall = mockLog.mock.calls.find(
+				([level]) => level === 'success'
+			);
+			expect(successCall).toBeDefined();
+			expect(successCall[1]).toContain('11');
+			expect(successCall[1]).toContain('2.1');
 		});
 
 		test('should properly validate cross-level dependencies exist', async () => {
