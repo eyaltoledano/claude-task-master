@@ -493,16 +493,7 @@ export class StartCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 */
-	static registerOn(program: Command): Command {
-		const startCommand = new StartCommand();
-		program.addCommand(startCommand);
-		return startCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): StartCommand {
 		const startCommand = new StartCommand(name);

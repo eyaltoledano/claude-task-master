@@ -123,10 +123,15 @@ export class TaskService {
 			// Load tasks from storage with pushed-down filters
 			const rawTasks = await this.storage.loadTasks(tag, storageOptions);
 
-			// Get total count without filters for comparison
+			// Get total count without status filters, but preserve subtask exclusion
+			const baseOptions: any = {};
+			if (options.includeSubtasks === false) {
+				baseOptions.excludeSubtasks = true;
+			}
+
 			const allTasks =
-				Object.keys(storageOptions).length > 0
-					? await this.storage.loadTasks(tag)
+				storageOptions.status !== undefined
+					? await this.storage.loadTasks(tag, baseOptions)
 					: rawTasks;
 
 			// Convert to TaskEntity for business logic operations

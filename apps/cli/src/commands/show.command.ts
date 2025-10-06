@@ -322,18 +322,7 @@ export class ShowCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 * This is for gradual migration - allows commands.js to use this
-	 */
-	static registerOn(program: Command): Command {
-		const showCommand = new ShowCommand();
-		program.addCommand(showCommand);
-		return showCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
-	 * Can also configure the command name if needed
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): ShowCommand {
 		const showCommand = new ShowCommand(name);

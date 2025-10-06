@@ -369,16 +369,7 @@ export class ExportCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 */
-	static registerOn(program: Command): Command {
-		const exportCommand = new ExportCommand();
-		program.addCommand(exportCommand);
-		return exportCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): ExportCommand {
 		const exportCommand = new ExportCommand(name);
