@@ -200,6 +200,75 @@ sidebarTitle: "CLI Commands"
     ```
   </Accordion>
 
+  <Accordion title="Authentication">
+    ```bash
+    # Log in to tryhamster.com
+    task-master auth login
+
+    # Check authentication status
+    task-master auth status
+
+    # Log out
+    task-master auth logout
+
+    # Refresh authentication token
+    task-master auth refresh
+    ```
+    
+    Authentication is required for task export functionality. The login command will open your browser to authenticate with tryhamster.com.
+  </Accordion>
+
+  <Accordion title="Context Management">
+    ```bash
+    # Show current workspace context (organization and brief)
+    task-master context
+
+    # Select an organization interactively
+    task-master context org
+
+    # Select a brief within your organization
+    task-master context brief
+
+    # Set context using a brief URL or ID
+    task-master context <brief-url-or-id>
+
+    # Clear current context
+    task-master context clear
+
+    # Set context explicitly
+    task-master context set --org=<org-id> --brief=<brief-id>
+    ```
+    
+    Context management allows you to select which organization and brief to work with. This is required for task export operations.
+  </Accordion>
+
+  <Accordion title="Export Tasks">
+    ```bash
+    # Export tasks to a Hamster brief using current context
+    task-master export
+
+    # Export tasks to a specific brief by ID
+    task-master export --brief=<brief-id>
+
+    # Export tasks to a specific organization and brief
+    task-master export --org=<org-id> --brief=<brief-id>
+
+    # Export tasks using a Hamster brief URL
+    task-master export <hamster-brief-url>
+
+    # Export tasks with filtering options
+    task-master export --status=pending --exclude-subtasks
+
+    # Export tasks from a specific tag
+    task-master export --tag=<tag-name>
+
+    # Skip confirmation prompt
+    task-master export --yes
+    ```
+    
+    The export command requires authentication (`tm auth login`) and exports local tasks to Hamster briefs. Tasks are exported with their titles, descriptions, implementation details, test strategies, and metadata preserved.
+  </Accordion>
+
   <Accordion title="Initialize a Project">
     ```bash
     # Initialize a new project with Task Master structure
