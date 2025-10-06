@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database, Tables } from '../../types/database.types.js';
+import { Database } from '../../types/database.types.js';
 
 // Proper type definition for dependency with joined display_id
 export interface DependencyWithDisplayId {

@@ -24,9 +24,10 @@ export class TaskMapper {
 		}
 
 		// Handle both Map and array formats for backward compatibility
-		const dependenciesByTaskId = dependencies instanceof Map
-			? dependencies
-			: this.groupDependenciesByTaskId(dependencies);
+		const dependenciesByTaskId =
+			dependencies instanceof Map
+				? dependencies
+				: this.groupDependenciesByTaskId(dependencies);
 
 		// Separate parent tasks and subtasks
 		const parentTasks = dbTasks.filter((t) => !t.parent_task_id);
@@ -60,7 +61,11 @@ export class TaskMapper {
 			priority: this.mapPriority(subtask.priority),
 			dependencies: dependenciesByTaskId.get(subtask.id) || [],
 			details: this.extractMetadataField(subtask.metadata, 'details', ''),
-			testStrategy: this.extractMetadataField(subtask.metadata, 'testStrategy', ''),
+			testStrategy: this.extractMetadataField(
+				subtask.metadata,
+				'testStrategy',
+				''
+			),
 			createdAt: subtask.created_at,
 			updatedAt: subtask.updated_at,
 			assignee: subtask.assignee_id || undefined,
@@ -75,7 +80,11 @@ export class TaskMapper {
 			priority: this.mapPriority(dbTask.priority),
 			dependencies: dependenciesByTaskId.get(dbTask.id) || [],
 			details: this.extractMetadataField(dbTask.metadata, 'details', ''),
-			testStrategy: this.extractMetadataField(dbTask.metadata, 'testStrategy', ''),
+			testStrategy: this.extractMetadataField(
+				dbTask.metadata,
+				'testStrategy',
+				''
+			),
 			subtasks,
 			createdAt: dbTask.created_at,
 			updatedAt: dbTask.updated_at,
@@ -167,18 +176,6 @@ export class TaskMapper {
 			default:
 				return priority as Task['priority'];
 		}
-	}
-
-	/**
-	 * Maps numeric complexity to descriptive complexity
-	 */
-	private static mapComplexityToInternal(
-		complexity: number
-	): Task['complexity'] {
-		if (complexity <= 2) return 'simple';
-		if (complexity <= 5) return 'moderate';
-		if (complexity <= 8) return 'complex';
-		return 'very-complex';
 	}
 
 	/**
