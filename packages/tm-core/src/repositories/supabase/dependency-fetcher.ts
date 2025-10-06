@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database, Tables } from '../types/database.types.js';
+import { Database, Tables } from '../../types/database.types.js';
 
 // Proper type definition for dependency with joined display_id
 export interface DependencyWithDisplayId {
@@ -31,7 +31,7 @@ export class DependencyFetcher {
 			.from('task_dependencies')
 			.select(`
 				task_id,
-				depends_on_task:depends_on_task_id (
+				depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey (
 					display_id
 				)
 			`)

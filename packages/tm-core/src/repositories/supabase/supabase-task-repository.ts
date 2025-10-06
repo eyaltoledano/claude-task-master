@@ -1,13 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Task } from '../types/index.js';
-import { Database, Json } from '../types/database.types.js';
-import { TaskMapper } from '../mappers/TaskMapper.js';
-import { ContextValidator } from '../auth/context-validator.js';
+import { Task } from '../../types/index.js';
+import { Database, Json } from '../../types/database.types.js';
+import { TaskMapper } from '../../mappers/TaskMapper.js';
+import { AuthManager } from '../../auth/auth-manager.js';
 import { DependencyFetcher } from './dependency-fetcher.js';
 import {
 	TaskWithRelations,
 	TaskDatabaseUpdate
-} from '../types/repository-types.js';
+} from '../../types/repository-types.js';
 import { z } from 'zod';
 
 // Zod schema for task status validation
@@ -35,15 +35,29 @@ const TaskUpdateSchema = z
 
 export class SupabaseTaskRepository {
 	private dependencyFetcher: DependencyFetcher;
-	private contextValidator: ContextValidator;
+	private authManager: AuthManager;
 
 	constructor(private supabase: SupabaseClient<Database>) {
 		this.dependencyFetcher = new DependencyFetcher(supabase);
-		this.contextValidator = ContextValidator.getInstance();
+		this.authManager = AuthManager.getInstance();
+	}
+
+	/**
+	 * Gets the current brief ID from auth context
+	 * @throws {Error} If no brief is selected
+	 */
+	private getBriefIdOrThrow(): string {
+		const context = this.authManager.getContext();
+		if (!context?.briefId) {
+			throw new Error(
+				'No brief selected. Please select a brief first using: tm context brief'
+			);
+		}
+		return context.briefId;
 	}
 
 	async getTasks(_projectId?: string): Promise<Task[]> {
-		const briefId = this.contextValidator.getBriefIdOrThrow();
+		const briefId = this.getBriefIdOrThrow();
 
 		// Get all tasks for the brief using the exact query structure
 		const { data: tasks, error } = await this.supabase
@@ -81,7 +95,7 @@ export class SupabaseTaskRepository {
 	}
 
 	async getTask(_projectId: string, taskId: string): Promise<Task | null> {
-		const briefId = this.contextValidator.getBriefIdOrThrow();
+		const briefId = this.getBriefIdOrThrow();
 
 		const { data, error } = await this.supabase
 			.from('tasks')
@@ -124,7 +138,7 @@ export class SupabaseTaskRepository {
 		taskId: string,
 		updates: Partial<Task>
 	): Promise<Task> {
-		const briefId = this.contextValidator.getBriefIdOrThrow();
+		const briefId = this.getBriefIdOrThrow();
 
 		// Validate updates using Zod schema
 		try {
