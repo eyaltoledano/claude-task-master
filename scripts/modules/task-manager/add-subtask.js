@@ -1,8 +1,5 @@
-import path from 'path';
-
 import { log, readJSON, writeJSON, getCurrentTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
-import generateTaskFiles from './generate-task-files.js';
 
 /**
  * Add a subtask to a parent task
@@ -142,11 +139,7 @@ async function addSubtask(
 		// Write the updated tasks back to the file with proper context
 		writeJSON(tasksPath, data, projectRoot, tag);
 
-		// Generate task files if requested
-		if (generateFiles) {
-			log('info', 'Regenerating task files...');
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
-		}
+		// Note: Task file generation is no longer supported and has been removed
 
 		return newSubtask;
 	} catch (error) {

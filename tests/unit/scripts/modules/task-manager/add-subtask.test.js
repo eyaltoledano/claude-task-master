@@ -94,7 +94,6 @@ describe('addSubtask function', () => {
 		const parentTask = writeCallArgs.tasks.find((t) => t.id === 1);
 		expect(parentTask.subtasks).toHaveLength(1);
 		expect(parentTask.subtasks[0].title).toBe('New Subtask');
-		expect(mockGenerateTaskFiles).toHaveBeenCalled();
 	});
 
 	test('should convert an existing task to a subtask', async () => {

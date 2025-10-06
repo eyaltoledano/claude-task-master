@@ -1,6 +1,4 @@
-import path from 'path';
 import { log, readJSON, writeJSON } from '../utils.js';
-import generateTaskFiles from './generate-task-files.js';
 
 /**
  * Remove a subtask from its parent task
@@ -108,11 +106,7 @@ async function removeSubtask(
 		// Write the updated tasks back to the file with proper context
 		writeJSON(tasksPath, data, projectRoot, tag);
 
-		// Generate task files if requested
-		if (generateFiles) {
-			log('info', 'Regenerating task files...');
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
-		}
+		// Note: Task file generation is no longer supported and has been removed
 
 		return convertedTask;
 	} catch (error) {
