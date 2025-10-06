@@ -11,7 +11,9 @@ export {
 	type ListTasksResult,
 	type StartTaskOptions,
 	type StartTaskResult,
-	type ConflictCheckResult
+	type ConflictCheckResult,
+	type ExportTasksOptions,
+	type ExportResult
 } from './task-master-core.js';
 
 // Re-export types

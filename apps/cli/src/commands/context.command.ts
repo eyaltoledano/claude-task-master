@@ -694,16 +694,7 @@ export class ContextCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 */
-	static registerOn(program: Command): Command {
-		const contextCommand = new ContextCommand();
-		program.addCommand(contextCommand);
-		return contextCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): ContextCommand {
 		const contextCommand = new ContextCommand(name);

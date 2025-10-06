@@ -8,6 +8,7 @@ import {
 	TaskWithRelations,
 	TaskDatabaseUpdate
 } from '../../types/repository-types.js';
+import { LoadTasksOptions } from '../../interfaces/storage.interface.js';
 import { z } from 'zod';
 
 // Zod schema for task status validation
@@ -56,11 +57,14 @@ export class SupabaseTaskRepository {
 		return context.briefId;
 	}
 
-	async getTasks(_projectId?: string): Promise<Task[]> {
+	async getTasks(
+		_projectId?: string,
+		options?: LoadTasksOptions
+	): Promise<Task[]> {
 		const briefId = this.getBriefIdOrThrow();
 
-		// Get all tasks for the brief using the exact query structure
-		const { data: tasks, error } = await this.supabase
+		// Build query with filters
+		let query = this.supabase
 			.from('tasks')
 			.select(`
         *,
@@ -71,7 +75,22 @@ export class SupabaseTaskRepository {
           description
         )
       `)
-			.eq('brief_id', briefId)
+			.eq('brief_id', briefId);
+
+		// Apply status filter at database level if specified
+		if (options?.status) {
+			const dbStatus = this.mapStatusToDatabase(options.status);
+			query = query.eq('status', dbStatus);
+		}
+
+		// Apply subtask exclusion at database level if specified
+		if (options?.excludeSubtasks) {
+			// Only fetch parent tasks (where parent_task_id is null)
+			query = query.is('parent_task_id', null);
+		}
+
+		// Execute query with ordering
+		const { data: tasks, error } = await query
 			.order('position', { ascending: true })
 			.order('subtask_position', { ascending: true })
 			.order('created_at', { ascending: true });
