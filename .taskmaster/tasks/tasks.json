@@ -7905,331 +7905,323 @@
   "autonomous-tdd-git-workflow": {
     "tasks": [
       {
-        "id": 11,
-        "title": "Create WorkflowOrchestrator Core Service",
-        "description": "Implement the core orchestration service that drives the autonomous TDD workflow with state machine phases",
-        "details": "Create packages/tm-core/src/services/workflow-orchestrator.ts implementing a state machine with phases: Preflight → Branch/Tag → SubtaskIter (Red/Green/Commit) → Finalize → PR. Use EventEmitter for progress events. Include methods: startWorkflow(taskId, options), resumeWorkflow(runId), pauseWorkflow(), getWorkflowState(). Store state in memory with persistence to .taskmaster/reports/runs/<run-id>/state.json. Implement checkpoint saving after each phase transition.",
-        "testStrategy": "Unit tests for state transitions, event emission, checkpoint persistence. Integration tests for full workflow lifecycle with mock adapters. Test resume capability from various checkpoints.",
+        "id": 31,
+        "title": "Create WorkflowOrchestrator service foundation",
+        "description": "Implement the core WorkflowOrchestrator class in tm-core to manage the autonomous TDD workflow state machine",
+        "details": "Create packages/tm-core/src/services/workflow-orchestrator.ts with phases enum (Preflight, Branch, SubtaskLoop, Finalization), event emitter for progress tracking, and basic state management. Include interfaces for WorkflowConfig, WorkflowState, and WorkflowEvent. Implement constructor, start/pause/resume methods, and phase transition logic. Use existing TaskService and ConfigManager dependencies.",
+        "testStrategy": "Unit tests for state transitions, event emission, phase management, error handling, and integration with existing services. Mock TaskService and ConfigManager dependencies.",
         "priority": "high",
         "dependencies": [],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 12,
-        "title": "Implement Test Runner Adapter Service",
-        "description": "Create framework-agnostic test runner adapter that detects and executes project test commands",
-        "details": "Create packages/tm-core/src/services/test-runner-adapter.ts with methods: detectRunner() (checks package.json for test scripts), runTargeted(files/pattern), runAll(), getCoverageReport(), enforceCoverageThresholds(thresholds). Support npm/pnpm/yarn test detection. Parse test output for pass/fail counts and coverage metrics. Return structured TestResult interface with failures, duration, coverage data. Default 80% coverage thresholds.",
-        "testStrategy": "Mock different package.json configurations for runner detection. Test parsing of various test output formats. Verify coverage threshold enforcement logic. Integration test with actual npm test execution.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 13,
-        "title": "Build Git Operations Adapter",
-        "description": "Encapsulate all git operations with confirmation gates and branch naming patterns",
-        "details": "Create packages/tm-core/src/services/git-adapter.ts wrapping git commands: createBranch(pattern, tag, taskId), checkout(branch), add(files), commit(message, scope), push(options), getCurrentBranch(), getDefaultBranch(). Implement branch naming with configurable pattern support ({tag}/task-{id}[-slug]). Add confirmation prompts for destructive operations unless --no-confirm. Never allow commits to default branch. Use simple-git library or child_process for git commands.",
-        "testStrategy": "Mock git commands and verify correct invocations. Test branch naming pattern generation. Verify default branch protection. Test confirmation gate behavior with different flags.",
-        "priority": "high",
-        "dependencies": [],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 14,
-        "title": "Create Autopilot CLI Command",
-        "description": "Implement the main autopilot command with argument parsing and orchestrator invocation",
-        "details": "Create apps/cli/src/commands/autopilot.command.ts using Commander.js. Accept taskId argument and flags: --dry-run, --no-push, --no-pr, --no-confirm, --force, --max-attempts <n>, --resume. Initialize WorkflowOrchestrator with options. Subscribe to orchestrator events and render progress using existing UI components from apps/cli/src/ui/components/. Handle interrupt signals gracefully for resumability.",
-        "testStrategy": "Test command parsing with various flag combinations. Mock orchestrator and verify correct initialization. Test event subscription and UI rendering. Verify graceful shutdown on SIGINT.",
+        "id": 32,
+        "title": "Implement GitAdapter for repository operations",
+        "description": "Create git operations adapter that wraps existing git-utils.js functionality for WorkflowOrchestrator",
+        "details": "Create packages/tm-core/src/services/git-adapter.ts that provides TypeScript interface over scripts/modules/utils/git-utils.js. Include methods: isGitRepository, getCurrentBranch, createBranch, checkoutBranch, isWorkingTreeClean, commitChanges, pushBranch, getDefaultBranch. Implement branch naming pattern support using config.git.branchPattern with {tag}, {id}, {slug} tokens. Add confirmation gates for destructive operations.",
+        "testStrategy": "Unit tests with mocked git commands, integration tests with temporary git repositories. Test branch naming patterns, confirmation flows, and error handling for git failures.",
         "priority": "high",
         "dependencies": [
-          11
+          31
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 15,
-        "title": "Integrate Surgical Test Generator",
-        "description": "Connect the existing surgical test generator agent to the autopilot workflow for red phase",
-        "details": "Create test generation prompt adapter in packages/tm-core/src/services/test-generator.ts. Load .claude/agents/surgical-test-generator.md as system prompt. Format subtask context into user prompt with file paths, existing code, and requirements. Use existing executor service to invoke claude with the prompt. Parse generated test code and write to appropriate test files following project conventions. Validate tests compile/parse before proceeding.",
-        "testStrategy": "Mock executor responses with sample test generation. Verify prompt formatting includes all context. Test file writing to correct locations. Validate test syntax checking logic.",
+        "id": 33,
+        "title": "Create TestRunnerAdapter for framework detection and execution",
+        "description": "Implement test runner adapter that detects project test framework and executes tests with coverage",
+        "details": "Create packages/tm-core/src/services/test-runner-adapter.ts that detects test commands from package.json scripts (npm test, pnpm test, etc.), executes targeted and full test runs, parses test results and coverage reports. Support Jest, Vitest, and generic npm scripts. Implement TestResult interface with pass/fail counts, coverage percentages, and detailed failure information. Include timeout handling and retry logic.",
+        "testStrategy": "Unit tests for framework detection logic, test execution with mocked child_process, coverage parsing. Integration tests with actual test frameworks in fixture projects.",
         "priority": "high",
         "dependencies": [
-          11,
-          12
+          31
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 16,
-        "title": "Implement Code Generation Executor",
-        "description": "Create green phase code implementation using focused prompts to make tests pass",
-        "details": "Extend packages/tm-core/src/services/task-execution-service.ts with autopilot-specific prompt generation. Create minimal implementation prompt: 'Make these failing tests pass with the smallest code changes following project patterns. Only modify necessary files.' Include test failures, subtask context, and existing code. Use ExecutorFactory to invoke selected executor (claude/codex/gemini). Parse and apply code changes, handling conflicts gracefully.",
-        "testStrategy": "Test prompt generation with various failure scenarios. Mock executor responses and verify code application. Test conflict resolution strategies. Verify minimal change enforcement.",
-        "priority": "high",
-        "dependencies": [
-          11,
-          15
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 17,
-        "title": "Add Branch and Tag Management Integration",
-        "description": "Connect autopilot to existing tag management for branch-tag mapping",
-        "details": "Integrate with scripts/modules/task-manager/tag-management.js for branch→tag mapping. When creating branch, register mapping in tag system. Explicitly switch active tag to match branch tag. Load task data filtered by active tag. Ensure branch name includes both tag and task ID per spec. Handle tag switching when resuming workflows. Persist tag-branch associations.",
-        "testStrategy": "Test branch-tag registration and retrieval. Verify active tag switching. Test filtered task loading by tag. Validate branch naming includes tag and task ID.",
+        "id": 34,
+        "title": "Implement autopilot CLI command structure",
+        "description": "Create the main autopilot command in CLI with dry-run, configuration, and basic orchestration",
+        "details": "Create apps/cli/src/commands/autopilot.command.ts using Commander.js. Implement flags: --dry-run, --no-push, --no-pr, --no-confirm, --force, --max-attempts, --resume. Add preflight checks (clean working tree, test command detection, tool availability). Integrate with WorkflowOrchestrator and existing UI components from apps/cli/src/ui/components/. Show detailed execution plan in dry-run mode.",
+        "testStrategy": "Unit tests for command parsing, flag handling, dry-run output formatting. Integration tests with mock WorkflowOrchestrator to verify command flow without actual git operations.",
         "priority": "medium",
         "dependencies": [
-          13
+          31,
+          32,
+          33
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 18,
-        "title": "Build Run State Persistence System",
-        "description": "Implement checkpoint saving and workflow resumability with detailed logging",
-        "details": "Create run state management in WorkflowOrchestrator. Save checkpoints to .taskmaster/reports/runs/<timestamp>/state.json after each phase. Include: current phase, subtask progress, test results, git state, timestamps. Implement JSONL logging for all operations to .taskmaster/reports/runs/<timestamp>/log.jsonl. Add resume() method to restore from checkpoint. Handle partial state recovery gracefully.",
-        "testStrategy": "Test checkpoint creation at each phase. Verify JSONL log format and completeness. Test resume from various interruption points. Validate state recovery with corrupted files.",
+        "id": 35,
+        "title": "Integrate surgical test generator with WorkflowOrchestrator",
+        "description": "Connect existing test generation capabilities with the TDD red phase of the workflow",
+        "details": "Enhance packages/tm-core/src/services/task-execution-service.ts to support test generation mode. Create TestGenerationService that uses existing executor framework with surgical-test-generator prompts. Implement prompt composition system that loads rules from .cursor/rules/ and .claude/agents/, combines with task context, and generates focused failing tests. Support framework-specific test patterns (Jest, Vitest).",
+        "testStrategy": "Unit tests for prompt composition, test generation calls with mocked executors. Integration tests generating actual test files and verifying they fail appropriately.",
         "priority": "medium",
         "dependencies": [
-          11
+          31,
+          33
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 19,
-        "title": "Implement Preflight Validation Service",
-        "description": "Create comprehensive pre-execution validation checking git state, tools, and configuration",
-        "details": "Add preflight checks in WorkflowOrchestrator: verify clean working tree (configurable), detect test runner availability, validate git/gh CLI installation, check for required API keys/executors, verify task has subtasks (auto-expand if not), ensure not on default branch. Return structured validation report with errors/warnings. Allow --force to bypass non-critical checks.",
-        "testStrategy": "Mock various environment states for validation. Test clean/dirty working tree detection. Verify tool availability checks. Test auto-expansion trigger when no subtasks.",
-        "priority": "medium",
-        "dependencies": [
-          11,
-          12,
-          13
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 20,
-        "title": "Create PR Generation Service",
-        "description": "Implement GitHub PR creation with formatted body from run reports",
-        "details": "Extend git-adapter.ts with PR operations using gh CLI. Generate PR title: 'Task #<id> [<tag>]: <title>'. Format PR body with: summary of changes, subtask completion list, test coverage report, run statistics. Include link to full run report. Handle gh unavailability with fallback instructions. Support --no-pr flag to skip. Store PR URL in run state.",
-        "testStrategy": "Mock gh CLI responses for PR creation. Test PR title and body formatting. Verify fallback behavior without gh. Test PR URL persistence in run state.",
-        "priority": "medium",
-        "dependencies": [
-          13,
-          18
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 21,
-        "title": "Add Subtask Selection Logic",
-        "description": "Implement intelligent subtask selection respecting dependencies and status",
-        "details": "Enhance WorkflowOrchestrator with subtask selection using TaskService.getNextTask(). Filter subtasks by: pending/in-progress status, satisfied dependencies, task ownership. Process in dependency order. Skip already-done subtasks. Handle blocked subtasks gracefully. Update subtask status to in-progress when starting, done when tests pass and committed.",
-        "testStrategy": "Test selection with various dependency graphs. Verify status filtering logic. Test dependency satisfaction checking. Validate status transitions during workflow.",
+        "id": 36,
+        "title": "Implement subtask TDD loop execution",
+        "description": "Create the core Red-Green-Commit cycle execution logic for individual subtasks",
+        "details": "Extend WorkflowOrchestrator with SubtaskExecutor class that implements the TDD loop: RED phase (generate failing tests), GREEN phase (implement code to pass tests), COMMIT phase (git add, commit with conventional commit message). Include retry logic for GREEN phase with configurable max attempts. Integrate with existing TaskService for subtask status updates. Support timeout and backoff policies.",
+        "testStrategy": "Unit tests for each phase execution, retry logic, timeout handling. Integration tests with actual test files and git operations in isolated test repositories.",
         "priority": "high",
         "dependencies": [
-          11
+          31,
+          32,
+          33,
+          35
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 22,
-        "title": "Implement Test-Driven Commit Gating",
-        "description": "Enforce commit-only-on-green policy with configurable coverage thresholds",
-        "details": "Add commit gating logic in WorkflowOrchestrator. After code generation, run tests and check: all tests pass, coverage meets thresholds (default 80% for lines/branches/functions/statements). Only commit if both conditions met. Support --force-commit override. Implement retry logic with backoff for flaky tests. Log all attempts and results.",
-        "testStrategy": "Test gating with various test results and coverage levels. Verify threshold enforcement. Test override flag behavior. Validate retry logic with intermittent failures.",
-        "priority": "high",
-        "dependencies": [
-          11,
-          12,
-          16
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 23,
-        "title": "Build Progress Event System",
-        "description": "Create event-driven progress reporting for CLI rendering and future integrations",
-        "details": "Implement EventEmitter-based progress system in WorkflowOrchestrator. Emit events: workflow:start, phase:change, subtask:start/complete, test:run/pass/fail, commit:created, pr:created, workflow:complete/error. Include detailed payloads with timestamps, durations, results. Create event aggregator for summary statistics. Support event filtering and buffering.",
-        "testStrategy": "Test event emission at each workflow step. Verify event payload completeness. Test event aggregation logic. Validate buffering and filtering mechanisms.",
+        "id": 37,
+        "title": "Add configuration schema for autopilot settings",
+        "description": "Extend .taskmaster/config.json schema to support autopilot configuration options",
+        "details": "Update packages/tm-core/src/interfaces/configuration.interface.ts to include autopilot section with: enabled, requireCleanWorkingTree, commitTemplate, defaultCommitType, maxGreenAttempts, testTimeout. Add test section with runner, coverageThresholds, targetedRunPattern. Include git section with branchPattern, pr settings. Update ConfigManager to validate and provide defaults for new settings.",
+        "testStrategy": "Unit tests for config validation, default value application, schema validation. Integration tests loading config from actual .taskmaster/config.json files.",
         "priority": "medium",
         "dependencies": [
-          11
+          31
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 24,
-        "title": "Create Autopilot Configuration Schema",
-        "description": "Extend taskmaster config with autopilot-specific settings and validation",
-        "details": "Add autopilot section to .taskmaster/config.json schema: autopilot: { enabled, requireCleanWorkingTree, commitTemplate, defaultCommitType }, test: { runner, coverageThresholds }, git: { branchPattern, pr: { enabled, base } }. Create validation with Zod schema. Add config migration for existing projects. Provide sensible defaults. Support environment variable overrides.",
-        "testStrategy": "Test schema validation with various configurations. Verify migration from old configs. Test default value application. Validate environment override behavior.",
+        "id": 38,
+        "title": "Implement run state persistence and logging",
+        "description": "Create run artifact storage system for traceability and resume functionality",
+        "details": "Create packages/tm-core/src/services/run-state-manager.ts that persists run state to .taskmaster/reports/runs/<timestamp>/. Include manifest.json (run metadata), log.jsonl (event stream), test-results/ (per-phase test outputs), commits.txt (commit SHAs). Implement JSONL event logging format and structured test result storage. Support state checkpointing for resume functionality.",
+        "testStrategy": "Unit tests for file operations, JSON serialization, log formatting. Integration tests creating actual run directories and verifying persistence across WorkflowOrchestrator restarts.",
         "priority": "medium",
-        "dependencies": [],
+        "dependencies": [
+          31,
+          33,
+          36
+        ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 25,
-        "title": "Implement Dry Run Mode",
-        "description": "Add simulation mode showing planned operations without execution",
-        "details": "Add --dry-run support throughout workflow. In dry-run: show planned git operations, display test commands without running, preview commit messages, show PR body without creating. Format output clearly indicating simulated vs actual. Still perform validation and planning phases. Useful for debugging and verification.",
-        "testStrategy": "Test dry-run flag propagation to all adapters. Verify no side effects occur. Test output formatting for clarity. Validate planning phases still execute.",
+        "id": 39,
+        "title": "Add GitHub PR creation with run reports",
+        "description": "Implement automatic PR creation using gh CLI with detailed run reports",
+        "details": "Create packages/tm-core/src/services/pr-adapter.ts that uses gh CLI to create pull requests. Generate PR body from run manifest and test results, include task/subtask completion summary, coverage metrics, commit links. Implement PR title format: 'Task #{id} [{tag}]: {title}'. Add fallback instructions when gh CLI unavailable. Support custom PR body templates.",
+        "testStrategy": "Unit tests for PR body generation, gh CLI command construction, error handling. Integration tests with mocked gh CLI to verify PR creation flow and body formatting.",
+        "priority": "medium",
+        "dependencies": [
+          31,
+          32,
+          38
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Implement task dependency resolution for subtask ordering",
+        "description": "Add intelligent subtask ordering based on dependencies and readiness",
+        "details": "Extend packages/tm-core/src/services/task-service.ts with getNextEligibleSubtask method that considers subtask dependencies, status, and priority. Implement topological sorting for subtask execution order. Handle blocked subtasks and dependency validation. Integration with existing dependency management and task status systems.",
+        "testStrategy": "Unit tests for dependency resolution algorithms, edge cases with circular dependencies, priority handling. Integration tests with complex task hierarchies and dependency chains.",
+        "priority": "medium",
+        "dependencies": [
+          31,
+          36
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Create resume functionality for interrupted runs",
+        "description": "Implement checkpoint/resume system for autopilot workflow interruptions",
+        "details": "Enhance RunStateManager with checkpoint creation and restoration. Add --resume flag to autopilot command that reconstructs WorkflowOrchestrator state from persisted run data. Implement state validation to ensure safe resume (git state, file changes, test status). Support partial phase resume (e.g., retry GREEN phase after manual fixes).",
+        "testStrategy": "Unit tests for state serialization/deserialization, validation logic. Integration tests interrupting and resuming workflows at different phases, verifying state consistency.",
+        "priority": "medium",
+        "dependencies": [
+          34,
+          36,
+          38
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 42,
+        "title": "Add coverage threshold enforcement",
+        "description": "Implement code coverage validation before allowing commits and finalization",
+        "details": "Enhance TestRunnerAdapter to parse coverage reports from Jest/Vitest and enforce configurable thresholds (lines, branches, functions, statements). Default to 80% across all metrics. Add coverage gates in GREEN phase before commit and final test suite before PR creation. Provide detailed coverage failure reporting with suggestions for improvement.",
+        "testStrategy": "Unit tests for coverage report parsing from different formats (lcov, json), threshold validation logic. Integration tests with actual test runs generating coverage data.",
+        "priority": "medium",
+        "dependencies": [
+          33,
+          36
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 43,
+        "title": "Implement tmux-based TUI navigator",
+        "description": "Create terminal user interface for interactive task selection and workflow monitoring",
+        "details": "Create apps/cli/src/ui/tui/navigator.ts using blessed or ink for terminal UI. Left pane shows project info, active tag, task list with status indicators. Right pane coordinates with tmux to spawn executor terminal. Implement keybindings for navigation (↑/↓), task selection (Enter), workflow control (s/p/q). Real-time status updates via file watching or event streams.",
+        "testStrategy": "Unit tests for UI component rendering, key handling, state updates. Integration tests with tmux session management and terminal interaction simulation.",
         "priority": "low",
         "dependencies": [
-          14,
-          19
+          31,
+          34
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 26,
-        "title": "Add tmux Integration Support",
-        "description": "Create tmux pane management for split-view executor terminal",
-        "details": "Create apps/cli/src/ui/tui/tmux-manager.ts for pane control. Detect tmux availability. Support: split-window for executor pane, send-keys for command execution, capture-pane for output, kill-pane for cleanup. Left pane shows autopilot progress, right pane runs executor. Handle non-tmux fallback gracefully. Preserve pane on interrupt for debugging.",
-        "testStrategy": "Mock tmux commands and verify invocations. Test pane creation and command sending. Verify fallback behavior without tmux. Test cleanup on exit.",
-        "priority": "low",
-        "dependencies": [
-          14
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 27,
-        "title": "Build Run Report Generator",
-        "description": "Create comprehensive markdown and JSON reports for completed workflows",
-        "details": "Generate reports in .taskmaster/reports/runs/<run-id>/: summary.md with task details, subtask results, test coverage, commit list, duration stats. Full log.jsonl with all operations. coverage.json with detailed metrics. state.json for resumability. Include charts/tables for readability. Generate PR-ready summary section. Archive old runs automatically.",
-        "testStrategy": "Test report generation with various workflow outcomes. Verify markdown formatting and readability. Test JSON structure validity. Validate archival logic for old runs.",
+        "id": 44,
+        "title": "Add prompt composition system for context-aware test generation",
+        "description": "Create sophisticated prompt assembly system combining rules, task context, and phase instructions",
+        "details": "Create packages/tm-core/src/services/prompt-composer.ts that loads and combines prompt fragments from .cursor/rules/, task context, and phase-specific instructions. Implement template system with token replacement ({task}, {subtask}, {framework}). Support rule precedence and conditional inclusion based on project type. Generate targeted prompts for RED (test generation) and GREEN (implementation) phases.",
+        "testStrategy": "Unit tests for template processing, rule loading, context injection. Integration tests generating complete prompts and validating content relevance and accuracy.",
         "priority": "medium",
         "dependencies": [
-          18
-        ],
-        "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create Report Generator Service Core",
-            "description": "Implement the core WorkflowReportGenerator service that orchestrates report generation for completed workflow runs",
-            "dependencies": [],
-            "details": "Create packages/tm-core/src/services/report-generator.service.ts with WorkflowReportGenerator class. Implement methods: generateRunReport(runId, workflowState), generateSummaryMarkdown(state), generateJSONLogs(operations), generateCoverageMetrics(testResults), archiveOldRuns(threshold). Use EventEmitter for progress updates. Store reports in .taskmaster/reports/runs/<run-id>/ directory structure. Integrate with existing ConfigManager for paths and FileStorage for persistence.",
-            "status": "pending",
-            "testStrategy": "Unit tests for report generation methods, markdown formatting validation, JSON structure tests, archive logic tests"
-          },
-          {
-            "id": 2,
-            "title": "Build Markdown Summary Generator",
-            "description": "Create comprehensive markdown report generation with tables, charts, and PR-ready sections",
-            "dependencies": [
-              "27.1"
-            ],
-            "details": "Implement markdown generation in packages/tm-core/src/services/report-generators/markdown-generator.ts. Create formatted sections: Executive Summary (task completion stats, duration, test coverage), Task Details Table (ID, title, status, duration), Subtask Results (grouped by parent, with test outcomes), Test Coverage Charts (using ASCII art or markdown badges), Commit History (list with links), Performance Metrics (timings per phase). Include generatePRBody() method for GitHub-ready summaries. Use markdown tables and proper formatting for readability.",
-            "status": "pending",
-            "testStrategy": "Test markdown output formatting, table generation, special character escaping, PR body validation"
-          },
-          {
-            "id": 3,
-            "title": "Implement JSONL Operation Logger",
-            "description": "Build detailed operation logging system that captures all workflow operations in JSONL format",
-            "dependencies": [
-              "27.1"
-            ],
-            "details": "Create packages/tm-core/src/services/report-generators/jsonl-logger.ts with JSONLOperationLogger class. Implement streaming JSONL writer for log.jsonl file. Capture operations: task starts/completions, test executions, git operations, phase transitions, errors/retries. Each line contains: timestamp, operation type, phase, task/subtask ID, duration, result, metadata. Implement buffered writing for performance. Include log rotation when file exceeds size limit.",
-            "status": "pending",
-            "testStrategy": "Test JSONL format validity, streaming performance, log rotation, operation capture completeness"
-          },
-          {
-            "id": 4,
-            "title": "Create Coverage and Metrics Collectors",
-            "description": "Build test coverage collection and performance metrics aggregation components",
-            "dependencies": [
-              "27.1"
-            ],
-            "details": "Create packages/tm-core/src/services/report-generators/metrics-collector.ts. Implement CoverageCollector to parse test runner outputs (Jest, Vitest, etc.), aggregate line/branch/function coverage, generate coverage.json with detailed metrics per file/module. Implement PerformanceCollector to track phase durations, operation timings, resource usage. Create state.json generator for workflow resumability with checkpoints, completed operations, pending tasks.",
-            "status": "pending",
-            "testStrategy": "Mock various test runner outputs, verify coverage parsing accuracy, test metric aggregation logic"
-          },
-          {
-            "id": 5,
-            "title": "Build Report Archival and Management System",
-            "description": "Implement automatic archival of old run reports and report lifecycle management",
-            "dependencies": [
-              "27.1",
-              "27.2",
-              "27.3",
-              "27.4"
-            ],
-            "details": "Create packages/tm-core/src/services/report-generators/archive-manager.ts. Implement automatic archival: move reports older than 30 days to .taskmaster/reports/archived/, compress old reports to .tar.gz, maintain index of archived reports. Add report management CLI commands in apps/cli/src/commands/reports.command.ts: list-reports, view-report <run-id>, archive-reports, clean-reports. Integrate with WorkflowOrchestrator to trigger report generation on workflow completion.",
-            "status": "pending",
-            "testStrategy": "Test archival thresholds, compression functionality, index maintenance, CLI command integration"
-          }
-        ]
-      },
-      {
-        "id": 28,
-        "title": "Add MCP Tools Integration",
-        "description": "Integrate with MCP server for structured task operations during autopilot",
-        "details": "Use MCP tools where available: get_tasks for task loading, set_task_status for status updates, update_subtask for progress notes, expand_task if subtasks needed. Fallback to direct service calls if MCP unavailable. Improve context passing to executors via MCP. Support MCP-based shell/test execution where available.",
-        "testStrategy": "Mock MCP tool availability and responses. Test fallback to direct service calls. Verify status updates through MCP. Test context enhancement via MCP.",
-        "priority": "low",
-        "dependencies": [
-          14,
-          21
+          35
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 29,
-        "title": "Implement Retry and Backoff Logic",
-        "description": "Add intelligent retry mechanisms for flaky tests and transient failures",
-        "details": "Implement exponential backoff in WorkflowOrchestrator for: test execution (max 3 retries), executor calls (max 2 retries), git operations (max 2 retries). Detect flaky test patterns. Add --max-attempts flag (default 3). Track retry attempts in run state. Implement circuit breaker for repeated failures. Provide clear failure reasons.",
-        "testStrategy": "Test retry logic with simulated failures. Verify exponential backoff timing. Test max attempts enforcement. Validate circuit breaker activation.",
+        "id": 45,
+        "title": "Implement tag-branch mapping and automatic tag switching",
+        "description": "Create automatic tag management that maps branches to tags and switches context",
+        "details": "Enhance GitAdapter to automatically set active tag based on branch name using existing tag-management.js functionality. Extract tag from branch name using configured pattern, validate tag exists, and switch to tag context before workflow execution. Implement branch-to-tag mapping persistence and validation. Support tag creation if branch tag doesn't exist.",
+        "testStrategy": "Unit tests for tag extraction from branch names, tag switching logic, mapping persistence. Integration tests with actual git branches and tag management operations.",
         "priority": "medium",
         "dependencies": [
-          11,
-          22
+          32,
+          40
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 30,
-        "title": "Create End-to-End Integration Tests",
-        "description": "Build comprehensive test suite validating full autopilot workflow",
-        "details": "Create test/integration/autopilot.test.ts with scenarios: happy path (all tests pass first try), retry scenarios (flaky tests), resume from interruption, various flag combinations, multi-subtask workflows. Use test fixtures with mock tasks/subtasks. Verify all outputs: commits, branches, reports, PR body. Test with different executors and test runners.",
-        "testStrategy": "Integration tests with mock git repo and task data. Test complete workflow execution. Verify all artifacts created correctly. Validate resume functionality. Performance benchmarks for workflow duration.",
+        "id": 46,
+        "title": "Add comprehensive error handling and recovery",
+        "description": "Implement robust error handling with actionable recovery suggestions",
+        "details": "Add comprehensive error handling throughout WorkflowOrchestrator with specific error types: GitError, TestError, ConfigError, DependencyError. Implement recovery suggestions for common failures (merge conflicts, test timeouts, missing dependencies). Add --force flag to bypass certain validations. Include error context in run reports and logs.",
+        "testStrategy": "Unit tests for error classification, recovery suggestion generation, force flag behavior. Integration tests simulating various failure scenarios and verifying appropriate error handling.",
+        "priority": "medium",
+        "dependencies": [
+          31,
+          32,
+          33,
+          38
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Implement conventional commit message generation",
+        "description": "Create intelligent commit message generation based on task context and changes",
+        "details": "Enhance GitAdapter with commit message generation using configurable templates. Support conventional commit format with task context: '{type}({scope}): {message} (task {id}.{subtask})'. Auto-detect commit type (feat, fix, chore) based on task content and file changes. Include commit message templates and validation against conventional commit standards.",
+        "testStrategy": "Unit tests for message template processing, type detection, validation logic. Integration tests generating commit messages for various task types and validating format compliance.",
         "priority": "low",
         "dependencies": [
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20,
-          21,
-          22
+          32,
+          36
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 48,
+        "title": "Add multi-framework test execution support",
+        "description": "Extend TestRunnerAdapter to support multiple testing frameworks beyond Jest/Vitest",
+        "details": "Enhance TestRunnerAdapter with framework-specific adapters for pytest (Python), go test (Go), cargo test (Rust). Implement common interface for test execution, result parsing, and coverage reporting across frameworks. Add framework detection based on project files (requirements.txt, go.mod, Cargo.toml). Maintain backward compatibility with existing JavaScript/TypeScript support.",
+        "testStrategy": "Unit tests for framework detection, adapter interface implementation. Integration tests with fixture projects for each supported framework, verifying test execution and result parsing.",
+        "priority": "low",
+        "dependencies": [
+          33
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 49,
+        "title": "Implement workflow event streaming for real-time monitoring",
+        "description": "Create event streaming system for real-time workflow progress monitoring",
+        "details": "Enhance WorkflowOrchestrator with EventEmitter-based streaming of workflow events (phase changes, test results, commit creation). Implement structured event format with timestamps, phase info, and progress data. Support event persistence to run logs and optional WebSocket streaming for external monitoring. Include progress percentage calculation and time estimates.",
+        "testStrategy": "Unit tests for event emission, formatting, persistence. Integration tests monitoring complete workflow execution with event verification and progress tracking accuracy.",
+        "priority": "low",
+        "dependencies": [
+          31,
+          38
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 50,
+        "title": "Add intelligent test targeting for faster feedback",
+        "description": "Implement smart test selection that runs only relevant tests during GREEN phase",
+        "details": "Enhance TestRunnerAdapter with test targeting based on file changes and test dependencies. Implement test impact analysis to identify which tests are affected by implementation changes. Support framework-specific targeting (Jest --findRelatedTests, Vitest changed files). Fall back to full test suite if targeting fails or for final validation.",
+        "testStrategy": "Unit tests for change detection, test dependency analysis, targeting logic. Integration tests with various project structures verifying targeted test selection accuracy and performance improvements.",
+        "priority": "low",
+        "dependencies": [
+          33,
+          36
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 51,
+        "title": "Implement dry-run visualization with execution timeline",
+        "description": "Create detailed dry-run output showing complete execution plan with time estimates",
+        "details": "Enhance autopilot command dry-run mode with detailed execution timeline showing all phases, subtasks, estimated durations, and dependencies. Include preflight check results, branch operations, test generation/execution plans, and finalization steps. Add ASCII art progress visualization and resource requirements (git, gh, test tools).",
+        "testStrategy": "Unit tests for timeline calculation, duration estimation, visualization formatting. Integration tests generating dry-run output for various task complexities and verifying accuracy of plans.",
+        "priority": "low",
+        "dependencies": [
+          34,
+          40
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 52,
+        "title": "Add autopilot workflow integration tests",
+        "description": "Create comprehensive end-to-end integration tests for complete autopilot workflows",
+        "details": "Create tests/integration/autopilot/ with full workflow tests using temporary git repositories, mock task data, and isolated test environments. Test complete red-green-commit cycles, error recovery, resume functionality, and PR creation. Include performance benchmarks and resource usage validation. Support both Jest and Vitest test execution.",
+        "testStrategy": "Integration tests with isolated environments, git repository fixtures, mock GitHub API responses. Performance tests measuring workflow execution times and resource consumption across different project sizes.",
+        "priority": "medium",
+        "dependencies": [
+          36,
+          39,
+          41
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 53,
+        "title": "Finalize autopilot documentation and examples",
+        "description": "Create comprehensive documentation for autopilot workflow with examples and troubleshooting",
+        "details": "Create detailed documentation covering autopilot setup, configuration options, workflow phases, error handling, and best practices. Include example PRD files that demonstrate autopilot-compatible task structure. Add troubleshooting guide for common issues (git conflicts, test failures, dependency problems). Create demo video or GIF showing complete workflow execution.",
+        "testStrategy": "Documentation validation through user testing, example verification by running actual autopilot workflows, link checking and format validation. Accessibility and clarity review for technical documentation.",
+        "priority": "low",
+        "dependencies": [
+          52
         ],
         "status": "pending",
         "subtasks": []
@@ -8237,7 +8229,7 @@
     ],
     "metadata": {
       "created": "2025-09-30T13:32:28.649Z",
-      "updated": "2025-09-30T15:13:53.999Z",
+      "updated": "2025-10-06T17:44:07.207Z",
       "description": "Tasks for autonomous-tdd-git-workflow context"
     }
   }
