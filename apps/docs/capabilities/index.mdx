@@ -85,7 +85,7 @@ The CLI is organized into a series of commands, each with its own set of options
 ### 4. Project and Configuration
 
 -   **`init`**: Initializes a new project.
--   **`generate`**: Generates individual task files.
+-   **`generate`**: Generates individual task files from tasks.json. Run this manually after task operations to create readable text files for each task.
 -   **`migrate`**: Migrates a project to the new directory structure.
 -   **`research`**: Performs AI-powered research.
     -   `--query <query>`: The research query.
@@ -123,7 +123,7 @@ The core functionalities can be categorized as follows:
 
 ### 1. Task and Subtask Management
 
-These functions are the bread and butter of the application, allowing for the creation, modification, and deletion of tasks and subtasks.
+These functions are the bread and butter of the application, allowing for the creation, modification, and deletion of tasks and subtasks. Note: As of v0.27.3, these operations no longer automatically generate individual task files - use the `generate` command manually when needed.
 
 -   **`addTask(prompt, dependencies, priority)`**: Creates a new task using an AI-powered prompt to generate the title, description, details, and test strategy. It can also be used to create a task manually by providing the task data directly.
 -   **`addSubtask(parentId, existingTaskId, newSubtaskData)`**: Adds a subtask to a parent task. It can either convert an existing task into a subtask or create a new subtask from scratch.
@@ -167,7 +167,7 @@ These functions are crucial for managing the relationships between tasks.
 
 These functions are for managing the project and its configuration.
 
--   **`generateTaskFiles()`**: Generates individual task files from `tasks.json`.
+-   **`generateTaskFiles()`**: Generates individual task files from `tasks.json`. This is now a manual operation - task management operations no longer automatically generate these files.
 -   **`migrateProject()`**: Migrates the project to the new `.taskmaster` directory structure.
 -   **`performResearch(query, options)`**: Performs AI-powered research with project context.
 
@@ -225,7 +225,7 @@ The MCP tools can be categorized in the same way as the core functionalities:
 ### 5. Project and Configuration
 
 -   **`initialize_project`**: Initializes a new project.
--   **`generate`**: Generates individual task files.
+-   **`generate`**: Generates individual task files from tasks.json. Run this manually when you want to create readable text files for each task.
 -   **`models`**: Manages AI model configurations.
 -   **`research`**: Performs AI-powered research.
 
