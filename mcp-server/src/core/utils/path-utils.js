@@ -73,8 +73,15 @@ export function resolveTasksPath(args, log = silentLogger) {
 		// If core function returns null and no explicit path was provided,
 		// construct the expected default path as documented
 		if (foundPath === null && !explicitPath) {
-			const defaultPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
-			log?.info?.(`Core findTasksPath returned null, using default path: ${defaultPath}`);
+			const defaultPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			log?.info?.(
+				`Core findTasksPath returned null, using default path: ${defaultPath}`
+			);
 			return defaultPath;
 		}
 		return foundPath;
