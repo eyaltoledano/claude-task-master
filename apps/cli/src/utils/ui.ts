@@ -286,12 +286,12 @@ export function createTaskTable(
 	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
 		? [
-				Math.floor(terminalWidth * 0.06),
+				Math.floor(terminalWidth * 0.1),
 				Math.floor(terminalWidth * 0.4),
 				Math.floor(terminalWidth * 0.15),
-				Math.floor(terminalWidth * 0.12),
+				Math.floor(terminalWidth * 0.1),
 				Math.floor(terminalWidth * 0.2),
-				Math.floor(terminalWidth * 0.12)
+				Math.floor(terminalWidth * 0.1)
 			] // ID, Title, Status, Priority, Dependencies, Complexity
 		: [
 				Math.floor(terminalWidth * 0.08),
@@ -377,7 +377,11 @@ export function createTaskTable(
 				}
 
 				if (showComplexity) {
-					subRow.push(chalk.gray('--'));
+					const complexityDisplay =
+						typeof subtask.complexity === 'number'
+							? getComplexityWithColor(subtask.complexity)
+							: '--';
+					subRow.push(chalk.gray(complexityDisplay));
 				}
 
 				table.push(subRow);

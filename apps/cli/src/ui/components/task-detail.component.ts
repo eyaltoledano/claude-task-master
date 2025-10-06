@@ -228,7 +228,7 @@ export function displaySubtasks(
 	});
 
 	subtasks.forEach((subtask) => {
-		const subtaskId = `${parentId}.${subtask.id}`;
+		const subtaskId = String(subtask.id);
 
 		// Format dependencies
 		const deps =

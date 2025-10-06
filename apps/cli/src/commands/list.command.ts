@@ -246,7 +246,7 @@ export class ListTasksCommand extends Command {
 				task.subtasks.forEach((subtask) => {
 					const subIcon = STATUS_ICONS[subtask.status];
 					console.log(
-						`  ${chalk.gray(`${task.id}.${subtask.id}`)} ${subIcon} ${chalk.gray(subtask.title)}`
+						`  ${chalk.gray(String(subtask.id))} ${subIcon} ${chalk.gray(subtask.title)}`
 					);
 				});
 			}
@@ -297,7 +297,7 @@ export class ListTasksCommand extends Command {
 			nextTask
 		);
 
-		// Task table - no title, just show the table directly
+		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
 				showSubtasks: withSubtasks,

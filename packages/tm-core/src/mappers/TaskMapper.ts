@@ -52,7 +52,7 @@ export class TaskMapper {
 	): Task {
 		// Map subtasks
 		const subtasks: Subtask[] = dbSubtasks.map((subtask, index) => ({
-			id: index + 1, // Use numeric ID for subtasks
+			id: subtask.display_id || index + 1, // Use display_id if available (API storage), fallback to numeric (file storage)
 			parentId: dbTask.id,
 			title: subtask.title,
 			description: subtask.description || '',
