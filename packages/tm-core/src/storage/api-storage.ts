@@ -16,7 +16,7 @@ import type {
 } from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { TaskRepository } from '../repositories/task-repository.interface.js';
-import { SupabaseTaskRepository } from '../repositories/supabase-task-repository.js';
+import { SupabaseTaskRepository } from '../repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../auth/auth-manager.js';
 

@@ -82,10 +82,11 @@ export interface Task {
 }
 
 /**
- * Subtask interface extending Task with numeric ID
+ * Subtask interface extending Task
+ * ID can be number (file storage) or string (API storage with display_id)
  */
 export interface Subtask extends Omit<Task, 'id' | 'subtasks'> {
-	id: number;
+	id: number | string;
 	parentId: string;
 	subtasks?: never; // Subtasks cannot have their own subtasks
 }

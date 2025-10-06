@@ -53,7 +53,7 @@ export class TaskEntity implements Task {
 		// Normalize subtask IDs to strings
 		this.subtasks = (data.subtasks || []).map((subtask) => ({
 			...subtask,
-			id: Number(subtask.id), // Keep subtask IDs as numbers per interface
+			id: String(subtask.id),
 			parentId: String(subtask.parentId)
 		}));
 
