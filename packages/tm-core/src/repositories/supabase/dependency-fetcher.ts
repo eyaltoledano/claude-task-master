@@ -1,13 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../../types/database.types.js';
-
-// Proper type definition for dependency with joined display_id
-export interface DependencyWithDisplayId {
-	task_id: string;
-	depends_on_task: {
-		display_id: string;
-	} | null;
-}
+import { DependencyWithDisplayId } from '../../types/repository-types.js';
 
 /**
  * Handles fetching and processing of task dependencies with display_ids

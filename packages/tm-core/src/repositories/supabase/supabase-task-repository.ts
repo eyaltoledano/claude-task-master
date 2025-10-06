@@ -165,7 +165,25 @@ export class SupabaseTaskRepository {
 			dbUpdates.priority = this.mapPriorityToDatabase(updates.priority);
 
 		// Handle metadata fields (details, testStrategy, etc.)
-		const metadata: Record<string, unknown> = {};
+		// Load existing metadata to preserve fields not being updated
+		const { data: existingMetadataRow, error: existingMetadataError } =
+			await this.supabase
+				.from('tasks')
+				.select('metadata')
+				.eq('brief_id', briefId)
+				.eq('display_id', taskId.toUpperCase())
+				.single();
+
+		if (existingMetadataError) {
+			throw new Error(
+				`Failed to load existing task metadata: ${existingMetadataError.message}`
+			);
+		}
+
+		const metadata: Record<string, unknown> = {
+			...((existingMetadataRow?.metadata as Record<string, unknown>) ?? {})
+		};
+
 		if (updates.details !== undefined) metadata.details = updates.details;
 		if (updates.testStrategy !== undefined)
 			metadata.testStrategy = updates.testStrategy;

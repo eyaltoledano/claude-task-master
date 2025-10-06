@@ -53,7 +53,7 @@ export class TaskMapper {
 	): Task {
 		// Map subtasks
 		const subtasks: Subtask[] = dbSubtasks.map((subtask, index) => ({
-			id: subtask.display_id || index + 1, // Use display_id if available (API storage), fallback to numeric (file storage)
+			id: subtask.display_id || String(index + 1), // Use display_id if available (API storage), fallback to numeric (file storage)
 			parentId: dbTask.id,
 			title: subtask.title,
 			description: subtask.description || '',
@@ -179,10 +179,11 @@ export class TaskMapper {
 	}
 
 	/**
-	 * Safely extracts a field from metadata JSON
+	 * Safely extracts a field from metadata JSON with runtime type validation
 	 * @param metadata The metadata object (could be null or any type)
 	 * @param field The field to extract
 	 * @param defaultValue Default value if field doesn't exist
+	 * @returns The extracted value if it matches the expected type, otherwise defaultValue
 	 */
 	private static extractMetadataField<T>(
 		metadata: unknown,
@@ -194,6 +195,22 @@ export class TaskMapper {
 		}
 
 		const value = (metadata as Record<string, unknown>)[field];
-		return value !== undefined ? (value as T) : defaultValue;
+
+		if (value === undefined) {
+			return defaultValue;
+		}
+
+		// Runtime type validation: ensure value matches the type of defaultValue
+		const expectedType = typeof defaultValue;
+		const actualType = typeof value;
+
+		if (expectedType !== actualType) {
+			console.warn(
+				`Type mismatch in metadata field "${field}": expected ${expectedType}, got ${actualType}. Using default value.`
+			);
+			return defaultValue;
+		}
+
+		return value as T;
 	}
 }
