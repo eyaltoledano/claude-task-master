@@ -8,10 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import ora, { type Ora } from 'ora';
-import {
-	createTaskMasterCore,
-	type TaskMasterCore
-} from '@tm/core';
+import { createTaskMasterCore, type TaskMasterCore } from '@tm/core';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -56,11 +53,9 @@ export class AutopilotCommand extends Command {
 				'--dry-run',
 				'Show what would be executed without performing actions'
 			)
-			.action(
-				async (taskId: string, options: AutopilotCommandOptions) => {
-					await this.executeCommand(taskId, options);
-				}
-			);
+			.action(async (taskId: string, options: AutopilotCommandOptions) => {
+				await this.executeCommand(taskId, options);
+			});
 	}
 
 	/**
@@ -112,7 +107,6 @@ export class AutopilotCommand extends Command {
 
 			// Display results
 			this.displayResults(result, options);
-
 		} catch (error: any) {
 			if (spinner) {
 				spinner.fail('Operation failed');
@@ -210,7 +204,9 @@ export class AutopilotCommand extends Command {
 		// Run preflight checks
 		console.log();
 		console.log(chalk.cyan.bold('Running preflight checks...'));
-		const preflightChecker = new PreflightChecker(options.project || process.cwd());
+		const preflightChecker = new PreflightChecker(
+			options.project || process.cwd()
+		);
 		const preflightResult = await preflightChecker.runAllChecks();
 
 		// Display preflight results
@@ -244,7 +240,9 @@ export class AutopilotCommand extends Command {
 		}
 
 		// Get execution order
-		const orderedSubtasks = taskLoader.getExecutionOrder(validationResult.task!);
+		const orderedSubtasks = taskLoader.getExecutionOrder(
+			validationResult.task!
+		);
 
 		await taskLoader.cleanup();
 
@@ -254,26 +252,40 @@ export class AutopilotCommand extends Command {
 		console.log();
 		console.log(chalk.cyan.bold('Execution Plan:'));
 		console.log(chalk.white(`Task: ${validationResult.task!.title}`));
-		console.log(chalk.gray(`${orderedSubtasks.length} subtasks will be executed in dependency order`));
+		console.log(
+			chalk.gray(
+				`${orderedSubtasks.length} subtasks will be executed in dependency order`
+			)
+		);
 		console.log();
 
 		// Display subtasks
 		orderedSubtasks.forEach((subtask, index) => {
-			console.log(chalk.yellow(`${index + 1}. ${validationResult.task!.id}.${subtask.id}: ${subtask.title}`));
+			console.log(
+				chalk.yellow(
+					`${index + 1}. ${validationResult.task!.id}.${subtask.id}: ${subtask.title}`
+				)
+			);
 			if (subtask.dependencies && subtask.dependencies.length > 0) {
-				console.log(chalk.gray(`   Dependencies: ${subtask.dependencies.join(', ')}`));
+				console.log(
+					chalk.gray(`   Dependencies: ${subtask.dependencies.join(', ')}`)
+				);
 			}
 		});
 
 		console.log();
-		console.log(chalk.cyan('Autopilot would execute each subtask using TDD workflow:'));
+		console.log(
+			chalk.cyan('Autopilot would execute each subtask using TDD workflow:')
+		);
 		console.log(chalk.gray('  1. RED phase: Write failing test'));
 		console.log(chalk.gray('  2. GREEN phase: Implement code to pass test'));
 		console.log(chalk.gray('  3. COMMIT phase: Commit changes'));
 		console.log();
 
 		if (options.dryRun) {
-			console.log(chalk.yellow('This was a dry run. Use without --dry-run to execute.'));
+			console.log(
+				chalk.yellow('This was a dry run. Use without --dry-run to execute.')
+			);
 		}
 
 		return {
@@ -297,9 +309,11 @@ export class AutopilotCommand extends Command {
 			{ name: 'Default branch', result: result.defaultBranch }
 		];
 
-		checks.forEach(check => {
+		checks.forEach((check) => {
 			const icon = check.result.success ? chalk.green('✓') : chalk.red('✗');
-			const status = check.result.success ? chalk.green('PASS') : chalk.red('FAIL');
+			const status = check.result.success
+				? chalk.green('PASS')
+				: chalk.red('FAIL');
 			console.log(`${icon} ${chalk.white(check.name)}: ${status}`);
 			if (check.result.message) {
 				console.log(chalk.gray(`  ${check.result.message}`));

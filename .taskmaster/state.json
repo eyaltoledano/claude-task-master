@@ -1,9 +1,9 @@
 {
-  "currentTag": "tdd-workflow-phase-0",
-  "lastSwitched": "2025-10-07T14:11:48.167Z",
-  "branchTagMapping": {
-    "v017-adds": "v017-adds",
-    "next": "next"
-  },
-  "migrationNoticeShown": true
+	"currentTag": "tdd-workflow-phase-0",
+	"lastSwitched": "2025-10-07T14:11:48.167Z",
+	"branchTagMapping": {
+		"v017-adds": "v017-adds",
+		"next": "next"
+	},
+	"migrationNoticeShown": true
 }

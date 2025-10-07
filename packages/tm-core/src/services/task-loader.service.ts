@@ -233,9 +233,7 @@ export class TaskLoaderService {
 	 */
 	private validateDependencies(task: Task): TaskValidationResult {
 		const issues: DependencyIssue[] = [];
-		const subtaskIds = new Set(
-			task.subtasks.map((st) => String(st.id))
-		);
+		const subtaskIds = new Set(task.subtasks.map((st) => String(st.id)));
 
 		for (const subtask of task.subtasks) {
 			const subtaskId = `${task.id}.${subtask.id}`;
@@ -284,7 +282,9 @@ export class TaskLoaderService {
 				errorMessage: `Task "${task.title}" has dependency issues`,
 				suggestion:
 					'Fix dependency issues manually or re-expand the task:\n' +
-					issues.map((issue) => `  - ${issue.subtaskId}: ${issue.message}`).join('\n'),
+					issues
+						.map((issue) => `  - ${issue.subtaskId}: ${issue.message}`)
+						.join('\n'),
 				dependencyIssues: issues
 			};
 		}
