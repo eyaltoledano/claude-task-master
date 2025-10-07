@@ -53,6 +53,8 @@ import {
 	validateStrength
 } from './task-manager.js';
 
+import { scanProject } from './task-manager/scan-project/index.js';
+
 import {
 	moveTasksBetweenTags,
 	MoveTaskError,
@@ -5059,6 +5061,110 @@ Examples:
 				);
 			} catch (error) {
 				console.error(chalk.red(`Error copying tag: ${error.message}`));
+				process.exit(1);
+			}
+		})
+		.on('error', function (err) {
+			console.error(chalk.red(`Error: ${err.message}`));
+			process.exit(1);
+		});
+
+	// scan command
+	programInstance
+		.command('scan')
+		.description('Intelligently scan and analyze the project codebase structure')
+		.option(
+			'--output <file>',
+			'Path to save scan results (JSON format)',
+			'project_scan.json'
+		)
+		.option(
+			'--include <patterns>',
+			'Comma-separated list of file patterns to include (e.g., "*.js,*.ts")'
+		)
+		.option(
+			'--exclude <patterns>',
+			'Comma-separated list of file patterns to exclude (e.g., "*.log,tmp/*")'
+		)
+		.option(
+			'--depth <number>',
+			'Maximum directory depth to scan',
+			'5'
+		)
+		.option('--debug', 'Enable debug output')
+		.option('--no-ai', 'Skip AI-powered analysis (faster but less detailed)')
+		.action(async (options) => {
+			try {
+				// Initialize TaskMaster to get project root
+				const taskMaster = initTaskMaster({});
+				const projectRoot = taskMaster.getProjectRoot();
+
+				if (!projectRoot) {
+					console.error(chalk.red('Error: Could not determine project root.'));
+					console.log(chalk.yellow('Make sure you are in a valid project directory.'));
+					process.exit(1);
+				}
+
+				console.log(chalk.blue(`🔍 Starting intelligent scan of project: ${projectRoot}`));
+				console.log(chalk.gray(`Output will be saved to: ${options.output}`));
+
+				// Parse options
+				const scanOptions = {
+					outputPath: path.isAbsolute(options.output) 
+						? options.output 
+						: path.join(projectRoot, options.output),
+					includeFiles: options.include ? options.include.split(',').map(s => s.trim()) : [],
+					excludeFiles: options.exclude ? options.exclude.split(',').map(s => s.trim()) : undefined,
+					scanDepth: parseInt(options.depth, 10),
+					debug: options.debug || false,
+					reportProgress: true,
+					skipAI: options.noAi || false
+				};
+
+				// Perform the scan
+				const spinner = ora('Scanning project structure...').start();
+				
+				try {
+					const result = await scanProject(projectRoot, scanOptions);
+					
+					spinner.stop();
+					
+					if (result.success) {
+						console.log(chalk.green('✅ Project scan completed successfully!'));
+						console.log(chalk.cyan('\n📊 Scan Summary:'));
+						console.log(chalk.white(`  Project Type: ${result.data.scanSummary.projectType}`));
+						console.log(chalk.white(`  Total Files: ${result.data.stats.totalFiles}`));
+						console.log(chalk.white(`  Languages: ${result.data.scanSummary.languages.join(', ')}`));
+						console.log(chalk.white(`  Code Lines: ${result.data.scanSummary.codeMetrics.totalLines}`));
+						console.log(chalk.white(`  Functions: ${result.data.scanSummary.codeMetrics.totalFunctions}`));
+						console.log(chalk.white(`  Classes: ${result.data.scanSummary.codeMetrics.totalClasses}`));
+						
+						if (result.data.scanSummary.recommendations.length > 0) {
+							console.log(chalk.yellow('\n💡 Recommendations:'));
+							result.data.scanSummary.recommendations.forEach(rec => {
+								console.log(chalk.white(`  • ${rec}`));
+							});
+						}
+						
+						console.log(chalk.green(`\n📄 Detailed results saved to: ${scanOptions.outputPath}`));
+					} else {
+						console.error(chalk.red('❌ Project scan failed:'));
+						console.error(chalk.red(`  ${result.error.message}`));
+						if (scanOptions.debug && result.error.stack) {
+							console.error(chalk.gray(`  ${result.error.stack}`));
+						}
+						process.exit(1);
+					}
+				} catch (error) {
+					spinner.stop();
+					console.error(chalk.red(`❌ Scan failed: ${error.message}`));
+					if (scanOptions.debug) {
+						console.error(chalk.gray(error.stack));
+					}
+					process.exit(1);
+				}
+			} catch (error) {
+				console.error(chalk.red(`Error initializing scan: ${error.message}`));
 				process.exit(1);
 			}
 		})
