@@ -157,7 +157,8 @@ export class ClaudeCodeLanguageModel {
 			continue: this.settings.continue,
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
-			mcpServers: this.settings.mcpServers
+			mcpServers: this.settings.mcpServers,
+			env: this.settings.env
 		};
 
 		let text = '';
@@ -332,7 +333,8 @@ export class ClaudeCodeLanguageModel {
 			continue: this.settings.continue,
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
-			mcpServers: this.settings.mcpServers
+			mcpServers: this.settings.mcpServers,
+			env: this.settings.env
 		};
 
 		const warnings = this.generateUnsupportedWarnings(options);
