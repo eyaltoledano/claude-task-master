@@ -77,6 +77,36 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 > **Note**: If you see `0 tools enabled` in the MCP settings, restart your editor and check that your API keys are correctly configured.
 
+### Windows-specific Configuration
+
+For Windows users without WSL, you may need to use `cmd` to run the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "cmd",
+      "args": ["/c", "npx -y --package=task-master-ai task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+        "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+        "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+        "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+        "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+        "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
+        "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+Alternatively, you can install at the project level with Claude Code:
+```bash
+claude mcp add task-master-mcp -s project -- cmd /c "npx -y --package=task-master-ai task-master-ai"
+```
+
 ### VS Code (`servers` + `type`)
 
 ```json
