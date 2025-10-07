@@ -9379,5 +9379,700 @@
       "updated": "2025-10-06T17:44:07.207Z",
       "description": "Tasks for autonomous-tdd-git-workflow context"
     }
+  },
+  "tdd-workflow-phase-0": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Create autopilot command CLI skeleton",
+        "description": "Create the basic CLI command structure for tm autopilot with dry-run mode support and argument parsing",
+        "details": "Create apps/cli/src/commands/autopilot.command.ts extending Commander's Command class pattern like existing commands. Support tm autopilot <taskId> with --dry-run flag. Include basic help text, argument validation, and command registration. Follow the existing StartCommand pattern for consistency with the codebase.",
+        "testStrategy": "Unit tests for command parsing, argument validation, and help text display. Test both with and without task ID argument.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create autopilot command file structure",
+            "description": "Create the basic autopilot.command.ts file with Commander class extension and basic structure",
+            "dependencies": [],
+            "details": "Create apps/cli/src/commands/autopilot.command.ts extending Commander's Command class. Set up basic class structure with constructor, command name 'autopilot', description, and empty execute method. Follow the pattern used in existing commands like StartCommand for consistency.",
+            "status": "pending",
+            "testStrategy": "Unit tests for command instantiation and basic structure validation"
+          },
+          {
+            "id": 2,
+            "title": "Implement argument parsing and validation",
+            "description": "Add task ID argument parsing and --dry-run flag support with validation",
+            "dependencies": [
+              1
+            ],
+            "details": "Add task ID as required positional argument with validation to ensure it exists in tasks.json. Implement --dry-run boolean flag with proper Commander.js syntax. Add argument validation logic to check task ID format and existence. Include error handling for invalid inputs.",
+            "status": "pending",
+            "testStrategy": "Unit tests for argument parsing with valid/invalid task IDs and flag combinations"
+          },
+          {
+            "id": 3,
+            "title": "Add help text and command documentation",
+            "description": "Implement comprehensive help text, usage examples, and command documentation",
+            "dependencies": [
+              2
+            ],
+            "details": "Add detailed command description, usage examples showing 'tm autopilot <taskId>' and 'tm autopilot <taskId> --dry-run'. Include examples with real task IDs, explain dry-run mode behavior, and provide troubleshooting tips. Follow help text patterns from existing commands.",
+            "status": "pending",
+            "testStrategy": "Unit tests for help text display and content validation"
+          },
+          {
+            "id": 4,
+            "title": "Implement command registration system",
+            "description": "Register the autopilot command with the CLI application and ensure proper integration",
+            "dependencies": [
+              3
+            ],
+            "details": "Add autopilot command registration to the main CLI application in apps/cli/src/index.ts or appropriate registration file. Ensure command is properly exported and available when running 'tm autopilot'. Follow existing command registration patterns used by other commands.",
+            "status": "pending",
+            "testStrategy": "Integration tests for command registration and CLI availability"
+          },
+          {
+            "id": 5,
+            "title": "Create basic execute method with dry-run logic",
+            "description": "Implement the main execute method with basic dry-run mode and task loading logic",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement the execute method that loads the specified task from tasks.json, validates task existence, and handles dry-run mode by displaying what would be executed without performing actions. Add basic task loading using existing task utilities and prepare structure for future autopilot logic.",
+            "status": "pending",
+            "testStrategy": "Unit tests for execute method with valid tasks and dry-run mode behavior"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement preflight detection system",
+        "description": "Build system to detect test runner, git state, and validate required tools for autopilot execution",
+        "details": "Create a PreflightChecker class that: 1) Detects test command from package.json scripts.test field, 2) Checks git working tree status using existing git-utils.js, 3) Validates availability of git, gh, node/npm tools, 4) Detects default branch. Return structured status for each check with success/failure indicators.",
+        "testStrategy": "Unit tests for each detection method. Integration tests with different package.json configurations and git states.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create PreflightChecker class structure and package.json test detection",
+            "description": "Implement the core PreflightChecker class with method to detect test command from package.json scripts.test field",
+            "dependencies": [],
+            "details": "Create src/autopilot/preflight-checker.js with PreflightChecker class. Implement detectTestCommand() method that reads package.json and extracts scripts.test field. Handle cases where package.json doesn't exist or scripts.test is undefined. Return structured result with success/failure status and detected command. Follow existing patterns from other service classes in the codebase.",
+            "status": "pending",
+            "testStrategy": "Unit tests for detectTestCommand() with various package.json configurations: missing file, missing scripts, missing test script, valid test script. Mock fs.readFileSync for different scenarios."
+          },
+          {
+            "id": 2,
+            "title": "Implement git state validation using existing git-utils",
+            "description": "Add git working tree status checks using the existing git-utils.js module functions",
+            "dependencies": [
+              1
+            ],
+            "details": "Add checkGitWorkingTree() method to PreflightChecker that uses existing functions from scripts/modules/utils/git-utils.js. Use isGitRepository() to verify git repo, then check for uncommitted changes using git status. Return structured status indicating if working tree is clean, has staged changes, or has unstaged changes. Include helpful messages about what needs to be committed.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked git-utils functions for different git states: clean working tree, staged changes, unstaged changes, not a git repository. Integration tests with actual git repository setup."
+          },
+          {
+            "id": 3,
+            "title": "Add tool availability validation for required commands",
+            "description": "Implement validation for git, gh, node/npm tool availability on the system",
+            "dependencies": [
+              2
+            ],
+            "details": "Add validateRequiredTools() method that checks availability of git, gh CLI, node, and npm commands using execSync with 'which' or 'where' depending on platform. Handle platform differences (Unix vs Windows). Return structured results for each tool with version information where available. Use existing isGhCliAvailable() function from git-utils for gh CLI checking.",
+            "status": "pending",
+            "testStrategy": "Unit tests mocking execSync for different scenarios: all tools available, missing tools, platform differences. Test version detection and error handling for command execution failures."
+          },
+          {
+            "id": 4,
+            "title": "Implement default branch detection",
+            "description": "Add default branch detection using existing git-utils functions",
+            "dependencies": [
+              3
+            ],
+            "details": "Add detectDefaultBranch() method that uses getDefaultBranch() function from existing git-utils.js. Handle cases where default branch cannot be determined and provide fallback logic. Return structured result with detected branch name and confidence level. Include handling for repositories without remote tracking.",
+            "status": "pending",
+            "testStrategy": "Unit tests mocking git-utils getDefaultBranch() for various scenarios: GitHub repo with default branch, local repo without remote, repositories with different default branches (main vs master)."
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive preflight check orchestration and result formatting",
+            "description": "Implement main runAllChecks() method that orchestrates all preflight checks and formats results",
+            "dependencies": [
+              4
+            ],
+            "details": "Add runAllChecks() method that executes all preflight checks in sequence: detectTestCommand(), checkGitWorkingTree(), validateRequiredTools(), detectDefaultBranch(). Collect all results into structured PreflightResult object with overall success status, individual check results, and actionable error messages. Include summary of what passed/failed and next steps for resolving issues.",
+            "status": "pending",
+            "testStrategy": "Integration tests running full preflight checks in different project configurations. Test error aggregation and result formatting. Verify that partial failures are handled gracefully with appropriate user guidance."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement task loading and validation",
+        "description": "Load task data from TaskMaster state and validate task structure for autopilot execution",
+        "details": "Use existing TaskService from @tm/core to load task by ID. Validate task exists, has subtasks, and subtasks have proper dependency order. If no subtasks exist, provide helpful message about needing to expand first. Reuse existing task loading patterns from other commands.",
+        "testStrategy": "Unit tests for task loading with various scenarios: valid task with subtasks, task without subtasks, non-existent task, tasks with dependencies.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TaskLoadingService class with TaskService integration",
+            "description": "Create a service class that wraps TaskService from @tm/core to load task data and handle initialization properly",
+            "dependencies": [],
+            "details": "Create TaskLoadingService that instantiates TaskService with ConfigManager, handles initialization, and provides methods for loading tasks by ID. Include proper error handling for cases where TaskService fails to initialize or tasks cannot be loaded. Follow existing patterns from tm-core for service instantiation.",
+            "status": "pending",
+            "testStrategy": "Unit tests for service initialization, task loading success cases, and error handling for initialization failures"
+          },
+          {
+            "id": 2,
+            "title": "Implement task existence validation logic",
+            "description": "Build validation to check if a task exists and has the proper structure for autopilot execution",
+            "dependencies": [
+              1
+            ],
+            "details": "Create validation functions that check: 1) Task exists in TaskMaster state, 2) Task has valid structure according to Task interface from @tm/core types, 3) Task is not in 'done' or 'cancelled' status. Return structured validation results with specific error messages for each validation failure.",
+            "status": "pending",
+            "testStrategy": "Unit tests with various task scenarios: valid tasks, non-existent tasks, malformed tasks, completed tasks"
+          },
+          {
+            "id": 3,
+            "title": "Create subtask validation and dependency analysis",
+            "description": "Implement validation for subtask structure and dependency ordering for autopilot execution readiness",
+            "dependencies": [
+              2
+            ],
+            "details": "Build validation logic that: 1) Checks if task has subtasks defined, 2) Validates subtask structure matches Subtask interface, 3) Analyzes dependency order to ensure subtasks can be executed sequentially, 4) Identifies any circular dependencies or missing dependencies. Provide detailed feedback on dependency issues.",
+            "status": "pending",
+            "testStrategy": "Unit tests for tasks with valid subtasks, tasks without subtasks, tasks with circular dependencies, and tasks with missing dependencies"
+          },
+          {
+            "id": 4,
+            "title": "Implement helpful expansion messaging system",
+            "description": "Create user-friendly messages when tasks lack subtasks and guide users toward expansion commands",
+            "dependencies": [
+              3
+            ],
+            "details": "When validation detects tasks without subtasks, provide helpful messages explaining: 1) Why subtasks are needed for autopilot, 2) How to use 'task-master expand' to create subtasks, 3) Link to existing task expansion patterns from other commands. Include suggestions for complexity analysis if the task appears complex.",
+            "status": "pending",
+            "testStrategy": "Unit tests for message generation with different task scenarios and integration tests to verify messaging appears correctly"
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive validation result interface and error handling",
+            "description": "Design and implement structured validation results with detailed error reporting for all validation scenarios",
+            "dependencies": [
+              4
+            ],
+            "details": "Create ValidationResult interface that includes: 1) Success/failure status, 2) Specific error types (task not found, no subtasks, dependency issues), 3) Detailed error messages with actionable guidance, 4) Task data when validation succeeds. Implement error handling that provides clear feedback for each validation failure scenario.",
+            "status": "pending",
+            "testStrategy": "Unit tests for all validation result scenarios and integration tests to verify error handling provides helpful user feedback"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Create execution plan display logic",
+        "description": "Build comprehensive display system for showing planned autopilot execution steps in dry-run mode",
+        "details": "Create ExecutionPlanDisplay class that formats and displays: preflight check results, branch/tag information, subtask execution order with RED/GREEN/COMMIT phases, estimated duration, and finalization steps. Use boxen and chalk for consistent CLI styling matching existing command patterns.",
+        "testStrategy": "Unit tests for display formatting with different task configurations. Visual regression tests for output formatting.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ExecutionPlanDisplay class structure",
+            "description": "Create the base ExecutionPlanDisplay class with proper imports and basic structure following existing CLI patterns",
+            "dependencies": [],
+            "details": "Create src/display/ExecutionPlanDisplay.ts with class structure. Import boxen and chalk libraries. Set up constructor to accept execution plan data. Define private methods for each display section. Follow existing CLI styling patterns from other commands.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation and basic structure validation"
+          },
+          {
+            "id": 2,
+            "title": "Implement preflight check results display",
+            "description": "Add method to format and display preflight check results with appropriate styling and status indicators",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement displayPreflightChecks() method that formats check results using chalk for colored status indicators (green checkmarks, red X's). Use boxen for section containers. Display task validation, dependency checks, and branch status results.",
+            "status": "pending",
+            "testStrategy": "Unit tests for preflight display formatting with passing and failing checks"
+          },
+          {
+            "id": 3,
+            "title": "Implement branch and tag information display",
+            "description": "Add method to display planned branch creation and tag information in a formatted section",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement displayBranchInfo() method that shows planned branch name, current tag, and branch creation strategy. Use consistent styling with other sections. Display branch existence warnings if applicable.",
+            "status": "pending",
+            "testStrategy": "Unit tests for branch info display with different tag configurations"
+          },
+          {
+            "id": 4,
+            "title": "Implement subtask execution order display with phases",
+            "description": "Create comprehensive display for subtask execution order showing RED/GREEN/COMMIT phases for each subtask",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement displayExecutionOrder() method that shows ordered subtasks with phase indicators (RED: tests fail, GREEN: tests pass, COMMIT: changes committed). Use color coding and clear phase separation. Include dependency information and estimated duration per subtask.",
+            "status": "pending",
+            "testStrategy": "Unit tests for execution order display with various dependency patterns and phase transitions"
+          },
+          {
+            "id": 5,
+            "title": "Implement main display method and finalization steps",
+            "description": "Create the main display() method that orchestrates all sections and shows finalization steps",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Implement main display() method that calls all section display methods in proper order. Add displayFinalizationSteps() for PR creation and cleanup steps. Include estimated total duration and final summary. Ensure consistent spacing and styling throughout.",
+            "status": "pending",
+            "testStrategy": "Integration tests for complete display output and visual regression tests for CLI formatting"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement branch and tag planning",
+        "description": "Generate branch names and tag settings that would be used during autopilot execution",
+        "details": "Create BranchPlanner class that generates branch names following pattern: <tag>/task-<id>-<slug> where slug is kebab-case task title. Determine active tag from TaskMaster config. Show which tag would be set during execution. Handle edge cases like existing branches.",
+        "testStrategy": "Unit tests for branch name generation with various task titles and tags. Test edge cases like special characters and long titles.",
+        "priority": "low",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create BranchPlanner class with basic structure",
+            "description": "Create the BranchPlanner class with constructor and main method signatures to establish the foundation for branch name generation",
+            "dependencies": [],
+            "details": "Create src/commands/autopilot/branch-planner.js with BranchPlanner class. Include constructor that accepts TaskMaster config and task data. Define main method planBranch() that will return branch name and tag information. Set up basic error handling structure.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation and basic method structure"
+          },
+          {
+            "id": 2,
+            "title": "Implement task title to kebab-case slug conversion",
+            "description": "Create utility function to convert task titles into kebab-case slugs suitable for branch names",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement convertToKebabCase() method that handles special characters, spaces, and length limits. Remove non-alphanumeric characters except hyphens, convert to lowercase, and truncate to reasonable length (e.g., 50 chars). Handle edge cases like empty titles or titles with only special characters.",
+            "status": "pending",
+            "testStrategy": "Unit tests with various task title formats including special characters, long titles, and edge cases"
+          },
+          {
+            "id": 3,
+            "title": "Implement branch name generation logic",
+            "description": "Create the core logic to generate branch names following the pattern <tag>/task-<id>-<slug>",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement generateBranchName() method that combines active tag from TaskMaster config, task ID, and kebab-case slug. Format as 'tag/task-id-slug'. Handle cases where tag is undefined or empty by using 'feature' as default. Validate generated names against git branch naming rules.",
+            "status": "pending",
+            "testStrategy": "Unit tests for branch name generation with different tags, task IDs, and slugs"
+          },
+          {
+            "id": 4,
+            "title": "Add active tag detection from TaskMaster config",
+            "description": "Implement logic to determine the active tag from TaskMaster configuration state",
+            "dependencies": [
+              1
+            ],
+            "details": "Create getActiveTag() method that reads from TaskMaster state.json to determine current active tag. Use existing TaskService patterns to access configuration. Handle cases where no tag is set or config is missing. Return default tag 'feature' when no active tag is configured.",
+            "status": "pending",
+            "testStrategy": "Unit tests for tag detection with various config states including missing config and undefined tags"
+          },
+          {
+            "id": 5,
+            "title": "Implement existing branch conflict detection",
+            "description": "Add logic to detect and handle cases where generated branch names already exist",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Create checkBranchExists() method using git-utils.js to check if generated branch name already exists locally or remotely. Implement conflict resolution by appending incremental numbers (e.g., -2, -3) to branch name. Provide warnings about existing branches in planning output.",
+            "status": "pending",
+            "testStrategy": "Unit tests for branch conflict detection and resolution with mocked git commands"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Create subtask execution order calculation",
+        "description": "Calculate the correct execution order for subtasks based on their dependencies",
+        "details": "Implement dependency resolution algorithm that: 1) Reads subtask dependencies from task data, 2) Creates execution order respecting dependencies, 3) Detects circular dependencies, 4) Groups independent subtasks. Return ordered list with dependency information for display.",
+        "testStrategy": "Unit tests for dependency resolution with linear dependencies, parallel subtasks, and circular dependency detection.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create DependencyResolver class with core algorithm",
+            "description": "Implement the core dependency resolution algorithm that reads subtask dependencies and creates execution order",
+            "dependencies": [],
+            "details": "Create src/utils/dependency-resolver.ts with DependencyResolver class. Implement topological sort algorithm that takes subtasks array and returns ordered execution plan. Handle basic dependency chains and ensure tasks without dependencies can execute first. Include proper TypeScript interfaces for subtask data and execution order results.",
+            "status": "pending",
+            "testStrategy": "Unit tests for basic dependency resolution with linear chains, parallel independent subtasks, and empty dependency arrays"
+          },
+          {
+            "id": 2,
+            "title": "Implement circular dependency detection",
+            "description": "Add circular dependency detection to prevent infinite loops in dependency resolution",
+            "dependencies": [
+              1
+            ],
+            "details": "Extend DependencyResolver to detect circular dependencies using depth-first search with visit tracking. Throw descriptive error when circular dependencies are found, including the cycle path. Add validation before attempting topological sort to fail fast on invalid dependency graphs.",
+            "status": "pending",
+            "testStrategy": "Unit tests for various circular dependency scenarios: direct cycles (A→B→A), indirect cycles (A→B→C→A), and self-dependencies (A→A)"
+          },
+          {
+            "id": 3,
+            "title": "Add parallel subtask grouping functionality",
+            "description": "Group independent subtasks that can be executed in parallel phases",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement parallelization logic that groups subtasks into execution phases. Subtasks with no dependencies or whose dependencies are satisfied in previous phases can execute in parallel. Return execution plan with phase information showing which subtasks can run simultaneously.",
+            "status": "pending",
+            "testStrategy": "Unit tests for parallel grouping with mixed dependency patterns, ensuring correct phase separation and parallel group identification"
+          },
+          {
+            "id": 4,
+            "title": "Create execution order display interfaces",
+            "description": "Define TypeScript interfaces for execution order results and dependency information",
+            "dependencies": [
+              1
+            ],
+            "details": "Create interfaces in types/ directory for ExecutionPlan, ExecutionPhase, and SubtaskDependencyInfo. Include fields for subtask ID, dependencies status, execution phase, and parallel group information. Ensure interfaces support both display formatting and autopilot execution needs.",
+            "status": "pending",
+            "testStrategy": "Type checking tests and interface validation with sample data structures matching real subtask scenarios"
+          },
+          {
+            "id": 5,
+            "title": "Integrate with TaskService and add CLI utilities",
+            "description": "Integrate DependencyResolver with existing TaskService and create utility functions for CLI display",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Add calculateSubtaskExecutionOrder method to TaskService that uses DependencyResolver. Create UI utilities in apps/cli/src/utils/ui.ts for formatting execution order display with chalk colors and dependency status indicators. Follow existing patterns for task loading and error handling.",
+            "status": "pending",
+            "testStrategy": "Integration tests with TaskService loading real task data, and visual tests for CLI display formatting with various dependency scenarios"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement TDD phase planning for subtasks",
+        "description": "Plan RED/GREEN/COMMIT phases for each subtask showing test files and implementation files",
+        "details": "Create TDDPhasePlanner that for each subtask: 1) Determines test file paths based on project structure, 2) Identifies implementation files from subtask details, 3) Generates commit messages following conventional commits format, 4) Estimates implementation complexity. Support common project structures (src/, tests/, __tests__).",
+        "testStrategy": "Unit tests for file path generation with different project structures. Test commit message generation following conventional commits.",
+        "priority": "medium",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TDDPhasePlanner class structure",
+            "description": "Design and implement the core TDDPhasePlanner class that handles phase planning for TDD workflow execution",
+            "dependencies": [],
+            "details": "Create a new TDDPhasePlanner class in src/tdd/ directory with methods for: 1) Analyzing subtask data to extract implementation files, 2) Determining appropriate test file paths based on project structure, 3) Generating conventional commit messages, 4) Estimating complexity. The class should accept subtask data and project configuration as inputs.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation and method existence. Mock subtask data to verify the class can be initialized properly."
+          },
+          {
+            "id": 2,
+            "title": "Implement test file path detection logic",
+            "description": "Build logic to detect and generate appropriate test file paths based on common project structures",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement method to analyze project structure and determine test file paths for implementation files. Support common patterns: src/ with tests/, src/ with __tests__/, src/ with .test.js files alongside source, and packages/*/src with packages/*/tests. Use filesystem operations to check existing patterns and generate consistent test file paths.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mock filesystem structures testing various project layouts (Jest, Vitest, Node.js patterns). Verify correct test file paths are generated for different source file locations."
+          },
+          {
+            "id": 3,
+            "title": "Implement implementation file extraction from subtask details",
+            "description": "Parse subtask details and descriptions to identify implementation files that will be created or modified",
+            "dependencies": [
+              1
+            ],
+            "details": "Create method to analyze subtask details text and extract file paths mentioned or implied. Use regex patterns and natural language processing to identify: file names mentioned directly, directory structures implied by descriptions, and component/class names that translate to file paths. Handle various file extensions (.js, .ts, .tsx, .vue, .py, etc.).",
+            "status": "pending",
+            "testStrategy": "Unit tests with various subtask detail examples. Test extraction accuracy with different description formats and file types. Verify edge cases like missing file paths or ambiguous descriptions."
+          },
+          {
+            "id": 4,
+            "title": "Implement conventional commit message generation",
+            "description": "Generate properly formatted conventional commit messages for each TDD phase (RED/GREEN/COMMIT)",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement method to generate conventional commit messages following the format: type(scope): description. Support commit types: test (for RED phase), feat/fix (for GREEN phase), and refactor (for COMMIT phase). Extract scope from subtask context and generate descriptive messages. Follow the pattern seen in existing hooks: feat(task-<id>): <description>.",
+            "status": "pending",
+            "testStrategy": "Unit tests for commit message generation with various subtask types and scopes. Verify conventional commit format compliance and message clarity."
+          },
+          {
+            "id": 5,
+            "title": "Implement complexity estimation and phase organization",
+            "description": "Estimate implementation complexity and organize the three TDD phases (RED/GREEN/COMMIT) with appropriate metadata",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Create method to estimate implementation complexity based on: number of files involved, description length and complexity keywords, dependencies between subtasks. Organize the output into three distinct phases: RED (test creation), GREEN (implementation), COMMIT (cleanup/refactor). Include estimated time, file lists, and commit messages for each phase.",
+            "status": "pending",
+            "testStrategy": "Unit tests for complexity calculation with various subtask scenarios. Integration tests verifying complete phase planning output includes all required metadata and follows TDD workflow structure."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Add finalization steps planning",
+        "description": "Plan the final steps that would be executed after all subtasks complete",
+        "details": "Create FinalizationPlanner that shows: 1) Full test suite execution with coverage threshold detection, 2) Branch push confirmation, 3) PR creation targeting detected default branch, 4) Duration estimation based on subtask count and complexity. Use existing git-utils.js for git operations planning.",
+        "testStrategy": "Unit tests for finalization step generation. Test coverage threshold detection from package.json or config files.",
+        "priority": "low",
+        "dependencies": [
+          2,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create FinalizationPlanner class structure",
+            "description": "Create the basic FinalizationPlanner class with interface definition and core methods for planning finalization steps",
+            "dependencies": [],
+            "details": "Create a new FinalizationPlanner class that will handle planning final steps after subtask completion. Include interface definitions for finalization steps (test execution, branch push, PR creation, duration estimation) and basic class structure with methods for each planning component. The class should accept subtask data and project context as input.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation and method structure. Test interface definitions and basic method signatures."
+          },
+          {
+            "id": 2,
+            "title": "Implement test suite execution planning with coverage detection",
+            "description": "Add functionality to detect test commands and coverage thresholds from package.json and project configuration",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement test command detection by reading package.json scripts for 'test', 'test:coverage', 'test:ci' commands. Parse coverage configuration from package.json, jest.config.js, vitest.config.js, or other config files to detect coverage thresholds. Generate execution plan showing which test command would be run and expected coverage requirements. Handle projects without test commands gracefully.",
+            "status": "pending",
+            "testStrategy": "Unit tests for package.json parsing, config file detection, and coverage threshold extraction. Test with various project structures (Jest, Vitest, no tests)."
+          },
+          {
+            "id": 3,
+            "title": "Add git operations planning using existing git-utils",
+            "description": "Integrate with git-utils.js to plan branch push confirmation and default branch detection for PR targeting",
+            "dependencies": [
+              1
+            ],
+            "details": "Use existing git-utils.js functions like getDefaultBranch(), getCurrentBranch(), and isGhCliAvailable() to plan git operations. Generate branch push confirmation plan showing current branch and target remote. Detect default branch for PR creation planning. Check if gh CLI is available for PR operations. Plan git status checks and dirty working tree warnings.",
+            "status": "pending",
+            "testStrategy": "Unit tests for git-utils integration, branch detection, and gh CLI availability checking. Mock git-utils functions to test various git states."
+          },
+          {
+            "id": 4,
+            "title": "Implement PR creation planning",
+            "description": "Plan PR creation steps including title generation, body template, and target branch detection",
+            "dependencies": [
+              3
+            ],
+            "details": "Generate PR creation plan that includes conventional commit-style title generation based on subtask changes, PR body template with task/subtask references, target branch detection using git-utils, and gh CLI command planning. Include checks for existing PR detection and conflict resolution. Plan PR description formatting with task context and implementation notes.",
+            "status": "pending",
+            "testStrategy": "Unit tests for PR title generation, body template creation, and gh CLI command planning. Test with various task types and subtask combinations."
+          },
+          {
+            "id": 5,
+            "title": "Add duration estimation based on subtask complexity",
+            "description": "Implement duration estimation algorithm that calculates expected completion time based on subtask count and complexity",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Create duration estimation algorithm that factors in number of subtasks, complexity indicators (file count, test coverage requirements, git operations), and historical patterns. Provide time estimates for each finalization step (testing, git operations, PR creation) and total completion time. Include confidence intervals and factors that might affect duration. Format estimates in human-readable time units.",
+            "status": "pending",
+            "testStrategy": "Unit tests for duration calculation algorithms, complexity analysis, and time formatting. Test with various subtask configurations and complexity scenarios."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Integrate command with existing CLI infrastructure",
+        "description": "Register autopilot command with the main CLI and ensure proper integration with command registry",
+        "details": "Update apps/cli/src/command-registry.ts to include AutopilotCommand. Follow existing patterns for command registration. Ensure proper cleanup and error handling. Update CLI help system to include autopilot command documentation.",
+        "testStrategy": "Integration tests for command registration. Test CLI help includes autopilot command. Test error handling and cleanup.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          4
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create AutopilotCommand class file",
+            "description": "Create the AutopilotCommand class file following the existing command pattern used by StartCommand",
+            "dependencies": [],
+            "details": "Create apps/cli/src/commands/autopilot.command.ts with basic class structure extending Commander's Command class. Include constructor, command configuration, and placeholder action method. Follow the exact pattern from StartCommand including imports, error handling, and class structure.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation and basic command configuration"
+          },
+          {
+            "id": 2,
+            "title": "Add AutopilotCommand import to command-registry.ts",
+            "description": "Import the AutopilotCommand class in the command registry imports section",
+            "dependencies": [
+              1
+            ],
+            "details": "Add import statement for AutopilotCommand in apps/cli/src/command-registry.ts following the existing import pattern. Place it in the appropriate position with other command imports maintaining alphabetical order.",
+            "status": "pending",
+            "testStrategy": "Verify import resolves correctly and doesn't break existing imports"
+          },
+          {
+            "id": 3,
+            "title": "Register autopilot command in CommandRegistry",
+            "description": "Add autopilot command metadata to the CommandRegistry.commands array",
+            "dependencies": [
+              2
+            ],
+            "details": "Add autopilot command entry to the commands array in CommandRegistry class. Use 'development' category, provide appropriate description, and reference AutopilotCommand class. Follow the existing pattern with name, description, commandClass, and category fields.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify command is registered and appears in registry listing"
+          },
+          {
+            "id": 4,
+            "title": "Export AutopilotCommand from index.ts",
+            "description": "Add AutopilotCommand export to the main CLI package index file",
+            "dependencies": [
+              1
+            ],
+            "details": "Add AutopilotCommand export to apps/cli/src/index.ts in the Commands section following the existing export pattern. Ensure it's properly exported for external usage and testing.",
+            "status": "pending",
+            "testStrategy": "Verify export is available and can be imported from @tm/cli package"
+          },
+          {
+            "id": 5,
+            "title": "Update CLI help system for autopilot command",
+            "description": "Ensure autopilot command appears in help output and command listing",
+            "dependencies": [
+              3
+            ],
+            "details": "Verify that the autopilot command appears in the CLI help system through the CommandRegistry.getFormattedCommandList() method. The 'development' category should be included in help output with autopilot command listed. Test help display functionality.",
+            "status": "pending",
+            "testStrategy": "Integration tests for help system displaying autopilot command. Test CLI help output includes autopilot in development category."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Add comprehensive error handling and edge cases",
+        "description": "Implement robust error handling for all failure scenarios and edge cases in autopilot dry-run",
+        "details": "Handle scenarios: missing task, task without subtasks, dirty git working tree, missing tools (git, gh, node), invalid dependencies, circular dependencies, no test command detected. Provide helpful error messages and suggestions for resolution. Use existing error patterns from other commands.",
+        "testStrategy": "Unit tests for each error scenario. Integration tests with various invalid configurations. Test error message clarity and helpfulness.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement git and working tree validation",
+            "description": "Add error handling for git repository validation, dirty working tree detection, and missing git tool",
+            "dependencies": [],
+            "details": "Create validation functions to check if current directory is a git repository, detect dirty working tree status using git-utils.js patterns, and verify git CLI tool availability. Return specific error messages for each failure case with helpful suggestions for resolution.",
+            "status": "pending",
+            "testStrategy": "Unit tests for git validation with mocked git states. Test clean/dirty working tree detection and missing git tool scenarios."
+          },
+          {
+            "id": 2,
+            "title": "Add task and dependency validation error handling",
+            "description": "Implement error detection for missing tasks, tasks without subtasks, invalid dependencies, and circular dependency cycles",
+            "dependencies": [
+              1
+            ],
+            "details": "Create TaskValidator class that checks task existence in tasks.json, validates task has subtasks for autopilot execution, detects invalid dependency references, and identifies circular dependency chains. Use existing dependency validation patterns from other commands.",
+            "status": "pending",
+            "testStrategy": "Unit tests for each validation scenario with mock task data. Test circular dependency detection with various dependency graphs."
+          },
+          {
+            "id": 3,
+            "title": "Implement tool availability validation",
+            "description": "Add error handling for missing required tools like gh CLI, node, and npm with helpful installation guidance",
+            "dependencies": [
+              1
+            ],
+            "details": "Create ToolValidator that checks availability of gh CLI, node, npm, and other required tools using spawn or which-like detection. Provide specific error messages with installation instructions for each missing tool based on the user's platform.",
+            "status": "pending",
+            "testStrategy": "Unit tests for tool detection with mocked command availability. Test error messages for different missing tool combinations."
+          },
+          {
+            "id": 4,
+            "title": "Add test command detection error handling",
+            "description": "Implement error handling when no test command is detected in package.json with suggestions for configuration",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend PreflightChecker to handle cases where package.json is missing, has no scripts section, or no test script defined. Provide helpful error messages suggesting common test script configurations and link to documentation for test setup.",
+            "status": "pending",
+            "testStrategy": "Unit tests for various package.json configurations. Test error messages for missing test scripts and invalid package.json files."
+          },
+          {
+            "id": 5,
+            "title": "Create comprehensive error reporting system",
+            "description": "Build unified error reporting that aggregates all validation failures and provides actionable resolution steps",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Create ErrorReporter class that collects all validation errors, formats them with clear descriptions and resolution steps, and provides a summary of required actions before autopilot can run. Follow existing error formatting patterns from other TaskMaster commands.",
+            "status": "pending",
+            "testStrategy": "Integration tests combining multiple error scenarios. Test error message clarity and formatting. Verify all error types are properly handled and reported."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-10-07T14:08:52.047Z",
+      "updated": "2025-10-07T14:13:46.675Z",
+      "description": "Tasks for tdd-workflow-phase-0 context"
+    }
   }
 }
