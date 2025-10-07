@@ -26,12 +26,14 @@ async function loadClaudeCodeModule() {
 }
 
 /**
- * Extract proxy-related environment variables from process.env
- * @returns {Object.<string, string>} Proxy environment variables
+ * Extract essential environment variables from process.env
+ * Includes proxy settings and system paths needed for subprocess execution
+ * @returns {Object.<string, string>} Environment variables
  */
-function getProxyEnvVars() {
-	const proxyVars = {};
-	const proxyKeys = [
+function getEssentialEnvVars() {
+	const envVars = {};
+	const essentialKeys = [
+		// Proxy settings
 		'http_proxy',
 		'https_proxy',
 		'HTTP_PROXY',
@@ -39,16 +41,24 @@ function getProxyEnvVars() {
 		'no_proxy',
 		'NO_PROXY',
 		'all_proxy',
-		'ALL_PROXY'
+		'ALL_PROXY',
+		// System paths (required for spawning processes)
+		'PATH',
+		'HOME',
+		'USER',
+		'SHELL',
+		// Node.js specific
+		'NODE_ENV',
+		'NODE_OPTIONS'
 	];
 
-	for (const key of proxyKeys) {
+	for (const key of essentialKeys) {
 		if (process.env[key]) {
-			proxyVars[key] = process.env[key];
+			envVars[key] = process.env[key];
 		}
 	}
 
-	return proxyVars;
+	return envVars;
 }
 
 /**
@@ -184,7 +194,7 @@ export class ClaudeCodeLanguageModel {
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
 			mcpServers: this.settings.mcpServers,
-			env: { ...getProxyEnvVars(), ...this.settings.env }
+			env: { ...getEssentialEnvVars(), ...this.settings.env }
 		};
 
 		let text = '';
@@ -360,7 +370,7 @@ export class ClaudeCodeLanguageModel {
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
 			mcpServers: this.settings.mcpServers,
-			env: { ...getProxyEnvVars(), ...this.settings.env }
+			env: { ...getEssentialEnvVars(), ...this.settings.env }
 		};
 
 		const warnings = this.generateUnsupportedWarnings(options);

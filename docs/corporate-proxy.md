@@ -85,6 +85,7 @@ If you need different proxy settings for specific commands:
 ## Proxy Formats
 
 ### HTTP Proxy
+
 ```json
 {
   "env": {
@@ -95,6 +96,7 @@ If you need different proxy settings for specific commands:
 ```
 
 ### Authenticated Proxy
+
 ```json
 {
   "env": {
@@ -105,6 +107,7 @@ If you need different proxy settings for specific commands:
 ```
 
 ### SOCKS Proxy
+
 ```json
 {
   "env": {
