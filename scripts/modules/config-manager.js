@@ -330,7 +330,8 @@ function validateClaudeCodeSettings(settings) {
 					headers: z.record(z.string()).optional()
 				})
 			)
-			.optional()
+			.optional(),
+		env: z.record(z.string()).optional()
 	});
 
 	// Define CommandSpecificSchema using the base schema

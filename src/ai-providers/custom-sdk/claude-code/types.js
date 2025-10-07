@@ -21,6 +21,7 @@
  * @property {string[]} [allowedTools] - Tools to explicitly allow during execution (e.g., ['Read', 'LS', 'Bash(git log:*)'])
  * @property {string[]} [disallowedTools] - Tools to disallow during execution (e.g., ['Write', 'Edit', 'Bash(rm:*)'])
  * @property {Object.<string, MCPServerConfig>} [mcpServers] - MCP server configuration
+ * @property {Object.<string, string>} [env] - Environment variables for Claude Code CLI process (useful for corporate proxies)
  * @property {boolean} [verbose] - Enable verbose logging for debugging
  */
 

@@ -26,6 +26,42 @@ async function loadClaudeCodeModule() {
 }
 
 /**
+ * Extract essential environment variables from process.env
+ * Includes proxy settings and system paths needed for subprocess execution
+ * @returns {Object.<string, string>} Environment variables
+ */
+function getEssentialEnvVars() {
+	const envVars = {};
+	const essentialKeys = [
+		// Proxy settings
+		'http_proxy',
+		'https_proxy',
+		'HTTP_PROXY',
+		'HTTPS_PROXY',
+		'no_proxy',
+		'NO_PROXY',
+		'all_proxy',
+		'ALL_PROXY',
+		// System paths (required for spawning processes)
+		'PATH',
+		'HOME',
+		'USER',
+		'SHELL',
+		// Node.js specific
+		'NODE_ENV',
+		'NODE_OPTIONS'
+	];
+
+	for (const key of essentialKeys) {
+		if (process.env[key]) {
+			envVars[key] = process.env[key];
+		}
+	}
+
+	return envVars;
+}
+
+/**
  * @typedef {import('./types.js').ClaudeCodeSettings} ClaudeCodeSettings
  * @typedef {import('./types.js').ClaudeCodeModelId} ClaudeCodeModelId
  * @typedef {import('./types.js').ClaudeCodeLanguageModelOptions} ClaudeCodeLanguageModelOptions
@@ -157,7 +193,8 @@ export class ClaudeCodeLanguageModel {
 			continue: this.settings.continue,
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
-			mcpServers: this.settings.mcpServers
+			mcpServers: this.settings.mcpServers,
+			env: { ...getEssentialEnvVars(), ...this.settings.env }
 		};
 
 		let text = '';
@@ -332,7 +369,8 @@ export class ClaudeCodeLanguageModel {
 			continue: this.settings.continue,
 			allowedTools: this.settings.allowedTools,
 			disallowedTools: this.settings.disallowedTools,
-			mcpServers: this.settings.mcpServers
+			mcpServers: this.settings.mcpServers,
+			env: { ...getEssentialEnvVars(), ...this.settings.env }
 		};
 
 		const warnings = this.generateUnsupportedWarnings(options);

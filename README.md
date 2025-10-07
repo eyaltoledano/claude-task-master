@@ -275,6 +275,9 @@ Task Master now supports Claude models through the Claude Code CLI, which requir
 - **Requirements**: Claude Code CLI installed
 - **Benefits**: No API key needed, uses your local Claude instance
 
+**For Corporate Users:**
+- [Corporate Proxy Configuration Guide](docs/corporate-proxy.md) - Configure proxy settings for corporate environments
+
 [Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
 
 ## Troubleshooting
