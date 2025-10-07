@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.25.5
+
+### Patch Changes
+
+- Updated dependencies [[`b43b7ce`](https://github.com/eyaltoledano/claude-task-master/commit/b43b7ce201625eee956fb2f8cd332f238bb78c21), [`aaacc3d`](https://github.com/eyaltoledano/claude-task-master/commit/aaacc3dae36247b4de72b2d2697f49e5df6d01e3), [`0079b7d`](https://github.com/eyaltoledano/claude-task-master/commit/0079b7defdad550811f704c470fdd01955d91d4d), [`0b2c696`](https://github.com/eyaltoledano/claude-task-master/commit/0b2c6967c4605c33a100cff16f6ce8ff09ad06f0), [`4f984f8`](https://github.com/eyaltoledano/claude-task-master/commit/4f984f8a6965da9f9c7edd60ddfd6560ac022917), [`7b5a7c4`](https://github.com/eyaltoledano/claude-task-master/commit/7b5a7c4495a68b782f7407fc5d0e0d3ae81f42f5), [`caee040`](https://github.com/eyaltoledano/claude-task-master/commit/caee040907f856d31a660171c9e6d966f23c632e), [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042), [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042), [`738ec51`](https://github.com/eyaltoledano/claude-task-master/commit/738ec51c049a295a12839b2dfddaf05e23b8fede), [`d67b81d`](https://github.com/eyaltoledano/claude-task-master/commit/d67b81d25ddd927fabb6f5deb368e8993519c541), [`b5fe723`](https://github.com/eyaltoledano/claude-task-master/commit/b5fe723f8ead928e9f2dbde13b833ee70ac3382d), [`2b69936`](https://github.com/eyaltoledano/claude-task-master/commit/2b69936ee7b34346d6de5175af20e077359e2e2a), [`986ac11`](https://github.com/eyaltoledano/claude-task-master/commit/986ac117aee00bcd3e6830a0f76e1ad6d10e0bca), [`20004a3`](https://github.com/eyaltoledano/claude-task-master/commit/20004a39ea848f747e1ff48981bfe176554e4055)]:
+  - task-master-ai@0.28.0
+
 ## 0.25.5-rc.0
 
 ### Patch Changes
