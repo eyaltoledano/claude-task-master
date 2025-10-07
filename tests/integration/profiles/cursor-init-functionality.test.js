@@ -54,4 +54,33 @@ describe('Cursor Profile Initialization Functionality', () => {
 		);
 		expect(cursorProfile.conversionConfig.toolNames.search).toBe('search');
 	});
+
+	test('cursor.js has lifecycle functions for command copying', () => {
+		// Check that the source file contains our new lifecycle functions
+		expect(cursorProfileContent).toContain('function onAddRulesProfile');
+		expect(cursorProfileContent).toContain('function onRemoveRulesProfile');
+		expect(cursorProfileContent).toContain('copyRecursiveSync');
+		expect(cursorProfileContent).toContain('removeDirectoryRecursive');
+	});
+
+	test('cursor.js copies commands from claude/commands to .cursor/commands', () => {
+		// Check that the onAddRulesProfile function copies from the correct source
+		expect(cursorProfileContent).toContain(
+			"path.join(assetsDir, 'claude', 'commands')"
+		);
+		// Destination path is built via a resolver to handle both project root and rules dir
+		expect(cursorProfileContent).toContain('resolveCursorProfileDir(');
+		expect(cursorProfileContent).toMatch(
+			/path\.join\(\s*profileDir\s*,\s*['"]commands['"]\s*\)/
+		);
+		expect(cursorProfileContent).toContain(
+			'copyRecursiveSync(commandsSourceDir, commandsDestDir)'
+		);
+
+		// Check that lifecycle functions are properly registered with the profile
+		expect(cursorProfile.onAddRulesProfile).toBeDefined();
+		expect(cursorProfile.onRemoveRulesProfile).toBeDefined();
+		expect(typeof cursorProfile.onAddRulesProfile).toBe('function');
+		expect(typeof cursorProfile.onRemoveRulesProfile).toBe('function');
+	});
 });

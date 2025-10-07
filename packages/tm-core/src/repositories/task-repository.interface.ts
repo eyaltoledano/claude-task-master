@@ -1,8 +1,9 @@
 import { Task, TaskTag } from '../types/index.js';
+import { LoadTasksOptions } from '../interfaces/storage.interface.js';
 
 export interface TaskRepository {
 	// Task operations
-	getTasks(projectId: string): Promise<Task[]>;
+	getTasks(projectId: string, options?: LoadTasksOptions): Promise<Task[]>;
 	getTask(projectId: string, taskId: string): Promise<Task | null>;
 	createTask(projectId: string, task: Omit<Task, 'id'>): Promise<Task>;
 	updateTask(

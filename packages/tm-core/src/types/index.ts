@@ -72,14 +72,21 @@ export interface Task {
 	actualEffort?: number;
 	tags?: string[];
 	assignee?: string;
-	complexity?: TaskComplexity;
+
+	// Complexity analysis (from complexity report)
+	// Can be either enum ('simple' | 'moderate' | 'complex' | 'very-complex') or numeric score (1-10)
+	complexity?: TaskComplexity | number;
+	recommendedSubtasks?: number;
+	expansionPrompt?: string;
+	complexityReasoning?: string;
 }
 
 /**
- * Subtask interface extending Task with numeric ID
+ * Subtask interface extending Task
+ * ID can be number (file storage) or string (API storage with display_id)
  */
 export interface Subtask extends Omit<Task, 'id' | 'subtasks'> {
-	id: number;
+	id: number | string;
 	parentId: string;
 	subtasks?: never; // Subtasks cannot have their own subtasks
 }
@@ -145,7 +152,6 @@ export interface TaskFilter {
 	hasSubtasks?: boolean;
 	search?: string;
 	assignee?: string;
-	complexity?: TaskComplexity | TaskComplexity[];
 }
 
 /**

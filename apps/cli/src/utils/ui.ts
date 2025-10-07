@@ -84,7 +84,23 @@ export function getPriorityWithColor(priority: TaskPriority): string {
 }
 
 /**
- * Get colored complexity display
+ * Get complexity color and label based on score thresholds
+ */
+function getComplexityLevel(score: number): {
+	color: (text: string) => string;
+	label: string;
+} {
+	if (score >= 7) {
+		return { color: chalk.hex('#CC0000'), label: 'High' };
+	} else if (score >= 4) {
+		return { color: chalk.hex('#FF8800'), label: 'Medium' };
+	} else {
+		return { color: chalk.green, label: 'Low' };
+	}
+}
+
+/**
+ * Get colored complexity display with dot indicator (simple format)
  */
 export function getComplexityWithColor(complexity: number | string): string {
 	const score =
@@ -94,13 +110,20 @@ export function getComplexityWithColor(complexity: number | string): string {
 		return chalk.gray('N/A');
 	}
 
-	if (score >= 8) {
-		return chalk.red.bold(`${score} (High)`);
-	} else if (score >= 5) {
-		return chalk.yellow(`${score} (Medium)`);
-	} else {
-		return chalk.green(`${score} (Low)`);
+	const { color } = getComplexityLevel(score);
+	return color(`● ${score}`);
+}
+
+/**
+ * Get colored complexity display with /10 format (for dashboards)
+ */
+export function getComplexityWithScore(complexity: number | undefined): string {
+	if (typeof complexity !== 'number') {
+		return chalk.gray('N/A');
 	}
+
+	const { color, label } = getComplexityLevel(complexity);
+	return color(`${complexity}/10 (${label})`);
 }
 
 /**
@@ -263,12 +286,12 @@ export function createTaskTable(
 	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
 		? [
-				Math.floor(terminalWidth * 0.06),
+				Math.floor(terminalWidth * 0.1),
 				Math.floor(terminalWidth * 0.4),
 				Math.floor(terminalWidth * 0.15),
-				Math.floor(terminalWidth * 0.12),
+				Math.floor(terminalWidth * 0.1),
 				Math.floor(terminalWidth * 0.2),
-				Math.floor(terminalWidth * 0.12)
+				Math.floor(terminalWidth * 0.1)
 			] // ID, Title, Status, Priority, Dependencies, Complexity
 		: [
 				Math.floor(terminalWidth * 0.08),
@@ -323,8 +346,12 @@ export function createTaskTable(
 		}
 
 		if (showComplexity) {
-			// Show N/A if no complexity score
-			row.push(chalk.gray('N/A'));
+			// Show complexity score from report if available
+			if (typeof task.complexity === 'number') {
+				row.push(getComplexityWithColor(task.complexity));
+			} else {
+				row.push(chalk.gray('N/A'));
+			}
 		}
 
 		table.push(row);
@@ -350,7 +377,11 @@ export function createTaskTable(
 				}
 
 				if (showComplexity) {
-					subRow.push(chalk.gray('--'));
+					const complexityDisplay =
+						typeof subtask.complexity === 'number'
+							? getComplexityWithColor(subtask.complexity)
+							: '--';
+					subRow.push(chalk.gray(complexityDisplay));
 				}
 
 				table.push(subRow);

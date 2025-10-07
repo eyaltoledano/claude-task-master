@@ -60,6 +60,19 @@ The following documentation is also available in the `docs` directory:
 
 > **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
 
+#### Claude Code Quick Install
+
+For Claude Code users:
+
+```bash
+claude mcp add taskmaster-ai -- npx -y task-master-ai
+```
+
+Don't forget to add your API keys to the configuration:
+- in the root .env of your Project
+- in the "env" section of your mcp config for taskmaster-ai
+
+
 ## Requirements
 
 Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
@@ -75,8 +88,9 @@ At least one (1) of the following is required:
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
 - Claude Code (no API key required - requires Claude Code CLI)
+- Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
 
-Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code). Adding all API keys enables you to seamlessly switch between model providers at will.
+Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code or Codex CLI with OAuth). Adding all API keys enables you to seamlessly switch between model providers at will.
 
 ## Quick Start
 
@@ -92,10 +106,11 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 |              | Project | `<project_folder>/.cursor/mcp.json`   | `<project_folder>\.cursor\mcp.json`               | `mcpServers` |
 | **Windsurf** | Global  | `~/.codeium/windsurf/mcp_config.json` | `%USERPROFILE%\.codeium\windsurf\mcp_config.json` | `mcpServers` |
 | **VS Code**  | Project | `<project_folder>/.vscode/mcp.json`   | `<project_folder>\.vscode\mcp.json`               | `servers`    |
+| **Q CLI**    | Global  | `~/.aws/amazonq/mcp.json`             |                                                   | `mcpServers` |
 
 ##### Manual Configuration
 
-###### Cursor & Windsurf (`mcpServers`)
+###### Cursor & Windsurf & Q Developer CLI (`mcpServers`)
 
 ```json
 {

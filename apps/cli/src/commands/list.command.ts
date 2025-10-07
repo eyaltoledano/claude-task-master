@@ -246,7 +246,7 @@ export class ListTasksCommand extends Command {
 				task.subtasks.forEach((subtask) => {
 					const subIcon = STATUS_ICONS[subtask.status];
 					console.log(
-						`  ${chalk.gray(`${task.id}.${subtask.id}`)} ${subIcon} ${chalk.gray(subtask.title)}`
+						`  ${chalk.gray(String(subtask.id))} ${subIcon} ${chalk.gray(subtask.title)}`
 					);
 				});
 			}
@@ -281,9 +281,14 @@ export class ListTasksCommand extends Command {
 		const priorityBreakdown = getPriorityBreakdown(tasks);
 
 		// Find next task following the same logic as findNextTask
-		const nextTask = this.findNextTask(tasks);
+		const nextTaskInfo = this.findNextTask(tasks);
 
-		// Display dashboard boxes
+		// Get the full task object with complexity data already included
+		const nextTask = nextTaskInfo
+			? tasks.find((t) => String(t.id) === String(nextTaskInfo.id))
+			: undefined;
+
+		// Display dashboard boxes (nextTask already has complexity from storage enrichment)
 		displayDashboards(
 			taskStats,
 			subtaskStats,
@@ -292,7 +297,7 @@ export class ListTasksCommand extends Command {
 			nextTask
 		);
 
-		// Task table - no title, just show the table directly
+		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
 				showSubtasks: withSubtasks,
@@ -303,14 +308,16 @@ export class ListTasksCommand extends Command {
 
 		// Display recommended next task section immediately after table
 		if (nextTask) {
-			// Find the full task object to get description
-			const fullTask = tasks.find((t) => String(t.id) === String(nextTask.id));
-			const description = fullTask ? getTaskDescription(fullTask) : undefined;
+			const description = getTaskDescription(nextTask);
 
 			displayRecommendedNextTask({
-				...nextTask,
-				status: 'pending', // Next task is typically pending
-				description
+				id: nextTask.id,
+				title: nextTask.title,
+				priority: nextTask.priority,
+				status: nextTask.status,
+				dependencies: nextTask.dependencies,
+				description,
+				complexity: nextTask.complexity as number | undefined
 			});
 		} else {
 			displayRecommendedNextTask(undefined);
@@ -467,18 +474,7 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 * This is for gradual migration - allows commands.js to use this
-	 */
-	static registerOn(program: Command): Command {
-		const listCommand = new ListTasksCommand();
-		program.addCommand(listCommand);
-		return listCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
-	 * Can also configure the command name if needed
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): ListTasksCommand {
 		const listCommand = new ListTasksCommand(name);

@@ -21,6 +21,20 @@ export class BaseAIProvider {
 
 		// Each provider must set their name
 		this.name = this.constructor.name;
+
+		/**
+		 * Whether this provider needs explicit schema in JSON mode
+		 * Can be overridden by subclasses
+		 * @type {boolean}
+		 */
+		this.needsExplicitJsonSchema = false;
+
+		/**
+		 * Whether this provider supports temperature parameter
+		 * Can be overridden by subclasses
+		 * @type {boolean}
+		 */
+		this.supportsTemperature = true;
 	}
 
 	/**
@@ -127,16 +141,6 @@ export class BaseAIProvider {
 	}
 
 	/**
-	 * Determines if a model requires max_completion_tokens instead of maxTokens
-	 * Can be overridden by providers to specify their model requirements
-	 * @param {string} modelId - The model ID to check
-	 * @returns {boolean} True if the model requires max_completion_tokens
-	 */
-	requiresMaxCompletionTokens(modelId) {
-		return false; // Default behavior - most models use maxTokens
-	}
-
-	/**
 	 * Prepares token limit parameter based on model requirements
 	 * @param {string} modelId - The model ID
 	 * @param {number} maxTokens - The maximum tokens value
@@ -150,11 +154,7 @@ export class BaseAIProvider {
 		// Ensure maxTokens is an integer
 		const tokenValue = Math.floor(Number(maxTokens));
 
-		if (this.requiresMaxCompletionTokens(modelId)) {
-			return { max_completion_tokens: tokenValue };
-		} else {
-			return { maxTokens: tokenValue };
-		}
+		return { maxOutputTokens: tokenValue };
 	}
 
 	/**
@@ -175,7 +175,9 @@ export class BaseAIProvider {
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -183,12 +185,19 @@ export class BaseAIProvider {
 				`${this.name} generateText completed successfully for model: ${params.modelId}`
 			);
 
+			const inputTokens =
+				result.usage?.inputTokens ?? result.usage?.promptTokens ?? 0;
+			const outputTokens =
+				result.usage?.outputTokens ?? result.usage?.completionTokens ?? 0;
+			const totalTokens =
+				result.usage?.totalTokens ?? inputTokens + outputTokens;
+
 			return {
 				text: result.text,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens,
+					outputTokens,
+					totalTokens
 				}
 			};
 		} catch (error) {
@@ -211,7 +220,9 @@ export class BaseAIProvider {
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				temperature: params.temperature
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -248,8 +259,10 @@ export class BaseAIProvider {
 				messages: params.messages,
 				schema: zodSchema(params.schema),
 				mode: params.mode || 'auto',
-				maxTokens: params.maxTokens,
-				temperature: params.temperature
+				maxOutputTokens: params.maxTokens,
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -286,13 +299,18 @@ export class BaseAIProvider {
 			);
 
 			const client = await this.getClient(params);
+
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: zodSchema(params.schema),
-				mode: params.mode || 'auto',
-				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				temperature: params.temperature
+				schema: params.schema,
+				mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
+				schemaName: params.objectName,
+				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
+				maxTokens: params.maxTokens,
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {})
 			});
 
 			log(
@@ -300,19 +318,26 @@ export class BaseAIProvider {
 				`${this.name} generateObject completed successfully for model: ${params.modelId}`
 			);
 
+			const inputTokens =
+				result.usage?.inputTokens ?? result.usage?.promptTokens ?? 0;
+			const outputTokens =
+				result.usage?.outputTokens ?? result.usage?.completionTokens ?? 0;
+			const totalTokens =
+				result.usage?.totalTokens ?? inputTokens + outputTokens;
+
 			return {
 				object: result.object,
 				usage: {
-					inputTokens: result.usage?.promptTokens,
-					outputTokens: result.usage?.completionTokens,
-					totalTokens: result.usage?.totalTokens
+					inputTokens,
+					outputTokens,
+					totalTokens
 				}
 			};
 		} catch (error) {
 			// Check if this is a JSON parsing error that we can potentially fix
 			if (
 				NoObjectGeneratedError.isInstance(error) &&
-				JSONParseError.isInstance(error.cause) &&
+				error.cause instanceof JSONParseError &&
 				error.cause.text
 			) {
 				log(

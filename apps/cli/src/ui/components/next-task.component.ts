@@ -6,6 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import type { Task } from '@tm/core/types';
+import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**
  * Next task display options
@@ -17,6 +18,7 @@ export interface NextTaskDisplayOptions {
 	status?: string;
 	dependencies?: (string | number)[];
 	description?: string;
+	complexity?: number;
 }
 
 /**
@@ -81,6 +83,11 @@ export function displayRecommendedNextTask(
 			? chalk.gray('None')
 			: chalk.cyan(task.dependencies.join(', '));
 	content.push(`Dependencies: ${depsDisplay}`);
+
+	// Complexity with color and label
+	if (typeof task.complexity === 'number') {
+		content.push(`Complexity: ${getComplexityWithColor(task.complexity)}`);
+	}
 
 	// Description if available
 	if (task.description) {

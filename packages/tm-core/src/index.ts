@@ -11,7 +11,9 @@ export {
 	type ListTasksResult,
 	type StartTaskOptions,
 	type StartTaskResult,
-	type ConflictCheckResult
+	type ConflictCheckResult,
+	type ExportTasksOptions,
+	type ExportResult
 } from './task-master-core.js';
 
 // Re-export types
@@ -61,3 +63,12 @@ export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
 
 // Re-export executors
 export * from './executors/index.js';
+
+// Re-export reports
+export {
+	ComplexityReportManager,
+	type ComplexityReport,
+	type ComplexityReportMetadata,
+	type ComplexityAnalysis,
+	type TaskComplexityData
+} from './reports/index.js';

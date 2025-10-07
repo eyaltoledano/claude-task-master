@@ -69,6 +69,30 @@
 			"supported": true
 		}
 	],
+	"codex-cli": [
+		{
+			"id": "gpt-5",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-5-codex",
+			"swe_score": 0.749,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		}
+	],
 	"mcp": [
 		{
 			"id": "mcp-sampling",
@@ -522,7 +546,7 @@
 			"supported": true
 		},
 		{
-			"id": "deep-research",
+			"id": "sonar-deep-research",
 			"swe_score": 0.211,
 			"cost_per_1m_tokens": {
 				"input": 2,

@@ -122,7 +122,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
 
 	// Providers without API keys
-	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli']
+	providersWithoutApiKeys: ['ollama', 'bedrock', 'gemini-cli', 'codex-cli']
 }));
 
 // Mock AI Provider Classes with proper methods
@@ -155,6 +155,24 @@ const mockOllamaProvider = {
 	streamText: jest.fn(),
 	generateObject: jest.fn(),
 	getRequiredApiKeyName: jest.fn(() => null),
+	isRequiredApiKey: jest.fn(() => false)
+};
+
+// Codex CLI mock provider instance
+const mockCodexProvider = {
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
+	isRequiredApiKey: jest.fn(() => false)
+};
+
+// Claude Code mock provider instance
+const mockClaudeProvider = {
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
 	isRequiredApiKey: jest.fn(() => false)
 };
 
@@ -213,13 +231,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => null),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
-	ClaudeCodeProvider: jest.fn(() => ({
-		generateText: jest.fn(),
-		streamText: jest.fn(),
-		generateObject: jest.fn(),
-		getRequiredApiKeyName: jest.fn(() => 'CLAUDE_CODE_API_KEY'),
-		isRequiredApiKey: jest.fn(() => false)
-	})),
+	ClaudeCodeProvider: jest.fn(() => mockClaudeProvider),
 	GeminiCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
@@ -227,6 +239,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
+	CodexCliProvider: jest.fn(() => mockCodexProvider),
 	GrokCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
@@ -808,6 +821,113 @@ describe('Unified AI Services', () => {
 
 			// Should have gotten the anthropic response
 			expect(result.mainResult).toBe('Anthropic response with session key');
+		});
+
+		// --- Codex CLI specific tests ---
+		test('should use codex-cli provider without API key (OAuth)', async () => {
+			// Arrange codex-cli as main provider
+			mockGetMainProvider.mockReturnValue('codex-cli');
+			mockGetMainModelId.mockReturnValue('gpt-5-codex');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 128000,
+				temperature: 1
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			// No API key in env
+			mockResolveEnvVariable.mockReturnValue(null);
+			// Mock codex generateText response
+			mockCodexProvider.generateText.mockResolvedValueOnce({
+				text: 'ok',
+				usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Codex',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok');
+			expect(mockCodexProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'gpt-5-codex',
+					apiKey: null,
+					maxTokens: 128000
+				})
+			);
+		});
+
+		test('should pass apiKey to codex-cli when provided', async () => {
+			// Arrange codex-cli as main provider
+			mockGetMainProvider.mockReturnValue('codex-cli');
+			mockGetMainModelId.mockReturnValue('gpt-5-codex');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 128000,
+				temperature: 1
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			// Provide API key via env resolver
+			mockResolveEnvVariable.mockReturnValue('sk-test');
+			// Mock codex generateText response
+			mockCodexProvider.generateText.mockResolvedValueOnce({
+				text: 'ok-with-key',
+				usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Codex',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok-with-key');
+			expect(mockCodexProvider.generateText).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'gpt-5-codex',
+					apiKey: 'sk-test'
+				})
+			);
+		});
+
+		// --- Claude Code specific test ---
+		test('should pass temperature to claude-code provider (provider handles filtering)', async () => {
+			mockGetMainProvider.mockReturnValue('claude-code');
+			mockGetMainModelId.mockReturnValue('sonnet');
+			mockGetParametersForRole.mockReturnValue({
+				maxTokens: 64000,
+				temperature: 0.7
+			});
+			mockGetResponseLanguage.mockReturnValue('English');
+			mockResolveEnvVariable.mockReturnValue(null);
+
+			mockClaudeProvider.generateText.mockResolvedValueOnce({
+				text: 'ok-claude',
+				usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 }
+			});
+
+			const { generateTextService } = await import(
+				'../../scripts/modules/ai-services-unified.js'
+			);
+
+			const result = await generateTextService({
+				role: 'main',
+				prompt: 'Hello Claude',
+				projectRoot: fakeProjectRoot
+			});
+
+			expect(result.mainResult).toBe('ok-claude');
+			// The provider (BaseAIProvider) is responsible for filtering it based on supportsTemperature
+			const callArgs = mockClaudeProvider.generateText.mock.calls[0][0];
+			expect(callArgs).toHaveProperty('temperature', 0.7);
+			expect(callArgs.maxTokens).toBe(64000);
 		});
 	});
 });

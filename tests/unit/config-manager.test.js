@@ -149,6 +149,7 @@ const DEFAULT_CONFIG = {
 		responseLanguage: 'English'
 	},
 	claudeCode: {},
+	codexCli: {},
 	grokCli: {
 		timeout: 120000,
 		workingDirectory: null,
@@ -642,7 +643,8 @@ describe('getConfig Tests', () => {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
 			},
-			grokCli: { ...DEFAULT_CONFIG.grokCli }
+			grokCli: { ...DEFAULT_CONFIG.grokCli },
+			codexCli: { ...DEFAULT_CONFIG.codexCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsExistsSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH);
@@ -685,7 +687,8 @@ describe('getConfig Tests', () => {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
 			},
-			grokCli: { ...DEFAULT_CONFIG.grokCli }
+			grokCli: { ...DEFAULT_CONFIG.grokCli },
+			codexCli: { ...DEFAULT_CONFIG.codexCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 		expect(fsReadFileSyncSpy).toHaveBeenCalledWith(MOCK_CONFIG_PATH, 'utf-8');
@@ -794,7 +797,8 @@ describe('getConfig Tests', () => {
 				...DEFAULT_CONFIG.claudeCode,
 				...VALID_CUSTOM_CONFIG.claudeCode
 			},
-			grokCli: { ...DEFAULT_CONFIG.grokCli }
+			grokCli: { ...DEFAULT_CONFIG.grokCli },
+			codexCli: { ...DEFAULT_CONFIG.codexCli }
 		};
 		expect(config).toEqual(expectedMergedConfig);
 	});

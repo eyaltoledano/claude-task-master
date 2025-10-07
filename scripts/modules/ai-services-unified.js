@@ -41,6 +41,7 @@ import {
 	AzureProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
+	CodexCliProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GrokCliProvider,
@@ -70,6 +71,7 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
+	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider()
 };
@@ -93,31 +95,55 @@ function _getProvider(providerName) {
 
 // Helper function to get cost for a specific model
 function _getCostForModel(providerName, modelId) {
-	const DEFAULT_COST = { inputCost: 0, outputCost: 0, currency: 'USD' };
+	const DEFAULT_COST = {
+		inputCost: 0,
+		outputCost: 0,
+		currency: 'USD',
+		isUnknown: false
+	};
 
 	if (!MODEL_MAP || !MODEL_MAP[providerName]) {
 		log(
 			'warn',
 			`Provider "${providerName}" not found in MODEL_MAP. Cannot determine cost for model ${modelId}.`
 		);
-		return DEFAULT_COST;
+		return { ...DEFAULT_COST, isUnknown: true };
 	}
 
 	const modelData = MODEL_MAP[providerName].find((m) => m.id === modelId);
 
-	if (!modelData?.cost_per_1m_tokens) {
+	if (!modelData) {
 		log(
 			'debug',
-			`Cost data not found for model "${modelId}" under provider "${providerName}". Assuming zero cost.`
+			`Model "${modelId}" not found under provider "${providerName}". Assuming unknown cost.`
 		);
-		return DEFAULT_COST;
+		return { ...DEFAULT_COST, isUnknown: true };
+	}
+
+	// Check if cost_per_1m_tokens is explicitly null (unknown pricing)
+	if (modelData.cost_per_1m_tokens === null) {
+		log(
+			'debug',
+			`Cost data is null for model "${modelId}" under provider "${providerName}". Pricing unknown.`
+		);
+		return { ...DEFAULT_COST, isUnknown: true };
+	}
+
+	// Check if cost_per_1m_tokens is missing/undefined (also unknown)
+	if (modelData.cost_per_1m_tokens === undefined) {
+		log(
+			'debug',
+			`Cost data not found for model "${modelId}" under provider "${providerName}". Pricing unknown.`
+		);
+		return { ...DEFAULT_COST, isUnknown: true };
 	}
 
 	const costs = modelData.cost_per_1m_tokens;
 	return {
 		inputCost: costs.input || 0,
 		outputCost: costs.output || 0,
-		currency: costs.currency || 'USD'
+		currency: costs.currency || 'USD',
+		isUnknown: false
 	};
 }
 
@@ -867,8 +893,8 @@ async function logAiUsage({
 		const timestamp = new Date().toISOString();
 		const totalTokens = (inputTokens || 0) + (outputTokens || 0);
 
-		// Destructure currency along with costs
-		const { inputCost, outputCost, currency } = _getCostForModel(
+		// Destructure currency along with costs and unknown flag
+		const { inputCost, outputCost, currency, isUnknown } = _getCostForModel(
 			providerName,
 			modelId
 		);
@@ -890,7 +916,8 @@ async function logAiUsage({
 			outputTokens: outputTokens || 0,
 			totalTokens,
 			totalCost,
-			currency // Add currency to the telemetry data
+			currency, // Add currency to the telemetry data
+			isUnknownCost: isUnknown // Flag to indicate if pricing is unknown
 		};
 
 		if (getDebugFlag()) {

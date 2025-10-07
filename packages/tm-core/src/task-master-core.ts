@@ -14,7 +14,14 @@ import {
 	type StartTaskResult,
 	type ConflictCheckResult
 } from './services/task-execution-service.js';
+import {
+	ExportService,
+	type ExportTasksOptions,
+	type ExportResult
+} from './services/export.service.js';
+import { AuthManager } from './auth/auth-manager.js';
 import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
+import type { UserContext } from './auth/types.js';
 import type { IConfiguration } from './interfaces/configuration.interface.js';
 import type {
 	Task,
@@ -47,6 +54,10 @@ export type {
 	StartTaskResult,
 	ConflictCheckResult
 } from './services/task-execution-service.js';
+export type {
+	ExportTasksOptions,
+	ExportResult
+} from './services/export.service.js';
 
 /**
  * TaskMasterCore facade class
@@ -56,6 +67,7 @@ export class TaskMasterCore {
 	private configManager: ConfigManager;
 	private taskService: TaskService;
 	private taskExecutionService: TaskExecutionService;
+	private exportService: ExportService;
 	private executorService: ExecutorService | null = null;
 
 	/**
@@ -80,6 +92,7 @@ export class TaskMasterCore {
 		this.configManager = null as any;
 		this.taskService = null as any;
 		this.taskExecutionService = null as any;
+		this.exportService = null as any;
 	}
 
 	/**
@@ -109,6 +122,10 @@ export class TaskMasterCore {
 
 			// Create task execution service
 			this.taskExecutionService = new TaskExecutionService(this.taskService);
+
+			// Create export service
+			const authManager = AuthManager.getInstance();
+			this.exportService = new ExportService(this.configManager, authManager);
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TaskMasterCore',
@@ -240,6 +257,33 @@ export class TaskMasterCore {
 	 */
 	async getNextAvailableTask(): Promise<string | null> {
 		return this.taskExecutionService.getNextAvailableTask();
+	}
+
+	// ==================== Export Service Methods ====================
+
+	/**
+	 * Export tasks to an external system (e.g., Hamster brief)
+	 */
+	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
+		return this.exportService.exportTasks(options);
+	}
+
+	/**
+	 * Export tasks from a brief ID or URL
+	 */
+	async exportFromBriefInput(briefInput: string): Promise<ExportResult> {
+		return this.exportService.exportFromBriefInput(briefInput);
+	}
+
+	/**
+	 * Validate export context before prompting
+	 */
+	async validateExportContext(): Promise<{
+		hasOrg: boolean;
+		hasBrief: boolean;
+		context: UserContext | null;
+	}> {
+		return this.exportService.validateContext();
 	}
 
 	// ==================== Executor Service Methods ====================

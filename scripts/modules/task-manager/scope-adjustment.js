@@ -355,7 +355,7 @@ Ensure the JSON is valid and properly formatted.`;
 		const subtaskSchema = z.object({
 			subtasks: z.array(
 				z.object({
-					id: z.number().int().positive(),
+					id: z.int().positive(),
 					title: z.string().min(5),
 					description: z.string().min(10),
 					dependencies: z.array(z.string()),
@@ -386,14 +386,44 @@ Ensure the JSON is valid and properly formatted.`;
 			testStrategy: subtask.testStrategy || ''
 		}));
 
+		// Ensure new subtasks have unique sequential IDs after the preserved ones
+		const maxPreservedId = preservedSubtasks.reduce(
+			(max, st) => Math.max(max, st.id || 0),
+			0
+		);
+		let nextId = maxPreservedId + 1;
+		const idMapping = new Map();
+		const normalizedGeneratedSubtasks = processedGeneratedSubtasks
+			.map((st) => {
+				const originalId = st.id;
+				const newId = nextId++;
+				idMapping.set(originalId, newId);
+				return {
+					...st,
+					id: newId
+				};
+			})
+			.map((st) => ({
+				...st,
+				dependencies: (st.dependencies || []).map((dep) => {
+					if (typeof dep !== 'string' || !dep.startsWith(`${task.id}.`)) {
+						return dep;
+					}
+					const [, siblingIdPart] = dep.split('.');
+					const originalSiblingId = Number.parseInt(siblingIdPart, 10);
+					const remappedSiblingId = idMapping.get(originalSiblingId);
+					return remappedSiblingId ? `${task.id}.${remappedSiblingId}` : dep;
+				})
+			}));
+
 		// Update task with preserved subtasks + newly generated ones
-		task.subtasks = [...preservedSubtasks, ...processedGeneratedSubtasks];
+		task.subtasks = [...preservedSubtasks, ...normalizedGeneratedSubtasks];
 
 		return {
 			updatedTask: task,
 			regenerated: true,
 			preserved: preservedSubtasks.length,
-			generated: processedGeneratedSubtasks.length
+			generated: normalizedGeneratedSubtasks.length
 		};
 	} catch (error) {
 		log(

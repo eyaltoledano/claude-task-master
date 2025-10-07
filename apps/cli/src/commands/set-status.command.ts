@@ -258,9 +258,6 @@ export class SetStatusCommand extends Command {
 				)
 			);
 		}
-
-		// Show storage info
-		console.log(chalk.gray(`\nUsing ${result.storageType} storage`));
 	}
 
 	/**
@@ -290,18 +287,7 @@ export class SetStatusCommand extends Command {
 	}
 
 	/**
-	 * Static method to register this command on an existing program
-	 * This is for gradual migration - allows commands.js to use this
-	 */
-	static registerOn(program: Command): Command {
-		const setStatusCommand = new SetStatusCommand();
-		program.addCommand(setStatusCommand);
-		return setStatusCommand;
-	}
-
-	/**
-	 * Alternative registration that returns the command for chaining
-	 * Can also configure the command name if needed
+	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): SetStatusCommand {
 		const setStatusCommand = new SetStatusCommand(name);

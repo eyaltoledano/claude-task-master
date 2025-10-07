@@ -33,6 +33,9 @@ export class TaskEntity implements Task {
 	tags?: string[];
 	assignee?: string;
 	complexity?: Task['complexity'];
+	recommendedSubtasks?: number;
+	expansionPrompt?: string;
+	complexityReasoning?: string;
 
 	constructor(data: Task | (Omit<Task, 'id'> & { id: number | string })) {
 		this.validate(data);
@@ -50,7 +53,7 @@ export class TaskEntity implements Task {
 		// Normalize subtask IDs to strings
 		this.subtasks = (data.subtasks || []).map((subtask) => ({
 			...subtask,
-			id: Number(subtask.id), // Keep subtask IDs as numbers per interface
+			id: String(subtask.id),
 			parentId: String(subtask.parentId)
 		}));
 
@@ -62,6 +65,9 @@ export class TaskEntity implements Task {
 		this.tags = data.tags;
 		this.assignee = data.assignee;
 		this.complexity = data.complexity;
+		this.recommendedSubtasks = data.recommendedSubtasks;
+		this.expansionPrompt = data.expansionPrompt;
+		this.complexityReasoning = data.complexityReasoning;
 	}
 
 	/**
@@ -246,7 +252,10 @@ export class TaskEntity implements Task {
 			actualEffort: this.actualEffort,
 			tags: this.tags,
 			assignee: this.assignee,
-			complexity: this.complexity
+			complexity: this.complexity,
+			recommendedSubtasks: this.recommendedSubtasks,
+			expansionPrompt: this.expansionPrompt,
+			complexityReasoning: this.complexityReasoning
 		};
 	}
 

@@ -35,7 +35,7 @@
 		"@types/inquirer": "^9.0.3",
 		"@types/node": "^22.10.5",
 		"tsx": "^4.20.4",
-		"typescript": "^5.7.3",
+		"typescript": "^5.9.2",
 		"vitest": "^2.1.8"
 	},
 	"engines": {

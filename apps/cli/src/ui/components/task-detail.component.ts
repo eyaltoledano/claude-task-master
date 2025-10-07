@@ -9,7 +9,11 @@ import Table from 'cli-table3';
 import { marked, MarkedExtension } from 'marked';
 import { markedTerminal } from 'marked-terminal';
 import type { Task } from '@tm/core/types';
-import { getStatusWithColor, getPriorityWithColor } from '../../utils/ui.js';
+import {
+	getStatusWithColor,
+	getPriorityWithColor,
+	getComplexityWithColor
+} from '../../utils/ui.js';
 
 // Configure marked to use terminal renderer with subtle colors
 marked.use(
@@ -108,7 +112,9 @@ export function displayTaskProperties(task: Task): void {
 		getStatusWithColor(task.status),
 		getPriorityWithColor(task.priority),
 		deps,
-		'N/A',
+		typeof task.complexity === 'number'
+			? getComplexityWithColor(task.complexity)
+			: chalk.gray('N/A'),
 		task.description || ''
 	].join('\n');
 
@@ -186,8 +192,7 @@ export function displaySubtasks(
 		status: any;
 		description?: string;
 		dependencies?: string[];
-	}>,
-	parentId: string | number
+	}>
 ): void {
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
 	// Display subtasks header
@@ -222,7 +227,7 @@ export function displaySubtasks(
 	});
 
 	subtasks.forEach((subtask) => {
-		const subtaskId = `${parentId}.${subtask.id}`;
+		const subtaskId = String(subtask.id);
 
 		// Format dependencies
 		const deps =
@@ -323,7 +328,7 @@ export function displayTaskDetails(
 			console.log(chalk.gray(`  No subtasks with status '${statusFilter}'`));
 		} else if (filteredSubtasks.length > 0) {
 			console.log(); // Empty line for spacing
-			displaySubtasks(filteredSubtasks, task.id);
+			displaySubtasks(filteredSubtasks);
 		}
 	}
 

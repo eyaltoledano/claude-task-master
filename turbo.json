@@ -5,7 +5,8 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"],
-			"outputLogs": "new-only"
+			"outputLogs": "new-only",
+			"env": ["NODE_ENV", "TM_PUBLIC_*"]
 		},
 		"dev": {
 			"cache": false,

@@ -12,17 +12,11 @@ import https from 'https';
 import http from 'http';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
-import ora from 'ora'; // Import ora
 
 import { log, readJSON } from './utils.js';
-// Import new commands from @tm/cli
+// Import command registry and utilities from @tm/cli
 import {
-	ListTasksCommand,
-	ShowCommand,
-	AuthCommand,
-	ContextCommand,
-	StartCommand,
-	SetStatusCommand,
+	registerAllCommands,
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification
@@ -32,7 +26,6 @@ import {
 	parsePRD,
 	updateTasks,
 	generateTaskFiles,
-	listTasks,
 	expandTask,
 	expandAllTasks,
 	clearSubtasks,
@@ -53,11 +46,7 @@ import {
 	validateStrength
 } from './task-manager.js';
 
-import {
-	moveTasksBetweenTags,
-	MoveTaskError,
-	MOVE_ERROR_CODES
-} from './task-manager/move-task.js';
+import { moveTasksBetweenTags } from './task-manager/move-task.js';
 
 import {
 	createTag,
@@ -72,9 +61,7 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand,
-	DependencyError,
-	DEPENDENCY_ERROR_CODES
+	fixDependenciesCommand
 } from './dependency-manager.js';
 
 import {
@@ -103,7 +90,6 @@ import {
 	displayBanner,
 	displayHelp,
 	displayNextTask,
-	displayTaskById,
 	displayComplexityReport,
 	getStatusWithColor,
 	confirmTaskOverwrite,
@@ -112,8 +98,6 @@ import {
 	displayModelConfiguration,
 	displayAvailableModels,
 	displayApiKeyStatus,
-	displayAiUsageSummary,
-	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
 	displayCurrentTagIndicator,
 	displayCrossTagDependencyError,
@@ -137,10 +121,6 @@ import {
 	setModel,
 	getApiKeyStatusReport
 } from './task-manager/models.js';
-import {
-	isValidTaskStatus,
-	TASK_STATUS_OPTIONS
-} from '../../src/constants/task-status.js';
 import {
 	isValidRulesAction,
 	RULES_ACTIONS,
@@ -1687,29 +1667,12 @@ function registerCommands(programInstance) {
 			});
 		});
 
-	// Register the set-status command from @tm/cli
-	// Handles task status updates with proper error handling and validation
-	SetStatusCommand.registerOn(programInstance);
-
-	// NEW: Register the new list command from @tm/cli
-	// This command handles all its own configuration and logic
-	ListTasksCommand.registerOn(programInstance);
-
-	// Register the auth command from @tm/cli
-	// Handles authentication with tryhamster.com
-	AuthCommand.registerOn(programInstance);
-
-	// Register the context command from @tm/cli
-	// Manages workspace context (org/brief selection)
-	ContextCommand.registerOn(programInstance);
-
-	// Register the show command from @tm/cli
-	// Displays detailed information about tasks
-	ShowCommand.registerOn(programInstance);
-
-	// Register the start command from @tm/cli
-	// Starts working on a task by launching claude-code with a standardized prompt
-	StartCommand.registerOn(programInstance);
+	// ========================================
+	// Register All Commands from @tm/cli
+	// ========================================
+	// Use the centralized command registry to register all CLI commands
+	// This replaces individual command registrations and reduces duplication
+	registerAllCommands(programInstance);
 
 	// expand command
 	programInstance
@@ -1847,7 +1810,7 @@ function registerCommands(programInstance) {
 		)
 		.option(
 			'-r, --research',
-			'Use Perplexity AI for research-backed complexity analysis'
+			'Use configured research model for research-backed complexity analysis'
 		)
 		.option(
 			'-i, --id <ids>',
@@ -3586,6 +3549,10 @@ ${result.result}
 			'--gemini-cli',
 			'Allow setting a Gemini CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--codex-cli',
+			'Allow setting a Codex CLI model ID (use with --set-*)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3601,6 +3568,7 @@ Examples:
   $ task-master models --set-main gpt-4o --azure # Set custom Azure OpenAI model for main role
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
+  $ task-master models --set-main gpt-5-codex --codex-cli     # Set Codex CLI model for main role
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3617,12 +3585,13 @@ Examples:
 				options.ollama,
 				options.bedrock,
 				options.claudeCode,
-				options.geminiCli
+				options.geminiCli,
+				options.codexCli
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --codex-cli) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3668,7 +3637,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.codexCli
+												? 'codex-cli'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3694,7 +3665,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.codexCli
+												? 'codex-cli'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3722,7 +3695,9 @@ Examples:
 										? 'claude-code'
 										: options.geminiCli
 											? 'gemini-cli'
-											: undefined
+											: options.codexCli
+												? 'codex-cli'
+												: undefined
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

@@ -41,8 +41,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install Extension Dependencies
-        working-directory: apps/extension
+      - name: Install Monorepo Dependencies
         run: npm ci
         timeout-minutes: 5
 
@@ -68,7 +67,6 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install if cache miss
-        working-directory: apps/extension
         run: npm ci
         timeout-minutes: 3
 
@@ -100,7 +98,6 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install if cache miss
-        working-directory: apps/extension
         run: npm ci
         timeout-minutes: 3
 

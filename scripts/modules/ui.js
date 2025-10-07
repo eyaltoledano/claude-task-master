@@ -2310,7 +2310,8 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 		outputTokens,
 		totalTokens,
 		totalCost,
-		commandName
+		commandName,
+		isUnknownCost
 	} = telemetryData;
 
 	let summary = chalk.bold.blue('AI Usage Summary:') + '\n';
@@ -2320,7 +2321,10 @@ function displayAiUsageSummary(telemetryData, outputType = 'cli') {
 	summary += chalk.gray(
 		`  Tokens: ${totalTokens} (Input: ${inputTokens}, Output: ${outputTokens})\n`
 	);
-	summary += chalk.gray(`  Est. Cost: $${totalCost.toFixed(6)}`);
+
+	// Show "Unknown" if pricing data is not available, otherwise show the cost
+	const costDisplay = isUnknownCost ? 'Unknown' : `$${totalCost.toFixed(6)}`;
+	summary += chalk.gray(`  Est. Cost: ${costDisplay}`);
 
 	console.log(
 		boxen(summary, {

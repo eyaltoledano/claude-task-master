@@ -3,7 +3,7 @@
  * AI provider implementation for Grok models using Grok CLI.
  */
 
-import { createGrokCli } from './custom-sdk/grok-cli/index.js';
+import { createGrokCli } from '@tm/ai-sdk-provider-grok-cli';
 import { BaseAIProvider } from './base-provider.js';
 import { getGrokCliSettingsForCommand } from '../../scripts/modules/config-manager.js';
 
@@ -11,6 +11,10 @@ export class GrokCliProvider extends BaseAIProvider {
 	constructor() {
 		super();
 		this.name = 'Grok CLI';
+		// Grok CLI requires explicit JSON schema mode
+		this.needsExplicitJsonSchema = true;
+		// Grok CLI does not support temperature parameter
+		this.supportsTemperature = false;
 	}
 
 	/**

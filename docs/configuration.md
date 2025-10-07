@@ -235,6 +235,60 @@ node scripts/init.js
    - "MCP provider requires session context" → Ensure running in MCP environment
    - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshooting
 
+### MCP Timeout Configuration
+
+Long-running AI operations in taskmaster-ai can exceed the default 60-second MCP timeout. Operations like `parse_prd`, `expand_task`, `research`, and `analyze_project_complexity` may take 2-5 minutes to complete.
+
+#### Adding Timeout Configuration
+
+Add a `timeout` parameter to your MCP configuration to extend the timeout limit. The timeout configuration works identically across MCP clients including Cursor, Windsurf, and RooCode:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "timeout": 300,
+      "env": {
+        "ANTHROPIC_API_KEY": "your-anthropic-api-key"
+      }
+    }
+  }
+}
+```
+
+**Configuration Details:**
+- **`timeout: 300`** - Sets timeout to 300 seconds (5 minutes)
+- **Value range**: 1-3600 seconds (1 second to 1 hour)
+- **Recommended**: 300 seconds provides sufficient time for most AI operations
+- **Format**: Integer value in seconds (not milliseconds)
+
+#### Automatic Setup
+
+When adding taskmaster rules for supported editors, the timeout configuration is automatically included:
+
+```bash
+# Automatically includes timeout configuration
+task-master rules add cursor
+task-master rules add roo
+task-master rules add windsurf
+task-master rules add vscode
+```
+
+#### Troubleshooting Timeouts
+
+If you're still experiencing timeout errors:
+
+1. **Verify configuration**: Check that `timeout: 300` is present in your MCP config
+2. **Restart editor**: Restart your editor after making configuration changes
+3. **Increase timeout**: For very complex operations, try `timeout: 600` (10 minutes)
+4. **Check API keys**: Ensure required API keys are properly configured
+
+**Expected behavior:**
+- **Before fix**: Operations fail after 60 seconds with `MCP request timed out after 60000ms`
+- **After fix**: Operations complete successfully within the configured timeout limit
+
 ### Google Vertex AI Configuration
 
 Google Vertex AI is Google Cloud's enterprise AI platform and requires specific configuration:
@@ -375,3 +429,153 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    - Verify the deployment name matches your configuration exactly (case-sensitive)
    - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
    - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.
+
+### Codex CLI Provider
+
+The Codex CLI provider integrates Task Master with OpenAI's Codex CLI, allowing you to use ChatGPT subscription models via OAuth authentication.
+
+1. **Prerequisites**:
+   - Node.js >= 18
+   - Codex CLI >= 0.42.0 (>= 0.44.0 recommended)
+   - ChatGPT subscription: Plus, Pro, Business, Edu, or Enterprise (for OAuth access to GPT-5 models)
+
+2. **Installation**:
+   ```bash
+   npm install -g @openai/codex
+   ```
+
+3. **Authentication** (OAuth - Primary Method):
+   ```bash
+   codex login
+   ```
+   This will open a browser window for OAuth authentication with your ChatGPT account. Once authenticated, Task Master will automatically use these credentials.
+
+4. **Optional API Key Method**:
+   While OAuth is the primary and recommended authentication method, you can optionally set an OpenAI API key:
+   ```bash
+   # In .env file
+   OPENAI_API_KEY=sk-your-openai-api-key-here
+   ```
+   **Note**: The API key will only be injected if explicitly provided. OAuth is always preferred.
+
+5. **Configuration**:
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "codex-cli",
+         "modelId": "gpt-5-codex",
+         "maxTokens": 128000,
+         "temperature": 0.2
+       },
+       "fallback": {
+         "provider": "codex-cli",
+         "modelId": "gpt-5",
+         "maxTokens": 128000,
+         "temperature": 0.2
+       }
+     },
+     "codexCli": {
+       "allowNpx": true,
+       "skipGitRepoCheck": true,
+       "approvalMode": "on-failure",
+       "sandboxMode": "workspace-write"
+     }
+   }
+   ```
+
+6. **Available Models**:
+   - `gpt-5` - Latest GPT-5 model (272K max input, 128K max output)
+   - `gpt-5-codex` - GPT-5 optimized for agentic software engineering (272K max input, 128K max output)
+
+7. **Codex CLI Settings (`codexCli` section)**:
+
+   The `codexCli` section in your configuration file supports the following options:
+
+   - **`allowNpx`** (boolean, default: `false`): Allow fallback to `npx @openai/codex` if CLI not found on PATH
+   - **`skipGitRepoCheck`** (boolean, default: `false`): Skip git repository safety check (recommended for CI/non-repo usage)
+   - **`approvalMode`** (string): Control command execution approval
+     - `"untrusted"`: Require approval for all commands
+     - `"on-failure"`: Only require approval after a command fails (default)
+     - `"on-request"`: Approve only when explicitly requested
+     - `"never"`: Never require approval (not recommended)
+   - **`sandboxMode`** (string): Control filesystem access
+     - `"read-only"`: Read-only access
+     - `"workspace-write"`: Allow writes to workspace (default)
+     - `"danger-full-access"`: Full filesystem access (use with caution)
+   - **`codexPath`** (string, optional): Custom path to codex CLI executable
+   - **`cwd`** (string, optional): Working directory for Codex CLI execution
+   - **`fullAuto`** (boolean, optional): Fully automatic mode (equivalent to `--full-auto` flag)
+   - **`dangerouslyBypassApprovalsAndSandbox`** (boolean, optional): Bypass all safety checks (dangerous!)
+   - **`color`** (string, optional): Color handling - `"always"`, `"never"`, or `"auto"`
+   - **`outputLastMessageFile`** (string, optional): Write last agent message to specified file
+   - **`verbose`** (boolean, optional): Enable verbose logging
+   - **`env`** (object, optional): Additional environment variables for Codex CLI
+
+8. **Command-Specific Settings** (optional):
+   You can override settings for specific Task Master commands:
+   ```json
+   {
+     "codexCli": {
+       "allowNpx": true,
+       "approvalMode": "on-failure",
+       "commandSpecific": {
+         "parse-prd": {
+           "approvalMode": "never",
+           "verbose": true
+         },
+         "expand": {
+           "sandboxMode": "read-only"
+         }
+       }
+     }
+   }
+   ```
+
+9. **Codebase Features**:
+   The Codex CLI provider is codebase-capable, meaning it can analyze and interact with your project files. Codebase analysis features are automatically enabled when using `codex-cli` as your provider and `enableCodebaseAnalysis` is set to `true` in your global configuration (default).
+
+10. **Setup Commands**:
+    ```bash
+    # Set Codex CLI for main role
+    task-master models --set-main gpt-5-codex --codex-cli
+
+    # Set Codex CLI for fallback role
+    task-master models --set-fallback gpt-5 --codex-cli
+
+    # Verify configuration
+    task-master models
+    ```
+
+11. **Troubleshooting**:
+
+    **"codex: command not found" error:**
+    - Install Codex CLI globally: `npm install -g @openai/codex`
+    - Verify installation: `codex --version`
+    - Alternatively, enable `allowNpx: true` in your codexCli configuration
+
+    **"Not logged in" errors:**
+    - Run `codex login` to authenticate with your ChatGPT account
+    - Verify authentication status: `codex` (opens interactive CLI)
+
+    **"Old version" warnings:**
+    - Check version: `codex --version`
+    - Upgrade: `npm install -g @openai/codex@latest`
+    - Minimum version: 0.42.0, recommended: >= 0.44.0
+
+    **"Model not available" errors:**
+    - Only `gpt-5` and `gpt-5-codex` are available via OAuth subscription
+    - Verify your ChatGPT subscription is active
+    - For other OpenAI models, use the standard `openai` provider with an API key
+
+    **API key not being used:**
+    - API key is only injected when explicitly provided
+    - OAuth authentication is always preferred
+    - If you want to use an API key, ensure `OPENAI_API_KEY` is set in your `.env` file
+
+12. **Important Notes**:
+    - OAuth subscription required for model access (no API key needed for basic operation)
+    - Limited to OAuth-available models only (`gpt-5` and `gpt-5-codex`)
+    - Pricing information is not available for OAuth models (shows as "Unknown" in cost calculations)
+    - See [Codex CLI Provider Documentation](./providers/codex-cli.md) for more details

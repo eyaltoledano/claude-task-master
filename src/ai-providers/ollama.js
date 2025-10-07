@@ -1,9 +1,9 @@
 /**
  * ollama.js
- * AI provider implementation for Ollama models using the ollama-ai-provider package.
+ * AI provider implementation for Ollama models using the ollama-ai-provider-v2 package.
  */
 
-import { createOllama } from 'ollama-ai-provider';
+import { createOllama } from 'ollama-ai-provider-v2';
 import { BaseAIProvider } from './base-provider.js';
 
 export class OllamaAIProvider extends BaseAIProvider {

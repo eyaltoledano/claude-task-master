@@ -1,8 +1,10 @@
 import { defineConfig } from 'tsdown';
 import { baseConfig, mergeConfig } from '@tm/build-config';
-import { load as dotenvLoad } from 'dotenv-mono';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 
-dotenvLoad();
+// Load .env file explicitly with absolute path
+config({ path: resolve(process.cwd(), '.env') });
 
 // Get all TM_PUBLIC_* env variables for build-time injection
 const getBuildTimeEnvs = () => {
@@ -21,10 +23,10 @@ const getBuildTimeEnvs = () => {
 
 	for (const [key, value] of Object.entries(process.env)) {
 		if (key.startsWith('TM_PUBLIC_')) {
-			// Return the actual value, not JSON.stringify'd
 			envs[key] = value || '';
 		}
 	}
+
 	return envs;
 };
 
