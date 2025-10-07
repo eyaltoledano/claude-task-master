@@ -8,7 +8,22 @@ When using Task Master with the Claude Code provider in a corporate environment,
 
 ## Configuration
 
-### Method 1: Configuration File (Recommended)
+Task Master supports two methods for configuring proxies, with different scopes:
+
+### Method 1: Global Environment Variables
+
+Set proxy environment variables in your shell configuration file (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+export http_proxy="http://proxy.company.com:8080"
+export https_proxy="http://proxy.company.com:8080"
+export HTTP_PROXY="http://proxy.company.com:8080"
+export HTTPS_PROXY="http://proxy.company.com:8080"
+```
+
+This applies proxy settings to **all projects** automatically. Task Master will automatically detect and use these environment variables when invoking Claude Code CLI.
+
+### Method 2: Per-Project Configuration File
 
 Add proxy environment variables to your `.taskmaster/config.json` file:
 
@@ -31,7 +46,20 @@ Add proxy environment variables to your `.taskmaster/config.json` file:
 }
 ```
 
-### Method 2: Command-Specific Configuration
+### Configuration Priority
+
+When both methods are used, **project configuration takes precedence** over environment variables:
+
+1. **Highest Priority**: `.taskmaster/config.json` `claudeCode.env` settings
+2. **Lower Priority**: Shell environment variables (`http_proxy`, etc.)
+
+This allows you to:
+- Set a default corporate proxy globally in your shell
+- Override it for specific projects if needed
+
+**Example**: If your shell has `http_proxy=http://proxy.company.com:8080` but your project config has `http_proxy=http://proxy-alt.company.com:9090`, Task Master will use `proxy-alt.company.com:9090` for that project.
+
+### Method 3: Command-Specific Configuration
 
 If you need different proxy settings for specific commands:
 
