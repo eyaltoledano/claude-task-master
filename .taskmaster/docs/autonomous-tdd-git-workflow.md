@@ -637,6 +637,56 @@ Each test run stores detailed results:
 }
 ```
 
+## Execution Model
+
+### Orchestration vs Direct Execution
+
+The autopilot system uses an **orchestration model** rather than direct code execution:
+
+**Orchestrator Role** (tm-core WorkflowOrchestrator):
+- Maintains state machine tracking current phase (RED/GREEN/COMMIT) per subtask
+- Validates preconditions (tests pass, git state clean, etc.)
+- Returns "work units" describing what needs to be done next
+- Records completion and advances to next phase
+- Persists state for resumability
+
+**Executor Role** (Claude Code/AI session via MCP):
+- Queries orchestrator for next work unit
+- Executes the work (generates tests, writes code, runs tests, makes commits)
+- Reports results back to orchestrator
+- Handles file operations and tool invocations
+
+**Why This Approach?**
+- Leverages existing AI capabilities (Claude Code) rather than duplicating them
+- MCP protocol provides clean separation between state management and execution
+- Allows human oversight and intervention at each phase
+- Simpler to implement: orchestrator is pure state logic, no code generation needed
+- Enables multiple executor types (Claude Code, other AI tools, human developers)
+
+**Example Flow**:
+```typescript
+// Claude Code (via MCP) queries orchestrator
+const workUnit = await orchestrator.getNextWorkUnit('42');
+// => {
+//      phase: 'RED',
+//      subtask: '42.1',
+//      action: 'Generate failing tests for metrics schema',
+//      context: { title, description, dependencies, testFile: 'src/__tests__/schema.test.js' }
+//    }
+
+// Claude Code executes the work (writes test file, runs tests)
+// Then reports back
+await orchestrator.completeWorkUnit('42', '42.1', 'RED', {
+  success: true,
+  testsCreated: ['src/__tests__/schema.test.js'],
+  testsFailed: 3
+});
+
+// Query again for next phase
+const nextWorkUnit = await orchestrator.getNextWorkUnit('42');
+// => { phase: 'GREEN', subtask: '42.1', action: 'Implement code to pass tests', ... }
+```
+
 ## Design Decisions
 
 ### Why commit per subtask instead of per task?
@@ -807,15 +857,24 @@ Topological traversal (implementation order):
 
   - Detect test runner (package.json) and git state; render a preflight report.
 
-- Phase 1: Core Rails
+- Phase 1: Core Rails (State Machine & Orchestration)
 
-  - Implement WorkflowOrchestrator in tm-core with event stream; add Git/Test adapters.
+  - Implement WorkflowOrchestrator in tm-core as a **state machine** that tracks TDD phases per subtask.
 
-  - Support subtask loop (red/green/commit) with framework-agnostic test generation and detected test command; commit gating on passing tests and coverage.
+  - Orchestrator **guides** the current AI session (Claude Code/MCP client) rather than executing code itself.
+
+  - Add Git/Test adapters for status checks and validation (not direct execution).
+
+  - WorkflowOrchestrator API:
+    - `getNextWorkUnit(taskId)` → returns next phase to execute (RED/GREEN/COMMIT) with context
+    - `completeWorkUnit(taskId, subtaskId, phase, result)` → records completion and advances state
+    - `getRunState(taskId)` → returns current progress and resumability data
+
+  - MCP integration: expose work unit endpoints so Claude Code can query "what to do next" and report back.
 
   - Branch/tag mapping via existing tag-management APIs.
 
-  - Run report persisted under .taskmaster/reports/runs/.
+  - Run report persisted under .taskmaster/reports/runs/ with state checkpoints for resumability.
 
 - Phase 2: PR + Resumability
 
