@@ -7913,7 +7913,61 @@
         "priority": "high",
         "dependencies": [],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create phase management system with workflow phases enum",
+            "description": "Implement the core phase management system for the WorkflowOrchestrator including the phases enum and phase transition logic",
+            "dependencies": [],
+            "details": "Create WorkflowPhase enum with Preflight, Branch, SubtaskLoop, and Finalization phases. Implement phase transition validation logic to ensure proper workflow progression. Include getCurrentPhase(), transitionToPhase(), and canTransitionTo() methods with proper error handling for invalid transitions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for phase transitions, invalid transition handling, and phase validation logic"
+          },
+          {
+            "id": 2,
+            "title": "Implement event emitter system for workflow progress tracking",
+            "description": "Create the event emitter infrastructure to broadcast workflow state changes and progress updates",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement EventEmitter-based system for WorkflowOrchestrator with typed event interfaces (WorkflowEvent). Define event types for phase changes, progress updates, errors, and completion. Include emit(), on(), off(), and once() methods with proper type safety. Support event filtering and listener management.",
+            "status": "pending",
+            "testStrategy": "Unit tests for event emission, listener registration/removal, and event type validation"
+          },
+          {
+            "id": 3,
+            "title": "Design and implement core state management interfaces",
+            "description": "Create the foundational interfaces and state management structures for workflow configuration and state",
+            "dependencies": [],
+            "details": "Define WorkflowConfig interface with workflow settings, timeout configurations, and behavior flags. Create WorkflowState interface tracking current phase, progress, errors, and timing information. Implement WorkflowEvent interface with event types and payload structures. Include state validation and serialization support.",
+            "status": "pending",
+            "testStrategy": "Unit tests for interface validation, state serialization/deserialization, and configuration parsing"
+          },
+          {
+            "id": 4,
+            "title": "Integrate TaskService and ConfigManager dependencies",
+            "description": "Implement dependency injection and integration with existing TaskService and ConfigManager services",
+            "dependencies": [
+              3
+            ],
+            "details": "Create constructor that accepts TaskService and ConfigManager dependencies. Implement methods to retrieve workflow configuration from ConfigManager and interact with TaskService for task operations. Include dependency validation and error handling for missing or invalid services. Add configuration loading and validation logic.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked dependencies, integration tests verifying service interactions and configuration loading"
+          },
+          {
+            "id": 5,
+            "title": "Implement workflow lifecycle methods and state machine",
+            "description": "Create the core workflow control methods including start, pause, resume, and stop functionality",
+            "dependencies": [
+              1,
+              2,
+              4
+            ],
+            "details": "Implement start() method to initialize workflow and begin Preflight phase. Create pause()/resume() methods for workflow interruption handling. Add stop() method for graceful workflow termination. Include state machine logic to manage workflow progression, error recovery, and cleanup operations. Support workflow validation before start.",
+            "status": "pending",
+            "testStrategy": "Unit tests for lifecycle methods, state machine transitions, error handling, and workflow validation logic"
+          }
+        ]
       },
       {
         "id": 32,
@@ -7926,7 +7980,50 @@
           31
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create TypeScript wrapper interface for git-utils.js",
+            "description": "Create the base GitAdapter class structure and TypeScript interfaces that wrap the existing JavaScript git utilities",
+            "dependencies": [],
+            "details": "Create packages/tm-core/src/services/git-adapter.ts with GitAdapter class. Define TypeScript interfaces for all git operations. Import and wrap existing git-utils.js functions with proper error handling and type safety. Implement basic methods: isGitRepository, getCurrentBranch, getDefaultBranch with TypeScript return types.",
+            "status": "pending",
+            "testStrategy": "Unit tests for TypeScript interface compliance, proper wrapping of git-utils.js functions, and basic git repository detection"
+          },
+          {
+            "id": 2,
+            "title": "Implement core git operations with error handling",
+            "description": "Implement the main git operation methods with proper error handling and validation",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement createBranch, checkoutBranch, isWorkingTreeClean, commitChanges, pushBranch methods in GitAdapter. Add comprehensive error handling for git command failures, invalid repository states, and network issues. Include proper validation for branch names, commit messages, and repository state before operations.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked git commands for success and failure scenarios. Integration tests with temporary git repositories testing actual git operations"
+          },
+          {
+            "id": 3,
+            "title": "Add branch naming pattern support with token replacement",
+            "description": "Implement configurable branch naming patterns using template tokens for automated branch creation",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement branch naming pattern support using config.git.branchPattern. Create token replacement system for {tag}, {id}, {slug} tokens. Add pattern validation and sanitization for git-safe branch names. Support multiple pattern templates and fallback naming strategies for edge cases.",
+            "status": "pending",
+            "testStrategy": "Unit tests for token replacement logic, pattern validation, and branch name sanitization. Test various pattern configurations and edge cases"
+          },
+          {
+            "id": 4,
+            "title": "Integrate confirmation gates for destructive operations",
+            "description": "Add user confirmation prompts and safety checks for potentially destructive git operations",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement confirmation gates for destructive operations like branch deletion, force push, and uncommitted changes overwrite. Add configurable confirmation levels (always, auto, never) and interactive prompts. Include safety checks for working tree state, unpushed commits, and branch protection rules.",
+            "status": "pending",
+            "testStrategy": "Unit tests for confirmation flow logic and safety checks. Integration tests simulating user interactions and validating destructive operation prevention"
+          }
+        ]
       },
       {
         "id": 33,
@@ -7939,7 +8036,75 @@
           31
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement framework detection logic",
+            "description": "Create the core framework detection system that analyzes package.json and project structure to identify Jest, Vitest, or generic npm test configurations",
+            "dependencies": [],
+            "details": "Implement methods to parse package.json scripts section, detect testing framework dependencies (jest, vitest, @jest/core, etc.), analyze configuration files (jest.config.js, vitest.config.ts), and return FrameworkType enum. Include fallback to generic npm scripts when no specific framework is detected.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mock package.json files for different framework configurations, edge cases for missing or malformed configs"
+          },
+          {
+            "id": 2,
+            "title": "Create test execution engine with process management",
+            "description": "Implement the core test execution system that spawns child processes and manages test command execution with proper timeout and error handling",
+            "dependencies": [
+              1
+            ],
+            "details": "Create TestExecutor class that uses child_process.spawn to run test commands, implements configurable timeouts, handles process termination, captures stdout/stderr streams, and provides retry logic for failed executions. Support both targeted test runs (specific files) and full test suite execution.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked child_process, integration tests with actual test commands, timeout and retry scenario testing"
+          },
+          {
+            "id": 3,
+            "title": "Implement Jest-specific result parsing",
+            "description": "Create Jest result parser that extracts test outcomes, failure details, and coverage information from Jest's output formats",
+            "dependencies": [
+              2
+            ],
+            "details": "Parse Jest JSON reporter output to extract pass/fail counts, test file results, error messages, stack traces, and execution times. Handle both verbose and summary output modes. Extract coverage data from Jest coverage reports including line, branch, function, and statement coverage percentages.",
+            "status": "pending",
+            "testStrategy": "Unit tests with sample Jest output JSON files, edge cases for malformed output, coverage parsing validation"
+          },
+          {
+            "id": 4,
+            "title": "Implement Vitest-specific result parsing",
+            "description": "Create Vitest result parser that handles Vitest's unique output format and coverage reporting structure",
+            "dependencies": [
+              2
+            ],
+            "details": "Parse Vitest reporter output to extract test results, support both default and JSON reporters, handle Vitest's specific error formatting and stack traces. Extract coverage information from Vitest's coverage providers (c8, istanbul) with proper percentage calculations and file-level coverage details.",
+            "status": "pending",
+            "testStrategy": "Unit tests with Vitest output samples, comparison with Jest parser for consistency, coverage provider compatibility testing"
+          },
+          {
+            "id": 5,
+            "title": "Create unified TestResult interface and data structures",
+            "description": "Design and implement comprehensive TypeScript interfaces for test results, coverage data, and failure information that works across all supported frameworks",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Define TestResult interface with pass/fail counts, execution time, coverage percentages (line, branch, function, statement), detailed failure information with file paths and line numbers. Create CoverageReport interface with file-level and overall coverage data. Implement result aggregation and normalization logic.",
+            "status": "pending",
+            "testStrategy": "Unit tests for interface compliance across frameworks, data transformation accuracy, edge cases for missing coverage data"
+          },
+          {
+            "id": 6,
+            "title": "Integrate components into TestRunnerAdapter service",
+            "description": "Assemble all components into the main TestRunnerAdapter class with public API methods for framework detection, test execution, and result retrieval",
+            "dependencies": [
+              1,
+              2,
+              5
+            ],
+            "details": "Create main TestRunnerAdapter class that orchestrates framework detection, test execution, and result parsing. Implement public methods: detectFramework(), runTests(), runTargetedTests(), and getLastResults(). Add configuration options for timeout, retry count, and coverage options. Include comprehensive error handling and logging.",
+            "status": "pending",
+            "testStrategy": "Integration tests with real test projects, end-to-end workflow testing, error handling validation, performance testing with large test suites"
+          }
+        ]
       },
       {
         "id": 34,
@@ -7954,7 +8119,50 @@
           33
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create autopilot command structure with Commander.js",
+            "description": "Set up the basic autopilot command file and integrate it with the existing CLI structure using Commander.js patterns",
+            "dependencies": [],
+            "details": "Create apps/cli/src/commands/autopilot.command.ts following existing CLI command patterns. Set up Commander.js command registration with basic structure, help text, and integration into the main CLI entry point. Ensure proper TypeScript types and follow existing code conventions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for command registration, help text display, and basic command structure validation"
+          },
+          {
+            "id": 2,
+            "title": "Implement comprehensive flag handling system",
+            "description": "Add all required command-line flags with proper parsing, validation, and default values",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement flags: --dry-run, --no-push, --no-pr, --no-confirm, --force, --max-attempts, --resume. Add proper flag parsing with Commander.js, validation logic, type definitions, and default value handling. Ensure flags are properly documented and follow CLI conventions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for flag parsing, validation logic, default values, and error handling for invalid flag combinations"
+          },
+          {
+            "id": 3,
+            "title": "Build preflight check validation system",
+            "description": "Create comprehensive preflight checks for git status, tool availability, and environment validation",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement preflight checks including: clean working tree validation, test command detection, required tool availability (git, gh), project structure validation. Create modular check system with clear error reporting and suggestions for resolution. Integrate with existing UI components for user feedback.",
+            "status": "pending",
+            "testStrategy": "Unit tests for individual preflight checks, error reporting, and validation logic. Integration tests with mock git states and tool availability scenarios"
+          },
+          {
+            "id": 4,
+            "title": "Integrate WorkflowOrchestrator and execution planning",
+            "description": "Connect the command to WorkflowOrchestrator and implement detailed dry-run execution plan display",
+            "dependencies": [
+              3
+            ],
+            "details": "Integrate with WorkflowOrchestrator for actual workflow execution. Implement dry-run mode showing detailed execution plan with task breakdown, estimated timeline, and resource requirements. Use existing UI components from apps/cli/src/ui/components/ for formatted output and user interaction.",
+            "status": "pending",
+            "testStrategy": "Integration tests with mock WorkflowOrchestrator to verify command flow, dry-run output formatting, and execution plan accuracy without actual git operations"
+          }
+        ]
       },
       {
         "id": 35,
@@ -7968,7 +8176,50 @@
           33
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance TaskExecutionService for test generation mode",
+            "description": "Extend the existing TaskExecutionService to support test generation workflow by adding a test generation mode that integrates with the surgical-test-generator.",
+            "dependencies": [],
+            "details": "Modify packages/tm-core/src/services/task-execution-service.ts to add a testGenerationMode parameter and corresponding logic. Create new method executeTestGeneration() that handles test generation-specific workflows. Add configuration options for test generation behavior and integrate with existing executor framework patterns. Ensure backward compatibility with current execution flows.",
+            "status": "pending",
+            "testStrategy": "Unit tests for new test generation mode methods, mocked executor calls, and integration tests verifying test generation workflow execution."
+          },
+          {
+            "id": 2,
+            "title": "Create TestGenerationService with executor framework integration",
+            "description": "Implement a new TestGenerationService that leverages the existing executor framework to generate surgical tests using specialized prompts.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create packages/tm-core/src/services/test-generation-service.ts that extends or uses the executor framework. Implement methods for generating failing tests based on task context. Add support for surgical-test-generator specific prompts and parameters. Include error handling, logging, and result validation. Integrate with TaskExecutionService's new test generation mode.",
+            "status": "pending",
+            "testStrategy": "Unit tests for test generation methods with mocked surgical-test-generator calls. Integration tests generating actual test files and verifying they compile but fail appropriately."
+          },
+          {
+            "id": 3,
+            "title": "Implement prompt composition system for rule and context integration",
+            "description": "Build a sophisticated prompt composition system that loads rules from .cursor/rules/ and .claude/agents/, combines them with task context, and generates focused test generation prompts.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create prompt composition logic within TestGenerationService or as a separate utility. Implement file system scanning for rule files in .cursor/rules/ and .claude/agents/ directories. Add template system for combining rules with task context, subtask details, and framework-specific requirements. Include validation for prompt completeness and token replacement functionality.",
+            "status": "pending",
+            "testStrategy": "Unit tests for rule loading, template processing, and context injection. Integration tests verifying complete prompt generation with various rule combinations and task contexts."
+          },
+          {
+            "id": 4,
+            "title": "Add framework-specific test pattern support",
+            "description": "Implement support for generating tests in different testing frameworks (Jest, Vitest) with appropriate patterns and conventions.",
+            "dependencies": [
+              3
+            ],
+            "details": "Extend TestGenerationService to detect project testing framework through package.json analysis or configuration. Create framework-specific templates and patterns for Jest and Vitest. Implement test file naming conventions, import statements, and assertion patterns specific to each framework. Add configuration options to override framework detection and customize test generation patterns.",
+            "status": "pending",
+            "testStrategy": "Unit tests for framework detection logic and template generation. Integration tests generating tests for both Jest and Vitest projects, verifying correct syntax and runnable test files."
+          }
+        ]
       },
       {
         "id": 36,
@@ -7984,7 +8235,87 @@
           35
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create SubtaskExecutor class architecture",
+            "description": "Design and implement the core SubtaskExecutor class that will orchestrate the TDD loop execution for individual subtasks",
+            "dependencies": [],
+            "details": "Create src/core/workflow/SubtaskExecutor.ts with class structure including constructor, phase management methods, and integration points with WorkflowOrchestrator. Define interfaces for TDD phase execution, configuration options, and error handling. Establish event-driven architecture for phase transitions and status reporting.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation, method signatures, and basic configuration handling"
+          },
+          {
+            "id": 2,
+            "title": "Implement RED phase test generation",
+            "description": "Create the RED phase logic that generates failing tests based on subtask requirements and existing codebase context",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement RED phase in SubtaskExecutor that analyzes subtask details, generates appropriate test files using AI models, and validates tests fail as expected. Include test file placement logic, import resolution, and test framework integration. Support multiple test frameworks and file naming conventions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for test generation logic, file placement, and validation. Integration tests with actual test frameworks"
+          },
+          {
+            "id": 3,
+            "title": "Implement GREEN phase code generation",
+            "description": "Create the GREEN phase logic that generates implementation code to make the failing tests pass",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Implement GREEN phase that analyzes failing tests, generates implementation code using AI models, and validates tests pass. Include code placement logic, import management, and incremental implementation approach. Support multiple programming languages and frameworks with proper error handling and validation.",
+            "status": "pending",
+            "testStrategy": "Unit tests for code generation, test execution validation, and error handling. Integration tests with various test scenarios"
+          },
+          {
+            "id": 4,
+            "title": "Implement COMMIT phase with conventional commits",
+            "description": "Create the COMMIT phase that handles git operations with properly formatted conventional commit messages",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Implement COMMIT phase that stages changes, generates conventional commit messages based on task context, and commits with proper formatting. Include git status validation, conflict detection, and commit message templates. Support task ID embedding and automatic scope detection from file changes.",
+            "status": "pending",
+            "testStrategy": "Unit tests for git operations, commit message generation, and validation. Integration tests with actual git repositories"
+          },
+          {
+            "id": 5,
+            "title": "Implement retry mechanism for GREEN phase",
+            "description": "Add configurable retry logic for GREEN phase when initial implementation attempts fail",
+            "dependencies": [
+              3
+            ],
+            "details": "Enhance GREEN phase with retry mechanism including configurable max attempts, exponential backoff, and failure analysis. Include retry context preservation, progressive refinement of implementation, and detailed error logging. Support different retry strategies based on failure types and provide clear feedback on retry attempts.",
+            "status": "pending",
+            "testStrategy": "Unit tests for retry logic, backoff calculations, and failure handling. Integration tests with simulated failures and recovery scenarios"
+          },
+          {
+            "id": 6,
+            "title": "Implement timeout and backoff policies",
+            "description": "Add comprehensive timeout handling and backoff policies for all TDD phases to prevent infinite execution",
+            "dependencies": [
+              1,
+              5
+            ],
+            "details": "Implement timeout management for each TDD phase with configurable limits, graceful degradation, and resource cleanup. Include exponential backoff for AI API calls, circuit breaker patterns for external services, and proper cancellation handling. Support per-phase timeout configuration and global execution limits.",
+            "status": "pending",
+            "testStrategy": "Unit tests for timeout handling, backoff algorithms, and cancellation logic. Integration tests with long-running operations and resource constraints"
+          },
+          {
+            "id": 7,
+            "title": "Integrate with TaskService for status updates",
+            "description": "Connect SubtaskExecutor with existing TaskService to provide real-time status updates and workflow coordination",
+            "dependencies": [
+              1,
+              4
+            ],
+            "details": "Integrate SubtaskExecutor with TaskService for subtask status updates, progress reporting, and workflow coordination. Include status change notifications, progress tracking, error reporting, and completion handling. Support batch updates and real-time synchronization with task management system.",
+            "status": "pending",
+            "testStrategy": "Unit tests for TaskService integration, status update logic, and event handling. Integration tests with complete workflow execution and status tracking"
+          }
+        ]
       },
       {
         "id": 37,
@@ -7997,7 +8328,39 @@
           31
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Extend configuration interface with autopilot settings",
+            "description": "Update configuration.interface.ts to include autopilot, test, and git configuration sections with all required fields",
+            "dependencies": [],
+            "details": "Modify packages/tm-core/src/interfaces/configuration.interface.ts to add autopilot section (enabled, requireCleanWorkingTree, commitTemplate, defaultCommitType, maxGreenAttempts, testTimeout), test section (runner, coverageThresholds, targetedRunPattern), and git section (branchPattern, pr settings). Ensure proper TypeScript typing and JSDoc documentation for all new configuration options.",
+            "status": "pending",
+            "testStrategy": "Unit tests for interface type validation and TypeScript compilation checks"
+          },
+          {
+            "id": 2,
+            "title": "Update ConfigManager validation logic",
+            "description": "Enhance ConfigManager to validate new autopilot configuration sections and handle schema validation",
+            "dependencies": [
+              1
+            ],
+            "details": "Update ConfigManager class to include validation rules for autopilot, test, and git configuration sections. Implement schema validation using existing validation patterns, add error handling for invalid configurations, and ensure proper error messages for configuration issues. Maintain backward compatibility with existing configuration files.",
+            "status": "pending",
+            "testStrategy": "Unit tests for validation logic with valid/invalid config scenarios, error message verification"
+          },
+          {
+            "id": 3,
+            "title": "Implement default configuration values",
+            "description": "Add default value implementation for all new autopilot configuration options in ConfigManager",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement default value provider in ConfigManager for autopilot settings (enabled: false, requireCleanWorkingTree: true, maxGreenAttempts: 3, etc.), test settings (runner: 'npm test', coverageThresholds: null), and git settings (branchPattern: 'feature/*', pr settings). Ensure defaults are applied when configuration sections are missing or incomplete while preserving existing user settings.",
+            "status": "pending",
+            "testStrategy": "Integration tests loading config from actual .taskmaster/config.json files, default value application verification"
+          }
+        ]
       },
       {
         "id": 38,
@@ -8012,7 +8375,62 @@
           36
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create RunStateManager service class structure",
+            "description": "Set up the basic RunStateManager service class with core methods and configuration",
+            "dependencies": [],
+            "details": "Create packages/tm-core/src/services/run-state-manager.ts with RunStateManager class. Define constructor accepting configuration options, implement basic methods for initialization, state persistence, and cleanup. Set up TypeScript interfaces for run state data structures and configuration options.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation, method signatures, and configuration validation"
+          },
+          {
+            "id": 2,
+            "title": "Implement run directory structure and manifest creation",
+            "description": "Create the standardized directory structure and manifest.json generation for run artifacts",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement createRunDirectory() method that creates .taskmaster/reports/runs/<timestamp>/ structure. Generate manifest.json with run metadata including start time, task context, git state, and configuration. Create subdirectories for test-results/ and ensure proper file permissions and error handling.",
+            "status": "pending",
+            "testStrategy": "Unit tests for directory creation, manifest JSON structure validation, and file system error handling"
+          },
+          {
+            "id": 3,
+            "title": "Implement JSONL event logging system",
+            "description": "Create structured event logging using JSONL format for run event streams",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement logEvent() method that appends structured events to log.jsonl file. Define event schema with timestamp, level, type, message, and context data. Support buffering and batch writes for performance. Include event types for task start/complete, errors, state changes, and system events.",
+            "status": "pending",
+            "testStrategy": "Unit tests for JSONL formatting, event schema validation, and log file writing with concurrent access scenarios"
+          },
+          {
+            "id": 4,
+            "title": "Implement test result storage and commits tracking",
+            "description": "Create structured storage for test outputs and commit SHA tracking",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement storeTestResults() method that saves test outputs to test-results/<phase>/ directories with proper JSON formatting. Create updateCommitLog() method that appends commit SHAs to commits.txt with timestamps and context. Support different test result formats and ensure atomic file operations.",
+            "status": "pending",
+            "testStrategy": "Unit tests for test result serialization, commit tracking, and file integrity validation"
+          },
+          {
+            "id": 5,
+            "title": "Implement state checkpointing and resume functionality",
+            "description": "Add state checkpointing capabilities and resume logic for interrupted runs",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Implement saveCheckpoint() and loadCheckpoint() methods for persisting current run state. Create resume detection logic that identifies incomplete runs and restores state. Support partial completion tracking and validate state consistency on resume. Include cleanup of corrupted or incomplete run directories.",
+            "status": "pending",
+            "testStrategy": "Integration tests for state persistence across service restarts, resume functionality validation, and corruption recovery scenarios"
+          }
+        ]
       },
       {
         "id": 39,
@@ -8027,7 +8445,51 @@
           38
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create PRAdapter service base structure and interfaces",
+            "description": "Set up the foundational PRAdapter service class with interfaces and core structure",
+            "dependencies": [],
+            "details": "Create packages/tm-core/src/services/pr-adapter.ts with PRAdapter class, IPRBody interface, PROptions interface, and PRResult interface. Define basic constructor accepting ConfigManager and RunManifest dependencies. Include error handling types and template interface definitions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation, interface validation, and basic error handling"
+          },
+          {
+            "id": 2,
+            "title": "Implement gh CLI integration and command execution",
+            "description": "Add GitHub CLI detection, validation, and PR creation command execution functionality",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement gh CLI availability check, version validation, and authentication status verification. Add createPR method that constructs gh pr create commands with title, body, and branch parameters. Include error handling for gh CLI failures, network issues, and authentication problems. Add fallback messaging when gh CLI is unavailable.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked child_process for gh CLI commands, error scenarios, and fallback behavior"
+          },
+          {
+            "id": 3,
+            "title": "Build PR body generation from run manifests and test results",
+            "description": "Implement comprehensive PR body generation using run data, task completion, and test metrics",
+            "dependencies": [
+              1
+            ],
+            "details": "Create generatePRBody method that processes run manifest data, task/subtask completion summaries, test results, coverage metrics, and commit information. Implement PR title formatting as 'Task #{id} [{tag}]: {title}'. Include sections for completed tasks, test results, coverage changes, and commit links. Add markdown formatting for readability.",
+            "status": "pending",
+            "testStrategy": "Unit tests for body generation with various run manifest scenarios, test result formatting, and markdown output validation"
+          },
+          {
+            "id": 4,
+            "title": "Add custom PR template system and configuration support",
+            "description": "Implement customizable PR body templates with variable substitution and configuration integration",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Create template system supporting custom PR body templates from .taskmaster/templates/pr-template.md. Implement variable substitution for {{taskId}}, {{taskTitle}}, {{testResults}}, {{coverage}}, {{commits}}. Add template validation, fallback to default template, and integration with ConfigManager for template paths and PR settings.",
+            "status": "pending",
+            "testStrategy": "Unit tests for template loading, variable substitution, validation, and integration with configuration system"
+          }
+        ]
       },
       {
         "id": 40,
@@ -8041,7 +8503,53 @@
           36
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement dependency resolution algorithm",
+            "description": "Create core algorithm to resolve task dependencies and detect circular references",
+            "dependencies": [],
+            "details": "Implement a dependency resolution algorithm that can traverse task dependency graphs, detect circular dependencies, and validate dependency chains. Create utility functions for graph traversal and cycle detection using depth-first search. Handle edge cases like self-references and missing dependencies.",
+            "status": "pending",
+            "testStrategy": "Unit tests for cycle detection, dependency validation, and graph traversal edge cases"
+          },
+          {
+            "id": 2,
+            "title": "Implement topological sorting for subtask ordering",
+            "description": "Add topological sorting algorithm to determine optimal subtask execution order",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement Kahn's algorithm or DFS-based topological sorting to order subtasks based on their dependencies. Handle priority weighting within dependency constraints. Create sorting functions that respect both dependencies and priority levels for optimal execution order.",
+            "status": "pending",
+            "testStrategy": "Unit tests for topological sort correctness, priority handling, and various dependency graph structures"
+          },
+          {
+            "id": 3,
+            "title": "Create task eligibility checking system",
+            "description": "Implement logic to determine which subtasks are eligible for execution based on status and dependencies",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create getNextEligibleSubtask method that checks subtask status, dependency completion, and availability. Implement filtering logic for blocked, pending, and ready-to-execute subtasks. Add priority-based selection when multiple subtasks are eligible.",
+            "status": "pending",
+            "testStrategy": "Unit tests for eligibility logic with various status combinations and dependency states"
+          },
+          {
+            "id": 4,
+            "title": "Integrate dependency resolution with TaskService",
+            "description": "Integrate the dependency resolution system into the existing TaskService architecture",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Extend packages/tm-core/src/services/task-service.ts with new dependency resolution methods. Integrate with existing task status management and dependency validation systems. Ensure backward compatibility and proper error handling for the new functionality.",
+            "status": "pending",
+            "testStrategy": "Integration tests with existing TaskService methods, complex task hierarchies, and dependency chain validation"
+          }
+        ]
       },
       {
         "id": 41,
@@ -8056,7 +8564,61 @@
           38
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement checkpoint creation in RunStateManager",
+            "description": "Add checkpoint creation functionality to RunStateManager for persisting workflow state during execution",
+            "dependencies": [],
+            "details": "Enhance RunStateManager with methods to create checkpoints containing current workflow state, active phase, completed subtasks, git branch info, and test status. Implement state serialization to JSON format and save to .taskmaster/checkpoints/ directory with timestamp-based naming. Include metadata like workflow start time, current task ID, and phase progress.",
+            "status": "pending",
+            "testStrategy": "Unit tests for checkpoint creation, state serialization, file writing operations, and metadata accuracy. Test checkpoint creation at different workflow phases."
+          },
+          {
+            "id": 2,
+            "title": "Implement state restoration logic",
+            "description": "Create state restoration functionality to reconstruct WorkflowOrchestrator from persisted checkpoint data",
+            "dependencies": [
+              1
+            ],
+            "details": "Add methods to RunStateManager for loading checkpoint files, deserializing workflow state, and reconstructing WorkflowOrchestrator instance. Implement state reconstruction including phase restoration, task progress, git branch context, and test results. Handle checkpoint file validation and corruption detection with appropriate error messaging.",
+            "status": "pending",
+            "testStrategy": "Unit tests for checkpoint loading, state deserialization, WorkflowOrchestrator reconstruction. Test error handling for corrupted or invalid checkpoint files."
+          },
+          {
+            "id": 3,
+            "title": "Add state validation for safe resume",
+            "description": "Implement validation logic to ensure safe workflow resumption by checking git state, file changes, and test status",
+            "dependencies": [
+              2
+            ],
+            "details": "Create validation methods to verify git working tree is clean, current branch matches checkpoint, no unexpected file changes occurred, and test environment is consistent. Implement safety checks for package.json changes, dependency updates, and configuration modifications. Provide detailed validation failure messages and recovery suggestions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for validation logic, git state checking, file change detection. Integration tests with scenarios like dirty working tree, branch changes, and dependency modifications."
+          },
+          {
+            "id": 4,
+            "title": "Add --resume flag to autopilot command",
+            "description": "Implement CLI flag for resuming interrupted autopilot workflows from checkpoints",
+            "dependencies": [
+              3
+            ],
+            "details": "Add --resume flag to autopilot command that lists available checkpoints, allows selection of specific checkpoint, and initiates workflow restoration. Implement checkpoint discovery from .taskmaster/checkpoints/ directory, display checkpoint metadata (timestamp, phase, progress), and handle user selection. Include --resume-latest option for automatic latest checkpoint selection.",
+            "status": "pending",
+            "testStrategy": "Integration tests for CLI flag functionality, checkpoint listing, user selection handling, and automatic latest checkpoint selection. Test error scenarios like no checkpoints found."
+          },
+          {
+            "id": 5,
+            "title": "Support partial phase resume functionality",
+            "description": "Implement ability to resume workflow from specific phases like retrying GREEN phase after manual fixes",
+            "dependencies": [
+              4
+            ],
+            "details": "Add phase-specific resume options allowing users to restart from particular workflow phases (Preflight, Branch, SubtaskLoop, Finalization). Implement phase validation to ensure prerequisites are met, state consistency checks for partial resume, and option to skip completed phases. Support retry scenarios like re-running tests after manual bug fixes or resuming after dependency updates.",
+            "status": "pending",
+            "testStrategy": "Integration tests for partial phase resume scenarios, phase validation logic, and state consistency checks. Test retry workflows after manual interventions and dependency changes."
+          }
+        ]
       },
       {
         "id": 42,
@@ -8070,7 +8632,50 @@
           36
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Parse coverage reports from Jest/Vitest",
+            "description": "Implement coverage report parsing to extract metrics from different test runner formats",
+            "dependencies": [],
+            "details": "Create coverage report parser in TestRunnerAdapter that can read Jest coverage reports (json, lcov formats) and Vitest coverage reports. Extract line coverage, branch coverage, function coverage, and statement coverage metrics. Handle different coverage output formats and normalize data structure for threshold validation.",
+            "status": "pending",
+            "testStrategy": "Unit tests for parsing different coverage report formats (lcov, json). Mock coverage files with various metrics and verify correct extraction."
+          },
+          {
+            "id": 2,
+            "title": "Implement configurable threshold validation logic",
+            "description": "Create threshold validation system with configurable coverage requirements",
+            "dependencies": [
+              1
+            ],
+            "details": "Build threshold validation engine that accepts configurable thresholds for lines, branches, functions, and statements (default 80%). Compare parsed coverage metrics against thresholds and generate detailed validation results. Support per-metric configuration and overall coverage requirements.",
+            "status": "pending",
+            "testStrategy": "Unit tests for threshold validation with various coverage scenarios. Test edge cases like missing metrics and invalid threshold configurations."
+          },
+          {
+            "id": 3,
+            "title": "Add coverage gates in workflow phases",
+            "description": "Integrate coverage validation as gates in GREEN phase and pre-finalization",
+            "dependencies": [
+              2
+            ],
+            "details": "Add coverage validation gates in the GREEN phase before allowing commits and in the final test suite before PR creation. Integrate with existing workflow phases to halt execution when coverage thresholds are not met. Provide clear gate failure messaging and next steps.",
+            "status": "pending",
+            "testStrategy": "Integration tests with actual test runs generating coverage data. Verify gates properly block workflow progression when thresholds fail."
+          },
+          {
+            "id": 4,
+            "title": "Create detailed coverage failure reporting system",
+            "description": "Implement comprehensive coverage reporting with improvement suggestions",
+            "dependencies": [
+              2
+            ],
+            "details": "Build detailed coverage failure reporting that shows which metrics failed thresholds, specific uncovered lines/branches, and actionable suggestions for improvement. Include file-level coverage breakdown, highlight critical uncovered areas, and provide guidance on writing additional tests.",
+            "status": "pending",
+            "testStrategy": "Unit tests for report generation with various failure scenarios. Verify report formatting and suggestion quality with mock coverage data."
+          }
+        ]
       },
       {
         "id": 43,
@@ -8084,7 +8689,74 @@
           34
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Select and configure TUI framework (blessed vs ink)",
+            "description": "Research and choose between blessed and ink frameworks for terminal UI implementation, then set up the basic project structure with dependencies",
+            "dependencies": [],
+            "details": "Evaluate blessed vs ink for terminal UI capabilities, performance, and maintenance status. Install chosen framework and create basic project structure in apps/cli/src/ui/tui/. Set up TypeScript configuration and basic component architecture. Consider blessed for full-featured terminal UI or ink for React-like component model.",
+            "status": "pending",
+            "testStrategy": "Unit tests for framework initialization and basic component rendering"
+          },
+          {
+            "id": 2,
+            "title": "Design and implement left pane interface layout",
+            "description": "Create the left pane UI components showing project information, active tag, and task list with status indicators",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement left pane layout with three sections: project info header, active tag display, and scrollable task list. Add status indicators using colors/symbols (✓ done, ⏳ in-progress, ○ pending). Implement proper text wrapping, overflow handling, and responsive layout for different terminal sizes.",
+            "status": "pending",
+            "testStrategy": "Unit tests for layout rendering, status indicator display, and text formatting"
+          },
+          {
+            "id": 3,
+            "title": "Implement tmux integration and right pane coordination",
+            "description": "Create tmux session management and coordinate right pane terminal spawning for task execution",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement tmux session creation, window management, and pane coordination. Create TmuxAdapter class to handle session lifecycle, window/pane creation for executor terminals. Ensure proper cleanup of tmux sessions and handle edge cases like existing sessions or tmux not available.",
+            "status": "pending",
+            "testStrategy": "Integration tests for tmux session management, pane creation, and cleanup procedures"
+          },
+          {
+            "id": 4,
+            "title": "Build navigation system with keybindings",
+            "description": "Implement keyboard navigation system with arrow keys, Enter for selection, and workflow control keys",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement keyboard event handling for navigation (↑/↓ arrow keys), task selection (Enter), and workflow control (s for start, p for pause, q for quit). Add visual feedback for selected items, proper focus management, and keyboard shortcut help display. Handle edge cases like empty task lists.",
+            "status": "pending",
+            "testStrategy": "Unit tests for key handling logic, navigation state management, and selection behavior"
+          },
+          {
+            "id": 5,
+            "title": "Implement real-time status updates system",
+            "description": "Create real-time monitoring system for task status changes using file watching or event streams",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Implement file system watching for tasks.json changes or event-based updates for real-time status synchronization. Update UI components when task status changes, add smooth transitions, and handle concurrent updates. Consider using chokidar for file watching or implement event emitter pattern for status changes.",
+            "status": "pending",
+            "testStrategy": "Integration tests for file watching, event handling, and UI update responsiveness"
+          },
+          {
+            "id": 6,
+            "title": "Implement event handling and user experience polish",
+            "description": "Add comprehensive event handling, error management, and user experience improvements for the TUI navigator",
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Implement comprehensive error handling for tmux failures, terminal resize events, and graceful degradation. Add loading states, confirmation dialogs for destructive actions, and help screens. Implement proper cleanup on exit, signal handling (SIGINT, SIGTERM), and recovery from unexpected states.",
+            "status": "pending",
+            "testStrategy": "Integration tests for error scenarios, terminal interaction simulation, and edge case handling"
+          }
+        ]
       },
       {
         "id": 44,
@@ -8097,7 +8769,51 @@
           35
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create PromptComposer service foundation",
+            "description": "Implement the core PromptComposer class structure with basic interfaces and constructor",
+            "dependencies": [],
+            "details": "Create packages/tm-core/src/services/prompt-composer.ts with PromptComposer class, define interfaces for PromptTemplate, RuleFragment, and CompositionContext. Implement constructor with configuration options and basic method stubs for compose(), loadRules(), and processTemplate(). Set up error handling and logging infrastructure.",
+            "status": "pending",
+            "testStrategy": "Unit tests for class instantiation, interface validation, and basic error handling scenarios"
+          },
+          {
+            "id": 2,
+            "title": "Implement template system with token replacement",
+            "description": "Build template processing engine that supports dynamic token replacement and conditional logic",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement processTemplate() method supporting token replacement for {task}, {subtask}, {framework}, {phase} placeholders. Add conditional template sections with {{#if condition}} syntax. Support nested replacements and escape sequences. Include template validation and syntax error reporting with helpful error messages.",
+            "status": "pending",
+            "testStrategy": "Unit tests for token replacement accuracy, conditional logic evaluation, nested template processing, and error handling for malformed templates"
+          },
+          {
+            "id": 3,
+            "title": "Implement rule loading and precedence system",
+            "description": "Create rule fragment loading system from .cursor/rules/ with proper precedence and conditional inclusion",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement loadRules() method that scans .cursor/rules/ directory for rule files, parses rule metadata including precedence levels and project type conditions. Support rule inheritance and override patterns. Implement conditional inclusion based on project framework detection (React, Vue, Node.js, etc.). Cache loaded rules for performance.",
+            "status": "pending",
+            "testStrategy": "Unit tests for file system scanning, rule parsing, precedence resolution, and conditional filtering. Integration tests with various project structures and rule configurations"
+          },
+          {
+            "id": 4,
+            "title": "Implement context injection and phase-specific prompt generation",
+            "description": "Build context assembly system that combines task data, rules, and phase instructions into complete prompts",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Implement compose() method that combines task context, loaded rules, and phase-specific instructions into targeted prompts for RED (test generation) and GREEN (implementation) phases. Support framework-specific adaptations and context prioritization. Include prompt validation and length optimization to ensure effective AI consumption.",
+            "status": "pending",
+            "testStrategy": "Unit tests for context injection accuracy, phase-specific prompt generation, and framework adaptation. Integration tests generating complete prompts and validating content relevance for different TDD phases"
+          }
+        ]
       },
       {
         "id": 45,
@@ -8111,7 +8827,39 @@
           40
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance GitAdapter with branch-to-tag extraction logic",
+            "description": "Implement branch name parsing to extract tag names using configurable patterns and integrate with existing tag management functionality",
+            "dependencies": [],
+            "details": "Extend GitAdapter class to include tag extraction methods that parse branch names using configurable regex patterns (e.g., feature/tag-name -> tag-name). Integrate with existing tag-management.js functionality to validate extracted tags exist. Add configuration options for branch naming patterns and fallback behaviors when tag extraction fails.",
+            "status": "pending",
+            "testStrategy": "Unit tests for branch name parsing with various patterns, tag validation logic, and configuration handling. Mock git operations and tag management calls."
+          },
+          {
+            "id": 2,
+            "title": "Implement automatic tag switching workflow",
+            "description": "Create workflow logic that automatically switches to the appropriate tag context before executing any operations based on current branch",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement pre-workflow hook in GitAdapter that detects current branch, extracts tag using patterns from subtask 1, validates tag exists, and switches active tag context. Handle cases where extracted tag doesn't exist by optionally creating new tag or falling back to default. Ensure tag switching occurs before any workflow execution begins.",
+            "status": "pending",
+            "testStrategy": "Integration tests with actual git branches and tag switching operations. Test tag creation workflows and fallback scenarios. Verify workflow execution uses correct tag context."
+          },
+          {
+            "id": 3,
+            "title": "Implement branch-to-tag mapping persistence and validation",
+            "description": "Create persistent storage for branch-tag mappings with validation and management capabilities",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement mapping persistence using configuration files or database to store branch-to-tag relationships. Add validation logic to ensure mappings are consistent and up-to-date. Include management commands to view, update, and clean up mappings. Support mapping inheritance for branch hierarchies and pattern-based rules.",
+            "status": "pending",
+            "testStrategy": "Unit tests for mapping storage, retrieval, and validation logic. Integration tests for mapping consistency across git operations and tag management scenarios."
+          }
+        ]
       },
       {
         "id": 46,
@@ -8127,7 +8875,64 @@
           38
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement error classification system with specific error types",
+            "description": "Create comprehensive error type hierarchy including GitError, TestError, ConfigError, and DependencyError with specific subclasses for different failure scenarios",
+            "dependencies": [],
+            "details": "Define base ErrorHandler class and specific error types (GitError for merge conflicts/branch issues, TestError for test failures/timeouts, ConfigError for invalid configurations, DependencyError for missing tools/packages). Each error type should include error codes, context data, and categorization for appropriate handling strategies.",
+            "status": "pending",
+            "testStrategy": "Unit tests for error type instantiation, classification logic, and error code mapping. Mock various failure scenarios to verify correct error type detection."
+          },
+          {
+            "id": 2,
+            "title": "Build recovery suggestion engine with actionable recommendations",
+            "description": "Develop intelligent system that provides specific recovery steps based on error type and context, with automated resolution where possible",
+            "dependencies": [
+              1
+            ],
+            "details": "Create RecoverySuggestionEngine that maps error types to actionable recovery steps. For GitError: suggest merge conflict resolution, branch switching. For TestError: recommend timeout adjustments, dependency installation. For ConfigError: provide configuration fixes. Include automated recovery options where safe and manual step-by-step instructions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for suggestion generation logic, recovery step validation. Integration tests simulating error scenarios and verifying suggested recovery actions are accurate and actionable."
+          },
+          {
+            "id": 3,
+            "title": "Implement error context management and preservation",
+            "description": "Create system to capture, store, and propagate error context throughout the workflow execution chain for detailed debugging",
+            "dependencies": [
+              1
+            ],
+            "details": "Build ErrorContext class to capture execution state, command history, environment details, and task information when errors occur. Implement context serialization for persistence and context propagation through async operations. Include stack trace enhancement and correlation IDs for tracking errors across workflow phases.",
+            "status": "pending",
+            "testStrategy": "Unit tests for context capture, serialization, and propagation. Integration tests verifying context preservation across workflow phases and accurate debugging information availability."
+          },
+          {
+            "id": 4,
+            "title": "Add --force flag implementation with selective validation bypass",
+            "description": "Implement force flag mechanism that allows bypassing specific validations while maintaining critical safety checks",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Add --force flag support to WorkflowOrchestrator commands with granular control over which validations to bypass. Implement ForceContext to track bypassed checks and maintain audit trail. Define which validations are force-bypassable (dependency checks, test requirements) vs critical safety checks (git repo integrity, file permissions).",
+            "status": "pending",
+            "testStrategy": "Unit tests for force flag parsing, validation bypass logic, safety check preservation. Integration tests with various force scenarios ensuring critical protections remain active."
+          },
+          {
+            "id": 5,
+            "title": "Integrate error handling with logging and reporting systems",
+            "description": "Connect error handling system with existing logging infrastructure and enhance run reports with error context and recovery information",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Integrate ErrorHandler with existing logging system to provide structured error logs with context. Enhance run reports to include error summaries, recovery actions taken, and performance impact. Implement error metrics collection and add error information to workflow execution summaries with actionable next steps.",
+            "status": "pending",
+            "testStrategy": "Unit tests for logging integration, report enhancement, metrics collection. Integration tests verifying complete error flow from detection through logging to reporting with proper context preservation."
+          }
+        ]
       },
       {
         "id": 47,
@@ -8141,7 +8946,40 @@
           36
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create commit message template system",
+            "description": "Implement configurable template system for conventional commit message generation with variable substitution",
+            "dependencies": [],
+            "details": "Create template engine that supports conventional commit format '{type}({scope}): {message} (task {id}.{subtask})'. Implement variable substitution for task context including task ID, subtask ID, scope, and message. Support configurable templates through configuration files with validation for required placeholders.",
+            "status": "pending",
+            "testStrategy": "Unit tests for template parsing, variable substitution, and configuration validation. Test various template formats and edge cases."
+          },
+          {
+            "id": 2,
+            "title": "Implement commit type auto-detection logic",
+            "description": "Create intelligent detection of conventional commit types based on task content and file changes",
+            "dependencies": [
+              1
+            ],
+            "details": "Analyze task descriptions, titles, and file changes to automatically determine commit type (feat, fix, chore, docs, style, refactor, test). Use pattern matching on task content and file extension analysis. Include fallback logic and confidence scoring for type suggestions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for type detection algorithms with various task scenarios. Test file change analysis and pattern matching accuracy."
+          },
+          {
+            "id": 3,
+            "title": "Add commit message validation and GitAdapter integration",
+            "description": "Implement validation against conventional commit standards and integrate with GitAdapter",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Validate generated commit messages against conventional commit specification including format, length limits, and required components. Integrate template system and type detection into GitAdapter class. Add configuration options for strict vs lenient validation modes.",
+            "status": "pending",
+            "testStrategy": "Unit tests for validation rules and GitAdapter integration. Integration tests generating complete commit messages and verifying conventional commit compliance."
+          }
+        ]
       },
       {
         "id": 48,
@@ -8154,7 +8992,62 @@
           33
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement framework detection system",
+            "description": "Create a framework detection mechanism that identifies testing frameworks based on project files and configuration",
+            "dependencies": [],
+            "details": "Implement FrameworkDetector class that scans for framework-specific files (package.json for Jest/Vitest, requirements.txt/pyproject.toml for pytest, go.mod for go test, Cargo.toml for cargo test). Parse configuration files to determine active testing frameworks. Return framework type and configuration details for adapter initialization.",
+            "status": "pending",
+            "testStrategy": "Unit tests for file detection logic, configuration parsing. Integration tests with sample project structures for each framework type."
+          },
+          {
+            "id": 2,
+            "title": "Design common adapter interface",
+            "description": "Create a unified interface for test execution adapters across all supported frameworks",
+            "dependencies": [
+              1
+            ],
+            "details": "Define TestFrameworkAdapter interface with methods: execute(), parseResults(), getCoverage(), getTestFiles(). Create base adapter class with common functionality like result normalization, error handling, and timeout management. Define standardized result format for test outcomes, coverage data, and execution metadata.",
+            "status": "pending",
+            "testStrategy": "Unit tests for interface implementation, base adapter functionality. Mock adapter tests for interface compliance verification."
+          },
+          {
+            "id": 3,
+            "title": "Implement Python pytest adapter",
+            "description": "Create adapter for Python pytest framework with result parsing and coverage support",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement PytestAdapter extending TestFrameworkAdapter. Handle pytest command execution with proper arguments for JSON output and coverage reporting. Parse pytest JSON results into standardized format. Support pytest-cov for coverage data extraction. Handle Python virtual environment detection and activation.",
+            "status": "pending",
+            "testStrategy": "Unit tests for pytest command construction, result parsing. Integration tests with real Python projects using pytest and pytest-cov."
+          },
+          {
+            "id": 4,
+            "title": "Implement Go and Rust adapters",
+            "description": "Create adapters for Go test and Rust cargo test frameworks with result parsing",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement GoTestAdapter for 'go test' command with JSON output parsing and coverage support via go tool cover. Implement CargoTestAdapter for 'cargo test' with JSON message parsing and coverage via cargo-tarpaulin. Both adapters should handle framework-specific output formats and convert to standardized result structure.",
+            "status": "pending",
+            "testStrategy": "Unit tests for command execution and result parsing for both Go and Rust. Integration tests with sample Go modules and Rust crates."
+          },
+          {
+            "id": 5,
+            "title": "Integrate adapters with TestRunnerAdapter and ensure backward compatibility",
+            "description": "Extend existing TestRunnerAdapter to use new framework adapters while maintaining JavaScript/TypeScript support",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Modify TestRunnerAdapter to use FrameworkDetector and route to appropriate adapter. Maintain existing Jest/Vitest functionality as default for JavaScript/TypeScript projects. Add adapter factory pattern for framework selection. Ensure all existing TestRunnerAdapter methods work unchanged for backward compatibility.",
+            "status": "pending",
+            "testStrategy": "Unit tests for adapter routing and factory pattern. Integration tests verifying existing Jest/Vitest functionality remains unchanged. Cross-framework integration tests."
+          }
+        ]
       },
       {
         "id": 49,
@@ -8168,7 +9061,50 @@
           38
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance WorkflowOrchestrator with EventEmitter capabilities",
+            "description": "Add EventEmitter functionality to WorkflowOrchestrator for streaming workflow events in real-time",
+            "dependencies": [],
+            "details": "Extend WorkflowOrchestrator class to inherit from EventEmitter or add EventEmitter instance. Define event types for phase changes, test results, commit creation, and workflow state transitions. Implement event emission at key workflow points with proper error handling and event cleanup.",
+            "status": "pending",
+            "testStrategy": "Unit tests for EventEmitter integration, event emission timing, and cleanup. Mock workflow phases to verify correct event firing sequence."
+          },
+          {
+            "id": 2,
+            "title": "Implement structured event format with timestamps and metadata",
+            "description": "Create standardized event format including timestamps, phase information, progress data, and metadata",
+            "dependencies": [
+              1
+            ],
+            "details": "Define TypeScript interfaces for workflow events with required fields: eventType, timestamp, phaseInfo, progressPercentage, timeEstimates, metadata. Implement event formatting utilities and validation. Include progress calculation logic based on workflow phases and subtask completion.",
+            "status": "pending",
+            "testStrategy": "Unit tests for event format validation, timestamp accuracy, progress percentage calculations. Test event serialization and deserialization."
+          },
+          {
+            "id": 3,
+            "title": "Add event persistence to run logs",
+            "description": "Implement event logging system to persist workflow events to run logs for historical tracking",
+            "dependencies": [
+              2
+            ],
+            "details": "Create event persistence layer that writes structured events to run log files. Implement log rotation and retention policies. Add event querying capabilities for retrieving historical workflow data. Ensure thread-safe writing and proper error handling for file operations.",
+            "status": "pending",
+            "testStrategy": "Unit tests for event persistence, log file management, and querying. Integration tests verifying complete workflow event logging and retrieval accuracy."
+          },
+          {
+            "id": 4,
+            "title": "Implement optional WebSocket streaming for external monitoring",
+            "description": "Create WebSocket server for real-time event streaming to external monitoring clients",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement optional WebSocket server using ws library for streaming events to external clients. Add connection management, authentication, and rate limiting. Support multiple client connections with event filtering. Include graceful connection handling and error recovery mechanisms.",
+            "status": "pending",
+            "testStrategy": "Unit tests for WebSocket server setup, client connection handling, event broadcasting. Integration tests with multiple clients receiving real-time workflow events."
+          }
+        ]
       },
       {
         "id": 50,
@@ -8182,7 +9118,63 @@
           36
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement file change detection system",
+            "description": "Create a system to detect and track file changes between test runs to identify which files have been modified",
+            "dependencies": [],
+            "details": "Implement GitChangeDetector class that uses git diff to identify changed files since last test run. Track file timestamps and git commit hashes. Support both staged and unstaged changes. Handle edge cases like new files, deleted files, and renamed files. Store change metadata for impact analysis.",
+            "status": "pending",
+            "testStrategy": "Unit tests for git diff parsing, file change detection accuracy, edge cases with file operations. Mock git operations for consistent testing."
+          },
+          {
+            "id": 2,
+            "title": "Build test dependency analysis engine",
+            "description": "Create dependency mapping system to understand which tests are affected by specific file changes",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement TestDependencyAnalyzer that maps source files to test files through import analysis, test file naming conventions, and explicit dependency declarations. Parse import statements, require calls, and dynamic imports. Build dependency graph with file-to-test relationships. Support both direct and transitive dependencies.",
+            "status": "pending",
+            "testStrategy": "Unit tests for import parsing, dependency graph construction, transitive dependency resolution. Integration tests with real project structures."
+          },
+          {
+            "id": 3,
+            "title": "Create framework-specific targeting adapters",
+            "description": "Implement framework-specific test targeting using native tools like Jest --findRelatedTests and Vitest changed files",
+            "dependencies": [
+              2
+            ],
+            "details": "Create FrameworkTargetingAdapter with implementations for Jest (--findRelatedTests), Vitest (--changed), and generic fallback. Abstract framework detection and command generation. Handle framework-specific configuration and edge cases. Provide unified interface for all test runners.",
+            "status": "pending",
+            "testStrategy": "Unit tests for each framework adapter, command generation, framework detection. Integration tests with actual Jest and Vitest projects."
+          },
+          {
+            "id": 4,
+            "title": "Implement test impact calculation algorithm",
+            "description": "Create intelligent algorithm to calculate which tests should run based on change analysis and dependency mapping",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Implement TestImpactCalculator that combines file changes with dependency analysis to determine minimal test set. Use scoring algorithm considering change severity, dependency depth, and historical test failures. Optimize for both coverage and performance. Include confidence metrics for targeting decisions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for impact calculation logic, scoring algorithms, confidence metrics. Performance tests with large codebases and dependency graphs."
+          },
+          {
+            "id": 5,
+            "title": "Add fallback logic and integration with TestRunnerAdapter",
+            "description": "Integrate targeting system with existing TestRunnerAdapter and implement robust fallback mechanisms",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Enhance TestRunnerAdapter with intelligent targeting methods. Implement fallback to full test suite when targeting fails, confidence is low, or for final validation. Add configuration options for targeting aggressiveness and fallback thresholds. Include performance monitoring and targeting effectiveness metrics.",
+            "status": "pending",
+            "testStrategy": "Integration tests with TestRunnerAdapter, fallback scenario testing, performance benchmarks. End-to-end tests verifying targeting accuracy and fallback reliability."
+          }
+        ]
       },
       {
         "id": 51,
@@ -8196,7 +9188,49 @@
           40
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement timeline calculation engine",
+            "description": "Create core timeline calculation logic for dry-run execution planning with duration estimates",
+            "dependencies": [],
+            "details": "Build timeline calculation engine in apps/cli/src/commands/autopilot/timeline.ts. Calculate estimated durations for each execution phase (preflight, branch ops, test generation, execution, finalization). Account for task complexity, subtask counts, and historical execution data. Support parallel vs sequential execution modeling with dependency resolution.",
+            "status": "pending",
+            "testStrategy": "Unit tests for duration calculation algorithms, dependency resolution logic, and parallel execution modeling. Mock historical data for various task complexities."
+          },
+          {
+            "id": 2,
+            "title": "Implement duration estimation algorithms",
+            "description": "Create intelligent duration estimation based on task complexity and historical data",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop estimation algorithms in apps/cli/src/commands/autopilot/estimator.ts. Analyze task complexity factors (subtask count, file changes, test requirements). Use historical execution data or baseline estimates. Account for tool dependencies (git, gh, test runners) and system resources. Include confidence intervals and estimation accuracy tracking.",
+            "status": "pending",
+            "testStrategy": "Unit tests for estimation algorithms with various complexity scenarios. Integration tests comparing estimates against actual execution times for accuracy validation."
+          },
+          {
+            "id": 3,
+            "title": "Create ASCII art progress visualization",
+            "description": "Build comprehensive visualization formatter for execution timeline display",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create visualization formatter in apps/cli/src/commands/autopilot/visualizer.ts. Generate ASCII art timeline with phase bars, dependency arrows, and progress indicators. Include execution tree view showing task hierarchy and parallel operations. Add resource requirement badges (git, gh, npm) and time estimates. Support colored output with status indicators.",
+            "status": "pending",
+            "testStrategy": "Unit tests for ASCII art generation, timeline formatting, and colored output. Visual regression tests comparing output layouts for different terminal widths and task complexities."
+          },
+          {
+            "id": 4,
+            "title": "Implement resource validation and preflight checks",
+            "description": "Create comprehensive resource validation for execution environment requirements",
+            "dependencies": [],
+            "details": "Build resource validator in apps/cli/src/commands/autopilot/validator.ts. Check availability of required tools (git, gh, npm, test runners). Validate git repository state, branch permissions, and authentication. Verify disk space, network connectivity, and system resources. Include detailed preflight check results in dry-run output with remediation suggestions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for individual resource checks and validation logic. Integration tests with various system configurations and missing dependencies to verify error handling and suggestions."
+          }
+        ]
       },
       {
         "id": 52,
@@ -8211,7 +9245,76 @@
           41
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up isolated test environment infrastructure",
+            "description": "Create the foundational test infrastructure for isolated autopilot workflow testing including temporary directories, git repository fixtures, and environment cleanup",
+            "dependencies": [],
+            "details": "Create tests/integration/autopilot/ directory structure with utilities for creating temporary git repositories, setting up isolated file systems, and managing test data cleanup. Implement TestEnvironment class with methods for repository creation, task data injection, and environment teardown. Include support for both Jest and Vitest test runners with shared configuration.",
+            "status": "pending",
+            "testStrategy": "Unit tests for environment setup/teardown, fixture creation, and isolation verification. Test that environments don't interfere with each other when run in parallel."
+          },
+          {
+            "id": 2,
+            "title": "Implement mock integrations and external service stubs",
+            "description": "Create comprehensive mocks for GitHub API, git operations, and external dependencies to enable controlled testing of autopilot workflows",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop mock implementations for GitHub API responses (PR creation, status checks), git command execution, and external tool integrations. Create MockGitHubService and MockGitService classes that can simulate various scenarios including API failures, network timeouts, and authentication errors. Include configurable response patterns for different test scenarios.",
+            "status": "pending",
+            "testStrategy": "Test mock accuracy against real API responses, verify error scenario simulation, and ensure mocks can be configured for different test cases without conflicts."
+          },
+          {
+            "id": 3,
+            "title": "Create end-to-end workflow test scenarios",
+            "description": "Implement comprehensive test cases covering complete autopilot workflows including success paths, error scenarios, and edge cases",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Develop test suites for complete red-green-commit cycles, error recovery scenarios, resume functionality after interruption, and PR creation workflows. Include tests for various project types, different task complexities, and failure modes (test failures, build errors, git conflicts). Create scenario-based test data with realistic task structures and dependencies.",
+            "status": "pending",
+            "testStrategy": "Integration tests that verify complete workflow execution, error handling paths, and state persistence across resume operations. Performance validation for different project sizes and task counts."
+          },
+          {
+            "id": 4,
+            "title": "Implement performance benchmarking and resource monitoring",
+            "description": "Create performance testing infrastructure to measure autopilot workflow execution times, memory usage, and resource consumption",
+            "dependencies": [
+              3
+            ],
+            "details": "Develop performance testing harness that measures workflow execution times, memory consumption, CPU usage, and git repository size impacts. Create benchmarking utilities that can test across different project sizes (small, medium, large codebases) and task counts. Include regression testing to detect performance degradation and resource leak detection.",
+            "status": "pending",
+            "testStrategy": "Performance tests with baseline measurements, resource usage monitoring, and regression detection. Validate that workflows complete within acceptable time limits for different project scales."
+          },
+          {
+            "id": 5,
+            "title": "Develop test isolation and parallelization strategies",
+            "description": "Implement robust test isolation mechanisms to ensure autopilot integration tests can run safely in parallel without interference",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create test isolation strategies using unique temporary directories, port management for local services, and process isolation for concurrent test execution. Implement test cleanup mechanisms that prevent state leakage between tests. Include parallel execution support for both Jest and Vitest with proper resource management and conflict prevention.",
+            "status": "pending",
+            "testStrategy": "Concurrency tests to verify isolation effectiveness, cleanup verification, and resource contention prevention. Test that parallel execution produces consistent results without race conditions."
+          },
+          {
+            "id": 6,
+            "title": "Create comprehensive result validation and reporting",
+            "description": "Implement validation mechanisms to verify autopilot workflow results and create detailed test reporting for integration test outcomes",
+            "dependencies": [
+              3,
+              4,
+              5
+            ],
+            "details": "Develop result validation utilities that verify git history correctness, PR content accuracy, task completion status, and workflow state consistency. Create comprehensive test reporting that includes performance metrics, resource usage statistics, and detailed failure analysis. Include visual diff tools for comparing expected vs actual workflow outcomes.",
+            "status": "pending",
+            "testStrategy": "Validation tests for result verification accuracy, reporting completeness, and failure diagnosis capabilities. Test that validation can detect subtle workflow inconsistencies and state corruption."
+          }
+        ]
       },
       {
         "id": 53,
@@ -8224,7 +9327,51 @@
           52
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create comprehensive autopilot documentation",
+            "description": "Write detailed documentation covering autopilot setup, configuration options, workflow phases, error handling, and best practices",
+            "dependencies": [],
+            "details": "Create main autopilot documentation file covering installation, setup process, configuration options (flags like --dry-run, --no-push, etc.), workflow phases explanation, error handling strategies, and best practices for autonomous TDD workflows. Include API documentation for WorkflowOrchestrator and integration points.",
+            "status": "pending",
+            "testStrategy": "Documentation validation through technical review, link checking, format validation, and clarity assessment for technical accuracy"
+          },
+          {
+            "id": 2,
+            "title": "Create example PRD files and templates",
+            "description": "Develop example PRD files that demonstrate autopilot-compatible task structure and workflow patterns",
+            "dependencies": [
+              1
+            ],
+            "details": "Create example PRD files in .taskmaster/docs/examples/ showing different project types (web app, API, CLI tool) with autopilot-compatible task structures. Include templates for common scenarios and best practices for task decomposition that works well with autonomous workflows.",
+            "status": "pending",
+            "testStrategy": "Example verification by running actual autopilot workflows against the example PRDs to ensure they execute successfully and produce expected results"
+          },
+          {
+            "id": 3,
+            "title": "Write troubleshooting guide",
+            "description": "Create comprehensive troubleshooting guide for common autopilot workflow issues and their solutions",
+            "dependencies": [
+              1
+            ],
+            "details": "Document common issues like git conflicts during autonomous commits, test failures in red-green-refactor cycles, dependency resolution problems, workflow resume failures, and GitHub API rate limiting. Include step-by-step resolution guides, preventive measures, and debugging techniques.",
+            "status": "pending",
+            "testStrategy": "Troubleshooting guide validation by testing resolution steps against actual error scenarios and user feedback collection"
+          },
+          {
+            "id": 4,
+            "title": "Create demo materials and workflow visualization",
+            "description": "Produce demo video or GIF showing complete autopilot workflow execution from start to finish",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Create visual demo materials showing complete autopilot workflow: PRD parsing, task expansion, autonomous TDD cycles, git operations, test execution, and PR creation. Include screen recordings or animated GIFs demonstrating successful workflow execution and key decision points.",
+            "status": "pending",
+            "testStrategy": "Demo material validation through user testing sessions, accessibility review for visual content, and verification that examples accurately represent actual workflow behavior"
+          }
+        ]
       }
     ],
     "metadata": {
