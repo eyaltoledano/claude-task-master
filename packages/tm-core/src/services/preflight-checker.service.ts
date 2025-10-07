@@ -6,12 +6,20 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
-import {
-	isGitRepository,
-	isGhCliAvailable,
-	getDefaultBranch
-} from '../../../../scripts/modules/utils/git-utils.js';
 import { getLogger } from '../logger/factory.js';
+
+// Import git utilities (JS module without type definitions)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const gitUtils = require('../../../../scripts/modules/utils/git-utils.js');
+const isGitRepository = gitUtils.isGitRepository as (
+	projectRoot: string
+) => Promise<boolean>;
+const isGhCliAvailable = gitUtils.isGhCliAvailable as (
+	projectRoot: string
+) => Promise<boolean>;
+const getDefaultBranch = gitUtils.getDefaultBranch as (
+	projectRoot: string
+) => Promise<string | null>;
 
 const logger = getLogger('PreflightChecker');
 

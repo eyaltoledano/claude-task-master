@@ -97,7 +97,7 @@ export class AutopilotCommand extends Command {
 			spinner.succeed(`Task ${taskId} loaded`);
 
 			// Display task information
-			this.displayTaskInfo(task, options.dryRun);
+			this.displayTaskInfo(task, options.dryRun || false);
 
 			// Execute autopilot logic (placeholder for now)
 			const result = await this.performAutopilot(taskId, task, options);
@@ -260,7 +260,7 @@ export class AutopilotCommand extends Command {
 		console.log();
 
 		// Display subtasks
-		orderedSubtasks.forEach((subtask, index) => {
+		orderedSubtasks.forEach((subtask: any, index: number) => {
 			console.log(
 				chalk.yellow(
 					`${index + 1}. ${validationResult.task!.id}.${subtask.id}: ${subtask.title}`
@@ -337,7 +337,7 @@ export class AutopilotCommand extends Command {
 
 			case 'text':
 			default:
-				this.displayTextResult(result, options);
+				this.displayTextResult(result);
 				break;
 		}
 	}
@@ -352,10 +352,7 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Display result in text format
 	 */
-	private displayTextResult(
-		result: AutopilotCommandResult,
-		options: AutopilotCommandOptions
-	): void {
+	private displayTextResult(result: AutopilotCommandResult): void {
 		if (result.success) {
 			console.log(
 				boxen(

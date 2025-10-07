@@ -57,7 +57,7 @@ export interface DependencyIssue {
  * TaskLoaderService loads and validates tasks for autopilot execution
  */
 export class TaskLoaderService {
-	private taskService: TaskService;
+	private taskService: TaskService | null = null;
 	private projectRoot: string;
 
 	constructor(projectRoot: string) {
@@ -65,10 +65,17 @@ export class TaskLoaderService {
 			throw new Error('projectRoot is required for TaskLoaderService');
 		}
 		this.projectRoot = projectRoot;
+	}
 
-		// Initialize TaskService with ConfigManager
-		const configManager = new ConfigManager(projectRoot);
+	/**
+	 * Ensure TaskService is initialized
+	 */
+	private async ensureInitialized(): Promise<void> {
+		if (this.taskService) return;
+
+		const configManager = await ConfigManager.create(this.projectRoot);
 		this.taskService = new TaskService(configManager);
+		await this.taskService.initialize();
 	}
 
 	/**
@@ -126,8 +133,11 @@ export class TaskLoaderService {
 	 */
 	private async loadTask(taskId: string): Promise<Task | null> {
 		try {
-			const result = await this.taskService.getTask(taskId);
-			return result.task || null;
+			await this.ensureInitialized();
+			if (!this.taskService) {
+				throw new Error('TaskService initialization failed');
+			}
+			return await this.taskService.getTask(taskId);
 		} catch (error) {
 			logger.error(`Failed to load task ${taskId}:`, error);
 			return null;
@@ -384,6 +394,7 @@ export class TaskLoaderService {
 	 * Clean up resources
 	 */
 	async cleanup(): Promise<void> {
-		await this.taskService.close();
+		// TaskService doesn't require explicit cleanup
+		// Resources are automatically released when instance is garbage collected
 	}
 }
