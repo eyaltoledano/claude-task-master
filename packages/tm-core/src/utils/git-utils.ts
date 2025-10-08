@@ -142,9 +142,7 @@ export async function getRemoteBranches(
 /**
  * Check if gh CLI is available and authenticated
  */
-export async function isGhCliAvailable(
-	projectRoot?: string
-): Promise<boolean> {
+export async function isGhCliAvailable(projectRoot?: string): Promise<boolean> {
 	try {
 		const options = projectRoot ? { cwd: projectRoot } : {};
 		await execAsync('gh auth status', options);
@@ -246,7 +244,11 @@ export async function isOnDefaultBranch(projectRoot: string): Promise<boolean> {
 	try {
 		const currentBranch = await getCurrentBranch(projectRoot);
 		const defaultBranch = await getDefaultBranch(projectRoot);
-		return currentBranch !== null && defaultBranch !== null && currentBranch === defaultBranch;
+		return (
+			currentBranch !== null &&
+			defaultBranch !== null &&
+			currentBranch === defaultBranch
+		);
 	} catch (error) {
 		return false;
 	}

@@ -121,42 +121,24 @@ export class PreflightChecker {
 				};
 			}
 
-			// Check for uncommitted changes
-			try {
-				execSync('git diff-index --quiet HEAD --', {
-					cwd: this.projectRoot,
-					stdio: 'pipe'
-				});
-
-				// Also check for untracked files
-				const status = execSync('git status --porcelain', {
-					cwd: this.projectRoot,
-					encoding: 'utf-8'
-				});
-
-				if (status.trim().length > 0) {
-					return {
-						success: false,
-						value: 'dirty',
-						message:
-							'Working tree has uncommitted changes. Please commit or stash them.'
-					};
-				}
-
-				return {
-					success: true,
-					value: 'clean',
-					message: 'Working tree is clean'
-				};
-			} catch (error: any) {
-				// git diff-index returns non-zero if there are changes
+			// Check for changes (staged/unstaged/untracked) without requiring HEAD
+			const status = execSync('git status --porcelain', {
+				cwd: this.projectRoot,
+				encoding: 'utf-8'
+			});
+			if (status.trim().length > 0) {
 				return {
 					success: false,
 					value: 'dirty',
 					message:
-						'Working tree has uncommitted changes. Please commit or stash them.'
+						'Working tree has uncommitted or untracked changes. Please commit or stash them.'
 				};
 			}
+			return {
+				success: true,
+				value: 'clean',
+				message: 'Working tree is clean'
+			};
 		} catch (error: any) {
 			return {
 				success: false,
