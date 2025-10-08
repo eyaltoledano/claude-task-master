@@ -1,4 +1,4 @@
-import { FastMCP } from 'fastmcp';
+import { FastMCP } from './FastMCPCompat.js';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
