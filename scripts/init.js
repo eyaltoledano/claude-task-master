@@ -629,7 +629,10 @@ function createProjectStructure(
 	copyTemplateFile('example_prd.txt', path.join(targetDir, EXAMPLE_PRD_FILE));
 
 	// Copy example_prd_rpg.txt to templates directory
-	copyTemplateFile('example_prd_rpg.txt', path.join(targetDir, TASKMASTER_TEMPLATES_DIR, 'example_prd_rpg.txt'));
+	copyTemplateFile(
+		'example_prd_rpg.txt',
+		path.join(targetDir, TASKMASTER_TEMPLATES_DIR, 'example_prd_rpg.txt')
+	);
 
 	// Initialize git repository if git is available
 	try {
