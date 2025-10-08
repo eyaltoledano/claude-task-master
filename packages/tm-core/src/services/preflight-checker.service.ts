@@ -124,7 +124,8 @@ export class PreflightChecker {
 			// Check for changes (staged/unstaged/untracked) without requiring HEAD
 			const status = execSync('git status --porcelain', {
 				cwd: this.projectRoot,
-				encoding: 'utf-8'
+				encoding: 'utf-8',
+				timeout: 5000
 			});
 			if (status.trim().length > 0) {
 				return {
@@ -266,7 +267,8 @@ export class PreflightChecker {
 			const version = execSync(`${command} ${versionArgs.join(' ')}`, {
 				cwd: this.projectRoot,
 				encoding: 'utf-8',
-				stdio: 'pipe'
+				stdio: 'pipe',
+				timeout: 5000
 			})
 				.trim()
 				.split('\n')[0];
@@ -294,7 +296,8 @@ export class PreflightChecker {
 			const version = execSync('gh --version', {
 				cwd: this.projectRoot,
 				encoding: 'utf-8',
-				stdio: 'pipe'
+				stdio: 'pipe',
+				timeout: 5000
 			})
 				.trim()
 				.split('\n')[0];

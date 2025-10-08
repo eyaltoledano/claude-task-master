@@ -184,7 +184,7 @@ export class AutopilotCommand extends Command {
 					padding: 1,
 					borderStyle: 'round',
 					borderColor: 'cyan',
-					width: process.stdout.columns * 0.95 || 100
+					width: process.stdout.columns ? process.stdout.columns * 0.95 : 100
 				}
 			)
 		);

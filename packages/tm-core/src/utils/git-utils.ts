@@ -129,11 +129,12 @@ export async function getRemoteBranches(
 			'git branch -r --format="%(refname:short)"',
 			{ cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }
 		);
-		return stdout
+		const names = stdout
 			.trim()
 			.split('\n')
 			.filter((branch) => branch.length > 0 && !branch.includes('HEAD'))
 			.map((branch) => branch.replace(/^[^/]+\//, '').trim());
+		return Array.from(new Set(names));
 	} catch (error) {
 		return [];
 	}
@@ -220,7 +221,8 @@ export async function getDefaultBranch(
 			// Parse `git remote show` (preferred)
 			try {
 				const { stdout } = await execAsync(`git remote show ${primary}`, {
-					cwd: projectRoot
+					cwd: projectRoot,
+					maxBuffer: 10 * 1024 * 1024
 				});
 				const m = stdout.match(/HEAD branch:\s+([^\s]+)/);
 				if (m) return m[1].trim();
@@ -264,8 +266,10 @@ export async function isOnDefaultBranch(projectRoot: string): Promise<boolean> {
 	}
 
 	try {
-		const currentBranch = await getCurrentBranch(projectRoot);
-		const defaultBranch = await getDefaultBranch(projectRoot);
+		const [currentBranch, defaultBranch] = await Promise.all([
+			getCurrentBranch(projectRoot),
+			getDefaultBranch(projectRoot)
+		]);
 		return (
 			currentBranch !== null &&
 			defaultBranch !== null &&
@@ -357,6 +361,15 @@ export async function getWorktrees(
 
 		for (const line of lines) {
 			if (line.startsWith('worktree ')) {
+				// flush previous entry if present
+				if (current.path) {
+					worktrees.push({
+						path: current.path,
+						branch: current.branch || null,
+						head: current.head || ''
+					});
+					current = {};
+				}
 				current.path = line.substring(9);
 			} else if (line.startsWith('HEAD ')) {
 				current.head = line.substring(5);
