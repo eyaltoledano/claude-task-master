@@ -326,3 +326,83 @@ export function isValidBranchForTag(branchName: string): boolean {
 	const sanitized = sanitizeBranchNameForTag(branchName);
 	return sanitized.length > 0 && sanitized !== 'unknown-branch';
 }
+
+/**
+ * Git worktree information
+ */
+export interface GitWorktree {
+	path: string;
+	branch: string | null;
+	head: string;
+}
+
+/**
+ * Get list of all git worktrees
+ */
+export async function getWorktrees(
+	projectRoot: string
+): Promise<GitWorktree[]> {
+	if (!projectRoot) {
+		throw new Error('projectRoot is required for getWorktrees');
+	}
+
+	try {
+		const { stdout } = await execAsync('git worktree list --porcelain', {
+			cwd: projectRoot
+		});
+
+		const worktrees: GitWorktree[] = [];
+		const lines = stdout.trim().split('\n');
+		let current: Partial<GitWorktree> = {};
+
+		for (const line of lines) {
+			if (line.startsWith('worktree ')) {
+				current.path = line.substring(9);
+			} else if (line.startsWith('HEAD ')) {
+				current.head = line.substring(5);
+			} else if (line.startsWith('branch ')) {
+				current.branch = line.substring(7).replace('refs/heads/', '');
+			} else if (line === '' && current.path) {
+				worktrees.push({
+					path: current.path,
+					branch: current.branch || null,
+					head: current.head || ''
+				});
+				current = {};
+			}
+		}
+
+		// Handle last entry if no trailing newline
+		if (current.path) {
+			worktrees.push({
+				path: current.path,
+				branch: current.branch || null,
+				head: current.head || ''
+			});
+		}
+
+		return worktrees;
+	} catch (error) {
+		return [];
+	}
+}
+
+/**
+ * Check if a branch is checked out in any worktree
+ * Returns the worktree path if found, null otherwise
+ */
+export async function isBranchCheckedOut(
+	projectRoot: string,
+	branchName: string
+): Promise<string | null> {
+	if (!projectRoot) {
+		throw new Error('projectRoot is required for isBranchCheckedOut');
+	}
+	if (!branchName) {
+		throw new Error('branchName is required for isBranchCheckedOut');
+	}
+
+	const worktrees = await getWorktrees(projectRoot);
+	const worktree = worktrees.find((wt) => wt.branch === branchName);
+	return worktree ? worktree.path : null;
+}

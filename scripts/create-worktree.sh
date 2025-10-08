@@ -44,8 +44,11 @@ fi
 # Create worktree (new or existing branch)
 if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
   git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
-elif git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null 2>&1; then
-  git worktree add "$WORKTREE_PATH" "origin/$BRANCH_NAME"
+elif git remote get-url origin >/dev/null 2>&1 && git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null 2>&1; then
+  # Create a local branch from the remote and attach worktree
+  git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" "origin/$BRANCH_NAME"
+  # Ensure the new branch tracks the remote
+  git -C "$WORKTREE_PATH" branch --set-upstream-to="origin/$BRANCH_NAME" "$BRANCH_NAME"
 else
   git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH"
 fi

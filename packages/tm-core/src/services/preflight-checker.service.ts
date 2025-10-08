@@ -3,7 +3,7 @@
  * Validates environment and prerequisites for autopilot execution
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { getLogger } from '../logger/factory.js';
@@ -169,10 +169,8 @@ export class PreflightChecker {
 		if (existsSync(join(this.projectRoot, 'Cargo.toml'))) types.push('rust');
 		if (existsSync(join(this.projectRoot, 'composer.json'))) types.push('php');
 		if (existsSync(join(this.projectRoot, 'Gemfile'))) types.push('ruby');
-		if (
-			existsSync(join(this.projectRoot, '*.csproj')) ||
-			existsSync(join(this.projectRoot, '*.sln'))
-		)
+		const files = readdirSync(this.projectRoot);
+		if (files.some((f) => f.endsWith('.csproj') || f.endsWith('.sln')))
 			types.push('dotnet');
 
 		return types;
