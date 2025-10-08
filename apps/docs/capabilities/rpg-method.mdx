@@ -1,0 +1,326 @@
+---
+title: RPG Method for PRD Creation
+sidebarTitle: "RPG Method"
+---
+
+# Repository Planning Graph (RPG) Method
+
+The RPG (Repository Planning Graph) method is an advanced approach to creating Product Requirements Documents that generate highly-structured, dependency-aware task graphs. It's based on Microsoft Research's methodology for scalable codebase generation.
+
+## When to Use RPG
+
+Use the RPG template (`example_prd_rpg.txt`) for:
+
+- **Complex multi-module systems** with intricate dependencies
+- **Large-scale codebases** being built from scratch
+- **Projects requiring explicit architecture** and clear module boundaries
+- **Teams needing dependency visibility** for parallel development
+
+For simpler features or smaller projects, the standard `example_prd.txt` template may be more appropriate.
+
+---
+
+## Core Principles
+
+### 1. Dual-Semantics
+
+Separate **functional** thinking (WHAT) from **structural** thinking (HOW):
+
+```
+Functional: "Data Validation capability with schema checking and rule enforcement"
+                    ↓
+Structural: "src/validation/ with schema-validator.js and rule-validator.js"
+```
+
+This separation prevents mixing concerns and creates clearer module boundaries.
+
+### 2. Explicit Dependencies
+
+Never assume dependencies - always state them explicitly:
+
+```
+Good:
+  Module: data-ingestion
+  Depends on: [schema-validator, config-manager]
+
+Bad:
+  Module: data-ingestion
+  (Assumes schema-validator exists somewhere)
+```
+
+Explicit dependencies enable:
+- Topological ordering of implementation
+- Parallel development of independent modules
+- Clear build/test order
+- Early detection of circular dependencies
+
+### 3. Topological Order
+
+Build foundation layers before higher layers:
+
+```
+Phase 0 (Foundation): error-handling, base-types, config
+                ↓
+Phase 1 (Data): validation, ingestion (depend on Phase 0)
+                ↓
+Phase 2 (Core): algorithms, pipelines (depend on Phase 1)
+                ↓
+Phase 3 (API): routes, handlers (depend on Phase 2)
+```
+
+Task Master automatically orders tasks based on this dependency chain.
+
+### 4. Progressive Refinement
+
+Start broad, refine iteratively:
+
+1. High-level capabilities → Main tasks
+2. Features per capability → Subtasks
+3. Implementation details → Expanded subtasks
+
+---
+
+## Template Structure
+
+The RPG template guides you through 7 key sections:
+
+### 1. Overview
+- Problem statement
+- Target users
+- Success metrics
+
+### 2. Functional Decomposition (WHAT)
+- High-level capability domains
+- Features per capability
+- Inputs/outputs/behavior for each feature
+
+**Example:**
+```
+Capability: Data Management
+  Feature: Schema validation
+    Description: Validate JSON against defined schemas
+    Inputs: JSON object, schema definition
+    Outputs: Validation result + error details
+    Behavior: Iterate fields, check types, enforce constraints
+```
+
+### 3. Structural Decomposition (HOW)
+- Repository folder structure
+- Module-to-capability mapping
+- File organization
+- Public interfaces/exports
+
+**Example:**
+```
+Capability: Data Management
+  → Maps to: src/data/
+    ├── schema-validator.js    (Schema validation feature)
+    ├── rule-validator.js      (Rule validation feature)
+    └── index.js               (Exports)
+```
+
+### 4. Dependency Graph (CRITICAL)
+- Foundation layer (no dependencies)
+- Each subsequent layer's dependencies
+- Explicit "depends on" declarations
+
+**Example:**
+```
+Foundation Layer (Phase 0):
+  - error-handling: No dependencies
+  - base-types: No dependencies
+
+Data Layer (Phase 1):
+  - schema-validator: Depends on [base-types, error-handling]
+  - data-ingestion: Depends on [schema-validator]
+```
+
+### 5. Implementation Roadmap
+- Phases with entry/exit criteria
+- Tasks grouped by phase
+- Clear deliverables per phase
+
+### 6. Test Strategy
+- Test pyramid ratios
+- Coverage requirements
+- Critical test scenarios per module
+- Guidelines for test generation
+
+### 7. Architecture & Risks
+- Technical architecture
+- Data models
+- Technology decisions
+- Risk mitigation strategies
+
+---
+
+## Using RPG with Task Master
+
+### Step 1: Create PRD with RPG Template
+
+Use a code-context-aware tool to fill out the template:
+
+```bash
+# In Claude Code, Cursor, or similar
+"Create a PRD using @.taskmaster/templates/example_prd_rpg.txt for [your project]"
+```
+
+**Why code context matters:** The AI needs to understand your existing codebase to make informed decisions about:
+- Module boundaries
+- Dependency relationships
+- Integration points
+- Naming conventions
+
+**Recommended tools:**
+- Claude Code (claude-code CLI)
+- Cursor/Windsurf
+- Gemini CLI (large contexts)
+- Codex/Grok CLI
+
+### Step 2: Parse PRD into Tasks
+
+```bash
+task-master parse-prd .taskmaster/docs/your-prd.txt --research
+```
+
+Task Master will:
+1. Extract capabilities → Main tasks
+2. Extract features → Subtasks
+3. Parse dependencies → Task dependencies
+4. Order by phases → Task priorities
+
+**Result:** A dependency-aware task graph ready for topological execution.
+
+### Step 3: Analyze Complexity
+
+```bash
+task-master analyze-complexity --research
+```
+
+Review the complexity report to identify tasks that need expansion.
+
+### Step 4: Expand Tasks
+
+```bash
+task-master expand --all --research
+```
+
+Break down complex tasks into manageable subtasks while preserving dependency chains.
+
+---
+
+## RPG Benefits
+
+### For Solo Developers
+- Clear roadmap for implementing complex features
+- Prevents architectural mistakes early
+- Explicit dependency tracking avoids integration issues
+- Enables resuming work after interruptions
+
+### For Teams
+- Parallel development of independent modules
+- Clear contracts between modules (explicit dependencies)
+- Reduced merge conflicts (proper module boundaries)
+- Onboarding aid (architectural overview in PRD)
+
+### For AI Agents
+- Structured context for code generation
+- Clear scope boundaries per task
+- Dependency awareness prevents incomplete implementations
+- Test strategy guidance for TDD workflows
+
+---
+
+## RPG vs Standard Template
+
+| Aspect | Standard Template | RPG Template |
+|--------|------------------|--------------|
+| **Best for** | Simple features | Complex systems |
+| **Dependency handling** | Implicit | Explicit graph |
+| **Structure guidance** | Minimal | Step-by-step |
+| **Examples** | Few | Inline good/bad examples |
+| **Module boundaries** | Vague | Precise mapping |
+| **Task ordering** | Manual | Automatic (topological) |
+| **Learning curve** | Low | Medium |
+| **Resulting task quality** | Good | Excellent |
+
+---
+
+## Tips for Best Results
+
+### 1. Spend Time on Dependencies
+The dependency graph section is the most valuable. List all dependencies explicitly, even if they seem obvious.
+
+### 2. Keep Features Atomic
+Each feature should be independently testable. If a feature description is vague ("handle data"), break it into specific features.
+
+### 3. Progressive Refinement
+Don't try to get everything perfect on the first pass:
+1. Fill out high-level sections
+2. Review and refine
+3. Add detail where needed
+4. Let `task-master expand` break down complex tasks further
+
+### 4. Use Research Mode
+```bash
+task-master parse-prd --research
+```
+The `--research` flag leverages AI to enhance task generation with domain knowledge.
+
+### 5. Validate Early
+```bash
+task-master validate-dependencies
+```
+Check for circular dependencies or orphaned modules before starting implementation.
+
+---
+
+## Common Pitfalls
+
+### ❌ Mixing Functional and Structural
+```
+Bad: "Capability: validation.js"
+Good: "Capability: Data Validation" → maps to "src/validation/"
+```
+
+### ❌ Vague Module Boundaries
+```
+Bad: "Module: utils"
+Good: "Module: string-utilities" with clear exports
+```
+
+### ❌ Implicit Dependencies
+```
+Bad: "Module: API handlers (needs validation)"
+Good: "Module: API handlers, Depends on: [validation, error-handling]"
+```
+
+### ❌ Skipping Test Strategy
+Without test strategy, the AI won't know what to test during implementation.
+
+---
+
+## Example Workflow
+
+1. **Discuss idea with AI**: Explain your project concept
+2. **Reference RPG template**: Show AI the `example_prd_rpg.txt`
+3. **Co-create PRD**: Work through each section with AI guidance
+4. **Save to docs**: Place in `.taskmaster/docs/your-project.txt`
+5. **Parse PRD**: `task-master parse-prd .taskmaster/docs/your-project.txt --research`
+6. **Analyze**: `task-master analyze-complexity --research`
+7. **Expand**: `task-master expand --all --research`
+8. **Start work**: `task-master next`
+
+---
+
+## Further Reading
+
+- [PRD Creation and Parsing Guide](/getting-started/quick-start/prd-quick)
+- [Task Structure Documentation](/capabilities/task-structure)
+- [Microsoft Research RPG Paper](https://arxiv.org/abs/2410.21376) (Original methodology)
+
+---
+
+<Tip>
+The RPG template includes inline `<instruction>` and `<example>` blocks that teach the method as you use it. Read these sections carefully - they provide valuable guidance at each decision point.
+</Tip>

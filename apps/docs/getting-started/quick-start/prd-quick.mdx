@@ -32,7 +32,11 @@ The more context you give the model, the better the breakdown and results.
 
 ## Writing a PRD for Task Master
 
-<Note>An example PRD can be found in .taskmaster/templates/example_prd.txt</Note>
+<Note>
+Two example PRD templates are available in `.taskmaster/templates/`:
+- `example_prd.txt` - Simple template for straightforward projects
+- `example_prd_rpg.txt` - Advanced RPG (Repository Planning Graph) template for complex projects with dependencies
+</Note>
 
 
 You can co-write your PRD with an LLM model using the following workflow:
@@ -42,6 +46,29 @@ You can co-write your PRD with an LLM model using the following workflow:
 3. **Iterate and refine** — work with the model to shape the draft into a clear and well-structured PRD.
 
 This approach works great in Cursor, or anywhere you use a chat-based LLM.
+
+### Choosing Between Templates
+
+**Use `example_prd.txt` when:**
+- Building straightforward features
+- Working on smaller projects
+- Dependencies are simple and obvious
+
+**Use `example_prd_rpg.txt` when:**
+- Building complex systems with multiple modules
+- Need explicit dependency management
+- Want structured guidance on architecture decisions
+- Planning a large codebase from scratch
+
+The RPG template teaches you to think about:
+1. **Functional decomposition** (WHAT the system does)
+2. **Structural decomposition** (HOW it's organized in code)
+3. **Explicit dependencies** (WHAT depends on WHAT)
+4. **Topological ordering** (build foundation first, then layers)
+
+<Tip>
+For complex projects, using the RPG template with a code-context-aware ai agent produces the best results because the AI can understand your existing codebase structure. [Learn more about the RPG method →](/capabilities/rpg-method)
+</Tip>
 
 ---
 
