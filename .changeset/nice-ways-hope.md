@@ -11,7 +11,7 @@ Key features:
 - Flexible plain-text format with XML-style tags for parseability
 - Critical dependency-graph section ensures correct task ordering
 - Automatic inclusion during `task-master init`
-- Comprehensive documentation in `apps/docs/capabilities/rpg-method.mdx`
+- Comprehensive documentation at [docs.task-master.dev/capabilities/rpg-method](https://docs.task-master.dev/capabilities/rpg-method)
 - Tool recommendations for code-context-aware PRD creation (Claude Code, Cursor, Gemini CLI, Codex/Grok)
 
 The RPG template complements the existing `example_prd.txt` and provides a more structured approach for complex projects requiring clear module boundaries and dependency chains.
