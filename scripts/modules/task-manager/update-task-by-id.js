@@ -579,4 +579,4 @@ async function updateTaskById(
 	}
 }
 
-export { updateTaskById as default, parseUpdatedTaskFromText };
+export { updateTaskById as default };

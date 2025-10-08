@@ -18,11 +18,29 @@ async function agentllmParsePrdSave(
 	logWrapper,
 	tag = 'master'
 ) {
-	if (!tasksData || !Array.isArray(tasksData.tasks) || !tasksData.metadata) {
-		const errorMsg =
-			'Invalid tasksData structure. Expected object with "tasks" array and "metadata".';
-		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
-		return { success: false, error: errorMsg };
+ 	if (!tasksData || !Array.isArray(tasksData.tasks)) {
+ 		const errorMsg =
+ 			'Invalid tasksData structure. Expected object with "tasks" array.';
+ 		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
+ 		return { success: false, error: errorMsg };
+ 	}
+
+	// If metadata is missing, synthesize a minimal metadata object so the rest of
+	// the pipeline (which expects metadata) can continue. Log a warning so it's
+	// visible in server logs.
+	if (!tasksData.metadata || typeof tasksData.metadata !== 'object') {
+		logWrapper.warn(
+			'agentllmParsePrdSave: metadata missing from agent output; synthesizing minimal metadata.'
+		);
+		const projectName = projectRoot
+			? path.basename(projectRoot)
+			: 'unknown-project';
+		tasksData.metadata = {
+			projectName,
+			totalTasks: Array.isArray(tasksData.tasks) ? tasksData.tasks.length : 0,
+			sourceFile: 'agent-llm',
+			generatedAt: new Date().toISOString()
+		};
 	}
 
 	const outputPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);

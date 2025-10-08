@@ -4,7 +4,6 @@ import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js'; // P
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
 // Import the parser from the core updateTaskById script
-import { parseUpdatedTaskFromText } from '../../../../scripts/modules/task-manager/update-task-by-id.js';
 
 function updateSubtask(taskToUpdateObject, parsedAgentTask, taskIdToUpdate) {
 	const subId = parseInt(taskIdToUpdate.split('.')[1], 10);
@@ -137,31 +136,6 @@ async function agentllmUpdatedTaskSave(
 				const timestamp = new Date().toISOString();
 				directAppendText = `<info added on ${timestamp}>\n${agentOutput.trim()}\n</info added on ${timestamp}>`;
 				// parsedAgentTask remains undefined, as we'll modify taskToUpdateObject directly
-			} else {
-				logWrapper.info(
-					'agentllmUpdatedTaskSave: Agent output is a string and not appendMode. Attempting to parse with parseUpdatedTaskFromText.'
-				);
-				const idForParser =
-					typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')
-						? taskIdToUpdate
-						: parseInt(String(taskIdToUpdate), 10);
-				try {
-					parsedAgentTask = parseUpdatedTaskFromText(
-						agentOutput,
-						idForParser,
-						logWrapper,
-						true /* isMCP */
-					);
-				} catch (parseError) {
-					const errorMessage = `Failed to parse agent output string: ${parseError.message}`;
-					logWrapper.error(
-						`agentllmUpdatedTaskSave: Error parsing task from agent output: ${errorMessage}`
-					);
-					return {
-						success: false,
-						error: errorMessage
-					};
-				}
 			}
 		} else if (typeof agentOutput === 'object' && agentOutput !== null) {
 			logWrapper.info(

@@ -3,7 +3,6 @@ import fs from 'fs';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
-import { parseSubtasksFromText } from '../../../../scripts/modules/task-manager/expand-task.js'; // For parsing if agent returns text
 
 /**
  * Saves expanded subtask data (typically from an agent) to the parent task in tasks.json.
@@ -47,32 +46,7 @@ async function agentllmExpandTaskSave(
 		const parentTask = allTasksData.tasks[taskIndex];
 
 		let subtasksToSave;
-		if (typeof agentOutput === 'string') {
-			logWrapper.info(
-				'agentllmExpandTaskSave: Agent output is a string, attempting to parse with parseSubtasksFromText.'
-			);
-			try {
-				// The parseSubtasksFromText function needs: text, startId, expectedCount, parentTaskId (for logging), logger
-				// We need to ensure these values are correctly passed or determined.
-				// originalTaskDetails should contain numSubtasks (expectedCount) and nextSubtaskId (startId)
-				subtasksToSave = parseSubtasksFromText(
-					agentOutput,
-					originalTaskDetails.nextSubtaskId,
-					originalTaskDetails.numSubtasks,
-					parentTaskIdNum,
-					logWrapper
-				);
-			} catch (parseError) {
-				const errorMessage = `Failed to parse agent output string: ${parseError.message}`;
-				logWrapper.error(
-					`agentllmExpandTaskSave: Error parsing subtasks from agent output: ${errorMessage}`
-				);
-				return {
-					success: false,
-					error: errorMessage
-				};
-			}
-		} else if (Array.isArray(agentOutput)) {
+		if (Array.isArray(agentOutput)) {
 			logWrapper.info(
 				'agentllmExpandTaskSave: Agent output is already an array of subtasks.'
 			);

@@ -380,4 +380,4 @@ async function updateTasks(
 	}
 }
 
-export { updateTasks as default, parseUpdatedTasksFromText };
+export { updateTasks as default };

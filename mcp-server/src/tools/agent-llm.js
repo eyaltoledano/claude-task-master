@@ -28,7 +28,8 @@ const agentLLMParameters = z.object({
 				.enum(['generateText', 'streamText', 'generateObject'])
 				.describe('The type of LLM service requested.'),
 			requestParameters: z
-				.any()
+				.object({})
+				.passthrough()
 				.describe(
 					'The actual parameters for the LLM call (messages, modelId, schema, etc.).'
 				)
@@ -43,11 +44,11 @@ const agentLLMParameters = z.object({
 				.enum(['success', 'error'])
 				.describe('Status of the LLM call made by the agent.'),
 			data: z
-				.any()
+				.union([z.string(), z.object({}).passthrough()])
 				.optional()
 				.describe('The LLM response data (text, object) from the agent.'),
 			errorDetails: z
-				.any()
+				.union([z.string(), z.object({}).passthrough()])
 				.optional()
 				.describe("Error details if the agent's LLM call failed.")
 		})

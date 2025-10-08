@@ -1080,6 +1080,7 @@
 			"cost_per_1m_tokens": { "input": 0, "output": 0 },
 			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": null,
+			"supported": true,
 			"supports_tools": true,
 			"supports_image_input": true,
 			"notes": "Context window, actual costs, and specific capabilities are determined by the agent's configuration."

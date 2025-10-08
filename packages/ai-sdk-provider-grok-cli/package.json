@@ -3,16 +3,20 @@
 	"private": true,
 	"description": "AI SDK provider for Grok CLI integration",
 	"type": "module",
-	"types": "./src/index.ts",
 	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./src/index.ts"
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
 	},
 	"scripts": {
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"build": "tsc"
 	},
 	"dependencies": {
 		"@ai-sdk/provider": "^2.0.0",
@@ -20,7 +24,9 @@
 		"jsonc-parser": "^3.3.1"
 	},
 	"devDependencies": {
+		"@tm/build-config": "*",
 		"@types/node": "^22.18.6",
+		"tsdown": "^0.15.2",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},

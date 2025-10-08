@@ -417,4 +417,4 @@ async function expandTask(
 // Replace the single default export (if it exists)
 // export default expandTask;
 // With:
-export { expandTask as default, parseSubtasksFromText };
+export { expandTask as default };

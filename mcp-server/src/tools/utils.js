@@ -773,7 +773,10 @@ function createAgentDelegationResponse(pendingInteraction) {
 					details: pendingInteraction,
 					// Add a URI and mimeType here to be compatible with the old format
 					uri: 'agent-llm://pending-interaction',
-					mimeType: 'application/json'
+					mimeType: 'application/json',
+					directive: 'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
+					instructions: "Assistant/Agent (you), please perform the LLM call using 'requestParameters' and then invoke the 'agent_llm' tool with your response, including this 'interactionId'."
+
 				})
 			}
 		],

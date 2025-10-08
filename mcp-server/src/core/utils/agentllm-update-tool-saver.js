@@ -4,7 +4,6 @@ import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js';
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 // Import the array parser from the core updateTasks (plural) script
-import { parseUpdatedTasksFromText } from '../../../../scripts/modules/task-manager/update-tasks.js'; // Note: this is a direct import
 
 /**
  * Saves multiple updated task data (typically from an agent after an 'update' tool delegation) to tasks.json.
@@ -29,29 +28,7 @@ async function agentllmUpdateSave(
 
 	try {
 		let parsedAgentTasksArray;
-		if (typeof agentOutput === 'string') {
-			logWrapper.info(
-				'agentllmUpdateSave: Agent output is a string, attempting to parse with parseUpdatedTasksFromText.'
-			);
-			try {
-				// parseUpdatedTasksFromText expects: (text, expectedCount, logFn, isMCP)
-				// We don't have an expectedCount here easily, so pass null or undefined.
-				// It will use the length of the parsed array or warn if count is off.
-				parsedAgentTasksArray = parseUpdatedTasksFromText(
-					agentOutput,
-					null,
-					logWrapper,
-					true /* isMCP */
-				);
-			} catch (parseError) {
-				const errorMessage = `Failed to parse agentOutput string: ${parseError.message}`;
-				logWrapper.error(`agentllmUpdateSave: ${errorMessage}`);
-				return {
-					success: false,
-					error: errorMessage
-				};
-			}
-		} else if (Array.isArray(agentOutput)) {
+		if (Array.isArray(agentOutput)) {
 			logWrapper.info(
 				'agentllmUpdateSave: Agent output is already an array. Validating structure (basic).'
 			);

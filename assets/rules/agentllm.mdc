@@ -51,7 +51,7 @@ Your arguments for the `agent_llm` tool must include:
 - **interactionId**: The interactionId received in the pending-interaction.
 - **agentLLMResponse**: An object containing the outcome of the LLM call:
   - **status**: Set to `"success"` if the LLM call was successful, or `"error"` if it failed.
-  - **data**: If status is `"success"`, this field should contain the actual LLM response. When the `originalCommand` is `parse-prd`, the data should be a JSON object with two keys: `tasks` (an array of task objects) and `metadata` (an object with metadata about the parsing). For other `generateObject` calls, it will be the parsed JSON object. For `generateText` calls, it will be the generated text.
+  - **data**: If status is `"success"`, this field should contain the actual LLM response.
   - **errorDetails**: If status is `"error"`, this field should contain details about the error, including a message and optionally a code.
 
 Do not use `get_tasks` tool  before `expand_all`.

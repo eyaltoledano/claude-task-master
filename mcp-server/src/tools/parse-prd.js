@@ -67,7 +67,7 @@ export function registerParsePRDTool(server) {
 				.describe('Append generated tasks to existing file.')
 		}),
 		execute: withNormalizedProjectRoot(
-			async (args, { log, session }) => {
+			async (args, { log, session, reportProgress }) => {
 				try {
 					const resolvedTag = resolveTag({
 						projectRoot: args.projectRoot,

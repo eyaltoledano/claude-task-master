@@ -49,23 +49,37 @@ export async function handleNonStreamingService(config, prompts) {
 			aiServiceResponse.mainResult &&
 			aiServiceResponse.mainResult.type === 'agent_llm_delegation'
 		) {
-			logFn.debug('parsePRD: Detected agent_llm_delegation signal.');
-			return {
-				success: true,
-				needsAgentDelegation: true,
-				pendingInteraction: {
+			// Use the local logger instance and config values to build the delegation payload
+			logger.report('parsePRD: Detected agent_llm_delegation signal.', 'debug');
+			try {
+				const pendingInteraction = {
 					type: 'agent_llm',
 					interactionId: aiServiceResponse.mainResult.interactionId,
 					delegatedCallDetails: {
-						originalCommand: options.commandName || 'parse_prd', // options.commandName might be from MCP call
-						role: research ? 'research' : 'main',
+						originalCommand: 'parse_prd',
+						role: config.research ? 'research' : 'main',
 						serviceType: 'generateObject',
-						requestParameters: aiServiceResponse.mainResult.details
+						// Ensure details are serializable
+						requestParameters: JSON.parse(JSON.stringify(aiServiceResponse.mainResult.details || {}))
 					}
-				},
-				message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
-				telemetryData: null // No direct LLM call was completed by this function
-			};
+				};
+
+				return {
+					success: true,
+					needsAgentDelegation: true,
+					pendingInteraction,
+					message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
+					telemetryData: null // No direct LLM call was completed by this function
+				};
+			} catch (err) {
+				// Do not let raw Error objects bubble up into MCP's resource.text; return a structured error
+				logger.report(`parsePRD: Failed to construct pendingInteraction - ${err.message}`, 'error');
+				return {
+					success: false,
+					isError: true,
+					errorMessage: `Failed to prepare agent delegation payload: ${err.message}`
+				};
+			}
 		}
 		// === END AGENT_LLM_DELEGATION HANDLING ===
 
