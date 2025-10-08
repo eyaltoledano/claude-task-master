@@ -3,7 +3,7 @@
  * Validates environment and prerequisites for autopilot execution
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { getLogger } from '../logger/factory.js';
@@ -148,27 +148,96 @@ export class PreflightChecker {
 	}
 
 	/**
+	 * Detect project types based on common configuration files
+	 */
+	private detectProjectTypes(): string[] {
+		const types: string[] = [];
+
+		if (existsSync(join(this.projectRoot, 'package.json'))) types.push('node');
+		if (
+			existsSync(join(this.projectRoot, 'requirements.txt')) ||
+			existsSync(join(this.projectRoot, 'setup.py')) ||
+			existsSync(join(this.projectRoot, 'pyproject.toml'))
+		)
+			types.push('python');
+		if (
+			existsSync(join(this.projectRoot, 'pom.xml')) ||
+			existsSync(join(this.projectRoot, 'build.gradle'))
+		)
+			types.push('java');
+		if (existsSync(join(this.projectRoot, 'go.mod'))) types.push('go');
+		if (existsSync(join(this.projectRoot, 'Cargo.toml'))) types.push('rust');
+		if (existsSync(join(this.projectRoot, 'composer.json'))) types.push('php');
+		if (existsSync(join(this.projectRoot, 'Gemfile'))) types.push('ruby');
+		if (
+			existsSync(join(this.projectRoot, '*.csproj')) ||
+			existsSync(join(this.projectRoot, '*.sln'))
+		)
+			types.push('dotnet');
+
+		return types;
+	}
+
+	/**
+	 * Get required tools for a project type
+	 */
+	private getToolsForProjectType(
+		type: string
+	): Array<{ command: string; args: string[] }> {
+		const toolMap: Record<
+			string,
+			Array<{ command: string; args: string[] }>
+		> = {
+			node: [
+				{ command: 'node', args: ['--version'] },
+				{ command: 'npm', args: ['--version'] }
+			],
+			python: [
+				{ command: 'python3', args: ['--version'] },
+				{ command: 'pip3', args: ['--version'] }
+			],
+			java: [{ command: 'java', args: ['--version'] }],
+			go: [{ command: 'go', args: ['version'] }],
+			rust: [{ command: 'cargo', args: ['--version'] }],
+			php: [
+				{ command: 'php', args: ['--version'] },
+				{ command: 'composer', args: ['--version'] }
+			],
+			ruby: [
+				{ command: 'ruby', args: ['--version'] },
+				{ command: 'bundle', args: ['--version'] }
+			],
+			dotnet: [{ command: 'dotnet', args: ['--version'] }]
+		};
+
+		return toolMap[type] || [];
+	}
+
+	/**
 	 * Validate required tools availability
 	 */
 	async validateRequiredTools(): Promise<CheckResult> {
 		const tools: ToolCheck[] = [];
 
-		// Check git
+		// Always check git and gh CLI
 		tools.push(this.checkTool('git', ['--version']));
+		tools.push(await this.checkGhCli());
 
-		// Check gh CLI
-		const ghAvailable = await isGhCliAvailable(this.projectRoot);
-		tools.push({
-			name: 'gh',
-			available: ghAvailable,
-			message: ghAvailable ? 'GitHub CLI available' : 'GitHub CLI not available'
-		});
+		// Detect project types and check their tools
+		const projectTypes = this.detectProjectTypes();
 
-		// Check node
-		tools.push(this.checkTool('node', ['--version']));
+		if (projectTypes.length === 0) {
+			logger.warn('No recognized project type detected');
+		} else {
+			logger.info(`Detected project types: ${projectTypes.join(', ')}`);
+		}
 
-		// Check npm
-		tools.push(this.checkTool('npm', ['--version']));
+		for (const type of projectTypes) {
+			const typeTools = this.getToolsForProjectType(type);
+			for (const tool of typeTools) {
+				tools.push(this.checkTool(tool.command, tool.args));
+			}
+		}
 
 		// Determine overall success
 		const allAvailable = tools.every((tool) => tool.available);
@@ -216,6 +285,32 @@ export class PreflightChecker {
 				available: false,
 				message: `${command} not found`
 			};
+		}
+	}
+
+	/**
+	 * Check GitHub CLI installation and authentication status
+	 */
+	private async checkGhCli(): Promise<ToolCheck> {
+		try {
+			const version = execSync('gh --version', {
+				cwd: this.projectRoot,
+				encoding: 'utf-8',
+				stdio: 'pipe'
+			})
+				.trim()
+				.split('\n')[0];
+			const authed = await isGhCliAvailable(this.projectRoot);
+			return {
+				name: 'gh',
+				available: true,
+				version,
+				message: authed
+					? 'GitHub CLI installed (authenticated)'
+					: 'GitHub CLI installed (not authenticated)'
+			};
+		} catch {
+			return { name: 'gh', available: false, message: 'GitHub CLI not found' };
 		}
 	}
 
@@ -280,9 +375,10 @@ export class PreflightChecker {
 		if (defaultBranch.success) passed.push('Default branch');
 		else failed.push('Default branch');
 
+		const total = passed.length + failed.length;
 		const summary = allSuccess
-			? `All preflight checks passed (${passed.length}/4)`
-			: `Preflight checks failed: ${failed.join(', ')} (${passed.length}/4 passed)`;
+			? `All preflight checks passed (${passed.length}/${total})`
+			: `Preflight checks failed: ${failed.join(', ')} (${passed.length}/${total} passed)`;
 
 		logger.info(summary);
 

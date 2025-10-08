@@ -102,7 +102,7 @@ export async function getLocalBranches(projectRoot: string): Promise<string[]> {
 	try {
 		const { stdout } = await execAsync(
 			'git branch --format="%(refname:short)"',
-			{ cwd: projectRoot }
+			{ cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }
 		);
 		return stdout
 			.trim()
@@ -127,13 +127,13 @@ export async function getRemoteBranches(
 	try {
 		const { stdout } = await execAsync(
 			'git branch -r --format="%(refname:short)"',
-			{ cwd: projectRoot }
+			{ cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }
 		);
 		return stdout
 			.trim()
 			.split('\n')
 			.filter((branch) => branch.length > 0 && !branch.includes('HEAD'))
-			.map((branch) => branch.replace(/^origin\//, '').trim());
+			.map((branch) => branch.replace(/^[^/]+\//, '').trim());
 	} catch (error) {
 		return [];
 	}
@@ -212,19 +212,41 @@ export async function getDefaultBranch(
 			}
 		}
 
-		// Fallback to git remote info
-		const { stdout } = await execAsync(
-			'git symbolic-ref refs/remotes/origin/HEAD',
-			{ cwd: projectRoot }
-		);
-		return stdout.replace('refs/remotes/origin/', '').trim();
+		// Fallback to git remote info (support non-origin remotes)
+		const remotesRaw = await execAsync('git remote', { cwd: projectRoot });
+		const remotes = remotesRaw.stdout.trim().split('\n').filter(Boolean);
+		if (remotes.length > 0) {
+			const primary = remotes.includes('origin') ? 'origin' : remotes[0];
+			// Parse `git remote show` (preferred)
+			try {
+				const { stdout } = await execAsync(`git remote show ${primary}`, {
+					cwd: projectRoot
+				});
+				const m = stdout.match(/HEAD branch:\s+([^\s]+)/);
+				if (m) return m[1].trim();
+			} catch {}
+			// Fallback to symbolic-ref of remote HEAD
+			try {
+				const { stdout } = await execAsync(
+					`git symbolic-ref refs/remotes/${primary}/HEAD`,
+					{ cwd: projectRoot }
+				);
+				return stdout.replace(`refs/remotes/${primary}/`, '').trim();
+			} catch {}
+		}
+		// If we couldn't determine, throw to trigger final fallbacks
+		throw new Error('default-branch-not-found');
 	} catch (error) {
 		// Final fallback - common default branch names
 		const commonDefaults = ['main', 'master'];
 		const branches = await getLocalBranches(projectRoot);
+		const remoteBranches = await getRemoteBranches(projectRoot);
 
 		for (const defaultName of commonDefaults) {
-			if (branches.includes(defaultName)) {
+			if (
+				branches.includes(defaultName) ||
+				remoteBranches.includes(defaultName)
+			) {
 				return defaultName;
 			}
 		}
@@ -279,7 +301,7 @@ export function sanitizeBranchNameForTag(branchName: string): string {
 
 	// Replace invalid characters with hyphens and clean up
 	return branchName
-		.replace(/[^a-zA-Z0-9_-]/g, '-') // Replace invalid chars with hyphens
+		.replace(/[^a-zA-Z0-9_.-]/g, '-') // Replace invalid chars with hyphens (allow dots)
 		.replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
 		.replace(/-+/g, '-') // Collapse multiple hyphens
 		.toLowerCase() // Convert to lowercase
@@ -295,7 +317,7 @@ export function isValidBranchForTag(branchName: string): boolean {
 	}
 
 	// Check if it's a reserved branch name that shouldn't become tags
-	const reservedBranches = ['main', 'master', 'develop', 'dev', 'HEAD'];
+	const reservedBranches = ['main', 'master', 'develop', 'dev', 'head'];
 	if (reservedBranches.includes(branchName.toLowerCase())) {
 		return false;
 	}

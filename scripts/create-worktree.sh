@@ -3,15 +3,20 @@
 # Create a git worktree for parallel Claude Code development
 # Usage: ./scripts/create-worktree.sh [branch-name]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORKTREES_DIR="$(cd "$PROJECT_ROOT/.." && pwd)/claude-task-master-worktrees"
+cd "$PROJECT_ROOT"
 
 # Get branch name (default to current branch with auto/ prefix)
 if [ -z "$1" ]; then
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+        echo "Detached HEAD detected. Please specify a branch: ./scripts/create-worktree.sh <branch-name>"
+        exit 1
+    fi
     BRANCH_NAME="auto/$CURRENT_BRANCH"
     echo "No branch specified, using: $BRANCH_NAME"
 else
@@ -36,9 +41,14 @@ if [ -d "$WORKTREE_PATH" ]; then
     exit 1
 fi
 
-# Create new branch and worktree
-git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" 2>/dev/null || \
-    git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+# Create worktree (new or existing branch)
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+  git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+elif git ls-remote --exit-code --heads origin "$BRANCH_NAME" >/dev/null 2>&1; then
+  git worktree add "$WORKTREE_PATH" "origin/$BRANCH_NAME"
+else
+  git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH"
+fi
 
 echo ""
 echo "✅ Worktree created successfully!"

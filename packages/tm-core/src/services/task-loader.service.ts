@@ -350,7 +350,7 @@ export class TaskLoaderService {
 
 		// Keep adding subtasks whose dependencies are all completed
 		while (ordered.length < task.subtasks.length) {
-			const added = false;
+			let added = false;
 
 			for (const subtask of task.subtasks) {
 				const subtaskId = String(subtask.id);
@@ -368,6 +368,7 @@ export class TaskLoaderService {
 				if (allDepsCompleted) {
 					ordered.push(subtask);
 					completed.add(subtaskId);
+					added = true;
 					break;
 				}
 			}
