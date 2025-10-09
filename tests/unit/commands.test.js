@@ -302,6 +302,33 @@ describe('Update check functionality', () => {
 		expect(consoleLogSpy.mock.calls[0][0]).toContain('1.0.0');
 		expect(consoleLogSpy.mock.calls[0][0]).toContain('1.1.0');
 	});
+
+	test('displays upgrade notification with highlights when provided', () => {
+		const highlights = [
+			'Add Codex CLI provider with OAuth authentication',
+			'Cursor IDE custom slash command support',
+			'Move to AI SDK v5'
+		];
+		displayUpgradeNotification('1.0.0', '1.1.0', highlights);
+		expect(consoleLogSpy).toHaveBeenCalled();
+		const output = consoleLogSpy.mock.calls[0][0];
+		expect(output).toContain('Update Available!');
+		expect(output).toContain('1.0.0');
+		expect(output).toContain('1.1.0');
+		expect(output).toContain("What's New:");
+		expect(output).toContain('Add Codex CLI provider with OAuth authentication');
+		expect(output).toContain('Cursor IDE custom slash command support');
+		expect(output).toContain('Move to AI SDK v5');
+	});
+
+	test('displays upgrade notification without highlights section when empty array', () => {
+		displayUpgradeNotification('1.0.0', '1.1.0', []);
+		expect(consoleLogSpy).toHaveBeenCalled();
+		const output = consoleLogSpy.mock.calls[0][0];
+		expect(output).toContain('Update Available!');
+		expect(output).not.toContain("What's New:");
+		expect(output).toContain('Auto-updating to the latest version with new features and bug fixes');
+	});
 });
 
 // -----------------------------------------------------------------------------
