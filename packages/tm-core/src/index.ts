@@ -72,3 +72,14 @@ export {
 	type ComplexityAnalysis,
 	type TaskComplexityData
 } from './reports/index.js';
+
+// Re-export services
+export {
+	PreflightChecker,
+	TaskLoaderService,
+	type CheckResult,
+	type PreflightResult,
+	type TaskValidationResult,
+	type ValidationErrorType,
+	type DependencyIssue
+} from './services/index.js';

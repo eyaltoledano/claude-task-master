@@ -13,6 +13,25 @@ export {
 	getParentTaskId
 } from './id-generator.js';
 
+// Export git utilities
+export {
+	isGitRepository,
+	isGitRepositorySync,
+	getCurrentBranch,
+	getCurrentBranchSync,
+	getLocalBranches,
+	getRemoteBranches,
+	isGhCliAvailable,
+	getGitHubRepoInfo,
+	getGitRepositoryRoot,
+	getDefaultBranch,
+	isOnDefaultBranch,
+	insideGitWorkTree,
+	sanitizeBranchNameForTag,
+	isValidBranchForTag,
+	type GitHubRepoInfo
+} from './git-utils.js';
+
 // Additional utility exports
 
 /**
