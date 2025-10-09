@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-10-09T12:47:27.960Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Design and Implement Global Storage System",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the global storage system implementation into: 1) Path normalization utilities with cross-platform support, 2) Run ID generation and validation, 3) Manifest.json structure and management, 4) Activity.jsonl append-only logging, 5) State.json mutable checkpoint handling, and 6) Directory structure creation and cleanup. Focus on robust error handling, atomic operations, and isolation between different runs.",
+			"reasoning": "Complex system requiring cross-platform path handling, multiple file formats (JSON/JSONL), atomic operations, and state management. The existing codebase shows sophisticated file operations infrastructure but this extends beyond current patterns. Implementation involves filesystem operations, concurrency concerns, and data integrity."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Build GitAdapter with Safety Checks",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Decompose GitAdapter into: 1) Git repository detection and validation, 2) Working tree status checking with detailed reporting, 3) Branch operations (create, checkout, list) with safety guards, 4) Commit operations with metadata embedding, 5) Default branch detection and protection logic, 6) Push operations with conflict handling, and 7) Branch name generation from patterns. Emphasize safety checks, confirmation gates, and comprehensive error messages.",
+			"reasoning": "High complexity due to git operations safety requirements, multiple git commands integration, error handling for various git states, and safety mechanisms. The PRD emphasizes never allowing commits on default branch and requiring clean working tree - critical safety features that need robust implementation."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement Test Result Validator",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Split test validation into: 1) Input validation and schema definition for test results, 2) RED phase validation logic (ensuring failures exist), 3) GREEN phase validation logic (ensuring all tests pass), and 4) Coverage threshold validation with configurable limits. Include comprehensive validation messages and suggestions for common failure scenarios.",
+			"reasoning": "Moderate complexity focused on business logic validation. The validator is framework-agnostic (only validates reported numbers), has clear validation rules, and well-defined input/output. The existing codebase shows validation patterns that can be leveraged."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Develop WorkflowOrchestrator State Machine",
+			"complexityScore": 9,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "Structure the orchestrator into: 1) State machine definition and transitions (Preflight → BranchSetup → SubtaskLoop → Finalize), 2) Event emission system with comprehensive event types, 3) State persistence and recovery mechanisms, 4) Phase coordination and validation, 5) Subtask iteration and progress tracking, 6) Error handling and recovery strategies, 7) Resume functionality from checkpoints, and 8) Integration points for Git, Test, and other adapters.",
+			"reasoning": "Very high complexity as the central coordination component. Must orchestrate multiple adapters, handle state transitions, event emission, persistence, and recovery. The state machine needs to be robust, resumable, and coordinate all other components. Critical for the entire workflow's reliability."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Create Enhanced Commit Message Generator",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Organize commit message generation into: 1) Template parsing and variable substitution with configurable templates, 2) Scope detection from changed files with intelligent categorization, and 3) Metadata embedding (task context, test results, coverage) with conventional commits compliance. Ensure messages are parseable and contain all required task metadata.",
+			"reasoning": "Relatively straightforward text processing and template system. The conventional commits format is well-defined, and the metadata requirements are clear. The existing package.json shows commander dependency for CLI patterns that can be leveraged."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement Subtask TDD Loop",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down the TDD loop into: 1) RED phase orchestration with test generation coordination, 2) GREEN phase orchestration with implementation guidance, 3) COMMIT phase with file staging and commit creation, 4) Attempt tracking and maximum retry logic, 5) Phase transition validation and state updates, and 6) Activity logging for all phase transitions. Focus on robust state management and clear error recovery paths.",
+			"reasoning": "High complexity due to coordinating multiple phases, state transitions, retry logic, and integration with multiple adapters (Git, Test, State). This is the core workflow execution engine requiring careful orchestration and error handling."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Build CLI Commands for AI Agent Orchestration",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Structure CLI commands into: 1) Command registration and argument parsing setup, 2) `start` and `resume` commands with initialization logic, 3) `next` and `status` commands with JSON output formatting, 4) `complete` command with result validation integration, and 5) `commit` and `abort` commands with git operation coordination. Ensure consistent JSON output for machine parsing and comprehensive error handling.",
+			"reasoning": "Moderate complexity leveraging existing CLI infrastructure. The codebase shows commander usage patterns and CLI structure. Main complexity is in JSON output formatting, argument validation, and integration with the orchestrator component."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Develop MCP Tools for AI Agent Integration",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Organize MCP tools into: 1) Tool schema definition and parameter validation, 2) `autopilot_start` and `autopilot_resume` tool implementation, 3) `autopilot_next` and `autopilot_status` tools with context provision, 4) `autopilot_complete_phase` tool with validation integration, and 5) `autopilot_commit` tool with git operations. Ensure parity with CLI functionality and proper error handling.",
+			"reasoning": "Moderate complexity building on existing MCP infrastructure. The codebase shows extensive MCP tooling patterns. Main work is adapting CLI functionality to MCP interface patterns and ensuring consistent behavior between CLI and MCP interfaces."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Write AI Agent Integration Documentation and Templates",
+			"complexityScore": 2,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Structure documentation into: 1) Comprehensive workflow documentation with step-by-step examples, command usage, and integration patterns, and 2) Template creation for CLAUDE.md integration, example prompts, and troubleshooting guides. Focus on clear examples and practical integration guidance.",
+			"reasoning": "Low complexity documentation task. Requires understanding of the implemented system but primarily involves writing clear instructions and examples. The existing codebase shows good documentation patterns that can be followed."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Implement Configuration System and Project Hygiene",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure configuration into: 1) Configuration schema definition with comprehensive validation using ajv, 2) Default configuration setup and loading mechanisms, 3) Gitignore management and project directory hygiene rules, and 4) Configuration validation and error reporting. Ensure configurations are validated on startup and provide clear error messages for invalid settings.",
+			"reasoning": "Moderate complexity involving schema validation, file operations, and configuration management. The package.json shows ajv dependency is available. Configuration systems require careful validation and user-friendly error reporting, but follow established patterns."
+		}
+	]
+}
