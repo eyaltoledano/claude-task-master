@@ -10074,5 +10074,704 @@
       "updated": "2025-10-07T15:23:43.279Z",
       "description": "Tasks for tdd-workflow-phase-0 context"
     }
+  },
+  "tdd-phase-1-core-rails": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Design and Implement Global Storage System",
+        "description": "Create a global storage system for runtime state, logs, and artifacts outside the project directory, following the specified directory structure and normalization logic.",
+        "details": "Implement a Node.js module that manages all runtime artifacts in `~/.taskmaster/projects/<project-path>/runs/<run-id>/`, including `manifest.json`, `activity.jsonl`, `state.json`, and `test-results/`. Use `path` and `os` modules for cross-platform path handling. Ensure project path normalization replaces slashes with hyphens and removes leading slashes. Generate unique run IDs using ISO timestamps. Store active run pointers in `tags/<tag-name>/current-run.json`. Use `fs-extra` (v11+) for robust file operations. Enforce append-only for `activity.jsonl` and mutable `state.json`. Validate that no runtime artifacts are left in the project directory.",
+        "testStrategy": "Unit tests for path normalization, run ID generation, and file operations. Integration tests with temporary directories to verify directory structure, file permissions, and isolation. Verify that project directory remains clean after operations. Test resume logic by manually interrupting and resuming a run.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Path Normalization Utilities",
+            "description": "Create cross-platform path normalization utilities that convert project paths to storage-safe directory names by replacing slashes with hyphens and removing leading slashes.",
+            "dependencies": [],
+            "details": "Build a module using Node.js `path` and `os` modules to normalize project paths for storage. Handle Windows backslashes, Unix forward slashes, and edge cases like relative paths, symlinks, and special characters. Create functions to convert project paths to storage directory names and reverse the process. Ensure consistent behavior across Windows, macOS, and Linux platforms.",
+            "status": "pending",
+            "testStrategy": "Unit tests covering various path formats, edge cases with special characters, and cross-platform consistency. Test path round-trip conversion and validation of storage-safe names."
+          },
+          {
+            "id": 2,
+            "title": "Build Run ID Generation and Validation System",
+            "description": "Implement unique run ID generation using ISO timestamps with validation and collision detection mechanisms.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a module that generates unique run IDs using ISO 8601 timestamps with millisecond precision. Add validation functions to ensure run ID format correctness and uniqueness within project storage. Implement collision detection and resolution strategies. Include helper functions to parse run IDs back to timestamps and compare run chronology.",
+            "status": "pending",
+            "testStrategy": "Unit tests for ID generation uniqueness, format validation, and collision detection. Performance tests for rapid ID generation. Test timestamp parsing and chronological ordering."
+          },
+          {
+            "id": 3,
+            "title": "Design Manifest.json Structure and Management",
+            "description": "Create manifest.json schema and management functions to track run metadata, configuration, and workflow state for each execution run.",
+            "dependencies": [
+              2
+            ],
+            "details": "Define JSON schema for manifest.json containing run metadata (start time, end time, task ID, tag, branch), configuration snapshot, and workflow phase tracking. Implement functions to create, update, and validate manifest files. Use atomic write operations to prevent corruption. Include version field for future schema evolution and migration support.",
+            "status": "pending",
+            "testStrategy": "Unit tests for schema validation, manifest creation and updates. Test atomic write operations and corruption recovery. Verify metadata accuracy and schema evolution compatibility."
+          },
+          {
+            "id": 4,
+            "title": "Implement Activity.jsonl Append-Only Logging",
+            "description": "Build append-only logging system using JSONL format to track all workflow activities with timestamps and structured event data.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create logging functions that append structured events to activity.jsonl file using newline-delimited JSON format. Implement event types for workflow phases, git operations, test executions, and error conditions. Ensure atomic append operations with proper file locking. Add functions to read and filter activity logs by event type, timestamp, or other criteria.",
+            "status": "pending",
+            "testStrategy": "Unit tests for event logging, file append operations, and log reading/filtering. Concurrency tests for simultaneous writes. Test log file integrity and recovery from interrupted operations."
+          },
+          {
+            "id": 5,
+            "title": "Create State.json Mutable Checkpoint Handling",
+            "description": "Implement mutable state management system for workflow checkpoints, current phase tracking, and resumable execution state.",
+            "dependencies": [
+              4
+            ],
+            "details": "Build state management functions for mutable state.json file containing current workflow phase, progress indicators, and resumable execution context. Implement atomic read-modify-write operations with proper locking. Add checkpoint creation, state restoration, and validation functions. Support state migration between schema versions and cleanup of stale state.",
+            "status": "pending",
+            "testStrategy": "Unit tests for state read/write operations, atomic updates, and checkpoint restoration. Test state validation and migration. Verify proper cleanup of stale state and error recovery scenarios."
+          },
+          {
+            "id": 6,
+            "title": "Build Directory Structure Creation and Cleanup",
+            "description": "Implement directory structure management with robust error handling, atomic operations, and isolation between different workflow runs.",
+            "dependencies": [
+              5
+            ],
+            "details": "Create functions to establish the complete directory hierarchy (~/.taskmaster/projects/<project-path>/runs/<run-id>/). Implement atomic directory creation with proper permissions and cleanup of failed operations. Add isolation mechanisms to prevent cross-run interference. Include functions to archive completed runs and clean up old data based on retention policies. Ensure no runtime artifacts remain in project directory.",
+            "status": "pending",
+            "testStrategy": "Integration tests for complete directory structure creation. Test cleanup operations and isolation between runs. Verify proper permissions and cross-platform compatibility. Test retention policies and archive functionality."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Build GitAdapter with Safety Checks",
+        "description": "Develop a GitAdapter class that handles all git operations (branching, committing, pushing) with built-in safety checks and confirmation gates.",
+        "details": "Implement in TypeScript using `simple-git` (v3+) for git operations. Add methods for branch creation, checkout, commit, push, and status checks. Enforce safety: never commit on default branch, always check working tree cleanliness, confirm destructive operations unless `--no-confirm`. Generate branch names from configurable patterns. Include methods to get current/default branch. Use `chalk` for colored CLI output. Expose a clean, promise-based API. Store branch↔tag mapping in run state.",
+        "testStrategy": "Unit tests with mocked git commands. Integration tests with a temporary git repo to verify branch creation, commit gating, and safety checks. Negative tests: attempt commits on default branch, dirty working tree. Verify branch name generation and mapping.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Git Repository Detection and Validation",
+            "description": "Create foundational methods to detect and validate git repositories, ensuring the GitAdapter only operates in valid git environments.",
+            "dependencies": [],
+            "details": "Implement methods to check if current directory is a git repository, validate git installation, and verify repository state. Use simple-git to check .git directory existence and run basic git commands. Add error handling for non-git directories and corrupted repositories. Include validation for git binary availability and minimum version requirements.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked filesystem and git commands. Test detection in git/non-git directories, handling of corrupted repos, and error cases for missing git binary."
+          },
+          {
+            "id": 2,
+            "title": "Build Working Tree Status Checker with Detailed Reporting",
+            "description": "Develop comprehensive working tree status checking functionality that provides detailed information about repository state and cleanliness.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create methods to check working tree cleanliness, staged changes, untracked files, and merge conflicts. Use simple-git status methods to gather detailed repository state. Implement colored output using chalk for status visualization. Add methods to categorize changes (modified, added, deleted, untracked) and provide human-readable summaries.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked git status responses. Integration tests with temporary repos in various states (clean, dirty, staged changes, conflicts). Verify colored output and detailed reporting accuracy."
+          },
+          {
+            "id": 3,
+            "title": "Implement Branch Operations with Safety Guards",
+            "description": "Create secure branch management functionality including creation, checkout, and listing with built-in safety mechanisms.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Implement branch creation with validation checks, safe checkout operations that verify clean working tree, and branch listing with current branch detection. Add safety guards to prevent operations on dirty repositories. Include branch existence validation and conflict detection. Support force operations with explicit confirmation gates.",
+            "status": "pending",
+            "testStrategy": "Unit tests for branch operations with mocked git responses. Integration tests with temporary repos to verify branch creation, checkout safety, and validation logic. Test edge cases like existing branches and dirty working trees."
+          },
+          {
+            "id": 4,
+            "title": "Develop Commit Operations with Metadata Embedding",
+            "description": "Build commit functionality that embeds workflow metadata and enforces safety rules around committing.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Implement commit creation with metadata embedding (task ID, workflow phase, timestamp). Add strict safety checks to prevent commits on default branch. Include staged file validation and commit message generation. Support metadata embedding in commit messages and branch-tag mapping storage in run state.",
+            "status": "pending",
+            "testStrategy": "Unit tests for commit logic with mocked git operations. Integration tests to verify metadata embedding, default branch protection, and commit creation. Test safety violations and error handling."
+          },
+          {
+            "id": 5,
+            "title": "Create Default Branch Detection and Protection Logic",
+            "description": "Implement robust default branch detection and protection mechanisms to prevent accidental commits to main branches.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Add methods to detect default branch (main, master, develop) from remote origin and local configuration. Implement protection logic that blocks commits and destructive operations on default branches. Support configurable branch protection patterns and override mechanisms with confirmation gates.",
+            "status": "pending",
+            "testStrategy": "Unit tests for default branch detection with various git configurations. Integration tests with repos using different default branch names. Verify protection logic and confirmation gate behavior."
+          },
+          {
+            "id": 6,
+            "title": "Build Push Operations with Conflict Handling",
+            "description": "Develop secure push functionality that handles conflicts, validates remote state, and provides clear error reporting.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "details": "Implement push operations with pre-push validation, conflict detection, and resolution guidance. Add upstream tracking setup and force-push protection. Include detailed error reporting with suggestions for conflict resolution. Support dry-run mode and confirmation gates for destructive operations.",
+            "status": "pending",
+            "testStrategy": "Unit tests for push logic with mocked remote scenarios. Integration tests with temporary repos and simulated remotes. Test conflict detection, error handling, and safety mechanisms."
+          },
+          {
+            "id": 7,
+            "title": "Implement Branch Name Generation from Patterns",
+            "description": "Create configurable branch name generation system that follows consistent patterns and integrates with workflow state.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement branch name generation using configurable patterns (task ID, description, timestamp). Support template variables and sanitization rules for valid git branch names. Include branch-tag mapping storage and retrieval from run state. Add validation for generated names and conflict resolution.",
+            "status": "pending",
+            "testStrategy": "Unit tests for pattern parsing and name generation with various templates. Integration tests to verify generated names are valid git branch names. Test mapping storage and conflict resolution logic."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement Test Result Validator",
+        "description": "Create a service to validate test results reported by the AI agent, enforcing TDD phase semantics (RED must fail, GREEN must pass).",
+        "details": "Build a `TestResultValidator` class in TypeScript. Validate that RED phase results include at least one failure, GREEN phase results have zero failures. Optionally validate coverage thresholds if provided. Return structured validation results with messages and suggestions. Use `joi` (v17+) for input validation. Keep validation logic framework-agnostic—TaskMaster does not parse test output, only checks reported numbers.",
+        "testStrategy": "Unit tests for validation logic: RED with no failures fails validation, GREEN with failures fails validation. Test coverage threshold enforcement. Verify error messages and suggestions. Mock invalid inputs.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Input Validation and Schema Definition",
+            "description": "Create comprehensive input validation for test result data using joi schema validation to ensure all required fields are present and properly formatted.",
+            "dependencies": [],
+            "details": "Define joi schemas for test result objects including total tests, passed tests, failed tests, skipped tests, and optional coverage data. Validate that numeric fields are non-negative integers and that totals are consistent (passed + failed + skipped = total). Include validation for coverage thresholds as percentages between 0-100. Create clear error messages for validation failures.",
+            "status": "pending",
+            "testStrategy": "Unit tests for schema validation with various input combinations: valid inputs, missing fields, negative numbers, invalid types, inconsistent totals. Test error message clarity and structure."
+          },
+          {
+            "id": 2,
+            "title": "Implement RED Phase Validation Logic",
+            "description": "Create validation logic to ensure RED phase test results contain at least one failing test, enforcing TDD semantics that require initial test failures.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement validation method that checks if failed test count is greater than zero for RED phase. Provide specific error messages when RED phase has zero failures, suggesting the developer write failing tests first. Include validation that total test count is greater than zero to prevent empty test suites. Return structured validation results with phase-specific suggestions.",
+            "status": "pending",
+            "testStrategy": "Unit tests covering RED phase with zero failures (should fail validation), RED phase with failures (should pass), empty test suite scenarios. Verify error messages provide actionable feedback for TDD workflow."
+          },
+          {
+            "id": 3,
+            "title": "Implement GREEN Phase Validation Logic",
+            "description": "Create validation logic to ensure GREEN phase test results have zero failures, confirming that all tests pass after implementation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement validation method that verifies failed test count equals zero for GREEN phase. Ensure at least one test exists and passed to prevent false positives from empty test suites. Provide clear error messages when GREEN phase has failures, suggesting code fixes or test adjustments. Include validation that passed test count matches or exceeds the previous RED phase test count.",
+            "status": "pending",
+            "testStrategy": "Unit tests for GREEN phase with failures (should fail validation), GREEN phase with all passing tests (should pass), regression scenarios where test count decreases. Test error messages guide developers toward fixing implementation."
+          },
+          {
+            "id": 4,
+            "title": "Implement Coverage Threshold Validation",
+            "description": "Create configurable coverage validation that enforces minimum coverage thresholds when coverage data is provided with test results.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement optional coverage validation that accepts configurable thresholds for line, branch, function, and statement coverage. Validate coverage percentages against thresholds only when coverage data is present. Provide detailed messages indicating which coverage types failed to meet thresholds and by how much. Support different threshold configurations per project and phase. Return structured results with coverage gaps and improvement suggestions.",
+            "status": "pending",
+            "testStrategy": "Unit tests for coverage validation with various threshold configurations, missing coverage data (should skip validation), coverage below/above thresholds. Test different coverage types independently and in combination."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Develop WorkflowOrchestrator State Machine",
+        "description": "Implement the core state machine that drives the TDD workflow: Preflight → BranchSetup → SubtaskLoop (RED→GREEN→COMMIT) → Finalize → Complete.",
+        "details": "Use `xstate` (v5+) or a custom lightweight state machine. Emit events for phase/subtask transitions, test runs, commits, and errors. Coordinate GitAdapter, TestResultValidator, and (future) Executor adapters. Persist state to `state.json` after each transition. Support resumption from checkpoint. Implement phase hooks for extensibility. Follow the event API specified in the PRD.",
+        "testStrategy": "Unit tests for state transitions and event emission. Integration tests with mocked adapters to verify full workflow lifecycle. Test resume from interrupted state. Verify event stream in `activity.jsonl`.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define State Machine Structure and Transitions",
+            "description": "Design and implement the core state machine with phases: Preflight, BranchSetup, SubtaskLoop (RED→GREEN→COMMIT), Finalize, and Complete.",
+            "dependencies": [],
+            "details": "Use XState v5 or a custom lightweight state machine to define states and transitions according to the TDD workflow. Ensure the initial state is Preflight and transitions follow the specified sequence. Implement hierarchical or nested states if needed for SubtaskLoop phases.",
+            "status": "pending",
+            "testStrategy": "Unit tests verifying correct state transitions and initial state setup."
+          },
+          {
+            "id": 2,
+            "title": "Implement Event Emission System with Comprehensive Event Types",
+            "description": "Develop an event system that emits events for phase transitions, subtask transitions, test runs, commits, and errors.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a robust event emitter integrated with the state machine that dispatches detailed events on every significant action or state change. Define a comprehensive event schema matching the PRD specifications for extensibility and observability.",
+            "status": "pending",
+            "testStrategy": "Unit tests to verify event emission on all relevant state transitions and actions."
+          },
+          {
+            "id": 3,
+            "title": "Develop State Persistence and Recovery Mechanisms",
+            "description": "Implement saving the state machine's current state to `state.json` after each transition and support resuming from this checkpoint.",
+            "dependencies": [
+              1
+            ],
+            "details": "After every state transition, serialize and persist the current state and context to `state.json`. On startup, load this file to restore the state machine to the last checkpoint, enabling workflow resumption.",
+            "status": "pending",
+            "testStrategy": "Integration tests simulating interruptions and verifying correct state restoration from persisted data."
+          },
+          {
+            "id": 4,
+            "title": "Coordinate Phases and Validate Transitions",
+            "description": "Implement coordination logic to validate phase transitions and ensure correct sequencing and conditions are met.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add guards and validation logic within the state machine to enforce correct phase progression. Integrate with TestResultValidator and GitAdapter to confirm readiness before moving to next phases.",
+            "status": "pending",
+            "testStrategy": "Unit and integration tests verifying that invalid transitions are blocked and validations are enforced."
+          },
+          {
+            "id": 5,
+            "title": "Implement Subtask Iteration and Progress Tracking",
+            "description": "Manage the SubtaskLoop phase by iterating through subtasks and tracking progress through RED, GREEN, and COMMIT steps.",
+            "dependencies": [
+              1,
+              4
+            ],
+            "details": "Within the SubtaskLoop state, implement logic to iterate subtasks, handle RED→GREEN→COMMIT cycles, update subtask statuses, and emit progress events. Support max attempt limits and pause/resume functionality.",
+            "status": "pending",
+            "testStrategy": "Integration tests with mocked subtasks verifying correct iteration, status updates, and event emission."
+          },
+          {
+            "id": 6,
+            "title": "Develop Error Handling and Recovery Strategies",
+            "description": "Implement robust error detection, event emission, and recovery mechanisms throughout the workflow.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Detect errors during phases and subtasks, emit error events, and define recovery strategies such as retries, fallback states, or aborting the workflow gracefully. Ensure errors are logged and persisted.",
+            "status": "pending",
+            "testStrategy": "Tests simulating errors in various phases to verify error event emission and recovery behavior."
+          },
+          {
+            "id": 7,
+            "title": "Implement Resume Functionality from Checkpoints",
+            "description": "Enable the orchestrator to resume workflow execution seamlessly from persisted checkpoints after interruptions.",
+            "dependencies": [
+              3,
+              5
+            ],
+            "details": "On startup, detect existing `state.json` checkpoint, restore state machine context and state, and continue execution from the last known point, including subtask progress and phase.",
+            "status": "pending",
+            "testStrategy": "Integration tests simulating process restarts and verifying correct resumption of workflow state and progress."
+          },
+          {
+            "id": 8,
+            "title": "Integrate GitAdapter, TestResultValidator, and Executor Adapters",
+            "description": "Coordinate with GitAdapter, TestResultValidator, and future Executor adapters to perform git operations, validate test results, and execute tasks.",
+            "dependencies": [
+              1,
+              4,
+              5
+            ],
+            "details": "Implement adapter interfaces and invoke them at appropriate phases: GitAdapter for branch and commit operations, TestResultValidator for test result validation in RED/GREEN phases, and prepare hooks for Executor adapter integration. Ensure adapters are coordinated via events and state transitions.",
+            "status": "pending",
+            "testStrategy": "Integration tests with mocked adapters verifying correct calls, coordination, and error handling."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Create Enhanced Commit Message Generator",
+        "description": "Build a module that generates conventional commit messages with embedded task metadata (task ID, phase, tag, test counts, coverage).",
+        "details": "Implement a function that takes changed files, task context, and test results, then generates a commit message per the template. Determine scope from changed files (e.g., 'cli', 'core'). Use `conventional-commits` parser (v2+) for validation. Include all required metadata in the commit body. Support configurable templates via `config.json`. Optionally allow message override.",
+        "testStrategy": "Unit tests for message generation, scope detection, and template rendering. Verify all metadata is included. Test with various file change patterns. Validate against `conventional-commits` spec.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create template parsing and variable substitution system",
+            "description": "Implement a configurable template system that can parse commit message templates and substitute variables with dynamic content",
+            "dependencies": [],
+            "details": "Build a TemplateEngine class that loads templates from config.json, supports variable substitution using placeholders like {{type}}, {{scope}}, {{description}}, {{taskId}}, etc. Support default templates and custom overrides. Implement template validation to ensure required fields are present. Use a simple string replacement or template library for variable substitution.",
+            "status": "pending",
+            "testStrategy": "Unit tests for template loading, variable substitution, and template validation. Test with various template formats and missing variables."
+          },
+          {
+            "id": 2,
+            "title": "Implement intelligent scope detection from changed files",
+            "description": "Create a system that analyzes changed files to automatically determine the appropriate commit scope",
+            "dependencies": [
+              1
+            ],
+            "details": "Build a ScopeDetector class that analyzes file paths and determines conventional commit scopes (e.g., 'cli', 'core', 'test', 'docs'). Create configurable mapping rules in config.json. Handle multiple scopes by choosing the most relevant or using a priority system. Support custom scope detection rules and fallback to generic scopes when unclear.",
+            "status": "pending",
+            "testStrategy": "Unit tests for scope detection with various file path patterns. Test priority resolution for multiple scopes. Verify fallback behavior."
+          },
+          {
+            "id": 3,
+            "title": "Implement metadata embedding and conventional commits compliance",
+            "description": "Create the core commit message generator that embeds task metadata and ensures conventional commits format compliance",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Build a CommitMessageGenerator class that combines template engine and scope detector to generate complete commit messages. Embed task metadata (ID, phase, tag, test counts, coverage) in the commit body. Use conventional-commits parser v2+ for validation. Support message override option. Format metadata as structured text or YAML in commit body for easy parsing.",
+            "status": "pending",
+            "testStrategy": "Unit tests for message generation with various metadata combinations. Integration tests with conventional-commits parser validation. Test message override functionality."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement Subtask TDD Loop",
+        "description": "Develop the RED→GREEN→COMMIT loop for subtasks, integrating with the state machine, test validation, and commit creation.",
+        "details": "For each subtask, orchestrate: (1) RED: AI generates and runs tests, reports results; TaskMaster validates failures. (2) GREEN: AI implements code, runs tests, reports results; TaskMaster validates all pass. (3) COMMIT: TaskMaster stages files, generates commit message, creates commit. Update subtask status. Handle max attempts for GREEN phase. Log all phase transitions and results to `activity.jsonl`. Support pause/resume.",
+        "testStrategy": "Integration tests with mocked AI agent calls. Verify RED requires failures, GREEN requires passes. Test commit creation with metadata. Test max attempt logic. Verify activity log entries.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement RED Phase Orchestrator",
+            "description": "Build the RED phase controller that coordinates AI test generation and validates required test failures.",
+            "dependencies": [],
+            "details": "Create RedPhaseOrchestrator class that: (1) Calls AI agent to generate tests for current subtask, (2) Runs generated tests using TestResultValidator, (3) Validates that at least one test fails (RED requirement), (4) Returns structured results with test outcomes and validation status. Handle edge cases like no tests generated or compilation errors. Integrate with WorkflowOrchestrator state machine for phase transitions.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked AI agent and TestResultValidator. Verify RED phase fails validation when all tests pass. Test error handling for invalid test generation."
+          },
+          {
+            "id": 2,
+            "title": "Implement GREEN Phase Orchestrator",
+            "description": "Build the GREEN phase controller that guides AI implementation and validates all tests pass.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create GreenPhaseOrchestrator class that: (1) Calls AI agent to implement code for current subtask, (2) Runs all tests using TestResultValidator, (3) Validates that zero tests fail (GREEN requirement), (4) Tracks attempt count for max retry logic, (5) Returns structured results with implementation status. Support iterative implementation with feedback from failed test runs. Coordinate with attempt tracking system.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked AI agent and retry scenarios. Integration tests verifying GREEN phase passes only when all tests succeed. Test max attempt handling and failure modes."
+          },
+          {
+            "id": 3,
+            "title": "Implement COMMIT Phase Orchestrator",
+            "description": "Build the COMMIT phase controller that handles file staging, commit message generation, and git operations.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create CommitPhaseOrchestrator class that: (1) Uses GitAdapter to stage modified files, (2) Generates descriptive commit messages with subtask metadata and test results, (3) Creates git commit with structured metadata, (4) Updates subtask status to completed, (5) Handles git operation failures and rollback scenarios. Include commit message templates and ensure atomic operations.",
+            "status": "pending",
+            "testStrategy": "Unit tests with mocked GitAdapter. Integration tests verifying commit creation with proper metadata. Test rollback scenarios and file staging edge cases."
+          },
+          {
+            "id": 4,
+            "title": "Implement Attempt Tracking and Retry Logic",
+            "description": "Build the attempt counter system with configurable maximum retry limits and exponential backoff.",
+            "dependencies": [],
+            "details": "Create AttemptTracker class that: (1) Tracks current attempt count per subtask and phase, (2) Enforces configurable maximum attempts for GREEN phase, (3) Implements exponential backoff between retries, (4) Provides clear failure messaging when max attempts reached, (5) Persists attempt state for resume functionality. Support different retry strategies and timeout handling.",
+            "status": "pending",
+            "testStrategy": "Unit tests for attempt counting logic and max retry enforcement. Test exponential backoff timing. Verify state persistence and resume behavior."
+          },
+          {
+            "id": 5,
+            "title": "Implement Phase Transition Validator and State Manager",
+            "description": "Build the state transition validator that ensures proper TDD phase sequencing and state updates.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Create PhaseTransitionValidator class that: (1) Validates legal phase transitions (RED→GREEN→COMMIT), (2) Enforces phase prerequisites and exit conditions, (3) Updates workflow state with phase results, (4) Handles pause/resume functionality with state checkpoints, (5) Provides rollback capabilities for failed transitions. Integrate with WorkflowOrchestrator for state machine coordination.",
+            "status": "pending",
+            "testStrategy": "Unit tests for transition validation logic and state persistence. Integration tests verifying full TDD cycle transitions. Test pause/resume scenarios and rollback handling."
+          },
+          {
+            "id": 6,
+            "title": "Implement Activity Logger for Phase Tracking",
+            "description": "Build the comprehensive logging system that records all phase transitions and results to activity.jsonl.",
+            "dependencies": [
+              5
+            ],
+            "details": "Create ActivityLogger class that: (1) Logs structured entries for all phase transitions with timestamps, (2) Records test results, attempt counts, and error details, (3) Writes to activity.jsonl in append-only JSONL format, (4) Provides log querying and filtering capabilities, (5) Ensures log integrity and handles write failures gracefully. Include log rotation and cleanup policies.",
+            "status": "pending",
+            "testStrategy": "Unit tests for log entry formatting and file operations. Integration tests verifying complete workflow logging. Test log rotation and error recovery scenarios."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Build CLI Commands for AI Agent Orchestration",
+        "description": "Implement the `tm autopilot` CLI commands for starting, resuming, and advancing the TDD workflow, with JSON output for machine parsing.",
+        "details": "Use `commander` (v11+) for CLI construction. Commands: `start`, `next`, `complete`, `commit`, `status`, `resume`, `abort`. `next` returns JSON with action details. `complete` accepts `--results` and `--coverage`. `commit` uses enhanced message generator. `status` shows current run progress. Support `--json` flag for machine-readable output. Integrate with WorkflowOrchestrator and GitAdapter.",
+        "testStrategy": "Unit tests for command parsing and output formatting. Integration tests for full workflow via CLI. Test JSON output for machine consumption. Verify error handling and help text.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up CLI command registration and argument parsing infrastructure",
+            "description": "Create the foundation for `tm autopilot` commands using commander.js, establishing the command structure and shared argument parsing logic.",
+            "dependencies": [],
+            "details": "Create a new CLI module that registers the `autopilot` subcommand with commander (v11+). Set up shared argument parsing for common flags like `--json`, `--verbose`, and `--project-root`. Establish error handling patterns and help text formatting. Create base command class or utilities for consistent behavior across all autopilot commands.",
+            "status": "pending",
+            "testStrategy": "Unit tests for command registration, argument parsing, and help text generation. Test error handling for invalid arguments."
+          },
+          {
+            "id": 2,
+            "title": "Implement start and resume commands with workflow initialization",
+            "description": "Build the `start` and `resume` commands that initialize or restore the TDD workflow state, integrating with WorkflowOrchestrator.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `tm autopilot start` command that validates project setup, initializes WorkflowOrchestrator, and begins the TDD workflow. Implement `tm autopilot resume` that restores workflow state from `state.json`. Both commands should validate dependencies (tasks 4,6) are available, handle project root detection, and provide clear feedback on initialization status.",
+            "status": "pending",
+            "testStrategy": "Integration tests for workflow initialization. Test state restoration from various state.json configurations. Verify dependency checking and error messages."
+          },
+          {
+            "id": 3,
+            "title": "Build next and status commands with JSON output formatting",
+            "description": "Create the `next` and `status` commands that provide workflow progression information with structured JSON output for machine parsing.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `tm autopilot next` that returns JSON with the next action details (test generation, implementation, or commit). Implement `tm autopilot status` showing current run progress, active subtask, and phase. Both commands must support `--json` flag for machine-readable output and human-readable default format. Ensure consistent JSON schema across all output.",
+            "status": "pending",
+            "testStrategy": "Unit tests for JSON output formatting and schema validation. Integration tests with various workflow states. Test both human and machine-readable output modes."
+          },
+          {
+            "id": 4,
+            "title": "Implement complete command with result validation integration",
+            "description": "Build the `complete` command that accepts phase completion results and validates them against TDD requirements.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `tm autopilot complete` command accepting `--results` (test output/implementation details) and `--coverage` (coverage metrics) flags. Integrate with result validation logic to ensure RED phase has failures and GREEN phase has all tests passing. Update workflow state and advance to next phase. Provide clear feedback on validation success/failure.",
+            "status": "pending",
+            "testStrategy": "Unit tests for result parsing and validation logic. Integration tests with mocked test results and coverage data. Test error cases for invalid phase transitions."
+          },
+          {
+            "id": 5,
+            "title": "Create commit and abort commands with git operation coordination",
+            "description": "Implement the `commit` and `abort` commands that coordinate git operations and workflow state management.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `tm autopilot commit` that uses the enhanced commit message generator (task 5), stages appropriate files via GitAdapter, and creates commits with embedded metadata. Implement `tm autopilot abort` that safely terminates the workflow, cleaning up temporary state. Both commands should handle git operation errors gracefully and maintain workflow state consistency.",
+            "status": "pending",
+            "testStrategy": "Integration tests with real git operations. Test commit message generation and metadata embedding. Verify abort command cleanup and state management. Test error handling for git failures."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Develop MCP Tools for AI Agent Integration",
+        "description": "Create MCP tools (`autopilot_*`) enabling AI agents to interact with the workflow programmatically, matching CLI functionality.",
+        "details": "Implement tools: `autopilot_start`, `autopilot_next`, `autopilot_complete_phase`, `autopilot_commit`, `autopilot_status`, `autopilot_resume`. Each tool takes parameters and returns structured results. Use the same core logic as the CLI, exposed via MCP's tool interface. Document expected inputs/outputs. Ensure tools are framework-agnostic and stateless (rely on `state.json`).",
+        "testStrategy": "Unit tests for each tool's input/output. Integration tests with mocked MCP environment. Verify parity with CLI behavior. Test error cases and edge conditions.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define MCP tool schemas and input/output validation",
+            "description": "Create comprehensive MCP tool schema definitions for all autopilot tools with proper input validation and structured output specifications.",
+            "dependencies": [],
+            "details": "Define TypeScript interfaces and JSON schemas for autopilot_start, autopilot_next, autopilot_complete_phase, autopilot_commit, autopilot_status, and autopilot_resume tools. Use joi or zod for runtime parameter validation. Specify required/optional parameters, data types, and validation rules. Document expected input/output formats matching CLI functionality. Create shared validation utilities for consistent error handling across all tools.",
+            "status": "pending",
+            "testStrategy": "Unit tests for schema validation with valid/invalid inputs. Test parameter type checking and error message quality. Verify schema completeness against CLI parameter sets."
+          },
+          {
+            "id": 2,
+            "title": "Implement autopilot_start and autopilot_resume tools",
+            "description": "Build MCP tools for workflow initialization and resumption, enabling AI agents to start new TDD workflows or resume interrupted ones.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement autopilot_start tool accepting tag, target directory, and configuration parameters. Create autopilot_resume tool for continuing interrupted workflows from state.json. Both tools should initialize WorkflowOrchestrator, validate preconditions, and return workflow status. Use the same core logic as CLI commands but expose via MCP interface. Handle error cases like existing workflows, missing dependencies, or invalid configurations.",
+            "status": "pending",
+            "testStrategy": "Integration tests with mocked workflow state. Test start with various configurations. Test resume from different workflow states. Verify error handling for invalid scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Implement autopilot_next and autopilot_status tools",
+            "description": "Create MCP tools that provide workflow state information and determine next required actions for AI agents.",
+            "dependencies": [
+              1
+            ],
+            "details": "Build autopilot_next tool returning the current phase, required action, subtask context, and any parameters needed for the next step. Implement autopilot_status tool providing comprehensive workflow state including current phase, completed subtasks, test results, and progress metrics. Both tools should read from state.json and return structured data matching the event API specification. Include error handling for missing or corrupted state.",
+            "status": "pending",
+            "testStrategy": "Unit tests with various workflow states. Test next action determination across all phases. Verify status reporting accuracy. Test error handling for corrupted state files."
+          },
+          {
+            "id": 4,
+            "title": "Implement autopilot_complete_phase tool with validation",
+            "description": "Build MCP tool for phase completion that validates test results and transitions workflow state according to TDD semantics.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create autopilot_complete_phase tool accepting phase type, test results, and file changes. Integrate with TestResultValidator to enforce RED phase failures and GREEN phase passes. Update workflow state and trigger state machine transitions. Handle validation failures with clear error messages and suggested actions. Support coverage threshold validation when provided. Log phase completion to activity.jsonl.",
+            "status": "pending",
+            "testStrategy": "Integration tests with TestResultValidator. Test RED phase with passing/failing tests. Test GREEN phase with various result combinations. Verify state transitions and activity logging."
+          },
+          {
+            "id": 5,
+            "title": "Implement autopilot_commit tool with git operations",
+            "description": "Create MCP tool for automated commit creation with git staging, message generation, and metadata embedding.",
+            "dependencies": [
+              1
+            ],
+            "details": "Build autopilot_commit tool that stages specified files, generates appropriate commit messages based on subtask context and phase, and creates commits with embedded metadata. Integrate with GitAdapter for safety checks and branch validation. Include options for commit message templates and metadata formats. Handle git errors gracefully and provide clear feedback. Support dry-run mode for validation without committing.",
+            "status": "pending",
+            "testStrategy": "Integration tests with GitAdapter and temporary git repositories. Test commit creation with various file sets. Verify metadata embedding and message generation. Test error handling for git failures."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Write AI Agent Integration Documentation and Templates",
+        "description": "Document the autonomous workflow for AI agents, including example prompts, expected behaviors, and integration instructions.",
+        "details": "Create `CLAUDE.md` (or equivalent) with step-by-step instructions, example CLI/MCP usage, and responsibility matrix (AI vs TaskMaster). Include template prompts for test generation. Document how to parse test output, report results, and handle errors. Provide example JSON inputs/outputs for MCP tools. Keep documentation in the project's docs directory, versioned alongside code.",
+        "testStrategy": "Manual review of documentation for clarity and completeness. Verify example commands work against a test project. Test AI agent onboarding with the provided instructions.",
+        "priority": "low",
+        "dependencies": [
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create comprehensive workflow documentation with step-by-step examples",
+            "description": "Write detailed documentation covering the complete AI agent workflow integration, including command usage patterns, integration examples, and responsibility matrix between AI agents and TaskMaster.",
+            "dependencies": [],
+            "details": "Create comprehensive workflow documentation in the docs directory that includes: step-by-step integration instructions for AI agents, example CLI and MCP command usage patterns, clear responsibility matrix defining what AI agents handle vs TaskMaster, example JSON inputs/outputs for MCP tools, error handling patterns, and troubleshooting guides. Document the autonomous workflow phases and expected behaviors at each step.",
+            "status": "pending",
+            "testStrategy": "Manual review for clarity and completeness. Verify all example commands work against a test project setup."
+          },
+          {
+            "id": 2,
+            "title": "Create CLAUDE.md template and example prompts for AI integration",
+            "description": "Develop template files and example prompts that enable seamless AI agent onboarding and integration with the TaskMaster workflow system.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create CLAUDE.md template with integration instructions, develop example prompts for test generation and workflow automation, create template JSON structures for MCP tool interactions, document test output parsing patterns, and provide example error handling scenarios. Include practical integration guidance and ready-to-use prompt templates that AI agents can adapt for their specific use cases.",
+            "status": "pending",
+            "testStrategy": "Test AI agent onboarding using the provided templates and instructions. Verify example prompts produce expected results."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Implement Configuration System and Project Hygiene",
+        "description": "Set up `config.json` for workflow customization and ensure project directory hygiene (gitignore rules, no runtime artifacts).",
+        "details": "Define schema for `config.json`: autopilot settings, commit templates, test thresholds, branch patterns, etc. Use `ajv` (v8+) for schema validation. Update `.gitignore` to exclude `state/` and `reports/` directories, but keep `tasks/`, `config.json`, and `docs/` versioned. Provide default configs. Validate config on workflow start.",
+        "testStrategy": "Unit tests for config schema and validation. Integration tests to verify ignored directories are not committed. Test config overrides and defaults.",
+        "priority": "medium",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define Configuration Schema with AJV Validation",
+            "description": "Create comprehensive JSON schema for config.json including autopilot settings, commit templates, test thresholds, and branch patterns with AJV validation.",
+            "dependencies": [],
+            "details": "Define TypeScript interfaces and JSON schema for configuration options including autopilot mode settings, commit message templates, test coverage thresholds, branch naming patterns, and workflow preferences. Implement schema validation using ajv v8+ with detailed error reporting. Create separate schema files for modularity and maintainability.",
+            "status": "pending",
+            "testStrategy": "Unit tests for schema validation with valid/invalid config objects. Test error message clarity and schema constraint enforcement."
+          },
+          {
+            "id": 2,
+            "title": "Implement Default Configuration Loading System",
+            "description": "Build configuration loading mechanism with defaults, environment overrides, and user customization support.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create ConfigManager class to load default configuration, merge with user-provided config.json, and handle environment variable overrides. Implement configuration hierarchy: defaults < config.json < environment variables. Provide methods to get, set, and validate configuration values at runtime. Include configuration file creation for new projects.",
+            "status": "pending",
+            "testStrategy": "Unit tests for configuration loading order, merging logic, and environment variable handling. Integration tests with sample config files."
+          },
+          {
+            "id": 3,
+            "title": "Setup Gitignore Management and Directory Hygiene",
+            "description": "Update .gitignore rules to exclude runtime artifacts while preserving essential project files and implement directory hygiene checks.",
+            "dependencies": [],
+            "details": "Update .gitignore to exclude state/ and reports/ directories while keeping tasks/, config.json, and docs/ versioned. Implement utility functions to check project directory hygiene, verify no runtime artifacts are committed, and provide cleanup suggestions. Create directory structure validation for TaskMaster projects.",
+            "status": "pending",
+            "testStrategy": "Integration tests to verify gitignore rules prevent committing excluded directories. Test directory hygiene validation and cleanup suggestions."
+          },
+          {
+            "id": 4,
+            "title": "Build Configuration Validation and Error Reporting",
+            "description": "Implement startup configuration validation with comprehensive error reporting and user-friendly error messages.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create validation pipeline that runs on workflow startup to verify configuration integrity. Implement detailed error reporting with specific field validation failures, suggested fixes, and examples of valid configurations. Add configuration health check command and validation summary reporting. Ensure graceful handling of missing or corrupted config files.",
+            "status": "pending",
+            "testStrategy": "Unit tests for validation error messages and suggested fixes. Integration tests for startup validation flow and error handling scenarios."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-10-09T12:41:34.472Z",
+      "updated": "2025-10-09T12:43:37.738Z",
+      "description": "Tasks for tdd-phase-1-core-rails context"
+    }
   }
 }
