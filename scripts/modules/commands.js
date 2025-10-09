@@ -2537,24 +2537,11 @@ ${result.result}
 				process.exit(1);
 			}
 
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await addDependency(
-				taskMaster.getTasksPath(),
-				formattedTaskId,
-				formattedDependencyId,
-				{
-					projectRoot: taskMaster.getProjectRoot(),
-					tag
-				}
-			);
+			// Pass raw IDs (supporting ranges/lists and dot notation)
+			await addDependency(taskMaster.getTasksPath(), taskId, dependencyId, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// remove-dependency command
@@ -2602,24 +2589,11 @@ ${result.result}
 				process.exit(1);
 			}
 
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await removeDependency(
-				taskMaster.getTasksPath(),
-				formattedTaskId,
-				formattedDependencyId,
-				{
-					projectRoot: taskMaster.getProjectRoot(),
-					tag
-				}
-			);
+			// Pass raw IDs (supporting ranges/lists and dot notation)
+			await removeDependency(taskMaster.getTasksPath(), taskId, dependencyId, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// validate-dependencies command

@@ -1965,6 +1965,12 @@ function parseBulkTaskIds(taskSpec) {
 					);
 				}
 
+				if (startSub > endSub) {
+					throw new Error(
+						`Invalid subtask range: "${part}". Start must be less than or equal to end.`
+					);
+				}
+
 				for (let i = startSub; i <= endSub; i++) {
 					taskIds.push(`${startParent}.${i}`);
 				}
@@ -2166,14 +2172,11 @@ async function bulkAddDependencies(
 			}
 		}
 
-		// If there are validation errors and we're not in dry-run mode, decide whether to continue
+		// If there are validation errors and we're not in dry-run mode, abort atomically
 		if (validationErrors.length > 0 && !dryRun) {
-			const errorRatio = validationErrors.length / totalPossibleOperations;
-			if (errorRatio > 0.5) {
-				throw new Error(
-					`Too many validation errors (${validationErrors.length}/${totalPossibleOperations}). Aborting bulk operation.`
-				);
-			}
+			throw new Error(
+				`Validation failed (${validationErrors.length}/${totalPossibleOperations}). Aborting without changes.`
+			);
 		}
 
 		// Dry-run mode: just report what would be done
