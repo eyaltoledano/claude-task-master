@@ -8,7 +8,12 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import ora, { type Ora } from 'ora';
-import { createTaskMasterCore, type TaskMasterCore } from '@tm/core';
+import {
+	createTaskMasterCore,
+	type TaskMasterCore,
+	type Task,
+	type Subtask
+} from '@tm/core';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -21,12 +26,31 @@ export interface AutopilotCommandOptions {
 }
 
 /**
+ * Preflight check result for a single check
+ */
+export interface PreflightCheckResult {
+	success: boolean;
+	message?: string;
+}
+
+/**
+ * Overall preflight check results
+ */
+export interface PreflightResult {
+	success: boolean;
+	testCommand: PreflightCheckResult;
+	gitWorkingTree: PreflightCheckResult;
+	requiredTools: PreflightCheckResult;
+	defaultBranch: PreflightCheckResult;
+}
+
+/**
  * CLI-specific result type from autopilot command
  */
 export interface AutopilotCommandResult {
 	success: boolean;
 	taskId: string;
-	task?: any;
+	task?: Task;
 	error?: string;
 	message?: string;
 }
@@ -107,7 +131,7 @@ export class AutopilotCommand extends Command {
 
 			// Display results
 			this.displayResults(result, options);
-		} catch (error: any) {
+		} catch (error: unknown) {
 			if (spinner) {
 				spinner.fail('Operation failed');
 			}
@@ -151,7 +175,7 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Load task from tm-core
 	 */
-	private async loadTask(taskId: string): Promise<any | null> {
+	private async loadTask(taskId: string): Promise<Task | null> {
 		if (!this.tmCore) {
 			throw new Error('TaskMasterCore not initialized');
 		}
@@ -167,7 +191,7 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Display task information before execution
 	 */
-	private displayTaskInfo(task: any, isDryRun: boolean): void {
+	private displayTaskInfo(task: Task, isDryRun: boolean): void {
 		const prefix = isDryRun ? '[DRY RUN] ' : '';
 		console.log();
 		console.log(
@@ -196,22 +220,11 @@ export class AutopilotCommand extends Command {
 	 */
 	private async performAutopilot(
 		taskId: string,
-		task: any,
+		task: Task,
 		options: AutopilotCommandOptions
 	): Promise<AutopilotCommandResult> {
-		const { PreflightChecker, TaskLoaderService } = await import('@tm/core');
-
 		// Run preflight checks
-		console.log();
-		console.log(chalk.cyan.bold('Running preflight checks...'));
-		const preflightChecker = new PreflightChecker(
-			options.project || process.cwd()
-		);
-		const preflightResult = await preflightChecker.runAllChecks();
-
-		// Display preflight results
-		this.displayPreflightResults(preflightResult);
-
+		const preflightResult = await this.runPreflightChecks(options);
 		if (!preflightResult.success) {
 			return {
 				success: false,
@@ -222,9 +235,67 @@ export class AutopilotCommand extends Command {
 			};
 		}
 
-		// Load and validate task
+		// Validate task structure and get execution order
+		const validationResult = await this.validateTaskStructure(
+			taskId,
+			task,
+			options
+		);
+		if (!validationResult.success) {
+			return validationResult;
+		}
+
+		// Display execution plan
+		this.displayExecutionPlan(
+			validationResult.task!,
+			validationResult.orderedSubtasks!,
+			options
+		);
+
+		return {
+			success: true,
+			taskId,
+			task: validationResult.task,
+			message: options.dryRun
+				? 'Dry run completed successfully'
+				: 'Autopilot execution ready (actual execution not yet implemented)'
+		};
+	}
+
+	/**
+	 * Run preflight checks and display results
+	 */
+	private async runPreflightChecks(
+		options: AutopilotCommandOptions
+	): Promise<PreflightResult> {
+		const { PreflightChecker } = await import('@tm/core');
+
+		console.log();
+		console.log(chalk.cyan.bold('Running preflight checks...'));
+
+		const preflightChecker = new PreflightChecker(
+			options.project || process.cwd()
+		);
+		const result = await preflightChecker.runAllChecks();
+
+		this.displayPreflightResults(result);
+
+		return result;
+	}
+
+	/**
+	 * Validate task structure and get execution order
+	 */
+	private async validateTaskStructure(
+		taskId: string,
+		task: Task,
+		options: AutopilotCommandOptions
+	): Promise<AutopilotCommandResult & { orderedSubtasks?: Subtask[] }> {
+		const { TaskLoaderService } = await import('@tm/core');
+
 		console.log();
 		console.log(chalk.cyan.bold('Validating task structure...'));
+
 		const taskLoader = new TaskLoaderService(options.project || process.cwd());
 		const validationResult = await taskLoader.loadAndValidateTask(taskId);
 
@@ -239,19 +310,33 @@ export class AutopilotCommand extends Command {
 			};
 		}
 
-		// Get execution order
 		const orderedSubtasks = taskLoader.getExecutionOrder(
 			validationResult.task!
 		);
 
 		await taskLoader.cleanup();
 
-		// Display execution plan
+		return {
+			success: true,
+			taskId,
+			task: validationResult.task,
+			orderedSubtasks
+		};
+	}
+
+	/**
+	 * Display execution plan with subtasks and TDD workflow
+	 */
+	private displayExecutionPlan(
+		task: Task,
+		orderedSubtasks: Subtask[],
+		options: AutopilotCommandOptions
+	): void {
 		console.log();
 		console.log(chalk.green.bold('✓ All checks passed!'));
 		console.log();
 		console.log(chalk.cyan.bold('Execution Plan:'));
-		console.log(chalk.white(`Task: ${validationResult.task!.title}`));
+		console.log(chalk.white(`Task: ${task.title}`));
 		console.log(
 			chalk.gray(
 				`${orderedSubtasks.length} subtasks will be executed in dependency order`
@@ -260,11 +345,9 @@ export class AutopilotCommand extends Command {
 		console.log();
 
 		// Display subtasks
-		orderedSubtasks.forEach((subtask: any, index: number) => {
+		orderedSubtasks.forEach((subtask: Subtask, index: number) => {
 			console.log(
-				chalk.yellow(
-					`${index + 1}. ${validationResult.task!.id}.${subtask.id}: ${subtask.title}`
-				)
+				chalk.yellow(`${index + 1}. ${task.id}.${subtask.id}: ${subtask.title}`)
 			);
 			if (subtask.dependencies && subtask.dependencies.length > 0) {
 				console.log(
@@ -287,21 +370,12 @@ export class AutopilotCommand extends Command {
 				chalk.yellow('This was a dry run. Use without --dry-run to execute.')
 			);
 		}
-
-		return {
-			success: true,
-			taskId,
-			task: validationResult.task,
-			message: options.dryRun
-				? 'Dry run completed successfully'
-				: 'Autopilot execution ready (actual execution not yet implemented)'
-		};
 	}
 
 	/**
 	 * Display preflight check results
 	 */
-	private displayPreflightResults(result: any): void {
+	private displayPreflightResults(result: PreflightResult): void {
 		const checks = [
 			{ name: 'Test command', result: result.testCommand },
 			{ name: 'Git working tree', result: result.gitWorkingTree },
@@ -387,16 +461,22 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Handle general errors
 	 */
-	private handleError(error: any): void {
-		const msg = error?.getSanitizedDetails?.() ?? {
-			message: error?.message ?? String(error)
+	private handleError(error: unknown): void {
+		const errorObj = error as {
+			getSanitizedDetails?: () => { message: string };
+			message?: string;
+			stack?: string;
+		};
+
+		const msg = errorObj?.getSanitizedDetails?.() ?? {
+			message: errorObj?.message ?? String(error)
 		};
 		console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
 
 		// Show stack trace in development mode or when DEBUG is set
 		const isDevelopment = process.env.NODE_ENV !== 'production';
-		if ((isDevelopment || process.env.DEBUG) && error.stack) {
-			console.error(chalk.gray(error.stack));
+		if ((isDevelopment || process.env.DEBUG) && errorObj.stack) {
+			console.error(chalk.gray(errorObj.stack));
 		}
 	}
 
