@@ -279,12 +279,14 @@ describe('Version comparison utility', () => {
 
 describe('Update check functionality', () => {
 	let displayUpgradeNotification;
+	let parseChangelogHighlights;
 	let consoleLogSpy;
 
 	beforeAll(async () => {
 		// Import from @tm/cli instead of commands.js
 		const cliModule = await import('../../apps/cli/src/utils/auto-update.js');
 		displayUpgradeNotification = cliModule.displayUpgradeNotification;
+		parseChangelogHighlights = cliModule.parseChangelogHighlights;
 	});
 
 	beforeEach(() => {
@@ -316,7 +318,9 @@ describe('Update check functionality', () => {
 		expect(output).toContain('1.0.0');
 		expect(output).toContain('1.1.0');
 		expect(output).toContain("What's New:");
-		expect(output).toContain('Add Codex CLI provider with OAuth authentication');
+		expect(output).toContain(
+			'Add Codex CLI provider with OAuth authentication'
+		);
 		expect(output).toContain('Cursor IDE custom slash command support');
 		expect(output).toContain('Move to AI SDK v5');
 	});
@@ -327,7 +331,36 @@ describe('Update check functionality', () => {
 		const output = consoleLogSpy.mock.calls[0][0];
 		expect(output).toContain('Update Available!');
 		expect(output).not.toContain("What's New:");
-		expect(output).toContain('Auto-updating to the latest version with new features and bug fixes');
+		expect(output).toContain(
+			'Auto-updating to the latest version with new features and bug fixes'
+		);
+	});
+
+	test('parseChangelogHighlights validates version format to prevent ReDoS', () => {
+		const mockChangelog = `
+## 1.0.0
+
+### Minor Changes
+
+- [#123](https://example.com) Thanks [@user](https://example.com)! - Test feature
+		`;
+
+		// Valid versions should work
+		expect(parseChangelogHighlights(mockChangelog, '1.0.0')).toEqual([
+			'Test feature'
+		]);
+		expect(parseChangelogHighlights(mockChangelog, '1.0.0-rc.1')).toEqual([]);
+
+		// Invalid versions should return empty array (ReDoS protection)
+		expect(parseChangelogHighlights(mockChangelog, 'invalid')).toEqual([]);
+		expect(parseChangelogHighlights(mockChangelog, '1.0')).toEqual([]);
+		expect(parseChangelogHighlights(mockChangelog, 'a.b.c')).toEqual([]);
+		expect(
+			parseChangelogHighlights(
+				mockChangelog,
+				'((((((((((((((((((((((((((((((a'
+			)
+		).toEqual([]);
 	});
 });
 

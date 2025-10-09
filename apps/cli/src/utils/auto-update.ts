@@ -111,14 +111,23 @@ async function fetchChangelogHighlights(version: string): Promise<string[]> {
 
 /**
  * Parse changelog markdown to extract Minor Changes for a specific version
+ * @internal - Exported for testing purposes only
  */
-function parseChangelogHighlights(
+export function parseChangelogHighlights(
 	changelog: string,
 	version: string
 ): string[] {
 	try {
+		// Validate version format (basic semver pattern) to prevent ReDoS
+		if (!/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/.test(version)) {
+			return [];
+		}
+
 		// Find the version section
-		const versionRegex = new RegExp(`## ${version.replace(/\./g, '\\.')}\\s*\\n`, 'i');
+		const versionRegex = new RegExp(
+			`## ${version.replace(/\./g, '\\.')}\\s*\\n`,
+			'i'
+		);
 		const versionMatch = changelog.match(versionRegex);
 
 		if (!versionMatch) {
@@ -128,12 +137,15 @@ function parseChangelogHighlights(
 		// Extract content from this version to the next version heading
 		const startIdx = versionMatch.index! + versionMatch[0].length;
 		const nextVersionIdx = changelog.indexOf('\n## ', startIdx);
-		const versionContent = nextVersionIdx > 0
-			? changelog.slice(startIdx, nextVersionIdx)
-			: changelog.slice(startIdx);
+		const versionContent =
+			nextVersionIdx > 0
+				? changelog.slice(startIdx, nextVersionIdx)
+				: changelog.slice(startIdx);
 
 		// Find Minor Changes section
-		const minorChangesMatch = versionContent.match(/### Minor Changes\s*\n([\s\S]*?)(?=\n###|\n##|$)/i);
+		const minorChangesMatch = versionContent.match(
+			/### Minor Changes\s*\n([\s\S]*?)(?=\n###|\n##|$)/i
+		);
 
 		if (!minorChangesMatch) {
 			return [];
@@ -254,7 +266,9 @@ export function displayUpgradeNotification(
 		}
 		content += '\n\n' + 'Auto-updating to the latest version...';
 	} else {
-		content += '\n\n' + 'Auto-updating to the latest version with new features and bug fixes...';
+		content +=
+			'\n\n' +
+			'Auto-updating to the latest version with new features and bug fixes...';
 	}
 
 	const message = boxen(content, {
