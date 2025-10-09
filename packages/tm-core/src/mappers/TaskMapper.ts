@@ -2,22 +2,32 @@ import { Task, Subtask } from '../types/index.js';
 import { Database, Tables } from '../types/database.types.js';
 
 type TaskRow = Tables<'tasks'>;
-type DependencyRow = Tables<'task_dependencies'>;
+
+// Legacy type for backward compatibility
+type DependencyRow = Tables<'task_dependencies'> & {
+	depends_on_task?: { display_id: string } | null;
+	depends_on_task_id?: string;
+};
 
 export class TaskMapper {
 	/**
 	 * Maps database tasks to internal Task format
+	 * @param dbTasks - Array of tasks from database
+	 * @param dependencies - Either a Map of task_id to display_ids or legacy array format
 	 */
 	static mapDatabaseTasksToTasks(
 		dbTasks: TaskRow[],
-		dbDependencies: DependencyRow[]
+		dependencies: Map<string, string[]> | DependencyRow[]
 	): Task[] {
 		if (!dbTasks || dbTasks.length === 0) {
 			return [];
 		}
 
-		// Group dependencies by task_id
-		const dependenciesByTaskId = this.groupDependenciesByTaskId(dbDependencies);
+		// Handle both Map and array formats for backward compatibility
+		const dependenciesByTaskId =
+			dependencies instanceof Map
+				? dependencies
+				: this.groupDependenciesByTaskId(dependencies);
 
 		// Separate parent tasks and subtasks
 		const parentTasks = dbTasks.filter((t) => !t.parent_task_id);
@@ -43,21 +53,23 @@ export class TaskMapper {
 	): Task {
 		// Map subtasks
 		const subtasks: Subtask[] = dbSubtasks.map((subtask, index) => ({
-			id: index + 1, // Use numeric ID for subtasks
+			id: subtask.display_id || String(index + 1), // Use display_id if available (API storage), fallback to numeric (file storage)
 			parentId: dbTask.id,
 			title: subtask.title,
 			description: subtask.description || '',
 			status: this.mapStatus(subtask.status),
 			priority: this.mapPriority(subtask.priority),
 			dependencies: dependenciesByTaskId.get(subtask.id) || [],
-			details: (subtask.metadata as any)?.details || '',
-			testStrategy: (subtask.metadata as any)?.testStrategy || '',
+			details: this.extractMetadataField(subtask.metadata, 'details', ''),
+			testStrategy: this.extractMetadataField(
+				subtask.metadata,
+				'testStrategy',
+				''
+			),
 			createdAt: subtask.created_at,
 			updatedAt: subtask.updated_at,
 			assignee: subtask.assignee_id || undefined,
-			complexity: subtask.complexity
-				? this.mapComplexityToInternal(subtask.complexity)
-				: undefined
+			complexity: subtask.complexity ?? undefined
 		}));
 
 		return {
@@ -67,22 +79,25 @@ export class TaskMapper {
 			status: this.mapStatus(dbTask.status),
 			priority: this.mapPriority(dbTask.priority),
 			dependencies: dependenciesByTaskId.get(dbTask.id) || [],
-			details: (dbTask.metadata as any)?.details || '',
-			testStrategy: (dbTask.metadata as any)?.testStrategy || '',
+			details: this.extractMetadataField(dbTask.metadata, 'details', ''),
+			testStrategy: this.extractMetadataField(
+				dbTask.metadata,
+				'testStrategy',
+				''
+			),
 			subtasks,
 			createdAt: dbTask.created_at,
 			updatedAt: dbTask.updated_at,
 			assignee: dbTask.assignee_id || undefined,
-			complexity: dbTask.complexity
-				? this.mapComplexityToInternal(dbTask.complexity)
-				: undefined,
+			complexity: dbTask.complexity ?? undefined,
 			effort: dbTask.estimated_hours || undefined,
 			actualEffort: dbTask.actual_hours || undefined
 		};
 	}
 
 	/**
-	 * Groups dependencies by task ID
+	 * Groups dependencies by task ID (legacy method for backward compatibility)
+	 * @deprecated Use DependencyFetcher.fetchDependenciesWithDisplayIds instead
 	 */
 	private static groupDependenciesByTaskId(
 		dependencies: DependencyRow[]
@@ -92,7 +107,14 @@ export class TaskMapper {
 		if (dependencies) {
 			for (const dep of dependencies) {
 				const deps = dependenciesByTaskId.get(dep.task_id) || [];
-				deps.push(dep.depends_on_task_id);
+				// Handle both old format (UUID string) and new format (object with display_id)
+				const dependencyId =
+					typeof dep.depends_on_task === 'object'
+						? dep.depends_on_task?.display_id
+						: dep.depends_on_task_id;
+				if (dependencyId) {
+					deps.push(dependencyId);
+				}
 				dependenciesByTaskId.set(dep.task_id, deps);
 			}
 		}
@@ -157,14 +179,38 @@ export class TaskMapper {
 	}
 
 	/**
-	 * Maps numeric complexity to descriptive complexity
+	 * Safely extracts a field from metadata JSON with runtime type validation
+	 * @param metadata The metadata object (could be null or any type)
+	 * @param field The field to extract
+	 * @param defaultValue Default value if field doesn't exist
+	 * @returns The extracted value if it matches the expected type, otherwise defaultValue
 	 */
-	private static mapComplexityToInternal(
-		complexity: number
-	): Task['complexity'] {
-		if (complexity <= 2) return 'simple';
-		if (complexity <= 5) return 'moderate';
-		if (complexity <= 8) return 'complex';
-		return 'very-complex';
+	private static extractMetadataField<T>(
+		metadata: unknown,
+		field: string,
+		defaultValue: T
+	): T {
+		if (!metadata || typeof metadata !== 'object') {
+			return defaultValue;
+		}
+
+		const value = (metadata as Record<string, unknown>)[field];
+
+		if (value === undefined) {
+			return defaultValue;
+		}
+
+		// Runtime type validation: ensure value matches the type of defaultValue
+		const expectedType = typeof defaultValue;
+		const actualType = typeof value;
+
+		if (expectedType !== actualType) {
+			console.warn(
+				`Type mismatch in metadata field "${field}": expected ${expectedType}, got ${actualType}. Using default value.`
+			);
+			return defaultValue;
+		}
+
+		return value as T;
 	}
 }

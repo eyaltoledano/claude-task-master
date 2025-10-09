@@ -192,8 +192,7 @@ export function displaySubtasks(
 		status: any;
 		description?: string;
 		dependencies?: string[];
-	}>,
-	parentId: string | number
+	}>
 ): void {
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
 	// Display subtasks header
@@ -228,7 +227,7 @@ export function displaySubtasks(
 	});
 
 	subtasks.forEach((subtask) => {
-		const subtaskId = `${parentId}.${subtask.id}`;
+		const subtaskId = String(subtask.id);
 
 		// Format dependencies
 		const deps =
@@ -329,7 +328,7 @@ export function displayTaskDetails(
 			console.log(chalk.gray(`  No subtasks with status '${statusFilter}'`));
 		} else if (filteredSubtasks.length > 0) {
 			console.log(); // Empty line for spacing
-			displaySubtasks(filteredSubtasks, task.id);
+			displaySubtasks(filteredSubtasks);
 		}
 	}
 

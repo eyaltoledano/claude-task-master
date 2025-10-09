@@ -25,7 +25,8 @@ export const CUSTOM_PROVIDERS = {
 	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli',
 	AGENTLLM: 'agentllm',
-	GROK_CLI: 'grok-cli'
+	GROK_CLI: 'grok-cli',
+	CODEX_CLI: 'codex-cli'
 };
 
 // Custom providers array (for backward compatibility and iteration)

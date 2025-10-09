@@ -88,11 +88,6 @@ describe('moveTask (unit)', () => {
 		).rejects.toThrow(/Number of source IDs/);
 	});
 
-	test('batch move calls generateTaskFiles once when flag true', async () => {
-		await moveTask('tasks.json', '1,2', '3,4', true, { tag: 'master' });
-		expect(generateTaskFiles).toHaveBeenCalledTimes(1);
-	});
-
 	test('error when tag invalid', async () => {
 		await expect(
 			moveTask('tasks.json', '1', '2', false, { tag: 'ghost' })

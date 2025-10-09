@@ -88,3 +88,38 @@ export const emptySampleTasks = {
 	},
 	tasks: []
 };
+
+export const crossLevelDependencyTasks = {
+	tasks: [
+		{
+			id: 2,
+			title: 'Task 2 with subtasks',
+			description: 'Parent task',
+			status: 'pending',
+			dependencies: [],
+			subtasks: [
+				{
+					id: 1,
+					title: 'Subtask 2.1',
+					description: 'First subtask',
+					status: 'pending',
+					dependencies: []
+				},
+				{
+					id: 2,
+					title: 'Subtask 2.2',
+					description: 'Second subtask that should depend on Task 11',
+					status: 'pending',
+					dependencies: []
+				}
+			]
+		},
+		{
+			id: 11,
+			title: 'Task 11',
+			description: 'Top-level task that 2.2 should depend on',
+			status: 'done',
+			dependencies: []
+		}
+	]
+};

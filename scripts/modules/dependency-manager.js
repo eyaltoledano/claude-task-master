@@ -312,18 +312,23 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 
 	// Check if the dependency exists by comparing string representations
 	const dependencyIndex = targetTask.dependencies.findIndex((dep) => {
-		// Convert both to strings for comparison
-		let depStr = String(dep);
-
-		// Special handling for numeric IDs that might be subtask references
-		if (typeof dep === 'number' && dep < 100 && isSubtask) {
-			// It's likely a reference to another subtask in the same parent task
-			// Convert to full format for comparison (e.g., 2 -> "1.2" for a subtask in task 1)
-			const [parentId] = formattedTaskId.split('.');
-			depStr = `${parentId}.${dep}`;
+		// Direct string comparison (handles both numeric IDs and dot notation)
+		const depStr = String(dep);
+		if (depStr === normalizedDependencyId) {
+			return true;
 		}
 
-		return depStr === normalizedDependencyId;
+		// For subtasks: handle numeric dependencies that might be references to other subtasks
+		// in the same parent (e.g., subtask 1.2 depending on subtask 1.1 stored as just "1")
+		if (typeof dep === 'number' && dep < 100 && isSubtask) {
+			const [parentId] = formattedTaskId.split('.');
+			const fullSubtaskRef = `${parentId}.${dep}`;
+			if (fullSubtaskRef === normalizedDependencyId) {
+				return true;
+			}
+		}
+
+		return false;
 	});
 
 	if (dependencyIndex === -1) {
@@ -396,8 +401,9 @@ function isCircularDependency(tasks, taskId, chain = []) {
 			task = parentTask.subtasks.find((st) => st.id === subtaskId);
 		}
 	} else {
-		// Regular task
-		task = tasks.find((t) => String(t.id) === taskIdStr);
+		// Regular task - handle both string and numeric task IDs
+		const taskIdNum = parseInt(taskIdStr, 10);
+		task = tasks.find((t) => t.id === taskIdNum || String(t.id) === taskIdStr);
 	}
 
 	if (!task) {

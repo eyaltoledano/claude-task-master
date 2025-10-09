@@ -14,6 +14,7 @@ import { ConfigManager } from '../config/config-manager.js';
 import { StorageFactory } from '../storage/storage-factory.js';
 import { TaskEntity } from '../entities/task.entity.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
+import { getLogger } from '../logger/factory.js';
 
 /**
  * Result returned by getTaskList
@@ -51,6 +52,7 @@ export class TaskService {
 	private configManager: ConfigManager;
 	private storage: IStorage;
 	private initialized = false;
+	private logger = getLogger('TaskService');
 
 	constructor(configManager: ConfigManager) {
 		this.configManager = configManager;
@@ -90,37 +92,76 @@ export class TaskService {
 		const tag = options.tag || activeTag;
 
 		try {
-			// Load raw tasks from storage - storage only knows about tags
-			const rawTasks = await this.storage.loadTasks(tag);
+			// Determine if we can push filters to storage layer
+			const canPushStatusFilter =
+				options.filter?.status &&
+				!options.filter.priority &&
+				!options.filter.tags &&
+				!options.filter.assignee &&
+				!options.filter.search &&
+				options.filter.hasSubtasks === undefined;
+
+			// Build storage-level options
+			const storageOptions: any = {};
+
+			// Push status filter to storage if it's the only filter
+			if (canPushStatusFilter) {
+				const statuses = Array.isArray(options.filter!.status)
+					? options.filter!.status
+					: [options.filter!.status];
+				// Only push single status to storage (multiple statuses need in-memory filtering)
+				if (statuses.length === 1) {
+					storageOptions.status = statuses[0];
+				}
+			}
+
+			// Push subtask exclusion to storage
+			if (options.includeSubtasks === false) {
+				storageOptions.excludeSubtasks = true;
+			}
+
+			// Load tasks from storage with pushed-down filters
+			const rawTasks = await this.storage.loadTasks(tag, storageOptions);
+
+			// Get total count without status filters, but preserve subtask exclusion
+			const baseOptions: any = {};
+			if (options.includeSubtasks === false) {
+				baseOptions.excludeSubtasks = true;
+			}
+
+			const allTasks =
+				storageOptions.status !== undefined
+					? await this.storage.loadTasks(tag, baseOptions)
+					: rawTasks;
 
 			// Convert to TaskEntity for business logic operations
 			const taskEntities = TaskEntity.fromArray(rawTasks);
 
-			// Apply filters if provided
+			// Apply remaining filters in-memory if needed
 			let filteredEntities = taskEntities;
-			if (options.filter) {
+			if (options.filter && !canPushStatusFilter) {
+				filteredEntities = this.applyFilters(taskEntities, options.filter);
+			} else if (
+				options.filter?.status &&
+				Array.isArray(options.filter.status) &&
+				options.filter.status.length > 1
+			) {
+				// Multiple statuses - filter in-memory
 				filteredEntities = this.applyFilters(taskEntities, options.filter);
 			}
 
 			// Convert back to plain objects
-			let tasks = filteredEntities.map((entity) => entity.toJSON());
-
-			// Handle subtasks option
-			if (options.includeSubtasks === false) {
-				tasks = tasks.map((task) => ({
-					...task,
-					subtasks: []
-				}));
-			}
+			const tasks = filteredEntities.map((entity) => entity.toJSON());
 
 			return {
 				tasks,
-				total: rawTasks.length,
+				total: allTasks.length,
 				filtered: filteredEntities.length,
 				tag: tag, // Return the actual tag being used (either explicitly provided or active tag)
 				storageType: this.getStorageType()
 			};
 		} catch (error) {
+			this.logger.error('Failed to get task list', error);
 			throw new TaskMasterError(
 				'Failed to get task list',
 				ERROR_CODES.INTERNAL_ERROR,

@@ -6,6 +6,16 @@
 import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 
 /**
+ * Options for loading tasks from storage
+ */
+export interface LoadTasksOptions {
+	/** Filter tasks by status */
+	status?: TaskStatus;
+	/** Exclude subtasks from loaded tasks (default: false) */
+	excludeSubtasks?: boolean;
+}
+
+/**
  * Result type for updateTaskStatus operations
  */
 export interface UpdateStatusResult {
@@ -21,11 +31,12 @@ export interface UpdateStatusResult {
  */
 export interface IStorage {
 	/**
-	 * Load all tasks from storage, optionally filtered by tag
+	 * Load all tasks from storage, optionally filtered by tag and other criteria
 	 * @param tag - Optional tag to filter tasks by
+	 * @param options - Optional filtering options (status, excludeSubtasks)
 	 * @returns Promise that resolves to an array of tasks
 	 */
-	loadTasks(tag?: string): Promise<Task[]>;
+	loadTasks(tag?: string, options?: LoadTasksOptions): Promise<Task[]>;
 
 	/**
 	 * Load a single task by ID
@@ -205,7 +216,7 @@ export abstract class BaseStorage implements IStorage {
 	}
 
 	// Abstract methods that must be implemented by concrete classes
-	abstract loadTasks(tag?: string): Promise<Task[]>;
+	abstract loadTasks(tag?: string, options?: LoadTasksOptions): Promise<Task[]>;
 	abstract loadTask(taskId: string, tag?: string): Promise<Task | null>;
 	abstract saveTasks(tasks: Task[], tag?: string): Promise<void>;
 	abstract appendTasks(tasks: Task[], tag?: string): Promise<void>;

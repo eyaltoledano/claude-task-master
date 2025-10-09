@@ -69,11 +69,29 @@ export function resolveTasksPath(args, log = silentLogger) {
 
 	// Use core findTasksPath with explicit path and normalized projectRoot context
 	if (projectRoot) {
-		return coreFindTasksPath(explicitPath, { projectRoot }, log);
+		const foundPath = coreFindTasksPath(explicitPath, { projectRoot }, log);
+		// If core function returns null and no explicit path was provided,
+		// construct the expected default path as documented
+		if (foundPath === null && !explicitPath) {
+			const defaultPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			log?.info?.(
+				`Core findTasksPath returned null, using default path: ${defaultPath}`
+			);
+			return defaultPath;
+		}
+		return foundPath;
 	}
 
 	// Fallback to core function without projectRoot context
-	return coreFindTasksPath(explicitPath, null, log);
+	const foundPath = coreFindTasksPath(explicitPath, null, log);
+	// Note: When no projectRoot is available, we can't construct a default path
+	// so we return null and let the calling code handle the error
+	return foundPath;
 }
 
 /**

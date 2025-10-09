@@ -6,7 +6,6 @@ import {
 	setTasksForTag,
 	traverseDependencies
 } from '../utils.js';
-import generateTaskFiles from './generate-task-files.js';
 import {
 	findCrossTagDependencies,
 	getDependentTaskIds,
@@ -142,13 +141,7 @@ async function moveTask(
 			results.push(result);
 		}
 
-		// Generate files once at the end if requested
-		if (generateFiles) {
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-				tag: tag,
-				projectRoot: projectRoot
-			});
-		}
+		// Note: Task file generation is no longer supported and has been removed
 
 		return {
 			message: `Successfully moved ${sourceIds.length} tasks/subtasks`,
@@ -209,12 +202,7 @@ async function moveTask(
 	// The writeJSON function will filter out _rawTaggedData automatically
 	writeJSON(tasksPath, rawData, options.projectRoot, tag);
 
-	if (generateFiles) {
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
-			tag: tag,
-			projectRoot: projectRoot
-		});
-	}
+	// Note: Task file generation is no longer supported and has been removed
 
 	return result;
 }

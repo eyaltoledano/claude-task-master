@@ -6,7 +6,8 @@
 import type {
 	IStorage,
 	StorageStats,
-	UpdateStatusResult
+	UpdateStatusResult,
+	LoadTasksOptions
 } from '../interfaces/storage.interface.js';
 import type {
 	Task,
@@ -16,7 +17,7 @@ import type {
 } from '../types/index.js';
 import { ERROR_CODES, TaskMasterError } from '../errors/task-master-error.js';
 import { TaskRepository } from '../repositories/task-repository.interface.js';
-import { SupabaseTaskRepository } from '../repositories/supabase-task-repository.js';
+import { SupabaseTaskRepository } from '../repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../auth/auth-manager.js';
 
@@ -146,7 +147,7 @@ export class ApiStorage implements IStorage {
 	 * Load tasks from API
 	 * In our system, the tag parameter represents a brief ID
 	 */
-	async loadTasks(tag?: string): Promise<Task[]> {
+	async loadTasks(tag?: string, options?: LoadTasksOptions): Promise<Task[]> {
 		await this.ensureInitialized();
 
 		try {
@@ -160,9 +161,9 @@ export class ApiStorage implements IStorage {
 				);
 			}
 
-			// Load tasks from the current brief context
+			// Load tasks from the current brief context with filters pushed to repository
 			const tasks = await this.retryOperation(() =>
-				this.repository.getTasks(this.projectId)
+				this.repository.getTasks(this.projectId, options)
 			);
 
 			// Update the tag cache with the loaded task IDs

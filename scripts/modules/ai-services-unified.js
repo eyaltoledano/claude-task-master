@@ -42,6 +42,7 @@ import {
 	AgentLLMProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
+	CodexCliProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GrokCliProvider,
@@ -72,6 +73,7 @@ const PROVIDERS = {
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
 	agentllm: new AgentLLMProvider(),
+	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider()
 };
