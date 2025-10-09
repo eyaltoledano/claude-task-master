@@ -356,10 +356,7 @@ describe('Update check functionality', () => {
 		expect(parseChangelogHighlights(mockChangelog, '1.0')).toEqual([]);
 		expect(parseChangelogHighlights(mockChangelog, 'a.b.c')).toEqual([]);
 		expect(
-			parseChangelogHighlights(
-				mockChangelog,
-				'((((((((((((((((((((((((((((((a'
-			)
+			parseChangelogHighlights(mockChangelog, '((((((((((((((((((((((((((((((a')
 		).toEqual([]);
 	});
 });
