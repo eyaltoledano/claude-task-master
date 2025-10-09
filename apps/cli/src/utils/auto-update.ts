@@ -61,13 +61,13 @@ export function compareVersions(v1: string, v2: string): number {
 }
 
 /**
- * Fetch CHANGELOG.md from npm CDN and extract highlights for a specific version
+ * Fetch CHANGELOG.md from GitHub and extract highlights for a specific version
  */
 async function fetchChangelogHighlights(version: string): Promise<string[]> {
 	return new Promise((resolve) => {
 		const options = {
-			hostname: 'unpkg.com',
-			path: `/task-master-ai@${version}/CHANGELOG.md`,
+			hostname: 'raw.githubusercontent.com',
+			path: '/eyaltoledano/claude-task-master/main/CHANGELOG.md',
 			method: 'GET',
 			headers: {
 				'User-Agent': `task-master-ai/${version}`
