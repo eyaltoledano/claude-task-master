@@ -5,3 +5,6 @@
 
 // Export GitAdapter
 export { GitAdapter } from './git-adapter.js';
+
+// Export branch name utilities
+export { generateBranchName, sanitizeBranchName } from './branch-name-generator.js';
