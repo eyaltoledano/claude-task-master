@@ -10797,7 +10797,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10805,7 +10805,7 @@
             "description": "Create comprehensive JSON schema for config.json including autopilot settings, commit templates, test thresholds, and branch patterns with AJV validation.",
             "dependencies": [],
             "details": "Define TypeScript interfaces and JSON schema for configuration options including autopilot mode settings, commit message templates, test coverage thresholds, branch naming patterns, and workflow preferences. Implement schema validation using ajv v8+ with detailed error reporting. Create separate schema files for modularity and maintainability.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for schema validation with valid/invalid config objects. Test error message clarity and schema constraint enforcement.",
             "parentId": "undefined"
           },
@@ -10817,7 +10817,7 @@
               1
             ],
             "details": "Create ConfigManager class to load default configuration, merge with user-provided config.json, and handle environment variable overrides. Implement configuration hierarchy: defaults < config.json < environment variables. Provide methods to get, set, and validate configuration values at runtime. Include configuration file creation for new projects.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for configuration loading order, merging logic, and environment variable handling. Integration tests with sample config files.",
             "parentId": "undefined"
           },
@@ -10827,7 +10827,7 @@
             "description": "Update .gitignore rules to exclude runtime artifacts while preserving essential project files and implement directory hygiene checks.",
             "dependencies": [],
             "details": "Update .gitignore to exclude state/ and reports/ directories while keeping tasks/, config.json, and docs/ versioned. Implement utility functions to check project directory hygiene, verify no runtime artifacts are committed, and provide cleanup suggestions. Create directory structure validation for TaskMaster projects.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests to verify gitignore rules prevent committing excluded directories. Test directory hygiene validation and cleanup suggestions.",
             "parentId": "undefined"
           },
@@ -10840,7 +10840,7 @@
               2
             ],
             "details": "Create validation pipeline that runs on workflow startup to verify configuration integrity. Implement detailed error reporting with specific field validation failures, suggested fixes, and examples of valid configurations. Add configuration health check command and validation summary reporting. Ensure graceful handling of missing or corrupted config files.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for validation error messages and suggested fixes. Integration tests for startup validation flow and error handling scenarios.",
             "parentId": "undefined"
           }
@@ -10860,7 +10860,7 @@
       ],
       "created": "2025-10-10T13:35:33.065Z",
       "description": "Tasks for tdd-phase-1-core-rails context",
-      "updated": "2025-10-10T15:58:13.971Z"
+      "updated": "2025-10-10T16:07:52.412Z"
     }
   }
 }
