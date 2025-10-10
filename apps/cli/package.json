@@ -8,7 +8,10 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
@@ -34,6 +37,7 @@
 		"@biomejs/biome": "^1.9.4",
 		"@types/inquirer": "^9.0.3",
 		"@types/node": "^22.10.5",
+		"memfs": "^4.49.0",
 		"tsx": "^4.20.4",
 		"typescript": "^5.9.2",
 		"vitest": "^2.1.8"
@@ -41,12 +45,19 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"keywords": ["task-master", "cli", "task-management", "productivity"],
+	"keywords": [
+		"task-master",
+		"cli",
+		"task-management",
+		"productivity"
+	],
 	"author": "",
 	"license": "MIT",
 	"typesVersions": {
 		"*": {
-			"*": ["src/*"]
+			"*": [
+				"src/*"
+			]
 		}
 	}
 }

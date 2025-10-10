@@ -36,7 +36,7 @@ export class CompleteCommand extends Command {
 
 	private async execute(options: CompleteOptions): Promise<void> {
 		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: CompleteOptions = {
 			...parentOpts,
 			...options,

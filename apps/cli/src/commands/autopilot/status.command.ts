@@ -28,7 +28,7 @@ export class StatusCommand extends Command {
 
 	private async execute(options: StatusOptions): Promise<void> {
 		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: StatusOptions = {
 			...parentOpts,
 			...options,

@@ -10345,7 +10345,7 @@
           "2",
           "3"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10462,7 +10462,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10470,7 +10470,7 @@
             "description": "Implement a configurable template system that can parse commit message templates and substitute variables with dynamic content",
             "dependencies": [],
             "details": "Build a TemplateEngine class that loads templates from config.json, supports variable substitution using placeholders like {{type}}, {{scope}}, {{description}}, {{taskId}}, etc. Support default templates and custom overrides. Implement template validation to ensure required fields are present. Use a simple string replacement or template library for variable substitution.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for template loading, variable substitution, and template validation. Test with various template formats and missing variables.",
             "parentId": "undefined"
           },
@@ -10482,7 +10482,7 @@
               1
             ],
             "details": "Build a ScopeDetector class that analyzes file paths and determines conventional commit scopes (e.g., 'cli', 'core', 'test', 'docs'). Create configurable mapping rules in config.json. Handle multiple scopes by choosing the most relevant or using a priority system. Support custom scope detection rules and fallback to generic scopes when unclear.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for scope detection with various file path patterns. Test priority resolution for multiple scopes. Verify fallback behavior.",
             "parentId": "undefined"
           },
@@ -10495,7 +10495,7 @@
               2
             ],
             "details": "Build a CommitMessageGenerator class that combines template engine and scope detector to generate complete commit messages. Embed task metadata (ID, phase, tag, test counts, coverage) in the commit body. Use conventional-commits parser v2+ for validation. Support message override option. Format metadata as structured text or YAML in commit body for easy parsing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for message generation with various metadata combinations. Integration tests with conventional-commits parser validation. Test message override functionality.",
             "parentId": "undefined"
           }
@@ -10516,7 +10516,7 @@
           "4",
           "5"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10524,7 +10524,7 @@
             "description": "Build the RED phase controller that coordinates AI test generation and validates required test failures.",
             "dependencies": [],
             "details": "Create RedPhaseOrchestrator class that: (1) Calls AI agent to generate tests for current subtask, (2) Runs generated tests using TestResultValidator, (3) Validates that at least one test fails (RED requirement), (4) Returns structured results with test outcomes and validation status. Handle edge cases like no tests generated or compilation errors. Integrate with WorkflowOrchestrator state machine for phase transitions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with mocked AI agent and TestResultValidator. Verify RED phase fails validation when all tests pass. Test error handling for invalid test generation.",
             "parentId": "undefined"
           },
@@ -10536,7 +10536,7 @@
               1
             ],
             "details": "Create GreenPhaseOrchestrator class that: (1) Calls AI agent to implement code for current subtask, (2) Runs all tests using TestResultValidator, (3) Validates that zero tests fail (GREEN requirement), (4) Tracks attempt count for max retry logic, (5) Returns structured results with implementation status. Support iterative implementation with feedback from failed test runs. Coordinate with attempt tracking system.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with mocked AI agent and retry scenarios. Integration tests verifying GREEN phase passes only when all tests succeed. Test max attempt handling and failure modes.",
             "parentId": "undefined"
           },
@@ -10548,7 +10548,7 @@
               2
             ],
             "details": "Create CommitPhaseOrchestrator class that: (1) Uses GitAdapter to stage modified files, (2) Generates descriptive commit messages with subtask metadata and test results, (3) Creates git commit with structured metadata, (4) Updates subtask status to completed, (5) Handles git operation failures and rollback scenarios. Include commit message templates and ensure atomic operations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with mocked GitAdapter. Integration tests verifying commit creation with proper metadata. Test rollback scenarios and file staging edge cases.",
             "parentId": "undefined"
           },
@@ -10558,7 +10558,7 @@
             "description": "Build the attempt counter system with configurable maximum retry limits and exponential backoff.",
             "dependencies": [],
             "details": "Create AttemptTracker class that: (1) Tracks current attempt count per subtask and phase, (2) Enforces configurable maximum attempts for GREEN phase, (3) Implements exponential backoff between retries, (4) Provides clear failure messaging when max attempts reached, (5) Persists attempt state for resume functionality. Support different retry strategies and timeout handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for attempt counting logic and max retry enforcement. Test exponential backoff timing. Verify state persistence and resume behavior.",
             "parentId": "undefined"
           },
@@ -10573,7 +10573,7 @@
               4
             ],
             "details": "Create PhaseTransitionValidator class that: (1) Validates legal phase transitions (RED→GREEN→COMMIT), (2) Enforces phase prerequisites and exit conditions, (3) Updates workflow state with phase results, (4) Handles pause/resume functionality with state checkpoints, (5) Provides rollback capabilities for failed transitions. Integrate with WorkflowOrchestrator for state machine coordination.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for transition validation logic and state persistence. Integration tests verifying full TDD cycle transitions. Test pause/resume scenarios and rollback handling.",
             "parentId": "undefined"
           },
@@ -10585,7 +10585,7 @@
               5
             ],
             "details": "Create ActivityLogger class that: (1) Logs structured entries for all phase transitions with timestamps, (2) Records test results, attempt counts, and error details, (3) Writes to activity.jsonl in append-only JSONL format, (4) Provides log querying and filtering capabilities, (5) Ensures log integrity and handles write failures gracefully. Include log rotation and cleanup policies.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for log entry formatting and file operations. Integration tests verifying complete workflow logging. Test log rotation and error recovery scenarios.",
             "parentId": "undefined"
           }
@@ -10605,7 +10605,7 @@
           "4",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10613,7 +10613,7 @@
             "description": "Create the foundation for `tm autopilot` commands using commander.js, establishing the command structure and shared argument parsing logic.",
             "dependencies": [],
             "details": "Create a new CLI module that registers the `autopilot` subcommand with commander (v11+). Set up shared argument parsing for common flags like `--json`, `--verbose`, and `--project-root`. Establish error handling patterns and help text formatting. Create base command class or utilities for consistent behavior across all autopilot commands.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for command registration, argument parsing, and help text generation. Test error handling for invalid arguments.",
             "parentId": "undefined"
           },
@@ -10625,7 +10625,7 @@
               1
             ],
             "details": "Implement `tm autopilot start` command that validates project setup, initializes WorkflowOrchestrator, and begins the TDD workflow. Implement `tm autopilot resume` that restores workflow state from `state.json`. Both commands should validate dependencies (tasks 4,6) are available, handle project root detection, and provide clear feedback on initialization status.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests for workflow initialization. Test state restoration from various state.json configurations. Verify dependency checking and error messages.",
             "parentId": "undefined"
           },
@@ -10637,7 +10637,7 @@
               1
             ],
             "details": "Implement `tm autopilot next` that returns JSON with the next action details (test generation, implementation, or commit). Implement `tm autopilot status` showing current run progress, active subtask, and phase. Both commands must support `--json` flag for machine-readable output and human-readable default format. Ensure consistent JSON schema across all output.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for JSON output formatting and schema validation. Integration tests with various workflow states. Test both human and machine-readable output modes.",
             "parentId": "undefined"
           },
@@ -10649,7 +10649,7 @@
               1
             ],
             "details": "Implement `tm autopilot complete` command accepting `--results` (test output/implementation details) and `--coverage` (coverage metrics) flags. Integrate with result validation logic to ensure RED phase has failures and GREEN phase has all tests passing. Update workflow state and advance to next phase. Provide clear feedback on validation success/failure.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for result parsing and validation logic. Integration tests with mocked test results and coverage data. Test error cases for invalid phase transitions.",
             "parentId": "undefined"
           },
@@ -10661,7 +10661,7 @@
               1
             ],
             "details": "Implement `tm autopilot commit` that uses the enhanced commit message generator (task 5), stages appropriate files via GitAdapter, and creates commits with embedded metadata. Implement `tm autopilot abort` that safely terminates the workflow, cleaning up temporary state. Both commands should handle git operation errors gracefully and maintain workflow state consistency.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with real git operations. Test commit message generation and metadata embedding. Verify abort command cleanup and state management. Test error handling for git failures.",
             "parentId": "undefined"
           }
@@ -10860,7 +10860,7 @@
       ],
       "created": "2025-10-10T13:35:33.065Z",
       "description": "Tasks for tdd-phase-1-core-rails context",
-      "updated": "2025-10-10T14:45:39.197Z"
+      "updated": "2025-10-10T15:30:40.144Z"
     }
   }
 }

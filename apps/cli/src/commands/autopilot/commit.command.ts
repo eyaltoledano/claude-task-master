@@ -30,7 +30,7 @@ export class CommitCommand extends Command {
 
 	private async execute(options: CommitOptions): Promise<void> {
 		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: CommitOptions = {
 			...parentOpts,
 			...options,

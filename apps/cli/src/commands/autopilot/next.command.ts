@@ -28,7 +28,7 @@ export class NextCommand extends Command {
 
 	private async execute(options: NextOptions): Promise<void> {
 		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: NextOptions = {
 			...parentOpts,
 			...options,

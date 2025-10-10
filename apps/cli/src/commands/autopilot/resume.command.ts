@@ -28,8 +28,8 @@ export class ResumeCommand extends Command {
 	}
 
 	private async execute(options: ResumeOptions): Promise<void> {
-		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		// Inherit parent options (autopilot command)
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: ResumeOptions = {
 			...parentOpts,
 			...options,

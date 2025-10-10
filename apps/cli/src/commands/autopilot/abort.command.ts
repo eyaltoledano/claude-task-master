@@ -33,7 +33,7 @@ export class AbortCommand extends Command {
 
 	private async execute(options: AbortOptions): Promise<void> {
 		// Inherit parent options
-		const parentOpts = this.parent?.parent?.opts() as AutopilotBaseOptions;
+		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 		const mergedOptions: AbortOptions = {
 			...parentOpts,
 			...options,
