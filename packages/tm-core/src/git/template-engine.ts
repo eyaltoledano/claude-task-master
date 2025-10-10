@@ -23,7 +23,7 @@ export interface TemplateCollection {
 }
 
 const DEFAULT_TEMPLATES: TemplateCollection = {
-  commitMessage: `{{type}}{{#scope}}({{scope}}){{/scope}}: {{description}}
+  commitMessage: `{{type}}{{#scope}}({{scope}}){{/scope}}{{breaking}}: {{description}}
 
 {{#body}}{{body}}
 
@@ -137,22 +137,34 @@ export class TemplateEngine {
   /**
    * Process conditional blocks in template
    * {{#variable}}content{{/variable}} - shows content only if variable is truthy
+   * Processes innermost blocks first to handle nesting
    */
   private processConditionalBlocks(
     template: string,
     variables: TemplateVariables
   ): string {
-    const regex = /\{\{#([^}]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+    let result = template;
+    let hasChanges = true;
 
-    return template.replace(regex, (_, varName, content) => {
-      const value = variables[varName.trim()];
+    // Keep processing until no more conditional blocks are found
+    while (hasChanges) {
+      const before = result;
 
-      // Show content if variable is truthy
-      if (value !== undefined && value !== null && value !== false && value !== '') {
-        return content;
-      }
+      // Find and replace innermost conditional blocks (non-greedy match)
+      result = result.replace(/\{\{#([^}]+)\}\}((?:(?!\{\{#).)*?)\{\{\/\1\}\}/gs, (_, varName, content) => {
+        const value = variables[varName.trim()];
 
-      return '';
-    });
+        // Show content if variable is truthy (not undefined, null, false, or empty string)
+        if (value !== undefined && value !== null && value !== false && value !== '') {
+          return content;
+        }
+
+        return '';
+      });
+
+      hasChanges = result !== before;
+    }
+
+    return result;
   }
 }
