@@ -9,7 +9,11 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
@@ -118,7 +122,12 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
@@ -130,6 +139,7 @@
 		"@manypkg/cli": "^0.25.1",
 		"@tm/ai-sdk-provider-grok-cli": "*",
 		"@tm/cli": "*",
+		"@types/fs-extra": "^11.0.4",
 		"@types/jest": "^29.5.14",
 		"@types/marked-terminal": "^6.1.1",
 		"concurrently": "^9.2.1",
