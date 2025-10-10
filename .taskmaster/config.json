@@ -7,9 +7,9 @@
 			"temperature": 0.2
 		},
 		"research": {
-			"provider": "groq",
-			"modelId": "llama-3.3-70b-versatile",
-			"maxTokens": 32768,
+			"provider": "perplexity",
+			"modelId": "sonar",
+			"maxTokens": 8700,
 			"temperature": 0.1
 		},
 		"fallback": {

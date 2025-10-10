@@ -64,6 +64,8 @@ export async function handleNonStreamingService(config, prompts) {
 					}
 				};
 
+				// Stop the CLI spinner before returning to avoid leaving it running
+				spinner?.stop();
 				return {
 					success: true,
 					needsAgentDelegation: true,
@@ -74,6 +76,8 @@ export async function handleNonStreamingService(config, prompts) {
 			} catch (err) {
 				// Do not let raw Error objects bubble up into MCP's resource.text; return a structured error
 				logger.report(`parsePRD: Failed to construct pendingInteraction - ${err.message}`, 'error');
+				// Stop spinner on error before returning
+				spinner?.stop();
 				return {
 					success: false,
 					isError: true,

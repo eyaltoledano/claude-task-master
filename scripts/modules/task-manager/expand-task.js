@@ -75,7 +75,7 @@ async function expandTask(
 		warn: (msg) => !isSilentMode() && log('warn', msg),
 		error: (msg) => !isSilentMode() && log('error', msg),
 		debug: (msg) =>
-			!isSilentMode() && getDebugFlag(session) && log('debug', msg)
+			!isSilentMode() && getDebugFlag(projectRoot) && log('debug', msg)
 	};
 
 	if (mcpLog) {
@@ -348,11 +348,12 @@ async function expandTask(
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
 								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
-								numSubtasksForAgent: finalSubtaskCount // Add finalSubtaskCount (as numSubtasksForAgent)
+								numSubtasksForAgent: finalSubtaskCount, // Add finalSubtaskCount (as numSubtasksForAgent)
+								tagInfo: { currentTag: tag || 'master' }
 							}
 						}
-					}
-					// No 'task' or 'telemetryData' fields here as the operation is pending.
+					},
+          			telemetryData: aiServiceResponse?.telemetryData
 				};
 			}
 			// === END AGENT_LLM_DELEGATION HANDLING ===
@@ -406,7 +407,7 @@ async function expandTask(
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
-		if (!isMCPCall && getDebugFlag(session)) {
+		if (!isMCPCall && getDebugFlag(projectRoot)) {
 			// Replaced outputFormat === 'text' with !isMCPCall
 			console.error(error); // Log full stack in debug CLI mode
 		}

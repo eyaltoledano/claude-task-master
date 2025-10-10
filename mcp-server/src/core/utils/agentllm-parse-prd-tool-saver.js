@@ -75,8 +75,8 @@ async function agentllmParsePrdSave(
 		// Pass the tag to generateTaskFiles
 		await generateTaskFiles(outputPath, outputDir, {
 			mcpLog: logWrapper,
-			projectRoot: projectRoot,
-			tag: tag
+			projectRoot,
+			tag
 		});
 		logWrapper.info(
 			`agentllmParsePrdSave: Markdown task files generated for tag '${tag}' from ${outputPath}`

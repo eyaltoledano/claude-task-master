@@ -425,6 +425,10 @@ async function analyzeTaskComplexity(options, context = {}) {
 				aiServiceResponse.mainResult &&
 				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
 			) {
+				if (loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator);
+					loadingIndicator = null;
+				}
 				reportLog(
 					'analyzeTaskComplexity (core): Detected agent_llm_delegation signal.',
 					'debug'
@@ -447,8 +451,9 @@ async function analyzeTaskComplexity(options, context = {}) {
 								// which is already part of details.prompt.
 							}
 						}
-					}
-					// No 'report' or 'telemetryData' here as the operation is pending.
+					},
+					telemetryData: aiServiceResponse?.telemetryData ?? null,
+					tagInfo: aiServiceResponse?.tagInfo
 				};
 			}
 			// === END AGENT_LLM_DELEGATION HANDLING ===

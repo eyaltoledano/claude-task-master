@@ -350,7 +350,7 @@ async function updateTaskById(
 						delegatedCallDetails: {
 							originalCommand: context.commandName || 'update_task', // Will be set by updateTaskByIdDirect
 							role: serviceRole, // serviceRole is already defined in this scope
-							serviceType: 'generateText', // Agent expected to return JSON string of the updated task
+							serviceType: 'generateObject', // Agent expected to return JSON object of the updated task
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, modelId etc.
 								// Pass original task ID for context, agent might need it if not in prompt/details

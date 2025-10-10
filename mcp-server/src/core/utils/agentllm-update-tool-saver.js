@@ -6,6 +6,83 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 // Import the array parser from the core updateTasks (plural) script
 
 /**
+ * Try to parse various shapes of agent output into an array of task objects.
+ * Accepts:
+ * - Already-parsed arrays
+ * - Single task object (will be wrapped into an array)
+ * - Objects that contain a 'tasks' array
+ * - JSON strings, possibly wrapped in code fences (```), or containing surrounding text
+ * - Attempts to extract first JSON array/object substring when full parse fails
+ */
+function _tolerantParseAgentTasks(agentOutput, logWrapper) {
+	// If already an array, return it
+	if (Array.isArray(agentOutput)) return { success: true, data: agentOutput };
+
+	// If already an object, check for common shapes
+	if (typeof agentOutput === 'object' && agentOutput !== null) {
+		if (Array.isArray(agentOutput.tasks)) return { success: true, data: agentOutput.tasks };
+		// Treat single task object as a one-item array
+		if (typeof agentOutput.id !== 'undefined') return { success: true, data: [agentOutput] };
+	}
+
+	// If it's a string, try multiple tolerant parsing strategies
+	if (typeof agentOutput === 'string') {
+		let s = agentOutput.trim();
+
+		// Remove common markdown/json code fences
+		s = s.replace(/```(?:json)?\n?([\s\S]*?)```/gi, '$1').trim();
+
+		// Some agents wrap JSON inside a quoted string; try to unescape common patterns
+		if (/^".*"$/s.test(s) || /^'.*'$/s.test(s)) {
+			// Strip outer quotes
+			s = s.slice(1, -1);
+			// Unescape common escape sequences
+			s = s.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\'/g, "'");
+		}
+
+		// First attempt: direct JSON.parse
+		try {
+			const parsed = JSON.parse(s);
+			if (Array.isArray(parsed)) return { success: true, data: parsed };
+			if (parsed && Array.isArray(parsed.tasks)) return { success: true, data: parsed.tasks };
+			if (parsed && typeof parsed.id !== 'undefined') return { success: true, data: [parsed] };
+		} catch (e) {
+			logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Direct JSON.parse failed: ${e.message}`);
+		}
+
+		// Attempt to find first JSON array substring
+		const firstArrayStart = s.indexOf('[');
+		const lastArrayEnd = s.lastIndexOf(']');
+		if (firstArrayStart !== -1 && lastArrayEnd !== -1 && lastArrayEnd > firstArrayStart) {
+			const sub = s.substring(firstArrayStart, lastArrayEnd + 1);
+			try {
+				const parsed = JSON.parse(sub);
+				if (Array.isArray(parsed)) return { success: true, data: parsed };
+			} catch (e) {
+				logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Substring array parse failed: ${e.message}`);
+			}
+		}
+
+		// Attempt to find first JSON object substring
+		const firstObjStart = s.indexOf('{');
+		const lastObjEnd = s.lastIndexOf('}');
+		if (firstObjStart !== -1 && lastObjEnd !== -1 && lastObjEnd > firstObjStart) {
+			const sub = s.substring(firstObjStart, lastObjEnd + 1);
+			try {
+				const parsed = JSON.parse(sub);
+				if (Array.isArray(parsed)) return { success: true, data: parsed };
+				if (parsed && Array.isArray(parsed.tasks)) return { success: true, data: parsed.tasks };
+				if (parsed && typeof parsed.id !== 'undefined') return { success: true, data: [parsed] };
+			} catch (e) {
+				logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Substring object parse failed: ${e.message}`);
+			}
+		}
+	}
+
+	return { success: false, error: 'Invalid agentOutput format. Expected a JSON string (array of tasks) or an array of task objects.' };
+}
+
+/**
  * Saves multiple updated task data (typically from an agent after an 'update' tool delegation) to tasks.json.
  *
  * @param {any} agentOutput - The data received from the agent. Expected to be a JSON string
@@ -27,29 +104,24 @@ async function agentllmUpdateSave(
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
-		let parsedAgentTasksArray;
-		if (Array.isArray(agentOutput)) {
-			logWrapper.info(
-				'agentllmUpdateSave: Agent output is already an array. Validating structure (basic).'
-			);
-			if (
-				agentOutput.some(
-					(task) =>
-						typeof task.id === 'undefined' || typeof task.title === 'undefined'
-				)
-			) {
-				const errorMsg =
-					'Agent output array contains invalid task objects (missing id or title).';
-				logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
-				return { success: false, error: errorMsg };
-			}
-			parsedAgentTasksArray = agentOutput;
-		} else {
-			const errorMsg =
-				'Invalid agentOutput format. Expected a JSON string (array of tasks) or an array of task objects.';
+		const parseResult = _tolerantParseAgentTasks(agentOutput, logWrapper);
+		if (!parseResult.success) {
 			logWrapper.error(
-				`agentllmUpdateSave: ${errorMsg} Received type: ${typeof agentOutput}`
+				`agentllmUpdateSave: ${parseResult.error} Received type: ${typeof agentOutput}`
 			);
+			return { success: false, error: parseResult.error };
+		}
+
+		const parsedAgentTasksArray = parseResult.data;
+
+		// Basic validation: each task should have at least an id and title
+		if (
+			parsedAgentTasksArray.some(
+				(task) => typeof task.id === 'undefined' || typeof task.title === 'undefined'
+			)
+		) {
+			const errorMsg = 'Agent output array contains invalid task objects (missing id or title).';
+			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 

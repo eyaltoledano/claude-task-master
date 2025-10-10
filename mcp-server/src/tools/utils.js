@@ -764,24 +764,15 @@ function withNormalizedProjectRoot(executeFn) {
  * @returns {Object} - The response object for agent delegation.
  */
 function createAgentDelegationResponse(pendingInteraction) {
-	return {
-		content: [
-			{
-				type: 'text',
-				text: JSON.stringify({
-					isAgentLLMPendingInteraction: true,
-					details: pendingInteraction,
-					// Add a URI and mimeType here to be compatible with the old format
-					uri: 'agent-llm://pending-interaction',
-					mimeType: 'application/json',
-					directive: 'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
-					instructions: "Assistant/Agent (you), please perform the LLM call using 'requestParameters' and then invoke the 'agent_llm' tool with your response, including this 'interactionId'."
-
-				})
-			}
-		],
-		isError: false
-	};
+	const payload = {
+		isAgentLLMPendingInteraction: true,
+		details: pendingInteraction,
+		uri: 'agent-llm://pending-interaction',
+		mimeType: 'application/json',
+		directive: 'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
+		instructions: "Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'."
+  	};
+  	return { ...createContentResponse(payload), isError: false };
 }
 
 /**

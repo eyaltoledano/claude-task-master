@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
+import { UpdatedTaskSchema } from '../../../../src/schemas/update-tasks.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
 // Import the parser from the core updateTaskById script
 
@@ -45,14 +46,13 @@ function updateMainTask(
 		});
 		const subtaskIds = new Set();
 		finalSubtasks = finalSubtasks
-			.filter((st) => {
-				if (!subtaskIds.has(st.id)) {
-					subtaskIds.add(st.id);
-					return true;
-				}
-				return false;
-			})
-			.sort((a, b) => a.id - b.id);
+		.filter((st) => st && st.id !== undefined)
+		.map((st) => ({
+			...st,
+			id: typeof st.id === 'string' ? parseInt(st.id, 10) : st.id
+		}))
+		.filter((st) => Number.isFinite(st.id) && !subtaskIds.has(st.id) && subtaskIds.add(st.id))
+		.sort((a, b) => a.id - b.id);
 	}
 	Object.assign(taskToUpdateObject, {
 		...parsedAgentTask,
@@ -141,13 +141,73 @@ async function agentllmUpdatedTaskSave(
 			logWrapper.info(
 				'agentllmUpdatedTaskSave: Agent output is already an object. Validating and using directly.'
 			);
-			parsedAgentTask = agentOutput;
-			if (parsedAgentTask.id !== taskIdToUpdate) {
-				// Ensure ID consistency
-				logWrapper.warn(
-					`Agent output object had ID ${parsedAgentTask.id}, expected ${taskIdToUpdate}. Overwriting ID.`
+
+			// Agents sometimes return a wrapped response like { task: { ... } }
+			// Extract the candidate task object accordingly.
+			let candidate = null;
+			if (agentOutput && typeof agentOutput === 'object' && agentOutput.task && typeof agentOutput.task === 'object') {
+				candidate = agentOutput.task;
+			} else {
+				candidate = agentOutput;
+			}
+
+			// Enforce/normalize ID early so validation doesn't fail when agent omits or uses string IDs
+			let normalizedId;
+			if (typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')) {
+				const [, subIdStr] = taskIdToUpdate.split('.');
+				normalizedId = parseInt(subIdStr, 10);
+			} else {
+				normalizedId = parseInt(String(taskIdToUpdate), 10);
+			}
+
+			if (candidate && (candidate.id === undefined || candidate.id === null)) {
+				candidate.id = normalizedId;
+			} else if (candidate && typeof candidate.id === 'string') {
+				const maybeNum = parseInt(candidate.id, 10);
+				if (!isNaN(maybeNum)) candidate.id = maybeNum;
+			}
+
+			// Validate with the shared UpdatedTaskSchema to avoid corrupt tasks
+			const validation = UpdatedTaskSchema.safeParse(candidate);
+			if (!validation.success) {
+				// Format validation errors for logging and return
+				let formattedDetails = null;
+				try {
+					formattedDetails = validation.error.format
+						? validation.error.format()
+						: validation.error;
+				} catch (fmtErr) {
+					formattedDetails = validation.error;
+				}
+
+				const detailsString = (() => {
+					try {
+						return JSON.stringify(formattedDetails);
+					} catch (e) {
+						return String(formattedDetails);
+					}
+				})();
+
+				logWrapper.error(
+					`agentllmUpdatedTaskSave: Agent output validation failed: ${detailsString}`
 				);
-				parsedAgentTask.id = taskIdToUpdate;
+
+				return {
+					success: false,
+					error: `Agent output failed task schema validation: ${detailsString}`,
+					details: formattedDetails
+				};
+			}
+
+			// Use the (possibly coerced) parsed data from Zod
+			parsedAgentTask = validation.data;
+
+			// Enforce ID consistency (overwrite with numeric id derived from taskIdToUpdate)
+			if (parsedAgentTask.id !== normalizedId) {
+				logWrapper.warn(
+					`Agent output object had ID ${parsedAgentTask.id}, expected ${normalizedId}. Overwriting ID.`
+				);
+				parsedAgentTask.id = normalizedId;
 			}
 		} else {
 			const errorMsg =

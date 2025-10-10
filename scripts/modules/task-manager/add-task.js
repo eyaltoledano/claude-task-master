@@ -492,8 +492,8 @@ async function addTask(
 					aiServiceResponse.mainResult.type === 'agent_llm_delegation'
 				) {
 					report(
-						'debug',
-						'addTask (core): Detected agent_llm_delegation signal for AI-driven task creation.'
+						'addTask (core): Detected agent_llm_delegation signal for AI-driven task creation.',
+						'debug'
 					);
 					if (loadingIndicator) stopLoadingIndicator(loadingIndicator); // Stop CLI loading indicator
 

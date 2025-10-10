@@ -28,8 +28,7 @@ const agentLLMParameters = z.object({
 				.enum(['generateText', 'streamText', 'generateObject'])
 				.describe('The type of LLM service requested.'),
 			requestParameters: z
-				.object({})
-				.passthrough()
+				.any()
 				.describe(
 					'The actual parameters for the LLM call (messages, modelId, schema, etc.).'
 				)
@@ -44,11 +43,11 @@ const agentLLMParameters = z.object({
 				.enum(['success', 'error'])
 				.describe('Status of the LLM call made by the agent.'),
 			data: z
-				.union([z.string(), z.object({}).passthrough()])
+				.any()
 				.optional()
 				.describe('The LLM response data (text, object) from the agent.'),
 			errorDetails: z
-				.union([z.string(), z.object({}).passthrough()])
+				.any()
 				.optional()
 				.describe("Error details if the agent's LLM call failed.")
 		})
@@ -86,14 +85,14 @@ function registerAgentLLMTool(server) {
 						toolResponseSource: 'taskmaster_to_agent',
 						status: 'pending_agent_llm_action',
 						message:
-							'Taskmaster requires an LLM call from the agent. Details provided in llmRequestForAgent. Agent must call agent_llm with this interactionId in response.',
+							'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
 						llmRequestForAgent: args.delegatedCallDetails.requestParameters,
 						interactionId: effectiveInteractionId,
 						pendingInteractionSignalToAgent: {
 							type: 'agent_must_respond_via_agent_llm',
 							interactionId: effectiveInteractionId,
 							instructions:
-								"Agent, please perform the LLM call using llmRequestForAgent and then invoke the 'agent_llm' tool with your response, including this interactionId."
+								"Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'."
 						}
 					};
 				} else if (args.agentLLMResponse) {

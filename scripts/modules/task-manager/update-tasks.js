@@ -225,6 +225,7 @@ async function updateTasks(
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
 			if (
 				aiServiceResponse &&
 				aiServiceResponse.mainResult &&
@@ -251,7 +252,7 @@ async function updateTasks(
 						delegatedCallDetails: {
 							originalCommand: context.commandName || 'update-tasks',
 							role: serviceRole, // This variable should be in scope
-							serviceType: 'generateText', // updateTasks uses generateText
+							serviceType: 'generateObject', // updateTasks uses generateObject
 							requestParameters: {
 								// These are the details from the agent_llm_delegation signal
 								...aiServiceResponse.mainResult.details,
@@ -265,6 +266,7 @@ async function updateTasks(
 					// No 'updatedTasks' or 'telemetryData' here as the operation is pending.
 				};
 			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');

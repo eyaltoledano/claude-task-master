@@ -155,8 +155,39 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for '${originalToolName}'.`
 		);
+
+		// Normalize common structured shapes that the non-agent path (generateObject)
+		// would produce so agent-postprocessing can reuse the same saver.
+		let normalizedForUpdate = finalLLMOutput;
+		try {
+			if (finalLLMOutput && typeof finalLLMOutput === 'object') {
+				// If it's wrapped as { mainResult: { tasks: [...] } }
+				if (
+					finalLLMOutput.mainResult &&
+					Array.isArray(finalLLMOutput.mainResult.tasks)
+				) {
+					normalizedForUpdate = finalLLMOutput.mainResult.tasks;
+					log.debug(
+						`TaskMasterMCPServer [Interaction: ${interactionId}]: Normalized finalLLMOutput from mainResult.tasks for update.`
+					);
+				} else if (Array.isArray(finalLLMOutput.tasks)) {
+					normalizedForUpdate = finalLLMOutput.tasks;
+					log.debug(
+						`TaskMasterMCPServer [Interaction: ${interactionId}]: Normalized finalLLMOutput from tasks property for update.`
+					);
+				} else if (Array.isArray(finalLLMOutput)) {
+					// already an array
+					normalizedForUpdate = finalLLMOutput;
+				}
+			}
+		} catch (e) {
+			log.debug(
+				`TaskMasterMCPServer [Interaction: ${interactionId}]: Error during normalization of finalLLMOutput: ${e.message}`
+			);
+		}
+
 		postProcessingResult = await agentllmUpdateSave(
-			finalLLMOutput,
+			normalizedForUpdate,
 			projectRoot,
 			log,
 			tag
