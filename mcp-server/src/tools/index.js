@@ -40,6 +40,13 @@ import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
+import { registerAutopilotStartTool } from './autopilot-start.js';
+import { registerAutopilotResumeTool } from './autopilot-resume.js';
+import { registerAutopilotNextTool } from './autopilot-next.js';
+import { registerAutopilotStatusTool } from './autopilot-status.js';
+import { registerAutopilotCompleteTool } from './autopilot-complete.js';
+import { registerAutopilotCommitTool } from './autopilot-commit.js';
+import { registerAutopilotAbortTool } from './autopilot-abort.js';
 
 /**
  * Register all Task Master tools with the MCP server
@@ -98,7 +105,16 @@ export function registerTaskMasterTools(server) {
 		registerRenameTagTool(server);
 		registerCopyTagTool(server);
 
-		// Group 8: Research Features
+		// Group 8: Autopilot/TDD Workflow
+		registerAutopilotStartTool(server);
+		registerAutopilotResumeTool(server);
+		registerAutopilotNextTool(server);
+		registerAutopilotStatusTool(server);
+		registerAutopilotCompleteTool(server);
+		registerAutopilotCommitTool(server);
+		registerAutopilotAbortTool(server);
+
+		// Group 9: Research Features
 		registerResearchTool(server);
 	} catch (error) {
 		logger.error(`Error registering Task Master tools: ${error.message}`);
