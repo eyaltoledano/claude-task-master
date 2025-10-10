@@ -29,6 +29,16 @@ export {
 	type ActivityFilter
 } from './activity-logger.js';
 
+// Export state manager
+export {
+	createState,
+	readState,
+	updateState,
+	deleteState,
+	validateState,
+	type State
+} from './state-manager.js';
+
 // Export storage interface and types
 export type {
 	IStorage,
