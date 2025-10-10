@@ -273,4 +273,66 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(branchEvent?.data?.branchName).toBe('feature/test');
     });
   });
+
+  describe('State Persistence', () => {
+    it('should persist state after transitions when auto-persist enabled', async () => {
+      const persistMock = vi.fn();
+      orchestrator.enableAutoPersist(persistMock);
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+
+      expect(persistMock).toHaveBeenCalledOnce();
+      const state = persistMock.mock.calls[0][0];
+      expect(state.phase).toBe('BRANCH_SETUP');
+    });
+
+    it('should emit state:persisted event', async () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('state:persisted', (event) => events.push(event));
+
+      await orchestrator.persistState();
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('state:persisted');
+    });
+
+    it('should auto-persist after each transition when enabled', () => {
+      const persistMock = vi.fn();
+      orchestrator.enableAutoPersist(persistMock);
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      expect(persistMock).toHaveBeenCalledTimes(1);
+
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+      expect(persistMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not auto-persist when disabled', () => {
+      const persistMock = vi.fn();
+      orchestrator.enableAutoPersist(persistMock);
+      orchestrator.disableAutoPersist();
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+
+      expect(persistMock).not.toHaveBeenCalled();
+    });
+
+    it('should serialize state with all context data', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      const state = orchestrator.getState();
+
+      expect(state.phase).toBe('SUBTASK_LOOP');
+      expect(state.context.branchName).toBe('feature/test');
+      expect(state.context.currentTDDPhase).toBe('RED');
+      expect(state.context.taskId).toBe('task-1');
+    });
+  });
 });

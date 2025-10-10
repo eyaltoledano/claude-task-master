@@ -18,6 +18,8 @@ export class WorkflowOrchestrator {
   private context: WorkflowContext;
   private readonly transitions: StateTransition[];
   private readonly eventListeners: Map<WorkflowEventType, Set<WorkflowEventListener>>;
+  private persistCallback?: (state: WorkflowState) => void | Promise<void>;
+  private autoPersistEnabled: boolean = false;
 
   constructor(initialContext: WorkflowContext) {
     this.currentPhase = 'PREFLIGHT';
@@ -85,6 +87,7 @@ export class WorkflowOrchestrator {
     // Handle TDD phase transitions within SUBTASK_LOOP
     if (this.currentPhase === 'SUBTASK_LOOP') {
       this.handleTDDPhaseTransition(event);
+      void this.triggerAutoPersist();
       return;
     }
 
@@ -101,6 +104,7 @@ export class WorkflowOrchestrator {
 
     // Execute transition
     this.executeTransition(validTransition, event);
+    void this.triggerAutoPersist();
   }
 
   /**
@@ -276,5 +280,46 @@ export class WorkflowOrchestrator {
   private getCurrentSubtaskId(): string | undefined {
     const currentSubtask = this.context.subtasks[this.context.currentSubtaskIndex];
     return currentSubtask?.id;
+  }
+
+  /**
+   * Register callback for state persistence
+   */
+  onStatePersist(callback: (state: WorkflowState) => void | Promise<void>): void {
+    this.persistCallback = callback;
+  }
+
+  /**
+   * Enable auto-persistence after each transition
+   */
+  enableAutoPersist(callback: (state: WorkflowState) => void | Promise<void>): void {
+    this.persistCallback = callback;
+    this.autoPersistEnabled = true;
+  }
+
+  /**
+   * Disable auto-persistence
+   */
+  disableAutoPersist(): void {
+    this.autoPersistEnabled = false;
+  }
+
+  /**
+   * Manually persist current state
+   */
+  async persistState(): Promise<void> {
+    if (this.persistCallback) {
+      await this.persistCallback(this.getState());
+    }
+    this.emit('state:persisted');
+  }
+
+  /**
+   * Trigger auto-persistence if enabled
+   */
+  private async triggerAutoPersist(): Promise<void> {
+    if (this.autoPersistEnabled && this.persistCallback) {
+      await this.persistCallback(this.getState());
+    }
   }
 }
