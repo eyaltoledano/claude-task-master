@@ -1,0 +1,158 @@
+/**
+ * TemplateEngine - Configurable template system for generating text from templates
+ *
+ * Supports:
+ * - Variable substitution using {{variableName}} syntax
+ * - Custom templates via constructor or setTemplate
+ * - Template validation with required variables
+ * - Variable extraction from templates
+ * - Multiple template storage and retrieval
+ */
+
+export interface TemplateValidationResult {
+  isValid: boolean;
+  missingVars: string[];
+}
+
+export interface TemplateVariables {
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface TemplateCollection {
+  [templateName: string]: string;
+}
+
+const DEFAULT_TEMPLATES: TemplateCollection = {
+  commitMessage: `{{type}}{{#scope}}({{scope}}){{/scope}}: {{description}}
+
+{{#body}}{{body}}
+
+{{/body}}{{#taskId}}Task: {{taskId}}{{/taskId}}{{#phase}}
+Phase: {{phase}}{{/phase}}{{#testsPassing}}
+Tests: {{testsPassing}} passing{{#testsFailing}}, {{testsFailing}} failing{{/testsFailing}}{{/testsPassing}}`
+};
+
+export class TemplateEngine {
+  private templates: TemplateCollection;
+
+  constructor(customTemplates: TemplateCollection = {}) {
+    this.templates = { ...DEFAULT_TEMPLATES, ...customTemplates };
+  }
+
+  /**
+   * Render a template with provided variables
+   */
+  render(
+    templateName: string,
+    variables: TemplateVariables,
+    inlineTemplate?: string
+  ): string {
+    const template = inlineTemplate !== undefined
+      ? inlineTemplate
+      : this.templates[templateName];
+
+    if (template === undefined) {
+      throw new Error(`Template "${templateName}" not found`);
+    }
+
+    return this.substituteVariables(template, variables);
+  }
+
+  /**
+   * Set or update a template
+   */
+  setTemplate(name: string, template: string): void {
+    this.templates[name] = template;
+  }
+
+  /**
+   * Get a template by name
+   */
+  getTemplate(name: string): string | undefined {
+    return this.templates[name];
+  }
+
+  /**
+   * Check if a template exists
+   */
+  hasTemplate(name: string): boolean {
+    return name in this.templates;
+  }
+
+  /**
+   * Validate that a template contains all required variables
+   */
+  validateTemplate(
+    template: string,
+    requiredVars: string[]
+  ): TemplateValidationResult {
+    const templateVars = this.extractVariables(template);
+    const missingVars = requiredVars.filter(
+      varName => !templateVars.includes(varName)
+    );
+
+    return {
+      isValid: missingVars.length === 0,
+      missingVars
+    };
+  }
+
+  /**
+   * Extract all variable names from a template
+   */
+  extractVariables(template: string): string[] {
+    const regex = /\{\{\s*([^}#/\s]+)\s*\}\}/g;
+    const matches = template.matchAll(regex);
+    const variables = new Set<string>();
+
+    for (const match of matches) {
+      variables.add(match[1]);
+    }
+
+    return Array.from(variables);
+  }
+
+  /**
+   * Substitute variables in template
+   * Supports both {{variable}} and {{#variable}}...{{/variable}} (conditional blocks)
+   */
+  private substituteVariables(
+    template: string,
+    variables: TemplateVariables
+  ): string {
+    let result = template;
+
+    // Handle conditional blocks first ({{#var}}...{{/var}})
+    result = this.processConditionalBlocks(result, variables);
+
+    // Handle simple variable substitution ({{var}})
+    result = result.replace(/\{\{\s*([^}#/\s]+)\s*\}\}/g, (_, varName) => {
+      const value = variables[varName];
+      return value !== undefined && value !== null ? String(value) : `{{${varName}}}`;
+    });
+
+    return result;
+  }
+
+  /**
+   * Process conditional blocks in template
+   * {{#variable}}content{{/variable}} - shows content only if variable is truthy
+   */
+  private processConditionalBlocks(
+    template: string,
+    variables: TemplateVariables
+  ): string {
+    const regex = /\{\{#([^}]+)\}\}([\s\S]*?)\{\{\/\1\}\}/g;
+
+    return template.replace(regex, (_, varName, content) => {
+      const value = variables[varName.trim()];
+
+      // Show content if variable is truthy
+      if (value !== undefined && value !== null && value !== false && value !== '') {
+        return content;
+      }
+
+      return '';
+    });
+  }
+}
