@@ -135,7 +135,9 @@ describe('Manifest Manager', () => {
 			// Create invalid manifest
 			await fs.writeFile(manifestPath, JSON.stringify({ invalid: true }));
 
-			await expect(readManifest(manifestPath)).rejects.toThrow('Invalid manifest');
+			await expect(readManifest(manifestPath)).rejects.toThrow(
+				'Invalid manifest'
+			);
 		});
 	});
 

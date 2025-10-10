@@ -6,7 +6,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { WorkflowState } from '@tm/core';
 
 // Track file system state in memory - must be in vi.hoisted() for mock access
-const { mockFileSystem, pathExistsFn, readJSONFn, writeJSONFn, ensureDirFn, removeFn } = vi.hoisted(() => {
+const {
+	mockFileSystem,
+	pathExistsFn,
+	readJSONFn,
+	writeJSONFn,
+	ensureDirFn,
+	removeFn
+} = vi.hoisted(() => {
 	const mockFileSystem = new Map<string, string>();
 
 	return {

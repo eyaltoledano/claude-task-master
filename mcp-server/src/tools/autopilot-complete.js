@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import { WorkflowOrchestrator } from '@tm/core';
 import fs from 'fs-extra';
 import path from 'path';
@@ -96,36 +93,32 @@ export function registerAutopilotCompleteTool(server) {
 					// RED phase must have failures
 					if (testResults.failed === 0) {
 						log.error('RED phase validation failed: no test failures');
-						return createErrorResponse(
-							'RED phase validation failed',
-							{
-								reason: 'At least one test must be failing in RED phase',
-								actual: {
-									passed: testResults.passed,
-									failed: testResults.failed
-								},
-								suggestion:
-									'Ensure you have written a failing test before proceeding to GREEN phase'
-							}
-						);
+						return createErrorResponse('RED phase validation failed', {
+							reason: 'At least one test must be failing in RED phase',
+							actual: {
+								passed: testResults.passed,
+								failed: testResults.failed
+							},
+							suggestion:
+								'Ensure you have written a failing test before proceeding to GREEN phase'
+						});
 					}
-					log.info('RED phase validation passed: tests are failing as expected');
+					log.info(
+						'RED phase validation passed: tests are failing as expected'
+					);
 				} else if (tddPhase === 'GREEN') {
 					// GREEN phase must have all tests passing
 					if (testResults.failed > 0) {
 						log.error('GREEN phase validation failed: tests still failing');
-						return createErrorResponse(
-							'GREEN phase validation failed',
-							{
-								reason: 'All tests must pass in GREEN phase',
-								actual: {
-									passed: testResults.passed,
-									failed: testResults.failed
-								},
-								suggestion:
-									'Fix the implementation to make all tests pass before proceeding'
-							}
-						);
+						return createErrorResponse('GREEN phase validation failed', {
+							reason: 'All tests must pass in GREEN phase',
+							actual: {
+								passed: testResults.passed,
+								failed: testResults.failed
+							},
+							suggestion:
+								'Fix the implementation to make all tests pass before proceeding'
+						});
 					}
 					log.info('GREEN phase validation passed: all tests passing');
 				}

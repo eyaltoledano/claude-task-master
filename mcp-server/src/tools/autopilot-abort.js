@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import fs from 'fs-extra';
 import path from 'path';
 

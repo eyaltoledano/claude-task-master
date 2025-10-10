@@ -71,9 +71,9 @@ describe('State Manager', () => {
 		it('should throw error if file already exists', async () => {
 			await createState(statePath, { phase: 'red' });
 
-			await expect(
-				createState(statePath, { phase: 'green' })
-			).rejects.toThrow('State file already exists');
+			await expect(createState(statePath, { phase: 'green' })).rejects.toThrow(
+				'State file already exists'
+			);
 		});
 
 		it('should handle complex nested data', async () => {
@@ -90,7 +90,11 @@ describe('State Manager', () => {
 
 			const state = await createState(statePath, complexData);
 
-			expect(state.data.workflow.history).toEqual(['preflight', 'branch-setup', 'red']);
+			expect(state.data.workflow.history).toEqual([
+				'preflight',
+				'branch-setup',
+				'red'
+			]);
 			expect(state.data.workflow.metadata.attempts).toBe(1);
 		});
 
@@ -169,7 +173,7 @@ describe('State Manager', () => {
 			const original = await createState(statePath, { phase: 'red' });
 
 			// Small delay to ensure different timestamp
-			await new Promise(resolve => setTimeout(resolve, 10));
+			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			const updated = await updateState(statePath, { phase: 'green' });
 
@@ -226,16 +230,14 @@ describe('State Manager', () => {
 		});
 
 		it('should throw error if state does not exist', async () => {
-			await expect(
-				updateState(statePath, { phase: 'red' })
-			).rejects.toThrow();
+			await expect(updateState(statePath, { phase: 'red' })).rejects.toThrow();
 		});
 
 		it('should allow updating with empty object', async () => {
 			const original = await createState(statePath, { phase: 'red' });
 
-		// Small delay to ensure different timestamp
-		await new Promise(resolve => setTimeout(resolve, 10));
+			// Small delay to ensure different timestamp
+			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			const updated = await updateState(statePath, {});
 
@@ -413,16 +415,16 @@ describe('State Manager', () => {
 		it('should handle concurrent updates gracefully', async () => {
 			await createState(statePath, { counter: 0 });
 
-		// Sequential updates to test atomic write pattern
-		await updateState(statePath, { counter: 1 });
-		await updateState(statePath, { counter: 2 });
-		await updateState(statePath, { counter: 3 });
-		await updateState(statePath, { counter: 4 });
-		await updateState(statePath, { counter: 5 });
+			// Sequential updates to test atomic write pattern
+			await updateState(statePath, { counter: 1 });
+			await updateState(statePath, { counter: 2 });
+			await updateState(statePath, { counter: 3 });
+			await updateState(statePath, { counter: 4 });
+			await updateState(statePath, { counter: 5 });
 
-		// File should still be valid
-		const final = await readState(statePath);
-		expect(final.data.counter).toBe(5);
+			// File should still be valid
+			const final = await readState(statePath);
+			expect(final.data.counter).toBe(5);
 		});
 	});
 
@@ -457,7 +459,10 @@ describe('State Manager', () => {
 
 		it('should handle large data objects', async () => {
 			const largeData = {
-				items: Array.from({ length: 1000 }, (_, i) => ({ id: i, value: `item-${i}` }))
+				items: Array.from({ length: 1000 }, (_, i) => ({
+					id: i,
+					value: `item-${i}`
+				}))
 			};
 
 			await createState(statePath, largeData);

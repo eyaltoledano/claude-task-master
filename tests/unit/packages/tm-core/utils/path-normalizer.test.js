@@ -145,8 +145,8 @@ describe('Path Normalizer', () => {
 		it('should handle Windows paths but NOT preserve drive letter colon', () => {
 			// Windows paths lose the colon after drive letter - this is expected
 			const original = 'C:\\Users\\test\\project';
-			const normalized = normalizeProjectPath(original);  // 'C-Users-test-project'
-			const denormalized = denormalizeProjectPath(normalized);  // 'C/Users/test/project'
+			const normalized = normalizeProjectPath(original); // 'C-Users-test-project'
+			const denormalized = denormalizeProjectPath(normalized); // 'C/Users/test/project'
 
 			// Drive letter colon is removed, so denormalized path won't have it
 			expect(denormalized).toBe('C/Users/test/project');
@@ -156,8 +156,8 @@ describe('Path Normalizer', () => {
 		it('should NOT maintain path structure for paths WITH hyphens in directory names', () => {
 			// This test documents the known limitation
 			const original = '/projects/my-app';
-			const normalized = normalizeProjectPath(original);  // 'projects-my-app'
-			const denormalized = denormalizeProjectPath(normalized);  // 'projects/my/app'
+			const normalized = normalizeProjectPath(original); // 'projects-my-app'
+			const denormalized = denormalizeProjectPath(normalized); // 'projects/my/app'
 
 			// Denormalized path will NOT match original because hyphens are converted to slashes
 			expect(denormalized).not.toBe('projects/my-app');

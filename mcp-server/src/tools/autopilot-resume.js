@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import { WorkflowOrchestrator } from '@tm/core';
 import fs from 'fs-extra';
 import path from 'path';
@@ -103,7 +100,9 @@ export function registerAutopilotResumeTool(server) {
 					nextAction = 'commit_changes';
 				}
 
-				log.info(`Workflow resumed successfully for task ${state.context.taskId}`);
+				log.info(
+					`Workflow resumed successfully for task ${state.context.taskId}`
+				);
 
 				return {
 					success: true,
@@ -128,7 +127,9 @@ export function registerAutopilotResumeTool(server) {
 					nextAction
 				};
 			} catch (error) {
-				log.error(`Error in autopilot-resume: ${error.message}\n${error.stack}`);
+				log.error(
+					`Error in autopilot-resume: ${error.message}\n${error.stack}`
+				);
 				return createErrorResponse(
 					`Failed to resume workflow: ${error.message}`
 				);

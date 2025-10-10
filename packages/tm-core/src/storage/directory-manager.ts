@@ -56,9 +56,13 @@ export async function createRunDirectory(
 
 	// Create manifest.json with the provided runId
 	const manifestPath = path.join(runDir, 'manifest.json');
-	await createManifest(manifestPath, {
-		projectRoot: projectPath
-	}, runId);
+	await createManifest(
+		manifestPath,
+		{
+			projectRoot: projectPath
+		},
+		runId
+	);
 
 	// Create empty activity.jsonl
 	const activityPath = path.join(runDir, 'activity.jsonl');

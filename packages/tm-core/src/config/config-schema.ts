@@ -4,7 +4,11 @@
  */
 
 import { z } from 'zod';
-import type { TaskComplexity, TaskPriority, StorageType } from '../types/index.js';
+import type {
+	TaskComplexity,
+	TaskPriority,
+	StorageType
+} from '../types/index.js';
 
 /**
  * Model configuration schema
@@ -252,9 +256,7 @@ export type ConfigValidationResult = z.infer<
  * @param config - Configuration to validate
  * @returns Validation result with detailed errors
  */
-export function validateConfiguration(
-	config: unknown
-): ConfigValidationResult {
+export function validateConfiguration(config: unknown): ConfigValidationResult {
 	const result = configurationSchema.safeParse(config);
 
 	if (result.success) {

@@ -1,5 +1,8 @@
 import { describe, it, expect } from '@jest/globals';
-import { generateBranchName, sanitizeBranchName } from '../../../../../packages/tm-core/src/git/branch-name-generator.js';
+import {
+	generateBranchName,
+	sanitizeBranchName
+} from '../../../../../packages/tm-core/src/git/branch-name-generator.js';
 
 describe('Branch Name Generator', () => {
 	describe('sanitizeBranchName', () => {
@@ -36,13 +39,16 @@ describe('Branch Name Generator', () => {
 		});
 
 		it('should include description in branch name', () => {
-			const result = generateBranchName({ taskId: '2.7', description: 'Add Feature' });
+			const result = generateBranchName({
+				taskId: '2.7',
+				description: 'Add Feature'
+			});
 			expect(result).toContain('task-2-7');
 			expect(result).toContain('add-feature');
 		});
 
 		it('should handle custom pattern', () => {
-			const result = generateBranchName({ 
+			const result = generateBranchName({
 				taskId: '2.7',
 				pattern: 'feature/{taskId}'
 			});
@@ -51,7 +57,10 @@ describe('Branch Name Generator', () => {
 
 		it('should truncate long descriptions', () => {
 			const longDesc = 'a'.repeat(100);
-			const result = generateBranchName({ taskId: '2.7', description: longDesc });
+			const result = generateBranchName({
+				taskId: '2.7',
+				description: longDesc
+			});
 			expect(result.length).toBeLessThan(80);
 		});
 	});

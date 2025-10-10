@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import {
 	WorkflowOrchestrator,
 	GitAdapter,
@@ -222,9 +219,7 @@ export function registerAutopilotCommitTool(server) {
 				log.error(
 					`Error in autopilot-commit: ${error.message}\n${error.stack}`
 				);
-				return createErrorResponse(
-					`Failed to create commit: ${error.message}`
-				);
+				return createErrorResponse(`Failed to create commit: ${error.message}`);
 			}
 		})
 	});

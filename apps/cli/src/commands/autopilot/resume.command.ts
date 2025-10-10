@@ -21,10 +21,11 @@ export class ResumeCommand extends Command {
 	constructor() {
 		super('resume');
 
-		this.description('Resume a previously started TDD workflow')
-			.action(async (options: ResumeOptions) => {
+		this.description('Resume a previously started TDD workflow').action(
+			async (options: ResumeOptions) => {
 				await this.execute(options);
-			});
+			}
+		);
 	}
 
 	private async execute(options: ResumeOptions): Promise<void> {
@@ -33,7 +34,8 @@ export class ResumeCommand extends Command {
 		const mergedOptions: ResumeOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);
@@ -61,7 +63,8 @@ export class ResumeCommand extends Command {
 			const orchestrator = new WorkflowOrchestrator(state.context);
 			if (!orchestrator.canResumeFromState(state)) {
 				formatter.error('Invalid workflow state', {
-					suggestion: 'State file may be corrupted. Consider starting a new workflow.'
+					suggestion:
+						'State file may be corrupted. Consider starting a new workflow.'
 				});
 				process.exit(1);
 			}

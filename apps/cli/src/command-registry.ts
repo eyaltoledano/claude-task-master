@@ -66,7 +66,8 @@ export class CommandRegistry {
 		},
 		{
 			name: 'autopilot',
-			description: 'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
+			description:
+				'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
 			commandClass: AutopilotCommand as any,
 			category: 'development'
 		},

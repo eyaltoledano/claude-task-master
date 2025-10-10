@@ -86,7 +86,10 @@ export {
 
 // Re-export Git adapter
 export { GitAdapter } from './git/git-adapter.js';
-export { CommitMessageGenerator, type CommitMessageOptions } from './git/commit-message-generator.js';
+export {
+	CommitMessageGenerator,
+	type CommitMessageOptions
+} from './git/commit-message-generator.js';
 
 // Re-export workflow orchestrator and types
 export { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';

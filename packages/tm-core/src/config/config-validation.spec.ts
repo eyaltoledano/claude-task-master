@@ -198,7 +198,14 @@ describe('ConfigManager Validation', () => {
 					},
 					commitMessageTemplate:
 						'{type}({scope}): {description} (Task {taskId}.{subtaskIndex})',
-					allowedCommitTypes: ['feat', 'fix', 'refactor', 'test', 'docs', 'chore'],
+					allowedCommitTypes: [
+						'feat',
+						'fix',
+						'refactor',
+						'test',
+						'docs',
+						'chore'
+					],
 					defaultCommitType: 'feat',
 					operationTimeout: 60000,
 					enableActivityLogging: true,

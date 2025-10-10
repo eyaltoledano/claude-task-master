@@ -20,10 +20,11 @@ export class StatusCommand extends Command {
 	constructor() {
 		super('status');
 
-		this.description('Show current TDD workflow status and progress')
-			.action(async (options: StatusOptions) => {
+		this.description('Show current TDD workflow status and progress').action(
+			async (options: StatusOptions) => {
 				await this.execute(options);
-			});
+			}
+		);
 	}
 
 	private async execute(options: StatusOptions): Promise<void> {
@@ -32,7 +33,8 @@ export class StatusCommand extends Command {
 		const mergedOptions: StatusOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

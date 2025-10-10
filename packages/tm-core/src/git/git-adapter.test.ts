@@ -1,4 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	beforeEach,
+	afterEach,
+	jest
+} from '@jest/globals';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -33,7 +40,10 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			await fs.ensureDir(path.join(testDir, '.git'));
 			await fs.ensureDir(path.join(testDir, '.git', 'objects'));
 			await fs.ensureDir(path.join(testDir, '.git', 'refs'));
-			await fs.writeFile(path.join(testDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+			await fs.writeFile(
+				path.join(testDir, '.git', 'HEAD'),
+				'ref: refs/heads/main\n'
+			);
 
 			gitAdapter = new GitAdapter(testDir);
 
@@ -47,7 +57,10 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			await fs.ensureDir(path.join(testDir, '.git'));
 			await fs.ensureDir(path.join(testDir, '.git', 'objects'));
 			await fs.ensureDir(path.join(testDir, '.git', 'refs'));
-			await fs.writeFile(path.join(testDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+			await fs.writeFile(
+				path.join(testDir, '.git', 'HEAD'),
+				'ref: refs/heads/main\n'
+			);
 
 			// Create subdirectory
 			const subDir = path.join(testDir, 'src', 'components');
@@ -96,7 +109,9 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			};
 			gitAdapter.git = mockGit;
 
-			await expect(gitAdapter.validateGitInstallation()).rejects.toThrow('git not found');
+			await expect(gitAdapter.validateGitInstallation()).rejects.toThrow(
+				'git not found'
+			);
 		});
 
 		it('should return git version info', async () => {
@@ -115,7 +130,10 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			await fs.ensureDir(path.join(testDir, '.git'));
 			await fs.ensureDir(path.join(testDir, '.git', 'objects'));
 			await fs.ensureDir(path.join(testDir, '.git', 'refs'));
-			await fs.writeFile(path.join(testDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+			await fs.writeFile(
+				path.join(testDir, '.git', 'HEAD'),
+				'ref: refs/heads/main\n'
+			);
 
 			gitAdapter = new GitAdapter(testDir);
 
@@ -130,7 +148,10 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			await fs.ensureDir(path.join(testDir, '.git'));
 			await fs.ensureDir(path.join(testDir, '.git', 'objects'));
 			await fs.ensureDir(path.join(testDir, '.git', 'refs'));
-			await fs.writeFile(path.join(testDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+			await fs.writeFile(
+				path.join(testDir, '.git', 'HEAD'),
+				'ref: refs/heads/main\n'
+			);
 
 			// Create subdirectory
 			const subDir = path.join(testDir, 'src', 'components');
@@ -147,7 +168,9 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 		it('should throw error if not in git repository', async () => {
 			gitAdapter = new GitAdapter(testDir);
 
-			await expect(gitAdapter.getRepositoryRoot()).rejects.toThrow('not a git repository');
+			await expect(gitAdapter.getRepositoryRoot()).rejects.toThrow(
+				'not a git repository'
+			);
 		});
 	});
 
@@ -157,7 +180,10 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 			await fs.ensureDir(path.join(testDir, '.git'));
 			await fs.ensureDir(path.join(testDir, '.git', 'refs'));
 			await fs.ensureDir(path.join(testDir, '.git', 'objects'));
-			await fs.writeFile(path.join(testDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+			await fs.writeFile(
+				path.join(testDir, '.git', 'HEAD'),
+				'ref: refs/heads/main\n'
+			);
 
 			gitAdapter = new GitAdapter(testDir);
 
@@ -167,7 +193,9 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 		it('should throw error for non-git directory', async () => {
 			gitAdapter = new GitAdapter(testDir);
 
-			await expect(gitAdapter.validateRepository()).rejects.toThrow('not a git repository');
+			await expect(gitAdapter.validateRepository()).rejects.toThrow(
+				'not a git repository'
+			);
 		});
 
 		it('should detect corrupted repository', async () => {
@@ -199,7 +227,9 @@ describe('GitAdapter - Repository Detection and Validation', () => {
 		it('should throw error if not in git repository', async () => {
 			gitAdapter = new GitAdapter(testDir);
 
-			await expect(gitAdapter.ensureGitRepository()).rejects.toThrow('not a git repository');
+			await expect(gitAdapter.ensureGitRepository()).rejects.toThrow(
+				'not a git repository'
+			);
 		});
 
 		it('should provide helpful error message', async () => {
@@ -314,14 +344,14 @@ describe('GitAdapter - Working Tree Status', () => {
 	beforeEach(async () => {
 		testDir = path.join(os.tmpdir(), `git-status-test-${Date.now()}`);
 		await fs.ensureDir(testDir);
-		
+
 		// Initialize actual git repo
 		simpleGit = (await import('simple-git')).default;
 		const git = simpleGit(testDir);
 		await git.init();
 		await git.addConfig('user.name', 'Test User');
 		await git.addConfig('user.email', 'test@example.com');
-		
+
 		gitAdapter = new GitAdapter(testDir);
 	});
 
@@ -341,17 +371,17 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('test.txt');
 			await git.commit('initial commit', undefined, { '--no-gpg-sign': null });
-			
+
 			// Modify the file
 			await fs.writeFile(path.join(testDir, 'test.txt'), 'modified');
-			
+
 			const isClean = await gitAdapter.isWorkingTreeClean();
 			expect(isClean).toBe(false);
 		});
 
 		it('should return false when untracked files exist', async () => {
 			await fs.writeFile(path.join(testDir, 'untracked.txt'), 'content');
-			
+
 			const isClean = await gitAdapter.isWorkingTreeClean();
 			expect(isClean).toBe(false);
 		});
@@ -360,7 +390,7 @@ describe('GitAdapter - Working Tree Status', () => {
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			const git = simpleGit(testDir);
 			await git.add('staged.txt');
-			
+
 			const isClean = await gitAdapter.isWorkingTreeClean();
 			expect(isClean).toBe(false);
 		});
@@ -369,7 +399,7 @@ describe('GitAdapter - Working Tree Status', () => {
 	describe('getStatus', () => {
 		it('should return status for clean repo', async () => {
 			const status = await gitAdapter.getStatus();
-			
+
 			expect(status).toBeDefined();
 			expect(status.modified).toEqual([]);
 			expect(status.not_added).toEqual([]);
@@ -383,17 +413,17 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('test.txt');
 			await git.commit('initial', undefined, { '--no-gpg-sign': null });
-			
+
 			// Modify
 			await fs.writeFile(path.join(testDir, 'test.txt'), 'modified');
-			
+
 			const status = await gitAdapter.getStatus();
 			expect(status.modified).toContain('test.txt');
 		});
 
 		it('should detect untracked files', async () => {
 			await fs.writeFile(path.join(testDir, 'untracked.txt'), 'content');
-			
+
 			const status = await gitAdapter.getStatus();
 			expect(status.not_added).toContain('untracked.txt');
 		});
@@ -402,7 +432,7 @@ describe('GitAdapter - Working Tree Status', () => {
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			const git = simpleGit(testDir);
 			await git.add('staged.txt');
-			
+
 			const status = await gitAdapter.getStatus();
 			expect(status.created).toContain('staged.txt');
 		});
@@ -413,10 +443,10 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('deleted.txt');
 			await git.commit('add file', undefined, { '--no-gpg-sign': null });
-			
+
 			// Delete
 			await fs.remove(path.join(testDir, 'deleted.txt'));
-			
+
 			const status = await gitAdapter.getStatus();
 			expect(status.deleted).toContain('deleted.txt');
 		});
@@ -433,9 +463,9 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('test.txt');
 			await git.commit('initial', undefined, { '--no-gpg-sign': null });
-			
+
 			await fs.writeFile(path.join(testDir, 'test.txt'), 'modified');
-			
+
 			const hasChanges = await gitAdapter.hasUncommittedChanges();
 			expect(hasChanges).toBe(true);
 		});
@@ -444,7 +474,7 @@ describe('GitAdapter - Working Tree Status', () => {
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			const git = simpleGit(testDir);
 			await git.add('staged.txt');
-			
+
 			const hasChanges = await gitAdapter.hasUncommittedChanges();
 			expect(hasChanges).toBe(true);
 		});
@@ -460,7 +490,7 @@ describe('GitAdapter - Working Tree Status', () => {
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			const git = simpleGit(testDir);
 			await git.add('staged.txt');
-			
+
 			const hasStaged = await gitAdapter.hasStagedChanges();
 			expect(hasStaged).toBe(true);
 		});
@@ -470,9 +500,9 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('test.txt');
 			await git.commit('initial', undefined, { '--no-gpg-sign': null });
-			
+
 			await fs.writeFile(path.join(testDir, 'test.txt'), 'modified');
-			
+
 			const hasStaged = await gitAdapter.hasStagedChanges();
 			expect(hasStaged).toBe(false);
 		});
@@ -486,7 +516,7 @@ describe('GitAdapter - Working Tree Status', () => {
 
 		it('should return true when untracked files exist', async () => {
 			await fs.writeFile(path.join(testDir, 'untracked.txt'), 'content');
-			
+
 			const hasUntracked = await gitAdapter.hasUntrackedFiles();
 			expect(hasUntracked).toBe(true);
 		});
@@ -495,7 +525,7 @@ describe('GitAdapter - Working Tree Status', () => {
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			const git = simpleGit(testDir);
 			await git.add('staged.txt');
-			
+
 			const hasUntracked = await gitAdapter.hasUntrackedFiles();
 			expect(hasUntracked).toBe(false);
 		});
@@ -504,7 +534,7 @@ describe('GitAdapter - Working Tree Status', () => {
 	describe('getStatusSummary', () => {
 		it('should provide summary for clean repo', async () => {
 			const summary = await gitAdapter.getStatusSummary();
-			
+
 			expect(summary).toBeDefined();
 			expect(summary.isClean).toBe(true);
 			expect(summary.totalChanges).toBe(0);
@@ -516,17 +546,17 @@ describe('GitAdapter - Working Tree Status', () => {
 			const git = simpleGit(testDir);
 			await git.add('committed.txt');
 			await git.commit('initial', undefined, { '--no-gpg-sign': null });
-			
+
 			// Modify it
 			await fs.writeFile(path.join(testDir, 'committed.txt'), 'modified');
-			
+
 			// Add untracked
 			await fs.writeFile(path.join(testDir, 'untracked.txt'), 'content');
-			
+
 			// Add staged
 			await fs.writeFile(path.join(testDir, 'staged.txt'), 'content');
 			await git.add('staged.txt');
-			
+
 			const summary = await gitAdapter.getStatusSummary();
 
 			expect(summary.isClean).toBe(false);
@@ -544,13 +574,15 @@ describe('GitAdapter - Working Tree Status', () => {
 
 		it('should throw for dirty repo', async () => {
 			await fs.writeFile(path.join(testDir, 'dirty.txt'), 'content');
-			
-			await expect(gitAdapter.ensureCleanWorkingTree()).rejects.toThrow('working tree is not clean');
+
+			await expect(gitAdapter.ensureCleanWorkingTree()).rejects.toThrow(
+				'working tree is not clean'
+			);
 		});
 
 		it('should provide details about changes in error', async () => {
 			await fs.writeFile(path.join(testDir, 'modified.txt'), 'content');
-			
+
 			try {
 				await gitAdapter.ensureCleanWorkingTree();
 				fail('Should have thrown');
@@ -667,7 +699,9 @@ describe('GitAdapter - Working Tree Status', () => {
 			it('should throw error if branch already exists', async () => {
 				await gitAdapter.createBranch('existing-branch');
 
-				await expect(gitAdapter.createBranch('existing-branch')).rejects.toThrow();
+				await expect(
+					gitAdapter.createBranch('existing-branch')
+				).rejects.toThrow();
 			});
 
 			it('should not switch to new branch by default', async () => {
@@ -699,7 +733,9 @@ describe('GitAdapter - Working Tree Status', () => {
 			});
 
 			it('should throw error for non-existing branch', async () => {
-				await expect(gitAdapter.checkoutBranch('nonexistent')).rejects.toThrow();
+				await expect(
+					gitAdapter.checkoutBranch('nonexistent')
+				).rejects.toThrow();
 			});
 
 			it('should throw if working tree is dirty', async () => {
@@ -744,15 +780,17 @@ describe('GitAdapter - Working Tree Status', () => {
 				await git.checkoutLocalBranch('existing');
 				await git.checkout('main');
 
-				await expect(gitAdapter.createAndCheckoutBranch('existing')).rejects.toThrow();
+				await expect(
+					gitAdapter.createAndCheckoutBranch('existing')
+				).rejects.toThrow();
 			});
 
 			it('should throw if working tree is dirty', async () => {
 				await fs.writeFile(path.join(testDir, 'dirty.txt'), 'content');
 
-				await expect(gitAdapter.createAndCheckoutBranch('new-feature')).rejects.toThrow(
-					'working tree is not clean'
-				);
+				await expect(
+					gitAdapter.createAndCheckoutBranch('new-feature')
+				).rejects.toThrow('working tree is not clean');
 			});
 		});
 
@@ -781,7 +819,9 @@ describe('GitAdapter - Working Tree Status', () => {
 				await git.checkoutLocalBranch('unmerged');
 				await fs.writeFile(path.join(testDir, 'unmerged.txt'), 'content');
 				await git.add('unmerged.txt');
-				await git.commit('Unmerged commit', undefined, { '--no-gpg-sign': null });
+				await git.commit('Unmerged commit', undefined, {
+					'--no-gpg-sign': null
+				});
 				await git.checkout('main');
 
 				await gitAdapter.deleteBranch('unmerged', { force: true });
@@ -930,7 +970,9 @@ describe('GitAdapter - Working Tree Status', () => {
 				await gitAdapter.stageFiles(['new.txt']);
 
 				await expect(
-					gitAdapter.createCommit('Add new file', { enforceNonDefaultBranch: true })
+					gitAdapter.createCommit('Add new file', {
+						enforceNonDefaultBranch: true
+					})
 				).rejects.toThrow('cannot commit to default branch');
 			});
 
@@ -955,7 +997,9 @@ describe('GitAdapter - Working Tree Status', () => {
 				await fs.writeFile(path.join(testDir, 'new.txt'), 'content');
 				await gitAdapter.stageFiles(['new.txt']);
 
-				await gitAdapter.createCommit('Add new file', { enforceNonDefaultBranch: true });
+				await gitAdapter.createCommit('Add new file', {
+					enforceNonDefaultBranch: true
+				});
 
 				const git = simpleGit(testDir);
 				const log = await git.log();
@@ -1112,7 +1156,9 @@ describe('GitAdapter - Working Tree Status', () => {
 			it('should not throw when on feature branch', async () => {
 				await gitAdapter.createAndCheckoutBranch('feature-branch');
 
-				await expect(gitAdapter.ensureNotOnDefaultBranch()).resolves.not.toThrow();
+				await expect(
+					gitAdapter.ensureNotOnDefaultBranch()
+				).resolves.not.toThrow();
 			});
 		});
 	});

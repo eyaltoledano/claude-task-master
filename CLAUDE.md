@@ -6,13 +6,18 @@
 
 ## Test Guidelines
 
+### Test File Placement
+- **Package tests**: Place in `packages/<package-name>/src/<module>/<file>.test.ts` alongside source
+- **Isolated unit tests**: Use `tests/unit/packages/<package-name>/` only when parallel placement isn't possible
+- **Test extension**: Always use `.ts` for TypeScript tests, never `.js`
+
 ### Synchronous Tests
 - **NEVER use async/await in test functions** unless testing actual asynchronous operations
 - Use synchronous top-level imports instead of dynamic `await import()`
 - Test bodies should be synchronous whenever possible
 - Example:
-  ```javascript
-  // ✅ CORRECT - Synchronous imports
+  ```typescript
+  // ✅ CORRECT - Synchronous imports with .ts extension
   import { MyClass } from '../src/my-class.js';
 
   it('should verify behavior', () => {
@@ -25,6 +30,11 @@
     expect(new MyClass().property).toBe(value);
   });
   ```
+
+## Documentation Guidelines
+
+- **Documentation location**: Write docs in `apps/docs/` (Mintlify site source), not `docs/`
+- **Documentation URL**: Reference docs at https://docs.taskmaster.ai, not local file paths
 
 ## Changeset Guidelines
 

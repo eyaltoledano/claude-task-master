@@ -91,8 +91,11 @@ export class GitAdapter {
 		try {
 			await this.git.version();
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			throw new Error(`Git is not installed or not accessible: ${errorMessage}`);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			throw new Error(
+				`Git is not installed or not accessible: ${errorMessage}`
+			);
 		}
 	}
 
@@ -105,12 +108,20 @@ export class GitAdapter {
 	 * const version = await git.getGitVersion();
 	 * console.log(`Git version: ${version.major}.${version.minor}.${version.patch}`);
 	 */
-	async getGitVersion(): Promise<{ major: number; minor: number; patch: number; agent: string }> {
+	async getGitVersion(): Promise<{
+		major: number;
+		minor: number;
+		patch: number;
+		agent: string;
+	}> {
 		const versionResult = await this.git.version();
 		return {
 			major: versionResult.major,
 			minor: versionResult.minor,
-			patch: typeof versionResult.patch === 'string' ? parseInt(versionResult.patch) : (versionResult.patch || 0),
+			patch:
+				typeof versionResult.patch === 'string'
+					? parseInt(versionResult.patch)
+					: versionResult.patch || 0,
 			agent: versionResult.agent
 		};
 	}
@@ -157,7 +168,8 @@ export class GitAdapter {
 		try {
 			await this.git.status();
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			throw new Error(`Repository validation failed: ${errorMessage}`);
 		}
 	}
@@ -381,7 +393,10 @@ export class GitAdapter {
 	 * await git.createBranch('feature-branch');
 	 * await git.createBranch('feature-branch', { checkout: true });
 	 */
-	async createBranch(branchName: string, options: { checkout?: boolean } = {}): Promise<void> {
+	async createBranch(
+		branchName: string,
+		options: { checkout?: boolean } = {}
+	): Promise<void> {
 		// Check if branch already exists
 		const exists = await this.branchExists(branchName);
 		if (exists) {
@@ -415,7 +430,10 @@ export class GitAdapter {
 	 * await git.checkoutBranch('feature-branch');
 	 * await git.checkoutBranch('feature-branch', { force: true });
 	 */
-	async checkoutBranch(branchName: string, options: { force?: boolean } = {}): Promise<void> {
+	async checkoutBranch(
+		branchName: string,
+		options: { force?: boolean } = {}
+	): Promise<void> {
 		// Check if branch exists
 		const exists = await this.branchExists(branchName);
 		if (!exists) {
@@ -470,7 +488,10 @@ export class GitAdapter {
 	 * await git.deleteBranch('old-feature');
 	 * await git.deleteBranch('unmerged-feature', { force: true });
 	 */
-	async deleteBranch(branchName: string, options: { force?: boolean } = {}): Promise<void> {
+	async deleteBranch(
+		branchName: string,
+		options: { force?: boolean } = {}
+	): Promise<void> {
 		// Check if branch exists
 		const exists = await this.branchExists(branchName);
 		if (!exists) {
@@ -484,7 +505,9 @@ export class GitAdapter {
 		}
 
 		// Delete the branch
-		const deleteOptions = options.force ? ['-D', branchName] : ['-d', branchName];
+		const deleteOptions = options.force
+			? ['-D', branchName]
+			: ['-d', branchName];
 		await this.git.branch(deleteOptions);
 	}
 

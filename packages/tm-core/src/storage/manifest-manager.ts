@@ -216,12 +216,16 @@ export function validateManifest(manifest: any): void {
 
 	// Validate version format (semver)
 	if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) {
-		throw new Error('Invalid manifest: version must be in semver format (e.g., 1.0.0)');
+		throw new Error(
+			'Invalid manifest: version must be in semver format (e.g., 1.0.0)'
+		);
 	}
 
 	// Validate runId format
 	if (!isValidRunId(manifest.runId)) {
-		throw new Error('Invalid manifest: runId must be a valid ISO 8601 timestamp');
+		throw new Error(
+			'Invalid manifest: runId must be a valid ISO 8601 timestamp'
+		);
 	}
 
 	// Validate metadata is an object

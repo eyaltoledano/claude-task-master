@@ -167,7 +167,10 @@ describe('Activity Logger', () => {
 		});
 
 		it('should handle empty lines', async () => {
-			await fs.writeFile(activityPath, '{"type":"event1"}\n\n{"type":"event2"}\n');
+			await fs.writeFile(
+				activityPath,
+				'{"type":"event1"}\n\n{"type":"event2"}\n'
+			);
 
 			const logs = await readActivityLog(activityPath);
 
@@ -179,7 +182,9 @@ describe('Activity Logger', () => {
 		it('should throw error for invalid JSON line', async () => {
 			await fs.writeFile(activityPath, '{"type":"event1"}\ninvalid json\n');
 
-			await expect(readActivityLog(activityPath)).rejects.toThrow('Invalid JSON');
+			await expect(readActivityLog(activityPath)).rejects.toThrow(
+				'Invalid JSON'
+			);
 		});
 
 		it('should preserve chronological order', async () => {
@@ -240,9 +245,9 @@ describe('Activity Logger', () => {
 			});
 
 			// Should get events from midpoint onwards (inclusive)
-		// Expect at least 3 events, may be more due to timestamp collisions
-		expect(filtered.length).toBeGreaterThanOrEqual(3);
-		expect(filtered.length).toBeLessThanOrEqual(5);
+			// Expect at least 3 events, may be more due to timestamp collisions
+			expect(filtered.length).toBeGreaterThanOrEqual(3);
+			expect(filtered.length).toBeLessThanOrEqual(5);
 		});
 
 		it('should filter by custom predicate', async () => {
@@ -349,11 +354,13 @@ describe('Activity Logger', () => {
 		it('should maintain data integrity with concurrent writes', async () => {
 			const writes = [];
 			for (let i = 0; i < 20; i++) {
-				writes.push(logActivity(activityPath, {
-					type: 'concurrent-test',
-					id: i,
-					data: `data-${i}`
-				}));
+				writes.push(
+					logActivity(activityPath, {
+						type: 'concurrent-test',
+						id: i,
+						data: `data-${i}`
+					})
+				);
 			}
 
 			await Promise.all(writes);

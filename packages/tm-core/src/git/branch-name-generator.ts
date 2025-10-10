@@ -43,10 +43,12 @@ export function generateBranchName(options: {
 	const pattern = options.pattern || 'task-{taskId}-{description}';
 
 	// Sanitize task ID (replace dots with hyphens)
-	const sanitizedTaskId = sanitizeBranchName(options.taskId.replace(/\./g, '-'));
+	const sanitizedTaskId = sanitizeBranchName(
+		options.taskId.replace(/\./g, '-')
+	);
 
 	// Sanitize description if provided
-	const sanitizedDescription = options.description 
+	const sanitizedDescription = options.description
 		? sanitizeBranchName(options.description)
 		: sanitizeBranchName(Date.now().toString());
 

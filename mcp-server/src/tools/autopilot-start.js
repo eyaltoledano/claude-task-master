@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import { createTaskMasterCore } from '@tm/core';
 import {
 	WorkflowOrchestrator,
@@ -48,7 +45,12 @@ function parseSubtasks(task, maxAttempts = 3) {
 	return task.subtasks.map((st) => ({
 		id: st.id,
 		title: st.title,
-		status: st.status === 'done' ? 'completed' : st.status === 'in-progress' ? 'in-progress' : 'pending',
+		status:
+			st.status === 'done'
+				? 'completed'
+				: st.status === 'in-progress'
+					? 'in-progress'
+					: 'pending',
 		attempts: 0,
 		maxAttempts
 	}));
@@ -100,7 +102,8 @@ export function registerAutopilotStartTool(server) {
 					return createErrorResponse(
 						'Workflow already in progress. Use force=true to override or resume the existing workflow.',
 						{
-							suggestion: 'Use autopilot_resume to continue the existing workflow'
+							suggestion:
+								'Use autopilot_resume to continue the existing workflow'
 						}
 					);
 				}
@@ -111,7 +114,10 @@ export function registerAutopilotStartTool(server) {
 				});
 
 				// Load task data
-				const core = await createTaskMasterCore({ projectRoot, tag: resolvedTag });
+				const core = await createTaskMasterCore({
+					projectRoot,
+					tag: resolvedTag
+				});
 				const taskResult = await core.getTaskWithSubtask(taskId);
 
 				if (!taskResult || !taskResult.task) {
@@ -142,9 +148,13 @@ export function registerAutopilotStartTool(server) {
 					await gitAdapter.ensureCleanWorkingTree();
 				} catch (error) {
 					log.error(`Git validation failed: ${error.message}`);
-					return createErrorResponse(`Git validation failed: ${error.message}`, {
-						suggestion: 'Ensure you are in a git repository with a clean working tree'
-					});
+					return createErrorResponse(
+						`Git validation failed: ${error.message}`,
+						{
+							suggestion:
+								'Ensure you are in a git repository with a clean working tree'
+						}
+					);
 				}
 
 				// Create workflow branch
@@ -154,7 +164,9 @@ export function registerAutopilotStartTool(server) {
 					log.info(`Created and checked out branch: ${branchName}`);
 				} catch (error) {
 					log.error(`Failed to create branch: ${error.message}`);
-					return createErrorResponse(`Failed to create branch: ${error.message}`);
+					return createErrorResponse(
+						`Failed to create branch: ${error.message}`
+					);
 				}
 
 				// Initialize workflow context

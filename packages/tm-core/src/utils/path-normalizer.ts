@@ -31,13 +31,15 @@ export function normalizeProjectPath(projectPath: string): string {
 		return '';
 	}
 
-	return projectPath
-		// Replace Windows drive letter colons (e.g., 'C:' -> 'C')
-		.replace(/^([A-Za-z]):/, '$1')
-		// Replace all forward slashes and backslashes with hyphens
-		.replace(/[/\\]+/g, '-')
-		// Remove leading hyphens (from leading slashes)
-		.replace(/^-+/, '');
+	return (
+		projectPath
+			// Replace Windows drive letter colons (e.g., 'C:' -> 'C')
+			.replace(/^([A-Za-z]):/, '$1')
+			// Replace all forward slashes and backslashes with hyphens
+			.replace(/[/\\]+/g, '-')
+			// Remove leading hyphens (from leading slashes)
+			.replace(/^-+/, '')
+	);
 }
 
 /**

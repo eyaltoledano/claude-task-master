@@ -37,7 +37,8 @@ export class AbortCommand extends Command {
 		const mergedOptions: AbortOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

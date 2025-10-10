@@ -134,7 +134,9 @@ describe('Path Normalizer', () => {
 				const denormalized = denormalizeProjectPath(normalized);
 
 				// Normalize both for comparison (convert backslashes to forward slashes)
-				const normalizedOriginal = original.replace(/\\/g, '/').replace(/^\//, '');
+				const normalizedOriginal = original
+					.replace(/\\/g, '/')
+					.replace(/^\//, '');
 				const normalizedResult = denormalized;
 
 				expect(normalizedResult).toBe(normalizedOriginal);

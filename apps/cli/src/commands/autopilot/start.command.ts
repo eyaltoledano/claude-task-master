@@ -34,11 +34,7 @@ export class StartCommand extends Command {
 		this.description('Initialize and start a new TDD workflow for a task')
 			.argument('<taskId>', 'Task ID to start workflow for')
 			.option('-f, --force', 'Force start even if workflow state exists')
-			.option(
-				'--max-attempts <number>',
-				'Maximum attempts per subtask',
-				'3'
-			)
+			.option('--max-attempts <number>', 'Maximum attempts per subtask', '3')
 			.action(async (taskId: string, options: StartOptions) => {
 				await this.execute(taskId, options);
 			});
@@ -50,7 +46,8 @@ export class StartCommand extends Command {
 		const mergedOptions: StartOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

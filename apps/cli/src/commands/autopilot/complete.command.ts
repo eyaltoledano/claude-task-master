@@ -40,7 +40,8 @@ export class CompleteCommand extends Command {
 		const mergedOptions: CompleteOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);
@@ -85,7 +86,8 @@ export class CompleteCommand extends Command {
 			if (tddPhase === 'RED' || tddPhase === 'GREEN') {
 				if (!mergedOptions.results) {
 					formatter.error('Test results required for RED/GREEN phase', {
-						usage: '--results \'{"total":10,"passed":9,"failed":1,"skipped":0}\''
+						usage:
+							'--results \'{"total":10,"passed":9,"failed":1,"skipped":0}\''
 					});
 					process.exit(1);
 				}

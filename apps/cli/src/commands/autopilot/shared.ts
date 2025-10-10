@@ -2,7 +2,11 @@
  * @fileoverview Shared utilities for autopilot commands
  */
 
-import { WorkflowOrchestrator, GitAdapter, CommitMessageGenerator } from '@tm/core';
+import {
+	WorkflowOrchestrator,
+	GitAdapter,
+	CommitMessageGenerator
+} from '@tm/core';
 import { WorkflowState, WorkflowContext, SubtaskInfo } from '@tm/core';
 import fs from 'fs-extra';
 import path from 'path';
@@ -29,7 +33,9 @@ export async function loadWorkflowState(
 		const stateData = await fs.readJSON(statePath);
 		return stateData;
 	} catch (error) {
-		throw new Error(`Failed to load workflow state: ${(error as Error).message}`);
+		throw new Error(
+			`Failed to load workflow state: ${(error as Error).message}`
+		);
 	}
 }
 
@@ -48,7 +54,9 @@ export async function saveWorkflowState(
 	try {
 		await fs.writeJSON(statePath, state, { spaces: 2 });
 	} catch (error) {
-		throw new Error(`Failed to save workflow state: ${(error as Error).message}`);
+		throw new Error(
+			`Failed to save workflow state: ${(error as Error).message}`
+		);
 	}
 }
 

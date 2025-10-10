@@ -212,7 +212,10 @@ describe('Directory Manager', () => {
 
 			// Create nested directories
 			await fs.ensureDir(path.join(runDir, 'snapshots', 'nested', 'deep'));
-			await fs.writeFile(path.join(runDir, 'snapshots', 'nested', 'deep', 'file.txt'), 'test');
+			await fs.writeFile(
+				path.join(runDir, 'snapshots', 'nested', 'deep', 'file.txt'),
+				'test'
+			);
 
 			await cleanupRunDirectory(runDir);
 
@@ -247,7 +250,9 @@ describe('Directory Manager', () => {
 		it('should throw if directory does not exist', () => {
 			const nonExistentDir = path.join(storageRoot, 'nonexistent');
 
-			expect(() => validateRunDirectory(nonExistentDir)).toThrow('does not exist');
+			expect(() => validateRunDirectory(nonExistentDir)).toThrow(
+				'does not exist'
+			);
 		});
 
 		it('should throw if manifest.json is missing', async () => {
@@ -346,7 +351,11 @@ describe('Directory Manager', () => {
 			const projectPath = '/Users/test/projects/myapp';
 
 			const expectedPath = getRunDirectoryPath(storageRoot, runId, projectPath);
-			const actualPath = await createRunDirectory(storageRoot, runId, projectPath);
+			const actualPath = await createRunDirectory(
+				storageRoot,
+				runId,
+				projectPath
+			);
 
 			expect(actualPath).toBe(expectedPath);
 		});
@@ -374,8 +383,16 @@ describe('Directory Manager', () => {
 			const runId2 = '2024-01-15T10:31:00.456Z';
 			const projectPath = '/Users/test/projects/myapp';
 
-			const runDir1 = await createRunDirectory(storageRoot, runId1, projectPath);
-			const runDir2 = await createRunDirectory(storageRoot, runId2, projectPath);
+			const runDir1 = await createRunDirectory(
+				storageRoot,
+				runId1,
+				projectPath
+			);
+			const runDir2 = await createRunDirectory(
+				storageRoot,
+				runId2,
+				projectPath
+			);
 
 			expect(await fs.pathExists(runDir1)).toBe(true);
 			expect(await fs.pathExists(runDir2)).toBe(true);
@@ -387,8 +404,16 @@ describe('Directory Manager', () => {
 			const projectPath1 = '/Users/test/projects/app1';
 			const projectPath2 = '/Users/test/projects/app2';
 
-			const runDir1 = await createRunDirectory(storageRoot, runId, projectPath1);
-			const runDir2 = await createRunDirectory(storageRoot, runId, projectPath2);
+			const runDir1 = await createRunDirectory(
+				storageRoot,
+				runId,
+				projectPath1
+			);
+			const runDir2 = await createRunDirectory(
+				storageRoot,
+				runId,
+				projectPath2
+			);
 
 			expect(await fs.pathExists(runDir1)).toBe(true);
 			expect(await fs.pathExists(runDir2)).toBe(true);

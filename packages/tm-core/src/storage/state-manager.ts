@@ -175,7 +175,9 @@ export function validateState(state: any): void {
 	// Validate lastUpdated is a valid ISO 8601 timestamp
 	const timestamp = new Date(state.lastUpdated);
 	if (isNaN(timestamp.getTime())) {
-		throw new Error('Invalid state: lastUpdated must be a valid ISO 8601 timestamp');
+		throw new Error(
+			'Invalid state: lastUpdated must be a valid ISO 8601 timestamp'
+		);
 	}
 }
 
@@ -206,7 +208,11 @@ function deepMerge(target: any, source: any): any {
 	const result: any = { ...target };
 
 	for (const key of Object.keys(source)) {
-		if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+		if (
+			typeof source[key] === 'object' &&
+			source[key] !== null &&
+			!Array.isArray(source[key])
+		) {
 			// Recursively merge nested objects
 			result[key] = deepMerge(result[key], source[key]);
 		} else {

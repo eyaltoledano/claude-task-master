@@ -74,7 +74,9 @@ export async function logActivity(
  * const events = await readActivityLog('/path/to/activity.jsonl');
  * console.log(`Found ${events.length} events`);
  */
-export async function readActivityLog(activityPath: string): Promise<ActivityEvent[]> {
+export async function readActivityLog(
+	activityPath: string
+): Promise<ActivityEvent[]> {
 	// Return empty array if file doesn't exist
 	if (!(await fs.pathExists(activityPath))) {
 		return [];
@@ -100,7 +102,8 @@ export async function readActivityLog(activityPath: string): Promise<ActivityEve
 			const event = JSON.parse(line);
 			events.push(event);
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			throw new Error(`Invalid JSON at line ${i + 1}: ${errorMessage}`);
 		}
 	}
@@ -160,7 +163,12 @@ export async function filterActivityLog(
 
 		// Filter by other fields (exact match)
 		for (const [key, value] of Object.entries(filter)) {
-			if (key === 'type' || key === 'timestampFrom' || key === 'timestampTo' || key === 'predicate') {
+			if (
+				key === 'type' ||
+				key === 'timestampFrom' ||
+				key === 'timestampTo' ||
+				key === 'predicate'
+			) {
 				continue;
 			}
 

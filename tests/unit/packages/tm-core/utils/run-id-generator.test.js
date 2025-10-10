@@ -221,7 +221,7 @@ describe('Run ID Generator', () => {
 
 			// Check chronological order
 			for (let i = 1; i < ids.length; i++) {
-				expect(compareRunIds(ids[i-1], ids[i])).toBeLessThanOrEqual(0);
+				expect(compareRunIds(ids[i - 1], ids[i])).toBeLessThanOrEqual(0);
 			}
 		});
 	});

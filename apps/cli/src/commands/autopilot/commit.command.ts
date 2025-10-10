@@ -22,10 +22,11 @@ export class CommitCommand extends Command {
 	constructor() {
 		super('commit');
 
-		this.description('Create a commit for the completed GREEN phase')
-			.action(async (options: CommitOptions) => {
+		this.description('Create a commit for the completed GREEN phase').action(
+			async (options: CommitOptions) => {
 				await this.execute(options);
-			});
+			}
+		);
 	}
 
 	private async execute(options: CommitOptions): Promise<void> {
@@ -34,7 +35,8 @@ export class CommitCommand extends Command {
 		const mergedOptions: CommitOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

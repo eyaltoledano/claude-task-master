@@ -20,10 +20,11 @@ export class NextCommand extends Command {
 	constructor() {
 		super('next');
 
-		this.description('Get the next action to perform in the TDD workflow')
-			.action(async (options: NextOptions) => {
-				await this.execute(options);
-			});
+		this.description(
+			'Get the next action to perform in the TDD workflow'
+		).action(async (options: NextOptions) => {
+			await this.execute(options);
+		});
 	}
 
 	private async execute(options: NextOptions): Promise<void> {
@@ -32,7 +33,8 @@ export class NextCommand extends Command {
 		const mergedOptions: NextOptions = {
 			...parentOpts,
 			...options,
-			projectRoot: options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot:
+				options.projectRoot || parentOpts?.projectRoot || process.cwd()
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { createErrorResponse, withNormalizedProjectRoot } from './utils.js';
 import { WorkflowOrchestrator } from '@tm/core';
 import fs from 'fs-extra';
 import path from 'path';
@@ -82,8 +79,7 @@ export function registerAutopilotNextTool(server) {
 					expectedFiles = ['test file'];
 				} else if (tddPhase === 'GREEN') {
 					action = 'implement_code';
-					actionDescription =
-						'Implement code to make the failing tests pass';
+					actionDescription = 'Implement code to make the failing tests pass';
 					expectedFiles = ['implementation file'];
 				} else if (tddPhase === 'COMMIT') {
 					action = 'commit_changes';
