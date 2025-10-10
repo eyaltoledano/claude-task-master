@@ -36,6 +36,7 @@
 	"devDependencies": {
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^3.2.4",
+		"strip-literal": "^3.1.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4"
 	},
