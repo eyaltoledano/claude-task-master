@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WorkflowOrchestrator } from './workflow-orchestrator.js';
-import type { WorkflowContext, WorkflowPhase, WorkflowEventData } from './types.js';
+import type { WorkflowContext, WorkflowPhase, WorkflowEventData, WorkflowError } from './types.js';
 
 describe('WorkflowOrchestrator - State Machine Structure', () => {
   let orchestrator: WorkflowOrchestrator;
@@ -841,6 +841,188 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(events[0].type).toBe('progress:updated');
       expect(events[0].data?.completed).toBe(1);
       expect(events[0].data?.total).toBe(2);
+    });
+  });
+
+  describe('Error Handling and Recovery', () => {
+    beforeEach(() => {
+      // Navigate to SUBTASK_LOOP for all tests
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+    });
+
+    it('should handle errors with ERROR event', () => {
+      const error: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Test execution failed',
+        timestamp: new Date(),
+        recoverable: true
+      };
+
+      orchestrator.transition({ type: 'ERROR', error });
+
+      const context = orchestrator.getContext();
+      expect(context.errors).toHaveLength(1);
+      expect(context.errors[0].message).toBe('Test execution failed');
+    });
+
+    it('should emit error:occurred event', () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('error:occurred', (event) => events.push(event));
+
+      const error: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Test execution failed',
+        timestamp: new Date(),
+        recoverable: true
+      };
+
+      orchestrator.transition({ type: 'ERROR', error });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('error:occurred');
+      expect(events[0].data?.error).toEqual(error);
+    });
+
+    it('should support retry attempts', () => {
+      const currentSubtask = orchestrator.getCurrentSubtask();
+      expect(currentSubtask?.attempts).toBe(0);
+
+      // Simulate failed attempt
+      orchestrator.incrementAttempts();
+      orchestrator.retryCurrentSubtask();
+
+      const context = orchestrator.getContext();
+      expect(context.currentTDDPhase).toBe('RED');
+      expect(context.subtasks[0].attempts).toBe(1);
+    });
+
+    it('should mark subtask as failed when max attempts exceeded', () => {
+      const limitedContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [
+          { id: '1.1', title: 'Subtask 1', status: 'pending', attempts: 0, maxAttempts: 2 }
+        ],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: {}
+      };
+
+      const limitedOrchestrator = new WorkflowOrchestrator(limitedContext);
+      limitedOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      limitedOrchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Exceed max attempts
+      for (let i = 0; i < 3; i++) {
+        limitedOrchestrator.incrementAttempts();
+      }
+
+      limitedOrchestrator.handleMaxAttemptsExceeded();
+
+      const context = limitedOrchestrator.getContext();
+      expect(context.subtasks[0].status).toBe('failed');
+    });
+
+    it('should emit subtask:failed event when max attempts exceeded', () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('subtask:failed', (event) => events.push(event));
+
+      const limitedContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [
+          { id: '1.1', title: 'Subtask 1', status: 'pending', attempts: 0, maxAttempts: 2 }
+        ],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: {}
+      };
+
+      const limitedOrchestrator = new WorkflowOrchestrator(limitedContext);
+      limitedOrchestrator.on('subtask:failed', (event) => events.push(event));
+
+      limitedOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      limitedOrchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Exceed max attempts
+      for (let i = 0; i < 3; i++) {
+        limitedOrchestrator.incrementAttempts();
+      }
+
+      limitedOrchestrator.handleMaxAttemptsExceeded();
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('subtask:failed');
+    });
+
+    it('should support abort workflow', () => {
+      orchestrator.transition({ type: 'ABORT' });
+
+      // Should still be in SUBTASK_LOOP but workflow should be aborted
+      expect(orchestrator.getCurrentPhase()).toBe('SUBTASK_LOOP');
+      expect(orchestrator.isAborted()).toBe(true);
+    });
+
+    it('should prevent transitions after abort', () => {
+      orchestrator.transition({ type: 'ABORT' });
+
+      expect(() => {
+        orchestrator.transition({
+          type: 'RED_PHASE_COMPLETE',
+          testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+        });
+      }).toThrow('Workflow has been aborted');
+    });
+
+    it('should allow retry after recoverable error', () => {
+      const error: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Temporary failure',
+        timestamp: new Date(),
+        recoverable: true
+      };
+
+      orchestrator.transition({ type: 'ERROR', error });
+
+      // Should be able to retry
+      expect(() => {
+        orchestrator.transition({ type: 'RETRY' });
+      }).not.toThrow();
+
+      expect(orchestrator.getCurrentTDDPhase()).toBe('RED');
+    });
+
+    it('should track error history in context', () => {
+      const error1: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Error 1',
+        timestamp: new Date(),
+        recoverable: true
+      };
+
+      const error2: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Error 2',
+        timestamp: new Date(),
+        recoverable: false
+      };
+
+      orchestrator.transition({ type: 'ERROR', error: error1 });
+      orchestrator.transition({ type: 'RETRY' });
+      orchestrator.transition({ type: 'ERROR', error: error2 });
+
+      const context = orchestrator.getContext();
+      expect(context.errors).toHaveLength(2);
+      expect(context.errors[0].message).toBe('Error 1');
+      expect(context.errors[1].message).toBe('Error 2');
     });
   });
 });

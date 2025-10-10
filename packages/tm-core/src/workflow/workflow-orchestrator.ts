@@ -22,6 +22,7 @@ export class WorkflowOrchestrator {
   private persistCallback?: (state: WorkflowState) => void | Promise<void>;
   private autoPersistEnabled: boolean = false;
   private readonly phaseGuards: Map<WorkflowPhase, (context: WorkflowContext) => boolean>;
+  private aborted: boolean = false;
 
   constructor(initialContext: WorkflowContext) {
     this.currentPhase = 'PREFLIGHT';
@@ -87,6 +88,30 @@ export class WorkflowOrchestrator {
    * Transition to next state based on event
    */
   transition(event: WorkflowEvent): void {
+    // Check if workflow is aborted
+    if (this.aborted && event.type !== 'ABORT') {
+      throw new Error('Workflow has been aborted');
+    }
+
+    // Handle special events that work across all phases
+    if (event.type === 'ERROR') {
+      this.handleError(event.error);
+      void this.triggerAutoPersist();
+      return;
+    }
+
+    if (event.type === 'ABORT') {
+      this.aborted = true;
+      void this.triggerAutoPersist();
+      return;
+    }
+
+    if (event.type === 'RETRY') {
+      this.handleRetry();
+      void this.triggerAutoPersist();
+      return;
+    }
+
     // Handle TDD phase transitions within SUBTASK_LOOP
     if (this.currentPhase === 'SUBTASK_LOOP') {
       this.handleTDDPhaseTransition(event);
@@ -443,5 +468,56 @@ export class WorkflowOrchestrator {
     }
 
     return currentSubtask.attempts > currentSubtask.maxAttempts;
+  }
+
+  /**
+   * Handle error event
+   */
+  private handleError(error: WorkflowError): void {
+    this.context.errors.push(error);
+    this.emit('error:occurred', { error });
+  }
+
+  /**
+   * Handle retry event
+   */
+  private handleRetry(): void {
+    if (this.currentPhase === 'SUBTASK_LOOP') {
+      // Reset to RED phase to retry current subtask
+      this.context.currentTDDPhase = 'RED';
+      this.emit('tdd:red:started');
+    }
+  }
+
+  /**
+   * Retry current subtask (resets to RED phase)
+   */
+  retryCurrentSubtask(): void {
+    if (this.currentPhase === 'SUBTASK_LOOP') {
+      this.context.currentTDDPhase = 'RED';
+      this.emit('tdd:red:started');
+    }
+  }
+
+  /**
+   * Handle max attempts exceeded for current subtask
+   */
+  handleMaxAttemptsExceeded(): void {
+    const currentSubtask = this.getCurrentSubtask();
+    if (currentSubtask) {
+      currentSubtask.status = 'failed';
+      this.emit('subtask:failed', {
+        subtaskId: currentSubtask.id,
+        attempts: currentSubtask.attempts,
+        maxAttempts: currentSubtask.maxAttempts
+      });
+    }
+  }
+
+  /**
+   * Check if workflow has been aborted
+   */
+  isAborted(): boolean {
+    return this.aborted;
   }
 }
