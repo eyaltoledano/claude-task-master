@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WorkflowOrchestrator } from './workflow-orchestrator.js';
 import type { WorkflowContext, WorkflowPhase, WorkflowEventData, WorkflowError } from './types.js';
+import { TestResultValidator } from '../services/test-result-validator.js';
+import type { TestResult } from '../services/test-result-validator.types.js';
 
 describe('WorkflowOrchestrator - State Machine Structure', () => {
   let orchestrator: WorkflowOrchestrator;
@@ -1227,6 +1229,146 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(progress.completed).toBe(1);
       expect(progress.total).toBe(2);
       expect(progress.percentage).toBe(50);
+    });
+  });
+
+  describe('Adapter Integration', () => {
+    let testValidator: TestResultValidator;
+
+    beforeEach(() => {
+      testValidator = new TestResultValidator();
+    });
+
+    it('should integrate with TestResultValidator', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Set validator
+      orchestrator.setTestResultValidator(testValidator);
+
+      // Validator should be used internally
+      expect(orchestrator.hasTestResultValidator()).toBe(true);
+    });
+
+    it('should use TestResultValidator to validate RED phase', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.setTestResultValidator(testValidator);
+
+      // Should reject passing tests in RED phase
+      expect(() => {
+        orchestrator.transition({
+          type: 'RED_PHASE_COMPLETE',
+          testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'RED' }
+        });
+      }).toThrow('RED phase must have at least one failing test');
+    });
+
+    it('should use TestResultValidator to validate GREEN phase', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.setTestResultValidator(testValidator);
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+
+      // Should reject failing tests in GREEN phase
+      expect(() => {
+        orchestrator.transition({
+          type: 'GREEN_PHASE_COMPLETE',
+          testResults: { total: 5, passed: 3, failed: 2, skipped: 0, phase: 'GREEN' }
+        });
+      }).toThrow('GREEN phase must have zero failures');
+    });
+
+    it('should support git adapter hooks', () => {
+      const gitOperations: string[] = [];
+
+      orchestrator.onGitOperation((operation, data) => {
+        gitOperations.push(operation);
+      });
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Verify git operation hook was called
+      expect(gitOperations).toContain('branch:created');
+    });
+
+    it('should support executor adapter hooks', () => {
+      const executions: string[] = [];
+
+      orchestrator.onExecute((command, context) => {
+        executions.push(command);
+      });
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.executeCommand('run-tests');
+
+      expect(executions).toContain('run-tests');
+    });
+
+    it('should provide adapter context in events', () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('phase:entered', (event) => events.push(event));
+
+      orchestrator.setTestResultValidator(testValidator);
+
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+
+      // Event should include adapter availability
+      expect(events[0].data?.adapters).toBeDefined();
+    });
+
+    it('should allow adapter reconfiguration', () => {
+      orchestrator.setTestResultValidator(testValidator);
+      expect(orchestrator.hasTestResultValidator()).toBe(true);
+
+      orchestrator.removeTestResultValidator();
+      expect(orchestrator.hasTestResultValidator()).toBe(false);
+    });
+
+    it('should work without adapters (optional integration)', () => {
+      // Should work fine without adapters
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      expect(orchestrator.getCurrentPhase()).toBe('SUBTASK_LOOP');
+    });
+
+    it('should emit adapter-related events', () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('adapter:configured', (event) => events.push(event));
+
+      orchestrator.setTestResultValidator(testValidator);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('adapter:configured');
+      expect(events[0].data?.adapterType).toBe('test-validator');
     });
   });
 });

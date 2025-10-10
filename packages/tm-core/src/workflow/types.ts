@@ -145,4 +145,5 @@ export type WorkflowEventType =
   | 'git:commit:created'
   | 'error:occurred'
   | 'state:persisted'
-  | 'progress:updated';
+  | 'progress:updated'
+  | 'adapter:configured';

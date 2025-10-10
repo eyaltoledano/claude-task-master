@@ -10,6 +10,7 @@ import type {
   WorkflowEventListener,
   SubtaskInfo
 } from './types.js';
+import type { TestResultValidator } from '../services/test-result-validator.js';
 
 /**
  * Lightweight state machine for TDD workflow orchestration
@@ -23,6 +24,9 @@ export class WorkflowOrchestrator {
   private autoPersistEnabled: boolean = false;
   private readonly phaseGuards: Map<WorkflowPhase, (context: WorkflowContext) => boolean>;
   private aborted: boolean = false;
+  private testResultValidator?: TestResultValidator;
+  private gitOperationHook?: (operation: string, data?: unknown) => void;
+  private executeHook?: (command: string, context: WorkflowContext) => void;
 
   constructor(initialContext: WorkflowContext) {
     this.currentPhase = 'PREFLIGHT';
@@ -277,6 +281,11 @@ export class WorkflowOrchestrator {
       case 'BRANCH_CREATED':
         this.context.branchName = event.branchName;
         this.emit('git:branch:created', { branchName: event.branchName });
+
+        // Trigger git operation hook
+        if (this.gitOperationHook) {
+          this.gitOperationHook('branch:created', { branchName: event.branchName });
+        }
         break;
 
       case 'ERROR':
@@ -342,7 +351,14 @@ export class WorkflowOrchestrator {
       phase: this.currentPhase,
       tddPhase: this.context.currentTDDPhase,
       subtaskId: this.getCurrentSubtaskId(),
-      data
+      data: {
+        ...data,
+        adapters: {
+          testValidator: !!this.testResultValidator,
+          gitHook: !!this.gitOperationHook,
+          executeHook: !!this.executeHook
+        }
+      }
     };
 
     const listeners = this.eventListeners.get(eventType);
@@ -564,5 +580,50 @@ export class WorkflowOrchestrator {
 
     // All validations passed
     return true;
+  }
+
+  /**
+   * Set TestResultValidator adapter
+   */
+  setTestResultValidator(validator: TestResultValidator): void {
+    this.testResultValidator = validator;
+    this.emit('adapter:configured', { adapterType: 'test-validator' });
+  }
+
+  /**
+   * Check if TestResultValidator is configured
+   */
+  hasTestResultValidator(): boolean {
+    return !!this.testResultValidator;
+  }
+
+  /**
+   * Remove TestResultValidator adapter
+   */
+  removeTestResultValidator(): void {
+    this.testResultValidator = undefined;
+  }
+
+  /**
+   * Register git operation hook
+   */
+  onGitOperation(hook: (operation: string, data?: unknown) => void): void {
+    this.gitOperationHook = hook;
+  }
+
+  /**
+   * Register execute command hook
+   */
+  onExecute(hook: (command: string, context: WorkflowContext) => void): void {
+    this.executeHook = hook;
+  }
+
+  /**
+   * Execute a command (triggers execute hook)
+   */
+  executeCommand(command: string): void {
+    if (this.executeHook) {
+      this.executeHook(command, this.context);
+    }
   }
 }
