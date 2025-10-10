@@ -118,7 +118,13 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE",
+		"CHANGELOG.md"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"
