@@ -4,11 +4,6 @@
  */
 
 import { z } from 'zod';
-import type {
-	TaskComplexity,
-	TaskPriority,
-	StorageType
-} from '../types/index.js';
 
 /**
  * Model configuration schema
@@ -26,7 +21,7 @@ export const providerConfigSchema = z.object({
 	name: z.string().min(1, 'Provider name is required'),
 	apiKey: z.string().optional(),
 	baseUrl: z.string().url().optional(),
-	options: z.record(z.unknown()).optional(),
+	options: z.record(z.string(), z.unknown()).optional(),
 	enabled: z.boolean().optional().default(true)
 });
 
@@ -98,7 +93,7 @@ export const workflowSettingsSchema = z.object({
 			/** Maximum allowed failing tests in GREEN phase */
 			maxFailuresInGreen: z.number().int().min(0).default(0)
 		})
-		.default({}),
+		.default({ minTests: 1, maxFailuresInGreen: 0 }),
 
 	/** Commit message template pattern */
 	commitMessageTemplate: z
@@ -193,9 +188,9 @@ export const securitySettingsSchema = z.object({
 export const configurationSchema = z.object({
 	projectPath: z.string().min(1, 'Project path is required'),
 	aiProvider: z.string().min(1, 'AI provider is required'),
-	apiKeys: z.record(z.string()),
+	apiKeys: z.record(z.string(), z.string()),
 	models: modelConfigSchema,
-	providers: z.record(providerConfigSchema),
+	providers: z.record(z.string(), providerConfigSchema),
 	tasks: taskSettingsSchema,
 	tags: tagSettingsSchema,
 	workflow: workflowSettingsSchema,
@@ -203,7 +198,7 @@ export const configurationSchema = z.object({
 	retry: retrySettingsSchema,
 	logging: loggingSettingsSchema,
 	security: securitySettingsSchema,
-	custom: z.record(z.unknown()).optional(),
+	custom: z.record(z.string(), z.unknown()).optional(),
 	version: z.string(),
 	lastUpdated: z.string()
 });
@@ -217,7 +212,7 @@ export const partialConfigurationSchema = configurationSchema.partial();
  * Environment configuration schema
  */
 export const environmentConfigSchema = z.object({
-	variables: z.record(z.string()),
+	variables: z.record(z.string(), z.string()),
 	prefix: z.string().default('TM_'),
 	override: z.boolean().default(false)
 });
@@ -272,8 +267,8 @@ export function validateConfiguration(config: unknown): ConfigValidationResult {
 	if (result.error && typeof result.error.format === 'function') {
 		const formatted = result.error.format();
 		errors.push(JSON.stringify(formatted, null, 2));
-	} else if (result.error && result.error.errors) {
-		result.error.errors.forEach((err: any) => {
+	} else if (result.error && result.error.issues) {
+		result.error.issues.forEach((err: any) => {
 			const path = err.path ? err.path.join('.') : 'unknown';
 			errors.push(`${path}: ${err.message || 'Validation error'}`);
 		});
@@ -311,8 +306,8 @@ export function validatePartialConfiguration(
 	if (result.error && typeof result.error.format === 'function') {
 		const formatted = result.error.format();
 		errors.push(JSON.stringify(formatted, null, 2));
-	} else if (result.error && result.error.errors) {
-		result.error.errors.forEach((err: any) => {
+	} else if (result.error && result.error.issues) {
+		result.error.issues.forEach((err: any) => {
 			const path = err.path ? err.path.join('.') : 'unknown';
 			errors.push(`${path}: ${err.message || 'Validation error'}`);
 		});

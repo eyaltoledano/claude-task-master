@@ -5,7 +5,7 @@
  * @module git-adapter
  */
 
-import simpleGit, { SimpleGit, GitError } from 'simple-git';
+import { simpleGit, type SimpleGit } from 'simple-git';
 import fs from 'fs-extra';
 import path from 'path';
 

@@ -526,7 +526,7 @@ export class WorkflowOrchestrator {
 	/**
 	 * Handle error event
 	 */
-	private handleError(error: WorkflowError): void {
+	private handleError(error: import('./types.js').WorkflowError): void {
 		this.context.errors.push(error);
 		this.emit('error:occurred', { error });
 	}

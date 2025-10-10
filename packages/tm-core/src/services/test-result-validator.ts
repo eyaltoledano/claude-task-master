@@ -2,8 +2,6 @@ import { z } from 'zod';
 import type {
 	TestResult,
 	ValidationResult,
-	TestPhase,
-	Coverage,
 	CoverageThresholds,
 	PhaseValidationOptions
 } from './test-result-validator.types.js';

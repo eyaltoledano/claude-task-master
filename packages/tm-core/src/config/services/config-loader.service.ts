@@ -55,7 +55,9 @@ export class ConfigLoader {
 				},
 				commitMessageTemplate:
 					DEFAULT_CONFIG_VALUES.WORKFLOW.COMMIT_MESSAGE_TEMPLATE,
-				allowedCommitTypes: DEFAULT_CONFIG_VALUES.WORKFLOW.ALLOWED_COMMIT_TYPES,
+				allowedCommitTypes: [
+					...DEFAULT_CONFIG_VALUES.WORKFLOW.ALLOWED_COMMIT_TYPES
+				] as string[],
 				defaultCommitType: DEFAULT_CONFIG_VALUES.WORKFLOW.DEFAULT_COMMIT_TYPE,
 				operationTimeout: DEFAULT_CONFIG_VALUES.WORKFLOW.OPERATION_TIMEOUT,
 				enableActivityLogging:
