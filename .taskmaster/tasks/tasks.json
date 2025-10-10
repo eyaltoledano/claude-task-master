@@ -10078,7 +10078,7 @@
   "tdd-phase-1-core-rails": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Design and Implement Global Storage System",
         "description": "Create a global storage system for runtime state, logs, and artifacts outside the project directory, following the specified directory structure and normalization logic.",
         "details": "Implement a Node.js module that manages all runtime artifacts in `~/.taskmaster/projects/<project-path>/runs/<run-id>/`, including `manifest.json`, `activity.jsonl`, `state.json`, and `test-results/`. Use `path` and `os` modules for cross-platform path handling. Ensure project path normalization replaces slashes with hyphens and removes leading slashes. Generate unique run IDs using ISO timestamps. Store active run pointers in `tags/<tag-name>/current-run.json`. Use `fs-extra` (v11+) for robust file operations. Enforce append-only for `activity.jsonl` and mutable `state.json`. Validate that no runtime artifacts are left in the project directory.",
@@ -10164,7 +10164,7 @@
         "updatedAt": "2025-10-10T08:45:46.816Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Build GitAdapter with Safety Checks",
         "description": "Develop a GitAdapter class that handles all git operations (branching, committing, pushing) with built-in safety checks and confirmation gates.",
         "details": "Implement in TypeScript using `simple-git` (v3+) for git operations. Add methods for branch creation, checkout, commit, push, and status checks. Enforce safety: never commit on default branch, always check working tree cleanliness, confirm destructive operations unless `--no-confirm`. Generate branch names from configurable patterns. Include methods to get current/default branch. Use `chalk` for colored CLI output. Expose a clean, promise-based API. Store branch↔tag mapping in run state.",
@@ -10173,7 +10173,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10267,10 +10267,11 @@
         ],
         "complexity": 8,
         "recommendedSubtasks": 7,
-        "expansionPrompt": "Decompose GitAdapter into: 1) Git repository detection and validation, 2) Working tree status checking with detailed reporting, 3) Branch operations (create, checkout, list) with safety guards, 4) Commit operations with metadata embedding, 5) Default branch detection and protection logic, 6) Push operations with conflict handling, and 7) Branch name generation from patterns. Emphasize safety checks, confirmation gates, and comprehensive error messages."
+        "expansionPrompt": "Decompose GitAdapter into: 1) Git repository detection and validation, 2) Working tree status checking with detailed reporting, 3) Branch operations (create, checkout, list) with safety guards, 4) Commit operations with metadata embedding, 5) Default branch detection and protection logic, 6) Push operations with conflict handling, and 7) Branch name generation from patterns. Emphasize safety checks, confirmation gates, and comprehensive error messages.",
+        "updatedAt": "2025-10-10T13:16:43.147Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Implement Test Result Validator",
         "description": "Create a service to validate test results reported by the AI agent, enforcing TDD phase semantics (RED must fail, GREEN must pass).",
         "details": "Build a `TestResultValidator` class in TypeScript. Validate that RED phase results include at least one failure, GREEN phase results have zero failures. Optionally validate coverage thresholds if provided. Return structured validation results with messages and suggestions. Use `joi` (v17+) for input validation. Keep validation logic framework-agnostic—TaskMaster does not parse test output, only checks reported numbers.",
@@ -10279,15 +10280,15 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
             "title": "Implement Input Validation and Schema Definition",
             "description": "Create comprehensive input validation for test result data using joi schema validation to ensure all required fields are present and properly formatted.",
             "dependencies": [],
-            "details": "Define joi schemas for test result objects including total tests, passed tests, failed tests, skipped tests, and optional coverage data. Validate that numeric fields are non-negative integers and that totals are consistent (passed + failed + skipped = total). Include validation for coverage thresholds as percentages between 0-100. Create clear error messages for validation failures.",
-            "status": "pending",
+            "details": "Define joi schemas for test result objects including total tests, passed tests, failed tests, skipped tests, and optional coverage data. Validate that numeric fields are non-negative integers and that totals are consistent (passed + failed + skipped = total). Include validation for coverage thresholds as percentages between 0-100. Create clear error messages for validation failures.\n<info added on 2025-10-10T13:39:49.804Z>\nI'll analyze the codebase first to understand the implementation structure and then provide the appropriate update.Based on my analysis of the codebase, I can see that the user has successfully completed the input validation implementation. Here's the new information that should be appended to the subtask:\n\nImplementation completed using Zod v4 schema validation in `/packages/tm-core/src/services/test-result-validator.ts`. Created comprehensive test result schema with numeric field validation (non-negative integers), enum validation for TestPhase ('RED', 'GREEN', 'REFACTOR'), optional coverage data validation (0-100 percentages), and total consistency checks (passed + failed + skipped = total). Key discovery: Zod v4 changed error structure - validation errors are now accessed via `parseResult.error.issues` instead of `parseResult.error.errors`. The implementation correctly handles this by mapping over `zodIssues` to extract validation error messages with proper path handling for nested field errors.\n</info added on 2025-10-10T13:39:49.804Z>",
+            "status": "done",
             "testStrategy": "Unit tests for schema validation with various input combinations: valid inputs, missing fields, negative numbers, invalid types, inconsistent totals. Test error message clarity and structure.",
             "parentId": "undefined"
           },
@@ -10298,8 +10299,8 @@
             "dependencies": [
               1
             ],
-            "details": "Implement validation method that checks if failed test count is greater than zero for RED phase. Provide specific error messages when RED phase has zero failures, suggesting the developer write failing tests first. Include validation that total test count is greater than zero to prevent empty test suites. Return structured validation results with phase-specific suggestions.",
-            "status": "pending",
+            "details": "Implement validation method that checks if failed test count is greater than zero for RED phase. Provide specific error messages when RED phase has zero failures, suggesting the developer write failing tests first. Include validation that total test count is greater than zero to prevent empty test suites. Return structured validation results with phase-specific suggestions.\n<info added on 2025-10-10T13:41:04.020Z>\nBased on my analysis of the codebase and the completed RED phase validation implementation in `packages/tm-core/src/services/test-result-validator.ts:74-100`, the subtask has been successfully completed. The implementation includes:\n\n- Proper validation that RED phase must have at least one failing test (line 84-87)\n- Empty test suite prevention with appropriate error message (line 90-93)\n- Actionable TDD workflow suggestions (lines 86, 92)\n- Integration with the base validation system for structured error handling\n\nThe test suite in `packages/tm-core/src/services/test-result-validator.test.ts:118-178` comprehensively covers all RED phase validation scenarios including success cases, zero failures, empty test suites, and error propagation. Implementation follows TypeScript best practices with proper type safety and Zod schema validation for robust input handling.\n</info added on 2025-10-10T13:41:04.020Z>",
+            "status": "done",
             "testStrategy": "Unit tests covering RED phase with zero failures (should fail validation), RED phase with failures (should pass), empty test suite scenarios. Verify error messages provide actionable feedback for TDD workflow.",
             "parentId": "undefined"
           },
@@ -10310,8 +10311,8 @@
             "dependencies": [
               1
             ],
-            "details": "Implement validation method that verifies failed test count equals zero for GREEN phase. Ensure at least one test exists and passed to prevent false positives from empty test suites. Provide clear error messages when GREEN phase has failures, suggesting code fixes or test adjustments. Include validation that passed test count matches or exceeds the previous RED phase test count.",
-            "status": "pending",
+            "details": "Implement validation method that verifies failed test count equals zero for GREEN phase. Ensure at least one test exists and passed to prevent false positives from empty test suites. Provide clear error messages when GREEN phase has failures, suggesting code fixes or test adjustments. Include validation that passed test count matches or exceeds the previous RED phase test count.\n<info added on 2025-10-10T13:42:16.926Z>\nBased on my analysis of the TestResultValidator implementation in `packages/tm-core/src/services/test-result-validator.ts` and test file, I can see that the GREEN phase validation logic has been successfully implemented. The `validateGreenPhase` method at lines 106-145 contains the complete implementation with:\n\n1. Zero failures validation (lines 120-123)\n2. At least one passing test validation (lines 125-129) \n3. Test count regression tracking with warnings (lines 132-137)\n4. Comprehensive error messages and actionable suggestions\n\nThe test file shows comprehensive test coverage for all GREEN phase scenarios including edge cases. The implementation follows the project's TypeScript patterns and uses the established validation result structure.\n\nIMPLEMENTATION COMPLETE. TestResultValidator.validateGreenPhase method fully implemented with zero failures validation, minimum passing test requirement, test count regression warnings, and comprehensive error messaging. Follows existing codebase patterns using zod validation, structured error/warning/suggestion results, and maintains backward compatibility. All test scenarios covered including edge cases for empty test suites and count decreases.\n</info added on 2025-10-10T13:42:16.926Z>",
+            "status": "done",
             "testStrategy": "Unit tests for GREEN phase with failures (should fail validation), GREEN phase with all passing tests (should pass), regression scenarios where test count decreases. Test error messages guide developers toward fixing implementation.",
             "parentId": "undefined"
           },
@@ -10322,8 +10323,8 @@
             "dependencies": [
               1
             ],
-            "details": "Implement optional coverage validation that accepts configurable thresholds for line, branch, function, and statement coverage. Validate coverage percentages against thresholds only when coverage data is present. Provide detailed messages indicating which coverage types failed to meet thresholds and by how much. Support different threshold configurations per project and phase. Return structured results with coverage gaps and improvement suggestions.",
-            "status": "pending",
+            "details": "Implement optional coverage validation that accepts configurable thresholds for line, branch, function, and statement coverage. Validate coverage percentages against thresholds only when coverage data is present. Provide detailed messages indicating which coverage types failed to meet thresholds and by how much. Support different threshold configurations per project and phase. Return structured results with coverage gaps and improvement suggestions.\n<info added on 2025-10-10T13:44:18.503Z>\nI'll analyze the codebase to understand the current implementation before updating the subtask details.Based on my analysis of the codebase, I can see the TestResultValidator implementation in `packages/tm-core/src/services/test-result-validator.ts` and its comprehensive test suite in `test-result-validator.test.ts`. The implementation includes:\n\n1. **Complete coverage threshold validation logic** (lines 147-197)\n2. **Configurable thresholds** for line, branch, function, and statement coverage\n3. **Skips validation when coverage data is absent** (line 162-165)\n4. **Detailed error messages** showing specific coverage gaps (lines 171-185)\n5. **Structured results** with gaps and improvement suggestions (lines 188-190)\n\nThe test file shows comprehensive test coverage including coverage threshold validation tests (lines 270-423) with various scenarios for meeting/failing thresholds and handling missing coverage data.\n\nImplementation complete. The validateCoverage method correctly handles configurable thresholds for all four coverage types (line, branch, function, statement), gracefully skips validation when coverage data is undefined, and provides specific error messages detailing which coverage types failed and by how much. The implementation supports different threshold configurations through the CoverageThresholds interface and returns structured ValidationResult objects with detailed feedback. Test suite includes 23 comprehensive test cases covering input validation, RED/GREEN phase validation, and coverage threshold scenarios.\n</info added on 2025-10-10T13:44:18.503Z>",
+            "status": "done",
             "testStrategy": "Unit tests for coverage validation with various threshold configurations, missing coverage data (should skip validation), coverage below/above thresholds. Test different coverage types independently and in combination.",
             "parentId": "undefined"
           }
@@ -10333,7 +10334,7 @@
         "expansionPrompt": "Split test validation into: 1) Input validation and schema definition for test results, 2) RED phase validation logic (ensuring failures exist), 3) GREEN phase validation logic (ensuring all tests pass), and 4) Coverage threshold validation with configurable limits. Include comprehensive validation messages and suggestions for common failure scenarios."
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Develop WorkflowOrchestrator State Machine",
         "description": "Implement the core state machine that drives the TDD workflow: Preflight → BranchSetup → SubtaskLoop (RED→GREEN→COMMIT) → Finalize → Complete.",
         "details": "Use `xstate` (v5+) or a custom lightweight state machine. Emit events for phase/subtask transitions, test runs, commits, and errors. Coordinate GitAdapter, TestResultValidator, and (future) Executor adapters. Persist state to `state.json` after each transition. Support resumption from checkpoint. Implement phase hooks for extensibility. Follow the event API specified in the PRD.",
@@ -10344,15 +10345,15 @@
           "2",
           "3"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
             "title": "Define State Machine Structure and Transitions",
             "description": "Design and implement the core state machine with phases: Preflight, BranchSetup, SubtaskLoop (RED→GREEN→COMMIT), Finalize, and Complete.",
             "dependencies": [],
-            "details": "Use XState v5 or a custom lightweight state machine to define states and transitions according to the TDD workflow. Ensure the initial state is Preflight and transitions follow the specified sequence. Implement hierarchical or nested states if needed for SubtaskLoop phases.",
-            "status": "pending",
+            "details": "Use XState v5 or a custom lightweight state machine to define states and transitions according to the TDD workflow. Ensure the initial state is Preflight and transitions follow the specified sequence. Implement hierarchical or nested states if needed for SubtaskLoop phases.\n<info added on 2025-10-10T13:49:21.585Z>\nI'll analyze the codebase to understand the current implementation before generating the subtask update.Based on my analysis of the codebase, I can now generate the subtask update. The user has completed the state machine structure implementation with a lightweight custom approach in `/packages/tm-core/src/workflow/workflow-orchestrator.ts`. The implementation includes:\n\n1. **State machine class** (`WorkflowOrchestrator`) with phases: PREFLIGHT → BRANCH_SETUP → SUBTASK_LOOP → FINALIZE → COMPLETE\n2. **TDD cycle support** within SUBTASK_LOOP: RED → GREEN → COMMIT  \n3. **State transitions** with validation using `defineTransitions()` method\n4. **Comprehensive test suite** in `workflow-orchestrator.test.ts` covering all transitions\n\n**COMPLETION NOTES (2025-10-10):**\n\nState machine implementation successfully completed using lightweight custom approach rather than XState. Created WorkflowOrchestrator class in packages/tm-core/src/workflow/workflow-orchestrator.ts with complete workflow phases (PREFLIGHT → BRANCH_SETUP → SUBTASK_LOOP → FINALIZE → COMPLETE) and nested TDD cycle states (RED → GREEN → COMMIT). \n\nKey implementation features:\n- defineTransitions() method defining valid state transitions with guard conditions\n- handleTDDPhaseTransition() for nested RED→GREEN→COMMIT cycle within SUBTASK_LOOP\n- State serialization/restoration for persistence (getState/restoreState methods)\n- Context management with branch names, subtask tracking, and error handling\n- Full TypeScript types in workflow/types.ts\n\nAll 15 tests pass covering: initial state verification, main workflow transitions, TDD cycle transitions, state validation, and serialization/restoration. Implementation ready for integration with GitAdapter and TestResultValidator components.\n</info added on 2025-10-10T13:49:21.585Z>",
+            "status": "done",
             "testStrategy": "Unit tests verifying correct state transitions and initial state setup.",
             "parentId": "undefined"
           },
@@ -10363,8 +10364,8 @@
             "dependencies": [
               1
             ],
-            "details": "Create a robust event emitter integrated with the state machine that dispatches detailed events on every significant action or state change. Define a comprehensive event schema matching the PRD specifications for extensibility and observability.",
-            "status": "pending",
+            "details": "Create a robust event emitter integrated with the state machine that dispatches detailed events on every significant action or state change. Define a comprehensive event schema matching the PRD specifications for extensibility and observability.\n<info added on 2025-10-10T13:52:07.951Z>\nI'll analyze the codebase to understand the current implementation and then provide the update based on your completion report.Now let me look for the workflow orchestrator to understand the event emission system:Let me also check the types file to understand the event system better:Now let me check the test file to see what tests were created:Let me check how many tests are currently passing by running the test suite:Let me check the package.json to understand the test script:Based on my analysis of the codebase, I can see that the WorkflowOrchestrator has been successfully implemented with a comprehensive event emission system. The implementation includes:\n\n1. **Event system infrastructure**: `on()` and `off()` methods for listener management\n2. **Comprehensive event types**: 23 different event types defined in `types.ts`\n3. **Event emission throughout the state machine**: Events are emitted for phase transitions, TDD cycle progression, subtask lifecycle, git operations, and errors\n4. **Complete test coverage**: 23 tests covering all aspects including 8 specific event emission tests\n\nThe event system is fully integrated with the state machine and emits events for all significant workflow actions as specified in the PRD.\n\nIMPLEMENTATION COMPLETED: Event emission system fully implemented with comprehensive event types covering workflow phases, TDD cycles, subtask lifecycle, git operations, and error handling. System includes on/off listener management methods and emits detailed events with timestamps, phase context, and additional data. Full test coverage achieved with 23 passing tests including 8 dedicated event emission tests validating listener registration/removal, event data integrity, and proper emission during state transitions.\n</info added on 2025-10-10T13:52:07.951Z>",
+            "status": "done",
             "testStrategy": "Unit tests to verify event emission on all relevant state transitions and actions.",
             "parentId": "undefined"
           },
@@ -10375,8 +10376,8 @@
             "dependencies": [
               1
             ],
-            "details": "After every state transition, serialize and persist the current state and context to `state.json`. On startup, load this file to restore the state machine to the last checkpoint, enabling workflow resumption.",
-            "status": "pending",
+            "details": "After every state transition, serialize and persist the current state and context to `state.json`. On startup, load this file to restore the state machine to the last checkpoint, enabling workflow resumption.\n<info added on 2025-10-10T13:57:11.049Z>\nImplementation successfully completed. Added auto-persist mode functionality with enableAutoPersist() and disableAutoPersist() methods, allowing external state management integration. Implemented manual persistState() method for on-demand state persistence. Added 'state:persisted' event emission to workflow events system as defined in types.ts:85. Successfully integrated with existing state-manager module in packages/tm-core/src/storage/state-manager.ts for atomic state file operations. Comprehensive test coverage achieved with 28 passing tests covering state transitions, event emission, persistence callbacks, auto-persist enable/disable functionality, and integration scenarios.\n</info added on 2025-10-10T13:57:11.049Z>",
+            "status": "done",
             "testStrategy": "Integration tests simulating interruptions and verifying correct state restoration from persisted data.",
             "parentId": "undefined"
           },
@@ -10388,7 +10389,7 @@
               1
             ],
             "details": "Add guards and validation logic within the state machine to enforce correct phase progression. Integrate with TestResultValidator and GitAdapter to confirm readiness before moving to next phases.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit and integration tests verifying that invalid transitions are blocked and validations are enforced.",
             "parentId": "undefined"
           },
@@ -10452,7 +10453,7 @@
         "expansionPrompt": "Structure the orchestrator into: 1) State machine definition and transitions (Preflight → BranchSetup → SubtaskLoop → Finalize), 2) Event emission system with comprehensive event types, 3) State persistence and recovery mechanisms, 4) Phase coordination and validation, 5) Subtask iteration and progress tracking, 6) Error handling and recovery strategies, 7) Resume functionality from checkpoints, and 8) Integration points for Git, Test, and other adapters."
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Create Enhanced Commit Message Generator",
         "description": "Build a module that generates conventional commit messages with embedded task metadata (task ID, phase, tag, test counts, coverage).",
         "details": "Implement a function that takes changed files, task context, and test results, then generates a commit message per the template. Determine scope from changed files (e.g., 'cli', 'core'). Use `conventional-commits` parser (v2+) for validation. Include all required metadata in the commit body. Support configurable templates via `config.json`. Optionally allow message override.",
@@ -10504,7 +10505,7 @@
         "expansionPrompt": "Organize commit message generation into: 1) Template parsing and variable substitution with configurable templates, 2) Scope detection from changed files with intelligent categorization, and 3) Metadata embedding (task context, test results, coverage) with conventional commits compliance. Ensure messages are parseable and contain all required task metadata."
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Implement Subtask TDD Loop",
         "description": "Develop the RED→GREEN→COMMIT loop for subtasks, integrating with the state machine, test validation, and commit creation.",
         "details": "For each subtask, orchestrate: (1) RED: AI generates and runs tests, reports results; TaskMaster validates failures. (2) GREEN: AI implements code, runs tests, reports results; TaskMaster validates all pass. (3) COMMIT: TaskMaster stages files, generates commit message, creates commit. Update subtask status. Handle max attempts for GREEN phase. Log all phase transitions and results to `activity.jsonl`. Support pause/resume.",
@@ -10594,7 +10595,7 @@
         "expansionPrompt": "Break down the TDD loop into: 1) RED phase orchestration with test generation coordination, 2) GREEN phase orchestration with implementation guidance, 3) COMMIT phase with file staging and commit creation, 4) Attempt tracking and maximum retry logic, 5) Phase transition validation and state updates, and 6) Activity logging for all phase transitions. Focus on robust state management and clear error recovery paths."
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Build CLI Commands for AI Agent Orchestration",
         "description": "Implement the `tm autopilot` CLI commands for starting, resuming, and advancing the TDD workflow, with JSON output for machine parsing.",
         "details": "Use `commander` (v11+) for CLI construction. Commands: `start`, `next`, `complete`, `commit`, `status`, `resume`, `abort`. `next` returns JSON with action details. `complete` accepts `--results` and `--coverage`. `commit` uses enhanced message generator. `status` shows current run progress. Support `--json` flag for machine-readable output. Integrate with WorkflowOrchestrator and GitAdapter.",
@@ -10670,7 +10671,7 @@
         "expansionPrompt": "Structure CLI commands into: 1) Command registration and argument parsing setup, 2) `start` and `resume` commands with initialization logic, 3) `next` and `status` commands with JSON output formatting, 4) `complete` command with result validation integration, and 5) `commit` and `abort` commands with git operation coordination. Ensure consistent JSON output for machine parsing and comprehensive error handling."
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Develop MCP Tools for AI Agent Integration",
         "description": "Create MCP tools (`autopilot_*`) enabling AI agents to interact with the workflow programmatically, matching CLI functionality.",
         "details": "Implement tools: `autopilot_start`, `autopilot_next`, `autopilot_complete_phase`, `autopilot_commit`, `autopilot_status`, `autopilot_resume`. Each tool takes parameters and returns structured results. Use the same core logic as the CLI, exposed via MCP's tool interface. Document expected inputs/outputs. Ensure tools are framework-agnostic and stateless (rely on `state.json`).",
@@ -10746,7 +10747,7 @@
         "expansionPrompt": "Organize MCP tools into: 1) Tool schema definition and parameter validation, 2) `autopilot_start` and `autopilot_resume` tool implementation, 3) `autopilot_next` and `autopilot_status` tools with context provision, 4) `autopilot_complete_phase` tool with validation integration, and 5) `autopilot_commit` tool with git operations. Ensure parity with CLI functionality and proper error handling."
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Write AI Agent Integration Documentation and Templates",
         "description": "Document the autonomous workflow for AI agents, including example prompts, expected behaviors, and integration instructions.",
         "details": "Create `CLAUDE.md` (or equivalent) with step-by-step instructions, example CLI/MCP usage, and responsibility matrix (AI vs TaskMaster). Include template prompts for test generation. Document how to parse test output, report results, and handle errors. Provide example JSON inputs/outputs for MCP tools. Keep documentation in the project's docs directory, versioned alongside code.",
@@ -10787,7 +10788,7 @@
         "expansionPrompt": "Structure documentation into: 1) Comprehensive workflow documentation with step-by-step examples, command usage, and integration patterns, and 2) Template creation for CLAUDE.md integration, example prompts, and troubleshooting guides. Focus on clear examples and practical integration guidance."
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Implement Configuration System and Project Hygiene",
         "description": "Set up `config.json` for workflow customization and ensure project directory hygiene (gitignore rules, no runtime artifacts).",
         "details": "Define schema for `config.json`: autopilot settings, commit templates, test thresholds, branch patterns, etc. Use `ajv` (v8+) for schema validation. Update `.gitignore` to exclude `state/` and `reports/` directories, but keep `tasks/`, `config.json`, and `docs/` versioned. Provide default configs. Validate config on workflow start.",
@@ -10851,12 +10852,15 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-10-10T08:45:46.818Z",
+      "lastModified": "2025-10-10T13:16:43.150Z",
       "taskCount": 10,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "tdd-phase-1-core-rails"
-      ]
+      ],
+      "created": "2025-10-10T13:35:33.065Z",
+      "description": "Tasks for tdd-phase-1-core-rails context",
+      "updated": "2025-10-10T14:08:47.777Z"
     }
   }
 }

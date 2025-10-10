@@ -105,19 +105,64 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
     });
 
     it('should transition from RED to GREEN', () => {
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
       expect(orchestrator.getCurrentTDDPhase()).toBe('GREEN');
     });
 
     it('should transition from GREEN to COMMIT', () => {
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
-      orchestrator.transition({ type: 'GREEN_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 5,
+          failed: 0,
+          skipped: 0,
+          phase: 'GREEN'
+        }
+      });
       expect(orchestrator.getCurrentTDDPhase()).toBe('COMMIT');
     });
 
     it('should complete subtask after COMMIT', () => {
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
-      orchestrator.transition({ type: 'GREEN_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 5,
+          failed: 0,
+          skipped: 0,
+          phase: 'GREEN'
+        }
+      });
       orchestrator.transition({ type: 'COMMIT_COMPLETE' });
 
       const context = orchestrator.getContext();
@@ -125,8 +170,26 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
     });
 
     it('should move to next subtask after completion', () => {
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
-      orchestrator.transition({ type: 'GREEN_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 5,
+          failed: 0,
+          skipped: 0,
+          phase: 'GREEN'
+        }
+      });
       orchestrator.transition({ type: 'COMMIT_COMPLETE' });
       orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
 
@@ -195,7 +258,16 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(events).toHaveLength(1);
       expect(events[0].type).toBe('tdd:red:started');
 
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
       expect(events).toHaveLength(2);
       expect(events[1].type).toBe('tdd:green:started');
     });
@@ -215,8 +287,26 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(events[0].subtaskId).toBe('1.1');
 
       // Complete TDD cycle
-      orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
-      orchestrator.transition({ type: 'GREEN_PHASE_COMPLETE' });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 5,
+          failed: 0,
+          skipped: 0,
+          phase: 'GREEN'
+        }
+      });
       orchestrator.transition({ type: 'COMMIT_COMPLETE' });
       orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
 
@@ -333,6 +423,230 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(state.context.branchName).toBe('feature/test');
       expect(state.context.currentTDDPhase).toBe('RED');
       expect(state.context.taskId).toBe('task-1');
+    });
+  });
+
+  describe('Phase Transition Guards and Validation', () => {
+    it('should enforce guard conditions on transitions', () => {
+      // Create orchestrator with guard condition that should fail
+      const guardedContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: { guardTest: true }
+      };
+
+      const guardedOrchestrator = new WorkflowOrchestrator(guardedContext);
+
+      // Add guard that checks for subtasks (should fail since we have no subtasks)
+      guardedOrchestrator.addGuard('SUBTASK_LOOP', (context) => {
+        return context.subtasks.length > 0;
+      });
+
+      guardedOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+
+      expect(() => {
+        guardedOrchestrator.transition({
+          type: 'BRANCH_CREATED',
+          branchName: 'feature/test'
+        });
+      }).toThrow('Guard condition failed');
+    });
+
+    it('should allow transition when guard condition passes', () => {
+      const guardedContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [
+          { id: '1.1', title: 'Test', status: 'pending', attempts: 0 }
+        ],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: {}
+      };
+
+      const guardedOrchestrator = new WorkflowOrchestrator(guardedContext);
+
+      guardedOrchestrator.addGuard('SUBTASK_LOOP', (context) => {
+        return context.subtasks.length > 0;
+      });
+
+      guardedOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      guardedOrchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      expect(guardedOrchestrator.getCurrentPhase()).toBe('SUBTASK_LOOP');
+    });
+
+    it('should validate test results before GREEN phase transition', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Attempt to transition to GREEN without test results
+      expect(() => {
+        orchestrator.transition({ type: 'RED_PHASE_COMPLETE' });
+      }).toThrow('Test results required');
+    });
+
+    it('should validate RED phase test results have failures', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Provide passing test results (should fail RED phase validation)
+      expect(() => {
+        orchestrator.transition({
+          type: 'RED_PHASE_COMPLETE',
+          testResults: {
+            total: 5,
+            passed: 5,
+            failed: 0,
+            skipped: 0,
+            phase: 'RED'
+          }
+        });
+      }).toThrow('RED phase must have at least one failing test');
+    });
+
+    it('should allow RED to GREEN transition with valid failing tests', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+
+      expect(orchestrator.getCurrentTDDPhase()).toBe('GREEN');
+    });
+
+    it('should validate GREEN phase test results have no failures', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+
+      // Provide test results with failures (should fail GREEN phase validation)
+      expect(() => {
+        orchestrator.transition({
+          type: 'GREEN_PHASE_COMPLETE',
+          testResults: {
+            total: 5,
+            passed: 3,
+            failed: 2,
+            skipped: 0,
+            phase: 'GREEN'
+          }
+        });
+      }).toThrow('GREEN phase must have zero failures');
+    });
+
+    it('should allow GREEN to COMMIT transition with all tests passing', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 0,
+          failed: 5,
+          skipped: 0,
+          phase: 'RED'
+        }
+      });
+
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: {
+          total: 5,
+          passed: 5,
+          failed: 0,
+          skipped: 0,
+          phase: 'GREEN'
+        }
+      });
+
+      expect(orchestrator.getCurrentTDDPhase()).toBe('COMMIT');
+    });
+
+    it('should store test results in context', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      const redResults = {
+        total: 5,
+        passed: 0,
+        failed: 5,
+        skipped: 0,
+        phase: 'RED' as const
+      };
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: redResults
+      });
+
+      const context = orchestrator.getContext();
+      expect(context.lastTestResults).toEqual(redResults);
+    });
+
+    it('should validate git repository state before BRANCH_SETUP', () => {
+      // Set up orchestrator with git validation enabled
+      const gitContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [
+          { id: '1.1', title: 'Test', status: 'pending', attempts: 0 }
+        ],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: { requireGit: false }
+      };
+
+      const gitOrchestrator = new WorkflowOrchestrator(gitContext);
+
+      // Guard that requires git to be true (but it's false)
+      gitOrchestrator.addGuard('BRANCH_SETUP', (context) => {
+        return context.metadata.requireGit === true;
+      });
+
+      expect(() => {
+        gitOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      }).toThrow('Guard condition failed');
     });
   });
 });

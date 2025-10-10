@@ -20,12 +20,14 @@ export class WorkflowOrchestrator {
   private readonly eventListeners: Map<WorkflowEventType, Set<WorkflowEventListener>>;
   private persistCallback?: (state: WorkflowState) => void | Promise<void>;
   private autoPersistEnabled: boolean = false;
+  private readonly phaseGuards: Map<WorkflowPhase, (context: WorkflowContext) => boolean>;
 
   constructor(initialContext: WorkflowContext) {
     this.currentPhase = 'PREFLIGHT';
     this.context = { ...initialContext };
     this.transitions = this.defineTransitions();
     this.eventListeners = new Map();
+    this.phaseGuards = new Map();
   }
 
   /**
@@ -118,6 +120,20 @@ export class WorkflowOrchestrator {
         if (currentTDD !== 'RED') {
           throw new Error('Invalid transition: RED_PHASE_COMPLETE from non-RED phase');
         }
+
+        // Validate test results are provided
+        if (!event.testResults) {
+          throw new Error('Test results required for RED phase transition');
+        }
+
+        // Validate RED phase has failures
+        if (event.testResults.failed === 0) {
+          throw new Error('RED phase must have at least one failing test');
+        }
+
+        // Store test results in context
+        this.context.lastTestResults = event.testResults;
+
         this.emit('tdd:red:completed');
         this.context.currentTDDPhase = 'GREEN';
         this.emit('tdd:green:started');
@@ -127,6 +143,20 @@ export class WorkflowOrchestrator {
         if (currentTDD !== 'GREEN') {
           throw new Error('Invalid transition: GREEN_PHASE_COMPLETE from non-GREEN phase');
         }
+
+        // Validate test results are provided
+        if (!event.testResults) {
+          throw new Error('Test results required for GREEN phase transition');
+        }
+
+        // Validate GREEN phase has no failures
+        if (event.testResults.failed !== 0) {
+          throw new Error('GREEN phase must have zero failures');
+        }
+
+        // Store test results in context
+        this.context.lastTestResults = event.testResults;
+
         this.emit('tdd:green:completed');
         this.context.currentTDDPhase = 'COMMIT';
         this.emit('tdd:commit:started');
@@ -176,6 +206,12 @@ export class WorkflowOrchestrator {
     // Check guard condition if present
     if (transition.guard && !transition.guard(this.context)) {
       throw new Error(`Guard condition failed for transition to ${transition.to}`);
+    }
+
+    // Check phase-specific guard if present
+    const phaseGuard = this.phaseGuards.get(transition.to);
+    if (phaseGuard && !phaseGuard(this.context)) {
+      throw new Error('Guard condition failed');
     }
 
     // Emit phase exit event
@@ -321,5 +357,19 @@ export class WorkflowOrchestrator {
     if (this.autoPersistEnabled && this.persistCallback) {
       await this.persistCallback(this.getState());
     }
+  }
+
+  /**
+   * Add a guard condition for a specific phase
+   */
+  addGuard(phase: WorkflowPhase, guard: (context: WorkflowContext) => boolean): void {
+    this.phaseGuards.set(phase, guard);
+  }
+
+  /**
+   * Remove a guard condition for a specific phase
+   */
+  removeGuard(phase: WorkflowPhase): void {
+    this.phaseGuards.delete(phase);
   }
 }

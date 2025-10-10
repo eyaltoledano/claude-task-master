@@ -24,6 +24,18 @@ export interface WorkflowContext {
   branchName?: string;
   errors: WorkflowError[];
   metadata: Record<string, unknown>;
+  lastTestResults?: TestResult;
+}
+
+/**
+ * Test result from test execution
+ */
+export interface TestResult {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  phase: 'RED' | 'GREEN';
 }
 
 /**
@@ -62,8 +74,8 @@ export type WorkflowEvent =
   | { type: 'PREFLIGHT_COMPLETE' }
   | { type: 'BRANCH_CREATED'; branchName: string }
   | { type: 'SUBTASK_START'; subtaskId: string }
-  | { type: 'RED_PHASE_COMPLETE' }
-  | { type: 'GREEN_PHASE_COMPLETE' }
+  | { type: 'RED_PHASE_COMPLETE'; testResults?: TestResult }
+  | { type: 'GREEN_PHASE_COMPLETE'; testResults?: TestResult }
   | { type: 'COMMIT_COMPLETE' }
   | { type: 'SUBTASK_COMPLETE' }
   | { type: 'ALL_SUBTASKS_COMPLETE' }
