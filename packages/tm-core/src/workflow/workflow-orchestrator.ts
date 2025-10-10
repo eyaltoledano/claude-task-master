@@ -7,7 +7,8 @@ import type {
   StateTransition,
   WorkflowEventType,
   WorkflowEventData,
-  WorkflowEventListener
+  WorkflowEventListener,
+  SubtaskInfo
 } from './types.js';
 
 /**
@@ -178,6 +179,15 @@ export class WorkflowOrchestrator {
         this.emit('subtask:completed');
         // Move to next subtask
         this.context.currentSubtaskIndex++;
+
+        // Emit progress update
+        const progress = this.getProgress();
+        this.emit('progress:updated', {
+          completed: progress.completed,
+          total: progress.total,
+          percentage: progress.percentage
+        });
+
         if (this.context.currentSubtaskIndex < this.context.subtasks.length) {
           // Start next subtask with RED phase
           this.context.currentTDDPhase = 'RED';
@@ -371,5 +381,67 @@ export class WorkflowOrchestrator {
    */
   removeGuard(phase: WorkflowPhase): void {
     this.phaseGuards.delete(phase);
+  }
+
+  /**
+   * Get current subtask being worked on
+   */
+  getCurrentSubtask(): SubtaskInfo | undefined {
+    return this.context.subtasks[this.context.currentSubtaskIndex];
+  }
+
+  /**
+   * Get workflow progress information
+   */
+  getProgress(): {
+    completed: number;
+    total: number;
+    current: number;
+    percentage: number;
+  } {
+    const completed = this.context.subtasks.filter(
+      (st) => st.status === 'completed'
+    ).length;
+    const total = this.context.subtasks.length;
+    const current = this.context.currentSubtaskIndex + 1;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, current, percentage };
+  }
+
+  /**
+   * Check if can proceed to next subtask or phase
+   */
+  canProceed(): boolean {
+    if (this.currentPhase !== 'SUBTASK_LOOP') {
+      return false;
+    }
+
+    const currentSubtask = this.getCurrentSubtask();
+
+    // Can proceed if current subtask is completed (after COMMIT phase)
+    return currentSubtask?.status === 'completed';
+  }
+
+  /**
+   * Increment attempts for current subtask
+   */
+  incrementAttempts(): void {
+    const currentSubtask = this.getCurrentSubtask();
+    if (currentSubtask) {
+      currentSubtask.attempts++;
+    }
+  }
+
+  /**
+   * Check if current subtask has exceeded max attempts
+   */
+  hasExceededMaxAttempts(): boolean {
+    const currentSubtask = this.getCurrentSubtask();
+    if (!currentSubtask || !currentSubtask.maxAttempts) {
+      return false;
+    }
+
+    return currentSubtask.attempts > currentSubtask.maxAttempts;
   }
 }

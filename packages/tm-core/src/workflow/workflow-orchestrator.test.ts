@@ -649,4 +649,198 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       }).toThrow('Guard condition failed');
     });
   });
+
+  describe('Subtask Iteration and Progress Tracking', () => {
+    beforeEach(() => {
+      // Navigate to SUBTASK_LOOP for all tests
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+    });
+
+    it('should return current subtask', () => {
+      const currentSubtask = orchestrator.getCurrentSubtask();
+      expect(currentSubtask).toBeDefined();
+      expect(currentSubtask?.id).toBe('1.1');
+      expect(currentSubtask?.title).toBe('Subtask 1');
+    });
+
+    it('should return undefined when no current subtask', () => {
+      // Complete all subtasks
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      const currentSubtask = orchestrator.getCurrentSubtask();
+      expect(currentSubtask).toBeUndefined();
+    });
+
+    it('should calculate workflow progress', () => {
+      const progress = orchestrator.getProgress();
+      expect(progress.completed).toBe(0);
+      expect(progress.total).toBe(2);
+      expect(progress.current).toBe(1);
+      expect(progress.percentage).toBe(0);
+    });
+
+    it('should update progress as subtasks complete', () => {
+      // Complete first subtask
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      const progress = orchestrator.getProgress();
+      expect(progress.completed).toBe(1);
+      expect(progress.total).toBe(2);
+      expect(progress.current).toBe(2);
+      expect(progress.percentage).toBe(50);
+    });
+
+    it('should show 100% progress when all subtasks complete', () => {
+      // Complete all subtasks
+      for (let i = 0; i < 2; i++) {
+        orchestrator.transition({
+          type: 'RED_PHASE_COMPLETE',
+          testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+        });
+        orchestrator.transition({
+          type: 'GREEN_PHASE_COMPLETE',
+          testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+        });
+        orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+        orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+      }
+
+      const progress = orchestrator.getProgress();
+      expect(progress.completed).toBe(2);
+      expect(progress.total).toBe(2);
+      expect(progress.percentage).toBe(100);
+    });
+
+    it('should validate if can proceed to next phase', () => {
+      // In RED phase - cannot proceed without completing TDD cycle
+      expect(orchestrator.canProceed()).toBe(false);
+
+      // Complete RED phase
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+
+      // In GREEN phase - still cannot proceed
+      expect(orchestrator.canProceed()).toBe(false);
+
+      // Complete GREEN phase
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+
+      // In COMMIT phase - still cannot proceed
+      expect(orchestrator.canProceed()).toBe(false);
+
+      // Complete COMMIT phase
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+
+      // Subtask complete - can proceed
+      expect(orchestrator.canProceed()).toBe(true);
+    });
+
+    it('should track subtask attempts', () => {
+      const context = orchestrator.getContext();
+      expect(context.subtasks[0].attempts).toBe(0);
+
+      // Increment attempt on starting RED phase
+      orchestrator.incrementAttempts();
+      expect(orchestrator.getContext().subtasks[0].attempts).toBe(1);
+    });
+
+    it('should enforce max attempts limit', () => {
+      // Set max attempts to 3
+      const limitedContext: WorkflowContext = {
+        taskId: 'task-1',
+        subtasks: [
+          { id: '1.1', title: 'Subtask 1', status: 'pending', attempts: 0, maxAttempts: 3 }
+        ],
+        currentSubtaskIndex: 0,
+        errors: [],
+        metadata: {}
+      };
+
+      const limitedOrchestrator = new WorkflowOrchestrator(limitedContext);
+      limitedOrchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      limitedOrchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Increment attempts to max
+      for (let i = 0; i < 3; i++) {
+        limitedOrchestrator.incrementAttempts();
+      }
+
+      expect(limitedOrchestrator.hasExceededMaxAttempts()).toBe(false);
+
+      // One more attempt should exceed
+      limitedOrchestrator.incrementAttempts();
+      expect(limitedOrchestrator.hasExceededMaxAttempts()).toBe(true);
+    });
+
+    it('should allow unlimited attempts when maxAttempts is undefined', () => {
+      for (let i = 0; i < 100; i++) {
+        orchestrator.incrementAttempts();
+      }
+
+      expect(orchestrator.hasExceededMaxAttempts()).toBe(false);
+    });
+
+    it('should emit progress events on subtask completion', () => {
+      const events: WorkflowEventData[] = [];
+      orchestrator.on('progress:updated', (event) => events.push(event));
+
+      // Complete first subtask
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('progress:updated');
+      expect(events[0].data?.completed).toBe(1);
+      expect(events[0].data?.total).toBe(2);
+    });
+  });
 });
