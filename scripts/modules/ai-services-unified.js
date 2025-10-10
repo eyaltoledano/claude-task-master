@@ -39,6 +39,7 @@ import {
 import {
 	AnthropicAIProvider,
 	AzureProvider,
+	AgentLLMProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
 	CodexCliProvider,
@@ -71,6 +72,7 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
+	agentllm: new AgentLLMProvider(),
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider()
@@ -579,6 +581,20 @@ async function _unifiedServiceRunner(serviceType, params) {
 				continue;
 			}
 
+			// Enhanced skip logic for agentllm in non-MCP (CLI) contexts
+			if (providerName?.toLowerCase() === 'agentllm' && (outputType === 'cli' || outputType === 'text')) {
+				log(
+					'warn',
+					`Skipping role '${currentRole}' (Provider: ${providerName}): AgentLLM is intended for MCP delegation and is skipped for direct CLI calls.`
+				);
+				lastError =
+					lastError ||
+					new Error(
+						`AgentLLM provider '${providerName}' (role: ${currentRole}) is skipped in CLI mode.`
+					);
+				continue; // Skip to the next role in the sequence
+			}
+
 			// Check API key if needed
 			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
 				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
@@ -684,6 +700,26 @@ async function _unifiedServiceRunner(serviceType, params) {
 				modelId,
 				currentRole
 			);
+
+			// === BEGIN MODIFICATION for AgentLLM Delegation ===
+			if (
+				providerResponse &&
+				providerResponse.type === 'agent_llm_delegation'
+			) {
+				if (getDebugFlag()) {
+					log(
+						'info',
+						`Role ${currentRole} (Provider: ${providerName}) signaled agent_llm_delegation for command ${commandName}. Details: ${JSON.stringify(providerResponse.details)}`
+					);
+				}
+				// Propagate the delegation signal object upwards.
+				// The calling function (e.g., an MCP tool) will use this to build the pendingInteraction field.
+				return {
+					mainResult: providerResponse, // This is the { type: 'agent_llm_delegation', details: ... } object
+					telemetryData: null // No direct LLM call was made by this provider here.
+				};
+			}
+			// === END MODIFICATION ===
 
 			if (userId && providerResponse && providerResponse.usage) {
 				try {

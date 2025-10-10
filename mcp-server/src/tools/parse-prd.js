@@ -8,6 +8,7 @@ import {
 	handleApiResult,
 	withNormalizedProjectRoot,
 	createErrorResponse,
+	createAgentDelegationResponse,
 	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
@@ -84,18 +85,31 @@ export function registerParsePRDTool(server) {
 						log,
 						{ session, reportProgress: progressCapability }
 					);
+					// Check if agent delegation is needed
+					if (
+						result &&
+						result.needsAgentDelegation === true
+					) {
+						log.info(
+							`parse_prd tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+						);
+						return createAgentDelegationResponse(
+							result.pendingInteraction
+						);
+					} else {
+						// If no delegation, process the result as usual
 					return handleApiResult(
-						result,
-						log,
-						'Error parsing PRD',
-						undefined,
-						args.projectRoot
-					);
+							result,
+							log,
+							'Error parsing PRD',
+							undefined,
+							args.projectRoot
+						);
+					}
 				} catch (error) {
-					log.error(`Error in parse_prd: ${error.message}`);
-					return createErrorResponse(`Failed to parse PRD: ${error.message}`);
-				}
+				log.error(`Error in parse_prd: ${error.message}`);
+				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
 			}
-		)
+		})
 	});
 }

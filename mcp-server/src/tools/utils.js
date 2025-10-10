@@ -759,6 +759,23 @@ function withNormalizedProjectRoot(executeFn) {
 }
 
 /**
+ * Creates a standardized response for signaling agent delegation.
+ * @param {Object} pendingInteraction - The pending interaction object.
+ * @returns {Object} - The response object for agent delegation.
+ */
+function createAgentDelegationResponse(pendingInteraction) {
+	const payload = {
+		isAgentLLMPendingInteraction: true,
+		details: pendingInteraction,
+		uri: 'agent-llm://pending-interaction',
+		mimeType: 'application/json',
+		directive: 'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
+		instructions: "Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'."
+  	};
+  	return { ...createContentResponse(payload), isError: false };
+}
+
+/**
  * Checks progress reporting capability and returns the validated function or undefined.
  *
  * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
@@ -844,5 +861,6 @@ export {
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
 	withNormalizedProjectRoot,
+	createAgentDelegationResponse,
 	checkProgressCapability
 };

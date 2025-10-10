@@ -64,21 +64,28 @@ async function expandTask(
 		complexityReportPath
 	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
+	const isMCPCall = !!mcpLog;
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
 
-	// Use mcpLog if available, otherwise use the default console log wrapper
+	// Use mcpLog if available for logging, otherwise use the default console log wrapper
 	const logger = mcpLog || {
 		info: (msg) => !isSilentMode() && log('info', msg),
 		warn: (msg) => !isSilentMode() && log('warn', msg),
 		error: (msg) => !isSilentMode() && log('error', msg),
 		debug: (msg) =>
-			!isSilentMode() && getDebugFlag(session) && log('debug', msg) // Use getDebugFlag
+			!isSilentMode() && getDebugFlag(projectRoot) && log('debug', msg)
 	};
 
 	if (mcpLog) {
-		logger.info(`expandTask called with context: session=${!!session}`);
+		logger.info(
+			`expandTask called with context: session=${!!session}, resolved outputType for AI: ${outputFormat}`
+		);
+	} else {
+		logger.debug(
+			`expandTask called in CLI mode, resolved outputType for AI: ${outputFormat}`
+		);
 	}
 
 	try {
@@ -293,7 +300,8 @@ async function expandTask(
 		// --- AI Subtask Generation using generateObjectService ---
 		let generatedSubtasks = [];
 		let loadingIndicator = null;
-		if (outputFormat === 'text') {
+		if (!isMCPCall) {
+			// Replaced outputFormat === 'text' with !isMCPCall
 			loadingIndicator = startLoadingIndicator(
 				`Generating ${finalSubtaskCount || 'appropriate number of'} subtasks...\n`
 			);
@@ -315,6 +323,40 @@ async function expandTask(
 				commandName: 'expand-task',
 				outputType: outputFormat
 			});
+
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				logger.debug(
+					'expandTask (core): Detected agent_llm_delegation signal.'
+				);
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm',
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							originalCommand: 'expand-task',
+							role: useResearch ? 'research' : 'main',
+							// If we change to generateObjectService for agents, this would be 'generateObject'
+							// and requestParameters.schema would be subtaskWrapperSchema.
+							// For now, assuming agent handles generateText and returns parseable JSON string.
+							serviceType: 'generateObject',
+							requestParameters: {
+								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
+								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
+								numSubtasksForAgent: finalSubtaskCount, // Add finalSubtaskCount (as numSubtasksForAgent)
+								tagInfo: { currentTag: tag || 'master' }
+							}
+						}
+					},
+          			telemetryData: aiServiceResponse?.telemetryData
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			// With generateObject, we expect structured data – verify it before use
 			const mainResult = aiServiceResponse?.mainResult;
@@ -349,7 +391,7 @@ async function expandTask(
 
 		// Display AI Usage Summary for CLI
 		if (
-			outputFormat === 'text' &&
+			!isMCPCall && // Replaced outputFormat === 'text' with !isMCPCall
 			aiServiceResponse &&
 			aiServiceResponse.telemetryData
 		) {
@@ -365,11 +407,15 @@ async function expandTask(
 	} catch (error) {
 		// Catches errors from file reading, parsing, AI call etc.
 		logger.error(`Error expanding task ${taskId}: ${error.message}`, 'error');
-		if (outputFormat === 'text' && getDebugFlag(session)) {
+		if (!isMCPCall && getDebugFlag(projectRoot)) {
+			// Replaced outputFormat === 'text' with !isMCPCall
 			console.error(error); // Log full stack in debug CLI mode
 		}
 		throw error; // Re-throw for the caller
 	}
 }
 
-export default expandTask;
+// Replace the single default export (if it exists)
+// export default expandTask;
+// With:
+export { expandTask as default };

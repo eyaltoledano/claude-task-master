@@ -133,9 +133,54 @@ async function addTask(
 
 	// Create custom reporter that checks for MCP log
 	const report = (message, level = 'info') => {
+		// message is already a pre-formatted string
 		if (mcpLog) {
-			mcpLog[level](message);
+			switch (level) {
+				case 'info':
+					// Check if the method exists before calling, with a fallback to console for safety
+					if (mcpLog.info) mcpLog.info(message);
+					else console.log(`[INFO] ${message}`);
+					break;
+				case 'warn':
+					if (mcpLog.warn) mcpLog.warn(message);
+					else console.log(`[WARN] ${message}`);
+					break;
+				case 'error':
+					if (mcpLog.error) mcpLog.error(message);
+					else console.log(`[ERROR] ${message}`);
+					break;
+				case 'debug':
+					// createLogWrapper provides .debug, which maps to server log.debug
+					if (mcpLog.debug) {
+						mcpLog.debug(message);
+					} else if (mcpLog.info) {
+						// Fallback for debug if .debug is not on mcpLog for some reason
+						mcpLog.info(`[DEBUG] ${message}`);
+					} else {
+						// Absolute fallback
+						console.log(`[DEBUG] ${message}`);
+					}
+					break;
+				case 'success':
+					// createLogWrapper provides .success, which maps to server log.info
+					if (mcpLog.success) {
+						mcpLog.success(message);
+					} else if (mcpLog.info) {
+						// Fallback for success if .success is not on mcpLog
+						mcpLog.info(`[SUCCESS] ${message}`);
+					} else {
+						// Absolute fallback
+						console.log(`[SUCCESS] ${message}`);
+					}
+					break;
+				default:
+					// For any other level string, default to info with a prefix
+					if (mcpLog.info) mcpLog.info(`[${level.toUpperCase()}] ${message}`);
+					else console.log(`[${level.toUpperCase()}] ${message}`);
+					break;
+			}
 		} else if (outputFormat === 'text') {
+			// Fallback to consoleLog (from utils.js) for CLI mode
 			consoleLog(level, message);
 		}
 	};
@@ -439,6 +484,43 @@ async function addTask(
 					outputType: outputType || (isMCP ? 'mcp' : 'cli') // Use passed outputType or derive
 				});
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
+
+				// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+				if (
+					aiServiceResponse &&
+					aiServiceResponse.mainResult &&
+					aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+				) {
+					report(
+						'addTask (core): Detected agent_llm_delegation signal for AI-driven task creation.',
+						'debug'
+					);
+					if (loadingIndicator) stopLoadingIndicator(loadingIndicator); // Stop CLI loading indicator
+
+					return {
+						needsAgentDelegation: true,
+						pendingInteraction: {
+							type: 'agent_llm',
+							interactionId: aiServiceResponse.mainResult.interactionId,
+							delegatedCallDetails: {
+								originalCommand: context.commandName || 'add_task',
+								role: serviceRole, // serviceRole is already defined in this scope
+								serviceType: 'generateObject',
+								requestParameters: {
+									...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, schema, modelId etc.
+									// Pass additional context/args the agent or saver might need:
+									newTaskId: newTaskId, // The ID determined for the new task
+									userDependencies: numericDependencies, // User-specified dependencies
+									userPriority: effectivePriority // User-specified or default priority
+									// researchFlag: useResearch, // research flag is already in details.role or similar
+								}
+							}
+						}
+						// No 'newTaskId' or 'telemetryData' at the top level of this return,
+						// as the task creation is pending.
+					};
+				}
+				// === END AGENT_LLM_DELEGATION HANDLING ===
 
 				if (!aiServiceResponse || !aiServiceResponse.mainResult) {
 					throw new Error(

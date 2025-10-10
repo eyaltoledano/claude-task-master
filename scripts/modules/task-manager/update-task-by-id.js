@@ -329,6 +329,40 @@ async function updateTaskById(
 				});
 			}
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				report(
+					'debug',
+					'updateTaskById (core): Detected agent_llm_delegation signal.'
+				);
+				// Stop loading indicator if it was started (for CLI mode, but good practice)
+				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm',
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							originalCommand: context.commandName || 'update_task', // Will be set by updateTaskByIdDirect
+							role: serviceRole, // serviceRole is already defined in this scope
+							serviceType: 'generateObject', // Agent expected to return JSON object of the updated task
+							requestParameters: {
+								...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, modelId etc.
+								// Pass original task ID for context, agent might need it if not in prompt/details
+								originalTaskId: taskId
+							}
+						}
+					}
+					// No 'updatedTask' or 'telemetryData' here as the operation is pending.
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
@@ -545,4 +579,4 @@ async function updateTaskById(
 	}
 }
 
-export default updateTaskById;
+export { updateTaskById as default };

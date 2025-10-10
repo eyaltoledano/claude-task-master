@@ -225,6 +225,49 @@ async function updateTasks(
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			if (
+				aiServiceResponse &&
+				aiServiceResponse.mainResult &&
+				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+			) {
+				if (isMCP)
+					logFn.debug(
+						'updateTasks (core): Detected agent_llm_delegation signal.'
+					);
+				else
+					logFn(
+						'debug',
+						'updateTasks (core): Detected agent_llm_delegation signal.'
+					);
+
+				// Stop loading indicator if it was started
+				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+
+				return {
+					needsAgentDelegation: true,
+					pendingInteraction: {
+						type: 'agent_llm', // Changed from "agent_llm_bulk_update"
+						interactionId: aiServiceResponse.mainResult.interactionId,
+						delegatedCallDetails: {
+							originalCommand: context.commandName || 'update-tasks',
+							role: serviceRole, // This variable should be in scope
+							serviceType: 'generateObject', // updateTasks uses generateObject
+							requestParameters: {
+								// These are the details from the agent_llm_delegation signal
+								...aiServiceResponse.mainResult.details,
+								// Add specific context for updating multiple tasks
+								fromId: fromId, // fromId is a parameter of updateTasks
+								tasksToUpdate: tasksToUpdate, // tasksToUpdate is filtered earlier in the function
+								originalUserPrompt: prompt // The user's high-level prompt for changes
+							}
+						}
+					}
+					// No 'updatedTasks' or 'telemetryData' here as the operation is pending.
+				};
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
@@ -339,4 +382,4 @@ async function updateTasks(
 	}
 }
 
-export default updateTasks;
+export { updateTasks as default };
