@@ -1,0 +1,483 @@
+# Example Prompts for AI Agents
+
+Collection of effective prompts for AI agents working with TaskMaster's TDD workflow system.
+
+## Table of Contents
+
+- [Getting Started Prompts](#getting-started-prompts)
+- [Test Generation Prompts](#test-generation-prompts)
+- [Implementation Prompts](#implementation-prompts)
+- [Debugging Prompts](#debugging-prompts)
+- [Advanced Patterns](#advanced-patterns)
+
+## Getting Started Prompts
+
+### Start a Task
+
+```
+I want to implement Task 7 using TDD workflow. Please:
+1. Start the autopilot workflow
+2. Show me the first subtask to implement
+3. Begin the RED-GREEN-COMMIT cycle
+```
+
+### Resume Work
+
+```
+I have an in-progress workflow. Please:
+1. Resume the autopilot workflow
+2. Show current status and progress
+3. Continue from where we left off
+```
+
+### Understanding Current State
+
+```
+What's the current state of the workflow? Please show:
+- Which subtask we're on
+- Current TDD phase (RED/GREEN/COMMIT)
+- Progress percentage
+- Next action required
+```
+
+## Test Generation Prompts
+
+### Basic Test Generation
+
+```
+We're in RED phase for subtask "{SUBTASK_TITLE}". Please:
+1. Read the subtask requirements
+2. Write a comprehensive test that validates the behavior
+3. The test MUST fail because the feature doesn't exist yet
+4. Use the project's testing framework (vitest/jest/etc)
+5. Follow the project's test file conventions
+```
+
+### Test for Specific Feature
+
+```
+For subtask: "Implement user authentication endpoint"
+
+Write a failing test that:
+1. Tests POST /api/auth/login
+2. Validates request body (email, password)
+3. Checks response format and status codes
+4. Uses proper mocking for database calls
+5. Follows security best practices
+```
+
+### Edge Case Testing
+
+```
+The basic happy path test is passing. Now write additional tests for:
+1. Error cases (invalid input, missing fields)
+2. Edge cases (empty strings, null values, etc.)
+3. Security concerns (SQL injection, XSS)
+4. Performance expectations (timeout, rate limits)
+
+Each test should initially fail.
+```
+
+### Test Refactoring
+
+```
+Our tests are passing but could be improved. Please:
+1. Review existing tests for duplication
+2. Extract common setup into beforeEach/fixtures
+3. Improve test descriptions for clarity
+4. Add missing edge cases
+5. Ensure all new tests fail first (RED phase)
+```
+
+## Implementation Prompts
+
+### Basic Implementation
+
+```
+We're in GREEN phase. The test is failing with: {ERROR_MESSAGE}
+
+Please:
+1. Implement the minimal code to make this test pass
+2. Don't over-engineer or add features not tested
+3. Follow the project's code style and patterns
+4. Ensure the implementation is clean and readable
+```
+
+### Implementation with Constraints
+
+```
+Implement the feature to pass the test, but:
+- Use TypeScript with strict type checking
+- Follow SOLID principles
+- Keep functions under 20 lines
+- Use dependency injection where appropriate
+- Add JSDoc comments for public APIs
+```
+
+### Fix Failing Tests
+
+```
+GREEN phase validation failed - {N} tests still failing.
+
+Please:
+1. Review the failing test output
+2. Identify what's not working
+3. Fix the implementation to pass all tests
+4. Don't modify tests to make them pass
+5. Explain what was wrong
+```
+
+### Refactor Implementation
+
+```
+Tests are passing but code quality needs improvement:
+1. Extract repeated logic into functions
+2. Improve variable names
+3. Add error handling
+4. Optimize performance if needed
+5. Ensure tests still pass after refactoring
+```
+
+## Debugging Prompts
+
+### Test Output Parsing
+
+```
+Here's the test output:
+{PASTE_TEST_OUTPUT}
+
+Please parse this into the required JSON format:
+{
+  "total": N,
+  "passed": N,
+  "failed": N,
+  "skipped": N
+}
+
+Then complete the current phase.
+```
+
+### Workflow Stuck
+
+```
+The workflow seems stuck. Please:
+1. Check the current workflow status
+2. Identify the issue
+3. If corrupted, abort and restart
+4. Explain what went wrong and how to prevent it
+```
+
+### Phase Validation Failing
+
+```
+I'm getting: "RED phase validation failed: no test failures"
+
+Please:
+1. Review the test I just wrote
+2. Identify why it's not actually testing new behavior
+3. Rewrite the test to properly fail
+4. Explain what makes a good failing test
+```
+
+### Git Issues
+
+```
+Getting git errors when trying to start workflow:
+{PASTE_ERROR}
+
+Please:
+1. Diagnose the git issue
+2. Provide commands to fix it
+3. Restart the workflow once fixed
+```
+
+## Advanced Patterns
+
+### Parallel Test Generation
+
+```
+We have 3 subtasks to implement. For efficiency:
+1. Read all 3 subtask descriptions
+2. Plan the test structure for each
+3. Identify shared test utilities needed
+4. Generate tests for subtask 1 (they should fail)
+5. Once we complete 1, move to 2, then 3
+```
+
+### Integration Test Strategy
+
+```
+This subtask requires integration testing. Please:
+1. Set up test database/environment
+2. Write integration tests that exercise the full stack
+3. Use proper cleanup in afterEach
+4. Mock external services (APIs, third-party)
+5. Ensure tests are deterministic and fast
+```
+
+### Test-Driven Refactoring
+
+```
+We need to refactor {MODULE_NAME} but keep behavior unchanged:
+1. First, write comprehensive tests for current behavior
+2. Ensure all tests pass (document current state)
+3. Refactor the implementation
+4. Verify all tests still pass
+5. Commit the refactoring
+```
+
+### Complex Feature Implementation
+
+```
+Subtask: "{COMPLEX_SUBTASK}"
+
+This is complex. Let's break it down:
+1. Identify the core functionality to test
+2. Write tests for the simplest version
+3. Implement minimal working code
+4. Commit that cycle
+5. Then iteratively add more tests for additional features
+6. Each iteration is a RED-GREEN-COMMIT cycle
+```
+
+### Performance Testing
+
+```
+Write performance tests for {FEATURE}:
+1. Measure baseline performance (current state)
+2. Write test that fails if operation takes > {N}ms
+3. Implement optimizations to pass the test
+4. Document performance improvements
+5. Consider edge cases (large inputs, concurrent requests)
+```
+
+### Security Testing
+
+```
+Write security-focused tests for {FEATURE}:
+1. Test input validation (injection attacks)
+2. Test authentication/authorization
+3. Test data sanitization
+4. Test rate limiting
+5. Document security assumptions
+
+Each test should initially fail and demonstrate the vulnerability.
+```
+
+## Workflow Automation Patterns
+
+### Full Autonomous Mode
+
+```
+Implement Task {TASK_ID} completely autonomously:
+1. Start the workflow
+2. For each subtask:
+   a. Read requirements
+   b. Write failing tests
+   c. Implement to pass tests
+   d. Commit changes
+3. Continue until all subtasks complete
+4. Report final status
+
+Rules:
+- Never skip the RED phase
+- Always verify tests fail first
+- Implement minimal working code
+- Commit after each subtask
+- Handle errors gracefully with retries
+```
+
+### Supervised Mode
+
+```
+Work on Task {TASK_ID} with human oversight:
+1. Start workflow and show plan
+2. For each subtask:
+   a. Show test plan, wait for approval
+   b. Write and run tests, show results
+   c. Show implementation plan, wait for approval
+   d. Implement and verify
+   e. Show commit message, wait for approval
+3. Request feedback between subtasks
+```
+
+### Review Mode
+
+```
+Review the current workflow state:
+1. Show all completed subtasks and their commits
+2. Identify remaining subtasks
+3. Check test coverage
+4. Verify git history is clean
+5. Recommend next steps
+```
+
+## Error Recovery Patterns
+
+### Retry with Learning
+
+```
+The {PHASE} phase failed {N} times. Please:
+1. Review all previous attempts
+2. Identify the pattern of failures
+3. Propose a different approach
+4. Explain why this approach should work
+5. Implement with the new approach
+```
+
+### Escalate to Human
+
+```
+After {MAX_ATTEMPTS} attempts, unable to complete {SUBTASK}.
+
+Please:
+1. Document what was tried
+2. Explain what's not working
+3. Provide relevant code and test output
+4. Suggest where human expertise is needed
+5. Save current state for manual intervention
+```
+
+### Reset and Restart
+
+```
+Workflow is in an inconsistent state. Please:
+1. Save any valuable work
+2. Abort the current workflow
+3. Explain what went wrong
+4. Propose a better approach
+5. Restart with improved strategy
+```
+
+## Example Complete Session
+
+```
+I need to implement Task 7 which has 5 subtasks. Please work autonomously with these preferences:
+
+1. Testing Framework: vitest
+2. Code Style: TypeScript strict mode, functional style preferred
+3. Commit Style: Conventional commits with detailed messages
+4. Review: Show me status after each subtask completion
+
+Workflow:
+1. Start autopilot for task 7
+2. For each subtask (7.1 through 7.5):
+   - RED: Write comprehensive failing tests
+   - GREEN: Implement minimal code to pass
+   - COMMIT: Auto-generate commit and advance
+3. Final: Show summary of all commits and changes
+
+Error Handling:
+- If phase validation fails, explain why and retry
+- If tests are flaky, identify and fix
+- If stuck after 3 attempts, ask for help
+
+Let's begin!
+```
+
+## Tips for Effective Prompts
+
+### 1. Be Specific About Context
+
+**Good:**
+```
+For the UserAuthenticationService in src/services/auth.ts,
+write tests for the login method using vitest.
+```
+
+**Bad:**
+```
+Write tests for authentication.
+```
+
+### 2. Specify Success Criteria
+
+**Good:**
+```
+Tests should cover:
+1. Successful login with valid credentials
+2. Failed login with invalid password
+3. Account lockout after 5 failures
+4. Rate limiting (max 10 attempts/minute)
+```
+
+**Bad:**
+```
+Test login functionality.
+```
+
+### 3. Request Explanations
+
+**Good:**
+```
+Implement the feature and explain:
+1. Why this approach was chosen
+2. What edge cases are handled
+3. What assumptions were made
+```
+
+**Bad:**
+```
+Just implement it.
+```
+
+### 4. Include Project Context
+
+**Good:**
+```
+Following the existing pattern in src/models/,
+create a User model that:
+- Extends BaseModel
+- Uses Zod for validation
+- Includes proper TypeScript types
+```
+
+**Bad:**
+```
+Create a user model.
+```
+
+## Troubleshooting Prompts
+
+### When Tests Won't Fail
+
+```
+My test is passing when it should fail. Please:
+1. Review the test code
+2. Identify why it's passing
+3. Check if implementation already exists
+4. Rewrite test to actually test new behavior
+5. Verify it fails this time
+```
+
+### When Implementation is Incomplete
+
+```
+Tests are still failing after implementation. Please:
+1. Show me the failing test output
+2. Review the implementation
+3. Identify what's missing
+4. Fix the implementation
+5. Verify all tests pass
+```
+
+### When Workflow Won't Advance
+
+```
+Can't complete the phase. Getting error: {ERROR}
+
+Please:
+1. Check workflow status
+2. Verify test results format is correct
+3. Check if phase validation requirements are met
+4. If needed, show me how to manually fix state
+```
+
+---
+
+## Additional Resources
+
+- [AI Agent Integration Guide](../ai-agent-integration.md)
+- [CLAUDE.md Template](./CLAUDE.md.template)
+- [Command Reference](../command-reference.md)
+- [Testing Best Practices](./testing-best-practices.md)
