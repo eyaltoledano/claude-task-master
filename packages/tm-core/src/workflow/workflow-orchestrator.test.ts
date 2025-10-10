@@ -1025,4 +1025,208 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
       expect(context.errors[1].message).toBe('Error 2');
     });
   });
+
+  describe('Resume Functionality from Checkpoints', () => {
+    it('should restore state from checkpoint', () => {
+      // Advance to SUBTASK_LOOP and complete first subtask
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      // Save state
+      const state = orchestrator.getState();
+
+      // Create new orchestrator and restore
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      expect(restored.getCurrentPhase()).toBe('SUBTASK_LOOP');
+      expect(restored.getContext().currentSubtaskIndex).toBe(1);
+      expect(restored.getContext().branchName).toBe('feature/test');
+    });
+
+    it('should resume from mid-TDD cycle', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+
+      // Save state in GREEN phase
+      const state = orchestrator.getState();
+
+      // Restore and verify in GREEN phase
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      expect(restored.getCurrentPhase()).toBe('SUBTASK_LOOP');
+      expect(restored.getCurrentTDDPhase()).toBe('GREEN');
+    });
+
+    it('should validate restored state integrity', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      const state = orchestrator.getState();
+
+      // Validate state structure
+      expect(orchestrator.canResumeFromState(state)).toBe(true);
+    });
+
+    it('should reject invalid checkpoint state', () => {
+      const invalidState = {
+        phase: 'INVALID_PHASE' as WorkflowPhase,
+        context: initialContext
+      };
+
+      expect(orchestrator.canResumeFromState(invalidState)).toBe(false);
+    });
+
+    it('should preserve subtask attempts on resume', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Increment attempts
+      orchestrator.incrementAttempts();
+      orchestrator.incrementAttempts();
+
+      const state = orchestrator.getState();
+
+      // Restore
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      const currentSubtask = restored.getCurrentSubtask();
+      expect(currentSubtask?.attempts).toBe(2);
+    });
+
+    it('should preserve errors on resume', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      const error: WorkflowError = {
+        phase: 'SUBTASK_LOOP',
+        message: 'Test error',
+        timestamp: new Date(),
+        recoverable: true
+      };
+
+      orchestrator.transition({ type: 'ERROR', error });
+
+      const state = orchestrator.getState();
+
+      // Restore
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      expect(restored.getContext().errors).toHaveLength(1);
+      expect(restored.getContext().errors[0].message).toBe('Test error');
+    });
+
+    it('should preserve completed subtask statuses on resume', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      // Complete first subtask
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      const state = orchestrator.getState();
+
+      // Restore
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      const progress = restored.getProgress();
+      expect(progress.completed).toBe(1);
+      expect(progress.current).toBe(2);
+    });
+
+    it('should emit workflow:resumed event on restore', () => {
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+
+      const state = orchestrator.getState();
+
+      // Create new orchestrator with event listener
+      const events: WorkflowEventData[] = [];
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.on('workflow:resumed', (event) => events.push(event));
+
+      restored.restoreState(state);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('workflow:resumed');
+      expect(events[0].phase).toBe('SUBTASK_LOOP');
+    });
+
+    it('should calculate correct progress after resume', () => {
+      // Complete first subtask
+      orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+      orchestrator.transition({
+        type: 'BRANCH_CREATED',
+        branchName: 'feature/test'
+      });
+      orchestrator.transition({
+        type: 'RED_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 0, failed: 5, skipped: 0, phase: 'RED' }
+      });
+      orchestrator.transition({
+        type: 'GREEN_PHASE_COMPLETE',
+        testResults: { total: 5, passed: 5, failed: 0, skipped: 0, phase: 'GREEN' }
+      });
+      orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+      orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+
+      const state = orchestrator.getState();
+
+      // Restore and check progress
+      const restored = new WorkflowOrchestrator(state.context);
+      restored.restoreState(state);
+
+      const progress = restored.getProgress();
+      expect(progress.completed).toBe(1);
+      expect(progress.total).toBe(2);
+      expect(progress.percentage).toBe(50);
+    });
+  });
 });

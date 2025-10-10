@@ -10429,7 +10429,7 @@
               5
             ],
             "details": "On startup, detect existing `state.json` checkpoint, restore state machine context and state, and continue execution from the last known point, including subtask progress and phase.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests simulating process restarts and verifying correct resumption of workflow state and progress.",
             "parentId": "undefined"
           },
@@ -10860,7 +10860,7 @@
       ],
       "created": "2025-10-10T13:35:33.065Z",
       "description": "Tasks for tdd-phase-1-core-rails context",
-      "updated": "2025-10-10T14:12:11.021Z"
+      "updated": "2025-10-10T14:41:41.216Z"
     }
   }
 }

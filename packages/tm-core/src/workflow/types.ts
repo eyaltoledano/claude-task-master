@@ -126,6 +126,7 @@ export type WorkflowEventType =
   | 'workflow:started'
   | 'workflow:completed'
   | 'workflow:error'
+  | 'workflow:resumed'
   | 'phase:entered'
   | 'phase:exited'
   | 'tdd:red:started'

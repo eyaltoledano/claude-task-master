@@ -304,6 +304,12 @@ export class WorkflowOrchestrator {
   restoreState(state: WorkflowState): void {
     this.currentPhase = state.phase;
     this.context = { ...state.context };
+
+    // Emit workflow:resumed event
+    this.emit('workflow:resumed', {
+      phase: this.currentPhase,
+      progress: this.getProgress()
+    });
   }
 
   /**
@@ -519,5 +525,44 @@ export class WorkflowOrchestrator {
    */
   isAborted(): boolean {
     return this.aborted;
+  }
+
+  /**
+   * Validate if a state can be resumed from
+   */
+  canResumeFromState(state: WorkflowState): boolean {
+    // Validate phase is valid
+    const validPhases: WorkflowPhase[] = [
+      'PREFLIGHT',
+      'BRANCH_SETUP',
+      'SUBTASK_LOOP',
+      'FINALIZE',
+      'COMPLETE'
+    ];
+
+    if (!validPhases.includes(state.phase)) {
+      return false;
+    }
+
+    // Validate context structure
+    if (!state.context || typeof state.context !== 'object') {
+      return false;
+    }
+
+    // Validate required context fields
+    if (!state.context.taskId || !Array.isArray(state.context.subtasks)) {
+      return false;
+    }
+
+    if (typeof state.context.currentSubtaskIndex !== 'number') {
+      return false;
+    }
+
+    if (!Array.isArray(state.context.errors)) {
+      return false;
+    }
+
+    // All validations passed
+    return true;
   }
 }
