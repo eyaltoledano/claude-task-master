@@ -187,6 +187,53 @@ export interface SecuritySettings {
 }
 
 /**
+ * Workflow and autopilot TDD settings
+ */
+export interface WorkflowSettings {
+	/** Enable autopilot/TDD workflow features */
+	enableAutopilot: boolean;
+	/** Maximum retry attempts for phase validation */
+	maxPhaseAttempts: number;
+	/** Branch naming pattern for workflow branches */
+	branchPattern: string;
+	/** Require clean working tree before starting workflow */
+	requireCleanWorkingTree: boolean;
+	/** Automatically stage all changes during commit phase */
+	autoStageChanges: boolean;
+	/** Include co-author attribution in commits */
+	includeCoAuthor: boolean;
+	/** Co-author name for commit messages */
+	coAuthorName: string;
+	/** Co-author email for commit messages */
+	coAuthorEmail: string;
+	/** Test result thresholds for phase validation */
+	testThresholds: {
+		/** Minimum test count for valid RED phase */
+		minTests: number;
+		/** Maximum allowed failing tests in GREEN phase */
+		maxFailuresInGreen: number;
+	};
+	/** Commit message template pattern */
+	commitMessageTemplate: string;
+	/** Conventional commit types allowed */
+	allowedCommitTypes: string[];
+	/** Default commit type for autopilot */
+	defaultCommitType: string;
+	/** Timeout for workflow operations in milliseconds */
+	operationTimeout: number;
+	/** Enable activity logging for workflow events */
+	enableActivityLogging: boolean;
+	/** Path to store workflow activity logs */
+	activityLogPath: string;
+	/** Enable automatic backup of workflow state */
+	enableStateBackup: boolean;
+	/** Maximum workflow state backups to retain */
+	maxStateBackups: number;
+	/** Abort workflow if validation fails after max attempts */
+	abortOnMaxAttempts: boolean;
+}
+
+/**
  * Main configuration interface for Task Master core
  */
 export interface IConfiguration {
@@ -210,6 +257,9 @@ export interface IConfiguration {
 
 	/** Tag and context settings */
 	tags: TagSettings;
+
+	/** Workflow and autopilot settings */
+	workflow: WorkflowSettings;
 
 	/** Storage configuration */
 	storage: StorageSettings;
@@ -413,6 +463,28 @@ export const DEFAULT_CONFIG_VALUES = {
 		DEFAULT_TAG: 'master',
 		MAX_TAGS_PER_TASK: 10,
 		NAMING_CONVENTION: 'kebab-case' as const
+	},
+	WORKFLOW: {
+		ENABLE_AUTOPILOT: true,
+		MAX_PHASE_ATTEMPTS: 3,
+		BRANCH_PATTERN: 'task-{taskId}',
+		REQUIRE_CLEAN_WORKING_TREE: true,
+		AUTO_STAGE_CHANGES: true,
+		INCLUDE_CO_AUTHOR: true,
+		CO_AUTHOR_NAME: 'TaskMaster AI',
+		CO_AUTHOR_EMAIL: 'taskmaster@example.com',
+		MIN_TESTS: 1,
+		MAX_FAILURES_IN_GREEN: 0,
+		COMMIT_MESSAGE_TEMPLATE:
+			'{type}({scope}): {description} (Task {taskId}.{subtaskIndex})',
+		ALLOWED_COMMIT_TYPES: ['feat', 'fix', 'refactor', 'test', 'docs', 'chore'],
+		DEFAULT_COMMIT_TYPE: 'feat',
+		OPERATION_TIMEOUT: 60000,
+		ENABLE_ACTIVITY_LOGGING: true,
+		ACTIVITY_LOG_PATH: '.taskmaster/logs/workflow-activity.log',
+		ENABLE_STATE_BACKUP: true,
+		MAX_STATE_BACKUPS: 5,
+		ABORT_ON_MAX_ATTEMPTS: false
 	},
 	STORAGE: {
 		TYPE: 'auto' as const,

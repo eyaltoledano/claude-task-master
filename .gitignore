@@ -97,3 +97,9 @@ apps/extension/vsix-build/
 
 # turbo
 .turbo
+
+# TaskMaster Workflow State (should not be committed)
+.taskmaster/workflow-state.json
+.taskmaster/workflow-state.*.json
+.taskmaster/logs/workflow-activity.log
+.taskmaster/logs/*.log

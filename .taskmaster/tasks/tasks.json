@@ -10681,7 +10681,7 @@
           "4",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10689,7 +10689,7 @@
             "description": "Create comprehensive MCP tool schema definitions for all autopilot tools with proper input validation and structured output specifications.",
             "dependencies": [],
             "details": "Define TypeScript interfaces and JSON schemas for autopilot_start, autopilot_next, autopilot_complete_phase, autopilot_commit, autopilot_status, and autopilot_resume tools. Use joi or zod for runtime parameter validation. Specify required/optional parameters, data types, and validation rules. Document expected input/output formats matching CLI functionality. Create shared validation utilities for consistent error handling across all tools.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for schema validation with valid/invalid inputs. Test parameter type checking and error message quality. Verify schema completeness against CLI parameter sets.",
             "parentId": "undefined"
           },
@@ -10701,7 +10701,7 @@
               1
             ],
             "details": "Implement autopilot_start tool accepting tag, target directory, and configuration parameters. Create autopilot_resume tool for continuing interrupted workflows from state.json. Both tools should initialize WorkflowOrchestrator, validate preconditions, and return workflow status. Use the same core logic as CLI commands but expose via MCP interface. Handle error cases like existing workflows, missing dependencies, or invalid configurations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with mocked workflow state. Test start with various configurations. Test resume from different workflow states. Verify error handling for invalid scenarios.",
             "parentId": "undefined"
           },
@@ -10713,7 +10713,7 @@
               1
             ],
             "details": "Build autopilot_next tool returning the current phase, required action, subtask context, and any parameters needed for the next step. Implement autopilot_status tool providing comprehensive workflow state including current phase, completed subtasks, test results, and progress metrics. Both tools should read from state.json and return structured data matching the event API specification. Include error handling for missing or corrupted state.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with various workflow states. Test next action determination across all phases. Verify status reporting accuracy. Test error handling for corrupted state files.",
             "parentId": "undefined"
           },
@@ -10725,7 +10725,7 @@
               1
             ],
             "details": "Create autopilot_complete_phase tool accepting phase type, test results, and file changes. Integrate with TestResultValidator to enforce RED phase failures and GREEN phase passes. Update workflow state and trigger state machine transitions. Handle validation failures with clear error messages and suggested actions. Support coverage threshold validation when provided. Log phase completion to activity.jsonl.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with TestResultValidator. Test RED phase with passing/failing tests. Test GREEN phase with various result combinations. Verify state transitions and activity logging.",
             "parentId": "undefined"
           },
@@ -10737,7 +10737,7 @@
               1
             ],
             "details": "Build autopilot_commit tool that stages specified files, generates appropriate commit messages based on subtask context and phase, and creates commits with embedded metadata. Integrate with GitAdapter for safety checks and branch validation. Include options for commit message templates and metadata formats. Handle git errors gracefully and provide clear feedback. Support dry-run mode for validation without committing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with GitAdapter and temporary git repositories. Test commit creation with various file sets. Verify metadata embedding and message generation. Test error handling for git failures.",
             "parentId": "undefined"
           }
@@ -10758,7 +10758,7 @@
           "7",
           "8"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10766,7 +10766,7 @@
             "description": "Write detailed documentation covering the complete AI agent workflow integration, including command usage patterns, integration examples, and responsibility matrix between AI agents and TaskMaster.",
             "dependencies": [],
             "details": "Create comprehensive workflow documentation in the docs directory that includes: step-by-step integration instructions for AI agents, example CLI and MCP command usage patterns, clear responsibility matrix defining what AI agents handle vs TaskMaster, example JSON inputs/outputs for MCP tools, error handling patterns, and troubleshooting guides. Document the autonomous workflow phases and expected behaviors at each step.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Manual review for clarity and completeness. Verify all example commands work against a test project setup.",
             "parentId": "undefined"
           },
@@ -10778,7 +10778,7 @@
               1
             ],
             "details": "Create CLAUDE.md template with integration instructions, develop example prompts for test generation and workflow automation, create template JSON structures for MCP tool interactions, document test output parsing patterns, and provide example error handling scenarios. Include practical integration guidance and ready-to-use prompt templates that AI agents can adapt for their specific use cases.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test AI agent onboarding using the provided templates and instructions. Verify example prompts produce expected results.",
             "parentId": "undefined"
           }
@@ -10797,7 +10797,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -10860,7 +10860,7 @@
       ],
       "created": "2025-10-10T13:35:33.065Z",
       "description": "Tasks for tdd-phase-1-core-rails context",
-      "updated": "2025-10-10T15:30:40.144Z"
+      "updated": "2025-10-10T15:58:13.971Z"
     }
   }
 }
