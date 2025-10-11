@@ -55,6 +55,7 @@ claude-task-master/
 AI-powered task management system for ambitious development workflows.
 
 **Features:**
+
 - 49 slash commands for comprehensive task management
 - 3 specialized AI agents (orchestrator, executor, checker)
 - MCP server integration
@@ -63,6 +64,7 @@ AI-powered task management system for ambitious development workflows.
 - Automated workflow capabilities
 
 **Quick Start:**
+
 ```bash
 /tm:init
 /tm:parse-prd
@@ -76,6 +78,7 @@ AI-powered task management system for ambitious development workflows.
 To add more plugins to this marketplace:
 
 1. **Update marketplace.json**:
+
    ```json
    {
      "plugins": [
@@ -136,11 +139,13 @@ Team members who trust the repository folder will automatically get the marketpl
 Our marketplace follows the Claude Code marketplace schema:
 
 **Required fields:**
+
 - `name` - Marketplace identifier
 - `owner` - Maintainer information
 - `plugins` - Array of plugin definitions
 
 **Plugin fields:**
+
 - `name` - Plugin identifier (required)
 - `source` - Where to fetch the plugin (required)
 - `description` - Brief description
