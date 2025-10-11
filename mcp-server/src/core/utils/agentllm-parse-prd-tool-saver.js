@@ -59,10 +59,8 @@ async function agentllmParsePrdSave(
 		// The `writeJSON` utility from scripts/modules/utils.js handles the logic
 		// of reading the existing file, updating the specific tag, and writing it back.
 		const outputToSave = {
-			[tag]: {
 				tasks: tasksData.tasks,
 				metadata: tasksData.metadata
-			}
 		};
 
 		// The `writeJSON` function in utils.js is designed to intelligently merge

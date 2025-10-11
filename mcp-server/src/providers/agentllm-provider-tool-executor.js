@@ -371,6 +371,15 @@ export function AgentLLMProviderToolExecutor(
 				log.debug(
 					`TaskMasterMCPServer [Interaction: ${interactionId}]: Storing promise context for original tool '${toolName}'.`
 				);
+				const timeoutMs = 15 * 60 * 1000; // 15 minutes
+				const timeout = setTimeout(() => {
+				const pending = serverContext.pendingAgentLLMInteractions.get(interactionId);
+				if (pending) {
+					log.warn(`TaskMasterMCPServer [Interaction: ${interactionId}]: Timing out pending agent interaction for '${toolName}'.`);
+					pending.reject(new Error('Agent LLM interaction timed out'));
+					serverContext.pendingAgentLLMInteractions.delete(interactionId);
+				}
+				}, timeoutMs);
 				serverContext.pendingAgentLLMInteractions.set(interactionId, {
 					originalToolName: toolName,
 					originalToolArgs: toolArgs,
@@ -379,7 +388,8 @@ export function AgentLLMProviderToolExecutor(
 					reject,
 					timestamp: Date.now(),
 					// Store the delegatedCallDetails which includes requestParameters
-					delegatedCallDetails: delegatedCallDetails
+					delegatedCallDetails: delegatedCallDetails,
+		        	timeout
 				});
 
 				// Asynchronously dispatch to agent_llm tool.
@@ -527,7 +537,9 @@ export function AgentLLMProviderToolExecutor(
 						isError: true
 					};
 				} finally {
-					serverContext.pendingAgentLLMInteractions.delete(interactionId);
+					const stored = serverContext.pendingAgentLLMInteractions.get(interactionId);
+          			if (stored?.timeout) clearTimeout(stored.timeout);
+          			serverContext.pendingAgentLLMInteractions.delete(interactionId);
 				}
 			} else {
 				// Ensure interactionId is part of this log, it was already included.

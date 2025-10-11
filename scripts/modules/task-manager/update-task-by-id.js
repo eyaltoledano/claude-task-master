@@ -335,6 +335,11 @@ async function updateTaskById(
 				aiServiceResponse.mainResult &&
 				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
 			) {
+				// Validate required delegation fields
+				if (!aiServiceResponse.mainResult.interactionId) {
+					throw new Error('Agent delegation signal missing required interactionId');
+				}
+
 				report(
 					'debug',
 					'updateTaskById (core): Detected agent_llm_delegation signal.'
@@ -350,7 +355,7 @@ async function updateTaskById(
 						delegatedCallDetails: {
 							originalCommand: context.commandName || 'update_task', // Will be set by updateTaskByIdDirect
 							role: serviceRole, // serviceRole is already defined in this scope
-							serviceType: 'generateObject', // Agent expected to return JSON object of the updated task
+							serviceType: appendMode ? 'generateText' : 'generateObject', // Match the original service call
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, modelId etc.
 								// Pass original task ID for context, agent might need it if not in prompt/details

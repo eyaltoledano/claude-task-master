@@ -125,12 +125,6 @@ async function agentllmUpdateSave(
 			return { success: false, error: errorMsg };
 		}
 
-		if (!Array.isArray(parsedAgentTasksArray)) {
-			const errorMsg = `Task data from agent is invalid after parsing/processing: Expected array, got ${typeof parsedAgentTasksArray}`;
-			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
-			return { success: false, error: errorMsg };
-		}
-
 		if (parsedAgentTasksArray.length === 0) {
 			logWrapper.info(
 				'agentllmUpdateSave: Agent returned an empty array of tasks. No updates to apply.'
@@ -183,7 +177,8 @@ async function agentllmUpdateSave(
 					);
 					updatedTaskIds.push({
 						id: String(originalTask.id),
-						skipped: false
+						skipped: false,
+						reason: 'updated_successfully'
 					});
 					actualUpdatesMade++;
 

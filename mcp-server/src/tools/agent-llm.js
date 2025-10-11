@@ -3,11 +3,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { withNormalizedProjectRoot, createErrorResponse } from './utils.js';
 
 /**
- * When an agent calls this tool to provide an LLM response, the top-level keys in the payload MUST be:
- * - `interactionId`: (string) The ID from Taskmaster's initial delegation request.
- * - `projectRoot`: (string) Absolute path to the project.
- * - `agentLLMResponse`: (object) The wrapper for the agent's actual LLM call results.
- * Sending any other top-level keys will result in an "unrecognized_keys" error.
+ * This tool supports two modes for agent interaction:
+ * 1. Taskmaster -> Agent Delegation:
+ *    - `delegatedCallDetails`: (Required) Details of the LLM call for the agent.
+ *    - `interactionId`: (Optional) An existing ID to track the interaction.
+ * 2. Agent -> Taskmaster Response:
+ *    - `agentLLMResponse`: (Required) The agent's response.
+ *    - `interactionId`: (Required) The ID from the initial delegation.
+ *    - `projectRoot`: (Required) Absolute path to the project.
+ * Sending any unrecognized top-level keys will cause an error.
  */
 const agentLLMParameters = z.object({
 	interactionId: z
@@ -66,7 +70,8 @@ function registerAgentLLMTool(server) {
 		parameters: agentLLMParameters,
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				log.debug(`agent_llm tool called with args: ${JSON.stringify(args)}`);
+				const preview = JSON.stringify(args).slice(0, 2000);
+				log.debug(`agent_llm tool called with args: ${preview}${preview.length === 2000 ? '…' : ''}`);
 
 				// Ensure mutual exclusivity
 				if (args.delegatedCallDetails && args.agentLLMResponse) {
@@ -86,7 +91,7 @@ function registerAgentLLMTool(server) {
 						status: 'pending_agent_llm_action',
 						message:
 							'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
-						llmRequestForAgent: args.delegatedCallDetails.requestParameters,
+						delegatedCallDetails: args.delegatedCallDetails,
 						interactionId: effectiveInteractionId,
 						pendingInteractionSignalToAgent: {
 							type: 'agent_must_respond_via_agent_llm',

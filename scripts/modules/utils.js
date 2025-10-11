@@ -729,8 +729,32 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 				);
 			}
 
-			// Re-read the full file to get the complete tagged structure
-			const rawFullData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+			// Robustly re-read the full file to get the complete tagged structure.
+			// This is critical for merge operations (like parse_prd when mcp client decides to set flag force:true)
+			// which need to read the existing file to add/overwrite a tag.
+			// This logic prevents crashes if the file doesn't exist or is empty/corrupt.
+			let rawFullData = {};
+			if (fs.existsSync(filepath)) {
+				try {
+					const fileContent = fs.readFileSync(filepath, 'utf8');
+					if (fileContent.trim().length > 0) { // Check if file is not empty
+						rawFullData = JSON.parse(fileContent);
+					}
+				} catch (readError) {
+					if (isDebug) {
+						console.log(
+							`writeJSON: Error reading or parsing existing file ${filepath}: ${readError.message}. Defaulting to empty object.`
+						);
+					}
+					// rawFullData remains {}
+				}
+			} else {
+				if (isDebug) {
+					console.log(
+						`writeJSON: File ${filepath} does not exist. Defaulting to empty object.`
+					);
+				}
+			}
 
 			// Merge the updated data into the full structure
 			finalData = {

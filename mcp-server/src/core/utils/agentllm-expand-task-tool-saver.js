@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
@@ -8,8 +7,8 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // P
  * Saves expanded subtask data (typically from an agent) to the parent task in tasks.json.
  *
  * @param {any} agentOutput - The data received from the agent (finalLLMOutput).
- *                            Expected to be an array of subtask objects, or a string that parseSubtasksFromText can handle.
- * @param {string|number} parentTaskId - The ID of the task being expanded.
+ *                            Expected to be a JSON string, an array of subtask objects, or an object with a 'subtasks' array.
+ * @param {string|number} parentTaskIdNum - The ID of the task being expanded.
  * @param {string} projectRoot - The absolute path to the project root.
  * @param {Object} logWrapper - Logger object (e.g., from MCP context).
  * @param {Object} originalTaskDetails - Details about the original task being expanded,
@@ -110,10 +109,10 @@ async function agentllmExpandTaskSave(
 			const idNum =
 			typeof idRaw === 'string' ? parseInt(idRaw, 10) : Number(idRaw);
 			return {
+			...st,
 			title: String(st.title || '').trim(),
 			description: st.description || '',
 			status: st.status || 'todo',
-			...st,
 			id: Number.isFinite(idNum) ? idNum : nextId++
 			};
 		})
@@ -124,7 +123,7 @@ async function agentllmExpandTaskSave(
 
 		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
-			`agentllmExpandTaskSave: Successfully updated tasks.json for parent task ${parentTaskIdNum} with ${subtasksToSave.length} subtasks for tag '${tag}'.`
+			`agentllmExpandTaskSave: Successfully updated tasks.json for parent task ${parentTaskIdNum} with ${normalized.length} subtasks for tag '${tag}'.`
 		);
 
 		// Generate individual task files (optional, but good for consistency)

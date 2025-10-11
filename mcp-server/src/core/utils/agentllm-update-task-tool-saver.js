@@ -106,15 +106,21 @@ async function agentllmUpdatedTaskSave(
 			const [parentIdStr, subIdStr] = taskIdToUpdate.split('.');
 			const parentId = parseInt(parentIdStr, 10);
 			const subId = parseInt(subIdStr, 10);
-			const parentTask = allTasksData.tasks.find((t) => t.id === parentId);
+			const parentTask = allTasksData.tasks.find(
+				(t) => parseInt(String(t.id), 10) === parentId
+			);
 			if (!parentTask || !parentTask.subtasks)
 				throw new Error(
 					`Parent task or subtasks for ${taskIdToUpdate} not found.`
 				);
-			taskToUpdateObject = parentTask.subtasks.find((st) => st.id === subId);
+			taskToUpdateObject = parentTask.subtasks.find(
+				(st) => parseInt(String(st.id), 10) === subId
+			);
 		} else {
 			taskToUpdateObject = allTasksData.tasks.find(
-				(t) => t.id === parseInt(String(taskIdToUpdate), 10)
+				(t) =>
+					parseInt(String(t.id), 10) ===
+					parseInt(String(taskIdToUpdate), 10)
 			);
 		}
 
@@ -136,8 +142,20 @@ async function agentllmUpdatedTaskSave(
 				const timestamp = new Date().toISOString();
 				directAppendText = `<info added on ${timestamp}>\n${agentOutput.trim()}\n</info added on ${timestamp}>`;
 				// parsedAgentTask remains undefined, as we'll modify taskToUpdateObject directly
+			} else {
+				logWrapper.info(
+					'agentllmUpdatedTaskSave: Agent output is a JSON string. Parsing for full update.'
+				);
+				try {
+					agentOutput = JSON.parse(agentOutput);
+				} catch (e) {
+					const errorMsg = `Invalid agentOutput JSON string: ${e.message}`;
+					logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
+					return { success: false, error: errorMsg };
+				}
 			}
-		} else if (typeof agentOutput === 'object' && agentOutput !== null) {
+		}
+		if (typeof agentOutput === 'object' && agentOutput !== null) {
 			logWrapper.info(
 				'agentllmUpdatedTaskSave: Agent output is already an object. Validating and using directly.'
 			);

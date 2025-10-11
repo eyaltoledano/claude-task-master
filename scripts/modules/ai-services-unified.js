@@ -585,7 +585,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			if (providerName?.toLowerCase() === 'agentllm' && (outputType === 'cli' || outputType === 'text')) {
 				log(
 					'warn',
-					`Skipping role '${currentRole}' (Provider: ${providerName}): AgentLLM is intended for MCP delegation and is skipped for direct CLI calls.`
+					`Skipping role '${currentRole}' (Provider: ${providerName}): AgentLLM is intended for MCP delegation and is skipped in CLI mode.`
 				);
 				lastError =
 					lastError ||
@@ -709,14 +709,18 @@ async function _unifiedServiceRunner(serviceType, params) {
 				if (getDebugFlag()) {
 					log(
 						'info',
-						`Role ${currentRole} (Provider: ${providerName}) signaled agent_llm_delegation for command ${commandName}. Details: ${JSON.stringify(providerResponse.details)}`
+						`Role ${currentRole} (Provider: ${providerName}) signaled agent_llm_delegation for command ${commandName}.${providerResponse.details ? ` Details: ${JSON.stringify(providerResponse.details)}` : ''}`
 					);
 				}
+				// Get tag information even for delegated calls
+				const tagInfo = _getTagInfo(effectiveProjectRoot);
+			
 				// Propagate the delegation signal object upwards.
 				// The calling function (e.g., an MCP tool) will use this to build the pendingInteraction field.
 				return {
 					mainResult: providerResponse, // This is the { type: 'agent_llm_delegation', details: ... } object
-					telemetryData: null // No direct LLM call was made by this provider here.
+					telemetryData: null, // No direct LLM call was made by this provider here.
+					tagInfo: tagInfo
 				};
 			}
 			// === END MODIFICATION ===

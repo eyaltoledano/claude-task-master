@@ -511,7 +511,8 @@ async function addTask(
 									// Pass additional context/args the agent or saver might need:
 									newTaskId: newTaskId, // The ID determined for the new task
 									userDependencies: numericDependencies, // User-specified dependencies
-									userPriority: effectivePriority // User-specified or default priority
+									userPriority: effectivePriority, // User-specified or default priority
+						            tagInfo: { currentTag: targetTag }
 									// researchFlag: useResearch, // research flag is already in details.role or similar
 								}
 							}

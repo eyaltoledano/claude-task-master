@@ -341,12 +341,11 @@ async function expandTask(
 						delegatedCallDetails: {
 							originalCommand: 'expand-task',
 							role: useResearch ? 'research' : 'main',
-							// If we change to generateObjectService for agents, this would be 'generateObject'
-							// and requestParameters.schema would be subtaskWrapperSchema.
-							// For now, assuming agent handles generateText and returns parseable JSON string.
-							serviceType: 'generateObject',
+							// Agents will perform a generateObject call using the provided JSON schema.
+			                serviceType: 'generateObject',
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
+								schema: COMMAND_SCHEMAS['expand-task'], // ensure schema is explicitly available to the agent
 								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
 								numSubtasksForAgent: finalSubtaskCount, // Add finalSubtaskCount (as numSubtasksForAgent)
 								tagInfo: { currentTag: tag || 'master' }
