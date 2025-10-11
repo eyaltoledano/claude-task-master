@@ -1,4 +1,3 @@
-import { FastMCP } from 'fastmcp';
 import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -8,6 +7,9 @@ import { registerTaskMasterTools } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
 import packageJson from '../../package.json' with { type: 'json' };
+
+// Use our custom FastMCP wrapper to ensure JSON Schema compatibility
+import { FastMCP } from './fastmcp-wrapper.js';
 
 // Load environment variables
 dotenv.config();
