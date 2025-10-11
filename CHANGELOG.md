@@ -1,5 +1,84 @@
 # task-master-ai
 
+## 0.28.0
+
+### Minor Changes
+
+- [#1273](https://github.com/eyaltoledano/claude-task-master/pull/1273) [`b43b7ce`](https://github.com/eyaltoledano/claude-task-master/commit/b43b7ce201625eee956fb2f8cd332f238bb78c21) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Add Codex CLI provider with OAuth authentication
+  - Added codex-cli provider for GPT-5 and GPT-5-Codex models (272K input / 128K output)
+  - OAuth-first authentication via `codex login` - no API key required
+  - Optional OPENAI_CODEX_API_KEY support
+  - Codebase analysis capabilities automatically enabled
+  - Command-specific settings and approval/sandbox modes
+
+- [#1215](https://github.com/eyaltoledano/claude-task-master/pull/1215) [`0079b7d`](https://github.com/eyaltoledano/claude-task-master/commit/0079b7defdad550811f704c470fdd01955d91d4d) Thanks [@joedanz](https://github.com/joedanz)! - Add Cursor IDE custom slash command support
+
+  Expose Task Master commands as Cursor slash commands by copying assets/claude/commands to .cursor/commands on profile add and cleaning up on remove.
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Added api keys page on docs website: docs.task-master.dev/getting-started/api-keys
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`18aa416`](https://github.com/eyaltoledano/claude-task-master/commit/18aa416035f44345bde1c7321490345733a5d042) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Move to AI SDK v5:
+  - Works better with claude-code and gemini-cli as ai providers
+  - Improved openai model family compatibility
+  - Migrate ollama provider to v2
+  - Closes #1223, #1013, #1161, #1174
+
+- [#1262](https://github.com/eyaltoledano/claude-task-master/pull/1262) [`738ec51`](https://github.com/eyaltoledano/claude-task-master/commit/738ec51c049a295a12839b2dfddaf05e23b8fede) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Migrate AI services to use generateObject for structured data generation
+
+  This update migrates all AI service calls from generateText to generateObject, ensuring more reliable and structured responses across all commands.
+
+  ### Key Changes:
+  - **Unified AI Service**: Replaced separate generateText implementations with a single generateObjectService that handles structured data generation
+  - **JSON Mode Support**: Added proper JSON mode configuration for providers that support it (OpenAI, Anthropic, Google, Groq)
+  - **Schema Validation**: Integrated Zod schemas for all AI-generated content with automatic validation
+  - **Provider Compatibility**: Maintained compatibility with all existing providers while leveraging their native structured output capabilities
+  - **Improved Reliability**: Structured output generation reduces parsing errors and ensures consistent data formats
+
+  ### Technical Improvements:
+  - Centralized provider configuration in `ai-providers-unified.js`
+  - Added `generateObject` support detection for each provider
+  - Implemented proper error handling for schema validation failures
+  - Maintained backward compatibility with existing prompt structures
+
+  ### Bug Fixes:
+  - Fixed subtask ID numbering issue where AI was generating inconsistent IDs (101-105, 601-603) instead of sequential numbering (1, 2, 3...)
+  - Enhanced prompt instructions to enforce proper ID generation patterns
+  - Ensured subtasks display correctly as X.1, X.2, X.3 format
+
+  This migration improves the reliability and consistency of AI-generated content throughout the Task Master application.
+
+- [#1112](https://github.com/eyaltoledano/claude-task-master/pull/1112) [`d67b81d`](https://github.com/eyaltoledano/claude-task-master/commit/d67b81d25ddd927fabb6f5deb368e8993519c541) Thanks [@olssonsten](https://github.com/olssonsten)! - Enhanced Roo Code profile with MCP timeout configuration for improved reliability during long-running AI operations. The Roo profile now automatically configures a 300-second timeout for MCP server operations, preventing timeouts during complex tasks like `parse-prd`, `expand-all`, `analyze-complexity`, and `research` operations. This change also replaces static MCP configuration files with programmatic generation for better maintainability.
+
+  **What's New:**
+  - 300-second timeout for MCP operations (up from default 60 seconds)
+  - Programmatic MCP configuration generation (replaces static asset files)
+  - Enhanced reliability for AI-powered operations
+  - Consistent with other AI coding assistant profiles
+
+  **Migration:** No user action required - existing Roo Code installations will automatically receive the enhanced MCP configuration on next initialization.
+
+- [#1246](https://github.com/eyaltoledano/claude-task-master/pull/1246) [`986ac11`](https://github.com/eyaltoledano/claude-task-master/commit/986ac117aee00bcd3e6830a0f76e1ad6d10e0bca) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Upgrade grok-cli ai provider to ai sdk v5
+
+### Patch Changes
+
+- [#1235](https://github.com/eyaltoledano/claude-task-master/pull/1235) [`aaacc3d`](https://github.com/eyaltoledano/claude-task-master/commit/aaacc3dae36247b4de72b2d2697f49e5df6d01e3) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve `analyze-complexity` cli docs and `--research` flag documentation
+
+- [#1251](https://github.com/eyaltoledano/claude-task-master/pull/1251) [`0b2c696`](https://github.com/eyaltoledano/claude-task-master/commit/0b2c6967c4605c33a100cff16f6ce8ff09ad06f0) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Change parent task back to "pending" when all subtasks are in "pending" state
+
+- [#1274](https://github.com/eyaltoledano/claude-task-master/pull/1274) [`4f984f8`](https://github.com/eyaltoledano/claude-task-master/commit/4f984f8a6965da9f9c7edd60ddfd6560ac022917) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Do a quick fix on build
+
+- [#1277](https://github.com/eyaltoledano/claude-task-master/pull/1277) [`7b5a7c4`](https://github.com/eyaltoledano/claude-task-master/commit/7b5a7c4495a68b782f7407fc5d0e0d3ae81f42f5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP connection errors caused by deprecated generateTaskFiles calls. Resolves "Cannot read properties of null (reading 'toString')" errors when using MCP tools for task management operations.
+
+- [#1276](https://github.com/eyaltoledano/claude-task-master/pull/1276) [`caee040`](https://github.com/eyaltoledano/claude-task-master/commit/caee040907f856d31a660171c9e6d966f23c632e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server error when file parameter not provided - now properly constructs default tasks.json path instead of failing with 'tasksJsonPath is required' error.
+
+- [#1172](https://github.com/eyaltoledano/claude-task-master/pull/1172) [`b5fe723`](https://github.com/eyaltoledano/claude-task-master/commit/b5fe723f8ead928e9f2dbde13b833ee70ac3382d) Thanks [@jujax](https://github.com/jujax)! - Fix Claude Code settings validation for pathToClaudeCodeExecutable
+
+- [#1192](https://github.com/eyaltoledano/claude-task-master/pull/1192) [`2b69936`](https://github.com/eyaltoledano/claude-task-master/commit/2b69936ee7b34346d6de5175af20e077359e2e2a) Thanks [@nukunga](https://github.com/nukunga)! - Fix sonar deep research model failing, should be called `sonar-deep-research`
+
+- [#1270](https://github.com/eyaltoledano/claude-task-master/pull/1270) [`20004a3`](https://github.com/eyaltoledano/claude-task-master/commit/20004a39ea848f747e1ff48981bfe176554e4055) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix complexity score not showing for `task-master show` and `task-master list`
+  - Added complexity score on "next task" when running `task-master list`
+  - Added colors to complexity to reflect complexity (easy, medium, hard)
+
 ## 0.28.0-rc.2
 
 ### Minor Changes
