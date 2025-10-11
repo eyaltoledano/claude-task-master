@@ -42,5 +42,6 @@
 	"files": ["src", "README.md", "CHANGELOG.md"],
 	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
 	"author": "Task Master AI",
-	"license": "MIT"
+	"license": "MIT",
+	"version": ""
 }
