@@ -41,6 +41,7 @@ packages/claude-code-plugin/
 ### Making Changes
 
 1. **Edit source files** in `assets/claude/`:
+
    ```bash
    # Edit a command
    vim assets/claude/commands/tm/next/next-task.md
@@ -50,12 +51,14 @@ packages/claude-code-plugin/
    ```
 
 2. **Build the plugin**:
+
    ```bash
    cd packages/claude-code-plugin
    npm run build
    ```
 
 3. **Test locally**:
+
    ```bash
    # In Claude Code (from project root)
    /plugin marketplace add .
@@ -63,6 +66,7 @@ packages/claude-code-plugin/
    ```
 
 4. **Iterate**:
+
    ```bash
    # Make changes to assets/claude/
    cd packages/claude-code-plugin
@@ -75,6 +79,7 @@ packages/claude-code-plugin/
    ```
 
 5. **Commit source AND generated files**:
+
    ```bash
    # Commit source changes
    git add assets/claude/
@@ -106,25 +111,30 @@ The TypeScript build script is co-located with the plugin package and performs t
 ### What Gets Generated
 
 #### `.claude-plugin/plugin.json`
+
 - Metadata extracted from root `package.json`
 - Version synchronized automatically
 - Keywords, author, repository info
 
 #### `.mcp.json`
+
 - MCP server configuration for task-master-ai
 - API key environment variable placeholders
 - Proper stdio command configuration
 
 #### `package.json`
+
 - NPM package metadata for the plugin
 - Workspace-compatible configuration
 - Proper `peerDependencies` on task-master-ai
 
 #### `LICENSE`
+
 - Copied from root LICENSE file
 - Ensures proper licensing in distribution
 
 #### `README.md`
+
 - Basic plugin documentation (if template not found)
 - Installation and usage instructions
 - Can be customized with `assets/claude/PLUGIN_README.md`
@@ -149,6 +159,7 @@ commands/tm/
 ```
 
 Each command is a markdown file with optional frontmatter:
+
 ```markdown
 ---
 description: Short description of what this command does
@@ -180,6 +191,7 @@ You are an elite implementation specialist...
 ### What to Commit
 
 ✅ **DO commit** (GitHub needs to serve these):
+
 - `assets/claude/` - All source files
 - `packages/claude-code-plugin/src/` - TypeScript build script
 - `packages/claude-code-plugin/package.json` - Build tooling config
@@ -194,6 +206,7 @@ You are an elite implementation specialist...
 - `.claude-plugin/marketplace.json` - Marketplace manifest
 
 ❌ **DO NOT commit**:
+
 - `packages/claude-code-plugin/node_modules/` - Dependencies
 - `packages/claude-code-plugin/dist/` - Build artifacts
 - `packages/claude-code-plugin/*.log` - Log files
@@ -201,6 +214,7 @@ You are an elite implementation specialist...
 ### .gitignore Configuration
 
 `packages/claude-code-plugin/.gitignore`:
+
 ```gitignore
 # Only ignore build artifacts and dependencies
 node_modules/
@@ -321,6 +335,7 @@ Team members who trust the repo will automatically get the plugin.
 ### Version Management
 
 Versions are synchronized from root `package.json`:
+
 - Plugin manifest version matches package version
 - Build script reads version automatically
 - No manual version updates needed in multiple places
@@ -328,12 +343,14 @@ Versions are synchronized from root `package.json`:
 ### Adding New Commands
 
 1. Create command file in `assets/claude/commands/tm/category/`:
+
    ```bash
    mkdir -p assets/claude/commands/tm/my-feature
    vim assets/claude/commands/tm/my-feature/do-something.md
    ```
 
 2. Write the command:
+
    ```markdown
    ---
    description: Does something useful
@@ -345,6 +362,7 @@ Versions are synchronized from root `package.json`:
    ```
 
 3. Build and test:
+
    ```bash
    cd packages/claude-code-plugin
    npm run build
@@ -354,11 +372,13 @@ Versions are synchronized from root `package.json`:
 ### Adding New Agents
 
 1. Create agent file in `assets/claude/agents/`:
+
    ```bash
    vim assets/claude/agents/my-new-agent.md
    ```
 
 2. Write the agent definition:
+
    ```markdown
    ---
    name: my-new-agent
@@ -373,6 +393,7 @@ Versions are synchronized from root `package.json`:
    ```
 
 3. Build and test:
+
    ```bash
    cd packages/claude-code-plugin
    npm run build
@@ -433,26 +454,31 @@ cd packages/claude-code-plugin && npm run build
 ## Benefits of This Architecture
 
 ### ✅ Single Source of Truth
+
 - Edit once in `assets/claude/`
 - No duplicate files to maintain
 - No sync issues between locations
 
 ### ✅ Clean Git History
+
 - Only source files are tracked
 - No generated files in commits
 - Smaller repository size
 
 ### ✅ Flexible Distribution
+
 - Build once, distribute anywhere
 - Can publish to multiple marketplaces
 - Easy to create variants
 
 ### ✅ Automated Consistency
+
 - Version synchronized automatically
 - Metadata extracted from package.json
 - Build validation ensures completeness
 
 ### ✅ Easy Maintenance
+
 - Change source, rebuild, test
 - No manual file copying
 - Clear separation of concerns
