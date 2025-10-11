@@ -10,7 +10,7 @@ This release introduces official Claude Code plugin support, marking the evoluti
 
 Task Master AI commands and agents are now distributed as a proper Claude Code plugin:
 
-- **49 slash commands** with clean naming (`/task-master-ai:command-name`)
+- **49 slash commands** with clean naming (`/taskmaster:command-name`)
 - **3 specialized AI agents** (task-orchestrator, task-executor, task-checker)
 - **MCP server integration** for deep Claude Code integration
 
