@@ -13,6 +13,7 @@ import { ContextCommand } from './commands/context.command.js';
 import { StartCommand } from './commands/start.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
 import { ExportCommand } from './commands/export.command.js';
+import { WatchCommand } from './commands/watch.command.js';
 
 /**
  * Command metadata for registration
@@ -62,6 +63,12 @@ export class CommandRegistry {
 			description: 'Export tasks to external systems',
 			commandClass: ExportCommand as any,
 			category: 'task'
+		},
+		{
+			name: 'watch',
+			description: 'Watch task files and display real-time updates',
+			commandClass: WatchCommand as any,
+			category: 'utility'
 		},
 
 		// Authentication & Context Commands
