@@ -116,6 +116,6 @@ Results are:
 After analysis:
 ```
 /taskmaster:expand 5    # Expand specific task
-/taskmaster:expand/all  # Expand all recommended
+/taskmaster:expand-all  # Expand all recommended
 /taskmaster:complexity-report  # View detailed report
 ```

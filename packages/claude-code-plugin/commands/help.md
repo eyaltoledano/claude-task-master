@@ -61,8 +61,8 @@ Type `/taskmaster:` and use tab completion to explore all commands.
 - `/taskmaster:add-subtask` - Add subtask to task
 - `/taskmaster:convert-task-to-subtask` - Convert task to subtask
 - `/taskmaster:remove-subtask` - Remove subtask
-- `/taskmaster:clear-subtasks` - Clear specific task subtasks
-- `/taskmaster:clear-all-subtasks` - Clear all subtasks
+- `/taskmaster:remove-subtasks` - Clear specific task subtasks
+- `/taskmaster:remove-all-subtasks` - Clear all subtasks
 
 #### 🗑️ Task Removal
 - `/taskmaster:remove-task` - Remove task permanently
