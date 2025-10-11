@@ -36,7 +36,6 @@ export class WatchCommand extends Command {
 	private updateTimeout?: NodeJS.Timeout;
 	private lastUpdateTime = 0;
 	private isUpdating = false;
-	private tasksFilePath?: string;
 	private taskMasterDir?: string;
 
 	constructor(name?: string) {
@@ -73,8 +72,7 @@ export class WatchCommand extends Command {
 				process.exit(1);
 			}
 
-			// Store paths for display and watching
-			this.tasksFilePath = tasksFilePath;
+			// Store path for display and watching
 			this.taskMasterDir = taskMasterDir;
 
 			// Initialize tm-core
@@ -87,7 +85,7 @@ export class WatchCommand extends Command {
 			await this.displayTaskStatus(options.tag);
 
 			// Start watching
-			this.startWatching(projectRoot, interval, options.tag);
+			this.startWatching(interval, options.tag);
 
 			// Keep the process alive
 			await this.keepAlive();
@@ -107,11 +105,7 @@ export class WatchCommand extends Command {
 	/**
 	 * Start watching task files
 	 */
-	private startWatching(
-		projectRoot: string,
-		interval: number,
-		tag?: string
-	): void {
+	private startWatching(interval: number, tag?: string): void {
 		// Directory path already set and validated in executeCommand
 		if (!this.taskMasterDir) return;
 
