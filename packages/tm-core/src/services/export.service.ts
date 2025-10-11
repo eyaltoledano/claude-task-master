@@ -362,7 +362,7 @@ export class ExportService {
 
 		if (useAPIEndpoint) {
 			// Use the new bulk import API endpoint
-			const apiUrl = `${process.env.TM_PUBLIC_BASE_DOMAIN}/ai/api/v1/briefs/${briefId}/tasks/bulk`;
+			const apiUrl = `${process.env.TM_PUBLIC_BASE_DOMAIN}/ai/api/v1/briefs/${briefId}/tasks`;
 
 			// Transform tasks to flat structure for API
 			const flatTasks = this.transformTasksForBulkImport(tasks);
@@ -370,11 +370,11 @@ export class ExportService {
 			// Prepare request body
 			const requestBody = {
 				source: 'task-master-cli',
-				accountId: orgId,
 				options: {
 					dryRun: false,
 					stopOnError: false
 				},
+				accountId: orgId,
 				tasks: flatTasks
 			};
 
