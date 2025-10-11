@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import {
 	createErrorResponse,
 	handleApiResult,
@@ -7,53 +8,62 @@ import {
 import { initializeProjectDirect } from '../core/task-master-core.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
+// Create Zod schema for the tool parameters
+const initializeProjectSchema = z.object({
+	skipInstall: z
+		.boolean()
+		.optional()
+		.default(false)
+		.describe(
+			'Skip installing dependencies automatically. Never do this unless you are sure the project is already installed.'
+		),
+	addAliases: z
+		.boolean()
+		.optional()
+		.default(true)
+		.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+	initGit: z
+		.boolean()
+		.optional()
+		.default(true)
+		.describe('Initialize Git repository in project root.'),
+	storeTasksInGit: z
+		.boolean()
+		.optional()
+		.default(true)
+		.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
+	yes: z
+		.boolean()
+		.optional()
+		.default(true)
+		.describe(
+			'Skip prompts and use default values. Always set to true for MCP tools.'
+		),
+	projectRoot: z
+		.string()
+		.describe(
+			'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
+		),
+	rules: z
+		.array(z.enum(RULE_PROFILES))
+		.optional()
+		.describe(
+			`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
+		)
+});
+
+// Convert to JSON Schema with explicit Draft-07 target
+const jsonSchema = zodToJsonSchema(initializeProjectSchema, { 
+	target: 'jsonSchema7' // This ensures we get Draft-07 compatible schema
+});
+
 export function registerInitializeProjectTool(server) {
 	server.addTool({
 		name: 'initialize_project',
 		description:
 			'Initializes a new Task Master project structure by calling the core initialization logic. Creates necessary folders and configuration files for Task Master in the current directory.',
-		parameters: z.object({
-			skipInstall: z
-				.boolean()
-				.optional()
-				.default(false)
-				.describe(
-					'Skip installing dependencies automatically. Never do this unless you are sure the project is already installed.'
-				),
-			addAliases: z
-				.boolean()
-				.optional()
-				.default(true)
-				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
-			initGit: z
-				.boolean()
-				.optional()
-				.default(true)
-				.describe('Initialize Git repository in project root.'),
-			storeTasksInGit: z
-				.boolean()
-				.optional()
-				.default(true)
-				.describe('Store tasks in Git (tasks.json and tasks/ directory).'),
-			yes: z
-				.boolean()
-				.optional()
-				.default(true)
-				.describe(
-					'Skip prompts and use default values. Always set to true for MCP tools.'
-				),
-			projectRoot: z
-				.string()
-				.describe(
-					'The root directory for the project. ALWAYS SET THIS TO THE PROJECT ROOT DIRECTORY. IF NOT SET, THE TOOL WILL NOT WORK.'
-				),
-			rules: z
-				.array(z.enum(RULE_PROFILES))
-				.optional()
-				.describe(
-					`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
-				)
-		}),
+		// Use the explicitly converted JSON Schema
+		inputSchema: jsonSchema,
 		execute: withNormalizedProjectRoot(async (args, context) => {
 			const { log } = context;
 			const session = context.session;
