@@ -1,0 +1,32 @@
+{
+	"name": "task-master-ai",
+	"displayName": "Task Master AI",
+	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
+	"version": "0.28.0-rc.2",
+	"author": {
+		"name": "Eyal Toledano",
+		"url": "https://github.com/eyaltoledano/claude-task-master"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/eyaltoledano/claude-task-master.git"
+	},
+	"homepage": "https://github.com/eyaltoledano/claude-task-master#readme",
+	"bugs": {
+		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
+	},
+	"license": "MIT WITH Commons-Clause",
+	"keywords": [
+		"task-management",
+		"ai",
+		"workflow",
+		"orchestration",
+		"automation",
+		"mcp",
+		"development",
+		"productivity"
+	],
+	"engines": {
+		"claude-code": ">=1.0.0"
+	}
+}
