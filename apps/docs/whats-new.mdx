@@ -3,4 +3,44 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## 🎉 New: Claude Code Plugin Support
+
+Task Master AI now supports Claude Code plugins with modern marketplace distribution!
+
+### What's New
+
+- **49 slash commands** with clean naming (`/taskmaster:command-name`)
+- **3 specialized AI agents** (task-orchestrator, task-executor, task-checker)
+- **MCP server integration** for deep Claude Code integration
+
+### Installation
+
+```bash
+/plugin marketplace add eyaltoledano/claude-task-master
+/plugin install taskmaster@taskmaster
+```
+
+### Migration for Existing Users
+
+The `rules add claude` command no longer copies files to `.claude/` directories. Instead:
+
+- Shows plugin installation instructions
+- Only manages CLAUDE.md imports for agent instructions
+- Directs users to install the official plugin
+
+If you previously used `rules add claude`:
+
+1. Old commands in `.claude/commands/` will continue working but won't receive updates
+2. Install the plugin for latest features: `/plugin install taskmaster@taskmaster`
+3. Remove old `.claude/commands/` and `.claude/agents/` directories
+
+### Why This Change?
+
+Claude Code plugins provide:
+
+- ✅ Automatic updates when we release new features
+- ✅ Better command organization and naming
+- ✅ Seamless integration with Claude Code
+- ✅ No manual file copying or management
+
+The plugin system is the future of Task Master AI integration with Claude Code!

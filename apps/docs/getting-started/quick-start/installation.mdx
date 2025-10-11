@@ -31,9 +31,23 @@ cursor://anysphere.cursor-deeplink/mcp/install?name=taskmaster-ai&config=eyJjb21
 
 > **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
 
-### Claude Code Quick Install
+### Claude Code Plugin Install (Recommended)
 
-For Claude Code users:
+For Claude Code users, install via the plugin marketplace:
+
+```bash
+/plugin marketplace add eyaltoledano/claude-task-master
+/plugin install taskmaster@taskmaster
+```
+
+This provides:
+- **49 slash commands** with clean naming (`/taskmaster:command-name`)
+- **3 specialized AI agents** (task-orchestrator, task-executor, task-checker)
+- **Automatic updates** when new features are released
+
+### Claude Code MCP Alternative
+
+You can also use MCP directly:
 
 ```bash
 claude mcp add taskmaster-ai -- npx -y task-master-ai
