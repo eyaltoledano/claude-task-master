@@ -7,11 +7,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
-import {
-	createTaskMasterCore,
-	type Task,
-	type TaskMasterCore
-} from '@tm/core';
+import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import {
 	displayHeader,
 	displayProjectDashboard,
@@ -51,7 +47,8 @@ export class WatchCommand extends Command {
 			.option(
 				'-i, --interval <ms>',
 				'Minimum update interval in milliseconds',
-				'500'
+				(value) => parseInt(value, 10),
+				500
 			)
 			.option('-t, --tag <tag>', 'Filter by tag')
 			.action(async (options: WatchCommandOptions) => {
@@ -65,7 +62,7 @@ export class WatchCommand extends Command {
 	private async executeCommand(options: WatchCommandOptions): Promise<void> {
 		try {
 			const projectRoot = options.project || process.cwd();
-			const interval = parseInt(options.interval || '500', 10);
+			const interval = options.interval || 500;
 
 			// Calculate paths
 			const taskMasterDir = path.join(projectRoot, '.taskmaster');
@@ -91,7 +88,6 @@ export class WatchCommand extends Command {
 
 			// Start watching
 			this.startWatching(projectRoot, interval, options.tag);
-
 
 			// Keep the process alive
 			await this.keepAlive();
@@ -154,7 +150,9 @@ export class WatchCommand extends Command {
 				await this.displayTaskStatus(tag);
 			} catch (error) {
 				console.error(
-					chalk.red(`Update error: ${error instanceof Error ? error.message : String(error)}`)
+					chalk.red(
+						`Update error: ${error instanceof Error ? error.message : String(error)}`
+					)
 				);
 			} finally {
 				this.isUpdating = false;
@@ -302,9 +300,17 @@ export class WatchCommand extends Command {
 			details.push(`Dependencies: ${chalk.gray(task.dependencies.join(', '))}`);
 		}
 		if (task.complexity !== undefined) {
-			const complexityNum = typeof task.complexity === 'number' ? task.complexity : parseInt(String(task.complexity));
+			const complexityNum =
+				typeof task.complexity === 'number'
+					? task.complexity
+					: parseInt(String(task.complexity));
 			if (!isNaN(complexityNum)) {
-				const complexityColor = complexityNum >= 8 ? chalk.red : complexityNum >= 5 ? chalk.yellow : chalk.green;
+				const complexityColor =
+					complexityNum >= 8
+						? chalk.red
+						: complexityNum >= 5
+							? chalk.yellow
+							: chalk.green;
 				details.push(`Complexity: ${complexityColor(complexityNum)}/10`);
 			}
 		}
