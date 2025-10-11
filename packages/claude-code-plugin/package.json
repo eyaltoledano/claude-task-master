@@ -1,6 +1,6 @@
 {
 	"name": "@tm/claude-code-plugin",
-	"version": "",
+	"version": "0.28.0-rc.2",
 	"description": "Task Master AI plugin for Claude Code - Build tooling and assets",
 	"type": "module",
 	"private": true,
