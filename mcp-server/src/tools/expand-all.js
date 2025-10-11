@@ -10,7 +10,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import {
+	findTasksPath,
+	resolveComplexityReportOutputPath
+} from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
@@ -85,6 +88,14 @@ export function registerExpandAllTool(server) {
 					);
 				}
 
+				// Resolve complexity report path to use recommendations from analyze-complexity
+				const complexityReportPath = resolveComplexityReportOutputPath(
+					null,
+					{ projectRoot: args.projectRoot, tag: resolvedTag },
+					log
+				);
+				log.info(`Using complexity report path: ${complexityReportPath}`);
+
 				const result = await expandAllTasksDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -93,7 +104,8 @@ export function registerExpandAllTool(server) {
 						prompt: args.prompt,
 						force: args.force,
 						projectRoot: args.projectRoot,
-						tag: resolvedTag
+						tag: resolvedTag,
+						complexityReportPath
 					},
 					log,
 					{ session }
