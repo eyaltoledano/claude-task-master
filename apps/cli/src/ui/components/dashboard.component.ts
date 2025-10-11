@@ -402,11 +402,13 @@ function formatStatusLine(
 
 /**
  * Display the project dashboard box
+ * @param showPriorityBreakdown - Whether to show the priority breakdown section (default: true)
  */
 export function displayProjectDashboard(
 	taskStats: TaskStatistics,
 	subtaskStats: TaskStatistics,
-	priorityBreakdown: Record<TaskPriority, number>
+	priorityBreakdown: Record<TaskPriority, number>,
+	showPriorityBreakdown: boolean = true
 ): string {
 	// Calculate status breakdowns using the helper function
 	const taskStatusBreakdown = calculateStatusBreakdown(taskStats);
@@ -427,20 +429,25 @@ export function displayProjectDashboard(
 	const taskPercentage = `${taskStats.completionPercentage}% ${taskStats.done}/${taskStats.total}`;
 	const subtaskPercentage = `${subtaskStats.completionPercentage}% ${subtaskStats.done}/${subtaskStats.total}`;
 
-	const content =
+	let content =
 		chalk.white.bold('Project Dashboard') +
 		'\n' +
 		`Tasks Progress: ${taskProgressBar} ${chalk.yellow(taskPercentage)}\n` +
 		formatStatusLine(taskStats, false) +
 		'\n\n' +
 		`Subtasks Progress: ${subtaskProgressBar} ${chalk.cyan(subtaskPercentage)}\n` +
-		formatStatusLine(subtaskStats, true) +
-		'\n\n' +
-		chalk.cyan.bold('Priority Breakdown:') +
-		'\n' +
-		`${chalk.red('•')} ${chalk.white('High priority:')} ${priorityBreakdown.high}\n` +
-		`${chalk.yellow('•')} ${chalk.white('Medium priority:')} ${priorityBreakdown.medium}\n` +
-		`${chalk.green('•')} ${chalk.white('Low priority:')} ${priorityBreakdown.low}`;
+		formatStatusLine(subtaskStats, true);
+
+	// Conditionally add priority breakdown
+	if (showPriorityBreakdown) {
+		content +=
+			'\n\n' +
+			chalk.cyan.bold('Priority Breakdown:') +
+			'\n' +
+			`${chalk.red('•')} ${chalk.white('High priority:')} ${priorityBreakdown.high}\n` +
+			`${chalk.yellow('•')} ${chalk.white('Medium priority:')} ${priorityBreakdown.medium}\n` +
+			`${chalk.green('•')} ${chalk.white('Low priority:')} ${priorityBreakdown.low}`;
+	}
 
 	return content;
 }
