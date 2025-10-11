@@ -1,0 +1,144 @@
+# Migrating to Claude Code Plugin
+
+<Warning>
+If you previously used `task-master init --rules claude`, this guide will help you migrate to the new plugin system.
+</Warning>
+
+## What Changed?
+
+Task Master AI has evolved from copying files to `.claude/commands/` and `.claude/agents/` directories to a modern plugin-based architecture that provides:
+
+- ✅ **Automatic updates** when new features are released
+- ✅ **Better command organization** with clean `/task-master-ai:` prefixes
+- ✅ **Seamless Claude Code integration** using native plugin system
+- ✅ **No manual file management** - no more copying or updating files
+
+## Migration Steps
+
+### 1. Install the Plugin
+
+First, install the official Task Master plugin:
+
+```bash
+/plugin marketplace add eyaltoledano/claude-task-master
+/plugin install taskmaster@taskmaster
+```
+
+### 2. Verify Plugin Installation
+
+Check that the plugin is working:
+
+```bash
+/task-master-ai:help
+```
+
+You should see the full list of available commands.
+
+### 3. Remove Old Files (Optional)
+
+<Warning>
+Your existing Task Master project files (`.taskmaster/` folder) are NOT affected and will continue working normally.
+</Warning>
+
+The old command files in `.claude/` are now redundant. You can safely remove them:
+
+```bash
+# Remove old command files
+rm -rf .claude/commands/tm/
+
+# Remove old agent files  
+rm -rf .claude/agents/task-*
+```
+
+### 4. Update Your Workflows
+
+Update any saved workflows or documentation to use the new command names:
+
+#### Old Commands (still work but won't update)
+```bash
+/tm:init
+/tm:parse-prd  
+/tm:next
+```
+
+#### New Commands (get automatic updates)
+```bash
+/task-master-ai:init-project
+/task-master-ai:parse-prd
+/task-master-ai:next-task
+```
+
+## Command Name Changes
+
+Most commands have the same name but with the new prefix:
+
+| Old Format | New Format |
+|------------|------------|
+| `/tm:init` | `/task-master-ai:init-project` |
+| `/tm:parse-prd` | `/task-master-ai:parse-prd` |
+| `/tm:next` | `/task-master-ai:next-task` |
+| `/tm:show` | `/task-master-ai:show-task` |
+| `/tm:add-task` | `/task-master-ai:add-task` |
+| `/tm:expand` | `/task-master-ai:expand-task` |
+| `/tm:to-done` | `/task-master-ai:to-done` |
+
+## What Happens to MCP?
+
+<Note>
+The MCP server integration remains fully functional and is recommended alongside the plugin for the complete Task Master experience.
+</Note>
+
+The plugin provides slash commands and agents, while the MCP server provides deep integration tools. For the best experience, keep both:
+
+1. **Plugin**: For slash commands and AI agents
+2. **MCP Server**: For advanced tool integration
+
+## Troubleshooting Migration
+
+### Old Commands Still Showing
+
+If you're still seeing old commands after removing the files:
+
+1. Restart Claude Code completely
+2. Clear command cache if available in your editor
+
+### Plugin Commands Not Working
+
+1. Verify plugin installation: `/plugin list`
+2. Check marketplace is added: `/plugin marketplace list`
+3. Reinstall if needed: `/plugin uninstall taskmaster && /plugin install taskmaster@taskmaster`
+
+### MCP Tools Not Working
+
+If your MCP integration breaks during migration:
+
+1. Verify your `.mcp.json` configuration is intact
+2. Restart your editor to reconnect MCP servers
+3. Check API keys are still configured correctly
+
+## Benefits of Migration
+
+### Automatic Updates
+- New commands and features arrive automatically
+- No need to run `rules add claude` again
+- Always get the latest Task Master capabilities
+
+### Better Organization  
+- Clean command naming with consistent prefixes
+- Better integration with Claude Code's plugin system
+- Reduced local file clutter
+
+### Enhanced Functionality
+- 49 specialized commands (vs. previous limited set)
+- 3 AI agents for different workflow needs
+- Native Claude Code plugin experience
+
+## Need Help?
+
+If you encounter issues during migration:
+
+1. Check the [FAQ](/getting-started/faq) for common issues
+2. Join our [Discord community](https://discord.gg/fWJkU7rf) for support
+3. File an issue on [GitHub](https://github.com/eyaltoledano/claude-task-master/issues)
+
+The migration should be seamless, but we're here to help if you run into any problems!

@@ -33,6 +33,8 @@
 								]
 							},
 							"getting-started/api-keys",
+							"getting-started/claude-code-plugin",
+							"getting-started/migration-plugin",
 							"getting-started/faq",
 							"getting-started/contribute"
 						]

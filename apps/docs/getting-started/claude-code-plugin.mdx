@@ -1,0 +1,129 @@
+# Claude Code Plugin Integration
+
+Task Master AI now offers official Claude Code plugin support, providing seamless integration with 49 specialized commands and 3 AI agents.
+
+## Installation
+
+### Quick Installation
+
+Install the plugin directly from the Task Master marketplace:
+
+```bash
+/plugin marketplace add eyaltoledano/claude-task-master
+/plugin install taskmaster@taskmaster
+```
+
+### What You Get
+
+- **49 Slash Commands**: All Task Master commands accessible via `/task-master-ai:` prefix
+- **3 Specialized Agents**: task-orchestrator, task-executor, and task-checker
+- **MCP Integration**: Deep integration with Claude Code's MCP system
+- **Automatic Updates**: Plugin updates automatically with new releases
+
+## Quick Start with Plugin
+
+After installation, initialize your project:
+
+```bash
+/task-master-ai:init-project
+/task-master-ai:parse-prd
+/task-master-ai:next-task
+```
+
+## Command Reference
+
+All Task Master commands are available with the `/task-master-ai:` prefix:
+
+### Core Workflow
+- `/task-master-ai:init-project` - Initialize Task Master in current project
+- `/task-master-ai:parse-prd` - Generate tasks from PRD document
+- `/task-master-ai:next-task` - Get next available task
+- `/task-master-ai:show-task` - View detailed task information
+
+### Task Management
+- `/task-master-ai:add-task` - Add new task with AI assistance
+- `/task-master-ai:expand-task` - Break task into subtasks
+- `/task-master-ai:to-done` - Mark task complete
+- `/task-master-ai:list-tasks` - Show all tasks with status
+
+### Analysis & Planning
+- `/task-master-ai:analyze-complexity` - Analyze task complexity
+- `/task-master-ai:complexity-report` - View complexity analysis
+- `/task-master-ai:expand-all-tasks` - Expand all eligible tasks
+
+## AI Agents
+
+The plugin includes three specialized agents for different workflow needs:
+
+### Task Orchestrator
+High-level project coordination and strategic planning.
+
+### Task Executor  
+Hands-on implementation and code generation.
+
+### Task Checker
+Quality assurance and validation of completed work.
+
+## Migration from Legacy Setup
+
+<Warning>
+If you previously used `rules add claude`, those commands will continue working but won't receive updates.
+</Warning>
+
+### Migration Steps
+
+1. **Install the plugin**: `/plugin install taskmaster@taskmaster`
+2. **Remove old files** (optional):
+   ```bash
+   rm -rf .claude/commands/tm/
+   rm -rf .claude/agents/task-*
+   ```
+3. **Update workflows** to use new command names with `/task-master-ai:` prefix
+
+### Why Migrate?
+
+- ✅ **Automatic updates** - Get new features without manual copying
+- ✅ **Better organization** - Clean command naming and structure  
+- ✅ **Seamless integration** - Native Claude Code plugin experience
+- ✅ **No file management** - No need to manually maintain command files
+
+## Team Configuration
+
+Organizations can auto-install the plugin for team members:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "task-master": {
+      "source": {
+        "source": "github", 
+        "repo": "eyaltoledano/claude-task-master"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "taskmaster": {
+      "marketplace": "taskmaster"
+    }
+  }
+}
+```
+
+Add this to `.claude/settings.json` in your repository root.
+
+## Troubleshooting
+
+### Plugin Not Found
+Ensure you've added the marketplace first:
+```bash
+/plugin marketplace add eyaltoledano/claude-task-master
+```
+
+### Commands Not Working
+Verify the plugin is installed and enabled:
+```bash
+/plugin list
+```
+
+### MCP Integration Issues
+Check that your MCP configuration includes the Task Master server as outlined in the [MCP documentation](/capabilities/mcp).
