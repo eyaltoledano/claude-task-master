@@ -38,27 +38,14 @@ function removeDirectoryRecursive(dirPath) {
 
 // Lifecycle functions for Claude Code profile
 function onAddRulesProfile(targetDir, assetsDir) {
-	// Copy .claude directory recursively
-	const claudeSourceDir = path.join(assetsDir, 'claude');
-	const claudeDestDir = path.join(targetDir, '.claude');
-
-	if (!fs.existsSync(claudeSourceDir)) {
-		log(
-			'error',
-			`[Claude] Source directory does not exist: ${claudeSourceDir}`
-		);
-		return;
-	}
-
-	try {
-		copyRecursiveSync(claudeSourceDir, claudeDestDir);
-		log('debug', `[Claude] Copied .claude directory to ${claudeDestDir}`);
-	} catch (err) {
-		log(
-			'error',
-			`[Claude] An error occurred during directory copy: ${err.message}`
-		);
-	}
+	// Note: Commands and agents are now distributed via Claude Code plugin
+	// Legacy .claude directory copying has been deprecated
+	log(
+		'info',
+		'[Claude] Commands and agents are now available via the Task Master plugin'
+	);
+	log('info', '[Claude] Install with: /plugin marketplace add taskmaster');
+	log('info', '[Claude] Then: /plugin install taskmaster@taskmaster');
 
 	// Handle CLAUDE.md import for non-destructive integration
 	const sourceFile = path.join(assetsDir, 'AGENTS.md');
@@ -119,11 +106,12 @@ function onAddRulesProfile(targetDir, assetsDir) {
 }
 
 function onRemoveRulesProfile(targetDir) {
-	// Remove .claude directory recursively
-	const claudeDir = path.join(targetDir, '.claude');
-	if (removeDirectoryRecursive(claudeDir)) {
-		log('debug', `[Claude] Removed .claude directory from ${claudeDir}`);
-	}
+	// Note: .claude directory (commands/agents) are now managed by Claude Code plugin
+	// We no longer remove them here - users should uninstall the plugin separately
+	log(
+		'info',
+		'[Claude] To remove Task Master commands/agents, uninstall the plugin with: /plugin uninstall taskmaster'
+	);
 
 	// Clean up CLAUDE.md import
 	const userClaudeFile = path.join(targetDir, 'CLAUDE.md');

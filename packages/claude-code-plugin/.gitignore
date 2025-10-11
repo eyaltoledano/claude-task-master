@@ -1,0 +1,12 @@
+# Claude Code Plugin
+# Build tooling and generated plugin distribution files
+# Source files live in assets/claude/
+
+# Only ignore build artifacts and dependencies
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Everything else (including generated plugin files) should be committed
+# so GitHub can serve them for Claude Code marketplace
