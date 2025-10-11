@@ -10,10 +10,8 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
-import {
-	findTasksPath,
-	resolveComplexityReportOutputPath
-} from '../core/utils/path-utils.js';
+import { findTasksPath } from '../core/utils/path-utils.js';
+import { resolveComplexityReportOutputPath } from '../utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
