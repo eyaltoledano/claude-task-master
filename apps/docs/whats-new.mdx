@@ -3,4 +3,58 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+# What's New in Task Master
+
+## Version 0.28.0 - Latest Release
+
+### 🚀 New Features
+
+#### Codex CLI Provider Support
+- Added support for GPT-5 and GPT-5-Codex models via Codex CLI
+- OAuth-first authentication - no API key required (just run `codex login`)
+- 272K input / 128K output context windows
+- Codebase analysis capabilities automatically enabled
+- Optional `OPENAI_CODEX_API_KEY` support for API-based usage
+
+#### Cursor IDE Slash Commands
+- Automatically installs custom slash commands when adding Cursor profile
+- Quick access to Task Master functionality directly in Cursor IDE
+- Commands include `/tm-list`, `/tm-next`, `/tm-show`, `/tm-add`, and more
+- Automatic cleanup when removing Cursor profile
+
+#### Enhanced MCP Configuration
+- Improved timeout configuration for long-running AI operations
+- 300-second timeout for complex tasks like PRD parsing and task expansion
+- Programmatic MCP configuration generation for better reliability
+- Enhanced support for Roo Code and other AI coding assistants
+
+### 🔧 Technical Improvements
+
+#### AI SDK v5 Migration
+- Migrated to AI SDK v5 for better compatibility with modern AI providers
+- Improved support for Claude Code and Gemini CLI integration
+- Better structured output generation with `generateObject`
+- Enhanced JSON mode support for supported providers
+
+#### Structured Data Generation
+- All AI services now use `generateObject` for more reliable responses
+- Integrated Zod schemas for automatic validation
+- Reduced parsing errors and improved data consistency
+- Better subtask ID generation (fixes numbering inconsistencies)
+
+### 🐛 Bug Fixes
+- Fixed MCP connection errors from deprecated function calls
+- Fixed MCP server errors when file parameters not provided
+- Corrected complexity scores display in `task-master show` and `list`
+- Fixed Perplexity Sonar Deep Research model naming
+- Improved parent task status handling when all subtasks are pending
+
+### 📖 Documentation Updates
+- New comprehensive API keys configuration guide
+- Enhanced Cursor IDE integration documentation  
+- Improved MCP timeout configuration documentation
+- Updated examples and configuration snippets
+
+---
+
+For detailed release notes and full changelog, visit our [GitHub releases page](https://github.com/eyaltoledano/claude-task-master/releases).

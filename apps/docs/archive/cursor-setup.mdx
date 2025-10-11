@@ -6,10 +6,28 @@ description: "Learn how to set up and use Task Master with Cursor AI"
 ## Setting up Cursor AI Integration
 
 <Check>
-  Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development.
+  Task Master is designed to work seamlessly with [Cursor AI](https://www.cursor.so/), providing a structured workflow for AI-driven development. As of version 0.28.0, Task Master automatically sets up custom slash commands in Cursor IDE.
 </Check>
 
 <AccordionGroup>
+  <Accordion title="Cursor Custom Slash Commands (New in 0.28.0)" icon="terminal">
+    Task Master now automatically configures custom slash commands in Cursor IDE when adding a profile. These commands provide quick access to Task Master functionality:
+
+    ### Available Slash Commands
+    - `/tm-list` - View all tasks with their status
+    - `/tm-next` - Get the next available task to work on  
+    - `/tm-show` - Show detailed task information
+    - `/tm-add` - Add a new task with AI assistance
+    - `/tm-status` - Set task status (pending, in-progress, done, etc.)
+    - `/tm-expand` - Expand a task into subtasks
+    - `/tm-complexity` - Analyze task complexity
+
+    ### Automatic Setup
+    When you run `task-master profiles add cursor`, the slash commands are automatically copied to `.cursor/commands/`. If you remove the profile with `task-master profiles remove cursor`, the commands are cleaned up automatically.
+
+    ### Manual Setup
+    If you need to manually set up the commands, they're available in the `assets/claude/commands/` directory of your Task Master installation.
+  </Accordion>
   <Accordion title="Using Cursor with MCP (Recommended)" icon="sparkles">
     If you've already set up Task Master with MCP in Cursor, the integration is automatic. You can simply use natural language to interact with Task Master:
 

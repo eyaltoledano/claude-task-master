@@ -42,6 +42,20 @@ PERPLEXITY_API_KEY="pplx-your-key-here"
 OPENAI_API_KEY="sk-proj-your-key-here"
 ```
 
+### OPENAI_CODEX_API_KEY (New)
+- **Provider**: Codex CLI (GPT-5 and GPT-5-Codex models)
+- **Format**: Various formats
+- **Required**: ❌ **No** (OAuth-first authentication via `codex login`)
+- **Models**: GPT-5, GPT-5-Codex (272K input / 128K output context)
+- **Authentication**: Primary authentication is OAuth via `codex login` command
+- **Features**: Codebase analysis capabilities automatically enabled
+- **Get Access**: Follow Codex CLI setup instructions
+
+```bash
+# Optional - OAuth via 'codex login' is preferred
+OPENAI_CODEX_API_KEY="your-codex-api-key-here"
+```
+
 ### GOOGLE_API_KEY
 - **Provider**: Google Gemini models
 - **Format**: Various formats
@@ -197,15 +211,19 @@ For Claude Code integration, configure keys in `.mcp.json`:
     "task-master-ai": {
       "command": "npx",
       "args": ["-y", "task-master-ai"],
+      "timeout": 300000,
       "env": {
         "ANTHROPIC_API_KEY": "your-key-here",
         "PERPLEXITY_API_KEY": "your-key-here",
-        "OPENAI_API_KEY": "your-key-here"
+        "OPENAI_API_KEY": "your-key-here",
+        "OPENAI_CODEX_API_KEY": "your-codex-key-here"
       }
     }
   }
 }
 ```
+
+**Note**: The `timeout: 300000` (300 seconds) setting is recommended for long-running AI operations like PRD parsing and complexity analysis.
 
 ## Key Requirements
 

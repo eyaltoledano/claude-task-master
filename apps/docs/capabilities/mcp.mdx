@@ -66,3 +66,36 @@ The MCP tools can be categorized in the same way as the core functionalities:
 -   **`use_tag`**: Switches to a different tag.
 -   **`rename_tag`**: Renames a tag.
 -   **`copy_tag`**: Copies a tag.
+
+## Configuration and Performance
+
+### Timeout Configuration
+
+As of version 0.28.0, Task Master automatically configures appropriate timeouts for MCP operations to handle long-running AI tasks. The Roo Code profile now includes a 300-second timeout (increased from the default 60 seconds) to accommodate complex operations like:
+
+- `parse_prd` - PRD parsing and task generation
+- `expand_all` - Expanding multiple tasks into subtasks
+- `analyze_project_complexity` - Project-wide complexity analysis
+- Research-enabled operations with the `--research` flag
+
+### MCP Server Configuration
+
+The recommended MCP server configuration automatically includes these timeout settings:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "timeout": 300000,
+      "env": {
+        "ANTHROPIC_API_KEY": "your-key-here",
+        "PERPLEXITY_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+This configuration is automatically generated when using Task Master profiles with Roo Code and other AI coding assistants.
