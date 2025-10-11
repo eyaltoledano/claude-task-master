@@ -197,7 +197,7 @@ Task Master will:
 task-master analyze-complexity --research
 ```
 
-Review the complexity report to identify tasks that need expansion.
+Review the complexity report to identify tasks that need expansion and determine optimal subtask counts.
 
 ### Step 4: Expand Tasks
 
@@ -205,7 +205,7 @@ Review the complexity report to identify tasks that need expansion.
 task-master expand --all --research
 ```
 
-Break down complex tasks into manageable subtasks while preserving dependency chains.
+Break down complex tasks into manageable subtasks while preserving dependency chains. The expand operation automatically uses the complexity analysis recommendations to determine the appropriate number of subtasks for each task based on its complexity level.
 
 ---
 

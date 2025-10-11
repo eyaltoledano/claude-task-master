@@ -124,6 +124,8 @@ sidebarTitle: "CLI Commands"
     # Research-backed generation for all tasks
     task-master expand --all --research
     ```
+
+    When you run `task-master expand --all` after `task-master analyze-complexity`, the expand operation automatically uses the recommended subtask counts from the complexity analysis instead of applying uniform defaults. This ensures each task is broken down according to its actual complexity level.
   </Accordion>
 
   <Accordion title="Clear Subtasks">
