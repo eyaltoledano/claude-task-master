@@ -26,7 +26,15 @@ class TaskMasterMCPServer {
 			version: packageJson.version
 		};
 
-		this.server = new FastMCP(this.options);
+		// Create FastMCP instance with JSON Schema Draft-07 compatibility
+		this.server = new FastMCP(this.options, {
+			toJsonSchema: async (schema) => {
+				// Import zod-to-json-schema directly to control the target schema version
+				const { zodToJsonSchema } = await import('zod-to-json-schema');
+				// Use jsonSchema7 target for MCP client compatibility
+				return zodToJsonSchema(schema, { target: 'jsonSchema7' });
+			}
+		});
 		this.initialized = false;
 
 		// Bind methods
@@ -60,79 +68,48 @@ class TaskMasterMCPServer {
 			await this.init();
 		}
 
-		this.server.on('connect', (event) => {
-			event.session.server.sendLoggingMessage({
-				data: {
-					context: event.session.context,
-					message: `MCP Server connected: ${event.session.name}`
-				},
-				level: 'info'
-			});
-			this.registerRemoteProvider(event.session);
+		// Start with stdio transport and 2 minute timeout
+		await this.server.start({
+			transport: 'stdio',
+			timeout: 120000
 		});
 
-		// Start the FastMCP server with increased timeout
-		await this.server.start({
-			transportType: 'stdio',
-			timeout: 120000 // 2 minutes timeout (in milliseconds)
+		// Log startup
+		this.logger.info('MCP server started');
+
+		// Register a disconnect handler
+		this.server.on('disconnect', () => {
+			this.logger.info('Client disconnected from MCP server');
 		});
+
+		// Register the remote MCP providers
+		// Only register providers that have the required capabilities
+		const providers = ProviderRegistry.getAllProviders();
+		for (const provider of providers) {
+			try {
+				// Check capabilities before registering
+				const hasSampling = await provider.hasCapability('sampling');
+				if (hasSampling) {
+					this.logger.info(`Registering remote provider: ${provider.name}`);
+					await this.server.addRemoteProvider(new MCPProvider(provider));
+				} else {
+					this.logger.warn(`Skipping provider ${provider.name} - missing required capabilities`);
+				}
+			} catch (error) {
+				this.logger.error(`Failed to register provider ${provider.name}: ${error.message}`);
+			}
+		}
 
 		return this;
-	}
-
-	/**
-	 * Register both MCP providers with the provider registry
-	 */
-	registerRemoteProvider(session) {
-		// Check if the server has at least one session
-		if (session) {
-			// Make sure session has required capabilities
-			if (!session.clientCapabilities || !session.clientCapabilities.sampling) {
-				session.server.sendLoggingMessage({
-					data: {
-						context: session.context,
-						message: `MCP session missing required sampling capabilities, providers not registered`
-					},
-					level: 'info'
-				});
-				return;
-			}
-
-			// Register MCP provider with the Provider Registry
-
-			// Register the unified MCP provider
-			const mcpProvider = new MCPProvider();
-			mcpProvider.setSession(session);
-
-			// Register provider with the registry
-			const providerRegistry = ProviderRegistry.getInstance();
-			providerRegistry.registerProvider('mcp', mcpProvider);
-
-			session.server.sendLoggingMessage({
-				data: {
-					context: session.context,
-					message: `MCP Server connected`
-				},
-				level: 'info'
-			});
-		} else {
-			session.server.sendLoggingMessage({
-				data: {
-					context: session.context,
-					message: `No MCP sessions available, providers not registered`
-				},
-				level: 'warn'
-			});
-		}
 	}
 
 	/**
 	 * Stop the MCP server
 	 */
 	async stop() {
-		if (this.server) {
-			await this.server.stop();
-		}
+		this.logger.info('Stopping MCP server...');
+		await this.server.stop();
+		this.logger.info('MCP server stopped');
 	}
 }
 
