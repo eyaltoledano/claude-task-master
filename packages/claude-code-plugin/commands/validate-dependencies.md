@@ -66,6 +66,6 @@ For each issue found:
 ## Next Steps
 
 After validation:
-- Run `/task-master-ai:fix-dependencies` to auto-fix
+- Run `/taskmaster:fix-dependencies` to auto-fix
 - Manually adjust problematic dependencies
 - Rerun to verify fixes

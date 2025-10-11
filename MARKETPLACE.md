@@ -13,7 +13,7 @@ Once this repository is pushed to GitHub, users can install with:
 /plugin marketplace add eyaltoledano/claude-task-master
 
 # Install the plugin
-/plugin install task-master-ai@task-master
+/plugin install taskmaster@taskmaster
 ```
 
 ### Local Development/Testing
@@ -29,7 +29,7 @@ cd ../..
 
 # In Claude Code
 /plugin marketplace add .
-/plugin install task-master-ai@task-master
+/plugin install taskmaster@taskmaster
 ```
 
 ## Marketplace Structure

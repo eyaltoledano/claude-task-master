@@ -56,12 +56,12 @@ task-master add-subtask --parent=<id> --task-id=<existing-id>
 ## Example Flows
 
 ```
-/task-master-ai:add-subtask to 5: implement user authentication
+/taskmaster:add-subtask to 5: implement user authentication
 → Created subtask #5.1: "implement user authentication"
 → Parent task #5 now has 1 subtask
 → Suggested next subtasks: tests, documentation
 
-/task-master-ai:add-subtask 5: setup, implement, test
+/taskmaster:add-subtask 5: setup, implement, test
 → Created 3 subtasks:
   #5.1: setup
   #5.2: implement  

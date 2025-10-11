@@ -42,10 +42,10 @@ function onAddRulesProfile(targetDir, assetsDir) {
 	// Legacy .claude directory copying has been deprecated
 	log(
 		'info',
-		'[Claude] Commands and agents are now available via the Task Master AI plugin'
+		'[Claude] Commands and agents are now available via the Task Master plugin'
 	);
-	log('info', '[Claude] Install with: /plugin marketplace add task-master');
-	log('info', '[Claude] Then: /plugin install task-master-ai@task-master');
+	log('info', '[Claude] Install with: /plugin marketplace add taskmaster');
+	log('info', '[Claude] Then: /plugin install taskmaster@taskmaster');
 
 	// Handle CLAUDE.md import for non-destructive integration
 	const sourceFile = path.join(assetsDir, 'AGENTS.md');
@@ -110,7 +110,7 @@ function onRemoveRulesProfile(targetDir) {
 	// We no longer remove them here - users should uninstall the plugin separately
 	log(
 		'info',
-		'[Claude] To remove Task Master AI commands/agents, uninstall the plugin with: /plugin uninstall task-master-ai'
+		'[Claude] To remove Task Master commands/agents, uninstall the plugin with: /plugin uninstall taskmaster'
 	);
 
 	// Clean up CLAUDE.md import

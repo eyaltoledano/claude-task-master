@@ -70,7 +70,7 @@ Manual Review Needed:
 ⚠️ Task #45 has 8 dependencies
   Suggestion: Break into subtasks
 
-Run '/task-master-ai:validate-dependencies' to verify fixes
+Run '/taskmaster:validate-dependencies' to verify fixes
 ```
 
 ## Safety

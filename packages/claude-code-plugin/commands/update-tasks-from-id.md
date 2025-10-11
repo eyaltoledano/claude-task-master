@@ -77,7 +77,7 @@ AI analyzes the update context and:
 ## Example Updates
 
 ```
-/task-master-ai:update/from-id 5: change database to PostgreSQL
+/taskmaster:update/from-id 5: change database to PostgreSQL
 → Analyzing impact starting from task #5
 → Found 6 related tasks to update
 → Updates will maintain consistency

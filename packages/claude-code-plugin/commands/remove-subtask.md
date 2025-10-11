@@ -63,13 +63,13 @@ task-master remove-subtask --id=<parentId.subtaskId> --convert
 ## Example Flows
 
 ```
-/task-master-ai:remove-subtask 5.1
+/taskmaster:remove-subtask 5.1
 → Warning: Subtask #5.1 is in-progress
 → This will delete all subtask data
 → Parent task #5 will be updated
 Confirm deletion? (y/n)
 
-/task-master-ai:remove-subtask 5.1 convert
+/taskmaster:remove-subtask 5.1 convert
 → Converting subtask #5.1 to standalone task #89
 → Preserved: All task data and history
 → Updated: 2 dependency references

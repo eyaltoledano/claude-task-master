@@ -53,7 +53,7 @@ task-master add-subtask --parent=<parent-id> --task-id=<task-to-convert>
 ## Example
 
 ```
-/task-master-ai:add-subtask/from-task 5 8
+/taskmaster:add-subtask/from-task 5 8
 → Converting: Task #8 becomes subtask #5.1
 → Updated: 3 dependency references
 → Parent task #5 now has 1 subtask

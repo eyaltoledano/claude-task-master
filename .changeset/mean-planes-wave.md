@@ -6,7 +6,7 @@ Add Claude Code plugin with marketplace distribution
 
 This release introduces official Claude Code plugin support, marking the evolution from legacy `.claude` directory copying to a modern plugin-based architecture.
 
-**🎉 New: Claude Code Plugin**
+## 🎉 New: Claude Code Plugin
 
 Task Master AI commands and agents are now distributed as a proper Claude Code plugin:
 
@@ -18,12 +18,10 @@ Task Master AI commands and agents are now distributed as a proper Claude Code p
 
 ```bash
 /plugin marketplace add eyaltoledano/claude-task-master
-/plugin install task-master-ai@task-master
+/plugin install taskmaster@taskmaster
 ```
 
-**⚠️ Breaking Change: Legacy `.claude` Directory Deprecated**
-
-The `rules add claude` command no longer copies commands and agents to `.claude/commands/` and `.claude/agents/`. Instead, it now:
+### The `rules add claude` command no longer copies commands and agents to `.claude/commands/` and `.claude/agents/`. Instead, it now
 
 - Shows plugin installation instructions
 - Only manages CLAUDE.md imports for agent instructions
@@ -34,12 +32,13 @@ The `rules add claude` command no longer copies commands and agents to `.claude/
 If you previously used `rules add claude`:
 
 1. The old commands in `.claude/commands/` will continue to work but won't receive updates
-2. Install the plugin for the latest features: `/plugin install task-master-ai@task-master`
+2. Install the plugin for the latest features: `/plugin install taskmaster@taskmaster`
 3. remove old `.claude/commands/` and `.claude/agents/` directories
 
 **Why This Change?**
 
 Claude Code plugins provide:
+
 - ✅ Automatic updates when we release new features
 - ✅ Better command organization and naming
 - ✅ Seamless integration with Claude Code

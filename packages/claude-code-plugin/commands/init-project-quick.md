@@ -30,17 +30,17 @@ task-master init -y
 After quick init:
 1. Configure AI models if needed:
    ```
-   /task-master-ai:models/setup
+   /taskmaster:models/setup
    ```
 
 2. Parse PRD if available:
    ```
-   /task-master-ai:parse-prd <file>
+   /taskmaster:parse-prd <file>
    ```
 
 3. Or create first task:
    ```
-   /task-master-ai:add-task create initial setup
+   /taskmaster:add-task create initial setup
    ```
 
 Perfect for rapid project setup!

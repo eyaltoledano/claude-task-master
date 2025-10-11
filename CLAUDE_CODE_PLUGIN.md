@@ -62,7 +62,7 @@ packages/claude-code-plugin/
    ```bash
    # In Claude Code (from project root)
    /plugin marketplace add .
-   /plugin install task-master-ai@task-master
+   /plugin install taskmaster@taskmaster
    ```
 
 4. **Iterate**:
@@ -73,8 +73,8 @@ packages/claude-code-plugin/
    npm run build
 
    # In Claude Code
-   /plugin uninstall task-master-ai@task-master
-   /plugin install task-master-ai@task-master
+   /plugin uninstall taskmaster@taskmaster
+   /plugin install taskmaster@taskmaster
    # Restart Claude Code
    ```
 
@@ -295,7 +295,7 @@ EOF
 
 # Users install with:
 # /plugin marketplace add eyaltoledano/claude-task-master
-# /plugin install task-master-ai@task-master
+# /plugin install taskmaster@taskmaster
 ```
 
 ### Option 3: Team/Organization Distribution

@@ -115,7 +115,7 @@ Results are:
 
 After analysis:
 ```
-/task-master-ai:expand 5    # Expand specific task
-/task-master-ai:expand/all  # Expand all recommended
-/task-master-ai:complexity-report  # View detailed report
+/taskmaster:expand 5    # Expand specific task
+/taskmaster:expand/all  # Expand all recommended
+/taskmaster:complexity-report  # View detailed report
 ```

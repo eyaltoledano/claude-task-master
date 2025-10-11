@@ -85,17 +85,17 @@ Suggest before deletion:
 ## Example Flows
 
 ```
-/task-master-ai:remove-task 5
+/taskmaster:remove-task 5
 → Task #5 is in-progress with 8 hours logged
 → 3 other tasks depend on this
 → Suggestion: Mark as cancelled instead?
 Remove anyway? (y/n)
 
-/task-master-ai:remove-task 5 -y
+/taskmaster:remove-task 5 -y
 → Removed: Task #5 and 4 subtasks
 → Updated: 3 task dependencies
 → Warning: Tasks #7, #8, #9 now have missing dependency
-→ Run /task-master-ai:fix-dependencies to resolve
+→ Run /taskmaster:fix-dependencies to resolve
 ```
 
 ## Safety Features

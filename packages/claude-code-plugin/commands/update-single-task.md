@@ -66,7 +66,7 @@ The AI:
 ## Example Updates
 
 ```
-/task-master-ai:update/single 5: add rate limiting
+/taskmaster:update/single 5: add rate limiting
 → Updating Task #5: "Implement API endpoints"
 
 Current: Basic CRUD endpoints

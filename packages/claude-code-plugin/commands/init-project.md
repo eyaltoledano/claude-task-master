@@ -45,6 +45,6 @@ After successful init:
 
 If PRD file provided:
 ```
-/task-master-ai:init my-prd.md
+/taskmaster:init my-prd.md
 → Automatically runs parse-prd after init
 ```

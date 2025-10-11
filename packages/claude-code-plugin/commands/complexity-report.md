@@ -105,13 +105,13 @@ Use report for:
 ## Example Usage
 
 ```
-/task-master-ai:complexity-report
+/taskmaster:complexity-report
 → Opens latest analysis
 
-/task-master-ai:complexity-report --file=archived/2024-01-01.md
+/taskmaster:complexity-report --file=archived/2024-01-01.md
 → View historical analysis
 
 After viewing:
-/task-master-ai:expand 5
+/taskmaster:expand 5
 → Expand high-complexity task
 ```

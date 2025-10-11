@@ -1,5 +1,5 @@
 {
-	"name": "task-master",
+	"name": "taskmaster",
 	"owner": {
 		"name": "Hamster",
 		"email": "ralph@tryhamster.com"
@@ -10,7 +10,7 @@
 	},
 	"plugins": [
 		{
-			"name": "task-master-ai",
+			"name": "taskmaster",
 			"source": "./packages/claude-code-plugin",
 			"description": "AI-powered task management system for ambitious development workflows with intelligent orchestration, complexity analysis, and automated coordination",
 			"author": {

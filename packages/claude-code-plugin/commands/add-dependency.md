@@ -48,7 +48,7 @@ After adding dependency:
 ## Example Flows
 
 ```
-/task-master-ai:add-dependency 5 needs 3
+/taskmaster:add-dependency 5 needs 3
 → Task #5 now depends on Task #3
 → Task #5 is now blocked until #3 completes
 → Suggested: Also consider if #5 needs #4

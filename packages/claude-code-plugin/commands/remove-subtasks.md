@@ -77,7 +77,7 @@ Suggest alternatives:
 ## Example
 
 ```
-/task-master-ai:clear-subtasks 5
+/taskmaster:clear-subtasks 5
 → Found 4 subtasks to remove
 → Warning: Subtask #5.2 is in-progress
 → Cleared all subtasks from task #5
