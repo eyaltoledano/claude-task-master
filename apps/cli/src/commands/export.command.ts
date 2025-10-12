@@ -103,7 +103,7 @@ export class ExportCommand extends Command {
 			await this.initializeServices();
 
 			// Get current context
-			const context = this.authManager.getContext();
+			const context = await this.authManager.getContext();
 
 			// Determine org and brief IDs
 			let orgId = options?.org || context?.orgId;
