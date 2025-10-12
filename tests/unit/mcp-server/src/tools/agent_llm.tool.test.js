@@ -96,7 +96,9 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test'); // uuid is mocked
-		expect(result.delegatedCallDetails.requestParameters).toEqual({ prompt: 'test' });
+		expect(result.delegatedCallDetails.requestParameters).toEqual({
+			prompt: 'test'
+		});
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();
 		expect(result.pendingInteractionSignalToAgent.interactionId).toBe(
 			'fixed-uuid-for-test'
@@ -145,7 +147,9 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test');
-		expect(result.delegatedCallDetails.requestParameters).toEqual({ prompt: 'test stream' });
+		expect(result.delegatedCallDetails.requestParameters).toEqual({
+			prompt: 'test stream'
+		});
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();
 	});
 
@@ -289,14 +293,11 @@ describe('agent_llm MCP Tool', () => {
 				interactionId: 'existing-uuid-no-status',
 				projectRoot: '/test/root'
 			};
-			const executeSpy = jest.spyOn(
-				{ execute },
-				'execute'
-			);
+			const executeSpy = jest.spyOn({ execute }, 'execute');
 			try {
 				await execute(args, { log: mockLog, session: mockSession });
 			} catch (e) {
-				// 
+				//
 			}
 			expect(executeSpy).not.toHaveBeenCalled();
 		});
@@ -310,10 +311,7 @@ describe('agent_llm MCP Tool', () => {
 				interactionId: 'existing-uuid-invalid-status',
 				projectRoot: '/test/root'
 			};
-			const executeSpy = jest.spyOn(
-				{ execute },
-				'execute'
-			);
+			const executeSpy = jest.spyOn({ execute }, 'execute');
 			try {
 				await execute(args, { log: mockLog, session: mockSession });
 			} catch (e) {

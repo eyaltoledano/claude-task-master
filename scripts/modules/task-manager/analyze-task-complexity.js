@@ -440,8 +440,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 						interactionId: aiServiceResponse.mainResult.interactionId,
 						delegatedCallDetails: {
 							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
-							originalCommand:
-								context.commandName || 'analyze-complexity',
+							originalCommand: context.commandName || 'analyze-complexity',
 							role: useResearch ? 'research' : 'main',
 							serviceType: 'generateText', // Agent expected to return JSON string
 							requestParameters: {

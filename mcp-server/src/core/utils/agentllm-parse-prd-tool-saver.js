@@ -18,12 +18,12 @@ async function agentllmParsePrdSave(
 	logWrapper,
 	tag = 'master'
 ) {
- 	if (!tasksData || !Array.isArray(tasksData.tasks)) {
- 		const errorMsg =
- 			'Invalid tasksData structure. Expected object with "tasks" array.';
- 		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
- 		return { success: false, error: errorMsg };
- 	}
+	if (!tasksData || !Array.isArray(tasksData.tasks)) {
+		const errorMsg =
+			'Invalid tasksData structure. Expected object with "tasks" array.';
+		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
+		return { success: false, error: errorMsg };
+	}
 
 	// If metadata is missing, synthesize a minimal metadata object so the rest of
 	// the pipeline (which expects metadata) can continue. Log a warning so it's
@@ -59,8 +59,8 @@ async function agentllmParsePrdSave(
 		// The `writeJSON` utility from scripts/modules/utils.js handles the logic
 		// of reading the existing file, updating the specific tag, and writing it back.
 		const outputToSave = {
-				tasks: tasksData.tasks,
-				metadata: tasksData.metadata
+			tasks: tasksData.tasks,
+			metadata: tasksData.metadata
 		};
 
 		// The `writeJSON` function in utils.js is designed to intelligently merge

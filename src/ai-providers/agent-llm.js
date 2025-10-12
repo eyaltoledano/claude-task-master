@@ -31,7 +31,8 @@ class AgentLLMProvider extends BaseAIProvider {
 		if (!params.messages || !Array.isArray(params.messages)) {
 			throw new Error('Messages array is required for delegation');
 		}
-		const { modelId, messages, maxTokens, temperature, ...restApiParams } = params;
+		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+			params;
 		const interactionId = uuidv4();
 		const packagedParams = {
 			// modelId excluded: agent determines the model
@@ -51,7 +52,8 @@ class AgentLLMProvider extends BaseAIProvider {
 		if (!params.messages || !Array.isArray(params.messages)) {
 			throw new Error('Messages array is required for delegation');
 		}
-		const { modelId, messages, maxTokens, temperature, ...restApiParams } = params;
+		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+			params;
 		const interactionId = uuidv4();
 		const packagedParams = {
 			// modelId excluded: agent determines the model
@@ -75,10 +77,19 @@ class AgentLLMProvider extends BaseAIProvider {
 			throw new Error('Schema is required for object generation delegation');
 		}
 		if (!params.objectName) {
-			throw new Error('Object name is required for object generation delegation');
+			throw new Error(
+				'Object name is required for object generation delegation'
+			);
 		}
 		const {
-			modelId, messages, maxTokens, temperature, schema, objectName, ...restApiParams} = params;
+			modelId,
+			messages,
+			maxTokens,
+			temperature,
+			schema,
+			objectName,
+			...restApiParams
+		} = params;
 		const interactionId = uuidv4();
 		const packagedParams = {
 			// modelId excluded: agent determines the model

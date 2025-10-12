@@ -86,19 +86,14 @@ export function registerParsePRDTool(server) {
 						{ session, reportProgress: progressCapability }
 					);
 					// Check if agent delegation is needed
-					if (
-						result &&
-						result.needsAgentDelegation === true
-					) {
+					if (result && result.needsAgentDelegation === true) {
 						log.info(
 							`parse_prd tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 						);
-						return createAgentDelegationResponse(
-							result.pendingInteraction
-						);
+						return createAgentDelegationResponse(result.pendingInteraction);
 					} else {
 						// If no delegation, process the result as usual
-					return handleApiResult(
+						return handleApiResult(
 							result,
 							log,
 							'Error parsing PRD',
@@ -107,9 +102,10 @@ export function registerParsePRDTool(server) {
 						);
 					}
 				} catch (error) {
-				log.error(`Error in parse_prd: ${error.message}`);
-				return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+					log.error(`Error in parse_prd: ${error.message}`);
+					return createErrorResponse(`Failed to parse PRD: ${error.message}`);
+				}
 			}
-		})
+		)
 	});
 }

@@ -14,58 +14,60 @@ import { withNormalizedProjectRoot, createErrorResponse } from './utils.js';
  *    - `projectRoot`: (Required) Absolute path to the project.
  * Sending any unrecognized top-level keys will cause an error.
  */
-const agentLLMParameters = z.object({
-	interactionId: z
-		.string()
-		.optional()
-		.describe(
-			'ID to track the interaction across calls. Provided by the agent when responding.'
-		),
-	delegatedCallDetails: z
-		.object({
-			originalCommand: z
-				.string()
-				.describe('The MCP command that initiated this delegated LLM call.'),
-			role: z
-				.string()
-				.describe('The AI role for which the LLM call was intended.'),
-			serviceType: z
-				.enum(['generateText', 'streamText', 'generateObject'])
-				.describe('The type of LLM service requested.'),
-			requestParameters: z
-				.any()
-				.describe(
-					'The actual parameters for the LLM call (messages, modelId, schema, etc.).'
-				)
-		})
-		.optional()
-		.describe(
-			'Details of the LLM call to be delegated to the agent. Sent by Taskmaster.'
-		),
-	agentLLMResponse: z
-		.object({
-			status: z
-				.enum(['success', 'error'])
-				.describe('Status of the LLM call made by the agent.'),
-			data: z
-				.any()
-				.optional()
-				.describe('The LLM response data (text, object) from the agent.'),
-			errorDetails: z
-				.any()
-				.optional()
-				.describe("Error details if the agent's LLM call failed.")
-		})
-		.optional()
-		.describe('The LLM response from the agent. Sent by Agent.'),
-	projectRoot: z
-		.string()
-		.describe('The directory of the project. Must be an absolute path.'),
-	tag: z
-		.string()
-		.optional()
-		.describe('Optional context tag for multi-context/multi-agent routing')
-}).strict();
+const agentLLMParameters = z
+	.object({
+		interactionId: z
+			.string()
+			.optional()
+			.describe(
+				'ID to track the interaction across calls. Provided by the agent when responding.'
+			),
+		delegatedCallDetails: z
+			.object({
+				originalCommand: z
+					.string()
+					.describe('The MCP command that initiated this delegated LLM call.'),
+				role: z
+					.string()
+					.describe('The AI role for which the LLM call was intended.'),
+				serviceType: z
+					.enum(['generateText', 'streamText', 'generateObject'])
+					.describe('The type of LLM service requested.'),
+				requestParameters: z
+					.any()
+					.describe(
+						'The actual parameters for the LLM call (messages, modelId, schema, etc.).'
+					)
+			})
+			.optional()
+			.describe(
+				'Details of the LLM call to be delegated to the agent. Sent by Taskmaster.'
+			),
+		agentLLMResponse: z
+			.object({
+				status: z
+					.enum(['success', 'error'])
+					.describe('Status of the LLM call made by the agent.'),
+				data: z
+					.any()
+					.optional()
+					.describe('The LLM response data (text, object) from the agent.'),
+				errorDetails: z
+					.any()
+					.optional()
+					.describe("Error details if the agent's LLM call failed.")
+			})
+			.optional()
+			.describe('The LLM response from the agent. Sent by Agent.'),
+		projectRoot: z
+			.string()
+			.describe('The directory of the project. Must be an absolute path.'),
+		tag: z
+			.string()
+			.optional()
+			.describe('Optional context tag for multi-context/multi-agent routing')
+	})
+	.strict();
 
 function registerAgentLLMTool(server) {
 	server.addTool({
@@ -87,7 +89,8 @@ function registerAgentLLMTool(server) {
 
 				// Ensure mutual exclusivity
 				if (args.delegatedCallDetails && args.agentLLMResponse) {
-					const errorMsg = "Invalid parameters: Cannot provide both 'delegatedCallDetails' and 'agentLLMResponse'.";
+					const errorMsg =
+						"Invalid parameters: Cannot provide both 'delegatedCallDetails' and 'agentLLMResponse'.";
 					log.warn(`agent_llm: ${errorMsg}`);
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
@@ -119,7 +122,7 @@ function registerAgentLLMTool(server) {
 						log.warn(errorMsg);
 						return createErrorResponse(errorMsg, { mcpToolError: true });
 					}
-					
+
 					const { status, data, errorDetails } = args.agentLLMResponse;
 
 					if (status === 'success' && typeof data === 'undefined') {

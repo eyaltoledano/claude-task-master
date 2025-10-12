@@ -769,10 +769,12 @@ function createAgentDelegationResponse(pendingInteraction) {
 		details: pendingInteraction,
 		uri: 'agent-llm://pending-interaction',
 		mimeType: 'application/json',
-		directive: 'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
-		instructions: "Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'."
-  	};
-  	return { ...createContentResponse(payload), isError: false };
+		directive:
+			'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
+		instructions:
+			"Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'."
+	};
+	return { ...createContentResponse(payload), isError: false };
 }
 
 /**

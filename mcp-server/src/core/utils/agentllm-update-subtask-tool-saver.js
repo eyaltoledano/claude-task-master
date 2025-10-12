@@ -149,9 +149,7 @@ ${agentOutputString.trim()}
 		logWrapper.error(
 			`agentllmUpdateSubtaskSave: Error processing update for subtask ID ${subtaskIdToUpdate}: ${error.message}`
 		);
-		logWrapper.error(
-			`agentllmUpdateSubtaskSave: Error stack: ${error.stack}`
-		);
+		logWrapper.error(`agentllmUpdateSubtaskSave: Error stack: ${error.stack}`);
 		return { success: false, error: error.message };
 	}
 }

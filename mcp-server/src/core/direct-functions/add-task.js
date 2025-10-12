@@ -99,7 +99,11 @@ export async function addTaskDirect(args, log, context = {}) {
 		// If prompt is missing and title or description are provided, but AgentLLM is configured,
 		// synthesize a prompt from available fields and take the AI-driven path.
 		let effectivePrompt = prompt;
-		if (isAgentLLMPreferred && !effectivePrompt && (args.title || args.description)) {
+		if (
+			isAgentLLMPreferred &&
+			!effectivePrompt &&
+			(args.title || args.description)
+		) {
 			const parts = [];
 			if (args.title) parts.push(`Title: ${args.title}`);
 			if (args.description) parts.push(`Description: ${args.description}`);
@@ -141,7 +145,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		let telemetryData;
 		let tagInfo;
 
-	if (finalIsManualCreation) {
+		if (finalIsManualCreation) {
 			// Create manual task data object
 			manualTaskData = {
 				title: args.title,

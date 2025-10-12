@@ -512,7 +512,7 @@ async function addTask(
 									newTaskId: newTaskId, // The ID determined for the new task
 									userDependencies: numericDependencies, // User-specified dependencies
 									userPriority: effectivePriority, // User-specified or default priority
-						            tagInfo: { currentTag: targetTag }
+									tagInfo: { currentTag: targetTag }
 									// researchFlag: useResearch, // research flag is already in details.role or similar
 								}
 							}

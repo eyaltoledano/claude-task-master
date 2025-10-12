@@ -1177,16 +1177,16 @@ function validateAndFixDependencies(
 				options.mcpLog.error(...args);
 			} else {
 				const message = args
-				.map((arg) => {
-					if (typeof arg === 'object') {
-						try {
-							return JSON.stringify(arg);
-						} catch (e) {
-							return String(arg);
+					.map((arg) => {
+						if (typeof arg === 'object') {
+							try {
+								return JSON.stringify(arg);
+							} catch (e) {
+								return String(arg);
+							}
 						}
-					}
-					return String(arg);
-				})
+						return String(arg);
+					})
 					.join(' ');
 				throw new Error(message);
 			}
@@ -1215,7 +1215,9 @@ function validateAndFixDependencies(
 		!currentTagData.tasks ||
 		!Array.isArray(currentTagData.tasks)
 	) {
-		logger.error(`Invalid tasks data: tag '${targetTag}' is missing or has invalid structure`);
+		logger.error(
+			`Invalid tasks data: tag '${targetTag}' is missing or has invalid structure`
+		);
 		return false;
 	}
 

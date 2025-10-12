@@ -28,7 +28,7 @@ describe('AgentLLMProvider', () => {
 		test('should return agent_llm_delegation with interactionId and details', async () => {
 			const params = {
 				//modelId: 'test-model',
-				messages: [{ role: 'user', content: 'hello' }],
+				messages: [{ role: 'user', content: 'hello' }]
 				//maxTokens: 100,
 				//temperature: 0.7,
 			};
@@ -40,7 +40,7 @@ describe('AgentLLMProvider', () => {
 
 			const expectedDetails = {
 				//modelId: params.modelId,
-				messages: params.messages,
+				messages: params.messages
 				//maxTokens: params.maxTokens,
 				//temperature: params.temperature,
 			};
@@ -51,15 +51,15 @@ describe('AgentLLMProvider', () => {
 	describe('streamText', () => {
 		test('should throw error when messages is missing', async () => {
 			const params = {
-			//modelId: 'test-model-stream'
+				//modelId: 'test-model-stream'
 			};
 			await expect(provider.streamText(params)).rejects.toThrow();
 		});
 
 		test('should throw error when messages is not an array', async () => {
 			const params = {
-			//modelId: 'test-model-stream',
-			messages: 'not-an-array'
+				//modelId: 'test-model-stream',
+				messages: 'not-an-array'
 			};
 			await expect(provider.streamText(params)).rejects.toThrow();
 		});
@@ -77,7 +77,7 @@ describe('AgentLLMProvider', () => {
 
 			const expectedDetails = {
 				//modelId: params.modelId,
-				messages: params.messages,
+				messages: params.messages
 				//maxTokens: undefined, // Assuming these are not set if not in params
 				//temperature: undefined,
 			};
@@ -105,7 +105,7 @@ describe('AgentLLMProvider', () => {
 				//maxTokens: undefined,
 				//temperature: undefined,
 				schema: params.schema,
-				objectName: params.objectName,
+				objectName: params.objectName
 			};
 			expect(result.details).toEqual(expectedDetails);
 			expect(result.details.schema).toBeDefined();

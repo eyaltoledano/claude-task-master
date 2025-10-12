@@ -51,7 +51,11 @@ class TaskMasterMCPServer {
 		// AND populates our internal registry
 		const customToolRegistrar = {
 			addTool: ({ name, description, parameters, execute }) => {
-				const wrappedExecute = AgentLLMProviderToolExecutor(name, execute, this);
+				const wrappedExecute = AgentLLMProviderToolExecutor(
+					name,
+					execute,
+					this
+				);
 
 				// Add to FastMCP's registry (as before)
 				this.server.addTool({
@@ -164,7 +168,6 @@ class TaskMasterMCPServer {
 			await this.server.stop();
 		}
 	}
-
 }
 
 export default TaskMasterMCPServer;

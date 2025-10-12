@@ -20,17 +20,12 @@ function updateMainTask(
 ) {
 	const taskIdNum = parseInt(String(taskIdToUpdate), 10);
 	let finalSubtasks = parsedAgentTask.subtasks || [];
-	if (
-		taskToUpdateObject.subtasks &&
-		taskToUpdateObject.subtasks.length > 0
-	) {
+	if (taskToUpdateObject.subtasks && taskToUpdateObject.subtasks.length > 0) {
 		const completedOriginalSubtasks = taskToUpdateObject.subtasks.filter(
 			(st) => st.status === 'done' || st.status === 'completed'
 		);
 		completedOriginalSubtasks.forEach((compSub) => {
-			const updatedVersion = finalSubtasks.find(
-				(st) => st.id === compSub.id
-			);
+			const updatedVersion = finalSubtasks.find((st) => st.id === compSub.id);
 			if (
 				!updatedVersion ||
 				JSON.stringify(updatedVersion) !== JSON.stringify(compSub)
@@ -38,21 +33,24 @@ function updateMainTask(
 				logWrapper.warn(
 					`agentllmUpdatedTaskSave: Restoring completed subtask ${taskToUpdateObject.id}.${compSub.id} as agent modified/removed it.`
 				);
-				finalSubtasks = finalSubtasks.filter(
-					(st) => st.id !== compSub.id
-				);
+				finalSubtasks = finalSubtasks.filter((st) => st.id !== compSub.id);
 				finalSubtasks.push(compSub);
 			}
 		});
 		const subtaskIds = new Set();
 		finalSubtasks = finalSubtasks
-		.filter((st) => st && st.id !== undefined)
-		.map((st) => ({
-			...st,
-			id: typeof st.id === 'string' ? parseInt(st.id, 10) : st.id
-		}))
-		.filter((st) => Number.isFinite(st.id) && !subtaskIds.has(st.id) && subtaskIds.add(st.id))
-		.sort((a, b) => a.id - b.id);
+			.filter((st) => st && st.id !== undefined)
+			.map((st) => ({
+				...st,
+				id: typeof st.id === 'string' ? parseInt(st.id, 10) : st.id
+			}))
+			.filter(
+				(st) =>
+					Number.isFinite(st.id) &&
+					!subtaskIds.has(st.id) &&
+					subtaskIds.add(st.id)
+			)
+			.sort((a, b) => a.id - b.id);
 	}
 	Object.assign(taskToUpdateObject, {
 		...parsedAgentTask,
@@ -119,8 +117,7 @@ async function agentllmUpdatedTaskSave(
 		} else {
 			taskToUpdateObject = allTasksData.tasks.find(
 				(t) =>
-					parseInt(String(t.id), 10) ===
-					parseInt(String(taskIdToUpdate), 10)
+					parseInt(String(t.id), 10) === parseInt(String(taskIdToUpdate), 10)
 			);
 		}
 
@@ -163,7 +160,12 @@ async function agentllmUpdatedTaskSave(
 			// Agents sometimes return a wrapped response like { task: { ... } }
 			// Extract the candidate task object accordingly.
 			let candidate = null;
-			if (agentOutput && typeof agentOutput === 'object' && agentOutput.task && typeof agentOutput.task === 'object') {
+			if (
+				agentOutput &&
+				typeof agentOutput === 'object' &&
+				agentOutput.task &&
+				typeof agentOutput.task === 'object'
+			) {
 				candidate = agentOutput.task;
 			} else {
 				candidate = agentOutput;

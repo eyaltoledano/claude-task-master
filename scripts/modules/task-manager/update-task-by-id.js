@@ -337,7 +337,9 @@ async function updateTaskById(
 			) {
 				// Validate required delegation fields
 				if (!aiServiceResponse.mainResult.interactionId) {
-					throw new Error('Agent delegation signal missing required interactionId');
+					throw new Error(
+						'Agent delegation signal missing required interactionId'
+					);
 				}
 
 				report(

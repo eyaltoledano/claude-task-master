@@ -20,9 +20,11 @@ function _tolerantParseAgentTasks(agentOutput, logWrapper) {
 
 	// If already an object, check for common shapes
 	if (typeof agentOutput === 'object' && agentOutput !== null) {
-		if (Array.isArray(agentOutput.tasks)) return { success: true, data: agentOutput.tasks };
+		if (Array.isArray(agentOutput.tasks))
+			return { success: true, data: agentOutput.tasks };
 		// Treat single task object as a one-item array
-		if (typeof agentOutput.id !== 'undefined') return { success: true, data: [agentOutput] };
+		if (typeof agentOutput.id !== 'undefined')
+			return { success: true, data: [agentOutput] };
 	}
 
 	// If it's a string, try multiple tolerant parsing strategies
@@ -44,42 +46,67 @@ function _tolerantParseAgentTasks(agentOutput, logWrapper) {
 		try {
 			const parsed = JSON.parse(s);
 			if (Array.isArray(parsed)) return { success: true, data: parsed };
-			if (parsed && Array.isArray(parsed.tasks)) return { success: true, data: parsed.tasks };
-			if (parsed && typeof parsed.id !== 'undefined') return { success: true, data: [parsed] };
+			if (parsed && Array.isArray(parsed.tasks))
+				return { success: true, data: parsed.tasks };
+			if (parsed && typeof parsed.id !== 'undefined')
+				return { success: true, data: [parsed] };
 		} catch (e) {
-			logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Direct JSON.parse failed: ${e.message}`);
+			logWrapper.debug &&
+				logWrapper.debug(
+					`agentllmUpdateSave: Direct JSON.parse failed: ${e.message}`
+				);
 		}
 
 		// Attempt to find first JSON array substring
 		const firstArrayStart = s.indexOf('[');
 		const lastArrayEnd = s.lastIndexOf(']');
-		if (firstArrayStart !== -1 && lastArrayEnd !== -1 && lastArrayEnd > firstArrayStart) {
+		if (
+			firstArrayStart !== -1 &&
+			lastArrayEnd !== -1 &&
+			lastArrayEnd > firstArrayStart
+		) {
 			const sub = s.substring(firstArrayStart, lastArrayEnd + 1);
 			try {
 				const parsed = JSON.parse(sub);
 				if (Array.isArray(parsed)) return { success: true, data: parsed };
 			} catch (e) {
-				logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Substring array parse failed: ${e.message}`);
+				logWrapper.debug &&
+					logWrapper.debug(
+						`agentllmUpdateSave: Substring array parse failed: ${e.message}`
+					);
 			}
 		}
 
 		// Attempt to find first JSON object substring
 		const firstObjStart = s.indexOf('{');
 		const lastObjEnd = s.lastIndexOf('}');
-		if (firstObjStart !== -1 && lastObjEnd !== -1 && lastObjEnd > firstObjStart) {
+		if (
+			firstObjStart !== -1 &&
+			lastObjEnd !== -1 &&
+			lastObjEnd > firstObjStart
+		) {
 			const sub = s.substring(firstObjStart, lastObjEnd + 1);
 			try {
 				const parsed = JSON.parse(sub);
 				if (Array.isArray(parsed)) return { success: true, data: parsed };
-				if (parsed && Array.isArray(parsed.tasks)) return { success: true, data: parsed.tasks };
-				if (parsed && typeof parsed.id !== 'undefined') return { success: true, data: [parsed] };
+				if (parsed && Array.isArray(parsed.tasks))
+					return { success: true, data: parsed.tasks };
+				if (parsed && typeof parsed.id !== 'undefined')
+					return { success: true, data: [parsed] };
 			} catch (e) {
-				logWrapper.debug && logWrapper.debug(`agentllmUpdateSave: Substring object parse failed: ${e.message}`);
+				logWrapper.debug &&
+					logWrapper.debug(
+						`agentllmUpdateSave: Substring object parse failed: ${e.message}`
+					);
 			}
 		}
 	}
 
-	return { success: false, error: 'Invalid agentOutput format. Expected a JSON string (array of tasks) or an array of task objects.' };
+	return {
+		success: false,
+		error:
+			'Invalid agentOutput format. Expected a JSON string (array of tasks) or an array of task objects.'
+	};
 }
 
 /**
@@ -117,17 +144,21 @@ async function agentllmUpdateSave(
 		// Validate each task against a tolerant schema based on the shared UpdatedTaskSchema
 		const AgentTaskSchema = UpdatedTaskSchema.partial().extend({
 			id: z.union([z.string(), z.number()]),
-			title: z.string(),
+			title: z.string()
 		});
 
-		const validationResults = parsedAgentTasksArray.map(item => AgentTaskSchema.safeParse(item));
-		const failedValidations = validationResults.filter(v => !v.success);
+		const validationResults = parsedAgentTasksArray.map((item) =>
+			AgentTaskSchema.safeParse(item)
+		);
+		const failedValidations = validationResults.filter((v) => !v.success);
 
 		if (failedValidations.length > 0) {
-			failedValidations.forEach(result => {
+			failedValidations.forEach((result) => {
 				if (!result.success) {
 					const errorDetails = result.error.errors;
-					logWrapper.error(`agentllmUpdateSave: Invalid agent task item. Error: ${JSON.stringify(errorDetails)}`);
+					logWrapper.error(
+						`agentllmUpdateSave: Invalid agent task item. Error: ${JSON.stringify(errorDetails)}`
+					);
 				}
 			});
 			return { success: false, error: 'Invalid agent task items' };
@@ -156,11 +187,11 @@ async function agentllmUpdateSave(
 		}
 
 		const agentTasksMap = new Map(
-	      	parsedAgentTasksArray.map((task) => {
-        		const idNum = parseInt(String(task.id), 10);
-        		return [idNum, { ...task, id: idNum }];
-      		})
-    	);
+			parsedAgentTasksArray.map((task) => {
+				const idNum = parseInt(String(task.id), 10);
+				return [idNum, { ...task, id: idNum }];
+			})
+		);
 		const updatedTaskIds = [];
 		let actualUpdatesMade = 0;
 

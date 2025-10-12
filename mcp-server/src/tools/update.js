@@ -40,11 +40,7 @@ export function registerUpdateTool(server) {
 				.string()
 				.optional()
 				.describe('Path to the tasks file relative to project root'),
-			projectRoot: z
-				.string()
-				.describe(
-					'The directory of the project.'
-				),
+			projectRoot: z.string().describe('The directory of the project.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {

@@ -71,7 +71,9 @@ async function agentllmAddTaskSave(
 			subtasks: [] // New tasks start with no subtasks
 		};
 
-		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag) || { tasks: [] };
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag) || {
+			tasks: []
+		};
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			logWrapper.warn(
 				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'. Initializing new tasks array.`

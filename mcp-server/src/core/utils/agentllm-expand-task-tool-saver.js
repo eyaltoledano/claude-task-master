@@ -34,8 +34,9 @@ async function agentllmExpandTaskSave(
 	try {
 		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		const taskIndex = allTasksData.tasks.findIndex(
-      		(t) => parseInt(String(t.id), 10) === parseInt(String(parentTaskIdNum), 10)
-    	);
+			(t) =>
+				parseInt(String(t.id), 10) === parseInt(String(parentTaskIdNum), 10)
+		);
 		if (taskIndex === -1) {
 			const errorMsg = `Parent task with ID ${parentTaskIdNum} not found in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
@@ -46,21 +47,21 @@ async function agentllmExpandTaskSave(
 
 		let subtasksToSave;
 		if (typeof agentOutput === 'string') {
-		    logWrapper.info(
-		    	'agentllmExpandTaskSave: Agent output is a string. Attempting JSON parse.'
-		    );
-		    try {
-		    	const parsed = JSON.parse(agentOutput);
-		    	subtasksToSave = Array.isArray(parsed)
-		        	? parsed
-		        	: Array.isArray(parsed?.subtasks)
-		    			? parsed.subtasks
-		            	: null;
-		    } catch (e) {
-		    	const errorMsg = `Invalid agentOutput string (JSON parse failed): ${e.message}`;
-		        logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
-		        return { success: false, error: errorMsg };
-		      }
+			logWrapper.info(
+				'agentllmExpandTaskSave: Agent output is a string. Attempting JSON parse.'
+			);
+			try {
+				const parsed = JSON.parse(agentOutput);
+				subtasksToSave = Array.isArray(parsed)
+					? parsed
+					: Array.isArray(parsed?.subtasks)
+						? parsed.subtasks
+						: null;
+			} catch (e) {
+				const errorMsg = `Invalid agentOutput string (JSON parse failed): ${e.message}`;
+				logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
+				return { success: false, error: errorMsg };
+			}
 		} else if (Array.isArray(agentOutput)) {
 			logWrapper.info(
 				'agentllmExpandTaskSave: Agent output is already an array of subtasks.'
@@ -97,28 +98,30 @@ async function agentllmExpandTaskSave(
 		if (!Array.isArray(parentTask.subtasks)) {
 			parentTask.subtasks = [];
 		}
-		    // Normalize/assign IDs
+		// Normalize/assign IDs
 		let nextId =
-		(originalTaskDetails?.nextSubtaskId ??
-			(parentTask.subtasks?.length || 0) + 1) | 0;
+			(originalTaskDetails?.nextSubtaskId ??
+				(parentTask.subtasks?.length || 0) + 1) | 0;
 		const seenIds = new Set(
-      		parentTask.subtasks.map((st) => parseInt(String(st.id), 10))
-	    );
+			parentTask.subtasks.map((st) => parseInt(String(st.id), 10))
+		);
 		const normalized = (subtasksToSave || [])
-		.filter((st) => st && typeof st === 'object')
-		.map((st) => {
-			const idRaw = st.id ?? nextId++;
-			const idNum =
-			typeof idRaw === 'string' ? parseInt(idRaw, 10) : Number(idRaw);
-			return {
-			...st,
-			title: String(st.title || '').trim(),
-			description: st.description || '',
-			status: st.status || 'todo',
-			id: Number.isFinite(idNum) ? idNum : nextId++
-			};
-		})
-		.filter((st) => st.title.length > 0 && !seenIds.has(st.id) && seenIds.add(st.id));
+			.filter((st) => st && typeof st === 'object')
+			.map((st) => {
+				const idRaw = st.id ?? nextId++;
+				const idNum =
+					typeof idRaw === 'string' ? parseInt(idRaw, 10) : Number(idRaw);
+				return {
+					...st,
+					title: String(st.title || '').trim(),
+					description: st.description || '',
+					status: st.status || 'todo',
+					id: Number.isFinite(idNum) ? idNum : nextId++
+				};
+			})
+			.filter(
+				(st) => st.title.length > 0 && !seenIds.has(st.id) && seenIds.add(st.id)
+			);
 		parentTask.subtasks.push(...normalized);
 
 		allTasksData.tasks[taskIndex] = parentTask;

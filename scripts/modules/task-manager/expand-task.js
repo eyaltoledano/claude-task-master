@@ -345,7 +345,7 @@ async function expandTask(
 							originalCommand: 'expand-task',
 							role: useResearch ? 'research' : 'main',
 							// Agents will perform a generateObject call using the provided JSON schema.
-			                serviceType: 'generateObject',
+							serviceType: 'generateObject',
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
 								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
@@ -354,7 +354,7 @@ async function expandTask(
 							}
 						}
 					},
-          			telemetryData: aiServiceResponse?.telemetryData
+					telemetryData: aiServiceResponse?.telemetryData
 				};
 			}
 			// === END AGENT_LLM_DELEGATION HANDLING ===

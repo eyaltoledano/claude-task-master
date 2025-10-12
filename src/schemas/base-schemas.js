@@ -34,6 +34,6 @@ export const SubtaskSchema = z.object({
 	// Previously failed validation when MCP clients set status to 'in-progress'.
 	// Now aligned with TaskStatusSchema.
 	//was: status: z.enum(['pending', 'done', 'completed']).default('pending'),
-	status: TaskStatusSchema.default('pending'), 
+	status: TaskStatusSchema.default('pending'),
 	testStrategy: z.string().nullable().default(null)
 });

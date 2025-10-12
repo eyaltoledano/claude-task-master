@@ -147,7 +147,8 @@ export async function agentllmResearchSave(
 				'tasks',
 				'tasks.json'
 			);
-			const resolvedTag = tag || sessionContext?.tag || getCurrentTag(projectRoot);
+			const resolvedTag =
+				tag || sessionContext?.tag || getCurrentTag(projectRoot);
 
 			log.debug(
 				`agentllmResearchSave: Reading tasks from ${tasksPath} for tag '${resolvedTag}'`
@@ -267,16 +268,16 @@ export async function agentllmResearchSave(
 						`agentllmResearchSave: Error regenerating task files for tag ${resolvedTag}: ${genFilesError.message}`
 					);
 					// Optionally, add to main errors or decide if this is critical
-					 errors.push(`Failed to regenerate task files: ${genFilesError.message}`);
+					errors.push(
+						`Failed to regenerate task files: ${genFilesError.message}`
+					);
 				}
 			}
 		} catch (saveError) {
 			log.error(
 				`agentllmResearchSave: Error during direct save to task/subtask ${saveTo} in tasks.json: ${saveError.message}`
 			);
-			log.error(
-				`agentllmResearchSave: Save error stack: ${saveError.stack}`
-			);
+			log.error(`agentllmResearchSave: Save error stack: ${saveError.stack}`);
 			errors.push(`Task save error: ${saveError.message}`);
 		}
 	}

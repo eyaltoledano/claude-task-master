@@ -582,7 +582,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Enhanced skip logic for agentllm in non-MCP (CLI) contexts
-			if (providerName?.toLowerCase() === 'agentllm' && (outputType === 'cli' || outputType === 'text')) {
+			if (
+				providerName?.toLowerCase() === 'agentllm' &&
+				(outputType === 'cli' || outputType === 'text')
+			) {
 				log(
 					'warn',
 					`Skipping role '${currentRole}' (Provider: ${providerName}): AgentLLM is intended for MCP delegation and is skipped in CLI mode.`
@@ -714,7 +717,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 				}
 				// Get tag information even for delegated calls
 				const tagInfo = _getTagInfo(effectiveProjectRoot);
-			
+
 				// Propagate the delegation signal object upwards.
 				// The calling function (e.g., an MCP tool) will use this to build the pendingInteraction field.
 				return {

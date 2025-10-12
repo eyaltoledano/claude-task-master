@@ -770,7 +770,6 @@ async function handleFollowUpQuestions(
 	let interactiveSaveOccurred = false;
 
 	try {
-
 		// Initialize conversation history with the initial Q&A
 		const conversationHistory = [
 			{
@@ -974,20 +973,24 @@ async function handleSaveToTask(
 			}
 
 			if (task) {
-				task.details = (task.details ? task.details + '\n\n' : '') + conversationThread;
+				task.details =
+					(task.details ? task.details + '\n\n' : '') + conversationThread;
 				taskFound = true;
 			}
 		} else {
 			const taskIdNum = parseInt(trimmedTaskId, 10);
 			const task = data.tasks.find((t) => t.id === taskIdNum);
 			if (task) {
-				task.details = (task.details ? task.details + '\n\n' : '') + conversationThread;
+				task.details =
+					(task.details ? task.details + '\n\n' : '') + conversationThread;
 				taskFound = true;
 			}
 		}
 
 		if (!taskFound) {
-			console.log(chalk.red(`❌ Task or subtask "${trimmedTaskId}" not found.`));
+			console.log(
+				chalk.red(`❌ Task or subtask "${trimmedTaskId}" not found.`)
+			);
 			return false;
 		}
 

@@ -737,7 +737,8 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 			if (fs.existsSync(filepath)) {
 				try {
 					const fileContent = fs.readFileSync(filepath, 'utf8');
-					if (fileContent.trim().length > 0) { // Check if file is not empty
+					if (fileContent.trim().length > 0) {
+						// Check if file is not empty
 						rawFullData = JSON.parse(fileContent);
 					}
 				} catch (readError) {

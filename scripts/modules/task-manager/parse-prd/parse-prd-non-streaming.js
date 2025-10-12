@@ -43,7 +43,7 @@ export async function handleNonStreamingService(config, prompts) {
 			outputType: config.isMCP ? 'mcp' : 'cli'
 		});
 
-				// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+		// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
 		if (
 			aiServiceResponse &&
 			aiServiceResponse.mainResult &&
@@ -60,7 +60,9 @@ export async function handleNonStreamingService(config, prompts) {
 						role: config.research ? 'research' : 'main',
 						serviceType: 'generateObject',
 						// Ensure details are serializable
-						requestParameters: JSON.parse(JSON.stringify(aiServiceResponse.mainResult.details || {}))
+						requestParameters: JSON.parse(
+							JSON.stringify(aiServiceResponse.mainResult.details || {})
+						)
 					}
 				};
 
@@ -75,7 +77,10 @@ export async function handleNonStreamingService(config, prompts) {
 				};
 			} catch (err) {
 				// Do not let raw Error objects bubble up into MCP's resource.text; return a structured error
-				logger.report(`parsePRD: Failed to construct pendingInteraction - ${err.message}`, 'error');
+				logger.report(
+					`parsePRD: Failed to construct pendingInteraction - ${err.message}`,
+					'error'
+				);
 				// Stop spinner on error before returning
 				spinner?.stop();
 				return {

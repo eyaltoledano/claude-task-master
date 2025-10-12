@@ -20,7 +20,7 @@ async function agentllmScopeSave(
 	logWrapper,
 	originalToolArgs,
 	tag = 'master',
-    direction
+	direction
 ) {
 	logWrapper.info(
 		`agentllmScopeSave: Saving scoped-${direction} task data with tag '${tag}'.`
@@ -37,52 +37,64 @@ async function agentllmScopeSave(
 		}
 
 		if (!Array.isArray(agentOutput)) {
-			const errorMsg = 'Invalid agentOutput format. Expected an array of task objects.';
+			const errorMsg =
+				'Invalid agentOutput format. Expected an array of task objects.';
 			logWrapper.error(`agentllmScopeSave: ${errorMsg}`);
 			return { success: false, error: errorMsg };
 		}
 
 		const updatedTasks = [];
-        let taskUpdated = false;
+		let taskUpdated = false;
 
 		for (const updatedTask of agentOutput) {
-			const taskIndex = allTasksData.tasks.findIndex(t => t.id === updatedTask.id);
+			const taskIndex = allTasksData.tasks.findIndex(
+				(t) => t.id === updatedTask.id
+			);
 			if (taskIndex !== -1) {
-                if (allTasksData.tasks[taskIndex].status === 'done' || allTasksData.tasks[taskIndex].status === 'completed') {
-                    logWrapper.warn(`agentllmScopeSave: Task ${updatedTask.id} is completed and will not be updated.`);
-                    continue;
-                }
+				if (
+					allTasksData.tasks[taskIndex].status === 'done' ||
+					allTasksData.tasks[taskIndex].status === 'completed'
+				) {
+					logWrapper.warn(
+						`agentllmScopeSave: Task ${updatedTask.id} is completed and will not be updated.`
+					);
+					continue;
+				}
 				allTasksData.tasks[taskIndex] = updatedTask;
 				updatedTasks.push(updatedTask);
-                taskUpdated = true;
+				taskUpdated = true;
 			} else {
-                logWrapper.warn(`agentllmScopeSave: Task with id ${updatedTask.id} not found in tasks.json.`);
-            }
+				logWrapper.warn(
+					`agentllmScopeSave: Task with id ${updatedTask.id} not found in tasks.json.`
+				);
+			}
 		}
 
-        if (taskUpdated) {
-            writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
-            logWrapper.info(
-                `agentllmScopeSave: Successfully updated tasks.json for tag '${tag}'.`
-            );
+		if (taskUpdated) {
+			writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
+			logWrapper.info(
+				`agentllmScopeSave: Successfully updated tasks.json for tag '${tag}'.`
+			);
 
-            const outputDir = path.dirname(tasksJsonPath);
-            await generateTaskFiles(tasksJsonPath, outputDir, {
-                mcpLog: logWrapper,
-                projectRoot: projectRoot,
-                tag: tag
-            });
-            logWrapper.info(
-                `agentllmScopeSave: Markdown task files regenerated for tag '${tag}'.`
-            );
-        } else {
-            logWrapper.info(`agentllmScopeSave: No tasks were updated for tag '${tag}'.`);
-        }
+			const outputDir = path.dirname(tasksJsonPath);
+			await generateTaskFiles(tasksJsonPath, outputDir, {
+				mcpLog: logWrapper,
+				projectRoot: projectRoot,
+				tag: tag
+			});
+			logWrapper.info(
+				`agentllmScopeSave: Markdown task files regenerated for tag '${tag}'.`
+			);
+		} else {
+			logWrapper.info(
+				`agentllmScopeSave: No tasks were updated for tag '${tag}'.`
+			);
+		}
 
 		return {
 			success: true,
 			updatedTasks,
-            wasActuallyUpdated: taskUpdated
+			wasActuallyUpdated: taskUpdated
 		};
 	} catch (error) {
 		logWrapper.error(

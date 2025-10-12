@@ -15,12 +15,8 @@ async function _handlePostProcessing(
 	log,
 	interactionId
 ) {
-	const {
-		originalToolName,
-		originalToolArgs,
-		session,
-		delegatedCallDetails
-	} = pendingData;
+	const { originalToolName, originalToolArgs, session, delegatedCallDetails } =
+		pendingData;
 	const projectRoot = originalToolArgs?.projectRoot || session?.roots?.[0]?.uri;
 	const tag =
 		delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
@@ -212,14 +208,17 @@ async function _handlePostProcessing(
 			mainResultMessage = `Successfully processed research result.`;
 		}
 	} else if (originalToolName === 'scope_up_task' && finalLLMOutput) {
-		if (!projectRoot)
-			throw new Error('Missing projectRoot for scope_up_task');
+		if (!projectRoot) throw new Error('Missing projectRoot for scope_up_task');
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_up_task'.`
 		);
-		const taskId = originalToolArgs.id ? parseInt(originalToolArgs.id, 10) : null;
+		const taskId = originalToolArgs.id
+			? parseInt(originalToolArgs.id, 10)
+			: null;
 		if (!taskId || isNaN(taskId)) {
-		    throw new Error(`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`);
+			throw new Error(
+				`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`
+			);
 		}
 		const taskWithId = { ...finalLLMOutput, id: taskId };
 		postProcessingResult = await agentllmScopeSave(
@@ -239,9 +238,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'scope_down_task'.`
 		);
-		const taskId = originalToolArgs.id ? parseInt(originalToolArgs.id, 10) : null;
+		const taskId = originalToolArgs.id
+			? parseInt(originalToolArgs.id, 10)
+			: null;
 		if (!taskId || isNaN(taskId)) {
-		    throw new Error(`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`);
+			throw new Error(
+				`Invalid task ID for ${originalToolName}: ${originalToolArgs.id}`
+			);
 		}
 		const taskWithId = { ...finalLLMOutput, id: taskId };
 		postProcessingResult = await agentllmScopeSave(
@@ -373,12 +376,15 @@ export function AgentLLMProviderToolExecutor(
 				);
 				const timeoutMs = 15 * 60 * 1000; // 15 minutes
 				const timeout = setTimeout(() => {
-				const pending = serverContext.pendingAgentLLMInteractions.get(interactionId);
-				if (pending) {
-					log.warn(`TaskMasterMCPServer [Interaction: ${interactionId}]: Timing out pending agent interaction for '${toolName}'.`);
-					pending.reject(new Error('Agent LLM interaction timed out'));
-					serverContext.pendingAgentLLMInteractions.delete(interactionId);
-				}
+					const pending =
+						serverContext.pendingAgentLLMInteractions.get(interactionId);
+					if (pending) {
+						log.warn(
+							`TaskMasterMCPServer [Interaction: ${interactionId}]: Timing out pending agent interaction for '${toolName}'.`
+						);
+						pending.reject(new Error('Agent LLM interaction timed out'));
+						serverContext.pendingAgentLLMInteractions.delete(interactionId);
+					}
 				}, timeoutMs);
 				serverContext.pendingAgentLLMInteractions.set(interactionId, {
 					originalToolName: toolName,
@@ -389,7 +395,7 @@ export function AgentLLMProviderToolExecutor(
 					timestamp: Date.now(),
 					// Store the delegatedCallDetails which includes requestParameters
 					delegatedCallDetails: delegatedCallDetails,
-		        	timeout
+					timeout
 				});
 
 				// Asynchronously dispatch to agent_llm tool.
@@ -428,7 +434,7 @@ export function AgentLLMProviderToolExecutor(
 									)
 								);
 								if (pendingData.timeout) clearTimeout(pendingData.timeout);
-					            serverContext.pendingAgentLLMInteractions.delete(interactionId);
+								serverContext.pendingAgentLLMInteractions.delete(interactionId);
 							}
 						}
 					})
@@ -445,7 +451,7 @@ export function AgentLLMProviderToolExecutor(
 								)
 							);
 							if (pendingData.timeout) clearTimeout(pendingData.timeout);
-				            serverContext.pendingAgentLLMInteractions.delete(interactionId);
+							serverContext.pendingAgentLLMInteractions.delete(interactionId);
 						} else {
 							// This case might be rare, if the set() operation itself failed or was cleared before catch.
 							log.error(
@@ -529,8 +535,7 @@ export function AgentLLMProviderToolExecutor(
 							{
 								type: 'text',
 								text: JSON.stringify({
-									status:
-										'agent_response_processed_by_taskmaster_with_error',
+									status: 'agent_response_processed_by_taskmaster_with_error',
 									interactionId: interactionId,
 									error: e.message
 								})
@@ -539,9 +544,10 @@ export function AgentLLMProviderToolExecutor(
 						isError: true
 					};
 				} finally {
-					const stored = serverContext.pendingAgentLLMInteractions.get(interactionId);
-          			if (stored?.timeout) clearTimeout(stored.timeout);
-          			serverContext.pendingAgentLLMInteractions.delete(interactionId);
+					const stored =
+						serverContext.pendingAgentLLMInteractions.get(interactionId);
+					if (stored?.timeout) clearTimeout(stored.timeout);
+					serverContext.pendingAgentLLMInteractions.delete(interactionId);
 				}
 			} else {
 				// Ensure interactionId is part of this log, it was already included.

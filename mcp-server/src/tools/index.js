@@ -101,7 +101,7 @@ export function registerTaskMasterTools(server) {
 
 		// Group 8: Research Features
 		registerResearchTool(server);
-		
+
 		//AgentLLMProvider Integration
 		registerAgentLLMTool(server);
 	} catch (error) {
