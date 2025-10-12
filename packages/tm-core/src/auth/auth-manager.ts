@@ -90,18 +90,28 @@ export class AuthManager {
 				allowExpired: true
 			});
 
-			// Only attempt refresh if we have expired credentials with a refresh token
-			if (expiredCredentials && expiredCredentials.refreshToken) {
-				try {
-					this.logger.info('Token expired, attempting automatic refresh...');
-					return await this.refreshToken();
-				} catch (error) {
-					this.logger.warn('Automatic token refresh failed:', error);
-					return null;
-				}
+			// Check if we have any credentials at all
+			if (!expiredCredentials) {
+				// No credentials found
+				return null;
 			}
 
-			return null;
+			// Check if refresh token is available
+			if (!expiredCredentials.refreshToken) {
+				this.logger.warn(
+					'Token expired but no refresh token available. Please re-authenticate.'
+				);
+				return null;
+			}
+
+			// Attempt refresh
+			try {
+				this.logger.info('Token expired, attempting automatic refresh...');
+				return await this.refreshToken();
+			} catch (error) {
+				this.logger.warn('Automatic token refresh failed:', error);
+				return null;
+			}
 		}
 
 		return credentials;

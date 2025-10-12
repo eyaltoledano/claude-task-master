@@ -199,6 +199,26 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			expect(credentials).toBeNull();
 		});
+
+		it('should return null if credentials missing expiresAt', async () => {
+			const credentialsWithoutExpiry: AuthCredentials = {
+				token: 'test-token',
+				refreshToken: 'refresh-token',
+				userId: 'test-user-id',
+				email: 'test@example.com',
+				// Missing expiresAt
+				savedAt: new Date().toISOString()
+			} as any;
+
+			credentialStore.saveCredentials(credentialsWithoutExpiry);
+
+			authManager = AuthManager.getInstance();
+
+			const credentials = await authManager.getCredentials();
+
+			// Should return null because no valid expiration
+			expect(credentials).toBeNull();
+		});
 	});
 
 	describe('Clock Skew Tolerance', () => {
