@@ -362,8 +362,9 @@ async function updateTaskById(
 								originalTaskId: taskId
 							}
 						}
-					}
+					},
 					// No 'updatedTask' or 'telemetryData' here as the operation is pending.
+					tagInfo: aiServiceResponse.tagInfo
 				};
 			}
 			// === END AGENT_LLM_DELEGATION HANDLING ===

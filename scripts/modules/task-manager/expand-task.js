@@ -345,7 +345,6 @@ async function expandTask(
 			                serviceType: 'generateObject',
 							requestParameters: {
 								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
-								schema: COMMAND_SCHEMAS['expand-task'], // ensure schema is explicitly available to the agent
 								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
 								numSubtasksForAgent: finalSubtaskCount, // Add finalSubtaskCount (as numSubtasksForAgent)
 								tagInfo: { currentTag: tag || 'master' }

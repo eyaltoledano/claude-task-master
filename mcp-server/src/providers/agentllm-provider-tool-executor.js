@@ -427,7 +427,8 @@ export function AgentLLMProviderToolExecutor(
 										`agent_llm tool failed during dispatch setup: ${agentDirectiveResult.message || JSON.stringify(agentDirectiveResult.error)}`
 									)
 								);
-								serverContext.pendingAgentLLMInteractions.delete(interactionId);
+								if (pendingData.timeout) clearTimeout(pendingData.timeout);
+					            serverContext.pendingAgentLLMInteractions.delete(interactionId);
 							}
 						}
 					})
@@ -443,7 +444,8 @@ export function AgentLLMProviderToolExecutor(
 									`Failed to dispatch to agent_llm: ${dispatchError.message}`
 								)
 							);
-							serverContext.pendingAgentLLMInteractions.delete(interactionId);
+							if (pendingData.timeout) clearTimeout(pendingData.timeout);
+				            serverContext.pendingAgentLLMInteractions.delete(interactionId);
 						} else {
 							// This case might be rare, if the set() operation itself failed or was cleared before catch.
 							log.error(

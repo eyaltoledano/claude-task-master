@@ -1,6 +1,8 @@
 import path from 'path';
 import fs from 'fs';
+import { z } from 'zod';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js';
+import { UpdatedTaskSchema } from '../../../../src/schemas/update-tasks.js';
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 // Import the array parser from the core updateTasks (plural) script
@@ -114,15 +116,23 @@ async function agentllmUpdateSave(
 
 		const parsedAgentTasksArray = parseResult.data;
 
-		// Basic validation: each task should have at least an id and title
-		if (
-			parsedAgentTasksArray.some(
-				(task) => typeof task.id === 'undefined' || typeof task.title === 'undefined'
-			)
-		) {
-			const errorMsg = 'Agent output array contains invalid task objects (missing id or title).';
-			logWrapper.error(`agentllmUpdateSave: ${errorMsg}`);
-			return { success: false, error: errorMsg };
+		// Validate each task against a tolerant schema based on the shared UpdatedTaskSchema
+		const AgentTaskSchema = UpdatedTaskSchema.partial().extend({
+			id: z.union([z.string(), z.number()]),
+    		title: z.string(),
+		});
+
+		const validationResults = parsedAgentTasksArray.map(item => AgentTaskSchema.safeParse(item));
+		const failedValidations = validationResults.filter(v => !v.success);
+
+		if (failedValidations.length > 0) {
+			failedValidations.forEach(result => {
+				if (!result.success) {
+					const errorDetails = result.error.errors;
+					logWrapper.error(`agentllmUpdateSave: Invalid agent task item. Error: ${JSON.stringify(errorDetails)}`);
+				}
+			});
+			return { success: false, error: 'Invalid agent task items' };
 		}
 
 		if (parsedAgentTasksArray.length === 0) {
@@ -148,8 +158,11 @@ async function agentllmUpdateSave(
 		}
 
 		const agentTasksMap = new Map(
-			parsedAgentTasksArray.map((task) => [task.id, task])
-		);
+	      	parsedAgentTasksArray.map((task) => {
+        		const idNum = parseInt(String(task.id), 10);
+        		return [idNum, { ...task, id: idNum }];
+      		})
+    	);
 		const updatedTaskIds = [];
 		let actualUpdatesMade = 0;
 

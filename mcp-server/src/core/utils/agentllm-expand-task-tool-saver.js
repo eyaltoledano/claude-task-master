@@ -34,8 +34,8 @@ async function agentllmExpandTaskSave(
 	try {
 		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 		const taskIndex = allTasksData.tasks.findIndex(
-			(t) => t.id === parentTaskIdNum
-		);
+      		(t) => parseInt(String(t.id), 10) === parseInt(String(parentTaskIdNum), 10)
+    	);
 		if (taskIndex === -1) {
 			const errorMsg = `Parent task with ID ${parentTaskIdNum} not found in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmExpandTaskSave: ${errorMsg}`);
@@ -101,7 +101,9 @@ async function agentllmExpandTaskSave(
 		let nextId =
 		(originalTaskDetails?.nextSubtaskId ??
 			(parentTask.subtasks?.length || 0) + 1) | 0;
-		const seenIds = new Set(parentTask.subtasks.map((st) => st.id));
+		const seenIds = new Set(
+      		parentTask.subtasks.map((st) => parseInt(String(st.id), 10))
+	    );
 		const normalized = (subtasksToSave || [])
 		.filter((st) => st && typeof st === 'object')
 		.map((st) => {

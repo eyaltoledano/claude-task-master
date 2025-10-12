@@ -143,7 +143,7 @@ function registerAgentLLMTool(server) {
 				} else {
 					const errorMsg =
 						"Invalid parameters for agent_llm tool: Must provide either 'delegatedCallDetails' or 'agentLLMResponse'.";
-					log.warn(`agent_llm: ${errorMsg} Args: ${JSON.stringify(args)}`);
+					log.warn(`agent_llm: ${errorMsg} Args: ${preview}`);
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
 			} catch (error) {
@@ -151,7 +151,15 @@ function registerAgentLLMTool(server) {
 					const errorMsg = `Invalid parameters for agent_llm tool: ${error.errors
 						.map((e) => e.message)
 						.join(', ')}`;
-					log.warn(`agent_llm: ${errorMsg} Args: ${JSON.stringify(args)}`);
+					const errorPreview = (() => {
+						try {
+							const raw = JSON.stringify(args);
+							return raw.length > 2000 ? `${raw.slice(0, 2000)}…` : raw;
+						} catch {
+							return '[unserializable args]';
+						}
+					})();
+					log.warn(`agent_llm: ${errorMsg} Args: ${errorPreview}`);
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
 				throw error;
