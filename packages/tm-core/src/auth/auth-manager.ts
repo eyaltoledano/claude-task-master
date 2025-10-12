@@ -29,6 +29,7 @@ export class AuthManager {
 	private oauthService: OAuthService;
 	private supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
+	private logger = getLogger('AuthManager');
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.credentialStore = CredentialStore.getInstance(config);
@@ -78,8 +79,39 @@ export class AuthManager {
 
 	/**
 	 * Get stored authentication credentials
+	 * Automatically refreshes the token if expired
 	 */
-	getCredentials(): AuthCredentials | null {
+	async getCredentials(): Promise<AuthCredentials | null> {
+		const credentials = this.credentialStore.getCredentials();
+
+		// If credentials exist but are expired, try to refresh
+		if (!credentials) {
+			const expiredCredentials = this.credentialStore.getCredentials({
+				allowExpired: true
+			});
+
+			// Only attempt refresh if we have expired credentials with a refresh token
+			if (expiredCredentials && expiredCredentials.refreshToken) {
+				try {
+					this.logger.info('Token expired, attempting automatic refresh...');
+					return await this.refreshToken();
+				} catch (error) {
+					this.logger.warn('Automatic token refresh failed:', error);
+					return null;
+				}
+			}
+
+			return null;
+		}
+
+		return credentials;
+	}
+
+	/**
+	 * Get stored authentication credentials (synchronous version)
+	 * Does not attempt automatic refresh
+	 */
+	getCredentialsSync(): AuthCredentials | null {
 		return this.credentialStore.getCredentials();
 	}
 
@@ -171,8 +203,8 @@ export class AuthManager {
 	/**
 	 * Get the current user context (org/brief selection)
 	 */
-	getContext(): UserContext | null {
-		const credentials = this.getCredentials();
+	async getContext(): Promise<UserContext | null> {
+		const credentials = await this.getCredentials();
 		return credentials?.selectedContext || null;
 	}
 
@@ -180,7 +212,7 @@ export class AuthManager {
 	 * Update the user context (org/brief selection)
 	 */
 	async updateContext(context: Partial<UserContext>): Promise<void> {
-		const credentials = this.getCredentials();
+		const credentials = await this.getCredentials();
 		if (!credentials) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
@@ -206,7 +238,7 @@ export class AuthManager {
 	 * Clear the user context
 	 */
 	async clearContext(): Promise<void> {
-		const credentials = this.getCredentials();
+		const credentials = await this.getCredentials();
 		if (!credentials) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
@@ -223,7 +255,7 @@ export class AuthManager {
 	private async getOrganizationService(): Promise<OrganizationService> {
 		if (!this.organizationService) {
 			// First check if we have credentials with a token
-			const credentials = this.getCredentials();
+			const credentials = await this.getCredentials();
 			if (!credentials || !credentials.token) {
 				throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 			}
