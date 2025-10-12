@@ -7,6 +7,7 @@ import { withNormalizedProjectRoot, createErrorResponse } from './utils.js';
  * 1. Taskmaster -> Agent Delegation:
  *    - `delegatedCallDetails`: (Required) Details of the LLM call for the agent.
  *    - `interactionId`: (Optional) An existing ID to track the interaction.
+ *    - `projectRoot`: (Required) Absolute path to the project (standardized across tools).
  * 2. Agent -> Taskmaster Response:
  *    - `agentLLMResponse`: (Required) The agent's response.
  *    - `interactionId`: (Required) The ID from the initial delegation.
@@ -59,7 +60,11 @@ const agentLLMParameters = z.object({
 		.describe('The LLM response from the agent. Sent by Agent.'),
 	projectRoot: z
 		.string()
-		.describe('The directory of the project. Must be an absolute path.')
+		.describe('The directory of the project. Must be an absolute path.'),
+	tag: z
+		.string()
+		.optional()
+		.describe('Optional context tag for multi-context/multi-agent routing')
 }).strict();
 
 function registerAgentLLMTool(server) {
@@ -70,8 +75,15 @@ function registerAgentLLMTool(server) {
 		parameters: agentLLMParameters,
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
-				const preview = JSON.stringify(args).slice(0, 2000);
-				log.debug(`agent_llm tool called with args: ${preview}${preview.length === 2000 ? '…' : ''}`);
+				const preview = (() => {
+					try {
+						const raw = JSON.stringify(args);
+						return raw.length > 2000 ? `${raw.slice(0, 2000)}…` : raw;
+					} catch {
+						return '[unserializable args]';
+					}
+				})();
+				log.debug(`agent_llm tool called with args: ${preview}`);
 
 				// Ensure mutual exclusivity
 				if (args.delegatedCallDetails && args.agentLLMResponse) {
@@ -148,9 +160,14 @@ function registerAgentLLMTool(server) {
 				}
 			} catch (error) {
 				if (error instanceof z.ZodError) {
-					const errorMsg = `Invalid parameters for agent_llm tool: ${error.errors
-						.map((e) => e.message)
-						.join(', ')}`;
+					const errorMsg = (() => {
+						try {
+							return `Invalid parameters for agent_llm tool: ${z.treeifyError(error)}`;
+						} catch {
+							const msgs = error.issues?.map((e) => e.message).join(', ');
+							return `Invalid parameters for agent_llm tool: ${msgs || error.message}`;
+						}
+					})();
 					const errorPreview = (() => {
 						try {
 							const raw = JSON.stringify(args);

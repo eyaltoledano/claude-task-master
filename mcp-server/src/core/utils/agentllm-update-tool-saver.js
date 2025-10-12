@@ -1,11 +1,9 @@
 import path from 'path';
-import fs from 'fs';
 import { z } from 'zod';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js';
 import { UpdatedTaskSchema } from '../../../../src/schemas/update-tasks.js';
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
-// Import the array parser from the core updateTasks (plural) script
 
 /**
  * Try to parse various shapes of agent output into an array of task objects.
@@ -119,7 +117,7 @@ async function agentllmUpdateSave(
 		// Validate each task against a tolerant schema based on the shared UpdatedTaskSchema
 		const AgentTaskSchema = UpdatedTaskSchema.partial().extend({
 			id: z.union([z.string(), z.number()]),
-    		title: z.string(),
+			title: z.string(),
 		});
 
 		const validationResults = parsedAgentTasksArray.map(item => AgentTaskSchema.safeParse(item));

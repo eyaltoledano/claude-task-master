@@ -96,7 +96,7 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test'); // uuid is mocked
-		expect(result.llmRequestForAgent).toEqual({ prompt: 'test' });
+		expect(result.delegatedCallDetails.requestParameters).toEqual({ prompt: 'test' });
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();
 		expect(result.pendingInteractionSignalToAgent.interactionId).toBe(
 			'fixed-uuid-for-test'
@@ -145,7 +145,7 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test');
-		expect(result.llmRequestForAgent).toEqual({ prompt: 'test stream' });
+		expect(result.delegatedCallDetails.requestParameters).toEqual({ prompt: 'test stream' });
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();
 	});
 

@@ -333,6 +333,9 @@ async function expandTask(
 				logger.debug(
 					'expandTask (core): Detected agent_llm_delegation signal.'
 				);
+				if (loadingIndicator) {
+					stopLoadingIndicator(loadingIndicator);
+				}
 				return {
 					needsAgentDelegation: true,
 					pendingInteraction: {
@@ -413,7 +416,4 @@ async function expandTask(
 	}
 }
 
-// Replace the single default export (if it exists)
-// export default expandTask;
-// With:
-export { expandTask as default };
+export default expandTask;

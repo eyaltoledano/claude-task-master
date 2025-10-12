@@ -363,7 +363,7 @@ async function updateTaskById(
 							}
 						}
 					},
-					// No 'updatedTask' or 'telemetryData' here as the operation is pending.
+					telemetryData: aiServiceResponse.telemetryData,
 					tagInfo: aiServiceResponse.tagInfo
 				};
 			}
