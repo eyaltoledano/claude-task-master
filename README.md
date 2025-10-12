@@ -310,6 +310,12 @@ cd claude-task-master
 node scripts/init.js
 ```
 
+## Join Our Team
+
+<a href="https://tryhamster.com" target="_blank">
+  <img src="./images/hamster-hiring.png" alt="Join Hamster's founding team" />
+</a>
+
 ## Contributors
 
 <a href="https://github.com/eyaltoledano/claude-task-master/graphs/contributors">
