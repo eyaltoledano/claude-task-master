@@ -100,8 +100,8 @@ export class WorkflowStateManager {
 	 */
 	async save(state: WorkflowState): Promise<void> {
 		try {
-			// Ensure directory exists
-			await fs.mkdir(path.dirname(this.statePath), { recursive: true });
+			// Ensure session directory exists
+			await fs.mkdir(this.sessionDir, { recursive: true });
 
 			// Write state atomically
 			const tempPath = `${this.statePath}.tmp`;
