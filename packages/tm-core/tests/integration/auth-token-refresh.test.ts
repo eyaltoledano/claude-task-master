@@ -6,6 +6,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { Session } from '@supabase/supabase-js';
 import { AuthManager } from '../../src/auth/auth-manager';
 import { CredentialStore } from '../../src/auth/credential-store';
@@ -14,6 +17,8 @@ import type { AuthCredentials } from '../../src/auth/types';
 describe('AuthManager - Token Auto-Refresh Integration', () => {
 	let authManager: AuthManager;
 	let credentialStore: CredentialStore;
+	let tmpDir: string;
+	let authFile: string;
 
 	// Mock Supabase session that will be returned on refresh
 	const mockRefreshedSession: Session = {
@@ -34,10 +39,21 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 	};
 
 	beforeEach(() => {
-		// Reset AuthManager singleton
+		// Reset singletons
 		AuthManager.resetInstance();
+		CredentialStore.resetInstance();
 
-		// Clear any existing credentials
+		// Create temporary directory for test isolation
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-auth-integration-'));
+		authFile = path.join(tmpDir, 'auth.json');
+
+		// Initialize AuthManager with test config (this will create CredentialStore internally)
+		authManager = AuthManager.getInstance({
+			configDir: tmpDir,
+			configFile: authFile
+		});
+
+		// Get the CredentialStore instance that AuthManager created
 		credentialStore = CredentialStore.getInstance();
 		credentialStore.clearCredentials();
 	});
@@ -50,7 +66,13 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 			// Ignore cleanup errors
 		}
 		AuthManager.resetInstance();
+		CredentialStore.resetInstance();
 		vi.restoreAllMocks();
+
+		// Remove temporary directory
+		if (tmpDir && fs.existsSync(tmpDir)) {
+			fs.rmSync(tmpDir, { recursive: true, force: true });
+		}
 	});
 
 	describe('Expired Token Detection', () => {

@@ -38,7 +38,10 @@ export class AuthManager {
 		this.oauthService = new OAuthService(this.credentialStore, config);
 
 		// Initialize Supabase client with session restoration
-		this.initializeSupabaseSession();
+		// Fire-and-forget with catch handler to prevent unhandled rejections
+		this.initializeSupabaseSession().catch(() => {
+			// Errors are already logged in initializeSupabaseSession
+		});
 	}
 
 	/**
