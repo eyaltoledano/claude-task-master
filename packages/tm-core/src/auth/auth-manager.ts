@@ -30,6 +30,7 @@ export class AuthManager {
 	private supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
 	private logger = getLogger('AuthManager');
+	private refreshPromise: Promise<AuthCredentials> | null = null;
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.credentialStore = CredentialStore.getInstance(config);
@@ -82,36 +83,45 @@ export class AuthManager {
 	 * Automatically refreshes the token if expired
 	 */
 	async getCredentials(): Promise<AuthCredentials | null> {
-		const credentials = this.credentialStore.getCredentials();
+		const credentials = this.credentialStore.getCredentials({ allowExpired: true });
 
-		// If credentials exist but are expired, try to refresh
 		if (!credentials) {
-			const expiredCredentials = this.credentialStore.getCredentials({
-				allowExpired: true
-			});
+			return null;
+		}
 
-			// Check if we have any credentials at all
-			if (!expiredCredentials) {
-				// No credentials found
-				return null;
+		// Check if credentials are expired (with 30-second clock skew buffer)
+		const CLOCK_SKEW_MS = 30_000;
+		const isExpired = credentials.expiresAt
+			? new Date(credentials.expiresAt).getTime() <= Date.now() + CLOCK_SKEW_MS
+			: false;
+
+		// If expired and we have a refresh token, attempt refresh
+		if (isExpired && credentials.refreshToken) {
+			// Return existing refresh promise if one is in progress
+			if (this.refreshPromise) {
+				try {
+					return await this.refreshPromise;
+				} catch {
+					return null;
+				}
 			}
 
-			// Check if refresh token is available
-			if (!expiredCredentials.refreshToken) {
-				this.logger.warn(
-					'Token expired but no refresh token available. Please re-authenticate.'
-				);
-				return null;
-			}
-
-			// Attempt refresh
 			try {
 				this.logger.info('Token expired, attempting automatic refresh...');
-				return await this.refreshToken();
+				this.refreshPromise = this.refreshToken();
+				const result = await this.refreshPromise;
+				return result;
 			} catch (error) {
 				this.logger.warn('Automatic token refresh failed:', error);
 				return null;
+			} finally {
+				this.refreshPromise = null;
 			}
+		}
+
+		// Return null if expired and no refresh token
+		if (isExpired) {
+			return null;
 		}
 
 		return credentials;

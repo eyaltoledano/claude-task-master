@@ -21,11 +21,16 @@ const CredentialStoreSpy = vi.fn();
 vi.mock('./credential-store.js', () => {
 	return {
 		CredentialStore: class {
+			static getInstance(config?: any) {
+				return new (this as any)(config);
+			}
+			static resetInstance() {
+				// Mock reset instance method
+			}
 			constructor(config: any) {
 				CredentialStoreSpy(config);
-				this.getCredentials = vi.fn(() => null);
 			}
-			getCredentials() {
+			getCredentials(_options?: any) {
 				return null;
 			}
 			saveCredentials() {}
@@ -85,7 +90,7 @@ describe('AuthManager Singleton', () => {
 		expect(instance1).toBe(instance2);
 	});
 
-	it('should use config on first call', () => {
+	it('should use config on first call', async () => {
 		const config = {
 			baseUrl: 'https://test.auth.com',
 			configDir: '/test/config',
@@ -101,7 +106,7 @@ describe('AuthManager Singleton', () => {
 
 		// Verify the config is passed to internal components through observable behavior
 		// getCredentials would look in the configured file path
-		const credentials = instance.getCredentials();
+		const credentials = await instance.getCredentials();
 		expect(credentials).toBeNull(); // File doesn't exist, but config was propagated correctly
 	});
 
