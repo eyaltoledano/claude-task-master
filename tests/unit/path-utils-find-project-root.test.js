@@ -95,12 +95,12 @@ describe('findProjectRoot', () => {
 			mockExistsSync.mockRestore();
 		});
 
-		test('should prioritize Task Master markers over generic markers', () => {
+		test('should find markers at current directory before checking parent', () => {
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
 			mockExistsSync.mockImplementation((checkPath) => {
 				const normalized = path.normalize(checkPath);
-				// Both .git and .taskmaster exist, but at different levels
+				// .git exists at /project/subdir, .taskmaster exists at /project
 				if (normalized.includes('/project/subdir/.git')) return true;
 				if (normalized.includes('/project/.taskmaster')) return true;
 				return false;
@@ -108,10 +108,9 @@ describe('findProjectRoot', () => {
 
 			const result = findProjectRoot('/project/subdir');
 
-			// Should find /project/subdir/.git first (because we check current dir first)
-			// But actually with our marker ordering, .taskmaster comes first
-			// So it depends on which directory is checked first in the traversal
-			expect(['/project', '/project/subdir']).toContain(result);
+			// Should find /project/subdir first because .git exists there,
+			// even though .taskmaster is earlier in the marker array
+			expect(result).toBe('/project/subdir');
 
 			mockExistsSync.mockRestore();
 		});
@@ -224,6 +223,8 @@ describe('findProjectRoot', () => {
 			// Should stop after max depth (50) and not check 100 levels
 			// Each level checks multiple markers, so callCount will be high but bounded
 			expect(callCount).toBeLessThan(1000); // Reasonable upper bound
+			// With 18 markers and max depth of 50, expect around 900 calls maximum
+			expect(callCount).toBeLessThanOrEqual(50 * 18);
 
 			mockExistsSync.mockRestore();
 		});

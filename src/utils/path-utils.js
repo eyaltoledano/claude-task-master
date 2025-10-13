@@ -48,6 +48,7 @@ export function normalizeProjectRoot(projectRoot) {
 /**
  * Find the project root directory by looking for project markers
  * Traverses upwards from startDir until a project marker is found or filesystem root is reached
+ * Limited to 50 parent directory levels to prevent excessive traversal
  * @param {string} startDir - Directory to start searching from (defaults to process.cwd())
  * @returns {string} - Project root path (falls back to current directory if no markers found)
  */
