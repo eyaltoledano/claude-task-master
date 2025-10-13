@@ -8,7 +8,6 @@ import {
 	AutopilotBaseOptions,
 	hasWorkflowState,
 	loadWorkflowState,
-	createOrchestrator,
 	OutputFormatter
 } from './shared.js';
 

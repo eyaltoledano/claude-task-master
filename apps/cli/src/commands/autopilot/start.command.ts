@@ -4,8 +4,6 @@
 
 import { Command } from 'commander';
 import {
-	WorkflowOrchestrator,
-	GitAdapter,
 	createTaskMasterCore,
 	type WorkflowContext
 } from '@tm/core';
@@ -21,7 +19,7 @@ import {
 
 interface StartOptions extends AutopilotBaseOptions {
 	force?: boolean;
-	maxAttempts?: number;
+	maxAttempts?: string;
 }
 
 /**
@@ -113,7 +111,7 @@ export class StartCommand extends Command {
 				errors: [],
 				metadata: {
 					startedAt: new Date().toISOString(),
-					tag: task.tag || 'default'
+					tags: task.tags || []
 				}
 			};
 

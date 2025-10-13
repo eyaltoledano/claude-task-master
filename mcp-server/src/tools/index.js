@@ -41,13 +41,15 @@ import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
 // Import TypeScript autopilot tools from apps/mcp
-import { registerAutopilotStartTool } from '@tm/mcp';
-import { registerAutopilotResumeTool } from './autopilot-resume.js';
-import { registerAutopilotNextTool } from './autopilot-next.js';
-import { registerAutopilotStatusTool } from './autopilot-status.js';
-import { registerAutopilotCompleteTool } from './autopilot-complete.js';
-import { registerAutopilotCommitTool } from './autopilot-commit.js';
-import { registerAutopilotAbortTool } from './autopilot-abort.js';
+import {
+	registerAutopilotStartTool,
+	registerAutopilotResumeTool,
+	registerAutopilotNextTool,
+	registerAutopilotStatusTool,
+	registerAutopilotCompleteTool,
+	registerAutopilotCommitTool,
+	registerAutopilotAbortTool
+} from '@tm/mcp';
 
 /**
  * Register all Task Master tools with the MCP server

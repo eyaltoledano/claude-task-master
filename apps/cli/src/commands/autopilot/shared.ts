@@ -12,6 +12,15 @@ import type { WorkflowState, WorkflowContext, SubtaskInfo } from '@tm/core';
 import chalk from 'chalk';
 
 /**
+ * Base options interface for all autopilot commands
+ */
+export interface AutopilotBaseOptions {
+	projectRoot?: string;
+	json?: boolean;
+	verbose?: boolean;
+}
+
+/**
  * Load workflow state from disk using WorkflowStateManager
  */
 export async function loadWorkflowState(

@@ -5,7 +5,6 @@
  */
 
 import { Command } from 'commander';
-import chalk from 'chalk';
 import { StartCommand } from './start.command.js';
 import { ResumeCommand } from './resume.command.js';
 import { NextCommand } from './next.command.js';

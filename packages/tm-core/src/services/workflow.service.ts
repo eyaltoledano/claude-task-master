@@ -208,6 +208,17 @@ export class WorkflowService {
 	}
 
 	/**
+	 * Get workflow context (for accessing full state details)
+	 */
+	getContext(): WorkflowContext {
+		if (!this.orchestrator) {
+			throw new Error('No active workflow. Start or resume a workflow first.');
+		}
+
+		return this.orchestrator.getContext();
+	}
+
+	/**
 	 * Get next recommended action for AI agent
 	 */
 	getNextAction(): NextAction {

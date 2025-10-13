@@ -4,3 +4,9 @@
  */
 
 export { registerAutopilotStartTool } from './start.tool.js';
+export { registerAutopilotResumeTool } from './resume.tool.js';
+export { registerAutopilotNextTool } from './next.tool.js';
+export { registerAutopilotStatusTool } from './status.tool.js';
+export { registerAutopilotCompleteTool } from './complete.tool.js';
+export { registerAutopilotCommitTool } from './commit.tool.js';
+export { registerAutopilotAbortTool } from './abort.tool.js';
