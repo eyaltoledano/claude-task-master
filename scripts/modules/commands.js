@@ -2441,57 +2441,6 @@ ${result.result}
 			}
 		});
 
-	// next command
-	programInstance
-		.command('next')
-		.description(
-			`Show the next task to work on based on dependencies and status${chalk.reset('')}`
-		)
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-r, --report <report>',
-			'Path to the complexity report file',
-			COMPLEXITY_REPORT_FILE
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			const initOptions = {
-				tasksPath: options.file || true,
-				tag: options.tag
-			};
-
-			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
-				initOptions.complexityReportPath = options.report;
-			}
-
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag,
-				complexityReportPath: options.report || false
-			});
-
-			const tag = taskMaster.getCurrentTag();
-
-			const context = {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			};
-
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
-
-			await displayNextTask(
-				taskMaster.getTasksPath(),
-				taskMaster.getComplexityReportPath(),
-				context
-			);
-		});
-
 	// add-dependency command
 	programInstance
 		.command('add-dependency')
