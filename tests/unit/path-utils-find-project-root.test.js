@@ -13,21 +13,16 @@ import { findProjectRoot } from '../../src/utils/path-utils.js';
 describe('findProjectRoot', () => {
 	describe('Parent Directory Traversal', () => {
 		test('should find .taskmaster in parent directory', () => {
-			// Setup: Mock filesystem structure
-			// /project/.taskmaster exists
-			// /project/subdir (current directory)
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
 			mockExistsSync.mockImplementation((checkPath) => {
 				const normalized = path.normalize(checkPath);
-				// .taskmaster exists in /project but not in /project/subdir
-				return normalized.includes('/project/.taskmaster') &&
-					   !normalized.includes('/project/subdir/.taskmaster');
+				// .taskmaster exists only at /project
+				return normalized === path.normalize('/project/.taskmaster');
 			});
 
 			const result = findProjectRoot('/project/subdir');
 
-			// Should traverse up and find /project (where .taskmaster exists)
 			expect(result).toBe('/project');
 
 			mockExistsSync.mockRestore();
@@ -38,8 +33,7 @@ describe('findProjectRoot', () => {
 
 			mockExistsSync.mockImplementation((checkPath) => {
 				const normalized = path.normalize(checkPath);
-				return normalized.includes('/project/.git') &&
-					   !normalized.includes('/project/subdir/.git');
+				return normalized === path.normalize('/project/.git');
 			});
 
 			const result = findProjectRoot('/project/subdir');
@@ -54,8 +48,7 @@ describe('findProjectRoot', () => {
 
 			mockExistsSync.mockImplementation((checkPath) => {
 				const normalized = path.normalize(checkPath);
-				return normalized.includes('/project/package.json') &&
-					   !normalized.includes('/project/subdir/package.json');
+				return normalized === path.normalize('/project/package.json');
 			});
 
 			const result = findProjectRoot('/project/subdir');
@@ -118,21 +111,19 @@ describe('findProjectRoot', () => {
 		test('should handle permission errors gracefully', () => {
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
-			let callCount = 0;
 			mockExistsSync.mockImplementation((checkPath) => {
-				callCount++;
-				if (callCount === 1) {
-					// First call throws permission error
+				const normalized = path.normalize(checkPath);
+				// Throw permission error for checks in /project/subdir
+				if (normalized.startsWith('/project/subdir/')) {
 					throw new Error('EACCES: permission denied');
 				}
-				// Subsequent calls succeed
-				const normalized = path.normalize(checkPath);
+				// Return true only for .taskmaster at /project
 				return normalized.includes('/project/.taskmaster');
 			});
 
 			const result = findProjectRoot('/project/subdir');
 
-			// Should handle error and continue searching
+			// Should handle permission errors in subdirectory and traverse to parent
 			expect(result).toBe('/project');
 
 			mockExistsSync.mockRestore();

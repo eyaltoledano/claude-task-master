@@ -56,24 +56,24 @@ export function findProjectRoot(startDir = process.cwd()) {
 	// Define project markers that indicate a project root
 	// Prioritize Task Master specific markers first
 	const projectMarkers = [
-		'.taskmaster',           // Task Master directory (highest priority)
-		TASKMASTER_CONFIG_FILE,  // .taskmaster/config.json
-		TASKMASTER_TASKS_FILE,   // .taskmaster/tasks/tasks.json
-		LEGACY_CONFIG_FILE,      // .taskmasterconfig (legacy)
-		LEGACY_TASKS_FILE,       // tasks/tasks.json (legacy)
-		'tasks.json',            // Root tasks.json (legacy)
-		'.git',                  // Git repository
-		'.svn',                  // SVN repository
-		'package.json',          // Node.js project
-		'yarn.lock',             // Yarn project
-		'package-lock.json',     // npm project
-		'pnpm-lock.yaml',        // pnpm project
-		'Cargo.toml',            // Rust project
-		'go.mod',                // Go project
-		'pyproject.toml',        // Python project
-		'requirements.txt',      // Python project
-		'Gemfile',               // Ruby project
-		'composer.json'          // PHP project
+		'.taskmaster', // Task Master directory (highest priority)
+		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
+		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
+		LEGACY_CONFIG_FILE, // .taskmasterconfig (legacy)
+		LEGACY_TASKS_FILE, // tasks/tasks.json (legacy)
+		'tasks.json', // Root tasks.json (legacy)
+		'.git', // Git repository
+		'.svn', // SVN repository
+		'package.json', // Node.js project
+		'yarn.lock', // Yarn project
+		'package-lock.json', // npm project
+		'pnpm-lock.yaml', // pnpm project
+		'Cargo.toml', // Rust project
+		'go.mod', // Go project
+		'pyproject.toml', // Python project
+		'requirements.txt', // Python project
+		'Gemfile', // Ruby project
+		'composer.json' // PHP project
 	];
 
 	let currentDir = path.resolve(startDir);
