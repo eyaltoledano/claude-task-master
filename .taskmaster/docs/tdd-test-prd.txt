@@ -1,0 +1,50 @@
+# Test Calculator Library PRD
+
+## Overview
+Create a simple calculator library to test the TDD autopilot workflow. This will demonstrate the complete RED-GREEN-COMMIT cycle with proper test coverage.
+
+## Features
+
+### 1. Basic Arithmetic Operations
+Implement core mathematical operations:
+- Addition: Add two numbers
+- Subtraction: Subtract one number from another
+- Multiplication: Multiply two numbers
+- Division: Divide one number by another with proper error handling
+
+### 2. Advanced Operations
+Implement additional mathematical functions:
+- Power: Calculate x raised to the power of y
+- Square root: Calculate the square root of a number
+- Modulo: Calculate remainder of division
+
+### 3. Input Validation
+Ensure robust error handling:
+- Validate numeric inputs
+- Handle division by zero
+- Handle invalid operations
+- Provide meaningful error messages
+
+### 4. Calculation History
+Track calculation history:
+- Store last 10 calculations
+- Retrieve calculation history
+- Clear history
+- Export history as JSON
+
+## Technical Requirements
+
+- TypeScript implementation
+- 100% test coverage for all operations
+- Follow TDD workflow strictly
+- Comprehensive error handling
+- Type-safe interfaces
+
+## Acceptance Criteria
+
+1. All arithmetic operations return correct results
+2. Division by zero throws appropriate error
+3. Invalid inputs are rejected with clear error messages
+4. History tracking works correctly with max 10 entries
+5. All public methods have corresponding tests
+6. Code passes TypeScript strict mode

@@ -10862,5 +10862,675 @@
       "description": "Tasks for tdd-phase-1-core-rails context",
       "updated": "2025-10-10T16:07:52.412Z"
     }
+  },
+  "tdd-test": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Set up TypeScript calculator project structure",
+        "description": "Initialize the calculator library project with TypeScript configuration and directory structure",
+        "details": "Create calculator-library directory with src/, tests/, and dist/ folders. Set up package.json with TypeScript, Jest, and type definitions. Configure tsconfig.json with strict mode enabled. Set up Jest configuration for TypeScript testing with ts-jest preset. Initialize git repository and add .gitignore for node_modules and dist folders.",
+        "testStrategy": "Verify project compiles without errors using 'tsc --noEmit'. Confirm Jest runs with 'npm test' command. Check that all TypeScript strict mode flags are enabled.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create calculator-library directory and basic structure",
+            "description": "Initialize the calculator library project by creating the main calculator-library directory and setting up the basic folder structure including src/, tests/, and dist/ directories.",
+            "dependencies": [],
+            "details": "Create a new calculator-library directory at the project root. Inside this directory, create three subdirectories: src/ for source code, tests/ for test files, and dist/ for compiled output. This establishes the foundation for the TypeScript calculator library project structure.",
+            "status": "pending",
+            "testStrategy": "Verify that all three directories (src/, tests/, dist/) are created and accessible. Check that the calculator-library directory exists in the correct location."
+          },
+          {
+            "id": 2,
+            "title": "Initialize package.json with TypeScript and Jest dependencies",
+            "description": "Set up package.json file with all necessary dependencies including TypeScript, Jest, and type definitions for the calculator library project.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create package.json with project metadata and dependencies. Include TypeScript for compilation, Jest and ts-jest for testing, @types/jest for type definitions, and @types/node for Node.js types. Add scripts for build, test, and typecheck commands. Set module type and entry points appropriately.",
+            "status": "pending",
+            "testStrategy": "Verify package.json contains all required dependencies and scripts. Run 'npm install' to ensure all packages install correctly without errors."
+          },
+          {
+            "id": 3,
+            "title": "Configure TypeScript with strict mode settings",
+            "description": "Create and configure tsconfig.json with strict TypeScript compilation settings to ensure type safety and code quality.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create tsconfig.json with strict mode enabled including all strict flags: noImplicitAny, strictNullChecks, strictFunctionTypes, noImplicitReturns. Set target to ES2022, module to ESNext, outDir to ./dist, rootDir to ./src. Include declaration and sourceMap generation. Configure path resolution and exclude test files from compilation.",
+            "status": "pending",
+            "testStrategy": "Verify project compiles without errors using 'tsc --noEmit'. Ensure all TypeScript strict mode flags are properly configured and enforced."
+          },
+          {
+            "id": 4,
+            "title": "Set up Jest configuration for TypeScript testing",
+            "description": "Configure Jest testing framework with ts-jest preset to enable TypeScript test execution and proper module resolution.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create jest.config.js or add Jest configuration to package.json. Configure ts-jest preset for TypeScript support, set testEnvironment to 'node', configure moduleNameMapping for proper path resolution. Set up coverage collection from src/ directory and exclude node_modules. Configure test file patterns to match .test.ts and .spec.ts files.",
+            "status": "pending",
+            "testStrategy": "Confirm Jest runs with 'npm test' command without errors. Verify that TypeScript test files can be executed and Jest recognizes the ts-jest preset configuration."
+          },
+          {
+            "id": 5,
+            "title": "Initialize git repository and configure .gitignore",
+            "description": "Initialize git version control and create .gitignore file to exclude generated files and dependencies from source control.",
+            "dependencies": [
+              4
+            ],
+            "details": "Run 'git init' to initialize git repository in calculator-library directory. Create .gitignore file to exclude node_modules/, dist/, coverage/, .env files, and any IDE-specific files. Add initial commit with project structure and configuration files. Ensure only source files and configuration are tracked by git.",
+            "status": "pending",
+            "testStrategy": "Verify git repository is initialized with 'git status'. Confirm .gitignore properly excludes node_modules and dist folders. Check that configuration files are tracked while build artifacts are ignored."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Define TypeScript interfaces and types",
+        "description": "Create type definitions for calculator operations, errors, and calculation history",
+        "details": "Define Operation enum for arithmetic operations (ADD, SUBTRACT, MULTIPLY, DIVIDE, POWER, SQRT, MODULO). Create CalculationResult interface with operation, operands, result, and timestamp fields. Define CalculatorError custom error class extending Error. Create CalculationHistory interface for history management with max 10 entries constraint.",
+        "testStrategy": "Compile TypeScript definitions without errors. Create simple test files importing types to verify they work correctly. Test that custom error types can be instantiated and thrown properly.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Operation enum for arithmetic operations",
+            "description": "Define a TypeScript enum for all supported arithmetic operations including basic and advanced operations",
+            "dependencies": [],
+            "details": "Create Operation enum with values: ADD, SUBTRACT, MULTIPLY, DIVIDE, POWER, SQRT, MODULO. This enum will be used throughout the calculator to identify operation types in a type-safe manner. Each enum value should correspond to the specific mathematical operation that will be implemented.",
+            "status": "pending",
+            "testStrategy": "Test that enum values are exported correctly and can be imported in other modules. Verify enum values match expected string representations."
+          },
+          {
+            "id": 2,
+            "title": "Define CalculationResult interface",
+            "description": "Create interface to represent the result of a calculator operation with metadata",
+            "dependencies": [
+              1
+            ],
+            "details": "Create CalculationResult interface with fields: operation (Operation enum), operands (number array for inputs), result (number for calculated value), timestamp (Date for when calculation was performed). This interface will be used to store individual calculation results and maintain calculation history.",
+            "status": "pending",
+            "testStrategy": "Create test objects implementing the interface to verify all required fields are present and types are correct. Test interface can be used for type checking."
+          },
+          {
+            "id": 3,
+            "title": "Implement CalculatorError custom error class",
+            "description": "Create custom error class extending Error for calculator-specific error scenarios",
+            "dependencies": [],
+            "details": "Create CalculatorError class extending Error with additional properties for error context: operation (optional Operation), inputs (optional number array), errorCode (string for specific error types like 'DIVISION_BY_ZERO', 'INVALID_INPUT'). Include helpful error messages and context for debugging.",
+            "status": "pending",
+            "testStrategy": "Test that CalculatorError can be instantiated, thrown, and caught properly. Verify error messages include helpful context and error codes are set correctly."
+          },
+          {
+            "id": 4,
+            "title": "Define CalculationHistory interface",
+            "description": "Create interface for managing calculation history with size constraints",
+            "dependencies": [
+              2
+            ],
+            "details": "Create CalculationHistory interface with properties: entries (CalculationResult array with max 10 items), maxEntries (readonly number set to 10), and methods: add(result: CalculationResult), getAll(): CalculationResult[], clear(): void, exportAsJSON(): string. This interface defines the contract for history management functionality.",
+            "status": "pending",
+            "testStrategy": "Test interface definition compiles correctly and can be implemented by concrete classes. Verify method signatures accept and return correct types."
+          },
+          {
+            "id": 5,
+            "title": "Create main types index file and verify compilation",
+            "description": "Create index file to export all types and verify TypeScript compilation works correctly",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Create src/types/index.ts file that exports all defined types: Operation enum, CalculationResult interface, CalculatorError class, and CalculationHistory interface. Ensure all imports/exports work correctly and TypeScript compiler can process all type definitions without errors.",
+            "status": "pending",
+            "testStrategy": "Run TypeScript compiler with strict mode to verify no compilation errors. Create simple test file importing all types to confirm they are properly exported and accessible."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement basic arithmetic operations (TDD)",
+        "description": "Implement addition, subtraction, multiplication, and division operations using TDD approach",
+        "details": "Create Calculator class with add(a, b), subtract(a, b), multiply(a, b), and divide(a, b) methods. Follow strict TDD: write failing tests first (RED), implement minimal code to pass (GREEN), then refactor. Handle division by zero with appropriate CalculatorError. Validate inputs are numbers using type guards. Return precise results maintaining decimal accuracy.",
+        "testStrategy": "Write comprehensive test suites for each operation including edge cases: positive/negative numbers, decimals, zero values, large numbers, and division by zero. Verify error messages are meaningful and specific.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write failing tests for Calculator class basic arithmetic operations",
+            "description": "Create comprehensive test file with failing tests for Calculator class add, subtract, multiply, and divide methods using TDD RED phase approach",
+            "dependencies": [],
+            "details": "Create a test file following the existing test patterns in packages/tm-core. Write failing tests for Calculator.add(a, b), Calculator.subtract(a, b), Calculator.multiply(a, b), and Calculator.divide(a, b) methods. Include edge cases like positive/negative numbers, decimals, zero values, and division by zero. Tests should fail initially since Calculator class doesn't exist yet. Use TypeScript test file with .test.ts extension placed alongside source code.",
+            "status": "pending",
+            "testStrategy": "Write comprehensive failing tests including: basic operations with integers/decimals, edge cases with zero/negative numbers, division by zero error handling, and input validation for non-numeric values. Verify all tests fail before implementation."
+          },
+          {
+            "id": 2,
+            "title": "Implement Calculator class with minimal code to pass addition tests",
+            "description": "Create Calculator class with basic structure and implement add method with minimal code to make addition tests pass (GREEN phase)",
+            "dependencies": [
+              1
+            ],
+            "details": "Create Calculator.ts file in appropriate location within packages structure. Implement class with constructor and add(a: number, b: number): number method. Add basic input validation using type guards to ensure inputs are numbers. Implement only enough code to make addition tests pass, following TDD GREEN phase principles of minimal implementation.",
+            "status": "pending",
+            "testStrategy": "Run tests after implementation to verify addition tests pass while subtraction, multiplication, and division tests still fail. Confirm type validation works for add method."
+          },
+          {
+            "id": 3,
+            "title": "Implement subtract, multiply methods to pass remaining arithmetic tests",
+            "description": "Add subtract and multiply methods to Calculator class with minimal implementation to make those tests pass",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend Calculator class with subtract(a: number, b: number): number and multiply(a: number, b: number): number methods. Include same input validation pattern as add method. Implement with minimal code following TDD GREEN approach. Ensure all arithmetic tests pass except division which should still fail.",
+            "status": "pending",
+            "testStrategy": "Verify subtract and multiply tests pass after implementation. Confirm division tests still fail and addition tests continue to pass. Validate input type checking works for all implemented methods."
+          },
+          {
+            "id": 4,
+            "title": "Implement divide method with proper division by zero error handling",
+            "description": "Add divide method to Calculator class with CalculatorError handling for division by zero scenarios",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement divide(a: number, b: number): number method with proper error handling. Create CalculatorError class that extends Error with descriptive messages. Throw CalculatorError when divisor is zero with message like 'Division by zero is not allowed'. Ensure method validates inputs are numbers and returns precise decimal results. Follow existing error patterns in tm-core packages.",
+            "status": "pending",
+            "testStrategy": "Verify all division tests pass including normal division cases and division by zero error throwing. Confirm all other arithmetic operation tests continue to pass. Test error messages are meaningful and specific."
+          },
+          {
+            "id": 5,
+            "title": "Refactor Calculator implementation for code quality and maintainability",
+            "description": "Refactor Calculator class code to improve readability, extract common validation logic, and ensure all tests continue to pass",
+            "dependencies": [
+              4
+            ],
+            "details": "Extract input validation logic into private validateNumber method to avoid code duplication. Ensure all public methods use consistent error handling and validation patterns. Add proper TypeScript types and JSDoc comments for public API. Verify decimal precision is maintained for all operations. Follow existing code patterns and conventions used in tm-core packages.",
+            "status": "pending",
+            "testStrategy": "Run full test suite to ensure all tests continue to pass after refactoring. Verify no functionality was broken during refactoring. Confirm code follows project TypeScript conventions and passes type checking."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Implement advanced mathematical operations (TDD)",
+        "description": "Implement power, square root, and modulo operations following TDD methodology",
+        "details": "Add power(base, exponent), sqrt(value), and modulo(dividend, divisor) methods to Calculator class. Power should handle negative exponents and fractional powers. Square root should validate non-negative inputs and throw CalculatorError for negative values. Modulo should handle edge cases like modulo by zero.",
+        "testStrategy": "Test power with integer/fractional exponents, negative bases. Test sqrt with positive numbers, zero, and negative inputs (should throw error). Test modulo with various dividend/divisor combinations including edge cases.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement power() method with negative and fractional exponent handling",
+            "description": "Develop the power(base, exponent) method in the Calculator class to correctly compute powers including negative and fractional exponents.",
+            "dependencies": [],
+            "details": "Use Math.pow or equivalent to calculate base raised to exponent. Ensure handling of negative exponents by computing reciprocal powers. Support fractional exponents by allowing floating-point exponent values. Include input validation and handle edge cases such as zero base with negative exponent.",
+            "status": "pending",
+            "testStrategy": "Write unit tests covering positive, negative, zero, integer, and fractional exponents. Test edge cases like zero base with negative exponent and fractional exponents resulting in roots."
+          },
+          {
+            "id": 2,
+            "title": "Implement sqrt() method with input validation for negative numbers",
+            "description": "Create the sqrt(value) method in the Calculator class that computes the square root of a non-negative number and throws CalculatorError for negative inputs.",
+            "dependencies": [],
+            "details": "Implement input validation to check if value is non-negative. If negative, throw CalculatorError with a descriptive message. Use Math.sqrt or equivalent for calculation. Ensure method returns correct square root for zero and positive inputs.",
+            "status": "pending",
+            "testStrategy": "Test with positive numbers, zero, and negative inputs. Verify that negative inputs throw the expected CalculatorError and valid inputs return correct square root values."
+          },
+          {
+            "id": 3,
+            "title": "Implement modulo() method with edge case handling",
+            "description": "Add modulo(dividend, divisor) method to the Calculator class that computes the remainder and handles edge cases such as modulo by zero.",
+            "dependencies": [],
+            "details": "Implement modulo operation using the % operator or equivalent. Validate divisor to prevent division by zero; throw CalculatorError if divisor is zero. Handle negative dividends and divisors according to language-specific modulo behavior or define consistent behavior.",
+            "status": "pending",
+            "testStrategy": "Test modulo with positive and negative dividends and divisors. Verify that modulo by zero throws CalculatorError. Include tests for zero dividend and large numbers."
+          },
+          {
+            "id": 4,
+            "title": "Develop comprehensive tests for all advanced mathematical operations",
+            "description": "Create a thorough test suite covering power, sqrt, and modulo methods including all relevant mathematical edge cases and error conditions.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Design tests that cover normal cases, boundary conditions, and error scenarios for each method. Include tests for negative and fractional exponents in power, negative inputs for sqrt, and zero divisor for modulo. Use TDD approach: write failing tests first, implement code to pass tests, then refactor.",
+            "status": "pending",
+            "testStrategy": "Automate tests using a testing framework. Verify all tests pass after implementation. Include tests for exception throwing and correct result calculations across all methods."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement comprehensive input validation (TDD)",
+        "description": "Create robust input validation system for all calculator operations",
+        "details": "Implement validateNumber(value) private method that checks if input is a valid number (not NaN, not undefined, not null). Create validateOperation(operation, operands) method to ensure correct number of operands for each operation type. Add comprehensive error messages indicating exactly what went wrong (e.g., 'Expected number, received string' or 'Division by zero is not allowed').",
+        "testStrategy": "Test validation with invalid inputs: undefined, null, NaN, strings, objects, arrays. Verify each error message is specific and helpful. Test that valid numbers pass validation correctly.",
+        "priority": "high",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement private method validateNumber(value)",
+            "description": "Create a private method validateNumber(value) that checks if the input is a valid number, ensuring it is not NaN, undefined, or null.",
+            "dependencies": [],
+            "details": "Implement validateNumber(value) to verify the input is of type number, not NaN, and not null or undefined. Return true if valid; otherwise, throw an error with a specific message like 'Expected number, received [type]'.",
+            "status": "pending",
+            "testStrategy": "Write unit tests passing various invalid inputs such as undefined, null, NaN, strings, objects, and arrays to confirm errors are thrown with correct messages. Test valid numbers pass validation."
+          },
+          {
+            "id": 2,
+            "title": "Implement validateOperation(operation, operands) method",
+            "description": "Develop validateOperation(operation, operands) to verify the operation type and ensure the correct number of operands are provided.",
+            "dependencies": [
+              1
+            ],
+            "details": "Define validation rules for each calculator operation (e.g., addition requires 2 operands). Check operands count matches expected for the operation. Throw detailed errors if validation fails, e.g., 'Addition requires 2 operands, received 1'.",
+            "status": "pending",
+            "testStrategy": "Test with various operations and operand counts, including too few or too many operands, to verify appropriate error messages are generated."
+          },
+          {
+            "id": 3,
+            "title": "Integrate validation methods into calculator operations",
+            "description": "Modify all calculator operation methods to call validateNumber for each operand and validateOperation before performing calculations.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Update add, subtract, multiply, divide, and other operation methods to invoke validateNumber on each input and validateOperation with operation name and operands. Ensure errors from validations prevent operation execution.",
+            "status": "pending",
+            "testStrategy": "Test calculator methods with invalid inputs and operand counts to confirm validation errors are raised and valid inputs proceed correctly."
+          },
+          {
+            "id": 4,
+            "title": "Implement specific error messages for validation failures",
+            "description": "Enhance validation methods to provide comprehensive and precise error messages indicating the exact validation failure reason.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Design error messages to specify the expected input type or condition and the actual invalid input received, e.g., 'Expected number, received string', 'Division by zero is not allowed'. Use custom error classes if applicable.",
+            "status": "pending",
+            "testStrategy": "Verify all validation failure scenarios produce clear, user-friendly, and specific error messages through unit tests."
+          },
+          {
+            "id": 5,
+            "title": "Write comprehensive tests for input validation system",
+            "description": "Develop a full test suite covering all input validation scenarios, including invalid types, operand count mismatches, and edge cases like division by zero.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create tests that cover undefined, null, NaN, strings, objects, arrays as inputs. Test each operation with incorrect operand counts. Confirm that valid inputs pass without errors. Include tests for error message content and correctness.",
+            "status": "pending",
+            "testStrategy": "Use automated tests to systematically verify all validation logic and error messages behave as expected under diverse input conditions."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement calculation history tracking (TDD)",
+        "description": "Create history management system to track last 10 calculations with timestamps",
+        "details": "Add private history array property to Calculator class. Implement addToHistory(result: CalculationResult) method that maintains max 10 entries using FIFO (remove oldest when adding 11th). Create getHistory(): CalculationResult[] method to retrieve full history. Implement clearHistory() method to reset history array. Each calculation should automatically be added to history upon completion.",
+        "testStrategy": "Test history maintains exactly 10 entries maximum. Verify FIFO behavior when exceeding limit. Test clearHistory resets to empty array. Verify timestamps are accurate and calculations are stored with correct operation details.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add private history array property to Calculator class",
+            "description": "Introduce a private property in the Calculator class to store calculation history as an array limited to 10 entries.",
+            "dependencies": [],
+            "details": "Modify the Calculator class to include a private property named 'history' initialized as an empty array. This array will hold CalculationResult objects representing past calculations, capped at 10 entries.",
+            "status": "pending",
+            "testStrategy": "Verify that the history property is initialized empty and is private to the Calculator class."
+          },
+          {
+            "id": 2,
+            "title": "Implement addToHistory(result: CalculationResult) method with FIFO logic",
+            "description": "Create a method to add a new calculation result to the history, maintaining a maximum of 10 entries by removing the oldest entry when necessary.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement addToHistory(result) in Calculator class that appends the new result to the history array. If the array exceeds 10 entries, remove the oldest (first) entry to maintain FIFO behavior.",
+            "status": "pending",
+            "testStrategy": "Test that adding more than 10 entries results in the oldest entries being removed, ensuring the history length never exceeds 10."
+          },
+          {
+            "id": 3,
+            "title": "Implement getHistory() method to retrieve full calculation history",
+            "description": "Provide a method to return the current full history array of CalculationResult objects.",
+            "dependencies": [
+              2
+            ],
+            "details": "Add getHistory() method in Calculator class that returns a copy of the history array to prevent external mutation.",
+            "status": "pending",
+            "testStrategy": "Verify that getHistory returns all stored CalculationResult entries in correct order and that modifying the returned array does not affect internal history."
+          },
+          {
+            "id": 4,
+            "title": "Implement clearHistory() method to reset the history array",
+            "description": "Add functionality to clear all stored calculation history, resetting the history array to empty.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement clearHistory() method in Calculator class that empties the history array, effectively removing all stored calculation results.",
+            "status": "pending",
+            "testStrategy": "Test that after calling clearHistory, getHistory returns an empty array."
+          },
+          {
+            "id": 5,
+            "title": "Automatically add each completed calculation to history",
+            "description": "Modify calculation methods to automatically add their results to the history upon successful completion.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update all Calculator operation methods (add, subtract, multiply, divide, etc.) to call addToHistory with the CalculationResult immediately after computing the result, ensuring history is always up to date.",
+            "status": "pending",
+            "testStrategy": "Test that after performing calculations, the history contains the corresponding CalculationResult entries with accurate timestamps and operation details."
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement history export functionality (TDD)",
+        "description": "Add ability to export calculation history as JSON with proper formatting",
+        "details": "Implement exportHistoryAsJson(): string method that converts history array to formatted JSON string. Include metadata like export timestamp, calculator version, and total calculations count. Handle empty history gracefully. Ensure JSON is properly formatted and can be parsed back into CalculationResult objects.",
+        "testStrategy": "Test JSON export with various history states: empty, partial, and full (10 entries). Verify exported JSON can be parsed back to original structure. Test that metadata fields are correctly included and formatted.",
+        "priority": "low",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Write failing tests for exportHistoryAsJson method",
+            "description": "Create comprehensive test suite for history export functionality following TDD RED phase",
+            "dependencies": [],
+            "details": "Write test cases covering: empty history export, partial history export (1-9 entries), full history export (10 entries), JSON parsing validation, metadata inclusion (timestamp, version, total count), and error handling scenarios. Tests should fail initially as the method doesn't exist yet. Test file should be placed in appropriate test directory with proper imports and setup.",
+            "status": "pending",
+            "testStrategy": "Test export with empty array returns valid JSON with metadata. Test partial history includes all entries and correct count. Test full history maintains order and includes metadata. Verify JSON.parse can reconstruct original data structure."
+          },
+          {
+            "id": 2,
+            "title": "Implement basic exportHistoryAsJson method structure",
+            "description": "Create minimal implementation of exportHistoryAsJson method to make tests pass (GREEN phase)",
+            "dependencies": [
+              1
+            ],
+            "details": "Add exportHistoryAsJson(): string method to Calculator class that returns a JSON string containing the history array and required metadata (exportTimestamp, calculatorVersion, totalCalculations). Start with simplest implementation that makes the failing tests pass. Method should handle empty history gracefully and return properly formatted JSON.",
+            "status": "pending",
+            "testStrategy": "Verify method exists and returns valid JSON string. Test that basic functionality makes the RED tests pass without additional features."
+          },
+          {
+            "id": 3,
+            "title": "Add comprehensive metadata to JSON export",
+            "description": "Enhance export method to include all required metadata fields with proper formatting",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend the exportHistoryAsJson method to include complete metadata: export timestamp (ISO format), calculator version number, total calculations count, and any additional context. Ensure metadata is properly typed and formatted. Handle edge cases like version retrieval and timestamp generation errors.",
+            "status": "pending",
+            "testStrategy": "Test metadata fields are present and correctly formatted. Verify timestamp is valid ISO date. Test version field contains expected format. Verify count matches actual history length."
+          },
+          {
+            "id": 4,
+            "title": "Implement JSON parsing validation and error handling",
+            "description": "Add validation to ensure exported JSON can be parsed back to original structure with error handling",
+            "dependencies": [
+              3
+            ],
+            "details": "Add validation logic to ensure the exported JSON maintains data integrity and can be parsed back into CalculationResult objects. Implement error handling for JSON serialization failures, circular references, and invalid data types. Add optional validation method to verify export integrity.",
+            "status": "pending",
+            "testStrategy": "Test that JSON.parse(exportHistoryAsJson()) reconstructs valid data. Test error handling for corrupted data. Verify all CalculationResult properties are preserved during export/import cycle."
+          },
+          {
+            "id": 5,
+            "title": "Refactor and optimize export functionality",
+            "description": "Clean up implementation, optimize performance, and ensure code quality standards",
+            "dependencies": [
+              4
+            ],
+            "details": "Refactor the exportHistoryAsJson method for optimal performance and maintainability. Extract helper functions if needed, optimize JSON serialization for large histories, add proper TypeScript types, and ensure consistent error messages. Follow established code patterns and add appropriate documentation.",
+            "status": "pending",
+            "testStrategy": "Test performance with maximum history entries (10 items). Verify TypeScript compilation without errors. Test refactored code maintains all existing functionality. Validate code follows project style guidelines."
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Implement comprehensive error handling system",
+        "description": "Create robust error handling with specific error types and messages for all failure scenarios",
+        "details": "Extend CalculatorError with specific subtypes: InvalidInputError, DivisionByZeroError, InvalidOperationError. Each error should include operation context, invalid inputs, and suggested fixes. Implement error recovery suggestions in error messages. Ensure all public methods handle errors consistently and provide stack traces in development mode.",
+        "testStrategy": "Test each error type is thrown in appropriate scenarios. Verify error messages are user-friendly and include context. Test error handling doesn't break calculator state or subsequent operations.",
+        "priority": "medium",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define specific error subclasses extending CalculatorError",
+            "description": "Create InvalidInputError, DivisionByZeroError, and InvalidOperationError classes extending CalculatorError to represent distinct error scenarios.",
+            "dependencies": [],
+            "details": "Implement three new error classes inheriting from CalculatorError. Each class should accept parameters for operation context, invalid inputs, and suggested fixes, storing these for detailed error messages.",
+            "status": "pending",
+            "testStrategy": "Unit test each error class instantiation with various contexts and inputs to verify properties and message formatting."
+          },
+          {
+            "id": 2,
+            "title": "Enhance error messages with context and recovery suggestions",
+            "description": "Augment error classes to generate detailed, user-friendly messages including operation context, invalid inputs, and suggested fixes for error recovery.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement methods in each error subclass to format error messages that clearly describe the failure, include the invalid inputs, and provide actionable suggestions to recover or correct the error.",
+            "status": "pending",
+            "testStrategy": "Test error messages for clarity, completeness, and inclusion of all required information in various failure scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Integrate comprehensive error handling in all public Calculator methods",
+            "description": "Modify all public methods of Calculator to consistently handle errors by throwing appropriate specific error subclasses with detailed messages.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update methods such as add, subtract, multiply, divide, power, sqrt, and modulo to validate inputs and operations, throwing the new error types with context and suggestions when failures occur.",
+            "status": "pending",
+            "testStrategy": "Write tests to trigger each error type from public methods and verify correct error subclass is thrown with expected message content."
+          },
+          {
+            "id": 4,
+            "title": "Implement stack trace inclusion in error handling for development mode",
+            "description": "Ensure that error stack traces are included in error outputs when the application is running in development mode to aid debugging.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add logic to error handling to detect development environment and append stack trace information to error messages or logs accordingly, without exposing stack traces in production.",
+            "status": "pending",
+            "testStrategy": "Test error handling in development mode to confirm stack traces are included and verify they are omitted in production mode."
+          },
+          {
+            "id": 5,
+            "title": "Verify error handling preserves calculator state and supports recovery",
+            "description": "Test that error handling does not corrupt calculator state or prevent subsequent operations from executing correctly after an error.",
+            "dependencies": [
+              3
+            ],
+            "details": "Design tests that perform sequences of operations including those that trigger errors, ensuring the calculator remains in a consistent state and can continue processing further operations.",
+            "status": "pending",
+            "testStrategy": "Run integration tests with error scenarios followed by valid operations, verifying state integrity and correct results after errors."
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Achieve 100% test coverage and TypeScript strict compliance",
+        "description": "Ensure complete test coverage and full TypeScript strict mode compliance across entire codebase",
+        "details": "Run test coverage analysis and ensure 100% line, branch, and function coverage. Add any missing test cases for edge scenarios. Enable all TypeScript strict flags: noImplicitAny, strictNullChecks, strictFunctionTypes, noImplicitReturns. Fix any type issues and add explicit type annotations where needed. Ensure no 'any' types are used.",
+        "testStrategy": "Generate coverage report showing 100% coverage. Compile with strictest TypeScript settings without warnings. Run comprehensive test suite covering all possible code paths and edge cases.",
+        "priority": "high",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Run initial test coverage analysis and identify gaps",
+            "description": "Execute the current test suite with coverage tools enabled to generate a detailed report showing line, branch, and function coverage across the entire TypeScript codebase. Identify files and code paths with less than 100% coverage and note missing edge case tests.",
+            "dependencies": [],
+            "details": "Use the existing test runner (likely Jest with ts-jest) configured to produce coverage reports. Analyze the coverage output to pinpoint uncovered or partially covered code segments, focusing on critical modules and utility functions. Document these gaps for targeted test additions.",
+            "status": "pending",
+            "testStrategy": "Verify coverage report generation and accuracy by cross-checking with known tested and untested code areas."
+          },
+          {
+            "id": 2,
+            "title": "Enable all TypeScript strict mode flags in tsconfig.json",
+            "description": "Modify the TypeScript configuration to enable strict mode flags including noImplicitAny, strictNullChecks, strictFunctionTypes, and noImplicitReturns to enforce strict type checking across the codebase.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update tsconfig.json to set \"strict\": true or explicitly enable each strict flag. Ensure the build process and IDE recognize the updated configuration. Prepare to address resulting type errors and warnings.",
+            "status": "pending",
+            "testStrategy": "Run TypeScript compilation to confirm strict mode is enabled and observe all type errors reported."
+          },
+          {
+            "id": 3,
+            "title": "Fix all TypeScript type errors and add explicit type annotations",
+            "description": "Resolve all type errors introduced by enabling strict mode by adding explicit type annotations, removing implicit any types, and correcting type mismatches throughout the codebase.",
+            "dependencies": [
+              2
+            ],
+            "details": "Systematically address compiler errors by refining interfaces, function signatures, and variable declarations. Replace any usage of 'any' with precise types or generics. Follow existing project type conventions and patterns for consistency.",
+            "status": "pending",
+            "testStrategy": "Compile the project with strict mode enabled and verify zero type errors remain."
+          },
+          {
+            "id": 4,
+            "title": "Write and add missing test cases for uncovered code and edge scenarios",
+            "description": "Develop new unit and integration tests to cover all previously uncovered code paths, including edge cases such as error handling, boundary values, and unusual inputs to achieve 100% coverage.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use the existing test framework and style to write tests targeting uncovered branches and functions. Include tests for error scenarios, input validation, and boundary conditions. Ensure tests are isolated, repeatable, and descriptive.",
+            "status": "pending",
+            "testStrategy": "Run the full test suite with coverage enabled and confirm coverage metrics reach 100% for lines, branches, and functions."
+          },
+          {
+            "id": 5,
+            "title": "Validate full test coverage and strict TypeScript compliance with CI pipeline",
+            "description": "Integrate coverage and strict type checks into the continuous integration pipeline to enforce 100% test coverage and strict mode compliance on every commit and pull request.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Configure CI scripts to run tests with coverage reporting and TypeScript compilation with strict flags. Fail builds if coverage drops below 100% or if type errors occur. Document the enforcement policy for the team.",
+            "status": "pending",
+            "testStrategy": "Push changes to CI and verify that builds fail on coverage regression or type errors, and pass when all criteria are met."
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Create integration tests and final validation",
+        "description": "Implement end-to-end integration tests and perform final acceptance criteria validation",
+        "details": "Create integration test suite that tests complete calculator workflows: performing multiple operations, history management, error scenarios, and export functionality. Write acceptance tests that directly validate each requirement from the PRD. Ensure all operations work together seamlessly and calculator maintains state correctly across multiple operations.",
+        "testStrategy": "Run full integration test suite covering realistic usage scenarios. Validate against all 6 acceptance criteria: correct arithmetic results, division by zero handling, input validation with clear errors, 10-entry history limit, complete test coverage, and TypeScript strict mode compliance.",
+        "priority": "high",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create integration test framework for calculator library",
+            "description": "Set up the integration test framework that will support end-to-end testing of calculator workflows including jest configuration and test file structure",
+            "dependencies": [],
+            "details": "Create integration test directory structure and configure Jest for integration testing. Set up test utilities for creating calculator instances, running multiple operations, and validating state persistence. Configure test environment to isolate each test case and provide clean calculator instances.",
+            "status": "pending",
+            "testStrategy": "Verify that integration test framework correctly initializes calculator instances, executes multiple operations in sequence, and properly cleans up between test cases. Test that framework can capture and validate calculation history and state changes."
+          },
+          {
+            "id": 2,
+            "title": "Implement calculator workflow integration tests",
+            "description": "Create comprehensive integration tests that validate complete calculator workflows including multiple operations, state management, and error handling scenarios",
+            "dependencies": [
+              1
+            ],
+            "details": "Write integration tests for realistic usage scenarios: performing multiple arithmetic operations in sequence, mixing basic and advanced operations, testing calculation history tracking across operations, and validating that state persists correctly between operations. Include tests for complex workflows like power calculations followed by history export.",
+            "status": "pending",
+            "testStrategy": "Test complete workflows by performing sequences like: add(2,3) → multiply(result,4) → sqrt(result) → verify history contains all operations. Validate that calculator maintains correct state throughout multi-step calculations and that all intermediate results are accurate."
+          },
+          {
+            "id": 3,
+            "title": "Create error scenario integration tests",
+            "description": "Implement integration tests that validate error handling and recovery across multiple operations including division by zero, invalid inputs, and edge cases",
+            "dependencies": [
+              1
+            ],
+            "details": "Create integration tests for error scenarios that span multiple operations: test recovery after division by zero errors, validate that invalid inputs don't corrupt calculator state, test error handling when mixing valid and invalid operations, and ensure history tracking works correctly even when errors occur during calculations.",
+            "status": "pending",
+            "testStrategy": "Test error scenarios like: perform valid operations → attempt division by zero → verify calculator can continue with valid operations → check that history excludes failed operations but retains successful ones."
+          },
+          {
+            "id": 4,
+            "title": "Implement acceptance criteria validation tests",
+            "description": "Create specific tests that directly validate each of the 6 acceptance criteria from the PRD to ensure complete requirement compliance",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Write focused tests that validate each PRD acceptance criterion: arithmetic operations return correct results, division by zero throws appropriate errors, invalid inputs rejected with clear messages, history tracking works with 10-entry limit, all public methods have tests, and TypeScript strict mode compliance. Each test should map directly to a specific acceptance criterion.",
+            "status": "pending",
+            "testStrategy": "Create dedicated test suite where each test method validates one acceptance criterion. Use descriptive test names that reference the specific requirement being validated. Ensure tests comprehensively cover edge cases for each criterion."
+          },
+          {
+            "id": 5,
+            "title": "Perform final validation and generate test coverage report",
+            "description": "Execute the complete integration test suite, validate all acceptance criteria are met, and generate comprehensive test coverage report to ensure quality standards",
+            "dependencies": [
+              4
+            ],
+            "details": "Run the complete integration test suite and validate that all tests pass. Generate detailed test coverage report showing 100% coverage for all public calculator methods. Validate that all 6 acceptance criteria are met and documented. Perform final quality check to ensure calculator library meets all requirements and is ready for production use.",
+            "status": "pending",
+            "testStrategy": "Execute full test suite using npm test:coverage to generate detailed coverage report. Validate coverage meets 100% requirement for all public methods. Cross-reference test results against each acceptance criterion to ensure complete compliance with PRD requirements."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-10-10T16:53:36.136Z",
+      "updated": "2025-10-10T17:05:14.217Z",
+      "description": "Tasks for tdd-test context"
+    }
   }
 }
