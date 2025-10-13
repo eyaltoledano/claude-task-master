@@ -98,8 +98,5 @@ apps/extension/vsix-build/
 # turbo
 .turbo
 
-# TaskMaster Workflow State (should not be committed)
-.taskmaster/workflow-state.json
-.taskmaster/workflow-state.*.json
-.taskmaster/logs/workflow-activity.log
-.taskmaster/logs/*.log
+# TaskMaster Workflow State (now stored in ~/.taskmaster/sessions/)
+# No longer needed in .gitignore as state is stored globally

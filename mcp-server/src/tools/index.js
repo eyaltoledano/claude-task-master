@@ -40,7 +40,8 @@ import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
-import { registerAutopilotStartTool } from './autopilot-start.js';
+// Import TypeScript autopilot tools from apps/mcp
+import { registerAutopilotStartTool } from '@tm/mcp';
 import { registerAutopilotResumeTool } from './autopilot-resume.js';
 import { registerAutopilotNextTool } from './autopilot-next.js';
 import { registerAutopilotStatusTool } from './autopilot-status.js';

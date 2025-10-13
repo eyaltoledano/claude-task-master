@@ -4,34 +4,27 @@
 
 import {
 	WorkflowOrchestrator,
+	WorkflowStateManager,
 	GitAdapter,
 	CommitMessageGenerator
 } from '@tm/core';
-import { WorkflowState, WorkflowContext, SubtaskInfo } from '@tm/core';
-import fs from 'fs-extra';
-import path from 'path';
+import type { WorkflowState, WorkflowContext, SubtaskInfo } from '@tm/core';
 import chalk from 'chalk';
 
 /**
- * State file location relative to project root
- */
-const STATE_FILE = '.taskmaster/workflow-state.json';
-
-/**
- * Load workflow state from disk
+ * Load workflow state from disk using WorkflowStateManager
  */
 export async function loadWorkflowState(
 	projectRoot: string
 ): Promise<WorkflowState | null> {
-	const statePath = path.join(projectRoot, STATE_FILE);
+	const stateManager = new WorkflowStateManager(projectRoot);
 
-	if (!(await fs.pathExists(statePath))) {
+	if (!(await stateManager.exists())) {
 		return null;
 	}
 
 	try {
-		const stateData = await fs.readJSON(statePath);
-		return stateData;
+		return await stateManager.load();
 	} catch (error) {
 		throw new Error(
 			`Failed to load workflow state: ${(error as Error).message}`
@@ -40,19 +33,16 @@ export async function loadWorkflowState(
 }
 
 /**
- * Save workflow state to disk
+ * Save workflow state to disk using WorkflowStateManager
  */
 export async function saveWorkflowState(
 	projectRoot: string,
 	state: WorkflowState
 ): Promise<void> {
-	const statePath = path.join(projectRoot, STATE_FILE);
-
-	// Ensure directory exists
-	await fs.ensureDir(path.dirname(statePath));
+	const stateManager = new WorkflowStateManager(projectRoot);
 
 	try {
-		await fs.writeJSON(statePath, state, { spaces: 2 });
+		await stateManager.save(state);
 	} catch (error) {
 		throw new Error(
 			`Failed to save workflow state: ${(error as Error).message}`
@@ -61,22 +51,19 @@ export async function saveWorkflowState(
 }
 
 /**
- * Delete workflow state from disk
+ * Delete workflow state from disk using WorkflowStateManager
  */
 export async function deleteWorkflowState(projectRoot: string): Promise<void> {
-	const statePath = path.join(projectRoot, STATE_FILE);
-
-	if (await fs.pathExists(statePath)) {
-		await fs.remove(statePath);
-	}
+	const stateManager = new WorkflowStateManager(projectRoot);
+	await stateManager.delete();
 }
 
 /**
- * Check if workflow state exists
+ * Check if workflow state exists using WorkflowStateManager
  */
 export async function hasWorkflowState(projectRoot: string): Promise<boolean> {
-	const statePath = path.join(projectRoot, STATE_FILE);
-	return await fs.pathExists(statePath);
+	const stateManager = new WorkflowStateManager(projectRoot);
+	return await stateManager.exists();
 }
 
 /**
@@ -87,10 +74,11 @@ export function createOrchestrator(
 	projectRoot: string
 ): WorkflowOrchestrator {
 	const orchestrator = new WorkflowOrchestrator(context);
+	const stateManager = new WorkflowStateManager(projectRoot);
 
 	// Enable auto-persistence
 	orchestrator.enableAutoPersist(async (state: WorkflowState) => {
-		await saveWorkflowState(projectRoot, state);
+		await stateManager.save(state);
 	});
 
 	return orchestrator;
