@@ -29,6 +29,7 @@ export interface StartWorkflowOptions {
 	}>;
 	maxAttempts?: number;
 	force?: boolean;
+	tag?: string; // Optional tag for branch naming
 }
 
 /**
@@ -94,7 +95,7 @@ export class WorkflowService {
 	async startWorkflow(
 		options: StartWorkflowOptions
 	): Promise<WorkflowStatus> {
-		const { taskId, taskTitle, subtasks, maxAttempts = 3, force } = options;
+		const { taskId, taskTitle, subtasks, maxAttempts = 3, force, tag } = options;
 
 		// Check for existing workflow
 		if ((await this.hasWorkflow()) && !force) {
@@ -138,8 +139,8 @@ export class WorkflowService {
 		// Transition through PREFLIGHT and BRANCH_SETUP phases
 		this.orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
 
-		// Create git branch
-		const branchName = `task-${taskId.replace(/\./g, '-')}`;
+		// Create git branch with descriptive name
+		const branchName = this.generateBranchName(taskId, taskTitle, tag);
 		await gitAdapter.createAndCheckoutBranch(branchName);
 
 		// Transition to SUBTASK_LOOP with RED phase
@@ -360,5 +361,30 @@ export class WorkflowService {
 		await this.stateManager.delete();
 
 		this.orchestrator = undefined;
+	}
+
+	/**
+	 * Generate a descriptive git branch name
+	 * Format: tag-name/task-id-task-title or task-id-task-title
+	 */
+	private generateBranchName(
+		taskId: string,
+		taskTitle: string,
+		tag?: string
+	): string {
+		// Sanitize task title for branch name
+		const sanitizedTitle = taskTitle
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with dash
+			.replace(/^-+|-+$/g, '') // Remove leading/trailing dashes
+			.substring(0, 50); // Limit length
+
+		// Format task ID for branch name
+		const formattedTaskId = taskId.replace(/\./g, '-');
+
+		// Add tag prefix if tag is provided
+		const tagPrefix = tag ? `${tag}/` : '';
+
+		return `${tagPrefix}task-${formattedTaskId}-${sanitizedTitle}`;
 	}
 }

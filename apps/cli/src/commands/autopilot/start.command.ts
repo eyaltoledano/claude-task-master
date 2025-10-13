@@ -3,10 +3,7 @@
  */
 
 import { Command } from 'commander';
-import {
-	createTaskMasterCore,
-	type WorkflowContext
-} from '@tm/core';
+import { createTaskMasterCore, type WorkflowContext } from '@tm/core';
 import {
 	AutopilotBaseOptions,
 	hasWorkflowState,
@@ -74,6 +71,9 @@ export class StartCommand extends Command {
 				projectPath: mergedOptions.projectRoot!
 			});
 
+			// Get current tag from ConfigManager
+			const currentTag = tmCore.getActiveTag();
+
 			// Load task
 			formatter.info(`Loading task ${taskId}...`);
 			const { task } = await tmCore.getTaskWithSubtask(taskId);
@@ -124,8 +124,15 @@ export class StartCommand extends Command {
 			// Complete PREFLIGHT phase
 			orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
 
-			// Get suggested branch name
-			const branchName = `task-${taskId.replace(/\./g, '-')}`;
+			// Generate descriptive branch name
+			const sanitizedTitle = task.title
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '')
+				.substring(0, 50);
+			const formattedTaskId = taskId.replace(/\./g, '-');
+			const tagPrefix = currentTag ? `${currentTag}/` : '';
+			const branchName = `${tagPrefix}task-${formattedTaskId}-${sanitizedTitle}`;
 
 			// Create and checkout branch
 			formatter.info(`Creating branch: ${branchName}`);

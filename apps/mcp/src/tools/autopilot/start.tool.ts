@@ -52,10 +52,13 @@ export function registerAutopilotStartTool(server: FastMCP) {
 						`Starting autopilot workflow for task ${taskId} in ${projectRoot}`
 					);
 
-					// Load task data (note: createTaskMasterCore uses current tag from state.json)
+					// Load task data and get current tag
 					const core = await createTaskMasterCore({
 						projectPath: projectRoot
 					});
+
+					// Get current tag from ConfigManager
+					const currentTag = core.getActiveTag();
 
 					const taskResult = await core.getTaskWithSubtask(taskId);
 
@@ -119,7 +122,8 @@ export function registerAutopilotStartTool(server: FastMCP) {
 							maxAttempts
 						})),
 						maxAttempts,
-						force
+						force,
+						tag: currentTag // Pass current tag for branch naming
 					});
 
 					context.log.info(`Workflow started successfully for task ${taskId}`);
