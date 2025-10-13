@@ -1,9 +1,9 @@
 {
-  "currentTag": "tdd-test",
-  "lastSwitched": "2025-10-10T17:03:23.090Z",
-  "branchTagMapping": {
-    "v017-adds": "v017-adds",
-    "next": "next"
-  },
-  "migrationNoticeShown": true
+	"currentTag": "tdd-test",
+	"lastSwitched": "2025-10-10T17:03:23.090Z",
+	"branchTagMapping": {
+		"v017-adds": "v017-adds",
+		"next": "next"
+	},
+	"migrationNoticeShown": true
 }

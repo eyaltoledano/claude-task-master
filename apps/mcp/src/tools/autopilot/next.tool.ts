@@ -34,7 +34,9 @@ export function registerAutopilotNextTool(server: FastMCP) {
 				const { projectRoot } = args;
 
 				try {
-					context.log.info(`Getting next action for workflow in ${projectRoot}`);
+					context.log.info(
+						`Getting next action for workflow in ${projectRoot}`
+					);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -68,7 +70,8 @@ export function registerAutopilotNextTool(server: FastMCP) {
 							data: {
 								action: nextAction.action,
 								actionDescription: nextAction.description,
-								...status
+								...status,
+								nextSteps: nextAction.nextSteps
 							}
 						},
 						log: context.log,

@@ -48,6 +48,7 @@ import {
 	registerAutopilotStatusTool,
 	registerAutopilotCompleteTool,
 	registerAutopilotCommitTool,
+	registerAutopilotFinalizeTool,
 	registerAutopilotAbortTool
 } from '@tm/mcp';
 
@@ -115,6 +116,7 @@ export function registerTaskMasterTools(server) {
 		registerAutopilotStatusTool(server);
 		registerAutopilotCompleteTool(server);
 		registerAutopilotCommitTool(server);
+		registerAutopilotFinalizeTool(server);
 		registerAutopilotAbortTool(server);
 
 		// Group 9: Research Features

@@ -199,6 +199,9 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 
 					const isComplete = newStatus.phase === 'COMPLETE';
 
+					// Get next action with guidance
+					const nextAction = workflowService.getNextAction();
+
 					return handleApiResult({
 						result: {
 							success: true,
@@ -209,7 +212,9 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 								commitSha: lastCommit.sha,
 								commitMessage,
 								...newStatus,
-								isComplete
+								isComplete,
+								nextAction: nextAction.action,
+								nextSteps: nextAction.nextSteps
 							}
 						},
 						log: context.log,

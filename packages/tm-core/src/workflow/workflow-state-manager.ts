@@ -1,15 +1,16 @@
 /**
  * @fileoverview WorkflowStateManager - Manages persistence of TDD workflow state
  *
- * Stores workflow state in global user directory (~/.taskmaster/sessions/)
+ * Stores workflow state in global user directory (~/.taskmaster/{project-id}/sessions/)
  * to avoid git conflicts and support multiple worktrees.
+ * Each project gets its own directory for organizing workflow-related data.
  */
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import os from 'node:os';
 import type { WorkflowState } from './types.js';
+import { getLogger } from '../logger/index.js';
 
 export interface WorkflowStateBackup {
 	timestamp: string;
@@ -26,44 +27,46 @@ export class WorkflowStateManager {
 	private readonly backupDir: string;
 	private readonly sessionDir: string;
 	private maxBackups: number;
+	private readonly logger = getLogger('WorkflowStateManager');
 
 	constructor(projectRoot: string, maxBackups = 5) {
 		this.projectRoot = path.resolve(projectRoot);
 		this.maxBackups = maxBackups;
 
-		// Create global session directory for this project
+		// Create project-specific directory in global .taskmaster
+		// Structure: ~/.taskmaster/{project-id}/sessions/
 		const projectId = this.getProjectIdentifier(this.projectRoot);
 		const homeDir = os.homedir();
-		this.sessionDir = path.join(
-			homeDir,
-			'.taskmaster',
-			'sessions',
-			projectId
-		);
+		const projectDir = path.join(homeDir, '.taskmaster', projectId);
+		this.sessionDir = path.join(projectDir, 'sessions');
 
 		this.statePath = path.join(this.sessionDir, 'workflow-state.json');
 		this.backupDir = path.join(this.sessionDir, 'backups');
 	}
 
 	/**
-	 * Generate a unique identifier for the project
-	 * Combines sanitized path with hash for uniqueness
+	 * Generate a unique identifier for the project using full sanitized path
+	 * Uses Claude Code's pattern: leading dash + full path with case preserved
+	 * Example: /Volumes/Workspace/... -> -Volumes-Workspace-...
 	 */
 	private getProjectIdentifier(projectRoot: string): string {
-		// Create hash of absolute path
-		const hash = createHash('sha256')
-			.update(projectRoot)
-			.digest('hex')
-			.substring(0, 12);
+		// Resolve to absolute path
+		const absolutePath = path.resolve(projectRoot);
 
-		// Create human-readable sanitized name
-		const basename = path.basename(projectRoot);
-		const sanitized = basename
-			.replace(/[^a-zA-Z0-9-]/g, '_')
-			.toLowerCase()
-			.substring(0, 50);
+		// Sanitize path like Claude Code does:
+		// - Add leading dash
+		// - Replace path separators and non-alphanumeric chars with dashes
+		// - Preserve case for readability
+		// - Collapse multiple dashes
+		const sanitized =
+			'-' +
+			absolutePath
+				.replace(/^\//, '') // Remove leading slash before adding dash
+				.replace(/[^a-zA-Z0-9]+/g, '-') // Replace sequences of non-alphanumeric with single dash
+				.replace(/-+/g, '-') // Collapse multiple dashes
+				.replace(/-+$/, ''); // Remove trailing dashes
 
-		return `${sanitized}-${hash}`;
+		return sanitized;
 	}
 
 	/**
@@ -87,9 +90,7 @@ export class WorkflowStateManager {
 			return JSON.parse(content) as WorkflowState;
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
-				throw new Error(
-					`Workflow state file not found at ${this.statePath}`
-				);
+				throw new Error(`Workflow state file not found at ${this.statePath}`);
 			}
 			throw new Error(`Failed to load workflow state: ${error.message}`);
 		}
@@ -103,10 +104,23 @@ export class WorkflowStateManager {
 			// Ensure session directory exists
 			await fs.mkdir(this.sessionDir, { recursive: true });
 
-			// Write state atomically
+			// Serialize and validate JSON
+			const jsonContent = JSON.stringify(state, null, 2);
+
+			// Validate that the JSON is well-formed by parsing it back
+			try {
+				JSON.parse(jsonContent);
+			} catch (parseError) {
+				this.logger.error('Generated invalid JSON:', jsonContent);
+				throw new Error('Failed to generate valid JSON from workflow state');
+			}
+
+			// Write state atomically with newline at end
 			const tempPath = `${this.statePath}.tmp`;
-			await fs.writeFile(tempPath, JSON.stringify(state, null, 2), 'utf-8');
+			await fs.writeFile(tempPath, jsonContent + '\n', 'utf-8');
 			await fs.rename(tempPath, this.statePath);
+
+			this.logger.debug(`Saved workflow state (${jsonContent.length} bytes)`);
 		} catch (error: any) {
 			throw new Error(`Failed to save workflow state: ${error.message}`);
 		}
@@ -207,7 +221,7 @@ export class WorkflowStateManager {
 			}
 		} catch (error: any) {
 			// Non-critical error, log but don't throw
-			console.warn(`Failed to prune backups: ${error.message}`);
+			this.logger.warn(`Failed to prune backups: ${error.message}`);
 		}
 	}
 

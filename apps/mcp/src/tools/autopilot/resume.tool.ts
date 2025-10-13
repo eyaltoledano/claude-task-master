@@ -68,7 +68,8 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 								message: 'Workflow resumed',
 								...status,
 								nextAction: nextAction.action,
-								actionDescription: nextAction.description
+								actionDescription: nextAction.description,
+								nextSteps: nextAction.nextSteps
 							}
 						},
 						log: context.log,

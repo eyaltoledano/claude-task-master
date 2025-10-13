@@ -35,7 +35,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 	server.addTool({
 		name: 'autopilot_complete_phase',
 		description:
-			'Complete the current TDD phase (RED, GREEN, or COMMIT) with test result validation. Validates that RED phase has failures and GREEN phase has all tests passing before transitioning.',
+			'Complete the current TDD phase (RED, GREEN, or COMMIT) with test result validation. RED phase: expects failures (if 0 failures, feature is already implemented and subtask auto-completes). GREEN phase: expects all tests passing.',
 		parameters: CompletePhaseSchema,
 		execute: withNormalizedProjectRoot(
 			async (args: CompletePhaseArgs, context: MCPContext) => {
@@ -123,7 +123,8 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 								message: `Phase completed. Transitioned to ${status.tddPhase || status.phase}`,
 								...status,
 								nextAction: nextAction.action,
-								actionDescription: nextAction.description
+								actionDescription: nextAction.description,
+								nextSteps: nextAction.nextSteps
 							}
 						},
 						log: context.log,

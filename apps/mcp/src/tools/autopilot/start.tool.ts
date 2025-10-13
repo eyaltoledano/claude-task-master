@@ -16,7 +16,9 @@ import type { FastMCP } from 'fastmcp';
 const StartWorkflowSchema = z.object({
 	taskId: z
 		.string()
-		.describe('Task ID to start workflow for (e.g., "1", "2.3")'),
+		.describe(
+			'Main task ID to start workflow for (e.g., "1", "2", "HAM-123"). Subtask IDs (e.g., "2.3", "1.1") are not allowed.'
+		),
 	projectRoot: z
 		.string()
 		.describe('Absolute path to the project root directory'),
@@ -35,6 +37,18 @@ const StartWorkflowSchema = z.object({
 type StartWorkflowArgs = z.infer<typeof StartWorkflowSchema>;
 
 /**
+ * Check if a task ID is a main task (not a subtask)
+ * Main tasks: "1", "2", "HAM-123", "PROJ-456"
+ * Subtasks: "1.1", "2.3", "HAM-123.1"
+ */
+function isMainTaskId(taskId: string): boolean {
+	// A main task has no dots in the ID after the optional prefix
+	// Examples: "1" ✓, "HAM-123" ✓, "1.1" ✗, "HAM-123.1" ✗
+	const parts = taskId.split('.');
+	return parts.length === 1;
+}
+
+/**
  * Register the autopilot_start tool with the MCP server
  */
 export function registerAutopilotStartTool(server: FastMCP) {
@@ -51,6 +65,20 @@ export function registerAutopilotStartTool(server: FastMCP) {
 					context.log.info(
 						`Starting autopilot workflow for task ${taskId} in ${projectRoot}`
 					);
+
+					// Validate that taskId is a main task (not a subtask)
+					if (!isMainTaskId(taskId)) {
+						return handleApiResult({
+							result: {
+								success: false,
+								error: {
+									message: `Task ID "${taskId}" is a subtask. Autopilot workflows can only be started for main tasks (e.g., "1", "2", "HAM-123"). Please provide the parent task ID instead.`
+								}
+							},
+							log: context.log,
+							projectRoot
+						});
+					}
 
 					// Load task data and get current tag
 					const core = await createTaskMasterCore({
@@ -128,6 +156,9 @@ export function registerAutopilotStartTool(server: FastMCP) {
 
 					context.log.info(`Workflow started successfully for task ${taskId}`);
 
+					// Get next action with guidance from WorkflowService
+					const nextAction = workflowService.getNextAction();
+
 					return handleApiResult({
 						result: {
 							success: true,
@@ -139,7 +170,8 @@ export function registerAutopilotStartTool(server: FastMCP) {
 								tddPhase: status.tddPhase,
 								progress: status.progress,
 								currentSubtask: status.currentSubtask,
-								nextAction: 'generate_test'
+								nextAction: nextAction.action,
+								nextSteps: nextAction.nextSteps
 							}
 						},
 						log: context.log,

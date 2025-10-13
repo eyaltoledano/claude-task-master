@@ -164,14 +164,48 @@ export class WorkflowOrchestrator {
 					throw new Error('Test results required for RED phase transition');
 				}
 
-				// Validate RED phase has failures
-				if (event.testResults.failed === 0) {
-					throw new Error('RED phase must have at least one failing test');
-				}
-
 				// Store test results in context
 				this.context.lastTestResults = event.testResults;
 
+				// Special case: All tests passing in RED phase means feature already implemented
+				if (event.testResults.failed === 0) {
+					this.emit('tdd:red:completed');
+					this.emit('tdd:feature-already-implemented', {
+						subtaskId: this.getCurrentSubtaskId(),
+						testResults: event.testResults
+					});
+
+					// Mark subtask as complete and move to next one
+					const subtask =
+						this.context.subtasks[this.context.currentSubtaskIndex];
+					if (subtask) {
+						subtask.status = 'completed';
+					}
+
+					this.emit('subtask:completed');
+					this.context.currentSubtaskIndex++;
+
+					// Emit progress update
+					const progress = this.getProgress();
+					this.emit('progress:updated', {
+						completed: progress.completed,
+						total: progress.total,
+						percentage: progress.percentage
+					});
+
+					// Start next subtask or complete workflow
+					if (this.context.currentSubtaskIndex < this.context.subtasks.length) {
+						this.context.currentTDDPhase = 'RED';
+						this.emit('tdd:red:started');
+						this.emit('subtask:started');
+					} else {
+						// All subtasks complete, transition to FINALIZE
+						this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
+					}
+					break;
+				}
+
+				// Normal RED phase: has failing tests, proceed to GREEN
 				this.emit('tdd:red:completed');
 				this.context.currentTDDPhase = 'GREEN';
 				this.emit('tdd:green:started');
@@ -235,6 +269,9 @@ export class WorkflowOrchestrator {
 					this.context.currentTDDPhase = 'RED';
 					this.emit('tdd:red:started');
 					this.emit('subtask:started');
+				} else {
+					// All subtasks complete, transition to FINALIZE
+					this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 				}
 				break;
 
@@ -244,6 +281,7 @@ export class WorkflowOrchestrator {
 				this.currentPhase = 'FINALIZE';
 				this.context.currentTDDPhase = undefined;
 				this.emit('phase:entered');
+				// Note: Don't auto-transition to COMPLETE - requires explicit finalize call
 				break;
 
 			default:

@@ -60,6 +60,7 @@ export interface WorkflowStatus {
 export interface NextAction {
 	action: string;
 	description: string;
+	nextSteps: string;
 	phase: WorkflowPhase;
 	tddPhase?: TDDPhase;
 	subtask?: {
@@ -92,10 +93,15 @@ export class WorkflowService {
 	/**
 	 * Start a new TDD workflow
 	 */
-	async startWorkflow(
-		options: StartWorkflowOptions
-	): Promise<WorkflowStatus> {
-		const { taskId, taskTitle, subtasks, maxAttempts = 3, force, tag } = options;
+	async startWorkflow(options: StartWorkflowOptions): Promise<WorkflowStatus> {
+		const {
+			taskId,
+			taskTitle,
+			subtasks,
+			maxAttempts = 3,
+			force,
+			tag
+		} = options;
 
 		// Check for existing workflow
 		if ((await this.hasWorkflow()) && !force) {
@@ -118,15 +124,31 @@ export class WorkflowService {
 			maxAttempts: st.maxAttempts || maxAttempts
 		}));
 
-		// Create workflow context
+		// Find the first incomplete subtask to resume from
+		const firstIncompleteIndex = workflowSubtasks.findIndex(
+			(st) => st.status !== 'completed'
+		);
+
+		// If all subtasks are already completed, throw an error
+		if (firstIncompleteIndex === -1) {
+			throw new Error(
+				`All subtasks for task ${taskId} are already completed. Nothing to do.`
+			);
+		}
+
+		// Create workflow context, starting from first incomplete subtask
 		const context: WorkflowContext = {
 			taskId,
 			subtasks: workflowSubtasks,
-			currentSubtaskIndex: 0,
+			currentSubtaskIndex: firstIncompleteIndex,
 			errors: [],
 			metadata: {
 				startedAt: new Date().toISOString(),
-				taskTitle
+				taskTitle,
+				resumedFromSubtask:
+					firstIncompleteIndex > 0
+						? workflowSubtasks[firstIncompleteIndex].id
+						: undefined
 			}
 		};
 
@@ -141,7 +163,13 @@ export class WorkflowService {
 
 		// Create git branch with descriptive name
 		const branchName = this.generateBranchName(taskId, taskTitle, tag);
-		await gitAdapter.createAndCheckoutBranch(branchName);
+
+		// Check if we're already on the target branch
+		const currentBranch = await gitAdapter.getCurrentBranch();
+		if (currentBranch !== branchName) {
+			// Only create branch if we're not already on it
+			await gitAdapter.createAndCheckoutBranch(branchName);
+		}
 
 		// Transition to SUBTASK_LOOP with RED phase
 		this.orchestrator.transition({
@@ -232,10 +260,31 @@ export class WorkflowService {
 		const currentSubtask = this.orchestrator.getCurrentSubtask();
 
 		// Determine action based on current phase
+		if (phase === 'COMPLETE') {
+			return {
+				action: 'workflow_complete',
+				description: 'All subtasks completed',
+				nextSteps:
+					'All subtasks completed! Review the entire implementation and merge your branch when ready.',
+				phase
+			};
+		}
+
+		if (phase === 'FINALIZE') {
+			return {
+				action: 'finalize_workflow',
+				description: 'Finalize and complete the workflow',
+				nextSteps:
+					'All subtasks are complete! Use autopilot_finalize to verify no uncommitted changes remain and mark the workflow as complete.',
+				phase
+			};
+		}
+
 		if (phase !== 'SUBTASK_LOOP' || !tddPhase || !currentSubtask) {
 			return {
 				action: 'unknown',
 				description: 'Workflow is not in active state',
+				nextSteps: 'Use autopilot_status to check workflow state.',
 				phase
 			};
 		}
@@ -254,25 +303,29 @@ export class WorkflowService {
 				return {
 					...baseAction,
 					action: 'generate_test',
-					description: 'Generate failing test for current subtask'
+					description: 'Generate failing test for current subtask',
+					nextSteps: `Write failing tests for subtask ${currentSubtask.id}: "${currentSubtask.title}". Create test file(s) that validate the expected behavior. Run tests and use autopilot_complete_phase with results. Note: If all tests pass (0 failures), the feature is already implemented and the subtask will be auto-completed.`
 				};
 			case 'GREEN':
 				return {
 					...baseAction,
-					action: 'implement_feature',
-					description: 'Implement feature to make tests pass'
+					action: 'implement_code',
+					description: 'Implement feature to make tests pass',
+					nextSteps: `Implement code to make tests pass for subtask ${currentSubtask.id}: "${currentSubtask.title}". Write the minimal code needed to pass all tests (GREEN phase), then use autopilot_complete_phase with test results.`
 				};
 			case 'COMMIT':
 				return {
 					...baseAction,
 					action: 'commit_changes',
-					description: 'Commit RED-GREEN cycle changes'
+					description: 'Commit RED-GREEN cycle changes',
+					nextSteps: `Review and commit your changes for subtask ${currentSubtask.id}: "${currentSubtask.title}". Use autopilot_commit to create the commit and advance to the next subtask.`
 				};
 			default:
 				return {
 					...baseAction,
 					action: 'unknown',
-					description: 'Unknown TDD phase'
+					description: 'Unknown TDD phase',
+					nextSteps: 'Use autopilot_status to check workflow state.'
 				};
 		}
 	}
@@ -345,6 +398,41 @@ export class WorkflowService {
 			// All subtasks complete
 			this.orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 		}
+
+		return this.getStatus();
+	}
+
+	/**
+	 * Finalize and complete the workflow
+	 * Validates working tree is clean before marking complete
+	 */
+	async finalizeWorkflow(): Promise<WorkflowStatus> {
+		if (!this.orchestrator) {
+			throw new Error('No active workflow. Start or resume a workflow first.');
+		}
+
+		const phase = this.orchestrator.getCurrentPhase();
+		if (phase !== 'FINALIZE') {
+			throw new Error(
+				`Cannot finalize workflow in ${phase} phase. Complete all subtasks first.`
+			);
+		}
+
+		// Check working tree is clean
+		const gitAdapter = new GitAdapter(this.projectRoot);
+		const statusSummary = await gitAdapter.getStatusSummary();
+
+		if (!statusSummary.isClean) {
+			throw new Error(
+				`Cannot finalize workflow: working tree has uncommitted changes.\n` +
+					`Staged: ${statusSummary.staged}, Modified: ${statusSummary.modified}, ` +
+					`Deleted: ${statusSummary.deleted}, Untracked: ${statusSummary.untracked}\n` +
+					`Please commit all changes before finalizing the workflow.`
+			);
+		}
+
+		// Transition to COMPLETE
+		this.orchestrator.transition({ type: 'FINALIZE_COMPLETE' });
 
 		return this.getStatus();
 	}

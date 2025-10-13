@@ -129,6 +129,7 @@ export type WorkflowEventType =
 	| 'workflow:resumed'
 	| 'phase:entered'
 	| 'phase:exited'
+	| 'tdd:feature-already-implemented'
 	| 'tdd:red:started'
 	| 'tdd:red:completed'
 	| 'tdd:green:started'
