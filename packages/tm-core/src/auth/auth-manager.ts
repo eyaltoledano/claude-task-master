@@ -83,7 +83,9 @@ export class AuthManager {
 	 * Automatically refreshes the token if expired
 	 */
 	async getCredentials(): Promise<AuthCredentials | null> {
-		const credentials = this.credentialStore.getCredentials({ allowExpired: true });
+		const credentials = this.credentialStore.getCredentials({
+			allowExpired: true
+		});
 
 		if (!credentials) {
 			return null;
