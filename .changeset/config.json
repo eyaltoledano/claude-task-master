@@ -11,6 +11,7 @@
   "access": "public",
   "baseBranch": "main",
   "ignore": [
-    "docs"
+    "docs",
+    "@tm/claude-code-plugin"
   ]
 }

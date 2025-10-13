@@ -143,7 +143,7 @@ export class AuthCommand extends Command {
 	 */
 	private async executeStatus(): Promise<void> {
 		try {
-			const result = this.displayStatus();
+			const result = await this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
 			this.handleError(error);
@@ -171,8 +171,8 @@ export class AuthCommand extends Command {
 	/**
 	 * Display authentication status
 	 */
-	private displayStatus(): AuthResult {
-		const credentials = this.authManager.getCredentials();
+	private async displayStatus(): Promise<AuthResult> {
+		const credentials = await this.authManager.getCredentials();
 
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
@@ -187,19 +187,29 @@ export class AuthCommand extends Command {
 			if (credentials.expiresAt) {
 				const expiresAt = new Date(credentials.expiresAt);
 				const now = new Date();
-				const hoursRemaining = Math.floor(
-					(expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60)
-				);
+				const timeRemaining = expiresAt.getTime() - now.getTime();
+				const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
+				const minutesRemaining = Math.floor(timeRemaining / (1000 * 60));
 
-				if (hoursRemaining > 0) {
-					console.log(
-						chalk.gray(
-							`  Expires: ${expiresAt.toLocaleString()} (${hoursRemaining} hours remaining)`
-						)
-					);
+				if (timeRemaining > 0) {
+					// Token is still valid
+					if (hoursRemaining > 0) {
+						console.log(
+							chalk.gray(
+								`  Expires at: ${expiresAt.toLocaleString()} (${hoursRemaining} hours remaining)`
+							)
+						);
+					} else {
+						console.log(
+							chalk.gray(
+								`  Expires at: ${expiresAt.toLocaleString()} (${minutesRemaining} minutes remaining)`
+							)
+						);
+					}
 				} else {
+					// Token has expired
 					console.log(
-						chalk.yellow(`  Token expired at: ${expiresAt.toLocaleString()}`)
+						chalk.yellow(`  Expired at: ${expiresAt.toLocaleString()}`)
 					);
 				}
 			} else {
@@ -315,7 +325,7 @@ export class AuthCommand extends Command {
 			]);
 
 			if (!continueAuth) {
-				const credentials = this.authManager.getCredentials();
+				const credentials = await this.authManager.getCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -480,7 +490,7 @@ export class AuthCommand extends Command {
 	/**
 	 * Get current credentials (for programmatic usage)
 	 */
-	getCredentials(): AuthCredentials | null {
+	getCredentials(): Promise<AuthCredentials | null> {
 		return this.authManager.getCredentials();
 	}
 

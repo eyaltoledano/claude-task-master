@@ -105,7 +105,7 @@ export class ExportService {
 		}
 
 		// Get current context
-		const context = this.authManager.getContext();
+		const context = await this.authManager.getContext();
 
 		// Determine org and brief IDs
 		let orgId = options.orgId || context?.orgId;
@@ -232,7 +232,7 @@ export class ExportService {
 		hasBrief: boolean;
 		context: UserContext | null;
 	}> {
-		const context = this.authManager.getContext();
+		const context = await this.authManager.getContext();
 
 		return {
 			hasOrg: !!context?.orgId,
@@ -379,7 +379,7 @@ export class ExportService {
 			};
 
 			// Get auth token
-			const credentials = this.authManager.getCredentials();
+			const credentials = await this.authManager.getCredentials();
 			if (!credentials || !credentials.token) {
 				throw new Error('Not authenticated');
 			}

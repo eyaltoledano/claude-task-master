@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.29.0-rc.1
+
+### Patch Changes
+
+- [#1299](https://github.com/eyaltoledano/claude-task-master/pull/1299) [`a6c5152`](https://github.com/eyaltoledano/claude-task-master/commit/a6c5152f20edd8717cf1aea34e7c178b1261aa99) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve refresh token when authenticating
+
 ## 0.29.0-rc.0
 
 ### Minor Changes

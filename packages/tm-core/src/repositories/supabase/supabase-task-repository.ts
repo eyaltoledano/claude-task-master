@@ -47,8 +47,8 @@ export class SupabaseTaskRepository {
 	 * Gets the current brief ID from auth context
 	 * @throws {Error} If no brief is selected
 	 */
-	private getBriefIdOrThrow(): string {
-		const context = this.authManager.getContext();
+	private async getBriefIdOrThrow(): Promise<string> {
+		const context = await this.authManager.getContext();
 		if (!context?.briefId) {
 			throw new Error(
 				'No brief selected. Please select a brief first using: tm context brief'
@@ -61,7 +61,7 @@ export class SupabaseTaskRepository {
 		_projectId?: string,
 		options?: LoadTasksOptions
 	): Promise<Task[]> {
-		const briefId = this.getBriefIdOrThrow();
+		const briefId = await this.getBriefIdOrThrow();
 
 		// Build query with filters
 		let query = this.supabase
@@ -114,7 +114,7 @@ export class SupabaseTaskRepository {
 	}
 
 	async getTask(_projectId: string, taskId: string): Promise<Task | null> {
-		const briefId = this.getBriefIdOrThrow();
+		const briefId = await this.getBriefIdOrThrow();
 
 		const { data, error } = await this.supabase
 			.from('tasks')
@@ -157,7 +157,7 @@ export class SupabaseTaskRepository {
 		taskId: string,
 		updates: Partial<Task>
 	): Promise<Task> {
-		const briefId = this.getBriefIdOrThrow();
+		const briefId = await this.getBriefIdOrThrow();
 
 		// Validate updates using Zod schema
 		try {
