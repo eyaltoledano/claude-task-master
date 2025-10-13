@@ -128,20 +128,16 @@ export class CommitCommand extends Command {
 			// Get commit info
 			const lastCommit = await gitAdapter.getLastCommit();
 
-			// Transition workflow
+			// Complete COMMIT phase (this marks subtask as completed)
 			orchestrator.transition({ type: 'COMMIT_COMPLETE' });
 
-			// Check if subtask is complete
+			// Check if should advance to next subtask
 			const progress = orchestrator.getProgress();
-			const isSubtaskComplete = currentSubtask.status === 'completed';
-
-			if (isSubtaskComplete) {
+			if (progress.current < progress.total) {
 				orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
-
-				// Check if all subtasks are complete
-				if (progress.completed === progress.total) {
-					orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
-				}
+			} else {
+				// All subtasks complete
+				orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 			}
 
 			// Output success
