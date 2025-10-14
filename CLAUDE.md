@@ -7,7 +7,9 @@
 ## Test Guidelines
 
 ### Test File Placement
-- **Package tests**: Place in `packages/<package-name>/src/<module>/<file>.test.ts` alongside source
+
+- **Package tests**: Place in `packages/<package-name>/src/<module>/<file>.spec.ts` alongside source
+- **Package integration tests**: Place in `packages/<package-name>/tests/integration/<module>/<file>.test.ts` alongside source
 - **Isolated unit tests**: Use `tests/unit/packages/<package-name>/` only when parallel placement isn't possible
 - **Test extension**: Always use `.ts` for TypeScript tests, never `.js`
 
@@ -34,7 +36,7 @@
 ## Documentation Guidelines
 
 - **Documentation location**: Write docs in `apps/docs/` (Mintlify site source), not `docs/`
-- **Documentation URL**: Reference docs at https://docs.taskmaster.ai, not local file paths
+- **Documentation URL**: Reference docs at https://docs.task-master.dev, not local file paths
 
 ## Changeset Guidelines
 
