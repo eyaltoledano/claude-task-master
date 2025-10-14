@@ -1,0 +1,118 @@
+---
+title: Choose Your AI Agent
+sidebarTitle: "AI Agents"
+---
+
+Task Master works seamlessly with various AI agents. Choose your preferred agent to get customized setup instructions.
+
+<CardGroup cols={2}>
+  <Card 
+    title="Cursor" 
+    icon="cursor" 
+    href="/getting-started/agents/cursor"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/cursor-logo.svg" className="w-8 h-8" alt="Cursor" />
+      <span>AI-powered VS Code fork with built-in MCP support</span>
+    </div>
+  </Card>
+
+  <Card 
+    title="Claude Code" 
+    icon="claude" 
+    href="/getting-started/agents/claude-code"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/claude-logo.svg" className="w-8 h-8" alt="Claude Code" />
+      <span>Anthropic's official CLI for Claude</span>
+    </div>
+  </Card>
+
+  <Card 
+    title="Windsurf" 
+    icon="windsurf" 
+    href="/getting-started/agents/windsurf"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/windsurf-logo.svg" className="w-8 h-8" alt="Windsurf" />
+      <span>Codeium's AI-native IDE</span>
+    </div>
+  </Card>
+
+  <Card 
+    title="VS Code" 
+    icon="vscode" 
+    href="/getting-started/agents/vscode"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/vscode-logo.svg" className="w-8 h-8" alt="VS Code" />
+      <span>Microsoft's editor with MCP extensions</span>
+    </div>
+  </Card>
+
+  <Card 
+    title="Command Line" 
+    icon="terminal" 
+    href="/getting-started/agents/cli"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/terminal-logo.svg" className="w-8 h-8" alt="Terminal" />
+      <span>Direct CLI usage without IDE integration</span>
+    </div>
+  </Card>
+
+  <Card 
+    title="Other Agents" 
+    icon="question" 
+    href="/getting-started/agents/other"
+  >
+    <div className="flex items-center space-x-3">
+      <img src="/logo/generic-logo.svg" className="w-8 h-8" alt="Other" />
+      <span>Generic setup for other AI agents</span>
+    </div>
+  </Card>
+</CardGroup>
+
+## Quick Recommendations
+
+<Accordion title="🎯 Which agent should I choose?">
+**For beginners**: Start with **Cursor** - it has the most seamless MCP integration and one-click install.
+
+**For Claude users**: Use **Claude Code** - it's Anthropic's official CLI with no API key required.
+
+**For existing VS Code users**: Stick with **VS Code** if you're already comfortable with your setup.
+
+**For advanced users**: Try **Windsurf** for its AI-native features or use **Command Line** for maximum flexibility.
+</Accordion>
+
+<Accordion title="💡 What's MCP and why does it matter?">
+MCP (Model Control Protocol) allows Task Master to run directly inside your AI agent, giving you:
+- 🔥 **Seamless integration** - No switching between tools
+- ⚡ **Real-time task management** - Tasks update as you work  
+- 🧠 **Context awareness** - Your AI knows about your tasks
+- 🎯 **Smart suggestions** - AI can recommend next tasks
+</Accordion>
+
+## Platform-Specific Notes
+
+<Tabs>
+  <Tab title="Windows">
+    **Important**: Windows users may need special configuration for some agents. We'll provide Windows-specific instructions for each agent.
+    
+    Some agents work better with WSL (Windows Subsystem for Linux), while others have native Windows support.
+  </Tab>
+  
+  <Tab title="macOS">
+    Most agents work seamlessly on macOS. Claude Code and Cursor have the best native macOS integration.
+  </Tab>
+  
+  <Tab title="Linux">
+    All agents have excellent Linux support. Command Line interface works particularly well in Linux environments.
+  </Tab>
+</Tabs>
+
+---
+
+<Note>
+**Need help choosing?** Check our [comparison table](/getting-started/agent-comparison) or join our [Discord community](https://discord.gg/taskmasterai) for personalized recommendations.
+</Note>

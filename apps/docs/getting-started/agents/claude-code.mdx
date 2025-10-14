@@ -1,0 +1,275 @@
+---
+title: Claude Code Setup  
+sidebarTitle: "Claude Code"
+---
+
+<div className="flex items-center space-x-4 mb-6">
+  <img src="/logo/claude-logo.svg" className="w-12 h-12" alt="Claude Code" />
+  <div>
+    <h1 className="text-2xl font-bold">Claude Code</h1>
+    <p className="text-gray-600">Anthropic's official CLI for Claude</p>
+  </div>
+</div>
+
+Claude Code offers the smoothest Task Master experience with **zero API key setup** and direct Claude integration.
+
+## 🎯 Why Choose Claude Code?
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+    <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">🔓 No API Keys</h3>
+    <p className="text-sm text-blue-700 dark:text-blue-300">Uses your existing Claude subscription - no separate API setup needed</p>
+  </div>
+  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+    <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">⚡ Native Integration</h3>
+    <p className="text-sm text-green-700 dark:text-green-300">Built specifically for Claude - seamless Task Master experience</p>
+  </div>
+</div>
+
+## 📦 Installation
+
+### Step 1: Install Claude Code
+
+Follow the [official Claude Code installation guide](https://docs.anthropic.com/en/docs/claude-code) or use our quick setup:
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    # Install via Homebrew (recommended)
+    brew install claude-code
+    
+    # Or download from GitHub releases
+    curl -L https://github.com/anthropics/claude-code/releases/latest/download/claude-code-macos.tar.gz | tar xz
+    sudo mv claude-code /usr/local/bin/
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```powershell
+    # Download and install from GitHub releases
+    # Visit: https://github.com/anthropics/claude-code/releases/latest
+    # Download: claude-code-windows.exe
+    
+    # Or use winget (if available)
+    winget install Anthropic.ClaudeCode
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ```bash
+    # Download from GitHub releases
+    curl -L https://github.com/anthropics/claude-code/releases/latest/download/claude-code-linux.tar.gz | tar xz
+    sudo mv claude-code /usr/local/bin/
+    
+    # Or install via package manager (if available)
+    sudo apt install claude-code  # Ubuntu/Debian
+    sudo yum install claude-code  # RHEL/CentOS
+    ```
+  </Tab>
+</Tabs>
+
+### Step 2: Authenticate with Claude
+
+```bash
+# Login to your Claude account
+claude auth login
+```
+
+Follow the prompts to authenticate with your Anthropic account.
+
+## 🔧 Task Master Integration
+
+### Method 1: MCP Integration (Recommended)
+
+Add Task Master to your Claude Code MCP configuration:
+
+<Tabs>
+  <Tab title="Global Setup">
+    ```bash
+    # Add Task Master MCP server globally
+    claude mcp add task-master-ai -s global -- npx -y task-master-ai
+    ```
+  </Tab>
+  
+  <Tab title="Project Setup">
+    ```bash
+    # Add for current project only  
+    claude mcp add task-master-ai -s project -- npx -y task-master-ai
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```bash
+    # Windows-specific command
+    claude mcp add task-master-mcp -s project -- cmd /c "npx -y --package=task-master-ai task-master-ai"
+    ```
+  </Tab>
+</Tabs>
+
+### Method 2: Direct CLI Usage
+
+You can also use Task Master commands directly alongside Claude Code:
+
+```bash
+# Initialize Task Master in your project
+npx task-master-ai init
+
+# Use Claude Code for AI interactions
+claude "Help me implement the next task"
+
+# Use Task Master for task management  
+npx task-master-ai next
+npx task-master-ai show 1.2
+```
+
+## 🚀 Getting Started
+
+### 1. Initialize Your Project
+
+In your project directory:
+
+```bash
+# Start Claude Code
+claude
+
+# In the Claude Code chat, initialize Task Master
+Initialize taskmaster-ai in my project
+```
+
+### 2. Configure Models (Optional)
+
+Since Claude Code doesn't need API keys, you can use it as your main model:
+
+```
+Change the main model to claude-code/sonnet
+```
+
+Available Claude Code models:
+- `claude-code/sonnet` - Claude 3.5 Sonnet (recommended)
+- `claude-code/opus` - Claude 3 Opus (for complex tasks)
+
+### 3. Create Your First Tasks
+
+```
+Can you parse my PRD and create tasks for building a todo app?
+```
+
+## 💡 Advanced Configuration
+
+### Hybrid Setup
+
+Use Claude Code as your main model with other APIs for research:
+
+Create `.env` in your project:
+```bash
+# Optional: Add research capabilities
+PERPLEXITY_API_KEY=your_perplexity_key_here
+OPENAI_API_KEY=your_openai_key_here
+```
+
+Then configure models:
+```
+Change the main model to claude-code/sonnet and research model to perplexity-llama-3.1-sonar-large-128k-online
+```
+
+### Multi-Session Workflows
+
+Claude Code excels at parallel development:
+
+```bash
+# Terminal 1: Main development
+cd my-project && claude
+
+# Terminal 2: Testing and validation  
+cd my-project && claude
+
+# Terminal 3: Documentation
+cd my-project && claude
+```
+
+Each session maintains Task Master context while allowing focused work streams.
+
+## 🔍 Troubleshooting
+
+<Accordion title="Claude Code not found">
+- **Check installation**: Run `claude --version` to verify installation
+- **Update PATH**: Ensure Claude Code is in your system PATH
+- **Reinstall**: Try reinstalling Claude Code from scratch
+- **Permissions**: Check file permissions for the claude binary
+</Accordion>
+
+<Accordion title="Authentication issues">
+- **Re-login**: Run `claude auth logout` then `claude auth login`
+- **Check account**: Verify your Anthropic account is active
+- **Network issues**: Check if you're behind a proxy or firewall
+- **Clear cache**: Delete `~/.claude` directory and re-authenticate
+</Accordion>
+
+<Accordion title="MCP server connection fails">
+- **Check Node.js**: Ensure Node.js 16+ is installed
+- **Test manually**: Run `npx task-master-ai` to test the server
+- **Clear MCP cache**: Remove and re-add the MCP server
+- **Check permissions**: Ensure npm can install packages
+</Accordion>
+
+<Accordion title="Task Master commands not working">
+- **Verify MCP**: Run `claude mcp list` to see installed servers
+- **Re-add server**: Remove and re-add the task-master-ai MCP server
+- **Check initialization**: Ensure project is initialized with `Initialize taskmaster-ai`
+- **Review logs**: Check Claude Code logs for error messages
+</Accordion>
+
+## 💡 Pro Tips
+
+<Tip>
+**Use headless mode** for automation: `claude -p "What's the next task I should work on?"` gives quick answers without opening the full chat interface.
+</Tip>
+
+<Tip>
+**Create custom commands** using Claude Code's command system for repeated Task Master workflows like "complete task and get next".
+</Tip>
+
+<Tip>
+**Leverage context persistence** - Claude Code maintains conversation history, making it perfect for long-running development sessions.
+</Tip>
+
+## 🎯 Best Practices
+
+### Development Workflow
+
+```bash
+# Morning routine
+claude "Show me today's tasks and priorities"
+
+# During development  
+claude "Help me implement task 2.1"
+claude "Update task 2.1 with implementation notes"
+
+# End of day
+claude "Mark completed tasks as done and show tomorrow's priorities"
+```
+
+### Team Collaboration
+
+```bash
+# Share task status
+claude "Generate a progress report for the team"
+
+# Review dependencies
+claude "Check which tasks are blocked and why"
+
+# Planning sessions
+claude "Analyze complexity of remaining tasks"
+```
+
+---
+
+<div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+  <div className="flex items-center space-x-2 mb-2">
+    <span className="text-purple-600 dark:text-purple-400 text-lg">🎉</span>
+    <h3 className="font-semibold text-purple-800 dark:text-purple-200">You're all set with Claude Code!</h3>
+  </div>
+  <p className="text-purple-700 dark:text-purple-300">
+    Claude Code offers the most seamless Task Master experience. Ready to create your first project? Check out our <a href="/getting-started/quick-start/prd-quick" className="underline">PRD guide</a>.
+  </p>
+</div>

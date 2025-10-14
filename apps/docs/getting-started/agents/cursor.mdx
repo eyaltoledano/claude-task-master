@@ -1,0 +1,247 @@
+---
+title: Cursor Setup
+sidebarTitle: "Cursor"
+---
+
+<div className="flex items-center space-x-4 mb-6">
+  <img src="/logo/cursor-logo.svg" className="w-12 h-12" alt="Cursor" />
+  <div>
+    <h1 className="text-2xl font-bold">Cursor AI Editor</h1>
+    <p className="text-gray-600">AI-powered VS Code fork with built-in MCP support</p>
+  </div>
+</div>
+
+Cursor offers the smoothest Task Master experience with one-click installation and native MCP integration.
+
+## 🚀 One-Click Install (Recommended)
+
+<div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
+  <div className="flex items-center space-x-2 mb-3">
+    <span className="text-blue-600 dark:text-blue-400 text-lg">⚡</span>
+    <h3 className="font-semibold text-blue-800 dark:text-blue-200">Fastest Setup</h3>
+  </div>
+  
+  <a href="cursor://anysphere.cursor-deeplink/mcp/install?name=task-master-ai&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIi0tcGFja2FnZT10YXNrLW1hc3Rlci1haSIsInRhc2stbWFzdGVyLWFpIl0sImVudiI6eyJBTlRIUk9QSUNfQVBJX0tFWSI6IllPVVJfQU5USFJPUElDX0FQSV9LRVlfSEVSRSIsIlBFUlBMRVhJVFlfQVBJX0tFWSI6IllPVVJfUEVSUExFWElUWV9BUElfS0VZX0hFUkUiLCJPUEVOQUlfQVBJX0tFWSI6IllPVVJfT1BFTkFJX0tFWV9IRVJFIiwiR09PR0xFX0FQSV9LRVkiOiJZT1VSX0dPT0dMRV9LRVlfSEVSRSIsIk1JU1RSQUxfQVBJX0tFWSI6IllPVVJfTUlTVFJBTF9LRVlfSEVSRSIsIk9QRU5ST1VURVJfQVBJX0tFWSI6IllPVVJfT1BFTlJPVVRFUl9LRVlfSEVSRSIsIlhBSV9BUElfS0VZIjoiWU9VUl9YQUlfS0VZX0hFUkUiLCJBWlVSRV9PUEVOQUJFX0FQSV9LRVkiOiJZT1VSX0FaVVJFX0tFWV9IRVJFIiwiT0xMQU1BX0FQSV9LRVkiOiJZT1VSX09MTEFNQV9BUElfS0VZX0hFUkUifX0%3D">
+    <img 
+      className="block dark:hidden hover:opacity-80 transition-opacity cursor-pointer" 
+      src="https://cursor.com/deeplink/mcp-install-light.png" 
+      alt="Add Task Master MCP server to Cursor" 
+      noZoom
+    />
+    <img 
+      className="hidden dark:block hover:opacity-80 transition-opacity cursor-pointer" 
+      src="https://cursor.com/deeplink/mcp-install-dark.png" 
+      alt="Add Task Master MCP server to Cursor" 
+      noZoom
+    />
+  </a>
+</div>
+
+<Warning>
+**After one-click install**: You still need to add your actual API keys! The installer uses placeholder keys that must be replaced.
+</Warning>
+
+## 📋 Manual Setup
+
+If you prefer manual configuration or the one-click install doesn't work:
+
+### Step 1: Create MCP Configuration
+
+Choose your configuration scope:
+
+<Tabs>
+  <Tab title="Global Config">
+    Create or edit `~/.cursor/mcp.json` (macOS/Linux) or `%USERPROFILE%\.cursor\mcp.json` (Windows):
+
+    ```json
+    {
+      "mcpServers": {
+        "task-master-ai": {
+          "command": "npx",
+          "args": ["-y", "task-master-ai"],
+          "env": {
+            "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+            "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+            "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
+            "GOOGLE_API_KEY": "YOUR_GOOGLE_KEY_HERE",
+            "MISTRAL_API_KEY": "YOUR_MISTRAL_KEY_HERE",
+            "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
+            "XAI_API_KEY": "YOUR_XAI_KEY_HERE"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Project Config">
+    Create `.cursor/mcp.json` in your project root:
+
+    ```json
+    {
+      "mcpServers": {
+        "task-master-ai": {
+          "command": "npx",
+          "args": ["-y", "task-master-ai"],
+          "env": {
+            "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+            "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Windows Native">
+    For Windows users without WSL:
+
+    ```json
+    {
+      "mcpServers": {
+        "task-master-ai": {
+          "command": "cmd",
+          "args": ["/c", "npx -y --package=task-master-ai task-master-ai"],
+          "env": {
+            "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
+            "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
+            "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE"
+          }
+        }
+      }
+    }
+    ```
+
+    <Note>
+    **Alternative Windows Setup**: Use Claude Code's project-level installation:
+    ```bash
+    claude mcp add task-master-mcp -s project -- cmd /c "npx -y --package=task-master-ai task-master-ai"
+    ```
+    </Note>
+  </Tab>
+</Tabs>
+
+### Step 2: Enable MCP Server
+
+1. Open Cursor Settings (`Ctrl+Shift+J` or `Cmd+Shift+J`)
+2. Click the **MCP** tab in the left sidebar
+3. Find `task-master-ai` and toggle it **ON**
+4. Restart Cursor if needed
+
+### Step 3: Verify Installation
+
+In Cursor's chat panel, type:
+```
+help
+```
+
+You should see Task Master commands available. If you see "0 tools enabled", check your API keys and restart Cursor.
+
+## 🔧 Configuration
+
+### Add Your API Keys
+
+<Tabs>
+  <Tab title="Required Keys">
+    You need **at least one** of these:
+    - `ANTHROPIC_API_KEY` - For Claude models (recommended)
+    - `OPENAI_API_KEY` - For GPT models  
+    - `GOOGLE_API_KEY` - For Gemini models
+  </Tab>
+  
+  <Tab title="Recommended Keys">
+    For the best experience, also add:
+    - `PERPLEXITY_API_KEY` - Enables research features
+    - `OPENAI_API_KEY` - Fallback option
+  </Tab>
+  
+  <Tab title="All Supported Keys">
+    Full list of supported API keys:
+    - `ANTHROPIC_API_KEY`
+    - `PERPLEXITY_API_KEY` 
+    - `OPENAI_API_KEY`
+    - `GOOGLE_API_KEY`
+    - `MISTRAL_API_KEY`
+    - `OPENROUTER_API_KEY`
+    - `XAI_API_KEY`
+    - `AZURE_OPENAI_API_KEY`
+    - `OLLAMA_API_KEY`
+  </Tab>
+</Tabs>
+
+### Configure Models (Optional)
+
+In Cursor's chat, set your preferred models:
+
+```
+Change the main, research and fallback models to claude-3-5-sonnet-20241022, perplexity-llama-3.1-sonar-large-128k-online and gpt-4o-mini respectively.
+```
+
+## 🎯 Getting Started
+
+### 1. Initialize Task Master
+
+In Cursor's chat panel:
+```
+Initialize taskmaster-ai in my project
+```
+
+### 2. Create Your First Task
+
+```
+Can you help me implement user authentication for my web app?
+```
+
+### 3. Start Working
+
+```
+What's the next task I should work on?
+```
+
+## 🔍 Troubleshooting
+
+<Accordion title="0 tools enabled in MCP settings">
+- **Check API keys**: Ensure at least one API key is correctly set
+- **Restart Cursor**: Close and reopen Cursor completely  
+- **Check file paths**: Verify your `mcp.json` is in the correct location
+- **Test manually**: Run `npx task-master-ai` in terminal to test
+</Accordion>
+
+<Accordion title="MCP server fails to start">
+- **Update Node.js**: Ensure you have Node.js 16+ installed
+- **Clear npm cache**: Run `npm cache clean --force`
+- **Try global install**: Run `npm install -g task-master-ai`
+- **Check permissions**: Ensure npm has permission to install packages
+</Accordion>
+
+<Accordion title="Commands not working">
+- **Verify installation**: Type `help` in chat to see available commands
+- **Check project initialization**: Run `Initialize taskmaster-ai in my project`
+- **Review logs**: Check Cursor's developer console for error messages
+</Accordion>
+
+## 💡 Pro Tips
+
+<Tip>
+**Use project-specific configs** for different API keys per project, especially when working with team projects that have shared API limits.
+</Tip>
+
+<Tip>
+**Enable research mode** with a Perplexity API key to get AI-powered task suggestions based on the latest best practices.
+</Tip>
+
+<Tip>
+**Set up keyboard shortcuts** in Cursor for common Task Master commands like "What's next?" or "Show task status".
+</Tip>
+
+---
+
+<div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+  <div className="flex items-center space-x-2 mb-2">
+    <span className="text-green-600 dark:text-green-400 text-lg">✅</span>
+    <h3 className="font-semibold text-green-800 dark:text-green-200">Ready to go!</h3>
+  </div>
+  <p className="text-green-700 dark:text-green-300">
+    You're all set with Cursor! Head over to our <a href="/getting-started/quick-start/prd-quick" className="underline">PRD guide</a> to create your first project.
+  </p>
+</div>

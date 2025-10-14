@@ -1,0 +1,373 @@
+---
+title: Command Line Setup
+sidebarTitle: "CLI"
+---
+
+<div className="flex items-center space-x-4 mb-6">
+  <img src="/logo/terminal-logo.svg" className="w-12 h-12" alt="Terminal" />
+  <div>
+    <h1 className="text-2xl font-bold">Command Line Interface</h1>
+    <p className="text-gray-600">Direct CLI usage without IDE integration</p>
+  </div>
+</div>
+
+Use Task Master directly from the command line for maximum flexibility and control.
+
+## 🎯 Why Choose CLI?
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+    <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">🚀 Maximum Performance</h3>
+    <p className="text-sm text-blue-700 dark:text-blue-300">No IDE overhead - pure command line speed</p>
+  </div>
+  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+    <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">🔧 Full Control</h3>
+    <p className="text-sm text-green-700 dark:text-green-300">Access to all Task Master features and configurations</p>
+  </div>
+  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-200 dark:border-purple-800">
+    <h3 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">📜 Scriptable</h3>
+    <p className="text-sm text-purple-700 dark:text-purple-300">Perfect for automation and CI/CD integration</p>
+  </div>
+  <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+    <h3 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">🌐 Universal</h3>
+    <p className="text-sm text-orange-700 dark:text-orange-300">Works on any system with Node.js</p>
+  </div>
+</div>
+
+## 📦 Installation
+
+### Global Installation (Recommended)
+
+```bash
+# Install Task Master globally
+npm install -g task-master-ai
+
+# Verify installation
+task-master --version
+```
+
+### Local Installation
+
+```bash
+# Install in your project
+npm install task-master-ai
+
+# Use with npx
+npx task-master-ai --version
+```
+
+## 🔧 Configuration
+
+### Step 1: Set Up API Keys
+
+Create a `.env` file in your project root:
+
+```bash
+# At least one of these is required
+ANTHROPIC_API_KEY=your_anthropic_key_here
+PERPLEXITY_API_KEY=your_perplexity_key_here  # Recommended for research
+OPENAI_API_KEY=your_openai_key_here
+
+# Optional additional providers
+GOOGLE_API_KEY=your_google_key_here
+MISTRAL_API_KEY=your_mistral_key_here
+OPENROUTER_API_KEY=your_openrouter_key_here
+XAI_API_KEY=your_xai_key_here
+```
+
+### Step 2: Configure Models
+
+```bash
+# Interactive model configuration
+task-master models --setup
+
+# Or set specific models
+task-master models --set-main claude-3-5-sonnet-20241022
+task-master models --set-research perplexity-llama-3.1-sonar-large-128k-online
+task-master models --set-fallback gpt-4o-mini
+```
+
+### Step 3: Initialize Your Project
+
+```bash
+# Initialize Task Master in current directory
+task-master init
+
+# Initialize with specific rules
+task-master init --rules cursor,windsurf,vscode
+```
+
+## 🚀 Quick Start Guide
+
+### 1. Create Your PRD
+
+```bash
+# Create a Product Requirements Document
+touch .taskmaster/docs/prd.txt
+
+# Edit with your favorite editor
+nano .taskmaster/docs/prd.txt
+# or
+code .taskmaster/docs/prd.txt
+```
+
+### 2. Generate Tasks
+
+```bash
+# Parse your PRD and create tasks
+task-master parse-prd .taskmaster/docs/prd.txt
+
+# Analyze task complexity
+task-master analyze-complexity --research
+
+# Expand tasks into subtasks
+task-master expand --all --research
+```
+
+### 3. Start Working
+
+```bash
+# See all tasks
+task-master list
+
+# Get next task to work on
+task-master next
+
+# Show specific task details
+task-master show 1.2
+
+# Mark task as in-progress
+task-master set-status --id=1.2 --status=in-progress
+```
+
+## 📋 Essential Commands
+
+### Task Management
+
+```bash
+# List all tasks
+task-master list
+
+# Show specific tasks (comma-separated)
+task-master show 1,2,3
+
+# Get next available task
+task-master next
+
+# Add a new task
+task-master add-task --prompt="Implement user login" --research
+
+# Update task with notes
+task-master update-task --id=1.2 --prompt="Added JWT authentication"
+
+# Update subtask with implementation notes
+task-master update-subtask --id=1.2.1 --prompt="Used bcrypt for password hashing"
+```
+
+### Task Status Management
+
+```bash
+# Mark task as done
+task-master set-status --id=1.2 --status=done
+
+# Mark as in-progress
+task-master set-status --id=1.2 --status=in-progress
+
+# Mark as blocked
+task-master set-status --id=1.2 --status=blocked
+```
+
+### Analysis and Planning
+
+```bash
+# Research latest information
+task-master research "What are the latest React best practices?"
+
+# Analyze project complexity
+task-master analyze-complexity --research
+
+# View complexity report
+task-master complexity-report
+
+# Expand task into subtasks
+task-master expand --id=1.2 --research --force
+```
+
+### Dependencies and Organization
+
+```bash
+# Add task dependency
+task-master add-dependency --id=2.1 --depends-on=1.2
+
+# Move task to different position
+task-master move --from=3 --to=1
+
+# Validate dependencies
+task-master validate-dependencies
+
+# Generate markdown files
+task-master generate
+```
+
+## 🎯 Advanced Usage
+
+### Scripting and Automation
+
+Create shell scripts for common workflows:
+
+```bash
+#!/bin/bash
+# daily-standup.sh
+
+echo "=== Today's Tasks ==="
+task-master next
+
+echo -e "\n=== In Progress ==="
+task-master list | grep "in-progress"
+
+echo -e "\n=== Blocked Tasks ==="
+task-master list | grep "blocked"
+
+echo -e "\n=== Complexity Report ==="
+task-master complexity-report
+```
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/task-validation.yml
+name: Task Validation
+
+on: [push, pull_request]
+
+jobs:
+  validate-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      
+      - name: Install Task Master
+        run: npm install -g task-master-ai
+        
+      - name: Validate task dependencies
+        run: task-master validate-dependencies
+        
+      - name: Generate task report
+        run: task-master complexity-report > task-report.json
+```
+
+### Custom Aliases
+
+Add these to your `.bashrc` or `.zshrc`:
+
+```bash
+# Task Master shortcuts
+alias tm="task-master"
+alias tmn="task-master next"
+alias tml="task-master list"  
+alias tmr="task-master research"
+alias tms="task-master show"
+```
+
+## 🔍 Troubleshooting
+
+<Accordion title="Command not found: task-master">
+**Solutions:**
+- Verify Node.js installation: `node --version`
+- Reinstall globally: `npm install -g task-master-ai`
+- Check npm global path: `npm config get prefix`
+- Use npx if global install fails: `npx task-master-ai`
+</Accordion>
+
+<Accordion title="API key errors">
+**Solutions:**
+- Check `.env` file exists and has correct keys
+- Verify API key format and validity
+- Test with a single API key first
+- Check for typos in environment variable names
+</Accordion>
+
+<Accordion title="Tasks not generating">
+**Solutions:**
+- Verify PRD file exists and has content
+- Check API keys are working: `task-master models`
+- Try with different model: `task-master models --set-main gpt-4o-mini`
+- Add `--research` flag for better results
+</Accordion>
+
+<Accordion title="Permission errors">
+**Solutions:**
+- Use `sudo` for global installs (not recommended)
+- Configure npm to use different directory: `npm config set prefix ~/.local`
+- Use local installation: `npm install task-master-ai`
+- Check file permissions in `.taskmaster` directory
+</Accordion>
+
+## 💡 Pro Tips
+
+<Tip>
+**Use `--research` flag** with AI commands for more informed and up-to-date task suggestions based on current best practices.
+</Tip>
+
+<Tip>
+**Create project templates** with pre-configured `.taskmaster` directories for different types of projects (web apps, APIs, mobile apps).
+</Tip>
+
+<Tip>
+**Combine with other tools** like `jq` for parsing JSON outputs: `task-master list --json | jq '.[] | select(.status=="pending")'`
+</Tip>
+
+<Tip>
+**Use environment-specific configs** by creating different `.env` files (.env.development, .env.production) and symlinking as needed.
+</Tip>
+
+## 📚 Integration Examples
+
+### With Git Hooks
+
+```bash
+#!/bin/sh
+# .git/hooks/pre-commit
+
+# Check if any tasks are marked as done
+if task-master list | grep -q "done"; then
+    echo "✅ Tasks completed in this commit:"
+    task-master list | grep "done"
+fi
+```
+
+### With Make
+
+```makefile
+# Makefile
+
+.PHONY: tasks next status
+
+tasks:
+	@task-master list
+
+next:
+	@task-master next
+
+status:
+	@echo "=== Task Status ==="
+	@task-master list | grep -E "(in-progress|blocked)"
+	@echo ""
+	@echo "=== Next Task ==="
+	@task-master next
+```
+
+---
+
+<div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg border border-cyan-200 dark:border-cyan-800">
+  <div className="flex items-center space-x-2 mb-2">
+    <span className="text-cyan-600 dark:text-cyan-400 text-lg">⚡</span>
+    <h3 className="font-semibold text-cyan-800 dark:text-cyan-200">Ready for maximum productivity!</h3>
+  </div>
+  <p className="text-cyan-700 dark:text-cyan-300">
+    You now have the full power of Task Master at your fingertips. Create your first project with our <a href="/getting-started/quick-start/prd-quick" className="underline">PRD guide</a>.
+  </p>
+</div>
