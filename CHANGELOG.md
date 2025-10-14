@@ -1,5 +1,88 @@
 # task-master-ai
 
+## 0.29.0
+
+### Minor Changes
+
+- [#1286](https://github.com/eyaltoledano/claude-task-master/pull/1286) [`f12a16d`](https://github.com/eyaltoledano/claude-task-master/commit/f12a16d09649f62148515f11f616157c7d0bd2d5) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add changelog highlights to auto-update notifications
+
+  When the CLI auto-updates to a new version, it now displays a "What's New" section.
+
+- [#1293](https://github.com/eyaltoledano/claude-task-master/pull/1293) [`3010b90`](https://github.com/eyaltoledano/claude-task-master/commit/3010b90d98f3a7d8636caa92fc33d6ee69d4bed0) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Claude Code plugin with marketplace distribution
+
+  This release introduces official Claude Code plugin support, marking the evolution from legacy `.claude` directory copying to a modern plugin-based architecture.
+
+  ## 🎉 New: Claude Code Plugin
+
+  Task Master AI commands and agents are now distributed as a proper Claude Code plugin:
+  - **49 slash commands** with clean naming (`/taskmaster:command-name`)
+  - **3 specialized AI agents** (task-orchestrator, task-executor, task-checker)
+  - **MCP server integration** for deep Claude Code integration
+
+  **Installation:**
+
+  ```bash
+  /plugin marketplace add eyaltoledano/claude-task-master
+  /plugin install taskmaster@taskmaster
+  ```
+
+  ### The `rules add claude` command no longer copies commands and agents to `.claude/commands/` and `.claude/agents/`. Instead, it now
+  - Shows plugin installation instructions
+  - Only manages CLAUDE.md imports for agent instructions
+  - Directs users to install the official plugin
+
+  **Migration for Existing Users:**
+
+  If you previously used `rules add claude`:
+  1. The old commands in `.claude/commands/` will continue to work but won't receive updates
+  2. Install the plugin for the latest features: `/plugin install taskmaster@taskmaster`
+  3. remove old `.claude/commands/` and `.claude/agents/` directories
+
+  **Why This Change?**
+
+  Claude Code plugins provide:
+  - ✅ Automatic updates when we release new features
+  - ✅ Better command organization and naming
+  - ✅ Seamless integration with Claude Code
+  - ✅ No manual file copying or management
+
+  The plugin system is the future of Task Master AI integration with Claude Code!
+
+- [#1285](https://github.com/eyaltoledano/claude-task-master/pull/1285) [`2a910a4`](https://github.com/eyaltoledano/claude-task-master/commit/2a910a40bac375f9f61d797bf55597303d556b48) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add RPG (Repository Planning Graph) method template for structured PRD creation. The new `example_prd_rpg.txt` template teaches AI agents and developers the RPG methodology through embedded instructions, inline good/bad examples, and XML-style tags for structure. This template enables creation of dependency-aware PRDs that automatically generate topologically-ordered task graphs when parsed with Task Master.
+
+  Key features:
+  - Method-as-template: teaches RPG principles (dual-semantics, explicit dependencies, topological order) while being used
+  - Inline instructions at decision points guide AI through each section
+  - Good/bad examples for immediate pattern matching
+  - Flexible plain-text format with XML-style tags for parseability
+  - Critical dependency-graph section ensures correct task ordering
+  - Automatic inclusion during `task-master init`
+  - Comprehensive documentation at [docs.task-master.dev/capabilities/rpg-method](https://docs.task-master.dev/capabilities/rpg-method)
+  - Tool recommendations for code-context-aware PRD creation (Claude Code, Cursor, Gemini CLI, Codex/Grok)
+
+  The RPG template complements the existing `example_prd.txt` and provides a more structured approach for complex projects requiring clear module boundaries and dependency chains.
+
+- [#1287](https://github.com/eyaltoledano/claude-task-master/pull/1287) [`90e6bdc`](https://github.com/eyaltoledano/claude-task-master/commit/90e6bdcf1c59f65ad27fcdfe3b13b9dca7e77654) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhance `expand_all` to intelligently use complexity analysis recommendations when expanding tasks.
+
+  The expand-all operation now automatically leverages recommendations from `analyze-complexity` to determine optimal subtask counts for each task, resulting in more accurate and context-aware task breakdowns.
+
+  Key improvements:
+  - Automatic integration with complexity analysis reports
+  - Tag-aware complexity report path resolution
+  - Intelligent subtask count determination based on task complexity
+  - Falls back to defaults when complexity analysis is unavailable
+  - Enhanced logging for better visibility into expansion decisions
+
+  When you run `task-master expand --all` after `task-master analyze-complexity`, Task Master now uses the recommended subtask counts from the complexity analysis instead of applying uniform defaults, ensuring each task is broken down according to its actual complexity.
+
+### Patch Changes
+
+- [#1191](https://github.com/eyaltoledano/claude-task-master/pull/1191) [`aaf903f`](https://github.com/eyaltoledano/claude-task-master/commit/aaf903ff2f606c779a22e9a4b240ab57b3683815) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix cross-level task dependencies not being saved
+
+  Fixes an issue where adding dependencies between subtasks and top-level tasks (e.g., `task-master add-dependency --id=2.2 --depends-on=11`) would report success but fail to persist the changes. Dependencies can now be created in both directions between any task levels.
+
+- [#1299](https://github.com/eyaltoledano/claude-task-master/pull/1299) [`4c1ef2c`](https://github.com/eyaltoledano/claude-task-master/commit/4c1ef2ca94411c53bcd2a78ec710b06c500236dd) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve refresh token when authenticating
+
 ## 0.29.0-rc.1
 
 ### Patch Changes
