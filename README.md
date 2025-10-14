@@ -119,6 +119,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
       "command": "npx",
       "args": ["-y", "task-master-ai"],
       "env": {
+        // "TASK_MASTER_TOOLS": "all", // Options: "all", "standard", "core", or comma-separated list of tools
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
         "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
         "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
@@ -148,6 +149,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
       "command": "npx",
       "args": ["-y", "task-master-ai"],
       "env": {
+        // "TASK_MASTER_TOOLS": "all", // Options: "all", "standard", "core", or comma-separated list of tools
         "ANTHROPIC_API_KEY": "YOUR_ANTHROPIC_API_KEY_HERE",
         "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_API_KEY_HERE",
         "OPENAI_API_KEY": "YOUR_OPENAI_KEY_HERE",
@@ -196,7 +198,7 @@ Initialize taskmaster-ai in my project
 
 #### 5. Make sure you have a PRD (Recommended)
 
-For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`  
+For **new projects**: Create your PRD at `.taskmaster/docs/prd.txt`.
 For **existing projects**: You can use `scripts/prd.txt` or migrate with `task-master migrate`
 
 An example PRD template is available after initialization in `.taskmaster/templates/example_prd.txt`.
@@ -281,6 +283,76 @@ task-master generate
 # Add rules after initialization
 task-master rules add windsurf,roo,vscode
 ```
+
+## Tool Loading Configuration
+
+### Optimizing MCP Tool Loading
+
+Task Master's MCP server supports selective tool loading to reduce context window usage. By default, all 36 tools are loaded (~21,000 tokens) to maintain backward compatibility with existing installations.
+
+You can optimize performance by configuring the `TASK_MASTER_TOOLS` environment variable:
+
+### Available Modes
+
+| Mode | Tools | Context Usage | Use Case |
+|------|-------|--------------|----------|
+| `all` (default) | 36 | ~21,000 tokens | Complete feature set - all tools available |
+| `standard` | 15 | ~10,000 tokens | Common task management operations |
+| `core` (or `lean`) | 7 | ~5,000 tokens | Essential daily development workflow |
+| `custom` | Variable | Variable | Comma-separated list of specific tools |
+
+### Configuration Methods
+
+#### Method 1: Environment Variable in MCP Configuration
+
+Add `TASK_MASTER_TOOLS` to your MCP configuration file's `env` section:
+
+```jsonc
+{
+  "mcpServers": {  // or "servers" for VS Code
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "standard",  // Options: "all", "standard", "core", "lean", or comma-separated list
+        "ANTHROPIC_API_KEY": "your-key-here",
+        // ... other API keys
+      }
+    }
+  }
+}
+```
+
+#### Method 2: Claude Code CLI (One-Time Setup)
+
+For Claude Code users, you can set the mode during installation:
+
+```bash
+# Core mode example (~70% token reduction)
+claude mcp add task-master-ai --scope user \
+  --env TASK_MASTER_TOOLS="core" \
+  -- npx -y task-master-ai@latest
+
+# Custom tools example
+claude mcp add task-master-ai --scope user \
+  --env TASK_MASTER_TOOLS="get_tasks,next_task,set_task_status" \
+  -- npx -y task-master-ai@latest
+```
+
+### Tool Sets Details
+
+**Core Tools (7):** `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
+
+**Standard Tools (15):** All core tools plus `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `generate`, `add_task`, `complexity_report`
+
+**All Tools (36):** Complete set including project setup, task management, analysis, dependencies, tags, research, and more
+
+### Recommendations
+
+- **New users**: Start with `"standard"` mode for a good balance
+- **Large projects**: Use `"core"` mode to minimize token usage
+- **Complex workflows**: Use `"all"` mode or custom selection
+- **Backward compatibility**: If not specified, defaults to `"all"` mode
 
 ## Claude Code Support
 
