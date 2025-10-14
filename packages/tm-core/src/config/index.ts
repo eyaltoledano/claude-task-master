@@ -42,22 +42,3 @@ export type {
 
 // Re-export default values
 export { DEFAULT_CONFIG_VALUES } from '../interfaces/configuration.interface.js';
-
-// Export Zod schemas and validation functions
-export {
-	configurationSchema,
-	partialConfigurationSchema,
-	modelConfigSchema,
-	providerConfigSchema,
-	taskSettingsSchema,
-	tagSettingsSchema,
-	workflowSettingsSchema,
-	storageSettingsSchema,
-	retrySettingsSchema,
-	loggingSettingsSchema,
-	securitySettingsSchema,
-	environmentConfigSchema,
-	configValidationResultSchema,
-	validateConfiguration,
-	validatePartialConfiguration
-} from './config-schema.js';

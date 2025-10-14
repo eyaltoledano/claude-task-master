@@ -8,8 +8,7 @@
 
 import type {
 	PartialConfiguration,
-	RuntimeStorageConfig,
-	ConfigValidationResult
+	RuntimeStorageConfig
 } from '../interfaces/configuration.interface.js';
 import { DEFAULT_CONFIG_VALUES as DEFAULTS } from '../interfaces/configuration.interface.js';
 import { ConfigLoader } from './services/config-loader.service.js';
@@ -20,10 +19,6 @@ import {
 import { RuntimeStateManager } from './services/runtime-state-manager.service.js';
 import { ConfigPersistence } from './services/config-persistence.service.js';
 import { EnvironmentConfigProvider } from './services/environment-config-provider.service.js';
-import {
-	validateConfiguration,
-	validatePartialConfiguration
-} from './config-schema.js';
 
 /**
  * ConfigManager orchestrates all configuration services
@@ -257,23 +252,6 @@ export class ConfigManager {
 	}
 
 	// ==================== Utilities ====================
-
-	/**
-	 * Validate current configuration against schema
-	 * @returns Validation result with errors and warnings
-	 */
-	validate(): ConfigValidationResult {
-		return validateConfiguration(this.config);
-	}
-
-	/**
-	 * Validate partial configuration updates before applying
-	 * @param updates - Partial configuration to validate
-	 * @returns Validation result with errors and warnings
-	 */
-	validateUpdate(updates: PartialConfiguration): ConfigValidationResult {
-		return validatePartialConfiguration(updates);
-	}
 
 	/**
 	 * Reset configuration to defaults

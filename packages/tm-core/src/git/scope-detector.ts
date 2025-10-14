@@ -3,6 +3,7 @@
  *
  * Automatically determines conventional commit scopes based on file paths
  * using configurable pattern matching and priority-based resolution.
+ * // TODO: remove this
  */
 
 export interface ScopeMapping {

@@ -39,14 +39,6 @@ export {
 	type State
 } from './state-manager.js';
 
-// Export directory manager
-export {
-	createRunDirectory,
-	cleanupRunDirectory,
-	validateRunDirectory,
-	getRunDirectoryPath
-} from './directory-manager.js';
-
 // Export storage interface and types
 export type {
 	IStorage,
