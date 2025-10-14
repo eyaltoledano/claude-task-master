@@ -13,6 +13,126 @@ The MCP interface is built on top of the `fastmcp` library and registers a set o
 
 Each tool is defined with a name, a description, and a set of parameters that are validated using the `zod` library. The `execute` function of each tool calls the corresponding core logic function from `scripts/modules/task-manager.js`.
 
+## Configurable Tool Loading
+
+To optimize LLM context usage, you can control which Task Master MCP tools are loaded using the `TASK_MASTER_TOOLS` environment variable. This is particularly useful when working with LLMs that have context limits or when you only need a subset of tools.
+
+### Configuration Modes
+
+#### All Tools (Default)
+Loads all 36 available tools. Use when you need full Task Master functionality.
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "all",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+If `TASK_MASTER_TOOLS` is not set, all tools are loaded by default.
+
+#### Core Tools (Lean Mode)
+Loads only 7 essential tools for daily development. Ideal for minimal context usage.
+
+**Core tools included:**
+- `get_tasks` - List all tasks
+- `next_task` - Find the next task to work on
+- `get_task` - Get detailed task information
+- `set_task_status` - Update task status
+- `update_subtask` - Add implementation notes
+- `parse_prd` - Generate tasks from PRD
+- `expand_task` - Break down tasks into subtasks
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "core",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+You can also use `"lean"` as an alias for `"core"`.
+
+#### Standard Tools
+Loads 15 commonly used tools. Balances functionality with context efficiency.
+
+**Standard tools include all core tools plus:**
+- `initialize_project` - Set up new projects
+- `analyze_project_complexity` - Analyze task complexity
+- `expand_all` - Expand all eligible tasks
+- `add_subtask` - Add subtasks manually
+- `remove_task` - Remove tasks
+- `generate` - Generate task markdown files
+- `add_task` - Create new tasks
+- `complexity_report` - View complexity analysis
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "standard",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+#### Custom Tool Selection
+Specify exactly which tools to load using a comma-separated list. Tool names are case-insensitive and support both underscores and hyphens.
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "get_tasks,next_task,set_task_status,update_subtask",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+### Choosing the Right Configuration
+
+- **Use `core`/`lean`**: When working with basic task management workflows or when context limits are strict
+- **Use `standard`**: For most development workflows that include task creation and analysis
+- **Use `all`**: When you need full functionality including tag management, dependencies, and advanced features
+- **Use custom list**: When you have specific tool requirements or want to experiment with minimal sets
+
+### Verification
+
+When the MCP server starts, it logs which tools were loaded:
+
+```
+Task Master MCP Server starting...
+Tool mode configuration: standard
+Loading standard tools
+Registering 15 MCP tools (mode: standard)
+Successfully registered 15/15 tools
+```
+
 ## Tool Categories
 
 The MCP tools can be categorized in the same way as the core functionalities:

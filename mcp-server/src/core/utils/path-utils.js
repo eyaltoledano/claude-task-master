@@ -3,6 +3,7 @@ import {
 	findTasksPath as coreFindTasksPath,
 	findPRDPath as coreFindPrdPath,
 	findComplexityReportPath as coreFindComplexityReportPath,
+	resolveComplexityReportOutputPath as coreResolveComplexityReportOutputPath,
 	findProjectRoot as coreFindProjectRoot,
 	normalizeProjectRoot
 } from '../../../../src/utils/path-utils.js';
@@ -222,6 +223,21 @@ export function findTasksPath(args, log = silentLogger) {
  */
 export function findComplexityReportPath(args, log = silentLogger) {
 	return resolveComplexityReportPath(args, log);
+}
+
+/**
+ * Resolve complexity report output path (create if needed) - primary MCP function
+ * @param {string|null} [explicitPath] - Explicit path to complexity report
+ * @param {Object} args - Arguments object containing projectRoot and tag
+ * @param {Object} [log] - Log function to prevent console logging
+ * @returns {string} - Resolved output path for complexity report
+ */
+export function resolveComplexityReportOutputPath(
+	explicitPath,
+	args,
+	log = silentLogger
+) {
+	return coreResolveComplexityReportOutputPath(explicitPath, args, log);
 }
 
 /**

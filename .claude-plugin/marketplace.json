@@ -1,0 +1,32 @@
+{
+	"name": "taskmaster",
+	"owner": {
+		"name": "Hamster",
+		"email": "ralph@tryhamster.com"
+	},
+	"metadata": {
+		"description": "Official marketplace for Taskmaster AI - AI-powered task management for ambitious development",
+		"version": "1.0.0"
+	},
+	"plugins": [
+		{
+			"name": "taskmaster",
+			"source": "./packages/claude-code-plugin",
+			"description": "AI-powered task management system for ambitious development workflows with intelligent orchestration, complexity analysis, and automated coordination",
+			"author": {
+				"name": "Hamster"
+			},
+			"homepage": "https://github.com/eyaltoledano/claude-task-master",
+			"repository": "https://github.com/eyaltoledano/claude-task-master",
+			"keywords": [
+				"task-management",
+				"ai",
+				"workflow",
+				"orchestration",
+				"automation",
+				"mcp"
+			],
+			"category": "productivity"
+		}
+	]
+}

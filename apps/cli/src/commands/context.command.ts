@@ -115,7 +115,7 @@ export class ContextCommand extends Command {
 	 */
 	private async executeShow(): Promise<void> {
 		try {
-			const result = this.displayContext();
+			const result = await this.displayContext();
 			this.setLastResult(result);
 		} catch (error: any) {
 			this.handleError(error);
@@ -126,7 +126,7 @@ export class ContextCommand extends Command {
 	/**
 	 * Display current context
 	 */
-	private displayContext(): ContextResult {
+	private async displayContext(): Promise<ContextResult> {
 		// Check authentication first
 		if (!this.authManager.isAuthenticated()) {
 			console.log(chalk.yellow('✗ Not authenticated'));
@@ -139,7 +139,7 @@ export class ContextCommand extends Command {
 			};
 		}
 
-		const context = this.authManager.getContext();
+		const context = await this.authManager.getContext();
 
 		console.log(chalk.cyan('\n🌍 Workspace Context\n'));
 
@@ -263,7 +263,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'select-org',
-				context: this.authManager.getContext() || undefined,
+				context: (await this.authManager.getContext()) || undefined,
 				message: `Selected organization: ${selectedOrg.name}`
 			};
 		} catch (error) {
@@ -284,7 +284,7 @@ export class ContextCommand extends Command {
 			}
 
 			// Check if org is selected
-			const context = this.authManager.getContext();
+			const context = await this.authManager.getContext();
 			if (!context?.orgId) {
 				ui.displayError(
 					'No organization selected. Run "tm context org" first.'
@@ -353,7 +353,7 @@ export class ContextCommand extends Command {
 				return {
 					success: true,
 					action: 'select-brief',
-					context: this.authManager.getContext() || undefined,
+					context: (await this.authManager.getContext()) || undefined,
 					message: `Selected brief: ${selectedBrief.name}`
 				};
 			} else {
@@ -368,7 +368,7 @@ export class ContextCommand extends Command {
 				return {
 					success: true,
 					action: 'select-brief',
-					context: this.authManager.getContext() || undefined,
+					context: (await this.authManager.getContext()) || undefined,
 					message: 'Cleared brief selection'
 				};
 			}
@@ -508,7 +508,7 @@ export class ContextCommand extends Command {
 			this.setLastResult({
 				success: true,
 				action: 'set',
-				context: this.authManager.getContext() || undefined,
+				context: (await this.authManager.getContext()) || undefined,
 				message: 'Context set from brief'
 			});
 		} catch (error: any) {
@@ -631,7 +631,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'set',
-				context: this.authManager.getContext() || undefined,
+				context: (await this.authManager.getContext()) || undefined,
 				message: 'Context updated'
 			};
 		} catch (error) {
@@ -682,7 +682,7 @@ export class ContextCommand extends Command {
 	/**
 	 * Get current context (for programmatic usage)
 	 */
-	getContext(): UserContext | null {
+	getContext(): Promise<UserContext | null> {
 		return this.authManager.getContext();
 	}
 

@@ -244,6 +244,53 @@ describe('expandAllTasks', () => {
 			);
 		});
 
+		test('should pass complexityReportPath to expandTask when provided in context', async () => {
+			// Arrange
+			const mockComplexityReportPath =
+				'/test/project/.taskmaster/reports/task-complexity-report.json';
+			mockExpandTask.mockResolvedValue({
+				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
+			});
+
+			// Act
+			const result = await expandAllTasks(
+				mockTasksPath,
+				undefined, // numSubtasks not specified, should use complexity report
+				false,
+				'',
+				false,
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				},
+				'json'
+			);
+
+			// Assert
+			expect(result.success).toBe(true);
+			expect(result.expandedCount).toBe(2); // Tasks 1 and 2
+
+			// Verify expandTask was called with complexityReportPath in context
+			expect(mockExpandTask).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.any(Number), // task id
+				undefined, // numSubtasks
+				false, // useResearch
+				'', // additionalContext
+				expect.objectContaining({
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master',
+					complexityReportPath: mockComplexityReportPath
+				}),
+				false // force
+			);
+		});
+
 		test('should return success with message when no tasks are eligible', async () => {
 			// Arrange - Mock tasks data with no eligible tasks
 			const noEligibleTasksData = {

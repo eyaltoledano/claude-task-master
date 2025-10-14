@@ -5111,7 +5111,8 @@ async function runCLI(argv = process.argv) {
 			// Display the upgrade notification first
 			displayUpgradeNotification(
 				updateInfo.currentVersion,
-				updateInfo.latestVersion
+				updateInfo.latestVersion,
+				updateInfo.highlights
 			);
 
 			// Then automatically perform the update

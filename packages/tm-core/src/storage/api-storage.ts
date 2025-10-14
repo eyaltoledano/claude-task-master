@@ -119,7 +119,7 @@ export class ApiStorage implements IStorage {
 	private async loadTagsIntoCache(): Promise<void> {
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
+			const context = await authManager.getContext();
 
 			// If we have a selected brief, create a virtual "tag" for it
 			if (context?.briefId) {
@@ -152,7 +152,7 @@ export class ApiStorage implements IStorage {
 
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
+			const context = await authManager.getContext();
 
 			// If no brief is selected in context, throw an error
 			if (!context?.briefId) {
@@ -318,7 +318,7 @@ export class ApiStorage implements IStorage {
 
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
+			const context = await authManager.getContext();
 
 			// In our API-based system, we only have one "tag" at a time - the current brief
 			if (context?.briefId) {
