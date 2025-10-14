@@ -10,6 +10,11 @@ import type {
 } from '../types/index.js';
 
 /**
+ * Conventional Commit types allowed in workflow
+ */
+export type CommitType = 'feat' | 'fix' | 'refactor' | 'test' | 'docs' | 'chore';
+
+/**
  * Model configuration for different AI roles
  */
 export interface ModelConfig {
@@ -45,9 +50,15 @@ export interface TaskSettings {
 	defaultPriority: TaskPriority;
 	/** Default complexity for analysis */
 	defaultComplexity: TaskComplexity;
-	/** Maximum number of subtasks per task */
+	/**
+	 * Maximum number of subtasks per task
+	 * @minimum 1
+	 */
 	maxSubtasks: number;
-	/** Maximum number of concurrent tasks */
+	/**
+	 * Maximum number of concurrent tasks
+	 * @minimum 1
+	 */
 	maxConcurrentTasks: number;
 	/** Enable automatic task ID generation */
 	autoGenerateIds: boolean;
@@ -69,7 +80,10 @@ export interface TagSettings {
 	enableTags: boolean;
 	/** Default tag for new tasks */
 	defaultTag: string;
-	/** Maximum number of tags per task */
+	/**
+	 * Maximum number of tags per task
+	 * @minimum 1
+	 */
 	maxTagsPerTask: number;
 	/** Enable automatic tag creation from Git branches */
 	autoCreateFromBranch: boolean;
@@ -114,7 +128,10 @@ export interface StorageSettings
 	readonly apiConfigured?: boolean;
 	/** Enable automatic backups */
 	enableBackup: boolean;
-	/** Maximum number of backups to retain */
+	/**
+	 * Maximum number of backups to retain
+	 * @minimum 0
+	 */
 	maxBackups: number;
 	/** Enable compression for storage */
 	enableCompression: boolean;
@@ -128,15 +145,30 @@ export interface StorageSettings
  * Retry and resilience settings
  */
 export interface RetrySettings {
-	/** Number of retry attempts for failed operations */
+	/**
+	 * Number of retry attempts for failed operations
+	 * @minimum 0
+	 */
 	retryAttempts: number;
-	/** Base delay between retries in milliseconds */
+	/**
+	 * Base delay between retries in milliseconds
+	 * @minimum 0
+	 */
 	retryDelay: number;
-	/** Maximum delay between retries in milliseconds */
+	/**
+	 * Maximum delay between retries in milliseconds
+	 * @minimum 0
+	 */
 	maxRetryDelay: number;
-	/** Exponential backoff multiplier */
+	/**
+	 * Exponential backoff multiplier
+	 * @minimum 1
+	 */
 	backoffMultiplier: number;
-	/** Request timeout in milliseconds */
+	/**
+	 * Request timeout in milliseconds
+	 * @minimum 0
+	 */
 	requestTimeout: number;
 	/** Enable retry for network errors */
 	retryOnNetworkError: boolean;
@@ -160,9 +192,15 @@ export interface LoggingSettings {
 	logPerformance: boolean;
 	/** Enable error stack traces */
 	logStackTraces: boolean;
-	/** Maximum log file size in MB */
+	/**
+	 * Maximum log file size in MB
+	 * @minimum 1
+	 */
 	maxFileSize: number;
-	/** Maximum number of log files to retain */
+	/**
+	 * Maximum number of log files to retain
+	 * @minimum 1
+	 */
 	maxFiles: number;
 }
 
@@ -174,11 +212,17 @@ export interface SecuritySettings {
 	validateApiKeys: boolean;
 	/** Enable request rate limiting */
 	enableRateLimit: boolean;
-	/** Maximum requests per minute */
+	/**
+	 * Maximum requests per minute
+	 * @minimum 1
+	 */
 	maxRequestsPerMinute: number;
 	/** Enable input sanitization */
 	sanitizeInputs: boolean;
-	/** Maximum prompt length in characters */
+	/**
+	 * Maximum prompt length in characters
+	 * @minimum 1
+	 */
 	maxPromptLength: number;
 	/** Allowed file extensions for imports */
 	allowedFileExtensions: string[];
@@ -192,7 +236,11 @@ export interface SecuritySettings {
 export interface WorkflowSettings {
 	/** Enable autopilot/TDD workflow features */
 	enableAutopilot: boolean;
-	/** Maximum retry attempts for phase validation */
+	/**
+	 * Maximum retry attempts for phase validation
+	 * @minimum 1
+	 * @maximum 10
+	 */
 	maxPhaseAttempts: number;
 	/** Branch naming pattern for workflow branches */
 	branchPattern: string;
@@ -204,22 +252,34 @@ export interface WorkflowSettings {
 	includeCoAuthor: boolean;
 	/** Co-author name for commit messages */
 	coAuthorName: string;
-	/** Co-author email for commit messages */
+	/** Co-author email for commit messages (defaults to taskmaster@tryhamster.com) */
 	coAuthorEmail: string;
 	/** Test result thresholds for phase validation */
 	testThresholds: {
-		/** Minimum test count for valid RED phase */
+		/**
+		 * Minimum test count for valid RED phase
+		 * @minimum 0
+		 */
 		minTests: number;
-		/** Maximum allowed failing tests in GREEN phase */
+		/**
+		 * Maximum allowed failing tests in GREEN phase
+		 * @minimum 0
+		 */
 		maxFailuresInGreen: number;
 	};
 	/** Commit message template pattern */
 	commitMessageTemplate: string;
 	/** Conventional commit types allowed */
-	allowedCommitTypes: string[];
-	/** Default commit type for autopilot */
-	defaultCommitType: string;
-	/** Timeout for workflow operations in milliseconds */
+	allowedCommitTypes: readonly CommitType[];
+	/**
+	 * Default commit type for autopilot
+	 * @validation Must be present in allowedCommitTypes array
+	 */
+	defaultCommitType: CommitType;
+	/**
+	 * Timeout for workflow operations in milliseconds
+	 * @minimum 0
+	 */
 	operationTimeout: number;
 	/** Enable activity logging for workflow events */
 	enableActivityLogging: boolean;
@@ -227,7 +287,10 @@ export interface WorkflowSettings {
 	activityLogPath: string;
 	/** Enable automatic backup of workflow state */
 	enableStateBackup: boolean;
-	/** Maximum workflow state backups to retain */
+	/**
+	 * Maximum workflow state backups to retain
+	 * @minimum 0
+	 */
 	maxStateBackups: number;
 	/** Abort workflow if validation fails after max attempts */
 	abortOnMaxAttempts: boolean;
@@ -472,13 +535,13 @@ export const DEFAULT_CONFIG_VALUES = {
 		AUTO_STAGE_CHANGES: true,
 		INCLUDE_CO_AUTHOR: true,
 		CO_AUTHOR_NAME: 'TaskMaster AI',
-		CO_AUTHOR_EMAIL: 'taskmaster@example.com',
+		CO_AUTHOR_EMAIL: 'taskmaster@tryhamster.com',
 		MIN_TESTS: 1,
 		MAX_FAILURES_IN_GREEN: 0,
 		COMMIT_MESSAGE_TEMPLATE:
 			'{type}({scope}): {description} (Task {taskId}.{subtaskIndex})',
-		ALLOWED_COMMIT_TYPES: ['feat', 'fix', 'refactor', 'test', 'docs', 'chore'],
-		DEFAULT_COMMIT_TYPE: 'feat',
+		ALLOWED_COMMIT_TYPES: ['feat', 'fix', 'refactor', 'test', 'docs', 'chore'] as const satisfies readonly CommitType[],
+		DEFAULT_COMMIT_TYPE: 'feat' as CommitType,
 		OPERATION_TIMEOUT: 60000,
 		ENABLE_ACTIVITY_LOGGING: true,
 		ACTIVITY_LOG_PATH: '.taskmaster/logs/workflow-activity.log',

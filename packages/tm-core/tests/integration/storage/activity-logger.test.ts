@@ -13,9 +13,9 @@ describe('Activity Logger', () => {
 	let activityPath: string;
 
 	beforeEach(async () => {
-		// Create temporary test directory
-		testDir = path.join(os.tmpdir(), `activity-test-${Date.now()}`);
-		await fs.ensureDir(testDir);
+		// Create a unique temporary test directory
+		const prefix = path.join(os.tmpdir(), 'activity-test-');
+		testDir = await fs.mkdtemp(prefix);
 		activityPath = path.join(testDir, 'activity.jsonl');
 	});
 
@@ -43,7 +43,7 @@ describe('Activity Logger', () => {
 			});
 
 			const content = await fs.readFile(activityPath, 'utf-8');
-			const lines = content.trim().split('\n');
+			const lines = content.trim().split(/\r?\n/);
 
 			expect(lines.length).toBe(1);
 		});
@@ -183,7 +183,7 @@ describe('Activity Logger', () => {
 			await fs.writeFile(activityPath, '{"type":"event1"}\ninvalid json\n');
 
 			await expect(readActivityLog(activityPath)).rejects.toThrow(
-				'Invalid JSON'
+				/Invalid JSON/i
 			);
 		});
 
@@ -340,7 +340,7 @@ describe('Activity Logger', () => {
 
 	describe('Concurrency handling', () => {
 		it('should handle rapid concurrent writes', async () => {
-			const writes = [];
+			const writes: Promise<void>[] = [];
 			for (let i = 0; i < 50; i++) {
 				writes.push(logActivity(activityPath, { type: 'event', index: i }));
 			}
@@ -352,7 +352,7 @@ describe('Activity Logger', () => {
 		});
 
 		it('should maintain data integrity with concurrent writes', async () => {
-			const writes = [];
+			const writes: Promise<void>[] = [];
 			for (let i = 0; i < 20; i++) {
 				writes.push(
 					logActivity(activityPath, {
@@ -369,11 +369,14 @@ describe('Activity Logger', () => {
 
 			// All events should be present
 			expect(logs.length).toBe(20);
-
-			// Each should be valid JSON
+			// Validate ids set
+			const ids = new Set(logs.map(l => l.id));
+			expect([...ids].sort((a,b)=>a-b)).toEqual([...Array(20).keys()]);
+			// Validate shape
 			for (const log of logs) {
 				expect(log.type).toBe('concurrent-test');
-				expect(log.id).toBeDefined();
+				expect(typeof log.id).toBe('number');
+				expect(log.data).toMatch(/^data-\d+$/);
 			}
 		});
 	});
@@ -385,7 +388,7 @@ describe('Activity Logger', () => {
 			}
 
 			const content = await fs.readFile(activityPath, 'utf-8');
-			const lines = content.trim().split('\n');
+			const lines = content.trim().split(/\r?\n/);
 
 			expect(lines.length).toBe(100);
 

@@ -48,6 +48,10 @@ export class WorkflowActivityLogger {
 	private readonly activityLogPath: string;
 	private readonly orchestrator: WorkflowOrchestrator;
 	private readonly logger = getLogger('WorkflowActivityLogger');
+	private readonly listenerMap: Map<
+		WorkflowEventType,
+		(event: WorkflowEventData) => void
+	> = new Map();
 	private isActive = false;
 
 	constructor(orchestrator: WorkflowOrchestrator, activityLogPath: string) {
@@ -64,9 +68,11 @@ export class WorkflowActivityLogger {
 			return;
 		}
 
-		// Subscribe to all workflow events
+		// Subscribe to all workflow events, storing listener references for cleanup
 		WORKFLOW_EVENT_TYPES.forEach((eventType) => {
-			this.orchestrator.on(eventType, (event) => this.logEvent(event));
+			const listener = (event: WorkflowEventData) => this.logEvent(event);
+			this.listenerMap.set(eventType, listener);
+			this.orchestrator.on(eventType, listener);
 		});
 
 		this.isActive = true;
@@ -76,13 +82,23 @@ export class WorkflowActivityLogger {
 	}
 
 	/**
-	 * Stop logging workflow events
-	 * Note: WorkflowOrchestrator doesn't currently support removing listeners,
-	 * so this just marks the logger as inactive to prevent duplicate logging
+	 * Stop logging workflow events and remove all listeners
 	 */
 	stop(): void {
+		if (!this.isActive) {
+			return;
+		}
+
+		// Remove all registered listeners
+		this.listenerMap.forEach((listener, eventType) => {
+			this.orchestrator.off(eventType, listener);
+		});
+
+		// Clear the listener map
+		this.listenerMap.clear();
+
 		this.isActive = false;
-		this.logger.debug('Activity logger stopped');
+		this.logger.debug('Activity logger stopped and listeners removed');
 	}
 
 	/**
@@ -94,14 +110,20 @@ export class WorkflowActivityLogger {
 		}
 
 		try {
+			// Convert timestamp to ISO string, handling both Date objects and string/number timestamps
+			const ts =
+				(event.timestamp as any) instanceof Date
+					? (event.timestamp as Date).toISOString()
+					: new Date(event.timestamp as any).toISOString();
+
 			// Convert WorkflowEventData to ActivityEvent format
 			const activityEvent: Omit<ActivityEvent, 'timestamp'> = {
 				type: event.type,
 				phase: event.phase,
 				tddPhase: event.tddPhase,
 				subtaskId: event.subtaskId,
-				// Convert Date to ISO string for JSONL compatibility
-				eventTimestamp: event.timestamp.toISOString(),
+				// Event timestamp kept as ISO for readability; storage layer adds its own "timestamp"
+				eventTimestamp: ts,
 				...(event.data || {})
 			};
 

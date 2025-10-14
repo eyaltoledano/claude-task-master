@@ -22,8 +22,13 @@ export interface TemplateCollection {
 	[templateName: string]: string;
 }
 
+export interface TemplateEngineOptions {
+	customTemplates?: TemplateCollection;
+	preservePlaceholders?: boolean;
+}
+
 const DEFAULT_TEMPLATES: TemplateCollection = {
-	commitMessage: `{{type}}{{#scope}}({{scope}}){{/scope}}{{breaking}}: {{description}}
+	commitMessage: `{{type}}{{#scope}}({{scope}}){{/scope}}{{#breaking}}!{{/breaking}}: {{description}}
 
 {{#body}}{{body}}
 
@@ -34,9 +39,22 @@ Tests: {{testsPassing}} passing{{#testsFailing}}, {{testsFailing}} failing{{/tes
 
 export class TemplateEngine {
 	private templates: TemplateCollection;
+	private preservePlaceholders: boolean;
 
-	constructor(customTemplates: TemplateCollection = {}) {
-		this.templates = { ...DEFAULT_TEMPLATES, ...customTemplates };
+	constructor(
+		optionsOrTemplates: TemplateEngineOptions | TemplateCollection = {}
+	) {
+		// Backward compatibility: support old signature (TemplateCollection) and new signature (TemplateEngineOptions)
+		const isOptions = 'customTemplates' in optionsOrTemplates || 'preservePlaceholders' in optionsOrTemplates;
+		const options: TemplateEngineOptions = isOptions
+			? optionsOrTemplates as TemplateEngineOptions
+			: { customTemplates: optionsOrTemplates as TemplateCollection };
+
+		this.templates = {
+			...DEFAULT_TEMPLATES,
+			...(options.customTemplates || {})
+		};
+		this.preservePlaceholders = options.preservePlaceholders ?? false;
 	}
 
 	/**
@@ -131,7 +149,9 @@ export class TemplateEngine {
 			const value = variables[varName];
 			return value !== undefined && value !== null
 				? String(value)
-				: `{{${varName}}}`;
+				: this.preservePlaceholders
+					? `{{${varName}}}`
+					: '';
 		});
 
 		return result;
