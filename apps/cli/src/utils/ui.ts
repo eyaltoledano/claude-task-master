@@ -127,6 +127,20 @@ export function getComplexityWithScore(complexity: number | undefined): string {
 }
 
 /**
+ * Calculate box width as percentage of terminal width
+ * @param percentage - Percentage of terminal width to use (default: 0.9)
+ * @param minWidth - Minimum width to enforce (default: 40)
+ * @returns Calculated box width
+ */
+export function getBoxWidth(
+	percentage: number = 0.9,
+	minWidth: number = 40
+): number {
+	const terminalWidth = process.stdout.columns || 80;
+	return Math.max(Math.floor(terminalWidth * percentage), minWidth);
+}
+
+/**
  * Truncate text to specified length
  */
 export function truncate(text: string, maxLength: number): string {
@@ -210,9 +224,7 @@ export function displaySuccess(message: string): void {
  * Display a warning message
  */
 export function displayWarning(message: string): void {
-	// Calculate width to match dashboard boxes (90% of terminal width)
-	const terminalWidth = process.stdout.columns || 80;
-	const boxWidth = Math.floor(terminalWidth * 0.9);
+	const boxWidth = getBoxWidth();
 
 	console.log(
 		boxen(chalk.yellow.bold('⚠ ') + chalk.white(message), {
@@ -287,7 +299,7 @@ export function createTaskTable(
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
-	const terminalWidth = process.stdout.columns * 0.9 || 100;
+	const terminalWidth = getBoxWidth(0.9, 100);
 	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
 		? [
