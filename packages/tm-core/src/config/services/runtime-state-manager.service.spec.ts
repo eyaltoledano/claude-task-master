@@ -48,7 +48,7 @@ describe('RuntimeStateManager', () => {
 				'/test/project/.taskmaster/state.json',
 				'utf-8'
 			);
-			expect(state.activeTag).toBe('feature-branch');
+			expect(state.currentTag).toBe('feature-branch');
 			expect(state.metadata).toEqual({ test: 'data' });
 		});
 
@@ -60,7 +60,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe('env-tag');
+			expect(state.currentTag).toBe('env-tag');
 		});
 
 		it('should use default state when file does not exist', async () => {
@@ -70,7 +70,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
 		it('should use environment variable when file does not exist', async () => {
@@ -82,7 +82,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe('env-tag');
+			expect(state.currentTag).toBe('env-tag');
 		});
 
 		it('should handle file read errors gracefully', async () => {
@@ -90,7 +90,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
 		it('should handle invalid JSON gracefully', async () => {
@@ -101,7 +101,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 			expect(warnSpy).toHaveBeenCalled();
 
 			warnSpy.mockRestore();
@@ -114,7 +114,7 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
 			// Set a specific state
-			await stateManager.setActiveTag('test-tag');
+			await stateManager.setCurrentTag('test-tag');
 
 			// Verify mkdir was called
 			expect(fs.mkdir).toHaveBeenCalledWith('/test/project/.taskmaster', {
@@ -124,7 +124,7 @@ describe('RuntimeStateManager', () => {
 			// Verify writeFile was called with correct data
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/state.json',
-				expect.stringContaining('"activeTag":"test-tag"'),
+				expect.stringContaining('"currentTag": "test-tag"'),
 				'utf-8'
 			);
 
@@ -158,30 +158,30 @@ describe('RuntimeStateManager', () => {
 		});
 	});
 
-	describe('getActiveTag', () => {
+	describe('getCurrentTag', () => {
 		it('should return current active tag', () => {
-			const tag = stateManager.getActiveTag();
+			const tag = stateManager.getCurrentTag();
 			expect(tag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
-		it('should return updated tag after setActiveTag', async () => {
+		it('should return updated tag after setCurrentTag', async () => {
 			vi.mocked(fs.mkdir).mockResolvedValue(undefined);
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-			await stateManager.setActiveTag('new-tag');
+			await stateManager.setCurrentTag('new-tag');
 
-			expect(stateManager.getActiveTag()).toBe('new-tag');
+			expect(stateManager.getCurrentTag()).toBe('new-tag');
 		});
 	});
 
-	describe('setActiveTag', () => {
+	describe('setCurrentTag', () => {
 		it('should update active tag and save state', async () => {
 			vi.mocked(fs.mkdir).mockResolvedValue(undefined);
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-			await stateManager.setActiveTag('feature-xyz');
+			await stateManager.setCurrentTag('feature-xyz');
 
-			expect(stateManager.getActiveTag()).toBe('feature-xyz');
+			expect(stateManager.getCurrentTag()).toBe('feature-xyz');
 			expect(fs.writeFile).toHaveBeenCalled();
 		});
 	});
@@ -193,7 +193,7 @@ describe('RuntimeStateManager', () => {
 
 			expect(state1).not.toBe(state2); // Different instances
 			expect(state1).toEqual(state2); // Same content
-			expect(state1.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state1.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 	});
 
@@ -244,7 +244,7 @@ describe('RuntimeStateManager', () => {
 			expect(fs.unlink).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/state.json'
 			);
-			expect(stateManager.getActiveTag()).toBe(
+			expect(stateManager.getCurrentTag()).toBe(
 				DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG
 			);
 			expect(stateManager.getState().metadata).toBeUndefined();
@@ -256,7 +256,7 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.unlink).mockRejectedValue(error);
 
 			await expect(stateManager.clearState()).resolves.not.toThrow();
-			expect(stateManager.getActiveTag()).toBe(
+			expect(stateManager.getCurrentTag()).toBe(
 				DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG
 			);
 		});
@@ -267,6 +267,50 @@ describe('RuntimeStateManager', () => {
 			await expect(stateManager.clearState()).rejects.toThrow(
 				'Permission denied'
 			);
+		});
+	});
+
+
+	describe('Session isolation scenarios', () => {
+		it('should support multiple sessions with different tags (simulation)', async () => {
+			// Terminal 1: weather tag
+			const stateManager1 = new RuntimeStateManager(testProjectRoot);
+			process.env.TASKMASTER_TAG = 'weather';
+
+			const error1 = new Error('File not found') as any;
+			error1.code = 'ENOENT';
+			vi.mocked(fs.readFile).mockRejectedValue(error1);
+
+			const state1 = await stateManager1.loadState();
+			expect(state1.currentTag).toBe('weather');
+
+			// Terminal 2: property tag
+			const stateManager2 = new RuntimeStateManager(testProjectRoot);
+			process.env.TASKMASTER_TAG = 'property';
+
+			const state2 = await stateManager2.loadState();
+			expect(state2.currentTag).toBe('property');
+
+			// Verify independence
+			expect(state1.currentTag).toBe('weather');
+			expect(state2.currentTag).toBe('property');
+		});
+
+		it('should maintain stable tag context even if global changes', async () => {
+			const mockState = { currentTag: 'weather' };
+			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockState));
+
+			// Session starts with weather tag
+			process.env.TASKMASTER_TAG = 'weather';
+			const state = await stateManager.loadState();
+			expect(state.currentTag).toBe('weather');
+
+			// Global state changes to market-data (simulated by another session)
+			mockState.currentTag = 'market-data';
+			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockState));
+
+			// Session tag remains stable (doesn't reload, uses cached state)
+			expect(stateManager.getCurrentTag()).toBe('weather');
 		});
 	});
 });
