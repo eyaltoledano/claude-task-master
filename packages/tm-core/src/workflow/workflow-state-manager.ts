@@ -252,4 +252,12 @@ export class WorkflowStateManager {
 	getProjectRoot(): string {
 		return this.projectRoot;
 	}
+
+	/**
+	 * Get the path to the activity log file
+	 * Activity log is stored next to workflow-state.json for correlation
+	 */
+	getActivityLogPath(): string {
+		return path.join(this.sessionDir, 'activity.jsonl');
+	}
 }

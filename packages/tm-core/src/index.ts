@@ -91,9 +91,10 @@ export {
 	type CommitMessageOptions
 } from './git/commit-message-generator.js';
 
-// Re-export workflow orchestrator, state manager, and types
+// Re-export workflow orchestrator, state manager, activity logger, and types
 export { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
 export { WorkflowStateManager } from './workflow/workflow-state-manager.js';
+export { WorkflowActivityLogger } from './workflow/workflow-activity-logger.js';
 export type {
 	WorkflowPhase,
 	TDDPhase,

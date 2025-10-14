@@ -8,18 +8,6 @@ export { FileStorage } from './file-storage/index.js';
 export { ApiStorage, type ApiStorageConfig } from './api-storage.js';
 export { StorageFactory } from './storage-factory.js';
 
-// Export manifest manager
-export {
-	createManifest,
-	readManifest,
-	updateManifest,
-	validateManifest,
-	type Manifest,
-	type ManifestMetadata,
-	type ManifestTimestamps,
-	type WorkflowPhase
-} from './manifest-manager.js';
-
 // Export activity logger
 export {
 	logActivity,
@@ -28,16 +16,6 @@ export {
 	type ActivityEvent,
 	type ActivityFilter
 } from './activity-logger.js';
-
-// Export state manager
-export {
-	createState,
-	readState,
-	updateState,
-	deleteState,
-	validateState,
-	type State
-} from './state-manager.js';
 
 // Export storage interface and types
 export type {

@@ -5,6 +5,7 @@
 
 import { WorkflowOrchestrator } from '../workflow/workflow-orchestrator.js';
 import { WorkflowStateManager } from '../workflow/workflow-state-manager.js';
+import { WorkflowActivityLogger } from '../workflow/workflow-activity-logger.js';
 import type {
 	WorkflowContext,
 	SubtaskInfo,
@@ -77,6 +78,7 @@ export class WorkflowService {
 	private readonly projectRoot: string;
 	private readonly stateManager: WorkflowStateManager;
 	private orchestrator?: WorkflowOrchestrator;
+	private activityLogger?: WorkflowActivityLogger;
 
 	constructor(projectRoot: string) {
 		this.projectRoot = projectRoot;
@@ -158,6 +160,13 @@ export class WorkflowService {
 			await this.stateManager.save(state);
 		});
 
+		// Initialize activity logger to track all workflow events
+		this.activityLogger = new WorkflowActivityLogger(
+			this.orchestrator,
+			this.stateManager.getActivityLogPath()
+		);
+		this.activityLogger.start();
+
 		// Transition through PREFLIGHT and BRANCH_SETUP phases
 		this.orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
 
@@ -203,6 +212,13 @@ export class WorkflowService {
 		this.orchestrator.enableAutoPersist(async (newState: WorkflowState) => {
 			await this.stateManager.save(newState);
 		});
+
+		// Initialize activity logger to continue tracking events
+		this.activityLogger = new WorkflowActivityLogger(
+			this.orchestrator,
+			this.stateManager.getActivityLogPath()
+		);
+		this.activityLogger.start();
 
 		return this.getStatus();
 	}
