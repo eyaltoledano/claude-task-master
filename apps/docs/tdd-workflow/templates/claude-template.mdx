@@ -1,0 +1,388 @@
+---
+title: "CLAUDE.md Template"
+description: "Ready-to-use CLAUDE.md template for AI agent integration with TDD workflow"
+---
+
+This file provides integration instructions for AI agents (like Claude Code) to work with TaskMaster's autonomous TDD workflow system.
+
+## Quick Reference
+
+```bash
+# Start workflow
+tm autopilot start <taskId>
+
+# Get next action
+tm autopilot next --json
+
+# Complete phase with test results
+tm autopilot complete --results '{"total":N,"passed":N,"failed":N,"skipped":N}'
+
+# Commit changes
+tm autopilot commit
+
+# Check status
+tm autopilot status --json
+
+# Abort workflow
+tm autopilot abort
+```
+
+## Integration Pattern
+
+### 1. Start Task
+
+Before implementing a task:
+
+```bash
+tm autopilot start {TASK_ID}
+```
+
+This creates a workflow branch and initializes the TDD state machine.
+
+### 2. Follow TDD Cycle
+
+For each subtask, repeat this cycle:
+
+#### RED Phase - Write Failing Test
+
+1. Check next action:
+```bash
+tm autopilot next --json
+```
+
+2. Write a test that **fails** because the feature doesn't exist yet
+
+3. Run tests and report results:
+```bash
+npm test  # or appropriate test command
+tm autopilot complete --results '{TEST_RESULTS_JSON}'
+```
+
+**Important:** RED phase MUST have at least one failing test.
+
+#### GREEN Phase - Implement Feature
+
+1. Check next action confirms GREEN phase
+
+2. Write minimal implementation to make tests pass
+
+3. Run tests and report results:
+```bash
+npm test
+tm autopilot complete --results '{TEST_RESULTS_JSON}'
+```
+
+**Important:** GREEN phase MUST have all tests passing (failed === 0).
+
+#### COMMIT Phase - Save Progress
+
+1. Review changes:
+```bash
+git status
+git diff
+```
+
+2. Commit (auto-generates message with metadata):
+```bash
+tm autopilot commit
+```
+
+3. Workflow automatically advances to next subtask
+
+### 3. Monitor Progress
+
+```bash
+# Check overall progress
+tm autopilot status --json
+
+# See what's next
+tm autopilot next --json
+```
+
+### 4. Handle Completion
+
+When all subtasks are done:
+- Workflow enters COMPLETE phase
+- Branch remains for review/merge
+- State can be cleaned up
+
+## Example Session
+
+```bash
+# Start task with 3 subtasks
+$ tm autopilot start 7
+✓ Workflow started for task 7
+✓ Created branch: task-7
+✓ Phase: RED
+✓ Next: generate_test for subtask 7.1
+
+# Write failing test for subtask 7.1
+$ cat > tests/feature.test.ts
+# ... write test ...
+
+$ npm test
+# 1 test, 0 passed, 1 failed
+
+$ tm autopilot complete --results '{"total":1,"passed":0,"failed":1,"skipped":0}'
+✓ RED phase complete
+✓ Phase: GREEN
+✓ Next: implement_code
+
+# Write implementation
+$ cat > src/feature.ts
+# ... write code ...
+
+$ npm test
+# 1 test, 1 passed, 0 failed
+
+$ tm autopilot complete --results '{"total":1,"passed":1,"failed":0,"skipped":0}'
+✓ GREEN phase complete
+✓ Phase: COMMIT
+✓ Next: commit_changes
+
+$ tm autopilot commit
+✓ Created commit: abc123
+✓ Message: feat(feature): implement feature (Task 7.1)
+✓ Advanced to subtask 7.2
+✓ Phase: RED
+✓ Next: generate_test
+
+# Repeat for subtasks 7.2 and 7.3...
+```
+
+## Test Result Format
+
+Always provide test results in this JSON format:
+
+```json
+{
+  "total": 10,      // Total number of tests
+  "passed": 8,      // Number of passing tests
+  "failed": 2,      // Number of failing tests
+  "skipped": 0      // Number of skipped tests (optional)
+}
+```
+
+### Parsing Test Output
+
+Common test frameworks output that needs parsing:
+
+**Vitest:**
+```
+Test Files  1 passed (1)
+     Tests  10 passed | 2 failed (12)
+```
+→ `{"total":12,"passed":10,"failed":2,"skipped":0}`
+
+**Jest:**
+```
+Tests:       2 failed, 10 passed, 12 total
+```
+→ `{"total":12,"passed":10,"failed":2,"skipped":0}`
+
+**Mocha:**
+```
+  12 passing
+  2 failing
+```
+→ `{"total":14,"passed":12,"failed":2,"skipped":0}`
+
+## Error Handling
+
+### Common Issues
+
+**1. RED Phase Won't Complete**
+- Error: "RED phase validation failed: no test failures"
+- Solution: Your test isn't actually testing new behavior. Write a test that fails.
+
+**2. GREEN Phase Won't Complete**
+- Error: "GREEN phase validation failed: tests still failing"
+- Solution: Implementation incomplete. Debug and fix failing tests.
+
+**3. Workflow Already Exists**
+- Error: "Workflow already in progress"
+- Solution: Run `tm autopilot resume` or `tm autopilot abort --force` then restart
+
+**4. No Staged Changes**
+- Error: "No staged changes to commit"
+- Solution: Ensure you've actually created/modified files
+
+### Recovery
+
+If workflow gets stuck:
+
+```bash
+# Check current state
+tm autopilot status --json
+
+# If corrupted, abort and restart
+tm autopilot abort --force
+tm autopilot start {TASK_ID}
+```
+
+## Best Practices
+
+### 1. One Feature Per Test Cycle
+
+Each RED-GREEN-COMMIT cycle should implement exactly one small feature or behavior.
+
+**Good:**
+- RED: Test that `getUser()` returns user object
+- GREEN: Implement `getUser()` to return user
+- COMMIT: One commit for getUser feature
+
+**Bad:**
+- RED: Test multiple features at once
+- GREEN: Implement entire module
+- COMMIT: Massive commit with unrelated changes
+
+### 2. Meaningful Test Names
+
+Tests should clearly describe what they're validating:
+
+```typescript
+// Good
+it('should return 404 when user not found', async () => {
+  const result = await getUser('nonexistent');
+  expect(result.status).toBe(404);
+});
+
+// Bad
+it('test 1', () => {
+  // what does this test?
+});
+```
+
+### 3. Minimal Implementation
+
+In GREEN phase, write just enough code to pass the test:
+
+```typescript
+// Good - minimal implementation
+function getUser(id: string) {
+  if (id === 'nonexistent') {
+    return { status: 404 };
+  }
+  return { status: 200, data: users[id] };
+}
+
+// Bad - over-engineering
+function getUser(id: string) {
+  // Adds caching, validation, logging, etc. that isn't tested
+}
+```
+
+### 4. Keep Tests Fast
+
+Fast tests mean fast feedback:
+- Avoid network calls (use mocks)
+- Avoid file system operations (use in-memory)
+- Avoid waiting/sleeping
+
+### 5. Commit Message Quality
+
+Let TaskMaster generate commit messages - they include:
+- Conventional commit format (feat, fix, refactor, etc.)
+- Subtask context and ID
+- Workflow metadata
+- Co-authorship attribution
+
+## MCP Integration (Advanced)
+
+For programmatic integration, use MCP tools instead of CLI:
+
+```typescript
+import { MCPClient } from '@modelcontextprotocol/sdk';
+
+const client = new MCPClient();
+
+// Start workflow
+const start = await client.call('autopilot_start', {
+  taskId: '7',
+  projectRoot: '/path/to/project'
+});
+
+// Get next action
+const next = await client.call('autopilot_next', {
+  projectRoot: '/path/to/project'
+});
+
+// Complete phase
+const complete = await client.call('autopilot_complete_phase', {
+  projectRoot: '/path/to/project',
+  testResults: { total: 1, passed: 0, failed: 1, skipped: 0 }
+});
+
+// Commit
+const commit = await client.call('autopilot_commit', {
+  projectRoot: '/path/to/project'
+});
+```
+
+See [AI Agent Integration Guide](../ai-agent-integration.mdx) for complete MCP documentation.
+
+## Workflow State Files
+
+TaskMaster persists workflow state to `.taskmaster/workflow-state.json`:
+
+```json
+{
+  "phase": "SUBTASK_LOOP",
+  "context": {
+    "taskId": "7",
+    "subtasks": [...],
+    "currentSubtaskIndex": 0,
+    "currentTDDPhase": "RED",
+    "branchName": "task-7",
+    "errors": [],
+    "metadata": {
+      "startedAt": "2025-01-10T..."
+    }
+  }
+}
+```
+
+**Important:** Never manually edit this file. Use CLI/MCP tools only.
+
+## Project Structure
+
+```
+project/
+├── .taskmaster/
+│   ├── workflow-state.json    # Current workflow state
+│   ├── tasks/
+│   │   └── tasks.json         # Task definitions
+│   └── docs/
+│       └── prd.txt            # Product requirements
+├── src/                       # Implementation files
+├── tests/                     # Test files
+└── package.json
+```
+
+## Additional Resources
+
+- [AI Agent Integration Guide](../ai-agent-integration.mdx) - Complete integration documentation
+- [Command Reference](../command-reference.mdx) - All CLI commands
+- [Task Structure](../task-structure.mdx) - Understanding tasks and subtasks
+- [MCP Provider Guide](../mcp-provider-guide.mdx) - MCP integration details
+
+## Troubleshooting
+
+**Q: Workflow won't start**
+A: Check that task has subtasks (`tm show <taskId>`) and git working tree is clean
+
+**Q: Can't complete RED phase**
+A: Verify at least one test is actually failing (not skipped, not passing)
+
+**Q: Can't complete GREEN phase**
+A: Verify ALL tests pass (zero failures)
+
+**Q: Commit fails**
+A: Check that you've made changes and they're staged (or stageable)
+
+**Q: State seems wrong**
+A: Check `.taskmaster/workflow-state.json` or run `tm autopilot status`
+
+---
+
+**For detailed documentation, see:** [AI Agent Integration Guide](../ai-agent-integration.mdx)

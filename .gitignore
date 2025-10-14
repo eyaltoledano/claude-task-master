@@ -97,3 +97,6 @@ apps/extension/vsix-build/
 
 # turbo
 .turbo
+
+# TaskMaster Workflow State (now stored in ~/.taskmaster/sessions/)
+# No longer needed in .gitignore as state is stored globally
