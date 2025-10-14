@@ -8,7 +8,6 @@ import {
 	parseSubtasks,
 	OutputFormatter
 } from '../../../../src/commands/autopilot/shared.js';
-import type { WorkflowState } from '@tm/core';
 
 // Mock fs-extra
 vi.mock('fs-extra', () => ({

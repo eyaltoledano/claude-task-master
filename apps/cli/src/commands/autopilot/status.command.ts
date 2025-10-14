@@ -65,7 +65,7 @@ export class StatusCommand extends Command {
 			const tddPhase = orchestrator.getCurrentTDDPhase();
 			const progress = orchestrator.getProgress();
 			const currentSubtask = orchestrator.getCurrentSubtask();
-			const errors = state.context.errors;
+			const errors = state.context.errors ?? [];
 
 			// Build status output
 			const status = {

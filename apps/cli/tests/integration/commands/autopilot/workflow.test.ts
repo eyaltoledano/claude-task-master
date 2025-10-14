@@ -131,8 +131,8 @@ describe('Autopilot Workflow Integration Tests', () => {
 		program = new Command();
 		AutopilotCommand.register(program);
 
-		// Mock process.exit to prevent test termination
-		vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+		// Use exitOverride to handle Commander exits in tests
+		program.exitOverride();
 	});
 
 	afterEach(() => {
@@ -175,18 +175,19 @@ describe('Autopilot Workflow Integration Tests', () => {
 				.spyOn(console, 'error')
 				.mockImplementation(() => {});
 
-			await program.parseAsync([
-				'node',
-				'test',
-				'autopilot',
-				'start',
-				'invalid',
-				'--project-root',
-				projectRoot,
-				'--json'
-			]);
+			await expect(
+				program.parseAsync([
+					'node',
+					'test',
+					'autopilot',
+					'start',
+					'invalid',
+					'--project-root',
+					projectRoot,
+					'--json'
+				])
+			).rejects.toMatchObject({ exitCode: 1 });
 
-			expect(process.exit).toHaveBeenCalledWith(1);
 			consoleErrorSpy.mockRestore();
 		});
 
@@ -212,18 +213,19 @@ describe('Autopilot Workflow Integration Tests', () => {
 				.spyOn(console, 'error')
 				.mockImplementation(() => {});
 
-			await program.parseAsync([
-				'node',
-				'test',
-				'autopilot',
-				'start',
-				'1',
-				'--project-root',
-				projectRoot,
-				'--json'
-			]);
+			await expect(
+				program.parseAsync([
+					'node',
+					'test',
+					'autopilot',
+					'start',
+					'1',
+					'--project-root',
+					projectRoot,
+					'--json'
+				])
+			).rejects.toMatchObject({ exitCode: 1 });
 
-			expect(process.exit).toHaveBeenCalledWith(1);
 			consoleErrorSpy.mockRestore();
 		});
 	});
@@ -287,17 +289,18 @@ describe('Autopilot Workflow Integration Tests', () => {
 				.spyOn(console, 'error')
 				.mockImplementation(() => {});
 
-			await program.parseAsync([
-				'node',
-				'test',
-				'autopilot',
-				'resume',
-				'--project-root',
-				projectRoot,
-				'--json'
-			]);
+			await expect(
+				program.parseAsync([
+					'node',
+					'test',
+					'autopilot',
+					'resume',
+					'--project-root',
+					projectRoot,
+					'--json'
+				])
+			).rejects.toMatchObject({ exitCode: 1 });
 
-			expect(process.exit).toHaveBeenCalledWith(1);
 			consoleErrorSpy.mockRestore();
 		});
 	});
@@ -439,19 +442,20 @@ describe('Autopilot Workflow Integration Tests', () => {
 				.spyOn(console, 'error')
 				.mockImplementation(() => {});
 
-			await program.parseAsync([
-				'node',
-				'test',
-				'autopilot',
-				'complete',
-				'--project-root',
-				projectRoot,
-				'--results',
-				'{"total":10,"passed":10,"failed":0,"skipped":0}',
-				'--json'
-			]);
+			await expect(
+				program.parseAsync([
+					'node',
+					'test',
+					'autopilot',
+					'complete',
+					'--project-root',
+					projectRoot,
+					'--results',
+					'{"total":10,"passed":10,"failed":0,"skipped":0}',
+					'--json'
+				])
+			).rejects.toMatchObject({ exitCode: 1 });
 
-			expect(process.exit).toHaveBeenCalledWith(1);
 			consoleErrorSpy.mockRestore();
 		});
 

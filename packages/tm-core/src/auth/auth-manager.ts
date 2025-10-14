@@ -25,6 +25,7 @@ import { getLogger } from '../logger/index.js';
  */
 export class AuthManager {
 	private static instance: AuthManager | null = null;
+	private static readonly staticLogger = getLogger('AuthManager');
 	private credentialStore: CredentialStore;
 	private oauthService: OAuthService;
 	private supabaseClient: SupabaseAuthClient;
@@ -60,8 +61,7 @@ export class AuthManager {
 			AuthManager.instance = new AuthManager(config);
 		} else if (config) {
 			// Warn if config is provided after initialization
-			const logger = getLogger('AuthManager');
-			logger.warn(
+			AuthManager.staticLogger.warn(
 				'getInstance called with config after initialization; config is ignored.'
 			);
 		}
