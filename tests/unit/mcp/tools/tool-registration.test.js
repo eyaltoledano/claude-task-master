@@ -20,9 +20,6 @@ import {
 	validateToolStructure
 } from '../../../helpers/tool-counts.js';
 
-// Reset modules before static imports to ensure mocks are registered first
-jest.resetModules();
-
 import { registerTaskMasterTools } from '../../../../mcp-server/src/tools/index.js';
 import {
 	toolRegistry,
