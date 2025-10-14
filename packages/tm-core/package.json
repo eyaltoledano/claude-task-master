@@ -40,9 +40,19 @@
 		"vitest": "^3.2.4",
 		"strip-literal": "3.1.0"
 	},
-	"files": ["src", "README.md", "CHANGELOG.md"],
-	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
+	"files": [
+		"src",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"keywords": [
+		"task-management",
+		"typescript",
+		"ai",
+		"prd",
+		"parser"
+	],
 	"author": "Task Master AI",
 	"license": "MIT",
-	"version": ""
+	"version": null
 }

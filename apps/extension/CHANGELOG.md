@@ -1,5 +1,7 @@
 # Change Log
 
+## 0.25.6
+
 ## 0.25.6-rc.0
 
 ### Patch Changes
