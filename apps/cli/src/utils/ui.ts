@@ -127,6 +127,20 @@ export function getComplexityWithScore(complexity: number | undefined): string {
 }
 
 /**
+ * Calculate box width as percentage of terminal width
+ * @param percentage - Percentage of terminal width to use (default: 0.9)
+ * @param minWidth - Minimum width to enforce (default: 40)
+ * @returns Calculated box width
+ */
+export function getBoxWidth(
+	percentage: number = 0.9,
+	minWidth: number = 40
+): number {
+	const terminalWidth = process.stdout.columns || 80;
+	return Math.max(Math.floor(terminalWidth * percentage), minWidth);
+}
+
+/**
  * Truncate text to specified length
  */
 export function truncate(text: string, maxLength: number): string {
@@ -176,6 +190,8 @@ export function displayBanner(title: string = 'Task Master'): void {
  * Display an error message (matches scripts/modules/ui.js style)
  */
 export function displayError(message: string, details?: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.error(
 		boxen(
 			chalk.red.bold('X Error: ') +
@@ -184,7 +200,8 @@ export function displayError(message: string, details?: string): void {
 			{
 				padding: 1,
 				borderStyle: 'round',
-				borderColor: 'red'
+				borderColor: 'red',
+				width: boxWidth
 			}
 		)
 	);
@@ -194,13 +211,16 @@ export function displayError(message: string, details?: string): void {
  * Display a success message
  */
 export function displaySuccess(message: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.log(
 		boxen(
 			chalk.green.bold(String.fromCharCode(8730) + ' ') + chalk.white(message),
 			{
 				padding: 1,
 				borderStyle: 'round',
-				borderColor: 'green'
+				borderColor: 'green',
+				width: boxWidth
 			}
 		)
 	);
@@ -210,11 +230,14 @@ export function displaySuccess(message: string): void {
  * Display a warning message
  */
 export function displayWarning(message: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.log(
 		boxen(chalk.yellow.bold('⚠ ') + chalk.white(message), {
 			padding: 1,
 			borderStyle: 'round',
-			borderColor: 'yellow'
+			borderColor: 'yellow',
+			width: boxWidth
 		})
 	);
 }
@@ -223,11 +246,14 @@ export function displayWarning(message: string): void {
  * Display info message
  */
 export function displayInfo(message: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.log(
 		boxen(chalk.blue.bold('i ') + chalk.white(message), {
 			padding: 1,
 			borderStyle: 'round',
-			borderColor: 'blue'
+			borderColor: 'blue',
+			width: boxWidth
 		})
 	);
 }
@@ -282,23 +308,23 @@ export function createTaskTable(
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
-	const terminalWidth = process.stdout.columns * 0.9 || 100;
+	const tableWidth = getBoxWidth(0.9, 100);
 	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
 		? [
-				Math.floor(terminalWidth * 0.1),
-				Math.floor(terminalWidth * 0.4),
-				Math.floor(terminalWidth * 0.15),
-				Math.floor(terminalWidth * 0.1),
-				Math.floor(terminalWidth * 0.2),
-				Math.floor(terminalWidth * 0.1)
+				Math.floor(tableWidth * 0.1),
+				Math.floor(tableWidth * 0.4),
+				Math.floor(tableWidth * 0.15),
+				Math.floor(tableWidth * 0.1),
+				Math.floor(tableWidth * 0.2),
+				Math.floor(tableWidth * 0.1)
 			] // ID, Title, Status, Priority, Dependencies, Complexity
 		: [
-				Math.floor(terminalWidth * 0.08),
-				Math.floor(terminalWidth * 0.4),
-				Math.floor(terminalWidth * 0.18),
-				Math.floor(terminalWidth * 0.12),
-				Math.floor(terminalWidth * 0.2)
+				Math.floor(tableWidth * 0.08),
+				Math.floor(tableWidth * 0.4),
+				Math.floor(tableWidth * 0.18),
+				Math.floor(tableWidth * 0.12),
+				Math.floor(tableWidth * 0.2)
 			]; // ID, Title, Status, Priority, Dependencies
 
 	const headers = [

@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import type { Task } from '@tm/core/types';
-import { getComplexityWithColor } from '../../utils/ui.js';
+import { getComplexityWithColor, getBoxWidth } from '../../utils/ui.js';
 
 /**
  * Next task display options
@@ -113,7 +113,7 @@ export function displayRecommendedNextTask(
 			borderColor: '#FFA500', // Orange color
 			title: chalk.hex('#FFA500')('⚡ RECOMMENDED NEXT TASK ⚡'),
 			titleAlignment: 'center',
-			width: process.stdout.columns * 0.97,
+			width: getBoxWidth(0.97),
 			fullscreen: false
 		})
 	);
