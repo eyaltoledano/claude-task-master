@@ -210,11 +210,16 @@ export function displaySuccess(message: string): void {
  * Display a warning message
  */
 export function displayWarning(message: string): void {
+	// Calculate width to match dashboard boxes (90% of terminal width)
+	const terminalWidth = process.stdout.columns || 80;
+	const boxWidth = Math.floor(terminalWidth * 0.9);
+
 	console.log(
 		boxen(chalk.yellow.bold('⚠ ') + chalk.white(message), {
 			padding: 1,
 			borderStyle: 'round',
-			borderColor: 'yellow'
+			borderColor: 'yellow',
+			width: boxWidth
 		})
 	);
 }
