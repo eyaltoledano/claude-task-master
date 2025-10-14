@@ -323,9 +323,10 @@ describe('expandAllTasks', () => {
 			// Arrange
 			const mockComplexityReportPath =
 				'/test/project/.taskmaster/reports/task-complexity-report.json';
-			mockExpandTask.mockResolvedValue({
+			mockExpandTask.mockImplementation(async (path, taskId) => ({
+				task: { id: taskId },
 				telemetryData: { commandName: 'expand-task', totalCost: 0.05 }
-			});
+			}));
 
 			// Act
 			const result = await expandAllTasks(

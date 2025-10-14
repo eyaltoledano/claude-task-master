@@ -30,10 +30,8 @@ export const SubtaskSchema = z.object({
 	description: z.string().min(10),
 	dependencies: z.array(z.number().int()).default([]),
 	details: z.string().min(20),
-	// Subtasks should have the same status options as main tasks for consistency.
-	// Previously failed validation when MCP clients set status to 'in-progress'.
-	// Now aligned with TaskStatusSchema.
-	//was: status: z.enum(['pending', 'done', 'completed']).default('pending'),
-	status: TaskStatusSchema.default('pending'),
+	status: z
+		.enum(['pending', 'in-progress', 'done', 'completed'])
+		.default('pending'),
 	testStrategy: z.string().nullable().default(null)
 });

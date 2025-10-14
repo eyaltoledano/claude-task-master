@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js';
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';

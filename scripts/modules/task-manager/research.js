@@ -81,6 +81,12 @@ async function performResearch(
 	if (!projectRoot) {
 		throw new Error('Could not determine project root directory');
 	}
+	const tasksPath = path.join(
+		projectRoot,
+		'.taskmaster',
+		'tasks',
+		'tasks.json'
+	);
 
 	// Create consistent logger
 	const logFn = isMCP
@@ -908,13 +914,6 @@ async function handleSaveToTask(
 	context, // Original context from performResearch
 	logFn // Original logFn from performResearch
 ) {
-	// Import necessary file utilities directly inside the handler
-	const {
-		readJSON: cliReadJSON,
-		writeJSON: cliWriteJSON,
-		getCurrentTag: cliGetCurrentTag
-	} = await import('../utils.js');
-
 	try {
 		// Get task ID from user
 		const { taskId } = await inquirer.prompt([
@@ -952,7 +951,7 @@ async function handleSaveToTask(
 			return false;
 		}
 
-		const data = readJSON(tasksPath, projectRoot, context.tag);
+		const data = await readJSON(tasksPath, projectRoot, context.tag);
 		if (!data || !data.tasks) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return false;

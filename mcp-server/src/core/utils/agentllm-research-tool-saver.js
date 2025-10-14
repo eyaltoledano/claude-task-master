@@ -201,7 +201,9 @@ export async function agentllmResearchSave(
 				const parentTask = parentTaskResult?.task;
 
 				if (parentTask && Array.isArray(parentTask.subtasks)) {
-					const subtask = parentTask.subtasks.find((st) => st.id === subId);
+					const subtask = parentTask.subtasks.find(
+						(st) => Number(st.id) === Number(subId)
+					);
 					if (subtask) {
 						subtask.details = (subtask.details || '') + researchContent;
 						itemModified = true;

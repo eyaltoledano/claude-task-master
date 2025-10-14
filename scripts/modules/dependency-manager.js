@@ -1171,9 +1171,11 @@ function validateAndFixDependencies(
 ) {
 	const logger = {
 		debug: (...args) =>
-			options.mcpLog ? options.mcpLog.debug(...args) : undefined,
+			options.mcpLog && typeof options.mcpLog.debug === 'function'
+				? options.mcpLog.debug(...args)
+				: undefined,
 		error: (...args) => {
-			if (options.mcpLog) {
+			if (options.mcpLog && typeof options.mcpLog.error === 'function') {
 				options.mcpLog.error(...args);
 			} else {
 				const message = args
@@ -1192,9 +1194,13 @@ function validateAndFixDependencies(
 			}
 		},
 		info: (...args) =>
-			options.mcpLog ? options.mcpLog.info(...args) : undefined,
+			options.mcpLog && typeof options.mcpLog.info === 'function'
+				? options.mcpLog.info(...args)
+				: undefined,
 		success: (...args) =>
-			options.mcpLog ? options.mcpLog.success(...args) : undefined
+			options.mcpLog && typeof options.mcpLog.success === 'function'
+				? options.mcpLog.success(...args)
+				: undefined
 	};
 
 	// Validate the overall tasksData (root object) and the specific tag

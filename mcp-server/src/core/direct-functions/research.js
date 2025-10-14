@@ -114,6 +114,14 @@ export async function researchDirect(args, log, context = {}) {
 			includeProjectTree,
 			detailLevel,
 			projectRoot,
+			// Normalize save target so callers can pass values like "task 2" or "Task 2.1"
+			saveTo: saveTo
+				? String(saveTo)
+					.replace(/[^0-9\.]/g, '')
+					.replace(/^\./, '')
+					.replace(/\.+/g, '.')
+					.trim()
+				: undefined,
 			tag,
 			saveToFile
 		};

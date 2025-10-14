@@ -79,7 +79,7 @@ class TaskMasterMCPServer {
 		};
 
 		// Pass the custom registrar to the tool registration function
-		registerTaskMasterTools(customToolRegistrar, this.asyncManager);
+		registerTaskMasterTools(customToolRegistrar);
 
 		this.initialized = true;
 

@@ -1,7 +1,13 @@
 import path from 'path';
+import { z } from 'zod';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js';
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+
+const taskSchema = z.object({
+	id: z.number(),
+	title: z.string()
+});
 
 /**
  * Saves scoped task data from an agent to tasks.json.
@@ -43,12 +49,22 @@ async function agentllmScopeSave(
 			return { success: false, error: errorMsg };
 		}
 
+		for (const task of agentOutput) {
+			const validationResult = taskSchema.safeParse(task);
+			if (!validationResult.success) {
+				const errorMsg = `Invalid task object in agentOutput: ${JSON.stringify(task)}. Issues: ${validationResult.error.message}`;
+				logWrapper.error(`agentllmScopeSave: ${errorMsg}`);
+				return { success: false, error: errorMsg };
+			}
+		}
+
 		const updatedTasks = [];
 		let taskUpdated = false;
 
 		for (const updatedTask of agentOutput) {
+			const targetId = parseInt(String(updatedTask.id), 10);
 			const taskIndex = allTasksData.tasks.findIndex(
-				(t) => t.id === updatedTask.id
+				(t) => parseInt(String(t.id), 10) === targetId
 			);
 			if (taskIndex !== -1) {
 				if (

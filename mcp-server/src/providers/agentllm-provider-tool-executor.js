@@ -196,9 +196,61 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'research'.`
 		);
+		// Normalize the finalLLMOutput into a plain string for the research saver.
+		// Agents may return objects like { research: 'text' } or { data: { research: 'text' } }.
+		let researchText = finalLLMOutput;
+		try {
+			if (researchText && typeof researchText === 'object') {
+				if (typeof researchText.research === 'string') {
+					researchText = researchText.research;
+				} else if (
+					researchText.mainResult &&
+					typeof researchText.mainResult.research === 'string'
+				) {
+					researchText = researchText.mainResult.research;
+				} else if (typeof researchText.text === 'string') {
+					researchText = researchText.text;
+				} else if (
+					researchText.data &&
+					typeof researchText.data === 'object' &&
+					typeof researchText.data.research === 'string'
+				) {
+					researchText = researchText.data.research;
+				} else if (typeof researchText === 'object') {
+					// Fallback: pretty-print the object so something useful is saved.
+					researchText = JSON.stringify(finalLLMOutput, null, 2);
+				}
+			}
+		} catch (e) {
+			researchText = String(finalLLMOutput);
+		}
+		// Ensure backward compatibility: some callers send 'saveToTask' instead
+		// of 'saveTo' (tool parameter rename). Normalize into a single object
+		// so agentllmResearchSave sees `saveTo` consistently.
+		const rawSaveTo = originalToolArgs && (originalToolArgs.saveTo || originalToolArgs.saveToTask);
+		const sanitizeSaveTo = (val) => {
+			if (typeof val === 'number') return String(val);
+			if (!val) return undefined;
+			try {
+				// keep digits and dots (for subtask like 2.1), remove other text
+				let s = String(val).replace(/[^0-9\.]/g, '');
+				s = s.replace(/^\./, '');
+				s = s.replace(/\.+/g, '.');
+				s = s.trim();
+				return s.length > 0 ? s : undefined;
+			} catch (e) {
+				return undefined;
+			}
+		};
+
+		const normalizedOriginalArgs = {
+			...(originalToolArgs || {}),
+			saveTo: sanitizeSaveTo(rawSaveTo)
+		};
+
 		postProcessingResult = await agentllmResearchSave(
-			finalLLMOutput,
-			originalToolArgs,
+			researchText,
+			normalizedOriginalArgs,
 			projectRoot,
 			log,
 			session,
@@ -319,13 +371,29 @@ export function AgentLLMProviderToolExecutor(
 					) {
 						detectedPendingInteractionObj = parsedText.details;
 					} else {
+						const textPreview = (() => {
+							try {
+								const s = String(textToParse);
+								return s.length > 2000 ? `${s.slice(0, 2000)}…` : s;
+							} catch {
+								return '[unserializable text]';
+							}
+						})();
 						log.warn(
-							`TaskMasterMCPServer: Found 'agent-llm://pending-interaction' resource, but its 'text' field content is not the expected structure for tool '${toolName}'. Text content: ${textToParse}`
+							`TaskMasterMCPServer: Found 'agent-llm://pending-interaction' resource, but its 'text' field content is not the expected structure for tool '${toolName}'. Text preview: ${textPreview}`
 						);
 					}
 				} catch (e) {
+					const errPreview = (() => {
+						try {
+							const s = String(textToParse);
+							return s.length > 2000 ? `${s.slice(0, 2000)}…` : s;
+						} catch {
+							return '[unserializable text]';
+						}
+					})();
 					log.error(
-						`TaskMasterMCPServer: Error parsing JSON from resource.text for 'agent-llm://pending-interaction' for tool '${toolName}'. Error: ${e.message}. Text content: ${textToParse}`
+						`TaskMasterMCPServer: Error parsing JSON for 'agent-llm://pending-interaction' (${toolName}). Error: ${e.message}. Text preview: ${errPreview}`
 					);
 				}
 			}
@@ -411,8 +479,16 @@ export function AgentLLMProviderToolExecutor(
 					.then((agentDirectiveResult) => {
 						// This is the response from agent_llm (Taskmaster-to-Agent call)
 						// It indicates if the directive was successfully formatted for the agent.
+						const directivePreview = (() => {
+							try {
+								const raw = JSON.stringify(agentDirectiveResult);
+								return raw.length > 2000 ? `${raw.slice(0, 2000)}…` : raw;
+							} catch {
+								return '[unserializable result]';
+							}
+						})();
 						log.debug(
-							`TaskMasterMCPServer: Directive to agent for ID ${interactionId} processed by agent_llm tool. Result: ${JSON.stringify(agentDirectiveResult)}`
+							`TaskMasterMCPServer: Directive to agent for ID ${interactionId} processed by agent_llm tool. Result: ${directivePreview}`
 						);
 						// If agentDirectiveResult itself indicates an error (e.g. agent_llm had bad inputs),
 						// we should reject the stored promise.

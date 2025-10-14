@@ -442,7 +442,9 @@ async function analyzeTaskComplexity(options, context = {}) {
 							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
 							originalCommand: context.commandName || 'analyze-complexity',
 							role: useResearch ? 'research' : 'main',
-							serviceType: 'generateText', // Agent expected to return JSON string
+							serviceType: 'generateObject', // Agent expected to return JSON onject
+							objectName: 'complexityAnalysis',
+							schemaKey: 'analyze-complexity',
 							requestParameters: {
 								...aiServiceResponse.mainResult.details // Includes prompt, systemPrompt, modelId, etc.
 								// Add any other parameters the agent might need or the saver utility might need later

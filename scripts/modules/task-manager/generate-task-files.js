@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log as cliLog, readJSON } from '../utils.js';
+import { log as cliLog, readJSON, isSilentMode } from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -26,8 +26,8 @@ function dispatchLog(level, options, ...args) {
 			cliLog('info', `[MCP FALLBACK - ${level.toUpperCase()}] ${message}`);
 		}
 	} else {
-		// Only log to CLI if explicitly not in JSON mode
-		if (options && !options.silentMode) {
+		// Log to CLI unless global silent mode is enabled, or an explicit per-call silent flag is set
+		if (!isSilentMode() && !(options && options.silentMode)) {
 			cliLog(level, ...args);
 		}
 		// Otherwise stay silent to avoid breaking JSON output

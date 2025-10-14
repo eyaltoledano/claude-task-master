@@ -582,6 +582,9 @@ async function _unifiedServiceRunner(serviceType, params) {
 			}
 
 			// Enhanced skip logic for agentllm in non-MCP (CLI) contexts
+			// Note: 'text' outputType is checked here as a workaround for scenarios where
+			// agentllm is used with fallback providers and certain commands (e.g., 'expand task')
+			// don't properly recognize outputType === 'cli' alone
 			if (
 				providerName?.toLowerCase() === 'agentllm' &&
 				(outputType === 'cli' || outputType === 'text')
@@ -707,6 +710,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// === BEGIN MODIFICATION for AgentLLM Delegation ===
 			if (
 				providerResponse &&
+				typeof providerResponse === 'object' &&
 				providerResponse.type === 'agent_llm_delegation'
 			) {
 				if (getDebugFlag()) {

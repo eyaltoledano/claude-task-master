@@ -31,6 +31,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		if (!params.messages || !Array.isArray(params.messages)) {
 			throw new Error('Messages array is required for delegation');
 		}
+		this.validateMessages(params.messages);
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();
@@ -52,6 +53,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		if (!params.messages || !Array.isArray(params.messages)) {
 			throw new Error('Messages array is required for delegation');
 		}
+		this.validateMessages(params.messages);
 		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
 			params;
 		const interactionId = uuidv4();
@@ -73,6 +75,7 @@ class AgentLLMProvider extends BaseAIProvider {
 		if (!params.messages || !Array.isArray(params.messages)) {
 			throw new Error('Messages array is required for delegation');
 		}
+		this.validateMessages(params.messages);
 		if (!params.schema) {
 			throw new Error('Schema is required for object generation delegation');
 		}

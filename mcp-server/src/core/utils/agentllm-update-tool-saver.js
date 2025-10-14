@@ -155,9 +155,11 @@ async function agentllmUpdateSave(
 		if (failedValidations.length > 0) {
 			failedValidations.forEach((result) => {
 				if (!result.success) {
-					const errorDetails = result.error.errors;
+					const details =
+						(result.error && 'issues' in result.error && result.error.issues) ||
+						result.error;
 					logWrapper.error(
-						`agentllmUpdateSave: Invalid agent task item. Error: ${JSON.stringify(errorDetails)}`
+						`agentllmUpdateSave: Invalid agent task item. Error: ${JSON.stringify(details)}`
 					);
 				}
 			});
@@ -189,6 +191,11 @@ async function agentllmUpdateSave(
 		const agentTasksMap = new Map(
 			parsedAgentTasksArray.map((task) => {
 				const idNum = parseInt(String(task.id), 10);
+				if (Number.isNaN(idNum)) {
+					throw new Error(
+						`Invalid task ID "${task.id}": cannot convert to number`
+					);
+				}
 				return [idNum, { ...task, id: idNum }];
 			})
 		);
@@ -232,7 +239,7 @@ async function agentllmUpdateSave(
 						);
 						completedOriginalSubtasks.forEach((compSub) => {
 							const updatedVersionInAgentTask = finalSubtasks.find(
-								(st) => st.id === compSub.id
+								(st) => Number(st.id) === Number(compSub.id)
 							);
 							if (
 								!updatedVersionInAgentTask ||

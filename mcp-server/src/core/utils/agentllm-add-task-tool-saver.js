@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import { readJSON, writeJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
 import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
@@ -58,9 +57,9 @@ async function agentllmAddTaskSave(
 			id: newTaskId,
 			title:
 				agentTaskData.title ||
-				originalToolArgs.prompt ||
+				originalToolArgs?.prompt ||
 				'Untitled Task from Agent', // Ensure title exists
-			description: agentTaskData.description || originalToolArgs.prompt || '',
+			description: agentTaskData.description || originalToolArgs?.prompt || '',
 			details: agentTaskData.details || '',
 			testStrategy: agentTaskData.testStrategy || '',
 			status: 'pending',

@@ -46,6 +46,10 @@ describe('AgentLLMProvider', () => {
 			};
 			expect(result.details).toEqual(expectedDetails);
 		});
+
+		test('should throw error when messages is missing', async () => {
+			await expect(provider.generateText({})).rejects.toThrow();
+		});
 	});
 
 	describe('streamText', () => {

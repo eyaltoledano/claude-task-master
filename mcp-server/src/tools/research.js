@@ -50,7 +50,7 @@ export function registerResearchTool(server) {
 				.enum(['low', 'medium', 'high'])
 				.optional()
 				.describe('Detail level for the research response (default: medium)'),
-			saveTo: z
+			saveToTask: z
 				.string()
 				.optional()
 				.describe(
@@ -86,7 +86,9 @@ export function registerResearchTool(server) {
 						customContext: args.customContext,
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
-						saveTo: args.saveTo,
+						// The public tool parameter is `saveToTask` but the internal direct
+						// function expects `saveTo`. Support both for backward compatibility.
+						saveTo: args.saveToTask || args.saveTo,
 						saveToFile: args.saveToFile || false,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
