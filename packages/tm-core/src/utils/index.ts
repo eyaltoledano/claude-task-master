@@ -32,6 +32,21 @@ export {
 	type GitHubRepoInfo
 } from './git-utils.js';
 
+// Export path normalization utilities
+export {
+	normalizeProjectPath,
+	denormalizeProjectPath,
+	isValidNormalizedPath
+} from './path-normalizer.js';
+
+// Export run ID generation utilities
+export {
+	generateRunId,
+	isValidRunId,
+	parseRunId,
+	compareRunIds
+} from './run-id-generator.js';
+
 // Additional utility exports
 
 /**

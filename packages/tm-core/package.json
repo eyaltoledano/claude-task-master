@@ -31,11 +31,15 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.57.4",
+		"fs-extra": "^11.3.2",
+		"simple-git": "^3.28.0",
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
+		"@types/fs-extra": "^11.0.4",
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^3.2.4",
+		"strip-literal": "^3.1.0",
 		"typescript": "^5.9.2",
 		"vitest": "^3.2.4",
 		"strip-literal": "3.1.0"

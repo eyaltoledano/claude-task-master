@@ -27,6 +27,7 @@ export type {
 	ProviderConfig,
 	TaskSettings,
 	TagSettings,
+	WorkflowSettings,
 	StorageSettings,
 	RetrySettings,
 	LoggingSettings,
