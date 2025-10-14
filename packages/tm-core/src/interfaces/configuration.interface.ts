@@ -12,7 +12,13 @@ import type {
 /**
  * Conventional Commit types allowed in workflow
  */
-export type CommitType = 'feat' | 'fix' | 'refactor' | 'test' | 'docs' | 'chore';
+export type CommitType =
+	| 'feat'
+	| 'fix'
+	| 'refactor'
+	| 'test'
+	| 'docs'
+	| 'chore';
 
 /**
  * Model configuration for different AI roles
@@ -540,7 +546,14 @@ export const DEFAULT_CONFIG_VALUES = {
 		MAX_FAILURES_IN_GREEN: 0,
 		COMMIT_MESSAGE_TEMPLATE:
 			'{type}({scope}): {description} (Task {taskId}.{subtaskIndex})',
-		ALLOWED_COMMIT_TYPES: ['feat', 'fix', 'refactor', 'test', 'docs', 'chore'] as const satisfies readonly CommitType[],
+		ALLOWED_COMMIT_TYPES: [
+			'feat',
+			'fix',
+			'refactor',
+			'test',
+			'docs',
+			'chore'
+		] as const satisfies readonly CommitType[],
 		DEFAULT_COMMIT_TYPE: 'feat' as CommitType,
 		OPERATION_TIMEOUT: 60000,
 		ENABLE_ACTIVITY_LOGGING: true,

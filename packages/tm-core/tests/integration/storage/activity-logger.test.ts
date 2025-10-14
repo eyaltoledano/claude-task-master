@@ -370,8 +370,8 @@ describe('Activity Logger', () => {
 			// All events should be present
 			expect(logs.length).toBe(20);
 			// Validate ids set
-			const ids = new Set(logs.map(l => l.id));
-			expect([...ids].sort((a,b)=>a-b)).toEqual([...Array(20).keys()]);
+			const ids = new Set(logs.map((l) => l.id));
+			expect([...ids].sort((a, b) => a - b)).toEqual([...Array(20).keys()]);
 			// Validate shape
 			for (const log of logs) {
 				expect(log.type).toBe('concurrent-test');

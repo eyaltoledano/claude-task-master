@@ -45,9 +45,11 @@ export class TemplateEngine {
 		optionsOrTemplates: TemplateEngineOptions | TemplateCollection = {}
 	) {
 		// Backward compatibility: support old signature (TemplateCollection) and new signature (TemplateEngineOptions)
-		const isOptions = 'customTemplates' in optionsOrTemplates || 'preservePlaceholders' in optionsOrTemplates;
+		const isOptions =
+			'customTemplates' in optionsOrTemplates ||
+			'preservePlaceholders' in optionsOrTemplates;
 		const options: TemplateEngineOptions = isOptions
-			? optionsOrTemplates as TemplateEngineOptions
+			? (optionsOrTemplates as TemplateEngineOptions)
 			: { customTemplates: optionsOrTemplates as TemplateCollection };
 
 		this.templates = {
