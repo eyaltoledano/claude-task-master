@@ -308,23 +308,23 @@ export function createTaskTable(
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
-	const terminalWidth = getBoxWidth(0.9, 100);
+	const tableWidth = getBoxWidth(0.9, 100);
 	// Adjust column widths to better match the original layout
 	const baseColWidths = showComplexity
 		? [
-				Math.floor(terminalWidth * 0.1),
-				Math.floor(terminalWidth * 0.4),
-				Math.floor(terminalWidth * 0.15),
-				Math.floor(terminalWidth * 0.1),
-				Math.floor(terminalWidth * 0.2),
-				Math.floor(terminalWidth * 0.1)
+				Math.floor(tableWidth * 0.1),
+				Math.floor(tableWidth * 0.4),
+				Math.floor(tableWidth * 0.15),
+				Math.floor(tableWidth * 0.1),
+				Math.floor(tableWidth * 0.2),
+				Math.floor(tableWidth * 0.1)
 			] // ID, Title, Status, Priority, Dependencies, Complexity
 		: [
-				Math.floor(terminalWidth * 0.08),
-				Math.floor(terminalWidth * 0.4),
-				Math.floor(terminalWidth * 0.18),
-				Math.floor(terminalWidth * 0.12),
-				Math.floor(terminalWidth * 0.2)
+				Math.floor(tableWidth * 0.08),
+				Math.floor(tableWidth * 0.4),
+				Math.floor(tableWidth * 0.18),
+				Math.floor(tableWidth * 0.12),
+				Math.floor(tableWidth * 0.2)
 			]; // ID, Title, Status, Priority, Dependencies
 
 	const headers = [
