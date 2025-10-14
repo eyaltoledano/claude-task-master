@@ -190,6 +190,8 @@ export function displayBanner(title: string = 'Task Master'): void {
  * Display an error message (matches scripts/modules/ui.js style)
  */
 export function displayError(message: string, details?: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.error(
 		boxen(
 			chalk.red.bold('X Error: ') +
@@ -198,7 +200,8 @@ export function displayError(message: string, details?: string): void {
 			{
 				padding: 1,
 				borderStyle: 'round',
-				borderColor: 'red'
+				borderColor: 'red',
+				width: boxWidth
 			}
 		)
 	);
@@ -208,13 +211,16 @@ export function displayError(message: string, details?: string): void {
  * Display a success message
  */
 export function displaySuccess(message: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.log(
 		boxen(
 			chalk.green.bold(String.fromCharCode(8730) + ' ') + chalk.white(message),
 			{
 				padding: 1,
 				borderStyle: 'round',
-				borderColor: 'green'
+				borderColor: 'green',
+				width: boxWidth
 			}
 		)
 	);
@@ -240,11 +246,14 @@ export function displayWarning(message: string): void {
  * Display info message
  */
 export function displayInfo(message: string): void {
+	const boxWidth = getBoxWidth();
+
 	console.log(
 		boxen(chalk.blue.bold('i ') + chalk.white(message), {
 			padding: 1,
 			borderStyle: 'round',
-			borderColor: 'blue'
+			borderColor: 'blue',
+			width: boxWidth
 		})
 	);
 }
