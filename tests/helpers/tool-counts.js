@@ -3,7 +3,10 @@
  * Shared helper for validating tool counts across tests and validation scripts
  */
 
-import { getToolCounts, getToolCategories } from '../../mcp-server/src/tools/tool-registry.js';
+import {
+	getToolCounts,
+	getToolCategories
+} from '../../mcp-server/src/tools/tool-registry.js';
 
 /**
  * Expected tool counts - update these when tools are added/removed
@@ -35,8 +38,8 @@ export const EXPECTED_CORE_TOOLS = [
 export function validateToolCounts() {
 	const actual = getToolCounts();
 	const expected = EXPECTED_TOOL_COUNTS;
-	
-	const isValid = 
+
+	const isValid =
 		actual.core === expected.core &&
 		actual.standard === expected.standard &&
 		actual.total === expected.total;
@@ -60,25 +63,31 @@ export function validateToolCounts() {
 export function validateToolStructure() {
 	const categories = getToolCategories();
 	const counts = getToolCounts();
-	
+
 	// Check that core tools are subset of standard tools
-	const coreInStandard = categories.core.every(tool => categories.standard.includes(tool));
-	
+	const coreInStandard = categories.core.every((tool) =>
+		categories.standard.includes(tool)
+	);
+
 	// Check that standard tools are subset of all tools
-	const standardInAll = categories.standard.every(tool => categories.all.includes(tool));
-	
+	const standardInAll = categories.standard.every((tool) =>
+		categories.all.includes(tool)
+	);
+
 	// Check that expected core tools match actual
-	const expectedCoreMatch = EXPECTED_CORE_TOOLS.every(tool => categories.core.includes(tool)) &&
-		categories.core.every(tool => EXPECTED_CORE_TOOLS.includes(tool));
+	const expectedCoreMatch =
+		EXPECTED_CORE_TOOLS.every((tool) => categories.core.includes(tool)) &&
+		categories.core.every((tool) => EXPECTED_CORE_TOOLS.includes(tool));
 
 	// Check array lengths match counts
-	const lengthsMatch = 
+	const lengthsMatch =
 		categories.core.length === counts.core &&
 		categories.standard.length === counts.standard &&
 		categories.all.length === counts.total;
 
 	return {
-		isValid: coreInStandard && standardInAll && expectedCoreMatch && lengthsMatch,
+		isValid:
+			coreInStandard && standardInAll && expectedCoreMatch && lengthsMatch,
 		details: {
 			coreInStandard,
 			standardInAll,
@@ -99,7 +108,7 @@ export function getToolReport() {
 	const categories = getToolCategories();
 	const validation = validateToolCounts();
 	const structure = validateToolStructure();
-	
+
 	return {
 		counts,
 		categories,

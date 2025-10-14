@@ -71,7 +71,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 				const unknownTools = [];
 
 				const aliasMap = {
-					'response_language': 'response-language'
+					response_language: 'response-language'
 				};
 
 				for (const toolName of requestedTools) {
@@ -198,10 +198,14 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 					registeredTools.push(toolName);
 				} catch (err) {
 					if (err.message && err.message.includes('already registered')) {
-						logger.debug(`Fallback tool ${toolName} already registered, skipping`);
+						logger.debug(
+							`Fallback tool ${toolName} already registered, skipping`
+						);
 						registeredTools.push(toolName);
 					} else {
-						logger.warn(`Failed to register fallback tool '${toolName}': ${err.message}`);
+						logger.warn(
+							`Failed to register fallback tool '${toolName}': ${err.message}`
+						);
 						failedTools.push(toolName);
 					}
 				}
@@ -210,7 +214,9 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 				failedTools.push(toolName);
 			}
 		}
-		logger.info(`Successfully registered ${registeredTools.length} fallback tools`);
+		logger.info(
+			`Successfully registered ${registeredTools.length} fallback tools`
+		);
 
 		return {
 			registeredTools,

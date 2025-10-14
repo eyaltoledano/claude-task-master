@@ -143,7 +143,7 @@ export function getToolCategories() {
 		core: [...coreTools],
 		standard: [...standardTools],
 		all: [...allTools],
-		extended: allTools.filter(t => !standardTools.includes(t))
+		extended: allTools.filter((t) => !standardTools.includes(t))
 	};
 }
 

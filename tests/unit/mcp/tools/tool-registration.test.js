@@ -13,7 +13,7 @@ import {
 	jest
 } from '@jest/globals';
 
-import { 
+import {
 	EXPECTED_TOOL_COUNTS,
 	EXPECTED_CORE_TOOLS,
 	validateToolCounts,
@@ -24,10 +24,10 @@ import {
 jest.resetModules();
 
 import { registerTaskMasterTools } from '../../../../mcp-server/src/tools/index.js';
-import { 
-	toolRegistry, 
-	coreTools, 
-	standardTools 
+import {
+	toolRegistry,
+	coreTools,
+	standardTools
 } from '../../../../mcp-server/src/tools/tool-registry.js';
 
 // Derive constants from imported registry to avoid brittle magic numbers
@@ -74,11 +74,11 @@ describe('Task Master Tool Registration System', () => {
 		it('should have correct tool registry structure', () => {
 			const validation = validateToolCounts();
 			expect(validation.isValid).toBe(true);
-			
+
 			if (!validation.isValid) {
 				console.error('Tool count validation failed:', validation);
 			}
-			
+
 			expect(validation.actual.total).toBe(EXPECTED_TOOL_COUNTS.total);
 			expect(validation.actual.core).toBe(EXPECTED_TOOL_COUNTS.core);
 			expect(validation.actual.standard).toBe(EXPECTED_TOOL_COUNTS.standard);
@@ -87,11 +87,11 @@ describe('Task Master Tool Registration System', () => {
 		it('should have correct core tools', () => {
 			const structure = validateToolStructure();
 			expect(structure.isValid).toBe(true);
-			
+
 			if (!structure.isValid) {
 				console.error('Tool structure validation failed:', structure);
 			}
-			
+
 			expect(coreTools).toEqual(expect.arrayContaining(EXPECTED_CORE_TOOLS));
 			expect(coreTools.length).toBe(EXPECTED_TOOL_COUNTS.core);
 		});
@@ -100,7 +100,7 @@ describe('Task Master Tool Registration System', () => {
 			const structure = validateToolStructure();
 			expect(structure.details.coreInStandard).toBe(true);
 			expect(standardTools.length).toBe(EXPECTED_TOOL_COUNTS.standard);
-			
+
 			coreTools.forEach((tool) => {
 				expect(standardTools).toContain(tool);
 			});
@@ -129,7 +129,9 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.total);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(
+				EXPECTED_TOOL_COUNTS.total
+			);
 		});
 
 		it(`should register all tools (${ALL_COUNT}) when TASK_MASTER_TOOLS=all`, () => {
@@ -145,7 +147,9 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer, 'core');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.core);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(
+				EXPECTED_TOOL_COUNTS.core
+			);
 		});
 
 		it(`should register exactly ${STANDARD_COUNT} standard tools when TASK_MASTER_TOOLS=standard`, () => {
@@ -153,7 +157,9 @@ describe('Task Master Tool Registration System', () => {
 
 			registerTaskMasterTools(mockServer, 'standard');
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(EXPECTED_TOOL_COUNTS.standard);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(
+				EXPECTED_TOOL_COUNTS.standard
+			);
 		});
 
 		it(`should treat lean as alias for core mode (${CORE_COUNT} tools)`, () => {
@@ -186,7 +192,10 @@ describe('Task Master Tool Registration System', () => {
 			process.env.TASK_MASTER_TOOLS =
 				'invalid_tool,get_tasks,fake_tool,next_task';
 
-			registerTaskMasterTools(mockServer, 'invalid_tool,get_tasks,fake_tool,next_task');
+			registerTaskMasterTools(
+				mockServer,
+				'invalid_tool,get_tasks,fake_tool,next_task'
+			);
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
@@ -218,7 +227,10 @@ describe('Task Master Tool Registration System', () => {
 		it('should ignore duplicate tools in list', () => {
 			process.env.TASK_MASTER_TOOLS = 'get_tasks,get_tasks,next_task,get_tasks';
 
-			registerTaskMasterTools(mockServer, 'get_tasks,get_tasks,next_task,get_tasks');
+			registerTaskMasterTools(
+				mockServer,
+				'get_tasks,get_tasks,next_task,get_tasks'
+			);
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
@@ -248,11 +260,23 @@ describe('Task Master Tool Registration System', () => {
 					expectedCount: ALL_COUNT,
 					description: 'undefined env (all)'
 				},
-				{ env: '', expectedCount: ALL_COUNT, description: 'empty string (all)' },
+				{
+					env: '',
+					expectedCount: ALL_COUNT,
+					description: 'empty string (all)'
+				},
 				{ env: 'all', expectedCount: ALL_COUNT, description: 'all mode' },
 				{ env: 'core', expectedCount: CORE_COUNT, description: 'core mode' },
-				{ env: 'lean', expectedCount: CORE_COUNT, description: 'lean mode (alias)' },
-				{ env: 'standard', expectedCount: STANDARD_COUNT, description: 'standard mode' },
+				{
+					env: 'lean',
+					expectedCount: CORE_COUNT,
+					description: 'lean mode (alias)'
+				},
+				{
+					env: 'standard',
+					expectedCount: STANDARD_COUNT,
+					description: 'standard mode'
+				},
 				{
 					env: 'get_tasks,next_task',
 					expectedCount: 2,

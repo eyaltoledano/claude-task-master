@@ -4,7 +4,10 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from './logger.js';
-import { registerTaskMasterTools, getToolsConfiguration } from './tools/index.js';
+import {
+	registerTaskMasterTools,
+	getToolsConfiguration
+} from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
 import packageJson from '../../package.json' with { type: 'json' };
@@ -46,17 +49,28 @@ class TaskMasterMCPServer {
 		this.logger.info('Task Master MCP Server starting...');
 		this.logger.info(`Tool mode configuration: ${normalizedToolMode}`);
 
-		const registrationResult = registerTaskMasterTools(this.server, normalizedToolMode);
+		const registrationResult = registerTaskMasterTools(
+			this.server,
+			normalizedToolMode
+		);
 
-		this.logger.info(`Normalized tool mode: ${registrationResult.normalizedMode}`);
-		this.logger.info(`Registered ${registrationResult.registeredTools.length} tools successfully`);
+		this.logger.info(
+			`Normalized tool mode: ${registrationResult.normalizedMode}`
+		);
+		this.logger.info(
+			`Registered ${registrationResult.registeredTools.length} tools successfully`
+		);
 
 		if (registrationResult.registeredTools.length > 0) {
-			this.logger.debug(`Registered tools: ${registrationResult.registeredTools.join(', ')}`);
+			this.logger.debug(
+				`Registered tools: ${registrationResult.registeredTools.join(', ')}`
+			);
 		}
 
 		if (registrationResult.failedTools.length > 0) {
-			this.logger.warn(`Failed to register ${registrationResult.failedTools.length} tools: ${registrationResult.failedTools.join(', ')}`);
+			this.logger.warn(
+				`Failed to register ${registrationResult.failedTools.length} tools: ${registrationResult.failedTools.join(', ')}`
+			);
 		}
 
 		this.initialized = true;
