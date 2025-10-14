@@ -1,0 +1,22 @@
+{
+  "mode": "exit",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.29.0-rc.0",
+    "@tm/cli": "",
+    "docs": "0.0.5",
+    "extension": "0.25.6-rc.0",
+    "@tm/ai-sdk-provider-grok-cli": "",
+    "@tm/build-config": "",
+    "@tm/claude-code-plugin": "0.0.1",
+    "@tm/core": ""
+  },
+  "changesets": [
+    "auto-update-changelog-highlights",
+    "mean-planes-wave",
+    "nice-ways-hope",
+    "plain-falcons-serve",
+    "silent-bushes-grow",
+    "smart-owls-relax"
+  ]
+}

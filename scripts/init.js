@@ -628,6 +628,12 @@ function createProjectStructure(
 	// Copy example_prd.txt to NEW location
 	copyTemplateFile('example_prd.txt', path.join(targetDir, EXAMPLE_PRD_FILE));
 
+	// Copy example_prd_rpg.txt to templates directory
+	copyTemplateFile(
+		'example_prd_rpg.txt',
+		path.join(targetDir, TASKMASTER_TEMPLATES_DIR, 'example_prd_rpg.txt')
+	);
+
 	// Initialize git repository if git is available
 	try {
 		if (initGit === false) {
@@ -856,10 +862,10 @@ function createProjectStructure(
 				)}\n${chalk.white('   ├─ ')}${chalk.dim('Models: Use `task-master models` commands')}\n${chalk.white('   └─ ')}${chalk.dim(
 					'Keys: Add provider API keys to .env (or inside the MCP config file i.e. .cursor/mcp.json)'
 				)}\n${chalk.white('2. ')}${chalk.yellow(
-					'Discuss your idea with AI and ask for a PRD using example_prd.txt, and save it to scripts/PRD.txt'
-				)}\n${chalk.white('3. ')}${chalk.yellow(
+					'Discuss your idea with AI and ask for a PRD, and save it to .taskmaster/docs/prd.txt'
+				)}\n${chalk.white('   ├─ ')}${chalk.dim('Simple projects: Use ')}${chalk.cyan('example_prd.txt')}${chalk.dim(' template')}\n${chalk.white('   └─ ')}${chalk.dim('Complex systems: Use ')}${chalk.cyan('example_prd_rpg.txt')}${chalk.dim(' template (for dependency-aware task graphs)')}\n${chalk.white('3. ')}${chalk.yellow(
 					'Ask Cursor Agent (or run CLI) to parse your PRD and generate initial tasks:'
-				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('parse_prd')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master parse-prd scripts/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
+				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('parse_prd')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master parse-prd .taskmaster/docs/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
 					'Ask Cursor to analyze the complexity of the tasks in your PRD using research'
 				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('analyze_project_complexity')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master analyze-complexity')}\n${chalk.white('5. ')}${chalk.yellow(
 					'Ask Cursor to expand all of your tasks using the complexity analysis'

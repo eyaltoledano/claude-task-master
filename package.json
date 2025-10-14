@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.28.0",
+	"version": "0.29.0-rc.1",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -118,7 +118,13 @@
 	"bugs": {
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
-	"files": ["dist/**", "README-task-master.md", "README.md", "LICENSE"],
+	"files": [
+		"dist/**",
+		"README-task-master.md",
+		"README.md",
+		"LICENSE",
+		"CHANGELOG.md"
+	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
 		"whatwg-url": "^11.0.0"

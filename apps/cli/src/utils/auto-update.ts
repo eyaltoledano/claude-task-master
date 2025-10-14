@@ -12,6 +12,7 @@ export interface UpdateInfo {
 	currentVersion: string;
 	latestVersion: string;
 	needsUpdate: boolean;
+	highlights?: string[];
 }
 
 /**
@@ -60,6 +61,116 @@ export function compareVersions(v1: string, v2: string): number {
 }
 
 /**
+ * Fetch CHANGELOG.md from GitHub and extract highlights for a specific version
+ */
+async function fetchChangelogHighlights(version: string): Promise<string[]> {
+	return new Promise((resolve) => {
+		const options = {
+			hostname: 'raw.githubusercontent.com',
+			path: '/eyaltoledano/claude-task-master/main/CHANGELOG.md',
+			method: 'GET',
+			headers: {
+				'User-Agent': `task-master-ai/${version}`
+			}
+		};
+
+		const req = https.request(options, (res) => {
+			let data = '';
+
+			res.on('data', (chunk) => {
+				data += chunk;
+			});
+
+			res.on('end', () => {
+				try {
+					if (res.statusCode !== 200) {
+						resolve([]);
+						return;
+					}
+
+					const highlights = parseChangelogHighlights(data, version);
+					resolve(highlights);
+				} catch (error) {
+					resolve([]);
+				}
+			});
+		});
+
+		req.on('error', () => {
+			resolve([]);
+		});
+
+		req.setTimeout(3000, () => {
+			req.destroy();
+			resolve([]);
+		});
+
+		req.end();
+	});
+}
+
+/**
+ * Parse changelog markdown to extract Minor Changes for a specific version
+ * @internal - Exported for testing purposes only
+ */
+export function parseChangelogHighlights(
+	changelog: string,
+	version: string
+): string[] {
+	try {
+		// Validate version format (basic semver pattern) to prevent ReDoS
+		if (!/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$/.test(version)) {
+			return [];
+		}
+
+		// Find the version section
+		const versionRegex = new RegExp(
+			`## ${version.replace(/\./g, '\\.')}\\s*\\n`,
+			'i'
+		);
+		const versionMatch = changelog.match(versionRegex);
+
+		if (!versionMatch) {
+			return [];
+		}
+
+		// Extract content from this version to the next version heading
+		const startIdx = versionMatch.index! + versionMatch[0].length;
+		const nextVersionIdx = changelog.indexOf('\n## ', startIdx);
+		const versionContent =
+			nextVersionIdx > 0
+				? changelog.slice(startIdx, nextVersionIdx)
+				: changelog.slice(startIdx);
+
+		// Find Minor Changes section
+		const minorChangesMatch = versionContent.match(
+			/### Minor Changes\s*\n([\s\S]*?)(?=\n###|\n##|$)/i
+		);
+
+		if (!minorChangesMatch) {
+			return [];
+		}
+
+		const minorChangesContent = minorChangesMatch[1];
+		const highlights: string[] = [];
+
+		// Extract all bullet points (lines starting with -)
+		// Format: - [#PR](...) Thanks [@author]! - Description
+		const bulletRegex = /^-\s+\[#\d+\][^\n]*?!\s+-\s+(.+?)$/gm;
+		let match;
+
+		while ((match = bulletRegex.exec(minorChangesContent)) !== null) {
+			const desc = match[1].trim();
+			highlights.push(desc);
+		}
+
+		return highlights;
+	} catch (error) {
+		return [];
+	}
+}
+
+/**
  * Check for newer version of task-master-ai
  */
 export async function checkForUpdate(
@@ -85,7 +196,7 @@ export async function checkForUpdate(
 				data += chunk;
 			});
 
-			res.on('end', () => {
+			res.on('end', async () => {
 				try {
 					if (res.statusCode !== 200)
 						throw new Error(`npm registry status ${res.statusCode}`);
@@ -95,10 +206,17 @@ export async function checkForUpdate(
 					const needsUpdate =
 						compareVersions(currentVersion, latestVersion) < 0;
 
+					// Fetch highlights if update is needed
+					let highlights: string[] | undefined;
+					if (needsUpdate) {
+						highlights = await fetchChangelogHighlights(latestVersion);
+					}
+
 					resolve({
 						currentVersion,
 						latestVersion,
-						needsUpdate
+						needsUpdate,
+						highlights
 					});
 				} catch (error) {
 					resolve({
@@ -136,18 +254,29 @@ export async function checkForUpdate(
  */
 export function displayUpgradeNotification(
 	currentVersion: string,
-	latestVersion: string
+	latestVersion: string,
+	highlights?: string[]
 ) {
-	const message = boxen(
-		`${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}\n\n` +
-			`Auto-updating to the latest version with new features and bug fixes...`,
-		{
-			padding: 1,
-			margin: { top: 1, bottom: 1 },
-			borderColor: 'yellow',
-			borderStyle: 'round'
+	let content = `${chalk.blue.bold('Update Available!')} ${chalk.dim(currentVersion)} → ${chalk.green(latestVersion)}`;
+
+	if (highlights && highlights.length > 0) {
+		content += '\n\n' + chalk.bold("What's New:");
+		for (const highlight of highlights) {
+			content += '\n' + chalk.cyan('• ') + highlight;
 		}
-	);
+		content += '\n\n' + 'Auto-updating to the latest version...';
+	} else {
+		content +=
+			'\n\n' +
+			'Auto-updating to the latest version with new features and bug fixes...';
+	}
+
+	const message = boxen(content, {
+		padding: 1,
+		margin: { top: 1, bottom: 1 },
+		borderColor: 'yellow',
+		borderStyle: 'round'
+	});
 
 	console.log(message);
 }

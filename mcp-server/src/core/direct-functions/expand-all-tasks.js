@@ -8,6 +8,7 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
+import { resolveComplexityReportOutputPath } from '../../../../src/utils/path-utils.js';
 
 /**
  * Expand all pending tasks with subtasks (Direct Function Wrapper)
@@ -25,12 +26,29 @@ import { createLogWrapper } from '../../tools/utils.js';
  */
 export async function expandAllTasksDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, num, research, prompt, force, projectRoot, tag } =
-		args;
+	// Destructure expected args, including projectRoot and complexityReportPath
+	const {
+		tasksJsonPath,
+		num,
+		research,
+		prompt,
+		force,
+		projectRoot,
+		tag,
+		complexityReportPath: providedComplexityReportPath
+	} = args;
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
+
+	// Use provided complexity report path or compute it
+	const complexityReportPath =
+		providedComplexityReportPath ||
+		resolveComplexityReportOutputPath(null, { projectRoot, tag }, log);
+
+	log.info(
+		`Expand all tasks will use complexity report at: ${complexityReportPath}`
+	);
 
 	if (!tasksJsonPath) {
 		log.error('expandAllTasksDirect called without tasksJsonPath');
@@ -55,14 +73,14 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		const additionalContext = prompt || '';
 		const forceFlag = force === true;
 
-		// Call the core function, passing options and the context object { session, mcpLog, projectRoot }
+		// Call the core function, passing options and the context object { session, mcpLog, projectRoot, tag, complexityReportPath }
 		const result = await expandAllTasks(
 			tasksJsonPath,
 			numSubtasks,
 			useResearch,
 			additionalContext,
 			forceFlag,
-			{ session, mcpLog, projectRoot, tag },
+			{ session, mcpLog, projectRoot, tag, complexityReportPath },
 			'json'
 		);
 
