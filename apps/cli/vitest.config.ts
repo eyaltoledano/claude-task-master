@@ -9,7 +9,17 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'json', 'html'],
 			include: ['src/**/*.ts'],
-			exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.d.ts']
+			exclude: [
+				'node_modules/',
+				'dist/',
+				'tests/',
+				'**/*.test.ts',
+				'**/*.spec.ts',
+				'**/*.d.ts',
+				'**/mocks/**',
+				'**/fixtures/**',
+				'vitest.config.ts'
+			]
 		}
 	}
 });

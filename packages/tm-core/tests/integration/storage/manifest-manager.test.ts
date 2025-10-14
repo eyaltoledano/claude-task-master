@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -7,11 +7,11 @@ import {
 	readManifest,
 	updateManifest,
 	validateManifest
-} from '../../../../../packages/tm-core/src/storage/manifest-manager.js';
+} from '../../../src/storage/manifest-manager.js';
 
 describe('Manifest Manager', () => {
-	let testDir;
-	let manifestPath;
+	let testDir: string;
+	let manifestPath: string;
 
 	beforeEach(async () => {
 		// Create temporary test directory
@@ -175,8 +175,8 @@ describe('Manifest Manager', () => {
 
 			expect(updated.timestamps.endTime).toBeDefined();
 			expect(updated.timestamps.endTime).not.toBeNull();
-			expect(updated.timestamps.endTime >= before).toBe(true);
-			expect(updated.timestamps.endTime <= after).toBe(true);
+			expect(updated.timestamps.endTime! >= before).toBe(true);
+			expect(updated.timestamps.endTime! <= after).toBe(true);
 		});
 
 		it('should use atomic write operations', async () => {
@@ -242,7 +242,7 @@ describe('Manifest Manager', () => {
 				phase: 'preflight'
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('version');
+			expect(() => validateManifest(manifest as any)).toThrow('version');
 		});
 
 		it('should reject manifest without runId', () => {
@@ -253,7 +253,7 @@ describe('Manifest Manager', () => {
 				phase: 'preflight'
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('runId');
+			expect(() => validateManifest(manifest as any)).toThrow('runId');
 		});
 
 		it('should reject manifest with invalid runId format', () => {
@@ -265,7 +265,7 @@ describe('Manifest Manager', () => {
 				phase: 'preflight'
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('runId');
+			expect(() => validateManifest(manifest as any)).toThrow('runId');
 		});
 
 		it('should reject manifest without metadata', () => {
@@ -276,7 +276,7 @@ describe('Manifest Manager', () => {
 				phase: 'preflight'
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('metadata');
+			expect(() => validateManifest(manifest as any)).toThrow('metadata');
 		});
 
 		it('should reject manifest without timestamps', () => {
@@ -287,7 +287,7 @@ describe('Manifest Manager', () => {
 				phase: 'preflight'
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('timestamps');
+			expect(() => validateManifest(manifest as any)).toThrow('timestamps');
 		});
 
 		it('should reject manifest without phase', () => {
@@ -298,7 +298,7 @@ describe('Manifest Manager', () => {
 				timestamps: { startTime: '2024-01-15T10:30:45.123Z', endTime: null }
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('phase');
+			expect(() => validateManifest(manifest as any)).toThrow('phase');
 		});
 
 		it('should validate version format', () => {
@@ -311,7 +311,7 @@ describe('Manifest Manager', () => {
 				config: {}
 			};
 
-			expect(() => validateManifest(manifest)).toThrow('version');
+			expect(() => validateManifest(manifest as any)).toThrow('version');
 		});
 	});
 
@@ -338,7 +338,7 @@ describe('Manifest Manager', () => {
 			// Should be able to read future versions
 			const read = await readManifest(manifestPath);
 			expect(read.version).toBe('2.0.0');
-			expect(read.newField).toBe('future data');
+			expect((read as any).newField).toBe('future data');
 		});
 	});
 

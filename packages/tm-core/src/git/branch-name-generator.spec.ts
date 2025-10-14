@@ -1,8 +1,8 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
 	generateBranchName,
 	sanitizeBranchName
-} from '../../../../../packages/tm-core/src/git/branch-name-generator.js';
+} from './branch-name-generator.js';
 
 describe('Branch Name Generator', () => {
 	describe('sanitizeBranchName', () => {

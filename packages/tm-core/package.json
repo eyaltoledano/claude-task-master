@@ -31,7 +31,8 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.57.4",
-		"zod": "^4.1.11"
+		"zod": "^4.1.11",
+		"simple-git": "^3.28.0"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",

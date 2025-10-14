@@ -1,9 +1,9 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
 	normalizeProjectPath,
 	denormalizeProjectPath,
 	isValidNormalizedPath
-} from '../../../../../packages/tm-core/src/utils/path-normalizer.js';
+} from './path-normalizer.js';
 
 describe('Path Normalizer', () => {
 	describe('normalizeProjectPath', () => {

@@ -10,7 +10,8 @@ import {
 	loadWorkflowState,
 	createGitAdapter,
 	createCommitMessageGenerator,
-	OutputFormatter
+	OutputFormatter,
+	saveWorkflowState
 } from './shared.js';
 
 type CommitOptions = AutopilotBaseOptions;
@@ -58,8 +59,6 @@ export class CommitCommand extends Command {
 				process.exit(1);
 			}
 
-			// Restore orchestrator with persistence
-			const { saveWorkflowState } = await import('./shared.js');
 			const orchestrator = new WorkflowOrchestrator(state.context);
 			orchestrator.restoreState(state);
 			orchestrator.enableAutoPersist(async (newState) => {

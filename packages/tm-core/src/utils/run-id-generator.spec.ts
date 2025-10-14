@@ -1,10 +1,10 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
 	generateRunId,
 	isValidRunId,
 	parseRunId,
 	compareRunIds
-} from '../../../../../packages/tm-core/src/utils/run-id-generator.js';
+} from './run-id-generator.js';
 
 describe('Run ID Generator', () => {
 	describe('generateRunId', () => {
@@ -116,7 +116,7 @@ describe('Run ID Generator', () => {
 			const date = parseRunId(runId);
 
 			expect(date).toBeInstanceOf(Date);
-			expect(date.toISOString()).toBe(runId);
+			expect(date?.toISOString()).toBe(runId);
 		});
 
 		it('should parse generated run ID', () => {
@@ -124,7 +124,7 @@ describe('Run ID Generator', () => {
 			const runId = generateRunId(originalDate);
 			const parsedDate = parseRunId(runId);
 
-			expect(parsedDate.getTime()).toBe(originalDate.getTime());
+			expect(parsedDate?.getTime()).toBe(originalDate.getTime());
 		});
 
 		it('should return null for invalid run ID', () => {
@@ -138,7 +138,7 @@ describe('Run ID Generator', () => {
 			const leapYear = '2024-02-29T12:00:00.000Z';
 			const parsed = parseRunId(leapYear);
 
-			expect(parsed.toISOString()).toBe(leapYear);
+			expect(parsed?.toISOString()).toBe(leapYear);
 		});
 	});
 
@@ -207,7 +207,7 @@ describe('Run ID Generator', () => {
 			expect(ids.size).toBe(count);
 		});
 
-		it('should handle high-frequency generation', async () => {
+		it('should handle high-frequency generation', () => {
 			const ids = [];
 			const iterations = 1000;
 

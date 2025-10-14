@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -8,11 +8,11 @@ import {
 	updateState,
 	deleteState,
 	validateState
-} from '../../../../../packages/tm-core/src/storage/state-manager.js';
+} from '../../../src/storage/state-manager.js';
 
 describe('State Manager', () => {
-	let testDir;
-	let statePath;
+	let testDir: string;
+	let statePath: string;
 
 	beforeEach(async () => {
 		// Create temporary test directory
@@ -294,7 +294,7 @@ describe('State Manager', () => {
 				lastUpdated: '2024-01-15T10:30:45.123Z'
 			};
 
-			expect(() => validateState(state)).toThrow('data');
+			expect(() => validateState(state as any)).toThrow('data');
 		});
 
 		it('should reject state without lastUpdated field', () => {
@@ -302,7 +302,7 @@ describe('State Manager', () => {
 				data: { phase: 'red' }
 			};
 
-			expect(() => validateState(state)).toThrow('lastUpdated');
+			expect(() => validateState(state as any)).toThrow('lastUpdated');
 		});
 
 		it('should reject state with non-object data', () => {
@@ -311,7 +311,7 @@ describe('State Manager', () => {
 				lastUpdated: '2024-01-15T10:30:45.123Z'
 			};
 
-			expect(() => validateState(state)).toThrow('data must be an object');
+			expect(() => validateState(state as any)).toThrow('data must be an object');
 		});
 
 		it('should reject state with null data', () => {
@@ -320,7 +320,7 @@ describe('State Manager', () => {
 				lastUpdated: '2024-01-15T10:30:45.123Z'
 			};
 
-			expect(() => validateState(state)).toThrow('data must be an object');
+			expect(() => validateState(state as any)).toThrow('data must be an object');
 		});
 
 		it('should accept state with empty data object', () => {
@@ -338,7 +338,7 @@ describe('State Manager', () => {
 				lastUpdated: 'invalid-date'
 			};
 
-			expect(() => validateState(state)).toThrow('lastUpdated');
+			expect(() => validateState(state as any)).toThrow('lastUpdated');
 		});
 
 		it('should accept nested data structures', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -7,11 +7,11 @@ import {
 	cleanupRunDirectory,
 	validateRunDirectory,
 	getRunDirectoryPath
-} from '../../../../../packages/tm-core/src/storage/directory-manager.js';
+} from '../../../src/storage/directory-manager.js';
 
 describe('Directory Manager', () => {
-	let testDir;
-	let storageRoot;
+	let testDir: string;
+	let storageRoot: string;
 
 	beforeEach(async () => {
 		// Create temporary test directory

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -6,11 +6,11 @@ import {
 	logActivity,
 	readActivityLog,
 	filterActivityLog
-} from '../../../../../packages/tm-core/src/storage/activity-logger.js';
+} from '../../../src/storage/activity-logger.js';
 
 describe('Activity Logger', () => {
-	let testDir;
-	let activityPath;
+	let testDir: string;
+	let activityPath: string;
 
 	beforeEach(async () => {
 		// Create temporary test directory
@@ -252,7 +252,7 @@ describe('Activity Logger', () => {
 
 		it('should filter by custom predicate', async () => {
 			const filtered = await filterActivityLog(activityPath, {
-				predicate: (event) => event.phase === 'red'
+				predicate: (event: any) => event.phase === 'red'
 			});
 
 			expect(filtered.length).toBe(1);
@@ -274,7 +274,7 @@ describe('Activity Logger', () => {
 			});
 
 			const filtered = await filterActivityLog(activityPath, {
-				predicate: (event) => event.results?.coverage > 80
+				predicate: (event: any) => event.results?.coverage > 80
 			});
 
 			expect(filtered.length).toBe(1);
