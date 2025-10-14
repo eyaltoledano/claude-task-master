@@ -13,7 +13,11 @@ export const VALIDATED_PROVIDERS = [
 	'perplexity',
 	'xai',
 	'groq',
-	'mistral'
+	'mistral',
+	'azure',
+	'openrouter',
+	'bedrock',
+	'ollama'
 ] as const;
 
 export type ValidatedProvider = (typeof VALIDATED_PROVIDERS)[number];
