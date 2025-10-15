@@ -721,6 +721,53 @@ export class ContextCommand extends Command {
 	}
 
 	/**
+	 * Interactive context setup (for post-auth flow)
+	 * Prompts user to select org and brief
+	 */
+	async setupContextInteractive(): Promise<{
+		success: boolean;
+		orgSelected: boolean;
+		briefSelected: boolean;
+	}> {
+		try {
+			// Ask if user wants to set up workspace context
+			const { setupContext } = await inquirer.prompt([
+				{
+					type: 'confirm',
+					name: 'setupContext',
+					message: 'Would you like to set up your workspace context now?',
+					default: true
+				}
+			]);
+
+			if (!setupContext) {
+				return { success: true, orgSelected: false, briefSelected: false };
+			}
+
+			// Select organization
+			const orgResult = await this.selectOrganization();
+			if (!orgResult.success || !orgResult.context?.orgId) {
+				return { success: false, orgSelected: false, briefSelected: false };
+			}
+
+			// Select brief
+			const briefResult = await this.selectBrief(orgResult.context.orgId);
+			return {
+				success: true,
+				orgSelected: true,
+				briefSelected: briefResult.success
+			};
+		} catch (error) {
+			console.error(
+				chalk.yellow(
+					'\nContext setup skipped due to error. You can set it up later with "tm context"'
+				)
+			);
+			return { success: false, orgSelected: false, briefSelected: false };
+		}
+	}
+
+	/**
 	 * Clean up resources
 	 */
 	async cleanup(): Promise<void> {

@@ -14,6 +14,7 @@ import {
 	type AuthCredentials
 } from '@tm/core/auth';
 import * as ui from '../utils/ui.js';
+import { ContextCommand } from './context.command.js';
 
 /**
  * Result type from auth command
@@ -350,6 +351,11 @@ export class AuthCommand extends Command {
 			console.log(
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
+
+			// Post-auth: Set up workspace context
+			console.log(); // Add spacing
+			const contextCommand = new ContextCommand();
+			await contextCommand.setupContextInteractive();
 
 			return {
 				success: true,
