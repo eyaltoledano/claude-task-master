@@ -58,10 +58,8 @@ export class NextCommand extends Command {
 	 */
 	private async executeCommand(options: NextCommandOptions): Promise<void> {
 		try {
-			// Validate options
-			if (!this.validateOptions(options)) {
-				process.exit(1);
-			}
+			// Validate options (throws on invalid options)
+			this.validateOptions(options);
 
 			// Initialize tm-core
 			await this.initializeCore(options.project || process.cwd());
@@ -80,26 +78,22 @@ export class NextCommand extends Command {
 			const msg = error?.getSanitizedDetails?.() ?? {
 				message: error?.message ?? String(error)
 			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-			process.exit(1);
+
+			// Allow error to propagate for library compatibility
+			throw new Error(msg.message || 'Unexpected error in next command');
 		}
 	}
 
 	/**
 	 * Validate command options
 	 */
-	private validateOptions(options: NextCommandOptions): boolean {
+	private validateOptions(options: NextCommandOptions): void {
 		// Validate format
 		if (options.format && !['text', 'json'].includes(options.format)) {
-			console.error(chalk.red(`Invalid format: ${options.format}`));
-			console.error(chalk.gray(`Valid formats: text, json`));
-			return false;
+			throw new Error(
+				`Invalid format: ${options.format}. Valid formats are: text, json`
+			);
 		}
-
-		return true;
 	}
 
 	/**
