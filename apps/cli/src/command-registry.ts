@@ -8,6 +8,7 @@ import { Command } from 'commander';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
 import { ShowCommand } from './commands/show.command.js';
+import { NextCommand } from './commands/next.command.js';
 import { AuthCommand } from './commands/auth.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { StartCommand } from './commands/start.command.js';
@@ -43,6 +44,12 @@ export class CommandRegistry {
 			name: 'show',
 			description: 'Display detailed information about a specific task',
 			commandClass: ShowCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'next',
+			description: 'Find the next available task to work on',
+			commandClass: NextCommand as any,
 			category: 'task'
 		},
 		{

@@ -25,9 +25,9 @@ export function displayHeader(options: HeaderOptions = {}): void {
 		let tagInfo = '';
 
 		if (tag && tag !== 'master') {
-			tagInfo = `🏷 tag: ${chalk.cyan(tag)}`;
+			tagInfo = `🏷  tag: ${chalk.cyan(tag)}`;
 		} else {
-			tagInfo = `🏷 tag: ${chalk.cyan('master')}`;
+			tagInfo = `🏷  tag: ${chalk.cyan('master')}`;
 		}
 
 		console.log(tagInfo);
@@ -39,7 +39,5 @@ export function displayHeader(options: HeaderOptions = {}): void {
 				: `${process.cwd()}/${filePath}`;
 			console.log(`Listing tasks from: ${chalk.dim(absolutePath)}`);
 		}
-
-		console.log(); // Empty line for spacing
 	}
 }
