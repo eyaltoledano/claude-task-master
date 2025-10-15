@@ -358,11 +358,12 @@ export class ExportService {
 		tasks: any[]
 	): Promise<void> {
 		// Check if we should use the API endpoint or direct Supabase
-		const useAPIEndpoint = process.env.TM_PUBLIC_BASE_DOMAIN;
+		const apiEndpoint =
+			process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
 
-		if (useAPIEndpoint) {
+		if (apiEndpoint) {
 			// Use the new bulk import API endpoint
-			const apiUrl = `${process.env.TM_PUBLIC_BASE_DOMAIN}/ai/api/v1/briefs/${briefId}/tasks`;
+			const apiUrl = `${apiEndpoint}/ai/api/v1/briefs/${briefId}/tasks`;
 
 			// Transform tasks to flat structure for API
 			const flatTasks = this.transformTasksForBulkImport(tasks);
