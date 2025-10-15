@@ -200,9 +200,9 @@ export class CredentialStore {
 	}
 
 	/**
-	 * Check if credentials exist and are valid
+	 * Check if credentials exist (regardless of expiration status)
 	 */
-	hasValidCredentials(): boolean {
+	hasCredentials(): boolean {
 		const credentials = this.getCredentials({ allowExpired: true });
 		return credentials !== null;
 	}

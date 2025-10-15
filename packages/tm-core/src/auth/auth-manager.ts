@@ -81,7 +81,8 @@ export class AuthManager {
 
 	/**
 	 * Get stored authentication credentials
-	 * Returns credentials even if expired - Supabase will handle automatic refresh
+	 * Returns credentials as-is (even if expired). Refresh must be triggered explicitly
+	 * via refreshToken() or will occur automatically when using the Supabase client for API calls.
 	 */
 	getCredentials(): AuthCredentials | null {
 		return this.credentialStore.getCredentials();
@@ -169,7 +170,7 @@ export class AuthManager {
 	 * Check if authenticated
 	 */
 	isAuthenticated(): boolean {
-		return this.credentialStore.hasValidCredentials();
+		return this.credentialStore.hasCredentials();
 	}
 
 	/**

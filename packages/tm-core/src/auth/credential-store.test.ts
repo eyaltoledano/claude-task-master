@@ -197,7 +197,7 @@ describe('CredentialStore', () => {
 				JSON.stringify(mockCredentials)
 			);
 
-			const result = store.getCredentials();
+			const result = store.getCredentials({ allowExpired: false });
 
 			expect(result).toBeNull();
 			expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -451,7 +451,7 @@ describe('CredentialStore', () => {
 		});
 	});
 
-	describe('hasValidCredentials', () => {
+	describe('hasCredentials', () => {
 		it('should return true when valid unexpired credentials exist', () => {
 			const futureDate = new Date(Date.now() + 3600000); // 1 hour from now
 			const credentials = {
@@ -465,10 +465,10 @@ describe('CredentialStore', () => {
 			vi.mocked(fs.existsSync).mockReturnValue(true);
 			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(credentials));
 
-			expect(store.hasValidCredentials()).toBe(true);
+			expect(store.hasCredentials()).toBe(true);
 		});
 
-		it('should return false when credentials are expired', () => {
+		it('should return true when credentials are expired', () => {
 			const pastDate = new Date(Date.now() - 3600000); // 1 hour ago
 			const credentials = {
 				token: 'expired-token',
@@ -481,13 +481,13 @@ describe('CredentialStore', () => {
 			vi.mocked(fs.existsSync).mockReturnValue(true);
 			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(credentials));
 
-			expect(store.hasValidCredentials()).toBe(false);
+			expect(store.hasCredentials()).toBe(true);
 		});
 
 		it('should return false when no credentials exist', () => {
 			vi.mocked(fs.existsSync).mockReturnValue(false);
 
-			expect(store.hasValidCredentials()).toBe(false);
+			expect(store.hasCredentials()).toBe(false);
 		});
 
 		it('should return false when file contains invalid JSON', () => {
@@ -495,7 +495,7 @@ describe('CredentialStore', () => {
 			vi.mocked(fs.readFileSync).mockReturnValue('invalid json {');
 			vi.mocked(fs.renameSync).mockImplementation(() => undefined);
 
-			expect(store.hasValidCredentials()).toBe(false);
+			expect(store.hasCredentials()).toBe(false);
 		});
 
 		it('should return false for credentials without expiry', () => {
@@ -510,7 +510,7 @@ describe('CredentialStore', () => {
 			vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(credentials));
 
 			// Credentials without expiry are considered invalid
-			expect(store.hasValidCredentials()).toBe(false);
+			expect(store.hasCredentials()).toBe(false);
 
 			// Should log warning about missing expiration
 			expect(mockLogger.warn).toHaveBeenCalledWith(
@@ -518,14 +518,14 @@ describe('CredentialStore', () => {
 			);
 		});
 
-		it('should use allowExpired=false by default', () => {
+		it('should use allowExpired=true', () => {
 			// Spy on getCredentials to verify it's called with correct params
 			const getCredentialsSpy = vi.spyOn(store, 'getCredentials');
 
 			vi.mocked(fs.existsSync).mockReturnValue(false);
-			store.hasValidCredentials();
+			store.hasCredentials();
 
-			expect(getCredentialsSpy).toHaveBeenCalledWith({ allowExpired: false });
+			expect(getCredentialsSpy).toHaveBeenCalledWith({ allowExpired: true });
 		});
 	});
 

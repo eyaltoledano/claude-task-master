@@ -50,7 +50,7 @@ describe('AuthManager Token Refresh', () => {
 		}
 	});
 
-	it('should return expired credentials for Supabase to refresh', async () => {
+	it('should return expired credentials for Supabase to refresh', () => {
 		// Set up expired credentials with refresh token
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
@@ -65,14 +65,14 @@ describe('AuthManager Token Refresh', () => {
 
 		// Get credentials should return them even if expired
 		// Supabase will handle the refresh automatically
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
 		expect(credentials).not.toBeNull();
 		expect(credentials?.token).toBe('expired_access_token');
 		expect(credentials?.refreshToken).toBe('valid_refresh_token');
 	});
 
-	it('should return valid credentials', async () => {
+	it('should return valid credentials', () => {
 		// Set up valid (non-expired) credentials
 		const validCredentials: AuthCredentials = {
 			token: 'valid_access_token',
@@ -85,12 +85,12 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(validCredentials);
 
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
 		expect(credentials?.token).toBe('valid_access_token');
 	});
 
-	it('should return expired credentials even without refresh token', async () => {
+	it('should return expired credentials even without refresh token', () => {
 		// Set up expired credentials WITHOUT refresh token
 		// We still return them - it's up to the caller/Supabase to handle
 		const expiredCredentials: AuthCredentials = {
@@ -104,19 +104,19 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(expiredCredentials);
 
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
 		// Returns credentials even if expired
 		expect(credentials).not.toBeNull();
 		expect(credentials?.token).toBe('expired_access_token');
 	});
 
-	it('should return null if no credentials exist', async () => {
-		const credentials = await authManager.getCredentials();
+	it('should return null if no credentials exist', () => {
+		const credentials = authManager.getCredentials();
 		expect(credentials).toBeNull();
 	});
 
-	it('should return credentials regardless of refresh token validity', async () => {
+	it('should return credentials regardless of refresh token validity', () => {
 		// Set up expired credentials with refresh token
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
@@ -129,7 +129,7 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(expiredCredentials);
 
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
 		// Returns credentials - Supabase will attempt refresh and handle failure
 		expect(credentials).not.toBeNull();
