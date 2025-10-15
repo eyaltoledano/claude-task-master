@@ -24,6 +24,8 @@ export class CredentialStore {
 	private config: AuthConfig;
 	// Clock skew tolerance for expiry checks (30 seconds)
 	private readonly CLOCK_SKEW_MS = 30_000;
+	// Track if we've already warned about missing expiration to avoid spam
+	private hasWarnedAboutMissingExpiration = false;
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.config = getAuthConfig(config);
@@ -84,7 +86,11 @@ export class CredentialStore {
 
 			// Validate expiration time for tokens
 			if (expiresAtMs === undefined) {
-				this.logger.warn('No valid expiration time provided for token');
+				// Only log this warning once to avoid spam during auth flows
+				if (!this.hasWarnedAboutMissingExpiration) {
+					this.logger.warn('No valid expiration time provided for token');
+					this.hasWarnedAboutMissingExpiration = true;
+				}
 				return null;
 			}
 
@@ -174,6 +180,9 @@ export class CredentialStore {
 				mode: 0o600
 			});
 			fs.renameSync(tempFile, this.config.configFile);
+
+			// Reset the warning flag so it can be shown again for future invalid tokens
+			this.hasWarnedAboutMissingExpiration = false;
 		} catch (error) {
 			throw new AuthenticationError(
 				`Failed to save auth credentials: ${(error as Error).message}`,

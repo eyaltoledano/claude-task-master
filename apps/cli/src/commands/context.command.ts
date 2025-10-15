@@ -501,7 +501,7 @@ export class ContextCommand extends Command {
 			if (!briefId) {
 				spinner.fail('Could not extract a brief ID from the provided input');
 				ui.displayError(
-					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
+					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
 				);
 				process.exit(1);
 			}
