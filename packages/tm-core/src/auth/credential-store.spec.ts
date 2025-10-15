@@ -92,6 +92,25 @@ describe('CredentialStore - Token Expiration', () => {
 			expect(retrieved).not.toBeNull();
 			expect(retrieved?.token).toBe('expired-token');
 		});
+
+		it('should return expired token by default (allowExpired defaults to true)', () => {
+			const expiredCredentials: AuthCredentials = {
+				token: 'expired-token-default',
+				refreshToken: 'refresh-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				expiresAt: new Date(Date.now() - 60000).toISOString(),
+				savedAt: new Date().toISOString()
+			};
+
+			credentialStore.saveCredentials(expiredCredentials);
+
+			// Call without options - should default to allowExpired: true
+			const retrieved = credentialStore.getCredentials();
+
+			expect(retrieved).not.toBeNull();
+			expect(retrieved?.token).toBe('expired-token-default');
+		});
 	});
 
 	describe('Clock Skew Tolerance', () => {

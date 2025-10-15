@@ -50,7 +50,7 @@ describe('AuthManager Token Refresh', () => {
 		}
 	});
 
-	it('should return expired credentials for Supabase to refresh', () => {
+	it('should return expired credentials to enable refresh flows', () => {
 		// Set up expired credentials with refresh token
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
@@ -64,7 +64,7 @@ describe('AuthManager Token Refresh', () => {
 		credentialStore.saveCredentials(expiredCredentials);
 
 		// Get credentials should return them even if expired
-		// Supabase will handle the refresh automatically
+		// Refresh will be handled by explicit calls or client operations
 		const credentials = authManager.getCredentials();
 
 		expect(credentials).not.toBeNull();
@@ -92,7 +92,7 @@ describe('AuthManager Token Refresh', () => {
 
 	it('should return expired credentials even without refresh token', () => {
 		// Set up expired credentials WITHOUT refresh token
-		// We still return them - it's up to the caller/Supabase to handle
+		// We still return them - it's up to the caller to handle
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
 			refreshToken: undefined,
@@ -131,7 +131,7 @@ describe('AuthManager Token Refresh', () => {
 
 		const credentials = authManager.getCredentials();
 
-		// Returns credentials - Supabase will attempt refresh and handle failure
+		// Returns credentials - refresh will be attempted by the client which will handle failure
 		expect(credentials).not.toBeNull();
 		expect(credentials?.token).toBe('expired_access_token');
 		expect(credentials?.refreshToken).toBe('invalid_refresh_token');

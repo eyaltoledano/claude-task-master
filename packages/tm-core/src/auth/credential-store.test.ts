@@ -226,6 +226,31 @@ describe('CredentialStore', () => {
 			expect(result).not.toBeNull();
 			expect(result?.token).toBe('expired-token');
 		});
+
+		it('should return expired tokens by default (allowExpired defaults to true)', () => {
+			const expiredTimestamp = Date.now() - 3600000; // 1 hour ago
+			const mockCredentials = {
+				token: 'expired-token-default',
+				userId: 'user-expired',
+				expiresAt: expiredTimestamp,
+				tokenType: 'standard',
+				savedAt: new Date().toISOString()
+			};
+
+			vi.mocked(fs.existsSync).mockReturnValue(true);
+			vi.mocked(fs.readFileSync).mockReturnValue(
+				JSON.stringify(mockCredentials)
+			);
+
+			// Call without options - should default to allowExpired: true
+			const result = store.getCredentials();
+
+			expect(result).not.toBeNull();
+			expect(result?.token).toBe('expired-token-default');
+			expect(mockLogger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('Authentication token has expired')
+			);
+		});
 	});
 
 	describe('saveCredentials with timestamp normalization', () => {

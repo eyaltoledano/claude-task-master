@@ -89,7 +89,7 @@ export class CredentialStore {
 			authData.expiresAt = expiresAtMs;
 
 			// Check if the token has expired (with clock skew tolerance)
-			// Default to allowExpired=true so Supabase can access refresh tokens
+			// Default to allowExpired=true to enable refresh flows
 			const now = Date.now();
 			const allowExpired = options?.allowExpired ?? true;
 			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
@@ -104,7 +104,7 @@ export class CredentialStore {
 				return null;
 			}
 
-			// Return credentials (even if expired, so Supabase can refresh)
+			// Return credentials (even if expired) to enable refresh flows
 			return authData;
 		} catch (error) {
 			this.logger.error(
