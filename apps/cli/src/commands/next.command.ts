@@ -3,6 +3,7 @@
  * Extends Commander.Command for better integration with the framework
  */
 
+import path from 'node:path';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
@@ -81,6 +82,9 @@ export class NextCommand extends Command {
 
 			// Allow error to propagate for library compatibility
 			throw new Error(msg.message || 'Unexpected error in next command');
+		} finally {
+			// Always clean up resources, even on error
+			await this.cleanup();
 		}
 	}
 
@@ -101,7 +105,8 @@ export class NextCommand extends Command {
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
-			this.tmCore = await createTaskMasterCore({ projectPath: projectRoot });
+			const resolved = path.resolve(projectRoot);
+			this.tmCore = await createTaskMasterCore({ projectPath: resolved });
 		}
 	}
 
@@ -120,13 +125,16 @@ export class NextCommand extends Command {
 
 		// Get storage type and active tag
 		const storageType = this.tmCore.getStorageType();
+		if (storageType === 'auto') {
+			throw new Error('Storage type must be resolved before use');
+		}
 		const activeTag = options.tag || this.tmCore.getActiveTag();
 
 		return {
 			task,
 			found: task !== null,
 			tag: activeTag,
-			storageType: storageType as Exclude<StorageType, 'auto'>
+			storageType
 		};
 	}
 
@@ -184,6 +192,9 @@ export class NextCommand extends Command {
 				)
 			);
 			console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
+			console.log(
+				`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list --status pending')} ${chalk.dim('to see all pending tasks')}`
+			);
 			return;
 		}
 
