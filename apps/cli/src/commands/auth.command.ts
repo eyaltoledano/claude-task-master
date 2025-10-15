@@ -143,7 +143,7 @@ export class AuthCommand extends Command {
 	 */
 	private async executeStatus(): Promise<void> {
 		try {
-			const result = await this.displayStatus();
+			const result = this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
 			this.handleError(error);
@@ -171,8 +171,8 @@ export class AuthCommand extends Command {
 	/**
 	 * Display authentication status
 	 */
-	private async displayStatus(): Promise<AuthResult> {
-		const credentials = await this.authManager.getCredentials();
+	private displayStatus(): AuthResult {
+		const credentials = this.authManager.getCredentials();
 
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
@@ -325,7 +325,7 @@ export class AuthCommand extends Command {
 			]);
 
 			if (!continueAuth) {
-				const credentials = await this.authManager.getCredentials();
+				const credentials = this.authManager.getCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -490,7 +490,7 @@ export class AuthCommand extends Command {
 	/**
 	 * Get current credentials (for programmatic usage)
 	 */
-	getCredentials(): Promise<AuthCredentials | null> {
+	getCredentials(): AuthCredentials | null {
 		return this.authManager.getCredentials();
 	}
 
