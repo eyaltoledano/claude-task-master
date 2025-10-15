@@ -82,8 +82,8 @@ export class StorageFactory {
 							apiAccessToken: credentials.token,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
-								process.env.TM_PUBLIC_BASE_DOMAIN ||
-								'https://tryhamster.com/api'
+								process.env.TM_BASE_DOMAIN ||
+								process.env.TM_PUBLIC_BASE_DOMAIN
 						};
 						config.storage = nextStorage;
 					}
@@ -112,6 +112,7 @@ export class StorageFactory {
 							apiAccessToken: credentials.token,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
+								process.env.TM_BASE_DOMAIN ||
 								process.env.TM_PUBLIC_BASE_DOMAIN ||
 								'https://tryhamster.com/api'
 						};

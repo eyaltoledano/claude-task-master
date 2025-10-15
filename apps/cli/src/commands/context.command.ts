@@ -6,6 +6,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import search from '@inquirer/search';
 import ora, { Ora } from 'ora';
 import {
 	AuthManager,
@@ -156,10 +157,14 @@ export class ContextCommand extends Command {
 
 			if (context.briefName || context.briefId) {
 				console.log(chalk.green('\n✓ Brief'));
-				if (context.briefName) {
+				if (context.briefName && context.briefId) {
+					const shortId = context.briefId.slice(0, 8);
+					console.log(
+						chalk.white(`  ${context.briefName} `) + chalk.gray(`(${shortId})`)
+					);
+				} else if (context.briefName) {
 					console.log(chalk.white(`  ${context.briefName}`));
-				}
-				if (context.briefId) {
+				} else if (context.briefId) {
 					console.log(chalk.gray(`  ID: ${context.briefId}`));
 				}
 			}
@@ -324,25 +329,53 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			// Prompt for selection
-			const { selectedBrief } = await inquirer.prompt([
-				{
-					type: 'list',
-					name: 'selectedBrief',
-					message: 'Select a brief:',
-					choices: [
-						{ name: '(No brief - organization level)', value: null },
-						...briefs.map((brief) => ({
-							name: `Brief ${brief.id} (${new Date(brief.createdAt).toLocaleDateString()})`,
-							value: brief
-						}))
-					]
+			// Prompt for selection with search
+			const selectedBrief = await search<(typeof briefs)[0] | null>({
+				message: 'Search for a brief:',
+				source: async (input) => {
+					const searchTerm = input?.toLowerCase() || '';
+
+					// Static option for no brief
+					const noBriefOption = {
+						name: '(No brief - organization level)',
+						value: null as any,
+						description: 'Clear brief selection'
+					};
+
+					// Filter and map brief options
+					const briefOptions = briefs
+						.filter((brief) => {
+							if (!searchTerm) return true;
+
+							const title = brief.document?.title || '';
+							const shortId = brief.id.slice(0, 8);
+
+							// Search by title first, then by UUID
+							return (
+								title.toLowerCase().includes(searchTerm) ||
+								brief.id.toLowerCase().includes(searchTerm) ||
+								shortId.toLowerCase().includes(searchTerm)
+							);
+						})
+						.map((brief) => {
+							const title =
+								brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
+							const shortId = brief.id.slice(0, 8);
+							return {
+								name: `${title} ${chalk.gray(`(${shortId})`)}`,
+								value: brief
+							};
+						});
+
+					return [noBriefOption, ...briefOptions];
 				}
-			]);
+			});
 
 			if (selectedBrief) {
 				// Update context with brief
-				const briefName = `Brief ${selectedBrief.id.slice(0, 8)}`;
+				const briefName =
+					selectedBrief.document?.title ||
+					`Brief ${selectedBrief.id.slice(0, 8)}`;
 				this.authManager.updateContext({
 					briefId: selectedBrief.id,
 					briefName: briefName
@@ -354,7 +387,7 @@ export class ContextCommand extends Command {
 					success: true,
 					action: 'select-brief',
 					context: this.authManager.getContext() || undefined,
-					message: `Selected brief: ${selectedBrief.name}`
+					message: `Selected brief: ${selectedBrief.document?.title}`
 				};
 			} else {
 				// Clear brief selection
@@ -490,7 +523,8 @@ export class ContextCommand extends Command {
 			}
 
 			// Update context: set org and brief
-			const briefName = `Brief ${brief.id.slice(0, 8)}`;
+			const briefName =
+				brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
 			this.authManager.updateContext({
 				orgId: brief.accountId,
 				orgName,
