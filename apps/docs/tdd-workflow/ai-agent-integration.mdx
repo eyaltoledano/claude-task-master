@@ -930,15 +930,84 @@ tm init
 
 ---
 
+## Working with AI Agents
+
+Example prompts for AI agents (Claude Code, Cursor, etc.) to use the TDD workflow.
+
+### Starting a Task
+
+```
+I want to implement Task 7 using TDD workflow. Please:
+1. Start the autopilot workflow
+2. Show me the first subtask to implement
+3. Begin the RED-GREEN-COMMIT cycle
+```
+
+### RED Phase - Writing Failing Tests
+
+```
+We're in RED phase for subtask "{SUBTASK_TITLE}". Please:
+1. Read the subtask requirements
+2. Write a test that validates the behavior
+3. The test MUST fail because the feature doesn't exist yet
+4. Run the tests and report results to complete the RED phase
+```
+
+### GREEN Phase - Implementing
+
+```
+We're in GREEN phase. The test is failing with: {ERROR_MESSAGE}
+
+Please:
+1. Implement the minimal code to make this test pass
+2. Don't over-engineer or add untested features
+3. Run tests and report results to complete the GREEN phase
+```
+
+### Handling Errors
+
+```
+The RED phase validation failed - no test failures detected.
+
+Please:
+1. Review the test I just wrote
+2. Identify why it's not actually testing new behavior
+3. Rewrite the test to properly fail until the feature is implemented
+```
+
+```
+GREEN phase validation failed - {N} tests still failing.
+
+Please:
+1. Review the failing test output
+2. Fix the implementation to pass all tests
+3. Try completing the GREEN phase again
+```
+
+### Checking Progress
+
+```
+What's the current state of the workflow? Please show:
+- Which subtask we're on
+- Current TDD phase (RED/GREEN/COMMIT)
+- Progress percentage
+- Next action required
+```
+
+### Resuming Work
+
+```
+I have an in-progress workflow. Please:
+1. Resume the autopilot workflow
+2. Show current status
+3. Continue from where we left off
+```
+
+---
+
 ## Additional Resources
 
-- [Command Reference](./command-reference.mdx) - Complete CLI command documentation
-- [MCP Provider Guide](./mcp-provider-guide.mdx) - MCP integration details
-- [Task Structure](./task-structure.mdx) - Understanding TaskMaster's task system
-- [Configuration](./configuration.mdx) - Project configuration options
-
-## Support
-
-For issues, questions, or contributions:
-- GitHub Issues: https://github.com/eyaltoledano/claude-task-master/issues
-- Documentation: https://docs.task-master.dev
+- [Command Reference](/command-reference) - Complete CLI command documentation
+- [MCP Provider Guide](/capabilities/mcp) - MCP integration details
+- [Task Structure](/capabilities/task-structure) - Understanding TaskMaster's task system
+- [Configuration](/configuration) - Project configuration options

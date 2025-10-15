@@ -31,7 +31,6 @@ export class AuthManager {
 	private supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
 	private readonly logger = getLogger('AuthManager');
-	private refreshPromise: Promise<AuthCredentials> | null = null;
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.credentialStore = CredentialStore.getInstance(config);
