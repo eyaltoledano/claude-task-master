@@ -29,13 +29,17 @@ export class SupabaseAuthClient {
 	 */
 	getClient(): SupabaseJSClient {
 		if (!this.client) {
-			// Get Supabase configuration from environment - using TM_PUBLIC prefix
-			const supabaseUrl = process.env.TM_PUBLIC_SUPABASE_URL;
-			const supabaseAnonKey = process.env.TM_PUBLIC_SUPABASE_ANON_KEY;
+			// Get Supabase configuration from environment
+			// Runtime vars (TM_*) take precedence over build-time vars (TM_PUBLIC_*)
+			const supabaseUrl =
+				process.env.TM_SUPABASE_URL || process.env.TM_PUBLIC_SUPABASE_URL;
+			const supabaseAnonKey =
+				process.env.TM_SUPABASE_ANON_KEY ||
+				process.env.TM_PUBLIC_SUPABASE_ANON_KEY;
 
 			if (!supabaseUrl || !supabaseAnonKey) {
 				throw new AuthenticationError(
-					'Supabase configuration missing. Please set TM_PUBLIC_SUPABASE_URL and TM_PUBLIC_SUPABASE_ANON_KEY environment variables.',
+					'Supabase configuration missing. Please set TM_SUPABASE_URL and TM_SUPABASE_ANON_KEY (runtime) or TM_PUBLIC_SUPABASE_URL and TM_PUBLIC_SUPABASE_ANON_KEY (build-time) environment variables.',
 					'CONFIG_MISSING'
 				);
 			}
