@@ -17,10 +17,11 @@ export class SupabaseAuthClient {
 	private client: SupabaseJSClient | null = null;
 	private sessionStorage: SupabaseSessionStorage;
 	private logger = getLogger('SupabaseAuthClient');
+	private credentialStore: CredentialStore;
 
 	constructor() {
-		const credentialStore = CredentialStore.getInstance();
-		this.sessionStorage = new SupabaseSessionStorage(credentialStore);
+		this.credentialStore = CredentialStore.getInstance();
+		this.sessionStorage = new SupabaseSessionStorage(this.credentialStore);
 	}
 
 	/**

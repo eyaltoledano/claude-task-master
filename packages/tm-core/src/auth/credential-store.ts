@@ -89,8 +89,9 @@ export class CredentialStore {
 			authData.expiresAt = expiresAtMs;
 
 			// Check if the token has expired (with clock skew tolerance)
+			// Default to allowExpired=true so Supabase can access refresh tokens
 			const now = Date.now();
-			const allowExpired = options?.allowExpired ?? false;
+			const allowExpired = options?.allowExpired ?? true;
 			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
 				this.logger.warn(
 					'Authentication token has expired or is about to expire',
@@ -103,7 +104,7 @@ export class CredentialStore {
 				return null;
 			}
 
-			// Return valid token
+			// Return credentials (even if expired, so Supabase can refresh)
 			return authData;
 		} catch (error) {
 			this.logger.error(
@@ -202,7 +203,7 @@ export class CredentialStore {
 	 * Check if credentials exist and are valid
 	 */
 	hasValidCredentials(): boolean {
-		const credentials = this.getCredentials({ allowExpired: false });
+		const credentials = this.getCredentials({ allowExpired: true });
 		return credentials !== null;
 	}
 

@@ -98,11 +98,11 @@ export class SupabaseSessionStorage implements SupportedStorage {
 		// Only handle Supabase session keys
 		if (key === STORAGE_KEY || key.includes('auth-token')) {
 			try {
+				this.logger.info('Supabase called setItem - storing refreshed session');
+
 				// Parse the session and update our credentials
 				const sessionUpdates = this.parseSessionToCredentials(value);
-				const existingCredentials = this.store.getCredentials({
-					allowExpired: true
-				});
+				const existingCredentials = this.store.getCredentials();
 
 				if (sessionUpdates.token) {
 					const updatedCredentials: AuthCredentials = {
@@ -113,6 +113,9 @@ export class SupabaseSessionStorage implements SupportedStorage {
 					} as AuthCredentials;
 
 					this.store.saveCredentials(updatedCredentials);
+					this.logger.info(
+						'Successfully saved refreshed credentials from Supabase'
+					);
 				}
 			} catch (error) {
 				this.logger.error('Error setting session:', error);
