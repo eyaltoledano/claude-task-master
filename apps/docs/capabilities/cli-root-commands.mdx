@@ -35,6 +35,18 @@ sidebarTitle: "CLI Commands"
     ```bash
     # Show the next task to work on based on dependencies and status
     task-master next
+
+    # Filter by tag
+    task-master next --tag <tag>
+
+    # Output in JSON format (useful for programmatic usage)
+    task-master next --format json
+
+    # Suppress output (useful for scripts)
+    task-master next --silent
+
+    # Specify project directory
+    task-master next --project /path/to/project
     ```
   </Accordion>
 
