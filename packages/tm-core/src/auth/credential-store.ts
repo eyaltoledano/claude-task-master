@@ -54,9 +54,12 @@ export class CredentialStore {
 
 	/**
 	 * Get stored authentication credentials
+	 * @param options.allowExpired - Whether to return expired credentials (default: true)
 	 * @returns AuthCredentials with expiresAt as number (milliseconds) for runtime use
 	 */
-	getCredentials(options?: { allowExpired?: boolean }): AuthCredentials | null {
+	getCredentials({
+		allowExpired = true
+	}: { allowExpired?: boolean } = {}): AuthCredentials | null {
 		try {
 			if (!fs.existsSync(this.config.configFile)) {
 				return null;
@@ -89,9 +92,7 @@ export class CredentialStore {
 			authData.expiresAt = expiresAtMs;
 
 			// Check if the token has expired (with clock skew tolerance)
-			// Default to allowExpired=true to enable refresh flows
 			const now = Date.now();
-			const allowExpired = options?.allowExpired ?? true;
 			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
 				this.logger.warn(
 					'Authentication token has expired or is about to expire',
@@ -201,6 +202,7 @@ export class CredentialStore {
 
 	/**
 	 * Check if credentials exist (regardless of expiration status)
+	 * @returns true if credentials are stored, including expired credentials
 	 */
 	hasCredentials(): boolean {
 		const credentials = this.getCredentials({ allowExpired: true });

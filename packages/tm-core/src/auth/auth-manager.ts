@@ -167,7 +167,8 @@ export class AuthManager {
 	}
 
 	/**
-	 * Check if authenticated
+	 * Check if authenticated (credentials exist, regardless of expiration)
+	 * @returns true if credentials are stored, including expired credentials
 	 */
 	isAuthenticated(): boolean {
 		return this.credentialStore.hasCredentials();
