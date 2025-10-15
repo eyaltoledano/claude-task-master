@@ -72,8 +72,8 @@ export class StorageFactory {
 							{ storageType: 'api', missing }
 						);
 					}
-					// Use auth token from AuthManager
-					const credentials = authManager.getCredentials();
+					// Use auth token from AuthManager (synchronous - no auto-refresh here)
+					const credentials = authManager.getCredentialsSync();
 					if (credentials) {
 						// Merge with existing storage config, ensuring required fields
 						const nextStorage: StorageSettings = {
@@ -103,7 +103,7 @@ export class StorageFactory {
 
 				// Then check if authenticated via AuthManager
 				if (authManager.isAuthenticated()) {
-					const credentials = authManager.getCredentials();
+					const credentials = authManager.getCredentialsSync();
 					if (credentials) {
 						// Configure API storage with auth credentials
 						const nextStorage: StorageSettings = {

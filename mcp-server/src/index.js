@@ -4,13 +4,15 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import logger from './logger.js';
-import { registerTaskMasterTools } from './tools/index.js';
+import {
+	registerTaskMasterTools,
+	getToolsConfiguration
+} from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
 import { AgentLLMProviderToolExecutor } from './providers/agentllm-provider-tool-executor.js';
 import packageJson from '../../package.json' with { type: 'json' };
 
-// Load environment variables
 dotenv.config();
 
 // Constants
@@ -32,12 +34,10 @@ class TaskMasterMCPServer {
 		this.pendingAgentLLMInteractions = new Map(); // For managing paused states
 		this.registeredTools = new Map(); // Internal tool registry
 
-		// Bind methods
 		this.init = this.init.bind(this);
 		this.start = this.start.bind(this);
 		this.stop = this.stop.bind(this);
 
-		// Setup logging
 		this.logger = logger;
 	}
 
@@ -47,8 +47,14 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
-		// Create a custom tool registrar that wraps execute methods
-		// AND populates our internal registry
+		// Normalize tool mode from environment and register tools.
+		// We provide a custom registrar object that presents an `addTool` API
+		// so the existing `registerTaskMasterTools` function can call it just
+		// like it would call FastMCP's server.addTool. This lets us wrap each
+		// tool's `execute` with `AgentLLMProviderToolExecutor` and populate our
+		// internal `registeredTools` map for use by provider executors.
+		const normalizedToolMode = getToolsConfiguration();
+
 		const customToolRegistrar = {
 			addTool: ({ name, description, parameters, execute }) => {
 				const wrappedExecute = AgentLLMProviderToolExecutor(
@@ -57,7 +63,7 @@ class TaskMasterMCPServer {
 					this
 				);
 
-				// Add to FastMCP's registry (as before)
+				// Register with the real FastMCP server
 				this.server.addTool({
 					name,
 					description,
@@ -65,21 +71,42 @@ class TaskMasterMCPServer {
 					execute: wrappedExecute
 				});
 
-				// Add to our internal registry
+				// Keep a copy for internal lookups (e.g., provider executors)
 				this.registeredTools.set(name, {
 					name,
 					description,
 					parameters,
 					execute: wrappedExecute
 				});
+
 				this.logger.debug(
 					`TaskMasterMCPServer: Tool '${name}' registered internally and with FastMCP.`
 				);
 			}
 		};
 
-		// Pass the custom registrar to the tool registration function
-		registerTaskMasterTools(customToolRegistrar);
+		const registrationResult = registerTaskMasterTools(
+			customToolRegistrar,
+			normalizedToolMode
+		);
+
+		this.logger.debug(`Normalized tool mode: ${registrationResult.normalizedMode}`);
+		this.logger.debug(
+			`Registered ${registrationResult.registeredTools.length} tools successfully`
+		);
+
+		if (registrationResult.registeredTools.length > 0) {
+			this.logger.debug(
+				`Registered tools: ${registrationResult.registeredTools.join(', ')}`
+			);
+		}
+
+		if (registrationResult.failedTools.length > 0) {
+			this.logger.warn(
+				`Failed to register ${registrationResult.failedTools.length} tools: ${registrationResult.failedTools.join(', ')}`
+			);
+		}
+
 
 		this.initialized = true;
 
