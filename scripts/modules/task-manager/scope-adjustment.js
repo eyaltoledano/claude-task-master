@@ -562,7 +562,7 @@ async function adjustTaskComplexity(
 			pendingInteraction: {
 				type: 'agent_llm',
 				interactionId: aiResult.mainResult.interactionId,
-				delegatedCallDetails: {
+				llmRequestForAgent: {
 					originalCommand: context.commandName || `scope-${direction}`,
 					role: 'main',
 					serviceType: 'generateObject',

@@ -502,7 +502,7 @@ async function addTask(
 						pendingInteraction: {
 							type: 'agent_llm',
 							interactionId: aiServiceResponse.mainResult.interactionId,
-							delegatedCallDetails: {
+							llmRequestForAgent: {
 								originalCommand: context.commandName || 'add_task',
 								role: serviceRole, // serviceRole is already defined in this scope
 								serviceType: 'generateObject',

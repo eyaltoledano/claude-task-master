@@ -90,6 +90,20 @@ describe('AgentLLMProvider', () => {
 	});
 
 	describe('generateObject', () => {
+		test('should throw error when schema is missing', async () => {
+			const params = {
+				messages: [{ role: 'user', content: 'no schema' }]
+			};
+			await expect(provider.generateObject(params)).rejects.toThrow();
+		});
+
+		test('should throw error when messages is missing', async () => {
+			const params = {
+				schema: { type: 'object', properties: { key: { type: 'string' } } }
+			};
+			await expect(provider.generateObject(params)).rejects.toThrow();
+		});
+
 		test('should return agent_llm_delegation with interactionId and details including schema and objectName', async () => {
 			const params = {
 				//modelId: 'test-model-object',

@@ -77,6 +77,10 @@ async function agentllmAddTaskSave(
 			logWrapper.warn(
 				`agentllmAddTaskSave: Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'. Initializing new tasks array.`
 			);
+			// Ensure a safe, consistent structure
+			if (allTasksData && typeof allTasksData === 'object') {
+				allTasksData.tasks = [];
+			}
 		}
 
 		// Check for ID collision (shouldn't happen if newTaskId is determined correctly)

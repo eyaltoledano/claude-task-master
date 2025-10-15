@@ -6,7 +6,7 @@ trigger: always_on
 ---
 # How to Handle agent_llm Interactions
 
-The `agent_llm` tool is used for managing delegated LLM calls between the Taskmaster server and the agent (you). When a Taskmaster tool (like `parse_prd`, `analyze_project_complexity`, `expand_task`, `expand_all`, `update`, `update_task`, `update_subtask`, `add_task`, `research`) requires an LLM call, Taskmaster delegates this call to the agent (you) using the `agent_llm` mechanism.
+The `agent_llm` tool is used for managing delegated LLM calls between the Taskmaster server and the agent (you). When a Taskmaster tool (like `parse_prd`, `analyze_project_complexity`, `expand_task`, `expand_all`, `update`, `update_task`, `update_subtask`, `add_task`, `research`, `scope-up-task`, `scope-down-task`) requires an LLM call, Taskmaster delegates this call to the agent (you) using the `agent_llm` mechanism.
 
 ## File Path Rules
 
@@ -29,7 +29,7 @@ The `details` object will include:
 
 - **type**: `"agent_llm"`
 - **interactionId**: A unique ID for this specific LLM interaction (e.g., `"e1df3789-1cea-403a-a114-90adcc4cd155"`). You must use this ID when responding.
-- **delegatedCallDetails**: This object contains the parameters for the LLM call you need to make:
+- **llmRequestForAgent**: This object contains the parameters for the LLM call you need to make:
   - **originalCommand**: The Taskmaster command that initiated this delegation (e.g., `"parse-prd"`).
   - **role**: The AI role for the LLM call (e.g., `"main"`, `"research"`).
   - **serviceType**: The type of LLM service requested (e.g., `"generateObject"`, `"generateText"`, `"streamText"`).
@@ -37,9 +37,9 @@ The `details` object will include:
 
 ## 2. Processing the Delegated Call (Your Action)
 
-Upon receiving a pending-interaction with `delegatedCallDetails`, you (the agent) are expected to perform the LLM call as specified in the `requestParameters`.
+Upon receiving a pending-interaction with `llmRequestForAgent`, you (the agent) are expected to perform the LLM call as specified in the `requestParameters`.
 
-- **Which LLM to Use**: When processing a delegated LLM call, always use the LLM model or environment that is currently running the agent (i.e., the built-in or default LLM). Do not attempt to call external LLM APIs or services unless explicitly instructed in the delegatedCallDetails. If a modelId or other LLM parameters are provided, use them only if they match the agent's available models; otherwise, proceed with the agent's default LLM.
+- **Which LLM to Use**: When processing a delegated LLM call, always use the LLM model or environment that is currently running the agent (i.e., the built-in or default LLM). Do not attempt to call external LLM APIs or services unless explicitly instructed in the llmRequestForAgent. If a modelId or other LLM parameters are provided, use them only if they match the agent's available models; otherwise, proceed with the agent's default LLM.
 
 ## 3. Submitting the LLM Result to Taskmaster
 
@@ -56,7 +56,7 @@ Your arguments for the `agent_llm` tool must include:
 
 Do not use `get_tasks` tool  before `expand_all`.
 **Note on `expand_all`:** The `expand_all` tool returns the list of `delegatedTaskIds` and you have to expand tasks one by one using `expand_task` tool.
-**Note on `research`:** When a research is made for a specific task always fill `saveTo` parameter unless user explicitly asks you not to save the result.
+**Note on `research`:** When a research is made for a specific task always fill `saveToTask` parameter unless user explicitly asks you not to save the result.
 **Note on `scope_up_task` and `scope_down_task`:** After scoping the task reanalyze project complexity with a task Id that you scoped.
 
 The project is already initialized.

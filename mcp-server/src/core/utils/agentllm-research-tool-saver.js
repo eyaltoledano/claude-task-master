@@ -80,7 +80,7 @@ export async function agentllmResearchSave(
 	projectRoot,
 	log,
 	sessionContext,
-	tag = 'master'
+	tag
 ) {
 	let taskUpdated = false;
 	let savedFilePath = null;

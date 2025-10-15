@@ -259,8 +259,9 @@ async function agentllmUpdateSave(
 						const subtaskIds = new Set();
 						finalSubtasks = finalSubtasks
 							.filter((st) => {
-								if (!subtaskIds.has(st.id)) {
-									subtaskIds.add(st.id);
+								const key = Number(st.id);
+								if (!subtaskIds.has(key)) {
+									subtaskIds.add(key);
 									return true;
 								}
 								return false;

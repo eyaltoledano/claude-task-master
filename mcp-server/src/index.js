@@ -90,7 +90,9 @@ class TaskMasterMCPServer {
 			normalizedToolMode
 		);
 
-		this.logger.debug(`Normalized tool mode: ${registrationResult.normalizedMode}`);
+		this.logger.debug(
+			`Normalized tool mode: ${registrationResult.normalizedMode}`
+		);
 		this.logger.debug(
 			`Registered ${registrationResult.registeredTools.length} tools successfully`
 		);
@@ -106,7 +108,6 @@ class TaskMasterMCPServer {
 				`Failed to register ${registrationResult.failedTools.length} tools: ${registrationResult.failedTools.join(', ')}`
 			);
 		}
-
 
 		this.initialized = true;
 

@@ -8,6 +8,7 @@ import { agentllmUpdateSave } from '../core/utils/agentllm-update-tool-saver.js'
 import { agentllmUpdateSubtaskSave } from '../core/utils/agentllm-update-subtask-tool-saver.js';
 import { agentllmResearchSave } from '../core/utils/agentllm-research-tool-saver.js';
 import { agentllmScopeSave } from '../core/utils/agentllm-scope-tool-saver.js';
+import { getCurrentTag } from '../../../scripts/modules/utils.js';
 
 async function _handlePostProcessing(
 	pendingData,
@@ -15,11 +16,12 @@ async function _handlePostProcessing(
 	log,
 	interactionId
 ) {
-	const { originalToolName, originalToolArgs, session, delegatedCallDetails } =
+	const { originalToolName, originalToolArgs, session, llmRequestForAgent } =
 		pendingData;
 	const projectRoot = originalToolArgs?.projectRoot || session?.roots?.[0]?.uri;
 	const tag =
-		delegatedCallDetails?.requestParameters?.tagInfo?.currentTag || 'master';
+		llmRequestForAgent?.requestParameters?.tagInfo?.currentTag ||
+		getCurrentTag(projectRoot);
 
 	let postProcessingResult = { success: true };
 	let mainResultMessage = finalLLMOutput; // Default to returning the raw output
@@ -42,7 +44,7 @@ async function _handlePostProcessing(
 		const parentIdStr = originalToolArgs?.id;
 		const parentIdNum = parentIdStr ? parseInt(parentIdStr, 10) : null;
 		const { nextSubtaskId, numSubtasksForAgent } =
-			delegatedCallDetails?.requestParameters || {};
+			llmRequestForAgent?.requestParameters || {};
 		if (
 			!projectRoot ||
 			!parentIdNum ||
@@ -107,7 +109,7 @@ async function _handlePostProcessing(
 			mainResultMessage = `Successfully updated task ${taskId}.`;
 		}
 	} else if (originalToolName === 'add_task' && finalLLMOutput) {
-		const delegatedParams = delegatedCallDetails?.requestParameters;
+		const delegatedParams = llmRequestForAgent?.requestParameters;
 		if (!projectRoot || !delegatedParams)
 			throw new Error('Missing projectRoot or delegated params for add_task');
 		log.info(
@@ -144,7 +146,7 @@ async function _handlePostProcessing(
 		}
 	} else if (
 		(originalToolName === 'update' ||
-			delegatedCallDetails?.originalCommand === 'update-tasks') &&
+			llmRequestForAgent?.originalCommand === 'update-tasks') &&
 		finalLLMOutput
 	) {
 		if (!projectRoot) throw new Error('Missing projectRoot for update');
@@ -227,7 +229,9 @@ async function _handlePostProcessing(
 		// Ensure backward compatibility: some callers send 'saveToTask' instead
 		// of 'saveTo' (tool parameter rename). Normalize into a single object
 		// so agentllmResearchSave sees `saveTo` consistently.
-		const rawSaveTo = originalToolArgs && (originalToolArgs.saveTo || originalToolArgs.saveToTask);
+		const rawSaveTo =
+			originalToolArgs &&
+			(originalToolArgs.saveTo || originalToolArgs.saveToTask);
 		const sanitizeSaveTo = (val) => {
 			if (typeof val === 'number') return String(val);
 			if (!val) return undefined;
@@ -321,7 +325,7 @@ async function _handlePostProcessing(
 	return {
 		mainResult: mainResultMessage,
 		telemetryData: null,
-		tagInfo: delegatedCallDetails?.requestParameters?.tagInfo || {
+		tagInfo: llmRequestForAgent?.requestParameters?.tagInfo || {
 			currentTag: 'master',
 			availableTags: ['master']
 		}
@@ -404,7 +408,7 @@ export function AgentLLMProviderToolExecutor(
 			detectedPendingInteractionObj &&
 			detectedPendingInteractionObj.type === 'agent_llm'
 		) {
-			const { interactionId, delegatedCallDetails } =
+			const { interactionId, llmRequestForAgent } =
 				detectedPendingInteractionObj; // Destructure from the 'details' object
 
 			if (!interactionId) {
@@ -461,8 +465,8 @@ export function AgentLLMProviderToolExecutor(
 					resolve,
 					reject,
 					timestamp: Date.now(),
-					// Store the delegatedCallDetails which includes requestParameters
-					delegatedCallDetails: delegatedCallDetails,
+					// Store the llmRequestForAgent which includes requestParameters
+					llmRequestForAgent: llmRequestForAgent,
 					timeout
 				});
 
@@ -473,7 +477,7 @@ export function AgentLLMProviderToolExecutor(
 					toolArgs.projectRoot || session?.roots?.[0]?.uri || '.';
 				agentLLMTool
 					.execute(
-						{ interactionId, delegatedCallDetails, projectRoot },
+						{ interactionId, llmRequestForAgent, projectRoot },
 						{ log, session }
 					)
 					.then((agentDirectiveResult) => {

@@ -318,7 +318,7 @@ async function performResearch(
 			const pendingInteractionObject = {
 				type: 'agent_llm', // Standardized type for server processing
 				interactionId: aiResult.mainResult.interactionId,
-				delegatedCallDetails: {
+				llmRequestForAgent: {
 					originalCommand: commandName, // Use the destructured commandName from the context parameter
 					role: 'research', // The role that was delegated
 					serviceType: 'generateText', // Agent is expected to generate text
@@ -904,8 +904,6 @@ async function handleFollowUpQuestions(
  * @param {string} projectRoot - Project root directory
  * @param {Object} context - Execution context (original from performResearch)
  * @param {Object} logFn - Logger function (original from performResearch)
- * @param {Function} updateTaskByIdCLI - updateTaskById function for CLI.
- * @param {Function} updateSubtaskByIdCLI - updateSubtaskById function for CLI.
  * @returns {Promise<boolean>} True if save was successful, false otherwise.
  */
 async function handleSaveToTask(
@@ -1000,7 +998,7 @@ async function handleSaveToTask(
 		);
 
 		// Write the modified data back to the file
-		writeJSON(tasksPath, data, projectRoot, context.tag);
+		await writeJSON(tasksPath, data, projectRoot, context.tag);
 
 		console.log(
 			chalk.green(

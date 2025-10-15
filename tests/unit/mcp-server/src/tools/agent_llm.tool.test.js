@@ -83,7 +83,7 @@ describe('agent_llm MCP Tool', () => {
 
 	test('Taskmaster-to-Agent flow: should generate interactionId if not provided', async () => {
 		const args = {
-			delegatedCallDetails: {
+			llmRequestForAgent: {
 				originalCommand: 'testCmd',
 				role: 'main',
 				serviceType: 'generateText',
@@ -96,7 +96,7 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test'); // uuid is mocked
-		expect(result.delegatedCallDetails.requestParameters).toEqual({
+		expect(result.llmRequestForAgent.requestParameters).toEqual({
 			prompt: 'test'
 		});
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();
@@ -113,7 +113,7 @@ describe('agent_llm MCP Tool', () => {
 	test('Taskmaster-to-Agent flow: should use provided interactionId', async () => {
 		const args = {
 			interactionId: 'provided-id-123',
-			delegatedCallDetails: {
+			llmRequestForAgent: {
 				originalCommand: 'testCmdWithId',
 				role: 'research',
 				serviceType: 'generateObject',
@@ -134,7 +134,7 @@ describe('agent_llm MCP Tool', () => {
 
 	test('Taskmaster-to-Agent flow (streamText)', async () => {
 		const args = {
-			delegatedCallDetails: {
+			llmRequestForAgent: {
 				originalCommand: 'testStream',
 				role: 'main',
 				serviceType: 'streamText',
@@ -147,7 +147,7 @@ describe('agent_llm MCP Tool', () => {
 		expect(result.toolResponseSource).toBe('taskmaster_to_agent');
 		expect(result.status).toBe('pending_agent_llm_action');
 		expect(result.interactionId).toBe('fixed-uuid-for-test');
-		expect(result.delegatedCallDetails.requestParameters).toEqual({
+		expect(result.llmRequestForAgent.requestParameters).toEqual({
 			prompt: 'test stream'
 		});
 		expect(result.pendingInteractionSignalToAgent).toBeDefined();

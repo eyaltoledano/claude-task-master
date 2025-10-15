@@ -280,7 +280,7 @@ async function updateSubtaskById(
 					pendingInteraction: {
 						type: 'agent_llm', // Standard type for server processing
 						interactionId: aiServiceResponse.mainResult.interactionId,
-						delegatedCallDetails: {
+						llmRequestForAgent: {
 							originalCommand: context.commandName || 'update_subtask',
 							role: role, // 'role' is defined based on useResearch flag
 							serviceType: 'generateText',

@@ -5,12 +5,12 @@
 
 import logger from '../logger.js';
 import {
-    toolRegistry,
-    coreTools,
-    standardTools,
-    getAvailableTools,
-    getToolRegistration,
-    isValidTool
+	toolRegistry,
+	coreTools,
+	standardTools,
+	getAvailableTools,
+	getToolRegistration,
+	isValidTool
 } from './tool-registry.js';
 
 /**
@@ -96,7 +96,6 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 							}
 						}
 					}
-
 
 					if (!resolvedName) {
 						const withHyphens = lowerToolName.replace(/_/g, '-');

@@ -27,86 +27,110 @@ class AgentLLMProvider extends BaseAIProvider {
 	}
 
 	async generateText(params) {
-		// Basic validation before delegation
-		if (!params.messages || !Array.isArray(params.messages)) {
-			throw new Error('Messages array is required for delegation');
+		try {
+			// Basic validation before delegation
+			if (!params.messages || !Array.isArray(params.messages)) {
+				throw new Error('Messages array is required for delegation');
+			}
+			this.validateMessages(params.messages);
+			const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+				params;
+			const interactionId = uuidv4();
+			const packagedParams = {
+				// modelId excluded: agent determines the model
+				messages,
+				// maxTokens, temperature excluded: mcp client manages these settings
+				...restApiParams
+			};
+			return {
+				type: 'agent_llm_delegation',
+				interactionId,
+				details: packagedParams
+			};
+		} catch (err) {
+			throw new Error(
+				`agent_llm generateText failed: ${
+					err && err.message ? err.message : String(err)
+				}`
+			);
 		}
-		this.validateMessages(params.messages);
-		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
-			params;
-		const interactionId = uuidv4();
-		const packagedParams = {
-			// modelId excluded: agent determines the model
-			messages,
-			// maxTokens, temperature excluded: mcp client manages these settings
-			...restApiParams
-		};
-		return {
-			type: 'agent_llm_delegation',
-			interactionId,
-			details: packagedParams
-		};
 	}
 
 	async streamText(params) {
-		// Basic validation before delegation
-		if (!params.messages || !Array.isArray(params.messages)) {
-			throw new Error('Messages array is required for delegation');
+		try {
+			// Basic validation before delegation
+			if (!params.messages || !Array.isArray(params.messages)) {
+				throw new Error('Messages array is required for delegation');
+			}
+			this.validateMessages(params.messages);
+			const { modelId, messages, maxTokens, temperature, ...restApiParams } =
+				params;
+			const interactionId = uuidv4();
+			const packagedParams = {
+				// modelId excluded: agent determines the model
+				messages,
+				// maxTokens, temperature excluded: mcp client manages these settings
+				...restApiParams
+			};
+			return {
+				type: 'agent_llm_delegation',
+				interactionId,
+				details: packagedParams
+			};
+		} catch (err) {
+			throw new Error(
+				`agent_llm streamText failed: ${
+					err && err.message ? err.message : String(err)
+				}`
+			);
 		}
-		this.validateMessages(params.messages);
-		const { modelId, messages, maxTokens, temperature, ...restApiParams } =
-			params;
-		const interactionId = uuidv4();
-		const packagedParams = {
-			// modelId excluded: agent determines the model
-			messages,
-			// maxTokens, temperature excluded: mcp client manages these settings
-			...restApiParams
-		};
-		return {
-			type: 'agent_llm_delegation',
-			interactionId,
-			details: packagedParams
-		};
 	}
 
 	async generateObject(params) {
-		// Basic validation before delegation
-		if (!params.messages || !Array.isArray(params.messages)) {
-			throw new Error('Messages array is required for delegation');
-		}
-		this.validateMessages(params.messages);
-		if (!params.schema) {
-			throw new Error('Schema is required for object generation delegation');
-		}
-		if (!params.objectName) {
+		try {
+			// Basic validation before delegation
+			if (!params.messages || !Array.isArray(params.messages)) {
+				throw new Error('Messages array is required for delegation');
+			}
+			this.validateMessages(params.messages);
+			if (!params.schema) {
+				throw new Error('Schema is required for object generation delegation');
+			}
+			if (!params.objectName) {
+				throw new Error(
+					'Object name is required for object generation delegation'
+				);
+			}
+			const {
+				modelId,
+				messages,
+				maxTokens,
+				temperature,
+				schema,
+				objectName,
+				...restApiParams
+			} = params;
+			const interactionId = uuidv4();
+			const packagedParams = {
+				// modelId excluded: agent determines the model
+				messages,
+				// maxTokens, temperature excluded: mcp client manages these settings
+				schema,
+				objectName,
+				...restApiParams
+			};
+			return {
+				type: 'agent_llm_delegation',
+				interactionId,
+				details: packagedParams
+			};
+		} catch (err) {
 			throw new Error(
-				'Object name is required for object generation delegation'
+				`agent_llm generateObject failed: ${
+					err && err.message ? err.message : String(err)
+				}`
 			);
 		}
-		const {
-			modelId,
-			messages,
-			maxTokens,
-			temperature,
-			schema,
-			objectName,
-			...restApiParams
-		} = params;
-		const interactionId = uuidv4();
-		const packagedParams = {
-			// modelId excluded: agent determines the model
-			messages,
-			// maxTokens, temperature excluded: mcp client manages these settings
-			schema,
-			objectName,
-			...restApiParams
-		};
-		return {
-			type: 'agent_llm_delegation',
-			interactionId,
-			details: packagedParams
-		};
 	}
 }
 

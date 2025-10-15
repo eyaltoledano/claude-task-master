@@ -249,7 +249,7 @@ async function updateTasks(
 					pendingInteraction: {
 						type: 'agent_llm', // Changed from "agent_llm_bulk_update"
 						interactionId: aiServiceResponse.mainResult.interactionId,
-						delegatedCallDetails: {
+						llmRequestForAgent: {
 							originalCommand: context.commandName || 'update-tasks',
 							role: serviceRole, // This variable should be in scope
 							serviceType: 'generateObject', // updateTasks uses generateObject

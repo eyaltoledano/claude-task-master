@@ -341,7 +341,7 @@ async function expandTask(
 					pendingInteraction: {
 						type: 'agent_llm',
 						interactionId: aiServiceResponse.mainResult.interactionId,
-						delegatedCallDetails: {
+						llmRequestForAgent: {
 							originalCommand: 'expand-task',
 							role: useResearch ? 'research' : 'main',
 							// Agents will perform a generateObject call using the provided JSON schema.

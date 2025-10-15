@@ -438,11 +438,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 					pendingInteraction: {
 						type: 'agent_llm',
 						interactionId: aiServiceResponse.mainResult.interactionId,
-						delegatedCallDetails: {
+						llmRequestForAgent: {
 							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
 							originalCommand: context.commandName || 'analyze-complexity',
 							role: useResearch ? 'research' : 'main',
-							serviceType: 'generateObject', // Agent expected to return JSON onject
+							serviceType: 'generateObject', // Agent expected to return JSON object
 							objectName: 'complexityAnalysis',
 							schemaKey: 'analyze-complexity',
 							requestParameters: {

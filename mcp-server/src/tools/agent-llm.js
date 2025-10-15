@@ -95,10 +95,10 @@ function registerAgentLLMTool(server) {
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
 
-				if (args.delegatedCallDetails) {
+				if (args.llmRequestForAgent) {
 					const effectiveInteractionId = args.interactionId || uuidv4();
 					log.info(
-						`agent_llm: Taskmaster delegating LLM call for command '${args.delegatedCallDetails.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
+						`agent_llm: Taskmaster delegating LLM call for command '${args.llmRequestForAgent.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
 					);
 
 					return {
@@ -106,7 +106,7 @@ function registerAgentLLMTool(server) {
 						status: 'pending_agent_llm_action',
 						message:
 							'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
-						delegatedCallDetails: args.delegatedCallDetails,
+						llmRequestForAgent: args.llmRequestForAgent,
 						interactionId: effectiveInteractionId,
 						pendingInteractionSignalToAgent: {
 							type: 'agent_must_respond_via_agent_llm',

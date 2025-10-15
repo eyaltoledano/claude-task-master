@@ -354,7 +354,7 @@ async function updateTaskById(
 					pendingInteraction: {
 						type: 'agent_llm',
 						interactionId: aiServiceResponse.mainResult.interactionId,
-						delegatedCallDetails: {
+						llmRequestForAgent: {
 							originalCommand: context.commandName || 'update-task', // Will be set by updateTaskByIdDirect
 							role: serviceRole, // serviceRole is already defined in this scope
 							serviceType: appendMode ? 'generateText' : 'generateObject', // Match the original service call

@@ -76,8 +76,9 @@ async function agentllmScopeSave(
 					);
 					continue;
 				}
-				allTasksData.tasks[taskIndex] = updatedTask;
-				updatedTasks.push(updatedTask);
+				const merged = { ...allTasksData.tasks[taskIndex], ...updatedTask };
+				allTasksData.tasks[taskIndex] = merged;
+				updatedTasks.push(merged);
 				taskUpdated = true;
 			} else {
 				logWrapper.warn(

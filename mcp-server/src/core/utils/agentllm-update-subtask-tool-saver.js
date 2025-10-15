@@ -107,8 +107,9 @@ async function agentllmUpdateSubtaskSave(
 ${agentOutputString.trim()}
 </info added on ${timestamp}>`;
 
-		subtask.details =
-			(subtask.details ? subtask.details.trim() + '\n\n' : '') + formattedBlock;
+		const existing =
+			typeof subtask.details === 'string' ? subtask.details.trim() : '';
+		subtask.details = (existing ? existing + '\n\n' : '') + formattedBlock;
 		logWrapper.info(
 			`agentllmUpdateSubtaskSave: Appended details to subtask ${subtaskIdToUpdate}.`
 		);
@@ -116,7 +117,7 @@ ${agentOutputString.trim()}
 		// Optionally, update description based on original prompt length (mimicking original updateSubtaskById logic)
 		const originalUserPrompt = originalToolArgs?.prompt || '';
 		if (subtask.description && originalUserPrompt.length < 100) {
-			subtask.description += ` [Updated: ${new Date().toLocaleDateString()}]`;
+			subtask.description += ` [Updated: ${new Date().toISOString()}]`;
 			logWrapper.info(
 				`agentllmUpdateSubtaskSave: Appended update marker to description for subtask ${subtaskIdToUpdate}.`
 			);

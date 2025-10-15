@@ -55,7 +55,7 @@ export async function handleNonStreamingService(config, prompts) {
 				const pendingInteraction = {
 					type: 'agent_llm',
 					interactionId: aiServiceResponse.mainResult.interactionId,
-					delegatedCallDetails: {
+					llmRequestForAgent: {
 						originalCommand: 'parse_prd',
 						role: config.research ? 'research' : 'main',
 						serviceType: 'generateObject',
