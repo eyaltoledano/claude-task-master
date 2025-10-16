@@ -16,6 +16,7 @@ import {
 } from '@tm/core';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * CLI-specific options interface for the start command
@@ -160,8 +161,7 @@ export class StartCommand extends Command {
 			if (spinner) {
 				spinner.fail('Operation failed');
 			}
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -450,22 +450,6 @@ export class StartCommand extends Command {
 		}
 
 		console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
-	}
-
-	/**
-	 * Handle general errors
-	 */
-	private handleError(error: any): void {
-		const msg = error?.getSanitizedDetails?.() ?? {
-			message: error?.message ?? String(error)
-		};
-		console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-
-		// Show stack trace in development mode or when DEBUG is set
-		const isDevelopment = process.env.NODE_ENV !== 'production';
-		if ((isDevelopment || process.env.DEBUG) && error.stack) {
-			console.error(chalk.gray(error.stack));
-		}
 	}
 
 	/**

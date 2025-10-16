@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
+import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayHeader } from '../ui/index.js';
 
@@ -76,12 +77,7 @@ export class NextCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-
-			// Allow error to propagate for library compatibility
-			throw new Error(msg.message || 'Unexpected error in next command');
+			displayError(error);
 		} finally {
 			// Always clean up resources, even on error
 			await this.cleanup();

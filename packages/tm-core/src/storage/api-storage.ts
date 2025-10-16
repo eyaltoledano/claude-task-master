@@ -126,7 +126,7 @@ export class ApiStorage implements IStorage {
 	private async loadTagsIntoCache(): Promise<void> {
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = await authManager.getContext();
+			const context = authManager.getContext();
 
 			// If we have a selected brief, create a virtual "tag" for it
 			if (context?.briefId) {
@@ -159,12 +159,18 @@ export class ApiStorage implements IStorage {
 
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = await authManager.getContext();
+			const context = authManager.getContext();
 
 			// If no brief is selected in context, throw an error
 			if (!context?.briefId) {
-				throw new Error(
-					'No brief selected. Please select a brief first using: tm context brief <brief-id>'
+				throw new TaskMasterError(
+					'No brief selected',
+					ERROR_CODES.NO_BRIEF_SELECTED,
+					{
+						operation: 'loadTasks',
+						userMessage:
+							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+					}
 				);
 			}
 
@@ -181,6 +187,14 @@ export class ApiStorage implements IStorage {
 
 			return tasks;
 		} catch (error) {
+			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
 			throw new TaskMasterError(
 				'Failed to load tasks from API',
 				ERROR_CODES.STORAGE_ERROR,
@@ -237,10 +251,34 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+
+			// If no brief is selected in context, throw an error
+			if (!context?.briefId) {
+				throw new TaskMasterError(
+					'No brief selected',
+					ERROR_CODES.NO_BRIEF_SELECTED,
+					{
+						operation: 'loadTask',
+						userMessage:
+							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+					}
+				);
+			}
+
 			return await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
 			);
 		} catch (error) {
+			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
 			throw new TaskMasterError(
 				'Failed to load task from API',
 				ERROR_CODES.STORAGE_ERROR,
@@ -325,7 +363,7 @@ export class ApiStorage implements IStorage {
 
 		try {
 			const authManager = AuthManager.getInstance();
-			const context = await authManager.getContext();
+			const context = authManager.getContext();
 
 			// In our API-based system, we only have one "tag" at a time - the current brief
 			if (context?.briefId) {
@@ -510,6 +548,22 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+
+			// If no brief is selected in context, throw an error
+			if (!context?.briefId) {
+				throw new TaskMasterError(
+					'No brief selected',
+					ERROR_CODES.NO_BRIEF_SELECTED,
+					{
+						operation: 'updateTaskStatus',
+						userMessage:
+							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+					}
+				);
+			}
+
 			const existingTask = await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
 			);
@@ -546,6 +600,14 @@ export class ApiStorage implements IStorage {
 				taskId
 			};
 		} catch (error) {
+			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
 			throw new TaskMasterError(
 				'Failed to update task status via API',
 				ERROR_CODES.STORAGE_ERROR,

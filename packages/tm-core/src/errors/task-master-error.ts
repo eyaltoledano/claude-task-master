@@ -52,7 +52,10 @@ export const ERROR_CODES = {
 	INVALID_INPUT: 'INVALID_INPUT',
 	NOT_IMPLEMENTED: 'NOT_IMPLEMENTED',
 	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
-	NOT_FOUND: 'NOT_FOUND'
+	NOT_FOUND: 'NOT_FOUND',
+
+	// Context errors
+	NO_BRIEF_SELECTED: 'NO_BRIEF_SELECTED'
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

@@ -17,6 +17,7 @@ import {
 } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 import {
 	displayHeader,
 	displayDashboards,
@@ -106,14 +107,7 @@ export class ListTasksCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-			process.exit(1);
+			displayError(error);
 		}
 	}
 

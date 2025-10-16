@@ -24,6 +24,9 @@ export {
 // UI utilities (for other commands to use)
 export * as ui from './utils/ui.js';
 
+// Error handling utilities
+export { displayError, isDebugMode } from './utils/error-handler.js';
+
 // Auto-update utilities
 export {
 	checkForUpdate,

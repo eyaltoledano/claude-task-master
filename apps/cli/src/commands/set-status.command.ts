@@ -12,6 +12,7 @@ import {
 	type TaskStatus
 } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Valid task status values for validation
@@ -135,16 +136,14 @@ export class SetStatusCommand extends Command {
 						oldStatus: result.oldStatus,
 						newStatus: result.newStatus
 					});
-				} catch (error) {
-					const errorMessage =
-						error instanceof Error ? error.message : String(error);
-
-					if (!options.silent) {
-						console.error(
-							chalk.red(`Failed to update task ${taskId}: ${errorMessage}`)
-						);
-					}
+				} catch (error: any) {
 					if (options.format === 'json') {
+						const errorMessage = error?.getSanitizedDetails
+							? error.getSanitizedDetails().message
+							: error instanceof Error
+								? error.message
+								: String(error);
+
 						console.log(
 							JSON.stringify({
 								success: false,
@@ -153,8 +152,14 @@ export class SetStatusCommand extends Command {
 								timestamp: new Date().toISOString()
 							})
 						);
+						process.exit(1);
+					} else if (!options.silent) {
+						// Show which task failed with context
+						console.error(chalk.red(`\nFailed to update task ${taskId}:`));
+						displayError(error);
+					} else {
+						process.exit(1);
 					}
-					process.exit(1);
 				}
 			}
 
@@ -170,19 +175,17 @@ export class SetStatusCommand extends Command {
 
 			// Display results
 			this.displayResults(this.lastResult, options);
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : 'Unknown error occurred';
-
-			if (!options.silent) {
-				console.error(chalk.red(`Error: ${errorMessage}`));
-			}
-
+		} catch (error: any) {
 			if (options.format === 'json') {
+				const errorMessage =
+					error instanceof Error ? error.message : 'Unknown error occurred';
 				console.log(JSON.stringify({ success: false, error: errorMessage }));
+				process.exit(1);
+			} else if (!options.silent) {
+				displayError(error);
+			} else {
+				process.exit(1);
 			}
-
-			process.exit(1);
 		} finally {
 			// Clean up resources
 			if (this.tmCore) {
