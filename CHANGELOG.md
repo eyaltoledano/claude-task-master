@@ -1,5 +1,50 @@
 # task-master-ai
 
+## 0.30.0-rc.0
+
+### Minor Changes
+
+- [#1181](https://github.com/eyaltoledano/claude-task-master/pull/1181) [`a69d8c9`](https://github.com/eyaltoledano/claude-task-master/commit/a69d8c91dc9205a3fdaf9d32276144fa3bcad55d) Thanks [@karol-f](https://github.com/karol-f)! - Add configurable MCP tool loading to optimize LLM context usage
+
+  You can now control which Task Master MCP tools are loaded by setting the `TASK_MASTER_TOOLS` environment variable in your MCP configuration. This helps reduce context usage for LLMs by only loading the tools you need.
+
+  **Configuration Options:**
+  - `all` (default): Load all 36 tools
+  - `core` or `lean`: Load only 7 essential tools for daily development
+    - Includes: `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
+  - `standard`: Load 15 commonly used tools (all core tools plus 8 more)
+    - Additional tools: `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `generate`, `add_task`, `complexity_report`
+  - Custom list: Comma-separated tool names (e.g., `get_tasks,next_task,set_task_status`)
+
+  **Example .mcp.json configuration:**
+
+  ```json
+  {
+    "mcpServers": {
+      "task-master-ai": {
+        "command": "npx",
+        "args": ["-y", "task-master-ai"],
+        "env": {
+          "TASK_MASTER_TOOLS": "standard",
+          "ANTHROPIC_API_KEY": "your_key_here"
+        }
+      }
+    }
+  }
+  ```
+
+  For complete details on all available tools, configuration examples, and usage guidelines, see the [MCP Tools documentation](https://docs.task-master.dev/capabilities/mcp#configurable-tool-loading).
+
+- [#1312](https://github.com/eyaltoledano/claude-task-master/pull/1312) [`d7fca18`](https://github.com/eyaltoledano/claude-task-master/commit/d7fca1844f24ad8ce079c21d9799a3c4b4413381) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve next command to work with remote
+
+### Patch Changes
+
+- [#1314](https://github.com/eyaltoledano/claude-task-master/pull/1314) [`6bc75c0`](https://github.com/eyaltoledano/claude-task-master/commit/6bc75c0ac68b59cb10cee70574a689f83e4de768) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve auth token refresh flow
+
+- [#1302](https://github.com/eyaltoledano/claude-task-master/pull/1302) [`3283506`](https://github.com/eyaltoledano/claude-task-master/commit/3283506444d59896ecb97721ef2e96e290eb84d3) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Enable Task Master commands to traverse parent directories to find project root from nested paths
+
+  Fixes #1301
+
 ## 0.29.0
 
 ### Minor Changes
