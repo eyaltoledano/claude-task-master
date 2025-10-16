@@ -36,6 +36,15 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 		this.name = 'Claude Code';
 		// Load supported models from supported-models.json
 		this.supportedModels = getSupportedModelsForProvider('claude-code');
+
+		// Validate that models were loaded successfully
+		if (this.supportedModels.length === 0) {
+			log(
+				'warn',
+				'No supported models found for claude-code provider. Check supported-models.json configuration.'
+			);
+		}
+
 		// Claude Code requires explicit JSON schema mode
 		this.needsExplicitJsonSchema = true;
 		// Claude Code does not support temperature parameter

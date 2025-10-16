@@ -25,6 +25,15 @@ export class CodexCliProvider extends BaseAIProvider {
 		this.supportsTemperature = false;
 		// Load supported models from supported-models.json
 		this.supportedModels = getSupportedModelsForProvider('codex-cli');
+
+		// Validate that models were loaded successfully
+		if (this.supportedModels.length === 0) {
+			log(
+				'warn',
+				'No supported models found for codex-cli provider. Check supported-models.json configuration.'
+			);
+		}
+
 		// CLI availability check cache
 		this._codexCliChecked = false;
 		this._codexCliAvailable = null;
