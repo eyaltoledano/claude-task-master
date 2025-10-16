@@ -11,7 +11,7 @@ import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
-import { displayHeader } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
 
 /**
  * Options interface for the next command
@@ -166,9 +166,10 @@ export class NextCommand extends Command {
 	 * Display in text format
 	 */
 	private displayText(result: NextTaskResult): void {
-		// Display header with tag (no file path for next command)
-		displayHeader({
-			tag: result.tag || 'master'
+		// Display header with storage info
+		displayCommandHeader(this.tmCore, {
+			tag: result.tag || 'master',
+			storageType: result.storageType
 		});
 
 		if (!result.found || !result.task) {
@@ -187,7 +188,6 @@ export class NextCommand extends Command {
 					}
 				)
 			);
-			console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
 			console.log(
 				`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list --status pending')} ${chalk.dim('to see all pending tasks')}`
 			);
@@ -204,8 +204,6 @@ export class NextCommand extends Command {
 			headerColor: 'green',
 			showSuggestedActions: true
 		});
-
-		console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
 	}
 
 	/**

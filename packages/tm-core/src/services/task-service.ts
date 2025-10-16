@@ -162,7 +162,10 @@ export class TaskService {
 			};
 		} catch (error) {
 			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't log it as an internal error
-			if (error instanceof TaskMasterError && error.is(ERROR_CODES.NO_BRIEF_SELECTED)) {
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
 				// Just re-throw user-facing errors without wrapping
 				throw error;
 			}
@@ -194,7 +197,10 @@ export class TaskService {
 			return await this.storage.loadTask(String(taskId), activeTag);
 		} catch (error) {
 			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (error instanceof TaskMasterError && error.is(ERROR_CODES.NO_BRIEF_SELECTED)) {
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
 				throw error;
 			}
 
@@ -535,7 +541,10 @@ export class TaskService {
 			);
 		} catch (error) {
 			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (error instanceof TaskMasterError && error.is(ERROR_CODES.NO_BRIEF_SELECTED)) {
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
 				throw error;
 			}
 
