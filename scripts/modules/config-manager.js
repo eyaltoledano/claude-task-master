@@ -308,6 +308,20 @@ function validateProviderModelCombination(providerName, modelId) {
 }
 
 /**
+ * Gets the list of supported model IDs for a given provider from supported-models.json
+ * @param {string} providerName - The name of the provider (e.g., 'claude-code', 'anthropic')
+ * @returns {string[]} Array of supported model IDs, or empty array if provider not found
+ */
+export function getSupportedModelsForProvider(providerName) {
+	if (!MODEL_MAP[providerName]) {
+		return [];
+	}
+	return MODEL_MAP[providerName]
+		.filter((model) => model.supported !== false)
+		.map((model) => model.id);
+}
+
+/**
  * Validates Claude Code AI provider custom settings
  * @param {object} settings The settings to validate
  * @returns {object} The validated settings

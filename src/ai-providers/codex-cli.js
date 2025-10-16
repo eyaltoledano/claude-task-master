@@ -10,7 +10,10 @@ import { createCodexCli } from 'ai-sdk-provider-codex-cli';
 import { BaseAIProvider } from './base-provider.js';
 import { execSync } from 'child_process';
 import { log } from '../../scripts/modules/utils.js';
-import { getCodexCliSettingsForCommand } from '../../scripts/modules/config-manager.js';
+import {
+	getCodexCliSettingsForCommand,
+	getSupportedModelsForProvider
+} from '../../scripts/modules/config-manager.js';
 
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {
@@ -20,8 +23,8 @@ export class CodexCliProvider extends BaseAIProvider {
 		this.needsExplicitJsonSchema = false;
 		// Codex CLI does not support temperature parameter
 		this.supportsTemperature = false;
-		// Restrict to supported models for OAuth subscription usage
-		this.supportedModels = ['gpt-5', 'gpt-5-codex'];
+		// Load supported models from supported-models.json
+		this.supportedModels = getSupportedModelsForProvider('codex-cli');
 		// CLI availability check cache
 		this._codexCliChecked = false;
 		this._codexCliAvailable = null;
