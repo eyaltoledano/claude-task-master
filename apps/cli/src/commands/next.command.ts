@@ -9,8 +9,9 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
+import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
-import { displayHeader } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
 
 /**
  * Options interface for the next command
@@ -58,6 +59,7 @@ export class NextCommand extends Command {
 	 * Execute the next command
 	 */
 	private async executeCommand(options: NextCommandOptions): Promise<void> {
+		let hasError = false;
 		try {
 			// Validate options (throws on invalid options)
 			this.validateOptions(options);
@@ -76,15 +78,16 @@ export class NextCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-
-			// Allow error to propagate for library compatibility
-			throw new Error(msg.message || 'Unexpected error in next command');
+			hasError = true;
+			displayError(error, { skipExit: true });
 		} finally {
 			// Always clean up resources, even on error
 			await this.cleanup();
+		}
+
+		// Exit after cleanup completes
+		if (hasError) {
+			process.exit(1);
 		}
 	}
 
@@ -170,9 +173,10 @@ export class NextCommand extends Command {
 	 * Display in text format
 	 */
 	private displayText(result: NextTaskResult): void {
-		// Display header with tag (no file path for next command)
-		displayHeader({
-			tag: result.tag || 'master'
+		// Display header with storage info
+		displayCommandHeader(this.tmCore, {
+			tag: result.tag || 'master',
+			storageType: result.storageType
 		});
 
 		if (!result.found || !result.task) {
@@ -191,7 +195,6 @@ export class NextCommand extends Command {
 					}
 				)
 			);
-			console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
 			console.log(
 				`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list --status pending')} ${chalk.dim('to see all pending tasks')}`
 			);
@@ -208,8 +211,6 @@ export class NextCommand extends Command {
 			headerColor: 'green',
 			showSuggestedActions: true
 		});
-
-		console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
 	}
 
 	/**

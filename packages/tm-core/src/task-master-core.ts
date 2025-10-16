@@ -202,6 +202,44 @@ export class TaskMasterCore {
 	}
 
 	/**
+	 * Get storage configuration
+	 */
+	getStorageConfig() {
+		return this.configManager.getStorageConfig();
+	}
+
+	/**
+	 * Get storage display information for headers
+	 * Returns context info for API storage, null for file storage
+	 */
+	getStorageDisplayInfo(): {
+		briefId: string;
+		briefName: string;
+		orgSlug?: string;
+	} | null {
+		// Only return info if using API storage
+		const storageType = this.getStorageType();
+		if (storageType !== 'api') {
+			return null;
+		}
+
+		// Get credentials from auth manager
+		const authManager = AuthManager.getInstance();
+		const credentials = authManager.getCredentials();
+		const selectedContext = credentials?.selectedContext;
+
+		if (!selectedContext?.briefId || !selectedContext?.briefName) {
+			return null;
+		}
+
+		return {
+			briefId: selectedContext.briefId,
+			briefName: selectedContext.briefName,
+			orgSlug: selectedContext.orgSlug
+		};
+	}
+
+	/**
 	 * Get current active tag
 	 */
 	getActiveTag(): string {

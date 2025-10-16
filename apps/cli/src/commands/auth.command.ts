@@ -15,6 +15,7 @@ import {
 } from '@tm/core/auth';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from auth command
@@ -117,8 +118,7 @@ export class AuthCommand extends Command {
 				process.exit(0);
 			}, 100);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -134,8 +134,7 @@ export class AuthCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -147,8 +146,7 @@ export class AuthCommand extends Command {
 			const result = this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -164,8 +162,7 @@ export class AuthCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -390,7 +387,7 @@ export class AuthCommand extends Command {
 				message: 'Authentication successful'
 			};
 		} catch (error) {
-			this.handleAuthError(error as AuthenticationError);
+			displayError(error, { skipExit: true });
 
 			return {
 				success: false,
@@ -450,51 +447,6 @@ export class AuthCommand extends Command {
 			return credentials;
 		} catch (error) {
 			throw error;
-		}
-	}
-
-	/**
-	 * Handle authentication errors
-	 */
-	private handleAuthError(error: AuthenticationError): void {
-		console.error(chalk.red(`\n✗ ${error.message}`));
-
-		switch (error.code) {
-			case 'NETWORK_ERROR':
-				ui.displayWarning(
-					'Please check your internet connection and try again.'
-				);
-				break;
-			case 'INVALID_CREDENTIALS':
-				ui.displayWarning('Please check your credentials and try again.');
-				break;
-			case 'AUTH_EXPIRED':
-				ui.displayWarning(
-					'Your session has expired. Please authenticate again.'
-				);
-				break;
-			default:
-				if (process.env.DEBUG) {
-					console.error(chalk.gray(error.stack || ''));
-				}
-		}
-	}
-
-	/**
-	 * Handle general errors
-	 */
-	private handleError(error: any): void {
-		if (error instanceof AuthenticationError) {
-			this.handleAuthError(error);
-		} else {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
 		}
 	}
 

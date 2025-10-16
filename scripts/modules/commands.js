@@ -19,7 +19,8 @@ import {
 	registerAllCommands,
 	checkForUpdate,
 	performAutoUpdate,
-	displayUpgradeNotification
+	displayUpgradeNotification,
+	displayError
 } from '@tm/cli';
 
 import {
@@ -5156,10 +5157,7 @@ async function runCLI(argv = process.argv) {
 			);
 		} else {
 			// Generic error handling for other errors
-			console.error(chalk.red(`Error: ${error.message}`));
-			if (getDebugFlag()) {
-				console.error(error);
-			}
+			displayError(error);
 		}
 
 		process.exit(1);

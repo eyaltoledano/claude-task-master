@@ -8,12 +8,9 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora, { Ora } from 'ora';
-import {
-	AuthManager,
-	AuthenticationError,
-	type UserContext
-} from '@tm/core/auth';
+import { AuthManager, type UserContext } from '@tm/core/auth';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from context command
@@ -119,8 +116,7 @@ export class ContextCommand extends Command {
 			const result = this.displayContext();
 			this.setLastResult(result);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -216,8 +212,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -258,6 +253,7 @@ export class ContextCommand extends Command {
 			this.authManager.updateContext({
 				orgId: selectedOrg.id,
 				orgName: selectedOrg.name,
+				orgSlug: selectedOrg.slug,
 				// Clear brief when changing org
 				briefId: undefined,
 				briefName: undefined
@@ -304,8 +300,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -429,8 +424,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -476,8 +470,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -513,11 +506,13 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			// Fetch org to get a friendly name (optional)
+			// Fetch org to get a friendly name and slug (optional)
 			let orgName: string | undefined;
+			let orgSlug: string | undefined;
 			try {
 				const org = await this.authManager.getOrganization(brief.accountId);
 				orgName = org?.name;
+				orgSlug = org?.slug;
 			} catch {
 				// Non-fatal if org lookup fails
 			}
@@ -528,6 +523,7 @@ export class ContextCommand extends Command {
 			this.authManager.updateContext({
 				orgId: brief.accountId,
 				orgName,
+				orgSlug,
 				briefId: brief.id,
 				briefName
 			});
@@ -549,8 +545,7 @@ export class ContextCommand extends Command {
 			try {
 				if (spinner?.isSpinning) spinner.stop();
 			} catch {}
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -676,26 +671,6 @@ export class ContextCommand extends Command {
 				action: 'set',
 				message: `Failed to set context: ${(error as Error).message}`
 			};
-		}
-	}
-
-	/**
-	 * Handle errors
-	 */
-	private handleError(error: any): void {
-		if (error instanceof AuthenticationError) {
-			console.error(chalk.red(`\n✗ ${error.message}`));
-
-			if (error.code === 'NOT_AUTHENTICATED') {
-				ui.displayWarning('Please authenticate first: tm auth login');
-			}
-		} else {
-			const msg = error?.message ?? String(error);
-			console.error(chalk.red(`Error: ${msg}`));
-
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
 		}
 	}
 

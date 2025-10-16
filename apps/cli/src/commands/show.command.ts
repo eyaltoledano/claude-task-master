@@ -9,7 +9,9 @@ import boxen from 'boxen';
 import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
 
 /**
  * Options interface for the show command
@@ -112,14 +114,7 @@ export class ShowCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -257,6 +252,15 @@ export class ShowCommand extends Command {
 			return;
 		}
 
+		// Display header with storage info
+		const activeTag = this.tmCore?.getActiveTag() || 'master';
+		displayCommandHeader(this.tmCore, {
+			tag: activeTag,
+			storageType: result.storageType
+		});
+
+		console.log(); // Add spacing
+
 		// Use the global task details display function
 		displayTaskDetails(result.task, {
 			statusFilter: options.status,
@@ -271,8 +275,12 @@ export class ShowCommand extends Command {
 		result: ShowMultipleTasksResult,
 		_options: ShowCommandOptions
 	): void {
-		// Header
-		ui.displayBanner(`Tasks (${result.tasks.length} found)`);
+		// Display header with storage info
+		const activeTag = this.tmCore?.getActiveTag() || 'master';
+		displayCommandHeader(this.tmCore, {
+			tag: activeTag,
+			storageType: result.storageType
+		});
 
 		if (result.notFound.length > 0) {
 			console.log(chalk.yellow(`\n⚠ Not found: ${result.notFound.join(', ')}`));
@@ -291,8 +299,6 @@ export class ShowCommand extends Command {
 				showDependencies: true
 			})
 		);
-
-		console.log(`\n${chalk.gray('Storage: ' + result.storageType)}`);
 	}
 
 	/**

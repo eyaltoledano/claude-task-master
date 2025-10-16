@@ -17,8 +17,9 @@ import {
 } from '@tm/core';
 import type { StorageType } from '@tm/core/types';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
 import {
-	displayHeader,
 	displayDashboards,
 	calculateTaskStatistics,
 	calculateSubtaskStatistics,
@@ -106,14 +107,7 @@ export class ListTasksCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -257,15 +251,12 @@ export class ListTasksCommand extends Command {
 	 * Display in text format with tables
 	 */
 	private displayText(data: ListTasksResult, withSubtasks?: boolean): void {
-		const { tasks, tag } = data;
+		const { tasks, tag, storageType } = data;
 
-		// Get file path for display
-		const filePath = this.tmCore ? `.taskmaster/tasks/tasks.json` : undefined;
-
-		// Display header without banner (banner already shown by main CLI)
-		displayHeader({
+		// Display header using utility function
+		displayCommandHeader(this.tmCore, {
 			tag: tag || 'master',
-			filePath: filePath
+			storageType
 		});
 
 		// No tasks message
