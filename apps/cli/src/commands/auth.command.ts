@@ -354,8 +354,34 @@ export class AuthCommand extends Command {
 
 			// Post-auth: Set up workspace context
 			console.log(); // Add spacing
-			const contextCommand = new ContextCommand();
-			await contextCommand.setupContextInteractive();
+			try {
+				const contextCommand = new ContextCommand();
+				const contextResult = await contextCommand.setupContextInteractive();
+				if (contextResult.success) {
+					if (contextResult.orgSelected && contextResult.briefSelected) {
+						console.log(
+							chalk.green('✓ Workspace context configured successfully')
+						);
+					} else if (contextResult.orgSelected) {
+						console.log(chalk.green('✓ Organization selected'));
+					}
+				} else {
+					console.log(
+						chalk.yellow('⚠ Context setup was skipped or encountered issues')
+					);
+					console.log(
+						chalk.gray('  You can set up context later with "tm context"')
+					);
+				}
+			} catch (contextError) {
+				console.log(chalk.yellow('⚠ Context setup encountered an error'));
+				console.log(
+					chalk.gray('  You can set up context later with "tm context"')
+				);
+				if (process.env.DEBUG) {
+					console.error(chalk.gray((contextError as Error).message));
+				}
+			}
 
 			return {
 				success: true,
