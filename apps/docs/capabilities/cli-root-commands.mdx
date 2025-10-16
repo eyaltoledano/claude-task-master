@@ -5,6 +5,45 @@ sidebarTitle: "CLI Commands"
 
 
 <AccordionGroup>
+  <Accordion title="Authentication">
+    ```bash
+    # Log in to tryhamster.com (opens browser for OAuth authentication)
+    task-master auth login
+
+    # Display current authentication status
+    task-master auth status
+
+    # Log out and clear stored credentials
+    task-master auth logout
+
+    # Refresh authentication token
+    task-master auth refresh
+    ```
+    
+    **Note**: After successful login, Task Master will automatically prompt you to configure your workspace context (organization and project selection). If context setup encounters issues, you can configure it later using `task-master context`.
+  </Accordion>
+
+  <Accordion title="Workspace Context">
+    ```bash
+    # Show current workspace context (organization and brief)
+    task-master context
+
+    # Select an organization
+    task-master context org
+
+    # Select a brief within the current organization
+    task-master context brief
+
+    # Set context directly with IDs
+    task-master context set --org <orgId> --brief <briefId>
+
+    # Clear all context selections
+    task-master context clear
+    ```
+    
+    **Note**: Workspace context determines which organization and project brief your tasks and data are associated with. This is automatically configured during initial login but can be changed anytime.
+  </Accordion>
+
   <Accordion title="Parse PRD">
     ```bash
     # Parse a PRD file and generate tasks
