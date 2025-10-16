@@ -38,6 +38,13 @@ export interface ApiStorageConfig {
 }
 
 /**
+ * Auth context with a guaranteed briefId
+ */
+type ContextWithBrief = NonNullable<
+	ReturnType<typeof AuthManager.prototype.getContext>
+> & { briefId: string };
+
+/**
  * ApiStorage implementation using repository pattern
  * Provides flexibility to swap between different backend implementations
  */
@@ -767,7 +774,7 @@ export class ApiStorage implements IStorage {
 	 * Ensure a brief is selected in the current context
 	 * @returns The current auth context with a valid briefId
 	 */
-	private ensureBriefSelected(operation: string) {
+	private ensureBriefSelected(operation: string): ContextWithBrief {
 		const authManager = AuthManager.getInstance();
 		const context = authManager.getContext();
 
@@ -783,7 +790,7 @@ export class ApiStorage implements IStorage {
 			);
 		}
 
-		return context;
+		return context as ContextWithBrief;
 	}
 
 	/**
