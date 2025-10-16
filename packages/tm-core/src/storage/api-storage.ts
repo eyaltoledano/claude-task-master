@@ -113,6 +113,13 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Get the storage type
+	 */
+	getType(): 'api' {
+		return 'api';
+	}
+
+	/**
 	 * Load tags into cache
 	 * In our API-based system, "tags" represent briefs
 	 */
