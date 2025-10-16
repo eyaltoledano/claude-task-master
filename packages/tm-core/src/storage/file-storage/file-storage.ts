@@ -45,6 +45,13 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Get the storage type
+	 */
+	getType(): 'file' {
+		return 'file';
+	}
+
+	/**
 	 * Get statistics about the storage
 	 */
 	async getStats(): Promise<StorageStats> {
