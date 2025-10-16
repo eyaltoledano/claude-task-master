@@ -58,6 +58,8 @@ export function displayCommandHeader(
 	}
 
 	// Get file path for display (only for file storage)
+	// Note: The file structure is fixed for file storage and won't change.
+	// This is a display-only relative path, not used for actual file operations.
 	const filePath =
 		storageType === 'file' && tmCore
 			? `.taskmaster/tasks/tasks.json`

@@ -59,6 +59,7 @@ export class NextCommand extends Command {
 	 * Execute the next command
 	 */
 	private async executeCommand(options: NextCommandOptions): Promise<void> {
+		let hasError = false;
 		try {
 			// Validate options (throws on invalid options)
 			this.validateOptions(options);
@@ -77,10 +78,16 @@ export class NextCommand extends Command {
 				this.displayResults(result, options);
 			}
 		} catch (error: any) {
-			displayError(error);
+			hasError = true;
+			displayError(error, { skipExit: true });
 		} finally {
 			// Always clean up resources, even on error
 			await this.cleanup();
+		}
+
+		// Exit after cleanup completes
+		if (hasError) {
+			process.exit(1);
 		}
 	}
 

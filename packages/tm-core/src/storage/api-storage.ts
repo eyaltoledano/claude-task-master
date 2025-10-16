@@ -158,21 +158,7 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
-
-			// If no brief is selected in context, throw an error
-			if (!context?.briefId) {
-				throw new TaskMasterError(
-					'No brief selected',
-					ERROR_CODES.NO_BRIEF_SELECTED,
-					{
-						operation: 'loadTasks',
-						userMessage:
-							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-					}
-				);
-			}
+			const context = this.ensureBriefSelected('loadTasks');
 
 			// Load tasks from the current brief context with filters pushed to repository
 			const tasks = await this.retryOperation(() =>
@@ -187,20 +173,11 @@ export class ApiStorage implements IStorage {
 
 			return tasks;
 		} catch (error) {
-			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
-				throw error;
-			}
-
-			throw new TaskMasterError(
-				'Failed to load tasks from API',
-				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'loadTasks', tag, context: 'brief-based loading' },
-				error as Error
-			);
+			this.wrapError(error, 'Failed to load tasks from API', {
+				operation: 'loadTasks',
+				tag,
+				context: 'brief-based loading'
+			});
 		}
 	}
 
@@ -251,40 +228,17 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
-
-			// If no brief is selected in context, throw an error
-			if (!context?.briefId) {
-				throw new TaskMasterError(
-					'No brief selected',
-					ERROR_CODES.NO_BRIEF_SELECTED,
-					{
-						operation: 'loadTask',
-						userMessage:
-							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-					}
-				);
-			}
+			this.ensureBriefSelected('loadTask');
 
 			return await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
 			);
 		} catch (error) {
-			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
-				throw error;
-			}
-
-			throw new TaskMasterError(
-				'Failed to load task from API',
-				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'loadTask', taskId, tag },
-				error as Error
-			);
+			this.wrapError(error, 'Failed to load task from API', {
+				operation: 'loadTask',
+				taskId,
+				tag
+			});
 		}
 	}
 
@@ -548,21 +502,7 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
-
-			// If no brief is selected in context, throw an error
-			if (!context?.briefId) {
-				throw new TaskMasterError(
-					'No brief selected',
-					ERROR_CODES.NO_BRIEF_SELECTED,
-					{
-						operation: 'updateTaskStatus',
-						userMessage:
-							'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-					}
-				);
-			}
+			this.ensureBriefSelected('updateTaskStatus');
 
 			const existingTask = await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
@@ -600,20 +540,12 @@ export class ApiStorage implements IStorage {
 				taskId
 			};
 		} catch (error) {
-			// If it's already a NO_BRIEF_SELECTED error, don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
-				throw error;
-			}
-
-			throw new TaskMasterError(
-				'Failed to update task status via API',
-				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'updateTaskStatus', taskId, newStatus, tag },
-				error as Error
-			);
+			this.wrapError(error, 'Failed to update task status via API', {
+				operation: 'updateTaskStatus',
+				taskId,
+				newStatus,
+				tag
+			});
 		}
 	}
 
@@ -832,6 +764,29 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Ensure a brief is selected in the current context
+	 * @returns The current auth context with a valid briefId
+	 */
+	private ensureBriefSelected(operation: string) {
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+
+		if (!context?.briefId) {
+			throw new TaskMasterError(
+				'No brief selected',
+				ERROR_CODES.NO_BRIEF_SELECTED,
+				{
+					operation,
+					userMessage:
+						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+				}
+			);
+		}
+
+		return context;
+	}
+
+	/**
 	 * Retry an operation with exponential backoff
 	 */
 	private async retryOperation<T>(
@@ -848,5 +803,29 @@ export class ApiStorage implements IStorage {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Wrap an error unless it's already a NO_BRIEF_SELECTED error
+	 */
+	private wrapError(
+		error: unknown,
+		message: string,
+		context: Record<string, unknown>
+	): never {
+		// If it's already a NO_BRIEF_SELECTED error, don't wrap it
+		if (
+			error instanceof TaskMasterError &&
+			error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+		) {
+			throw error;
+		}
+
+		throw new TaskMasterError(
+			message,
+			ERROR_CODES.STORAGE_ERROR,
+			context,
+			error as Error
+		);
 	}
 }

@@ -86,6 +86,7 @@ export class SetStatusCommand extends Command {
 	private async executeCommand(
 		options: SetStatusCommandOptions
 	): Promise<void> {
+		let hasError = false;
 		try {
 			// Validate required options
 			if (!options.id) {
@@ -137,6 +138,7 @@ export class SetStatusCommand extends Command {
 						newStatus: result.newStatus
 					});
 				} catch (error: any) {
+					hasError = true;
 					if (options.format === 'json') {
 						const errorMessage = error?.getSanitizedDetails
 							? error.getSanitizedDetails().message
@@ -152,14 +154,13 @@ export class SetStatusCommand extends Command {
 								timestamp: new Date().toISOString()
 							})
 						);
-						process.exit(1);
 					} else if (!options.silent) {
 						// Show which task failed with context
 						console.error(chalk.red(`\nFailed to update task ${taskId}:`));
-						displayError(error);
-					} else {
-						process.exit(1);
+						displayError(error, { skipExit: true });
 					}
+					// Don't exit here - let finally block clean up first
+					break;
 				}
 			}
 
@@ -176,21 +177,24 @@ export class SetStatusCommand extends Command {
 			// Display results
 			this.displayResults(this.lastResult, options);
 		} catch (error: any) {
+			hasError = true;
 			if (options.format === 'json') {
 				const errorMessage =
 					error instanceof Error ? error.message : 'Unknown error occurred';
 				console.log(JSON.stringify({ success: false, error: errorMessage }));
-				process.exit(1);
 			} else if (!options.silent) {
-				displayError(error);
-			} else {
-				process.exit(1);
+				displayError(error, { skipExit: true });
 			}
 		} finally {
 			// Clean up resources
 			if (this.tmCore) {
 				await this.tmCore.close();
 			}
+		}
+
+		// Exit after cleanup completes
+		if (hasError) {
+			process.exit(1);
 		}
 	}
 
