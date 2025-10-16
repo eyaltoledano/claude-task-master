@@ -3,7 +3,32 @@ title: FAQ
 sidebarTitle: "FAQ"
 ---
 
-Coming soon. 
+## Common Questions
+
+### How do I get more detailed error information?
+
+Enable debug mode by setting the `DEBUG` environment variable:
+
+```bash
+DEBUG=true task-master <command>
+```
+
+This shows full error messages, stack traces, and additional context. See our [Troubleshooting guide](/getting-started/troubleshooting) for complete details.
+
+### Why are my commands failing silently?
+
+Task Master uses sanitized error messages by default to provide a clean user experience. Enable debug mode to see technical details about what went wrong.
+
+### How do I report a bug?
+
+When reporting issues, please:
+1. Enable debug mode and include the full error output
+2. Provide your environment details (OS, Node.js version, Task Master version)
+3. Include the command that failed and your project configuration
+
+See our [Troubleshooting guide](/getting-started/troubleshooting) for complete bug reporting guidelines.
+
+More frequently asked questions coming soon. 
 
 ## 💬 Getting Help
 

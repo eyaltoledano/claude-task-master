@@ -1,0 +1,155 @@
+---
+title: Troubleshooting
+sidebarTitle: "Troubleshooting"
+---
+
+This guide helps you troubleshoot common issues and get more detailed error information when using Task Master.
+
+## Debug Mode
+
+Task Master includes a debug mode that provides detailed error information including stack traces. This is especially useful when reporting issues or debugging problems.
+
+### Enabling Debug Mode
+
+Set the `DEBUG` environment variable to enable debug mode:
+
+```bash
+# Enable debug mode for a single command
+DEBUG=true task-master next
+
+# Or use '1' instead of 'true'
+DEBUG=1 task-master list
+
+# Enable for entire session (bash/zsh)
+export DEBUG=true
+task-master next  # Now shows detailed errors
+
+# Enable for entire session (fish shell)
+set -x DEBUG true
+task-master next
+```
+
+### What Debug Mode Shows
+
+With debug mode enabled, errors will include:
+
+- **Full error messages**: Complete technical details instead of sanitized user messages
+- **Stack traces**: Detailed information about where errors occurred
+- **Error context**: Additional metadata about the failed operation
+- **Error chains**: If an error was caused by another error, both are shown
+
+### Example Output
+
+**Normal mode (default):**
+```
+Error: Unable to read tasks file
+```
+
+**Debug mode:**
+```
+TaskMasterError[FILE_READ_ERROR]: Unable to read tasks file
+
+Stack trace:
+  at TaskService.loadTasks (/path/to/task-service.ts:123)
+  at NextCommand.execute (/path/to/next.command.ts:45)
+  ...
+```
+
+## Common Issues
+
+### File Permission Errors
+
+**Problem**: Commands fail with file access errors
+
+**Solution**: 
+1. Check file permissions in `.taskmaster/` directory
+2. Ensure your user has write access to the project directory
+3. Run with debug mode to see the exact file path causing issues
+
+### API Connection Issues
+
+**Problem**: Commands timeout or fail when using API storage
+
+**Solutions**:
+1. Check your internet connection
+2. Verify API keys are correctly configured
+3. Check if your organization has firewall restrictions
+4. Use debug mode to see specific network errors
+
+### Task File Corruption
+
+**Problem**: Commands report invalid task data
+
+**Solutions**:
+1. Check if `.taskmaster/tasks/tasks.json` is valid JSON
+2. Restore from backup if available
+3. Run `task-master generate` to regenerate task files from main data
+
+### Model Configuration Issues
+
+**Problem**: AI-powered commands fail
+
+**Solutions**:
+1. Verify API keys are set: `task-master models`
+2. Check if the configured model is available
+3. Try switching to a different model
+4. Use debug mode to see specific API error messages
+
+## Getting Help
+
+When reporting issues, please:
+
+1. **Enable debug mode** and include the full error output
+2. **Specify your environment**:
+   - Operating system and version
+   - Node.js version (`node --version`)
+   - Task Master version (`task-master --version`)
+3. **Include relevant context**:
+   - Command that failed
+   - Project configuration
+   - Recent changes to your setup
+
+### Support Channels
+
+- **GitHub Issues**: [Report bugs and request features](https://github.com/eyaltoledano/claude-task-master/issues)
+- **Discord**: [Join our community for help](https://discord.gg/taskmasterai)
+- **GitHub Discussions**: [Ask questions and share ideas](https://github.com/eyaltoledano/claude-task-master/discussions)
+
+## Advanced Debugging
+
+### Inspecting Task Data
+
+If you suspect task data corruption:
+
+```bash
+# View raw task data
+cat .taskmaster/tasks/tasks.json | jq '.'
+
+# Check specific task
+task-master show <task-id> --format=json
+```
+
+### Configuration Debugging
+
+Check your current configuration:
+
+```bash
+# View model configuration
+task-master models
+
+# Check if initialization is complete
+ls -la .taskmaster/
+```
+
+### Network Debugging
+
+For API storage issues:
+
+```bash
+# Test with curl (replace with your API endpoint)
+curl -H "Authorization: Bearer $ANTHROPIC_API_KEY" \
+     -H "Content-Type: application/json" \
+     https://api.anthropic.com/v1/models
+```
+
+Remember to enable debug mode (`DEBUG=true`) when troubleshooting to get the most helpful error information.
