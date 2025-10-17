@@ -48,7 +48,7 @@ async function agentllmUpdateSubtaskSave(
 	const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
 	try {
-		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
+		const allTasksData = await readJSON(tasksJsonPath, projectRoot, tag);
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
 			logWrapper.error(`agentllmUpdateSubtaskSave: ${errorMsg}`);
@@ -125,7 +125,7 @@ ${agentOutputString.trim()}
 
 		allTasksData.tasks[parentTaskIndex].subtasks[subtaskIndex] = subtask;
 
-		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
+		await writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
 			`agentllmUpdateSubtaskSave: Successfully updated tasks.json for subtask ID ${subtaskIdToUpdate} for tag '${tag}'.`
 		);

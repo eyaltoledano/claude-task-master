@@ -9,6 +9,7 @@ import boxen from 'boxen';
 
 import {
 	log,
+	createLogger,
 	readJSON,
 	writeJSON,
 	taskExists,
@@ -21,6 +22,8 @@ import {
 import { displayBanner } from './ui.js';
 
 import generateTaskFiles from './task-manager/generate-task-files.js';
+
+const logger = createLogger();
 
 /**
  * Structured error class for dependency operations
@@ -1166,99 +1169,48 @@ function validateAndFixDependencies(
 	tasksData,
 	tasksPath = null,
 	projectRoot = null,
-	tag = null,
-	options = {}
+	tag = null
 ) {
-	const logger = {
-		debug: (...args) =>
-			options.mcpLog && typeof options.mcpLog.debug === 'function'
-				? options.mcpLog.debug(...args)
-				: undefined,
-		error: (...args) => {
-			if (options.mcpLog && typeof options.mcpLog.error === 'function') {
-				options.mcpLog.error(...args);
-			} else {
-				const message = args
-					.map((arg) => {
-						if (typeof arg === 'object') {
-							try {
-								return JSON.stringify(arg);
-							} catch (e) {
-								return String(arg);
-							}
-						}
-						return String(arg);
-					})
-					.join(' ');
-				throw new Error(message);
-			}
-		},
-		info: (...args) =>
-			options.mcpLog && typeof options.mcpLog.info === 'function'
-				? options.mcpLog.info(...args)
-				: undefined,
-		success: (...args) =>
-			options.mcpLog && typeof options.mcpLog.success === 'function'
-				? options.mcpLog.success(...args)
-				: undefined
-	};
+	// If tasksData is a multi-tag object, and a tag is provided, re-assign tasksData
+	// to the data for that specific tag. This allows the rest of the function to
+	// work on the correct task list without major refactoring.
+	if (tasksData && !tasksData.tasks && tag && tasksData[tag]) {
+		tasksData = tasksData[tag];
+	}
 
-	// Validate the overall tasksData (root object) and the specific tag
-	if (
-		!tasksData ||
-		typeof tasksData !== 'object' ||
-		Object.keys(tasksData).length === 0
-	) {
-		logger.error('Invalid tasks data: root object is missing or empty');
+	if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+		logger.error('Invalid tasks data');
 		return false;
 	}
 
-	const targetTag = tag || 'master'; // Default to 'master' if no tag is specified
-	const currentTagData = tasksData[targetTag];
+	logger.debug('Validating and fixing dependencies...');
 
-	if (
-		!currentTagData ||
-		!currentTagData.tasks ||
-		!Array.isArray(currentTagData.tasks)
-	) {
-		logger.error(
-			`Invalid tasks data: tag '${targetTag}' is missing or has invalid structure`
-		);
-		return false;
-	}
+	// Create a deep copy for comparison
+	const originalData = JSON.parse(JSON.stringify(tasksData));
 
-	const tasksToProcess = currentTagData.tasks;
-
-	logger.debug(`Validating and fixing dependencies for tag '${targetTag}'...`);
-
-	// Create a deep copy for comparison of the specific tag's data
-	const originalTagDataCopy = JSON.parse(JSON.stringify(currentTagData));
-
-	// 1. Remove duplicate dependencies from tasks and subtasks for the current tag
-	const processedTasks = tasksToProcess.map((task) => {
-		const newTask = { ...task }; // Work on a copy
+	// 1. Remove duplicate dependencies from tasks and subtasks
+	tasksData.tasks = tasksData.tasks.map((task) => {
 		// Handle task dependencies
-		if (newTask.dependencies) {
-			const uniqueDeps = [...new Set(newTask.dependencies)];
-			newTask.dependencies = uniqueDeps;
+		if (task.dependencies) {
+			const uniqueDeps = [...new Set(task.dependencies)];
+			task.dependencies = uniqueDeps;
 		}
 
 		// Handle subtask dependencies
-		if (newTask.subtasks) {
-			newTask.subtasks = newTask.subtasks.map((subtask) => {
-				const newSubtask = { ...subtask };
-				if (newSubtask.dependencies) {
-					const uniqueDeps = [...new Set(newSubtask.dependencies)];
-					newSubtask.dependencies = uniqueDeps;
+		if (task.subtasks) {
+			task.subtasks = task.subtasks.map((subtask) => {
+				if (subtask.dependencies) {
+					const uniqueDeps = [...new Set(subtask.dependencies)];
+					subtask.dependencies = uniqueDeps;
 				}
-				return newSubtask;
+				return subtask;
 			});
 		}
-		return newTask;
+		return task;
 	});
 
-	// 2. Remove invalid task dependencies (non-existent tasks) for the current tag
-	processedTasks.forEach((task) => {
+	// 2. Remove invalid task dependencies (non-existent tasks)
+	tasksData.tasks.forEach((task) => {
 		// Clean up task dependencies
 		if (task.dependencies) {
 			task.dependencies = task.dependencies.filter((depId) => {
@@ -1266,8 +1218,8 @@ function validateAndFixDependencies(
 				if (String(depId) === String(task.id)) {
 					return false;
 				}
-				// Remove non-existent dependencies (check within the current tag's tasks)
-				return taskExists(tasksToProcess, depId);
+				// Remove non-existent dependencies
+				return taskExists(tasksData.tasks, depId);
 			});
 		}
 
@@ -1276,22 +1228,21 @@ function validateAndFixDependencies(
 			task.subtasks.forEach((subtask) => {
 				if (subtask.dependencies) {
 					subtask.dependencies = subtask.dependencies.filter((depId) => {
-						// Handle numeric subtask references (relative to current task's subtasks)
+						// Handle numeric subtask references
 						if (typeof depId === 'number' && depId < 100) {
 							const fullSubtaskId = `${task.id}.${depId}`;
-							// Check if this subtask exists within its parent
-							return task.subtasks.some((st) => st.id === depId);
+							return taskExists(tasksData.tasks, fullSubtaskId);
 						}
-						// Handle full task/subtask references (check within the current tag's tasks)
-						return taskExists(tasksToProcess, depId);
+						// Handle full task/subtask references
+						return taskExists(tasksData.tasks, depId);
 					});
 				}
 			});
 		}
 	});
 
-	// 3. Ensure at least one subtask has no dependencies in each task for the current tag
-	processedTasks.forEach((task) => {
+	// 3. Ensure at least one subtask has no dependencies in each task
+	tasksData.tasks.forEach((task) => {
 		if (task.subtasks && task.subtasks.length > 0) {
 			const hasIndependentSubtask = task.subtasks.some(
 				(st) =>
@@ -1306,13 +1257,9 @@ function validateAndFixDependencies(
 		}
 	});
 
-	// Update the tasksData object with the processed tasks for the current tag
-	tasksData[targetTag].tasks = processedTasks;
-
-	// Check if any changes were made by comparing with original data for the specific tag
+	// Check if any changes were made by comparing with original data
 	const changesDetected =
-		JSON.stringify(tasksData[targetTag]) !==
-		JSON.stringify(originalTagDataCopy);
+		JSON.stringify(tasksData) !== JSON.stringify(originalData);
 
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
@@ -1320,10 +1267,7 @@ function validateAndFixDependencies(
 			writeJSON(tasksPath, tasksData, projectRoot, tag);
 			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {
-			logger.error(
-				'Failed to save dependency fixes to tasks.json',
-				error.message
-			); // Use error.message
+			logger.error('Failed to save dependency fixes to tasks.json', error);
 		}
 	}
 

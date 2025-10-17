@@ -5,7 +5,7 @@ import generateTaskFiles from '../../../../scripts/modules/task-manager/generate
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
 const taskSchema = z.object({
-	id: z.number(),
+	id: z.union([z.number(), z.string()]),
 	title: z.string()
 });
 

@@ -116,7 +116,7 @@ function _tolerantParseAgentTasks(agentOutput, logWrapper) {
  *                            representing an array of updated task objects, or already an array of tasks.
  * @param {string} projectRoot - The absolute path to the project root.
  * @param {Object} logWrapper - Logger object (e.g., from MCP context).
- * @returns {Promise<Object>} Result object with { success: true, updatedTaskIds: string[] } or { success: false, error: string }.
+ * @returns {Promise<Object>} Result object with { success: true, updatedTaskIds: Array<{id: string, skipped: boolean, reason: string}>, updatesApplied: number } or { success: false, error: string }.
  */
 async function agentllmUpdateSave(
 	agentOutput,
@@ -250,7 +250,7 @@ async function agentllmUpdateSave(
 									`agentllmUpdateSave: Restoring completed subtask ${originalTask.id}.${compSub.id} as agent modified/removed it.`
 								);
 								finalSubtasks = finalSubtasks.filter(
-									(st) => st.id !== compSub.id
+									(st) => Number(st.id) !== Number(compSub.id)
 								);
 								finalSubtasks.push(compSub);
 							}
@@ -266,7 +266,7 @@ async function agentllmUpdateSave(
 								}
 								return false;
 							})
-							.sort((a, b) => a.id - b.id);
+							.sort((a, b) => Number(a.id) - Number(b.id));
 					}
 
 					// Merge agent's task into the original task from tasks.json

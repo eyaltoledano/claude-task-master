@@ -56,7 +56,6 @@ export async function researchDirect(args, log, context = {}) {
 		// Check required parameters
 		if (!query || typeof query !== 'string' || query.trim().length === 0) {
 			log.error('Missing or invalid required parameter: query');
-			// disableSilentMode(); // Handled by finally
 			return {
 				success: false,
 				error: {

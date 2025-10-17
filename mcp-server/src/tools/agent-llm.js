@@ -58,7 +58,7 @@ const agentLLMParameters = z
 					.describe("Error details if the agent's LLM call failed.")
 			})
 			.optional()
-			.describe('The LLM response from the agent. Sent by Agent.'),
+			.describe("The LLM response from the agent. Sent by Agent."),
 		projectRoot: z
 			.string()
 			.describe('The directory of the project. Must be an absolute path.'),
@@ -73,7 +73,7 @@ function registerAgentLLMTool(server) {
 	server.addTool({
 		name: 'agent_llm',
 		description:
-			'Manages delegated LLM calls via an agent. Taskmaster uses this to request an LLM call from an agent. The agent uses this to return the LLM response.',
+			"Manages delegated LLM calls via an agent. Taskmaster uses this to request an LLM call from an agent. The agent uses this to return the LLM response. Can't provide both 'delegatedCallDetails' and 'agentLLMResponse'",
 		parameters: agentLLMParameters,
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -95,10 +95,10 @@ function registerAgentLLMTool(server) {
 					return createErrorResponse(errorMsg, { mcpToolError: true });
 				}
 
-				if (args.llmRequestForAgent) {
+				if (args.delegatedCallDetails) {
 					const effectiveInteractionId = args.interactionId || uuidv4();
 					log.info(
-						`agent_llm: Taskmaster delegating LLM call for command '${args.llmRequestForAgent.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
+						`agent_llm: Taskmaster delegating LLM call for command '${args.delegatedCallDetails.originalCommand}' to agent. Interaction ID: ${effectiveInteractionId}`
 					);
 
 					return {
@@ -106,7 +106,7 @@ function registerAgentLLMTool(server) {
 						status: 'pending_agent_llm_action',
 						message:
 							'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
-						llmRequestForAgent: args.llmRequestForAgent,
+						llmRequestForAgent: args.delegatedCallDetails,
 						interactionId: effectiveInteractionId,
 						pendingInteractionSignalToAgent: {
 							type: 'agent_must_respond_via_agent_llm',

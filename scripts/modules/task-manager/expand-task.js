@@ -27,6 +27,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).
@@ -323,40 +324,17 @@ async function expandTask(
 				commandName: 'expand-task',
 				outputType: outputFormat
 			});
-
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (
-				aiServiceResponse &&
-				aiServiceResponse.mainResult &&
-				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
-			) {
-				logger.debug(
-					'expandTask (core): Detected agent_llm_delegation signal.'
-				);
-				if (loadingIndicator) {
-					stopLoadingIndicator(loadingIndicator);
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				role,
+				{
+					nextSubtaskId: nextSubtaskId,
+					numSubtasksForAgent: finalSubtaskCount
 				}
-				return {
-					needsAgentDelegation: true,
-					pendingInteraction: {
-						type: 'agent_llm',
-						interactionId: aiServiceResponse.mainResult.interactionId,
-						llmRequestForAgent: {
-							originalCommand: 'expand-task',
-							role: useResearch ? 'research' : 'main',
-							// Agents will perform a generateObject call using the provided JSON schema.
-							serviceType: 'generateObject',
-							requestParameters: {
-								...aiServiceResponse.mainResult.details, // Spread existing details (prompt, systemPrompt, etc.)
-								nextSubtaskId: nextSubtaskId, // Add nextSubtaskId
-								numSubtasksForAgent: finalSubtaskCount, // Add finalSubtaskCount (as numSubtasksForAgent)
-								tagInfo: { currentTag: tag || 'master' }
-							}
-						}
-					},
-					telemetryData: aiServiceResponse?.telemetryData
-				};
-			}
+			);
+			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			// With generateObject, we expect structured data – verify it before use

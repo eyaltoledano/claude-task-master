@@ -42,7 +42,7 @@ import { registerScopeDownTool } from './scope-down.js';
 import { registerAgentLLMTool } from './agent-llm.js';
 
 /**
- * Comprehensive tool registry mapping all 36 tool names to their registration functions
+ * Comprehensive tool registry mapping all 37 tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -86,7 +86,7 @@ export const toolRegistry = {
 };
 
 /**
- * Core tools array containing the 7 essential tools for daily development
+ * Core tools array containing the 8 essential tools for daily development
  * These represent the minimal set needed for basic task management operations
  */
 export const coreTools = [
@@ -101,7 +101,7 @@ export const coreTools = [
 ];
 
 /**
- * Standard tools array containing the 15 most commonly used tools
+ * Standard tools array containing the 16 most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [

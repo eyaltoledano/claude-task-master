@@ -75,7 +75,7 @@ async function expandAllTasks(
 	let tasksToExpandCount = 0;
 	let delegationSignaledCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
-	const delegatedTaskIds = []; // REVERTED and ADDED: Initialize array for delegated task IDs
+	const delegatedTaskIds = []; // Initialize array for delegated task IDs
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(

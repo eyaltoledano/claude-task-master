@@ -29,6 +29,7 @@ import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks } from '../utils.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Analyzes task complexity and generates expansion recommendations
@@ -420,42 +421,19 @@ async function analyzeTaskComplexity(options, context = {}) {
 			});
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (
-				aiServiceResponse &&
-				aiServiceResponse.mainResult &&
-				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
-			) {
-				if (loadingIndicator) {
-					stopLoadingIndicator(loadingIndicator);
-					loadingIndicator = null;
-				}
-				reportLog(
-					'analyzeTaskComplexity (core): Detected agent_llm_delegation signal.',
-					'debug'
-				);
-				return {
-					needsAgentDelegation: true,
-					pendingInteraction: {
-						type: 'agent_llm',
-						interactionId: aiServiceResponse.mainResult.interactionId,
-						llmRequestForAgent: {
-							// Ensure context.commandName is passed correctly by analyzeTaskComplexityDirect
-							originalCommand: context.commandName || 'analyze-complexity',
-							role: useResearch ? 'research' : 'main',
-							serviceType: 'generateObject', // Agent expected to return JSON object
-							objectName: 'complexityAnalysis',
-							schemaKey: 'analyze-complexity',
-							requestParameters: {
-								...aiServiceResponse.mainResult.details // Includes prompt, systemPrompt, modelId, etc.
-								// Add any other parameters the agent might need or the saver utility might need later
-								// For complexity analysis, the main payload is the tasksData used in the prompt,
-								// which is already part of details.prompt.
-							}
-						}
-					},
-					telemetryData: aiServiceResponse?.telemetryData ?? null,
-					tagInfo: aiServiceResponse?.tagInfo
-				};
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				role,
+				{
+					objectName: 'complexityAnalysis',
+					schemaKey: 'analyze-complexity'
+				},
+				'generateObject'
+			);
+
+			if (delegationResult) {
+				return delegationResult;
 			}
 			// === END AGENT_LLM_DELEGATION HANDLING ===
 

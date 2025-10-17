@@ -70,7 +70,7 @@ async function agentllmAddTaskSave(
 			subtasks: [] // New tasks start with no subtasks
 		};
 
-		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag) || {
+		const allTasksData = await readJSON(tasksJsonPath, projectRoot, tag) || {
 			tasks: []
 		};
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
@@ -95,7 +95,7 @@ async function agentllmAddTaskSave(
 		// Sort tasks by ID for consistency, optional
 		allTasksData.tasks.sort((a, b) => a.id - b.id);
 
-		writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
+		await writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
 		logWrapper.info(
 			`agentllmAddTaskSave: Successfully added new task ID ${newTask.id} to ${tasksJsonPath} for tag '${tag}'.`
 		);

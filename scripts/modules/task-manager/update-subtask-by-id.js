@@ -25,6 +25,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Update a subtask by appending additional timestamped information using the unified AI service.
@@ -204,21 +205,21 @@ async function updateSubtaskById(
 				id: parentTask.id,
 				title: parentTask.title
 			};
-			const prevSubtask =
+			const prevSubtask = 
 				subtaskIndex > 0
 					? {
-							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex - 1].id}`,
-							title: parentTask.subtasks[subtaskIndex - 1].title,
-							status: parentTask.subtasks[subtaskIndex - 1].status
-						}
+						id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex - 1].id}`,
+						title: parentTask.subtasks[subtaskIndex - 1].title,
+						status: parentTask.subtasks[subtaskIndex - 1].status
+					}
 					: undefined;
-			const nextSubtask =
+			const nextSubtask = 
 				subtaskIndex < parentTask.subtasks.length - 1
 					? {
-							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex + 1].id}`,
-							title: parentTask.subtasks[subtaskIndex + 1].title,
-							status: parentTask.subtasks[subtaskIndex + 1].status
-						}
+						id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex + 1].id}`,
+						title: parentTask.subtasks[subtaskIndex + 1].title,
+						status: parentTask.subtasks[subtaskIndex + 1].status
+					}
 					: undefined;
 
 			// Build prompts using PromptManager
@@ -235,7 +236,7 @@ async function updateSubtaskById(
 				hasCodebaseAnalysis: hasCodebaseAnalysis(
 					useResearch,
 					projectRoot,
-					session
+				session
 				),
 				projectRoot: projectRoot
 			};
@@ -262,43 +263,17 @@ async function updateSubtaskById(
 			});
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (
-				aiServiceResponse &&
-				aiServiceResponse.mainResult &&
-				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
-			) {
-				report(
-					'debug',
-					`updateSubtaskById (core): Detected agent_llm_delegation signal for subtask ID ${subtaskId}.`
-				);
-				if (outputFormat === 'text' && loadingIndicator) {
-					stopLoadingIndicator(loadingIndicator); // Stop CLI loader if active
-					loadingIndicator = null; // Prevent further operations on it
-				}
-				return {
-					needsAgentDelegation: true,
-					pendingInteraction: {
-						type: 'agent_llm', // Standard type for server processing
-						interactionId: aiServiceResponse.mainResult.interactionId,
-						llmRequestForAgent: {
-							originalCommand: context.commandName || 'update_subtask',
-							role: role, // 'role' is defined based on useResearch flag
-							serviceType: 'generateText',
-							requestParameters: {
-								// These are the details from the agent_llm_delegation signal's 'details' field
-								...(aiServiceResponse.mainResult.details || {}),
-								// Add specific context useful for the agent to update a subtask
-								subtaskId: subtaskId, // The ID of the subtask being updated (e.g., "1.2")
-								originalUserPrompt: prompt // The user's high-level request string
-								// The system and user prompts sent to the AI (and thus to the agent)
-								// already contain detailed context about parent task, siblings, and existing details.
-								// So, no need to add them explicitly here again unless the agent workflow requires it differently.
-							}
-						}
-					}
-					// No 'updatedSubtask' or 'telemetryData' here as the operation is pending.
-				};
-			}
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				role,
+				{
+					subtaskId: subtaskId,
+					originalUserPrompt: prompt
+				},
+				'generateText'
+			);
+			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			if (
@@ -331,7 +306,9 @@ async function updateSubtaskById(
 		if (generatedContentString && generatedContentString.trim()) {
 			// Check if the string is not empty
 			const timestamp = new Date().toISOString();
-			const formattedBlock = `<info added on ${timestamp}>\n${generatedContentString.trim()}\n</info added on ${timestamp}>`;
+			const formattedBlock = `<info added on ${timestamp}>
+${generatedContentString.trim()}
+</info added on ${timestamp}>`;
 			newlyAddedSnippet = formattedBlock; // <--- ADD THIS LINE: Store for display
 
 			subtask.details =
@@ -402,7 +379,11 @@ async function updateSubtaskById(
 						chalk.white.bold('Newly Added Snippet:') +
 						'\n' +
 						chalk.white(newlyAddedSnippet),
-					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+					{
+						padding: 1,
+						borderColor: 'green',
+						borderStyle: 'round'
+					}
 				)
 			);
 		}
@@ -419,7 +400,7 @@ async function updateSubtaskById(
 	} catch (error) {
 		if (outputFormat === 'text' && loadingIndicator) {
 			stopLoadingIndicator(loadingIndicator);
-			loadingIndicator = null;
+				loadingIndicator = null;
 		}
 		report('error', `Error updating subtask: ${error.message}`);
 		if (outputFormat === 'text') {

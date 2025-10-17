@@ -1602,6 +1602,74 @@ function stripAnsiCodes(text) {
 	return text.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+/**
+ * Creates a logger instance that can either use an MCP logger or fall back to CLI logging.
+ * @param {object} [context={}] - The context object, which may contain an mcpLog property.
+ * @param {object} [context.mcpLog] - An optional MCP logger instance.
+ * @returns {object} A logger object with debug, error, info, and success methods.
+ */
+function createLogger(context = {}) {
+	const isMCP = context.mcpLog && typeof context.mcpLog.info === 'function';
+
+	return {
+		debug: (...args) => {
+			if (isMCP && typeof context.mcpLog.debug === 'function') {
+				context.mcpLog.debug(...args);
+			} else if (!isMCP) {
+				log('debug', ...args);
+			}
+		},
+		error: (...args) => {
+			if (isMCP && typeof context.mcpLog.error === 'function') {
+				context.mcpLog.error(...args);
+			} else {
+				const message = args
+					.map((arg) => {
+						if (typeof arg === 'object') {
+							try {
+								return JSON.stringify(arg);
+							} catch (e) {
+								return String(arg);
+							}
+						}
+						return String(arg);
+					})
+					.join(' ');
+				throw new Error(message);
+			}
+		},
+		info: (...args) => {
+			if (isMCP) {
+				context.mcpLog.info(...args);
+			} else {
+				log('info', ...args);
+			}
+		},
+		success: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.success === 'function') {
+					context.mcpLog.success(...args);
+				} else {
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('success', ...args);
+			}
+		},
+		warn: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.warn === 'function') {
+					context.mcpLog.warn(...args);
+				} else {
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('warn', ...args);
+			}
+		}
+	};
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -1641,5 +1709,6 @@ export {
 	flattenTasksWithSubtasks,
 	ensureTagMetadata,
 	stripAnsiCodes,
-	normalizeTaskIds
+	normalizeTaskIds,
+	createLogger
 };

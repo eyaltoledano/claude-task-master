@@ -131,6 +131,7 @@ async function agentllmUpdatedTaskSave(
 		// This assumes 'append' is passed in originalToolArgs if that was the intent.
 		const isAppendMode = originalToolArgs && originalToolArgs.append === true;
 
+		// Handle string input
 		if (typeof agentOutput === 'string') {
 			if (isAppendMode) {
 				logWrapper.info(
@@ -138,7 +139,7 @@ async function agentllmUpdatedTaskSave(
 				);
 				const timestamp = new Date().toISOString();
 				directAppendText = `<info added on ${timestamp}>\n${agentOutput.trim()}\n</info added on ${timestamp}>`;
-				// parsedAgentTask remains undefined, as we'll modify taskToUpdateObject directly
+				// Skip all other processing and go directly to append logic
 			} else {
 				logWrapper.info(
 					'agentllmUpdatedTaskSave: Agent output is a JSON string. Parsing for full update.'
@@ -152,93 +153,113 @@ async function agentllmUpdatedTaskSave(
 				}
 			}
 		}
+
+		// Handle object input
 		if (typeof agentOutput === 'object' && agentOutput !== null) {
 			logWrapper.info(
-				'agentllmUpdatedTaskSave: Agent output is already an object. Validating and using directly.'
+				'agentllmUpdatedTaskSave: Agent output is already an object. Processing for update or append.'
 			);
 
-			// Agents sometimes return a wrapped response like { task: { ... } }
-			// Extract the candidate task object accordingly.
-			let candidate = null;
-			if (
-				agentOutput &&
-				typeof agentOutput === 'object' &&
-				agentOutput.task &&
-				typeof agentOutput.task === 'object'
-			) {
-				candidate = agentOutput.task;
-			} else {
-				candidate = agentOutput;
-			}
-
-			// Enforce/normalize ID early so validation doesn't fail when agent omits or uses string IDs
-			let normalizedId;
-			if (typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')) {
-				const [, subIdStr] = taskIdToUpdate.split('.');
-				normalizedId = parseInt(subIdStr, 10);
-			} else {
-				normalizedId = parseInt(String(taskIdToUpdate), 10);
-			}
-
-			if (candidate && (candidate.id === undefined || candidate.id === null)) {
-				candidate.id = normalizedId;
-			} else if (candidate && typeof candidate.id === 'string') {
-				const maybeNum = parseInt(candidate.id, 10);
-				if (!isNaN(maybeNum)) candidate.id = maybeNum;
-			}
-
-			// Validate with the shared UpdatedTaskSchema to avoid corrupt tasks
-			const validation = UpdatedTaskSchema.safeParse(candidate);
-			if (!validation.success) {
-				// Format validation errors for logging and return
-				let formattedDetails = null;
+			// For append mode, if agentOutput is an object but we're in append mode,
+			// we should treat it as text content to append rather than a task object
+			if (isAppendMode) {
+				logWrapper.info(
+					'agentllmUpdatedTaskSave: Append mode detected with object output. Converting to string for append.'
+				);
 				try {
-					formattedDetails = validation.error.format
-						? validation.error.format()
-						: validation.error;
-				} catch (fmtErr) {
-					formattedDetails = validation.error;
+					directAppendText = JSON.stringify(agentOutput, null, 2);
+				} catch (e) {
+					const errorMsg = `Failed to stringify object for append: ${e.message}`;
+					logWrapper.error(`agentllmUpdatedTaskSave: ${errorMsg}`);
+					return { success: false, error: errorMsg };
+				}
+			} else {
+				// Agents sometimes return a wrapped response like { task: { ... } }
+				// Extract the candidate task object accordingly.
+				let candidate = null;
+				if (
+					agentOutput &&
+					typeof agentOutput === 'object' &&
+					agentOutput.task &&
+					typeof agentOutput.task === 'object'
+				) {
+					candidate = agentOutput.task;
+				} else {
+					candidate = agentOutput;
 				}
 
-				const detailsString = (() => {
+				// Enforce/normalize ID early so validation doesn't fail when agent omits or uses string IDs
+				let normalizedId;
+				if (typeof taskIdToUpdate === 'string' && taskIdToUpdate.includes('.')) {
+					const [, subIdStr] = taskIdToUpdate.split('.');
+					normalizedId = parseInt(subIdStr, 10);
+				} else {
+					normalizedId = parseInt(String(taskIdToUpdate), 10);
+				}
+
+				if (candidate && (candidate.id === undefined || candidate.id === null)) {
+					candidate.id = normalizedId;
+				} else if (candidate && typeof candidate.id === 'string') {
+					const maybeNum = parseInt(candidate.id, 10);
+					if (!isNaN(maybeNum)) candidate.id = maybeNum;
+				}
+
+				// Validate with the shared UpdatedTaskSchema to avoid corrupt tasks
+				const validation = UpdatedTaskSchema.safeParse(candidate);
+				if (!validation.success) {
+					// Format validation errors for logging and return
+					let formattedDetails = null;
 					try {
-						return JSON.stringify(formattedDetails);
-					} catch (e) {
-						return String(formattedDetails);
+						formattedDetails = validation.error.format
+							? validation.error.format()
+							: validation.error;
+					} catch (fmtErr) {
+						formattedDetails = validation.error;
 					}
-				})();
 
-				logWrapper.error(
-					`agentllmUpdatedTaskSave: Agent output validation failed: ${detailsString}`
-				);
+					const detailsString = (() => {
+						try {
+							return JSON.stringify(formattedDetails);
+						} catch (e) {
+							return String(formattedDetails);
+						}
+					})();
 
-				return {
-					success: false,
-					error: `Agent output failed task schema validation: ${detailsString}`,
-					details: formattedDetails
-				};
+					logWrapper.error(
+						`agentllmUpdatedTaskSave: Agent output validation failed: ${detailsString}`
+					);
+
+					return {
+						success: false,
+						error: `Agent output failed task schema validation: ${detailsString}`,
+						details: formattedDetails
+					};
+				}
+
+				// Use the (possibly coerced) parsed data from Zod
+				parsedAgentTask = validation.data;
+
+				// Enforce ID consistency (overwrite with numeric id derived from taskIdToUpdate)
+				if (parsedAgentTask.id !== normalizedId) {
+					logWrapper.warn(
+						`Agent output object had ID ${parsedAgentTask.id}, expected ${normalizedId}. Overwriting ID.`
+					);
+					parsedAgentTask.id = normalizedId;
+				}
 			}
+		}
 
-			// Use the (possibly coerced) parsed data from Zod
-			parsedAgentTask = validation.data;
-
-			// Enforce ID consistency (overwrite with numeric id derived from taskIdToUpdate)
-			if (parsedAgentTask.id !== normalizedId) {
-				logWrapper.warn(
-					`Agent output object had ID ${parsedAgentTask.id}, expected ${normalizedId}. Overwriting ID.`
-				);
-				parsedAgentTask.id = normalizedId;
-			}
-		} else {
+		// Handle case where we don't have valid content for either append or full update
+		if (!directAppendText && (!parsedAgentTask || typeof parsedAgentTask !== 'object')) {
 			const errorMsg =
-				'Invalid agentOutput format. Expected a JSON string or a task object.';
+				'Invalid agentOutput format. Expected a string for append mode or a task object for full update.';
 			logWrapper.error(
-				`agentllmUpdatedTaskSave: ${errorMsg} Received type: ${typeof agentOutput}`
+				`agentllmUpdatedTaskSave: ${errorMsg} Received type: ${typeof agentOutput}, isAppendMode: ${isAppendMode}`
 			);
 			return { success: false, error: errorMsg };
 		}
 
-		// If directAppendText is set, it means we are in append mode with a string from agent
+		// If directAppendText is set, it means we are in append mode with content to append
 		if (directAppendText) {
 			if (
 				taskToUpdateObject.status === 'done' ||

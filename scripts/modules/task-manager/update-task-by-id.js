@@ -34,6 +34,7 @@ import {
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -330,45 +331,16 @@ async function updateTaskById(
 			}
 
 			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
-			if (
-				aiServiceResponse &&
-				aiServiceResponse.mainResult &&
-				aiServiceResponse.mainResult.type === 'agent_llm_delegation'
-			) {
-				// Validate required delegation fields
-				if (!aiServiceResponse.mainResult.interactionId) {
-					throw new Error(
-						'Agent delegation signal missing required interactionId'
-					);
-				}
-
-				report(
-					'debug',
-					'updateTaskById (core): Detected agent_llm_delegation signal.'
-				);
-				// Stop loading indicator if it was started (for CLI mode, but good practice)
-				if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
-
-				return {
-					needsAgentDelegation: true,
-					pendingInteraction: {
-						type: 'agent_llm',
-						interactionId: aiServiceResponse.mainResult.interactionId,
-						llmRequestForAgent: {
-							originalCommand: context.commandName || 'update-task', // Will be set by updateTaskByIdDirect
-							role: serviceRole, // serviceRole is already defined in this scope
-							serviceType: appendMode ? 'generateText' : 'generateObject', // Match the original service call
-							requestParameters: {
-								...aiServiceResponse.mainResult.details, // Includes prompt, systemPrompt, modelId etc.
-								// Pass original task ID for context, agent might need it if not in prompt/details
-								originalTaskId: taskId
-							}
-						}
-					},
-					telemetryData: aiServiceResponse.telemetryData,
-					tagInfo: aiServiceResponse.tagInfo
-				};
-			}
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				serviceRole,
+				{
+					originalTaskId: taskId
+				},
+				appendMode ? 'generateText' : 'generateObject'
+			);
+			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			if (loadingIndicator)

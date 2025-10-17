@@ -25,6 +25,7 @@ import {
 	startLoadingIndicator,
 	stopLoadingIndicator
 } from '../ui.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Perform AI-powered research with project context
@@ -159,8 +160,8 @@ async function performResearch(
 					if (taskIds.length > 0) {
 						const sortedProvidedIds = taskIds
 							.map((id) => parseInt(id))
-							.sort((a, b) => a - b)
-							.map((id) => id.toString());
+						.sort((a, b) => a - b)
+						.map((id) => id.toString());
 
 						console.log(
 							chalk.gray('Provided tasks: ') +
@@ -303,51 +304,14 @@ async function performResearch(
 		}
 
 		// === BEGIN AGENT_LLM DELEGATION SIGNAL CHECK ===
-		// Check if generateTextService (via _unifiedServiceRunner) returned a delegation signal
-		if (
-			aiResult &&
-			aiResult.mainResult &&
-			aiResult.mainResult.type === 'agent_llm_delegation'
-		) {
-			logFn.debug(
-				`AgentLLM delegation signal received from AI service for research. Propagating initial signal.`
-			);
-			// aiResult.mainResult is the { type: 'agent_llm_delegation', interactionId, details } object
-			// Construct the full signal expected by researchDirect and then the MCP tool,
-			// matching the structure observed for update_task.
-			const pendingInteractionObject = {
-				type: 'agent_llm', // Standardized type for server processing
-				interactionId: aiResult.mainResult.interactionId,
-				llmRequestForAgent: {
-					originalCommand: commandName, // Use the destructured commandName from the context parameter
-					role: 'research', // The role that was delegated
-					serviceType: 'generateText', // Agent is expected to generate text
-					requestParameters: {
-						...aiResult.mainResult.details, // Contains modelId, messages, originalSaveTo etc.
-						tagInfo: aiResult.tagInfo // Pass along the tagInfo
-					}
-				}
-			};
-			logFn.debug(
-				`Transformed pendingInteraction for research: ${JSON.stringify(pendingInteractionObject)}`
-			);
-			return {
-				needsAgentDelegation: true,
-				pendingInteraction: pendingInteractionObject,
-				// Provide structure consistent with normal returns, but with null/default data
-				query,
-				result: null, // No direct result if delegating
-				contextSize: gatheredContext.length,
-				contextTokens: tokenBreakdown.total,
-				tokenBreakdown,
-				systemPromptTokens,
-				userPromptTokens,
-				totalInputTokens,
-				detailLevel,
-				telemetryData: null, // No direct AI call was finalized here
-				tagInfo: aiResult.tagInfo // tagInfo can still be relevant
-			};
-		}
+		const delegationResult = handleAgentLLMDelegation(
+			aiResult,
+			{ commandName },
+			'research',
+			{ query, detailLevel },
+			{ serviceType: 'generateText' }
+		);
+		if (delegationResult) return delegationResult;
 		// === END AGENT_LLM DELEGATION SIGNAL CHECK ===
 
 		const researchResult = aiResult.mainResult; // This should be the agent's text on resumption or direct LLM text

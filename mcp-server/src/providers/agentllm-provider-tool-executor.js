@@ -477,7 +477,7 @@ export function AgentLLMProviderToolExecutor(
 					toolArgs.projectRoot || session?.roots?.[0]?.uri || '.';
 				agentLLMTool
 					.execute(
-						{ interactionId, llmRequestForAgent, projectRoot },
+						{ interactionId, delegatedCallDetails: llmRequestForAgent, projectRoot },
 						{ log, session }
 					)
 					.then((agentDirectiveResult) => {
