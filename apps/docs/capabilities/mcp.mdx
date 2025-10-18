@@ -186,3 +186,54 @@ The MCP tools can be categorized in the same way as the core functionalities:
 -   **`use_tag`**: Switches to a different tag.
 -   **`rename_tag`**: Renames a tag.
 -   **`copy_tag`**: Copies a tag.
+
+### 7. Scope Management
+
+-   **`scope_up`**: Moves a task up in the hierarchy.
+-   **`scope_down`**: Moves a task down in the hierarchy.
+
+## Troubleshooting
+
+### MCP Client Compatibility Issues
+
+If you're experiencing issues with MCP clients not discovering Task Master tools, or seeing "vendor undefined" errors, this is likely due to JSON Schema compatibility differences.
+
+**Common symptoms:**
+- Tools show as "0 tools enabled" in MCP client settings
+- "vendor undefined" errors in MCP client logs  
+- Task Master tools not appearing in tool lists
+
+**Root cause:**
+Some MCP clients (Augment IDE, gemini-cli, etc.) only support JSON Schema Draft-07, while newer schema generators output Draft 2020-12.
+
+**Solution:**
+Task Master includes a compatibility fix (as of v2.1.2) that ensures all MCP tools use JSON Schema Draft-07. This fix:
+
+- Uses Zod v3 compatibility mode for schema generation
+- Ensures proper tool discovery across all MCP clients
+- Maintains full functionality while improving compatibility
+
+If you're still experiencing issues after updating to the latest version:
+
+1. **Restart your MCP client** - Schema changes require a restart
+2. **Verify API keys** - Tools may not load without proper authentication
+3. **Check client logs** - Look for any remaining compatibility errors
+4. **Try a different client** - Test with Claude Code or Cursor to isolate client-specific issues
+
+### Custom MCP Tool Development
+
+If you're extending Task Master with custom MCP tools, ensure you import from the Draft-07 compatible version:
+
+```typescript
+// ✅ CORRECT - Draft-07 compatible
+import { z } from 'zod/v3';
+
+// ❌ WRONG - May cause compatibility issues
+import { z } from 'zod';
+```
+
+This compatibility requirement applies only to MCP tool definitions in:
+- `apps/mcp/src/tools/`
+- `mcp-server/src/tools/`
+
+The rest of the codebase can continue using standard Zod v4.
