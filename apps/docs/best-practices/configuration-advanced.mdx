@@ -38,7 +38,7 @@ Taskmaster uses two primary methods for configuration:
           }
         },
         "global": {
-          "logLevel": "info",
+          "logLevel": "silent",
           "debug": false,
           "defaultSubtasks": 5,
           "defaultPriority": "medium",
@@ -85,8 +85,72 @@ Taskmaster uses two primary methods for configuration:
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 - **Optional Auto-Update Control:**
   - `TASKMASTER_SKIP_AUTO_UPDATE`: Set to '1' to disable automatic updates. Also automatically disabled in CI environments (when `CI` environment variable is set).
+- **Optional Logging Control:**
+  - `TASK_MASTER_LOG_LEVEL` or `TM_LOG_LEVEL`: Override the log level (values: `SILENT`, `ERROR`, `WARN`, `INFO`, `DEBUG`)
+  - `TASK_MASTER_SILENT` or `TM_SILENT`: Set to 'true' to completely silence all output
+  - `TASK_MASTER_NO_COLOR`: Set to 'true' to disable colored output
+  - `NO_COLOR`: Standard environment variable to disable colored output
+  - `MCP_MODE` or `TASK_MASTER_MCP`: Set to 'true' to enable MCP mode (automatically silences all output)
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
+
+## Logging Configuration
+
+Task Master uses a configurable logging system that defaults to **silent mode** for clean CLI output. You can control logging behavior through both configuration files and environment variables.
+
+### Log Levels
+
+- **`SILENT` (0)**: No output (default behavior)
+- **`ERROR` (1)**: Only error messages
+- **`WARN` (2)**: Warnings and errors
+- **`INFO` (3)**: Informational messages, warnings, and errors
+- **`DEBUG` (4)**: All messages including debug information
+
+### Configuration Methods
+
+**1. Configuration File (`.taskmaster/config.json`):**
+```json
+{
+  "global": {
+    "logLevel": "info"
+  }
+}
+```
+
+**2. Environment Variables (override config file):**
+```bash
+# Set specific log level
+TASK_MASTER_LOG_LEVEL=INFO
+# or
+TM_LOG_LEVEL=INFO
+
+# Completely silence all output
+TASK_MASTER_SILENT=true
+# or
+TM_SILENT=true
+
+# Disable colors
+TASK_MASTER_NO_COLOR=true
+# or
+NO_COLOR=true
+```
+
+### MCP Mode
+
+When running as an MCP server (Model Context Protocol), Task Master automatically enables silent mode to prevent interference with MCP communication:
+
+```bash
+# These environment variables automatically enable silent mode
+MCP_MODE=true
+TASK_MASTER_MCP=true
+```
+
+### Default Behavior
+
+By default, Task Master operates in **silent mode** to provide clean CLI output. This means:
+- No debug, info, warning, or error messages are displayed during normal operation
+- Only essential command output (like task lists, task details) is shown
+- You can enable logging by setting `logLevel` in your config or using environment variables
 
 ## Tagged Task Lists Configuration (v0.17+)
 
