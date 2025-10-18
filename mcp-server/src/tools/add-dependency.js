@@ -3,7 +3,7 @@
  * Tool for adding a dependency to a task
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

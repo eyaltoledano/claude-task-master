@@ -3,7 +3,7 @@
  * Tool for adding subtasks to existing tasks
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

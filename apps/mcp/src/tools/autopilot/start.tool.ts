@@ -3,7 +3,7 @@
  * Initialize and start a new TDD workflow for a task
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

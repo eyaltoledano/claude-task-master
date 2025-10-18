@@ -3,7 +3,7 @@
  * Tool to switch to a different tag context
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

@@ -3,7 +3,7 @@
  * Tool to generate individual task files from tasks.json
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

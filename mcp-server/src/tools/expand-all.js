@@ -3,7 +3,7 @@
  * Tool for expanding all pending tasks with subtasks
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

@@ -3,7 +3,7 @@
  * Tool to remove a task by ID
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

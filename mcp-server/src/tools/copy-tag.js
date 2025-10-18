@@ -3,7 +3,7 @@
  * Tool to copy an existing tag to a new tag
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

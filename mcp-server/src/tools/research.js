@@ -3,7 +3,7 @@
  * Tool to perform AI-powered research queries with project context
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

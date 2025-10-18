@@ -3,7 +3,7 @@
  * Tool to update tasks based on new context/prompt
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

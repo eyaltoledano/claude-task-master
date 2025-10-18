@@ -3,7 +3,7 @@
  * Tool to find the next task to work on based on dependencies and status
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

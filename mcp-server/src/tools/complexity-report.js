@@ -3,7 +3,7 @@
  * Tool for displaying the complexity analysis report
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

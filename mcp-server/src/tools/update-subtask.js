@@ -3,7 +3,7 @@
  * Tool to append additional information to a specific subtask
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

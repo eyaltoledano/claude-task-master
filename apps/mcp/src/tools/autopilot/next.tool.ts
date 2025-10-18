@@ -3,7 +3,7 @@
  * Get the next action to perform in the TDD workflow
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

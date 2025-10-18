@@ -3,7 +3,7 @@
  * Tool to get all tasks from Task Master
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

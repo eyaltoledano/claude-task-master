@@ -3,7 +3,7 @@
  * Tool to delete an existing tag
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

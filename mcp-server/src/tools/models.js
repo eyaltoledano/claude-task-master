@@ -3,7 +3,7 @@
  * MCP tool for managing AI model configurations
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

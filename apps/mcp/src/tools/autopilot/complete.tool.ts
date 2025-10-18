@@ -3,7 +3,7 @@
  * Complete the current TDD phase with test result validation
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

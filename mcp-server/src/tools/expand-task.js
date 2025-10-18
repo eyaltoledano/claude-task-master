@@ -3,7 +3,7 @@
  * Tool to expand a task into subtasks
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

@@ -3,7 +3,7 @@
  * Resume a previously started TDD workflow from saved state
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

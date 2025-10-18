@@ -3,7 +3,7 @@
  * Tool for moving tasks or subtasks to a new position
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

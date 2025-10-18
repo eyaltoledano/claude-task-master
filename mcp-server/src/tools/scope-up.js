@@ -3,7 +3,7 @@
  * Tool to scope up task complexity
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,

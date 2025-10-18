@@ -3,7 +3,7 @@
  * Tool to parse PRD document and generate tasks
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot,

@@ -3,7 +3,7 @@
  * Finalize and complete the workflow with working tree validation
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

@@ -3,7 +3,7 @@
  * Tool for clearing subtasks from parent tasks
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

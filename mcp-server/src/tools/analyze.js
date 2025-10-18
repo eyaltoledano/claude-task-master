@@ -3,7 +3,7 @@
  * Tool for analyzing task complexity and generating recommendations
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import path from 'path';
 import fs from 'fs'; // Import fs for directory check/creation
 import {

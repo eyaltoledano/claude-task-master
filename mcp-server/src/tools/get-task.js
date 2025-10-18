@@ -3,7 +3,7 @@
  * Tool to get task details by ID
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

@@ -3,7 +3,7 @@
  * Get comprehensive workflow status and progress information
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

@@ -3,7 +3,7 @@
  * Tool to set the status of a task
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,

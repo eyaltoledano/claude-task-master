@@ -1,5 +1,5 @@
 // mcp-server/src/tools/get-operation-status.js
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { createErrorResponse, createContentResponse } from './utils.js'; // Assuming these utils exist
 
 /**

@@ -3,7 +3,7 @@
  * Abort a running TDD workflow and clean up state
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

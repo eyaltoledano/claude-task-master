@@ -3,7 +3,7 @@
  * Create a git commit with automatic staging and message generation
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	withNormalizedProjectRoot

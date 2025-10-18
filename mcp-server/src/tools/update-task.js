@@ -3,7 +3,7 @@
  * Tool to update a single task by ID with new information
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,
