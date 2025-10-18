@@ -1,33 +1,45 @@
 /**
- * @fileoverview JSON Schema Draft-07 compatibility patch
- * 
- * This patches the zod-to-json-schema module to default to JSON Schema Draft-7
- * instead of Draft 2020-12 for better MCP client compatibility.
- * 
- * The patch works by overriding the zodToJsonSchema function's default behavior.
+ * @fileoverview FastMCP Draft-07 Compatibility Patch
+ *
+ * PROBLEM:
+ * - FastMCP uses Zod v3 + zod-to-json-schema → outputs JSON Schema Draft 2020-12
+ * - MCP clients (e.g., Augment IDE) only support Draft-07
+ * - This causes "MCP server startup error" in incompatible clients
+ *
+ * SOLUTION:
+ * Pre-convert Zod v4 schemas to Draft-07 using native toJSONSchema() before
+ * passing to FastMCP, preventing it from doing its own conversion.
+ *
+ * TEMPORARY PATCH:
+ * This will be removed once FastMCP, MCP spec, or Zod addresses the compatibility issue.
+ * Tracking: https://github.com/punkpeye/fastmcp/issues/189
  */
 
-import * as zodToJsonSchemaModule from 'zod-to-json-schema';
-
-// Store original function
-const originalZodToJsonSchema = zodToJsonSchemaModule.zodToJsonSchema;
+import { FastMCP as OriginalFastMCP } from 'fastmcp';
+import { toJSONSchema, ZodType } from 'zod';
 
 /**
- * Patched zodToJsonSchema function that defaults to Draft-07
+ * FastMCP wrapper that converts Zod schemas to JSON Schema Draft-07
  */
-function patchedZodToJsonSchema(schema, options = {}) {
-	// Force JSON Schema Draft-07 for MCP compatibility
-	const draft7Options = {
-		...options,
-		target: 'jsonSchema7',
-		$refStrategy: options.$refStrategy || 'relative'
-	};
-	
-	return originalZodToJsonSchema(schema, draft7Options);
+export class FastMCP extends OriginalFastMCP {
+	addTool(tool) {
+		// Pre-convert Zod schemas to Draft-07 before passing to FastMCP
+		if (tool.parameters instanceof ZodType) {
+			try {
+				const modifiedTool = {
+					...tool,
+					parameters: toJSONSchema(tool.parameters, { target: 'draft-7' })
+				};
+				return super.addTool(modifiedTool);
+			} catch (error) {
+				console.error(
+					`[FastMCPCompat] Failed to convert schema for tool "${tool.name}":`,
+					error
+				);
+			}
+		}
+
+		// Pass through as-is for non-Zod schemas or conversion failures
+		return super.addTool(tool);
+	}
 }
-
-// Apply the patch by overriding the module's export
-zodToJsonSchemaModule.zodToJsonSchema = patchedZodToJsonSchema;
-
-// Export the patched FastMCP (just re-export regular FastMCP since we've patched at module level)
-export { FastMCP } from 'fastmcp';
