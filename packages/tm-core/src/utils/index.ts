@@ -13,6 +13,40 @@ export {
 	getParentTaskId
 } from './id-generator.js';
 
+// Export git utilities
+export {
+	isGitRepository,
+	isGitRepositorySync,
+	getCurrentBranch,
+	getCurrentBranchSync,
+	getLocalBranches,
+	getRemoteBranches,
+	isGhCliAvailable,
+	getGitHubRepoInfo,
+	getGitRepositoryRoot,
+	getDefaultBranch,
+	isOnDefaultBranch,
+	insideGitWorkTree,
+	sanitizeBranchNameForTag,
+	isValidBranchForTag,
+	type GitHubRepoInfo
+} from './git-utils.js';
+
+// Export path normalization utilities
+export {
+	normalizeProjectPath,
+	denormalizeProjectPath,
+	isValidNormalizedPath
+} from './path-normalizer.js';
+
+// Export run ID generation utilities
+export {
+	generateRunId,
+	isValidRunId,
+	parseRunId,
+	compareRunIds
+} from './run-id-generator.js';
+
 // Additional utility exports
 
 /**

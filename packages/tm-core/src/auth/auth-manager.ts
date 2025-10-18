@@ -25,10 +25,12 @@ import { getLogger } from '../logger/index.js';
  */
 export class AuthManager {
 	private static instance: AuthManager | null = null;
+	private static readonly staticLogger = getLogger('AuthManager');
 	private credentialStore: CredentialStore;
 	private oauthService: OAuthService;
 	private supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
+	private readonly logger = getLogger('AuthManager');
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.credentialStore = CredentialStore.getInstance(config);
@@ -50,8 +52,7 @@ export class AuthManager {
 			await this.supabaseClient.initialize();
 		} catch (error) {
 			// Log but don't throw - session might not exist yet
-			const logger = getLogger('AuthManager');
-			logger.debug('No existing session to restore');
+			this.logger.debug('No existing session to restore');
 		}
 	}
 
@@ -63,8 +64,7 @@ export class AuthManager {
 			AuthManager.instance = new AuthManager(config);
 		} else if (config) {
 			// Warn if config is provided after initialization
-			const logger = getLogger('AuthManager');
-			logger.warn(
+			AuthManager.staticLogger.warn(
 				'getInstance called with config after initialization; config is ignored.'
 			);
 		}
@@ -159,7 +159,7 @@ export class AuthManager {
 			await this.supabaseClient.signOut();
 		} catch (error) {
 			// Log but don't throw - we still want to clear local credentials
-			getLogger('AuthManager').warn('Failed to sign out from Supabase:', error);
+			this.logger.warn('Failed to sign out from Supabase:', error);
 		}
 
 		// Always clear local credentials (removes auth.json file)

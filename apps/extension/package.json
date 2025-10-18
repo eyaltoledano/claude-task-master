@@ -275,7 +275,7 @@
 		"tailwindcss": "4.1.11",
 		"typescript": "^5.9.2",
 		"@tm/core": "*",
-		"task-master-ai": "*"
+		"task-master-ai": "0.30.0-rc.0"
 	},
 	"overrides": {
 		"glob@<8": "^10.4.5",

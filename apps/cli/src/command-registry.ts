@@ -14,6 +14,7 @@ import { ContextCommand } from './commands/context.command.js';
 import { StartCommand } from './commands/start.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
 import { ExportCommand } from './commands/export.command.js';
+import { AutopilotCommand } from './commands/autopilot/index.js';
 
 /**
  * Command metadata for registration
@@ -69,6 +70,13 @@ export class CommandRegistry {
 			description: 'Export tasks to external systems',
 			commandClass: ExportCommand as any,
 			category: 'task'
+		},
+		{
+			name: 'autopilot',
+			description:
+				'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
+			commandClass: AutopilotCommand as any,
+			category: 'development'
 		},
 
 		// Authentication & Context Commands
