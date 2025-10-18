@@ -43,9 +43,9 @@ describe('Claude Code Error Handling', () => {
 
 		// These should work even if CLI is not available
 		expect(provider.name).toBe('Claude Code');
-		expect(provider.getSupportedModels()).toEqual(['sonnet', 'opus']);
+		expect(provider.getSupportedModels()).toEqual(['opus', 'sonnet', 'haiku']);
 		expect(provider.isModelSupported('sonnet')).toBe(true);
-		expect(provider.isModelSupported('haiku')).toBe(false);
+		expect(provider.isModelSupported('haiku')).toBe(true);
 		expect(provider.isRequiredApiKey()).toBe(false);
 		expect(() => provider.validateAuth()).not.toThrow();
 	});

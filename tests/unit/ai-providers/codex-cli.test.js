@@ -20,6 +20,7 @@ jest.unstable_mockModule('ai-sdk-provider-codex-cli', () => ({
 // Mock config getters
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getCodexCliSettingsForCommand: jest.fn(() => ({ allowNpx: true })),
+	getSupportedModelsForProvider: jest.fn(() => ['gpt-5', 'gpt-5-codex']),
 	// Provide commonly imported getters to satisfy other module imports if any
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info')

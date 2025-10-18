@@ -28,6 +28,14 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 	}
 }));
 
+// Mock config getters
+jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
+	getClaudeCodeSettingsForCommand: jest.fn(() => ({})),
+	getSupportedModelsForProvider: jest.fn(() => ['opus', 'sonnet', 'haiku']),
+	getDebugFlag: jest.fn(() => false),
+	getLogLevel: jest.fn(() => 'info')
+}));
+
 // Import after mocking
 const { ClaudeCodeProvider } = await import(
 	'../../../src/ai-providers/claude-code.js'
@@ -96,13 +104,13 @@ describe('ClaudeCodeProvider', () => {
 	describe('model support', () => {
 		it('should return supported models', () => {
 			const models = provider.getSupportedModels();
-			expect(models).toEqual(['sonnet', 'opus']);
+			expect(models).toEqual(['opus', 'sonnet', 'haiku']);
 		});
 
 		it('should check if model is supported', () => {
 			expect(provider.isModelSupported('sonnet')).toBe(true);
 			expect(provider.isModelSupported('opus')).toBe(true);
-			expect(provider.isModelSupported('haiku')).toBe(false);
+			expect(provider.isModelSupported('haiku')).toBe(true);
 			expect(provider.isModelSupported('unknown')).toBe(false);
 		});
 	});
