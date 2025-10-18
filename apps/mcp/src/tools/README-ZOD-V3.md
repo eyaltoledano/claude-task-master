@@ -65,6 +65,6 @@ import { z } from 'zod';  // Don't do this in apps/mcp/src/tools/
 
 ---
 
-**Last Updated:** 2025-01-18
+**Last Updated:** 2025-10-18
 **Affects:** All files in `apps/mcp/src/tools/`
 **See Also:** `mcp-server/src/tools/README-ZOD-V3.md` (same workaround)

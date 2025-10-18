@@ -63,5 +63,5 @@ import { z } from 'zod';  // Don't do this in mcp-server/src/tools/
 
 ---
 
-**Last Updated:** 2025-01-18
+**Last Updated:** 2025-10-18
 **Affects:** All files in `mcp-server/src/tools/`
