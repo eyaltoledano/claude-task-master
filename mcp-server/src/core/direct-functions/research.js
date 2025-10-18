@@ -10,6 +10,7 @@ import {
 	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
+import updateSubtaskById from '../../../../scripts/modules/task-manager/update-subtask-by-id.js';
 
 /**
  * Direct function wrapper for performing AI-powered research with project context.
@@ -151,11 +152,6 @@ export async function researchDirect(args, log, context = {}) {
 ${result.result}`;
 
 				if (isSubtask) {
-					// Save to subtask
-					const { updateSubtaskById } = await import(
-						'../../../../scripts/modules/task-manager/update-subtask-by-id.js'
-					);
-
 					const tasksPath = path.join(
 						projectRoot,
 						'.taskmaster',

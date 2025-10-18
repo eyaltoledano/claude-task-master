@@ -25,6 +25,8 @@ import {
 } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import updateSubtaskById from './update-subtask-by-id.js';
+import updateTaskById from './update-task-by-id.js';
 
 // Configure marked to use terminal renderer for beautiful markdown output
 marked.use(
@@ -686,11 +688,6 @@ async function handleFollowUpQuestions(
 	let interactiveSaveOccurred = false;
 
 	try {
-		// Import required modules for saving
-		const { readJSON } = await import('../utils.js');
-		const updateTaskById = (await import('./update-task-by-id.js')).default;
-		const { updateSubtaskById } = await import('./update-subtask-by-id.js');
-
 		// Initialize conversation history with the initial Q&A
 		const conversationHistory = [
 			{
@@ -825,11 +822,6 @@ async function handleSaveToTask(
 	logFn
 ) {
 	try {
-		// Import required modules
-		const { readJSON } = await import('../utils.js');
-		const updateTaskById = (await import('./update-task-by-id.js')).default;
-		const { updateSubtaskById } = await import('./update-subtask-by-id.js');
-
 		// Get task ID from user
 		const { taskId } = await inquirer.prompt([
 			{
