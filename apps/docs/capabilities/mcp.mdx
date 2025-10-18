@@ -20,7 +20,7 @@ To optimize LLM context usage, you can control which Task Master MCP tools are l
 ### Configuration Modes
 
 #### All Tools (Default)
-Loads all 36 available tools. Use when you need full Task Master functionality.
+Loads all 44 available tools. Use when you need full Task Master functionality.
 
 ```json
 {
@@ -40,7 +40,7 @@ Loads all 36 available tools. Use when you need full Task Master functionality.
 If `TASK_MASTER_TOOLS` is not set, all tools are loaded by default.
 
 #### Core Tools (Lean Mode)
-Loads only 7 essential tools for daily development. Ideal for minimal context usage.
+Loads only 12 essential tools for daily development. Ideal for minimal context usage.
 
 **Core tools included:**
 - `get_tasks` - List all tasks
@@ -50,6 +50,11 @@ Loads only 7 essential tools for daily development. Ideal for minimal context us
 - `update_subtask` - Add implementation notes
 - `parse_prd` - Generate tasks from PRD
 - `expand_task` - Break down tasks into subtasks
+- `autopilot_start` - Start TDD workflow
+- `autopilot_next` - Get next workflow action
+- `autopilot_status` - Check workflow status
+- `autopilot_complete_phase` - Complete workflow phase
+- `autopilot_commit` - Commit workflow changes
 
 ```json
 {
@@ -69,7 +74,7 @@ Loads only 7 essential tools for daily development. Ideal for minimal context us
 You can also use `"lean"` as an alias for `"core"`.
 
 #### Standard Tools
-Loads 15 commonly used tools. Balances functionality with context efficiency.
+Loads 20 commonly used tools. Balances functionality with context efficiency.
 
 **Standard tools include all core tools plus:**
 - `initialize_project` - Set up new projects
@@ -80,6 +85,9 @@ Loads 15 commonly used tools. Balances functionality with context efficiency.
 - `generate` - Generate task markdown files
 - `add_task` - Create new tasks
 - `complexity_report` - View complexity analysis
+- `autopilot_resume` - Resume interrupted workflow
+- `autopilot_finalize` - Complete and merge workflow
+- `autopilot_abort` - Abort current workflow
 
 ```json
 {
@@ -129,8 +137,8 @@ When the MCP server starts, it logs which tools were loaded:
 Task Master MCP Server starting...
 Tool mode configuration: standard
 Loading standard tools
-Registering 15 MCP tools (mode: standard)
-Successfully registered 15/15 tools
+Registering 20 MCP tools (mode: standard)
+Successfully registered 20/20 tools
 ```
 
 ## Tool Categories
@@ -186,3 +194,14 @@ The MCP tools can be categorized in the same way as the core functionalities:
 -   **`use_tag`**: Switches to a different tag.
 -   **`rename_tag`**: Renames a tag.
 -   **`copy_tag`**: Copies a tag.
+
+### 7. Autonomous TDD Workflow (Autopilot)
+
+-   **`autopilot_start`**: Initialize autonomous TDD workflow for a task.
+-   **`autopilot_next`**: Get next action with context in the workflow.
+-   **`autopilot_status`**: Check current workflow status and progress.
+-   **`autopilot_complete_phase`**: Complete current phase with test results.
+-   **`autopilot_commit`**: Commit changes with generated metadata.
+-   **`autopilot_resume`**: Resume interrupted workflow from saved state.
+-   **`autopilot_finalize`**: Complete workflow and merge changes.
+-   **`autopilot_abort`**: Abort current workflow and clean up state.

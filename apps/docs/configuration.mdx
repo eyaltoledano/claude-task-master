@@ -33,7 +33,47 @@ description: "Configure Task Master through environment variables in a .env file
 
 ## TDD Workflow Configuration
 
-Additional options for autonomous TDD workflow:
+Comprehensive options for autonomous TDD workflow via `.taskmaster/config.json`:
+
+### Core Workflow Settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `workflow.enableAutopilot` | `true` | Enable autopilot/TDD workflow features |
+| `workflow.maxPhaseAttempts` | `3` | Maximum retry attempts for phase validation |
+| `workflow.branchPattern` | `"task-{taskId}"` | Branch naming pattern for workflow branches |
+| `workflow.requireCleanWorkingTree` | `true` | Require clean working tree before starting workflow |
+| `workflow.autoStageChanges` | `true` | Automatically stage all changes during commit phase |
+
+### Commit Configuration
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `workflow.includeCoAuthor` | `true` | Include co-author attribution in commits |
+| `workflow.coAuthorName` | `"Claude"` | Co-author name for commit messages |
+| `workflow.coAuthorEmail` | `"noreply@anthropic.com"` | Co-author email for commit messages |
+| `workflow.commitMessageTemplate` | `"{type}: {description}\n\n{body}"` | Commit message template pattern |
+| `workflow.defaultCommitType` | `"feat"` | Default commit type for autopilot |
+| `workflow.allowedCommitTypes` | `["feat", "fix", "refactor", "test", "docs", "chore"]` | Allowed conventional commit types |
+
+### Test Validation Thresholds
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `workflow.testThresholds.minTests` | `1` | Minimum test count for valid RED phase |
+| `workflow.testThresholds.maxFailuresInGreen` | `0` | Maximum allowed failing tests in GREEN phase |
+
+### Activity Logging
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `workflow.enableActivityLogging` | `true` | Enable activity logging for workflow events |
+| `workflow.activityLogPath` | `".taskmaster/logs"` | Path to store workflow activity logs |
+| `workflow.enableStateBackup` | `true` | Enable automatic backup of workflow state |
+| `workflow.maxStateBackups` | `10` | Maximum workflow state backups to retain |
+| `workflow.operationTimeout` | `300000` | Timeout for workflow operations in milliseconds |
+
+### Environment Variables (Legacy Support)
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -41,9 +81,11 @@ Additional options for autonomous TDD workflow:
 | `TM_AUTO_COMMIT` | `true` | Auto-commit after GREEN phase |
 | `TM_PROJECT_ROOT` | Current dir | Default project root |
 
-## Example .env File
+## Example Configuration
 
-```
+### Environment Variables (.env file)
+
+```bash
 # Required
 ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
 
@@ -66,9 +108,54 @@ DEFAULT_PRIORITY=medium
 DEBUG=false
 LOG_LEVEL=info
 
-# TDD Workflow
+# TDD Workflow (Legacy)
 TM_MAX_ATTEMPTS=3
 TM_AUTO_COMMIT=true
+```
+
+### Config JSON (.taskmaster/config.json)
+
+```json
+{
+  "models": {
+    "main": "claude-3-5-sonnet-20241022",
+    "research": "perplexity-llama-3.1-sonar-large-128k-online",
+    "fallback": "claude-3-haiku-20240307"
+  },
+  "workflow": {
+    "enableAutopilot": true,
+    "maxPhaseAttempts": 3,
+    "branchPattern": "task-{taskId}",
+    "requireCleanWorkingTree": true,
+    "autoStageChanges": true,
+    "includeCoAuthor": true,
+    "coAuthorName": "Claude",
+    "coAuthorEmail": "noreply@anthropic.com",
+    "commitMessageTemplate": "{type}: {description}\n\n{body}",
+    "defaultCommitType": "feat",
+    "allowedCommitTypes": ["feat", "fix", "refactor", "test", "docs", "chore"],
+    "testThresholds": {
+      "minTests": 1,
+      "maxFailuresInGreen": 0
+    },
+    "enableActivityLogging": true,
+    "activityLogPath": ".taskmaster/logs",
+    "enableStateBackup": true,
+    "maxStateBackups": 10,
+    "operationTimeout": 300000
+  },
+  "tasks": {
+    "defaultPriority": "medium",
+    "maxSubtasks": 10,
+    "validateDependencies": true
+  },
+  "logging": {
+    "enabled": true,
+    "level": "info",
+    "logRequests": false,
+    "logPerformance": false
+  }
+}
 ```
 
 ## Troubleshooting
