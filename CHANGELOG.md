@@ -1,5 +1,58 @@
 # task-master-ai
 
+## 0.30.0-rc.1
+
+### Minor Changes
+
+- [#1317](https://github.com/eyaltoledano/claude-task-master/pull/1317) [`548beb4`](https://github.com/eyaltoledano/claude-task-master/commit/548beb434453c69041572eb5927ee7da7075c213) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add 4.5 haiku and sonnet to supported models for claude-code and anthropic ai providers
+
+- [#1309](https://github.com/eyaltoledano/claude-task-master/pull/1309) [`ccb87a5`](https://github.com/eyaltoledano/claude-task-master/commit/ccb87a516a11f7ec4b03133c8f24f4fd8c3a45fc) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add autonomous TDD workflow automation system with new `tm autopilot` commands and MCP tools for AI-driven test-driven development.
+
+  **New CLI Commands:**
+  - `tm autopilot start <taskId>` - Initialize TDD workflow
+  - `tm autopilot next` - Get next action in workflow
+  - `tm autopilot status` - Check workflow progress
+  - `tm autopilot complete` - Advance phase with test results
+  - `tm autopilot commit` - Save progress with metadata
+  - `tm autopilot resume` - Continue from checkpoint
+  - `tm autopilot abort` - Cancel workflow
+
+  **New MCP Tools:**
+  Seven new autopilot tools for programmatic control: `autopilot_start`, `autopilot_next`, `autopilot_status`, `autopilot_complete_phase`, `autopilot_commit`, `autopilot_resume`, `autopilot_abort`
+
+  **Features:**
+  - Complete RED → GREEN → COMMIT cycle enforcement
+  - Intelligent commit message generation with metadata
+  - Activity logging and state persistence
+  - Configurable workflow settings via `.taskmaster/config.json`
+  - Comprehensive AI agent integration documentation
+
+  **Documentation:**
+  - AI Agent Integration Guide (2,800+ lines)
+  - TDD Quick Start Guide
+  - Example prompts and integration patterns
+
+  > **Learn more:** [TDD Workflow Quickstart Guide](https://dev.task-master.dev/tdd-workflow/quickstart)
+
+  This release enables AI agents to autonomously execute test-driven development workflows with full state management and recovery capabilities.
+
+### Patch Changes
+
+- [#1323](https://github.com/eyaltoledano/claude-task-master/pull/1323) [`dc6652c`](https://github.com/eyaltoledano/claude-task-master/commit/dc6652ccd2b50b91eb55d92899ebf70c7b4d6601) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server compatibility with Draft-07 clients (Augment IDE, gemini-cli, gemini code assist)
+  - Resolves #1284
+
+  **Problem:**
+  - MCP tools were using Zod v4, which outputs JSON Schema Draft 2020-12
+  - MCP clients only support Draft-07
+  - Tools were not discoverable in gemini-cli and other clients
+
+  **Solution:**
+  - Updated all MCP tools to import from `zod/v3` instead of `zod`
+  - Zod v3 schemas convert to Draft-07 via FastMCP's zod-to-json-schema
+  - Fixed logger to use stderr instead of stdout (MCP protocol requirement)
+
+  This is a temporary workaround until FastMCP adds JSON Schema version configuration.
+
 ## 0.30.0-rc.0
 
 ### Minor Changes
