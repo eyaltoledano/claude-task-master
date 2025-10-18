@@ -3,7 +3,7 @@
 	"description": "Task Master MCP Tools - TypeScript MCP server tools for AI agent integration",
 	"type": "module",
 	"private": true,
-	"version": "0.28.0-rc.2",
+	"version": "",
 	"main": "./dist/index.js",
 	"types": "./src/index.ts",
 	"exports": {
