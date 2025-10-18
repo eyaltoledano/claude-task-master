@@ -1,3 +1,7 @@
 reviews:
   profile: chill
   poem: false
+  auto_review:
+    enabled: true
+    base_branches:
+      - ".*"
