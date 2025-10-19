@@ -34,7 +34,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 			return Object.keys(value).length === 0;
 		return false; // Not an array or object
 	}),
-	resolveEnvVariable: jest.fn()
+	resolveEnvVariable: jest.fn(),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+		success: jest.fn(),
+		warn: jest.fn()
+	}))
 }));
 
 // Mock ui.js

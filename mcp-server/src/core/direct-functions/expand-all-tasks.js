@@ -100,13 +100,12 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 		return {
 			success: true,
 			data: {
-				message: message,
+				message: result.message || message,
 				details: {
 					expandedCount: result.expandedCount,
 					failedCount: result.failedCount,
 					skippedCount: result.skippedCount,
-					tasksToExpand: result.tasksToExpand,
-					delegationSignaledCount: result.delegationSignaledCount || 0
+					tasksToExpand: result.tasksToExpand
 				},
 				telemetryData: result.telemetryData, // Pass the aggregated object
 				delegatedTaskIds: result.delegatedTaskIds || [] // REVERTED and ADDED: Add delegatedTaskIds

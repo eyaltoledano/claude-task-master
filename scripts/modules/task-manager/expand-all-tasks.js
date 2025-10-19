@@ -251,7 +251,10 @@ async function expandAllTasks(
 			skippedCount: 0,
 			tasksToExpand: tasksToExpandCount,
 			telemetryData: aggregatedTelemetryData,
-			delegatedTaskIds: delegatedTaskIds // Add collected delegated task IDs
+			delegatedTaskIds: delegatedTaskIds, // Add collected delegated task IDs
+			...(delegatedTaskIds.length > 0 && {
+				message: "directive: The 'expand_all' tool has returned a list of eligible 'delegatedTaskIds' for expansion, you have to expand tasks one by one using 'expand_task' tool."
+			})
 			// The 'message' in expandAllTasksDirect will use these counts.
 		};
 	} catch (error) {

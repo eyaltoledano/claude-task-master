@@ -1,93 +1,51 @@
 import path from 'path';
-import fs from 'fs';
-import { writeJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
-import generateTaskFiles from '../../../../scripts/modules/task-manager/generate-task-files.js'; // Path relative to new file
-import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
+import { AgentLLMToolSaver } from './agentllm-base-tool-saver.js';
+import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
-/**
- * Saves tasks data (typically from an agent) to tasks.json and generates markdown files.
- * @param {Object} tasksData - The tasks data object, expected to have 'tasks' and 'metadata' properties.
- * @param {string} projectRoot - The absolute path to the project root.
- * @param {Object} logWrapper - Logger object (e.g., from MCP context or mcpLog).
- * @param {string} [tag='master'] - Tag context for organizing tasks into separate task lists.
- * @returns {Promise<Object>} - Result object with { success: true, outputPath } or { success: false, error: string }.
- */
-async function agentllmParsePrdSave(
-	tasksData,
-	projectRoot,
-	logWrapper,
-	tag = 'master'
-) {
-	if (!tasksData || !Array.isArray(tasksData.tasks)) {
-		const errorMsg =
-			'Invalid tasksData structure. Expected object with "tasks" array.';
-		logWrapper.error(`agentllmParsePrdSave: ${errorMsg}`);
-		return { success: false, error: errorMsg };
-	}
+class ParsePrdSaver extends AgentLLMToolSaver {
+    constructor() {
+        super('agentllmParsePrdSave');
+    }
 
-	// If metadata is missing, synthesize a minimal metadata object so the rest of
-	// the pipeline (which expects metadata) can continue. Log a warning so it's
-	// visible in server logs.
-	if (!tasksData.metadata || typeof tasksData.metadata !== 'object') {
-		logWrapper.warn(
-			'agentllmParsePrdSave: metadata missing from agent output; synthesizing minimal metadata.'
-		);
-		const projectName = projectRoot
-			? path.basename(projectRoot)
-			: 'unknown-project';
-		tasksData.metadata = {
-			projectName,
-			totalTasks: Array.isArray(tasksData.tasks) ? tasksData.tasks.length : 0,
-			sourceFile: 'agent-llm',
-			generatedAt: new Date().toISOString()
-		};
-	}
+    async save(agentOutput, projectRoot, logWrapper, originalToolArgs, delegatedRequestParams, tag = 'master') {
+        logWrapper.info(`${this.toolName}: Starting save operation for tag '${tag}'.`);
 
-	const outputPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
-	const outputDir = path.dirname(outputPath);
+        if (!agentOutput || !Array.isArray(agentOutput.tasks)) {
+            const errorMsg = 'Invalid tasksData structure. Expected object with "tasks" array.';
+            logWrapper.error(`${this.toolName}: ${errorMsg}`);
+            return { success: false, error: errorMsg };
+        }
 
-	try {
-		if (!fs.existsSync(outputDir)) {
-			logWrapper.info(
-				`agentllmParsePrdSave: Creating output directory: ${outputDir}`
-			);
-			fs.mkdirSync(outputDir, { recursive: true });
-		}
+        if (!agentOutput.metadata || typeof agentOutput.metadata !== 'object') {
+            logWrapper.warn(`${this.toolName}: metadata missing from agent output; synthesizing minimal metadata.`);
+            const projectName = projectRoot ? path.basename(projectRoot) : 'unknown-project';
+            agentOutput.metadata = {
+                projectName,
+                totalTasks: Array.isArray(agentOutput.tasks) ? agentOutput.tasks.length : 0,
+                sourceFile: 'agent-llm',
+                generatedAt: new Date().toISOString()
+            };
+        }
 
-		// Based on the existing logic of parse-prd, we should be saving the tasks
-		// under a specific tag in the tasks.json file.
-		// The `writeJSON` utility from scripts/modules/utils.js handles the logic
-		// of reading the existing file, updating the specific tag, and writing it back.
-		const outputToSave = {
-			tasks: tasksData.tasks,
-			metadata: tasksData.metadata
-		};
+        try {
+            // Manually resolve path, bypassing the strict loadTasksData method which fails if file doesn't exist.
+            const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 
-		// The `writeJSON` function in utils.js is designed to intelligently merge
-		// the new data with existing data in tasks.json.
-		writeJSON(outputPath, outputToSave, projectRoot, tag);
-		logWrapper.info(
-			`agentllmParsePrdSave: Tasks successfully written to ${outputPath} for tag '${tag}'`
-		);
+            // For parse-prd, we are replacing the entire task list for the given tag.
+            // The base saveTasksData method calls the tag-aware `writeJSON`, which handles
+            // creating the file or merging/overwriting the data for the specified tag.
+            const tagData = { tasks: agentOutput.tasks, metadata: agentOutput.metadata };
 
-		// Pass the tag to generateTaskFiles
-		await generateTaskFiles(outputPath, outputDir, {
-			mcpLog: logWrapper,
-			projectRoot,
-			tag
-		});
-		logWrapper.info(
-			`agentllmParsePrdSave: Markdown task files generated for tag '${tag}' from ${outputPath}`
-		);
+            await this.saveTasksData(tasksJsonPath, tagData, projectRoot, tag, logWrapper);
+            await this.regenerateMarkdownFiles(tasksJsonPath, projectRoot, tag, logWrapper);
 
-		return { success: true, outputPath };
-	} catch (error) {
-		logWrapper.error(
-			`agentllmParsePrdSave: Error saving tasks or generating markdown: ${error.message}`
-		);
-		logWrapper.error(`agentllmParsePrdSave: Error stack: ${error.stack}`);
-		return { success: false, error: error.message };
-	}
+            return { success: true, outputPath: tasksJsonPath };
+        } catch (error) {
+            logWrapper.error(`${this.toolName}: Error: ${error.message}`);
+            logWrapper.error(`${this.toolName}: Stack: ${error.stack}`);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
-export { agentllmParsePrdSave };
+export const agentllmParsePrdSave = async (...args) => new ParsePrdSaver().save(...args);

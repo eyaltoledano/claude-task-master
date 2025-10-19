@@ -1,196 +1,117 @@
 import path from 'path';
 import fs from 'fs';
-import { writeJSON, readJSON } from '../../../../scripts/modules/utils.js'; // Path relative to new file
-import { COMPLEXITY_REPORT_FILE } from '../../../../src/constants/paths.js'; // Path relative to new file
-import { getProjectName } from '../../../../scripts/modules/config-manager.js'; // For metadata
+import { AgentLLMToolSaver } from './agentllm-base-tool-saver.js';
+import { writeJSON, readJSON } from '../../../../scripts/modules/utils.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../../src/constants/paths.js';
+import { getProjectName } from '../../../../scripts/modules/config-manager.js';
 
-/**
- * Saves complexity report data (typically from an agent) to task-complexity-report.json.
- *
- * @param {any} agentOutput - The data received from the agent (finalLLMOutput).
- *                            Expected to be an array of complexity analysis items,
- *                            or a string that can be parsed into such an array.
- * @param {string} projectRoot - The absolute path to the project root.
- * @param {Object} logWrapper - Logger object (e.g., from MCP context).
- * @param {Object} originalToolArgs - Original arguments passed to the 'analyze_project_complexity' tool,
- *                                    containing threshold, research flag, specific IDs/ranges.
- * @returns {Promise<Object>} Result object with { success: true, outputPath } or { success: false, error: string }.
- */
-async function agentllmComplexityReportSave(
-	agentOutput,
-	projectRoot,
-	logWrapper,
-	originalToolArgs,
-	tag = 'master'
-) {
-	logWrapper.info(
-		`agentllmComplexityReportSave: Saving complexity report from agent for tag '${tag}'.`
-	);
+class ComplexityReportSaver extends AgentLLMToolSaver {
+    constructor() {
+        super('agentllmComplexityReportSave');
+    }
 
-	const reportFileName =
-		tag === 'master'
-			? COMPLEXITY_REPORT_FILE
-			: `.taskmaster/reports/task-complexity-report-${tag}.json`;
-	const outputPath = path.resolve(projectRoot, reportFileName);
-	const outputDir = path.dirname(outputPath);
+    async save(agentOutput, projectRoot, logWrapper, originalToolArgs, delegatedRequestParams, tag = 'master') {
+        logWrapper.info(`${this.toolName}: Starting save operation for tag '${tag}'.`);
 
-	try {
-		let agentComplexityAnalysis;
-		if (typeof agentOutput === 'string') {
-			logWrapper.info(
-				'agentllmComplexityReportSave: Agent output is a string, attempting to parse as JSON array.'
-			);
-			try {
-				// The agent is prompted to return a JSON array directly for complexity analysis.
-				let cleanedResponse = agentOutput.trim();
-				const codeBlockMatch = cleanedResponse.match(
-					/```(?:json)?\s*([\s\S]*?)\s*```/
-				);
-				if (codeBlockMatch && codeBlockMatch[1]) {
-					cleanedResponse = codeBlockMatch[1].trim();
-				} else {
-					const firstBracket = cleanedResponse.indexOf('[');
-					const lastBracket = cleanedResponse.lastIndexOf(']');
-					if (firstBracket !== -1 && lastBracket > firstBracket) {
-						cleanedResponse = cleanedResponse.substring(
-							firstBracket,
-							lastBracket + 1
-						);
-					}
-				}
-				agentComplexityAnalysis = JSON.parse(cleanedResponse);
-			} catch (parseError) {
-				const errorMessage = `Failed to parse agent output string: ${parseError.message}`;
-				logWrapper.error(
-					`agentllmComplexityReportSave: Error parsing JSON from agent output string: ${errorMessage}`
-				);
-				return {
-					success: false,
-					error: errorMessage
-				};
-			}
-		} else if (Array.isArray(agentOutput)) {
-			logWrapper.info(
-				'agentllmComplexityReportSave: Agent output is already an array.'
-			);
-			agentComplexityAnalysis = agentOutput;
-		} else if (agentOutput && Array.isArray(agentOutput.complexityAnalysis)) {
-			// If agent returns the full report structure
-			logWrapper.info(
-				"agentllmComplexityReportSave: Agent output is an object with a 'complexityAnalysis' array."
-			);
-			agentComplexityAnalysis = agentOutput.complexityAnalysis;
-			// Potentially use agentOutput.meta if provided and trustworthy
-		} else {
-			const errorMsg =
-				"Invalid agentOutput format. Expected a JSON string of analysis items, an array, or an object with 'complexityAnalysis' array.";
-			logWrapper.error(
-				`agentllmComplexityReportSave: ${errorMsg} Received: ${JSON.stringify(agentOutput)}`
-			);
-			return { success: false, error: errorMsg };
-		}
+        const reportFileName = tag === 'master' ? COMPLEXITY_REPORT_FILE : `.taskmaster/reports/task-complexity-report-${tag}.json`;
+        const outputPath = path.resolve(projectRoot, reportFileName);
+        const outputDir = path.dirname(outputPath);
 
-		if (!Array.isArray(agentComplexityAnalysis)) {
-			const errorMsg = `Processed agent output is not an array: ${JSON.stringify(agentComplexityAnalysis)}`;
-			logWrapper.error(`agentllmComplexityReportSave: ${errorMsg}`);
-			return { success: false, error: errorMsg };
-		}
+        try {
+            let agentComplexityAnalysis;
+            if (typeof agentOutput === 'string') {
+                logWrapper.info('agentllmComplexityReportSave: Agent output is a string, attempting to parse as JSON array.');
+                try {
+                    let cleanedResponse = agentOutput.trim();
+                    const codeBlockMatch = cleanedResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                    if (codeBlockMatch && codeBlockMatch[1]) {
+                        cleanedResponse = codeBlockMatch[1].trim();
+                    } else {
+                        const firstBracket = cleanedResponse.indexOf('[');
+                        const lastBracket = cleanedResponse.lastIndexOf(']');
+                        if (firstBracket !== -1 && lastBracket > firstBracket) {
+                            cleanedResponse = cleanedResponse.substring(firstBracket, lastBracket + 1);
+                        }
+                    }
+                    agentComplexityAnalysis = JSON.parse(cleanedResponse);
+                } catch (parseError) {
+                    const errorMessage = `Failed to parse agent output string: ${parseError.message}`;
+                    logWrapper.error(`agentllmComplexityReportSave: Error parsing JSON from agent output string: ${errorMessage}`);
+                    return { success: false, error: errorMessage };
+                }
+            } else if (Array.isArray(agentOutput)) {
+                logWrapper.info('agentllmComplexityReportSave: Agent output is already an array.');
+                agentComplexityAnalysis = agentOutput;
+            } else if (agentOutput && Array.isArray(agentOutput.complexityAnalysis)) {
+                logWrapper.info("agentllmComplexityReportSave: Agent output is an object with a 'complexityAnalysis' array.");
+                agentComplexityAnalysis = agentOutput.complexityAnalysis;
+            } else {
+                const errorMsg = "Invalid agentOutput format. Expected a JSON string of analysis items, an array, or an object with 'complexityAnalysis' array.";
+                logWrapper.error(`agentllmComplexityReportSave: ${errorMsg} Received: ${JSON.stringify(agentOutput)}`);
+                return { success: false, error: errorMsg };
+            }
 
-		// Read existing report to merge if specific IDs/ranges were used for this agent analysis
-		let existingReport = null;
-		let finalComplexityAnalysis = agentComplexityAnalysis;
-		const analyzeSpecificTasks =
-			originalToolArgs?.ids ||
-			originalToolArgs?.from !== undefined ||
-			originalToolArgs?.to !== undefined;
+            if (!Array.isArray(agentComplexityAnalysis)) {
+                const errorMsg = `Processed agent output is not an array: ${JSON.stringify(agentComplexityAnalysis)}`;
+                logWrapper.error(`agentllmComplexityReportSave: ${errorMsg}`);
+                return { success: false, error: errorMsg };
+            }
 
-		try {
-			await fs.promises.access(outputPath); // Check if file exists
-			existingReport = await readJSON(outputPath, projectRoot, tag);
-			if (
-				existingReport &&
-				Array.isArray(existingReport.complexityAnalysis) &&
-				analyzeSpecificTasks
-			) {
-				logWrapper.info(
-					'agentllmComplexityReportSave: Merging agent analysis with existing report due to specific task analysis.'
-				);
-				const agentAnalyzedTaskIds = new Set(
-					agentComplexityAnalysis.map((item) => item.taskId)
-				);
-				const existingEntriesNotReplaced =
-					existingReport.complexityAnalysis.filter(
-						(item) => !agentAnalyzedTaskIds.has(item.taskId)
-					);
-				finalComplexityAnalysis = [
-					...existingEntriesNotReplaced,
-					...agentComplexityAnalysis
-				];
-			} else {
-				// If not analyzing specific tasks, or no valid existing report, agent's full analysis becomes the report.
-				// Or if existing report is invalid, overwrite.
-				logWrapper.info(
-					"agentllmComplexityReportSave: Overwriting with agent's analysis (not merging or no valid existing report)."
-				);
-				finalComplexityAnalysis = agentComplexityAnalysis;
-			}
-		} catch {
-			// File doesn't exist, continue without existing report
-		}
+            let existingReport = null;
+            let finalComplexityAnalysis = agentComplexityAnalysis;
+            const analyzeSpecificTasks = originalToolArgs?.ids || originalToolArgs?.from !== undefined || originalToolArgs?.to !== undefined;
 
-		// Construct the report meta block
-		// TODO: Determine how to get originalTaskCount if needed for meta, might require passing more original args.
-		// For now, tasksAnalyzed will be the count from the agent, totalTasks might be unknown here.
-		const tasksJsonPath = path.resolve(
-			projectRoot,
-			'.taskmaster/tasks/tasks.json'
-		);
-		const tasksData = readJSON(tasksJsonPath, projectRoot, tag);
-		const projectName =
-			tasksData?.metadata?.projectName || getProjectName(null);
+            try {
+                await fs.promises.access(outputPath);
+                existingReport = await readJSON(outputPath, projectRoot, tag);
+                if (existingReport && Array.isArray(existingReport.complexityAnalysis) && analyzeSpecificTasks) {
+                    logWrapper.info('agentllmComplexityReportSave: Merging agent analysis with existing report due to specific task analysis.');
+                    const agentAnalyzedTaskIds = new Set(agentComplexityAnalysis.map((item) => item.taskId));
+                    const existingEntriesNotReplaced = existingReport.complexityAnalysis.filter((item) => !agentAnalyzedTaskIds.has(item.taskId));
+                    finalComplexityAnalysis = [...existingEntriesNotReplaced, ...agentComplexityAnalysis];
+                } else {
+                    logWrapper.info("agentllmComplexityReportSave: Overwriting with agent's analysis (not merging or no valid existing report).");
+                    finalComplexityAnalysis = agentComplexityAnalysis;
+                }
+            } catch {
+                // File doesn't exist, continue without existing report
+            }
 
-		const reportMeta = {
-			generatedAt: new Date().toISOString(),
-			tasksAnalyzed: agentComplexityAnalysis.length, // Number of tasks agent analyzed in this run
-			analysisCount: finalComplexityAnalysis.length, // Total in the report after merge/overwrite
-			thresholdScore: originalToolArgs?.threshold || 5, // Default if not in args
-			projectName,
-			usedResearch: originalToolArgs?.research || false
-		};
+            const tasksJsonPath = path.resolve(projectRoot, '.taskmaster/tasks/tasks.json');
+            const tasksData = readJSON(tasksJsonPath, projectRoot, tag);
+            const projectName = tasksData?.metadata?.projectName || getProjectName(null);
 
-		const reportToSave = {
-			meta: reportMeta,
-			complexityAnalysis: finalComplexityAnalysis.sort(
-				(a, b) => a.taskId - b.taskId
-			) // Sort by taskId
-		};
+            const reportMeta = {
+                generatedAt: new Date().toISOString(),
+                tasksAnalyzed: agentComplexityAnalysis.length,
+                analysisCount: finalComplexityAnalysis.length,
+                thresholdScore: originalToolArgs?.threshold || 5,
+                projectName,
+                usedResearch: originalToolArgs?.research || false
+            };
 
-		// Ensure the output directory exists before writing the file
-		try {
-			await fs.promises.access(outputDir);
-		} catch (error) {
-			// If directory doesn't exist, create it
-			logWrapper.info(
-				`agentllmComplexityReportSave: Creating output directory: ${outputDir}`
-			);
-			await fs.promises.mkdir(outputDir, { recursive: true });
-		}
+            const reportToSave = {
+                meta: reportMeta,
+                complexityAnalysis: finalComplexityAnalysis.sort((a, b) => a.taskId - b.taskId)
+            };
 
-		await writeJSON(outputPath, reportToSave, projectRoot, tag);
-		logWrapper.info(
-			`agentllmComplexityReportSave: Complexity report successfully written to ${outputPath} for tag '${tag}'`
-		);
+            try {
+                await fs.promises.access(outputDir);
+            } catch (error) {
+                logWrapper.info(`agentllmComplexityReportSave: Creating output directory: ${outputDir}`);
+                await fs.promises.mkdir(outputDir, { recursive: true });
+            }
 
-		return { success: true, outputPath };
-	} catch (error) {
-		logWrapper.error(
-			`agentllmComplexityReportSave: Error saving complexity report: ${error.message}`
-		);
-		logWrapper.error(
-			`agentllmComplexityReportSave: Error stack: ${error.stack}`
-		);
-		return { success: false, error: error.message };
-	}
+            await writeJSON(outputPath, reportToSave, projectRoot, tag);
+            logWrapper.info(`agentllmComplexityReportSave: Complexity report successfully written to ${outputPath} for tag '${tag}'`);
+
+            return { success: true, outputPath };
+        } catch (error) {
+            logWrapper.error(`${this.toolName}: Error: ${error.message}`);
+            logWrapper.error(`${this.toolName}: Stack: ${error.stack}`);
+            return { success: false, error: error.message };
+        }
+    }
 }
 
-export { agentllmComplexityReportSave };
+export const agentllmComplexityReportSave = async (...args) => new ComplexityReportSaver().save(...args);

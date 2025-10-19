@@ -23,7 +23,6 @@ import { displayBanner } from './ui.js';
 
 import generateTaskFiles from './task-manager/generate-task-files.js';
 
-const logger = createLogger();
 
 /**
  * Structured error class for dependency operations
@@ -1169,8 +1168,10 @@ function validateAndFixDependencies(
 	tasksData,
 	tasksPath = null,
 	projectRoot = null,
-	tag = null
+	tag = null,
+	context = {}
 ) {
+	const logger = createLogger(context);
 	// If tasksData is a multi-tag object, and a tag is provided, re-assign tasksData
 	// to the data for that specific tag. This allows the rest of the function to
 	// work on the correct task list without major refactoring.

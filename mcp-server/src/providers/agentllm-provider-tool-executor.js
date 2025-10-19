@@ -454,7 +454,12 @@ export function AgentLLMProviderToolExecutor(
 						log.warn(
 							`TaskMasterMCPServer [Interaction: ${interactionId}]: Timing out pending agent interaction for '${toolName}'.`
 						);
-						pending.reject(new Error('Agent LLM interaction timed out'));
+						// Resolve with an error response instead of rejecting, to prevent server disconnect
+						pending.resolve(
+							createErrorResponse('Agent LLM interaction timed out', {
+								mcpToolError: true
+							})
+						);
 						serverContext.pendingAgentLLMInteractions.delete(interactionId);
 					}
 				}, timeoutMs);

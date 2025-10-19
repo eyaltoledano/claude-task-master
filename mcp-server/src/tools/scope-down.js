@@ -93,7 +93,10 @@ export function registerScopeDownTool(server) {
 					log.info(
 						`scope_down_task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 					);
-					return createAgentDelegationResponse(result.pendingInteraction);
+					return createAgentDelegationResponse(
+						result.pendingInteraction,
+						"After scoping the task down, reanalyze project complexity with 'analyze_project_complexity' tool with this task ID."
+					);
 				}
 
 				return handleApiResult(
