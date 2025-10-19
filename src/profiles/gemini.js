@@ -12,6 +12,6 @@ export const geminiProfile = createProfile({
 	mcpConfigName: 'settings.json', // Override default 'mcp.json'
 	includeDefaultRules: false,
 	fileMap: {
-		'AGENTS.md': 'GEMINI.md'
+		'GEMINI.md': 'GEMINI.md'
 	}
 });
