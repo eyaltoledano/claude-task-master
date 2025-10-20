@@ -16,13 +16,13 @@ import {
 	formatTaskId,
 	findCycles,
 	traverseDependencies,
-	isSilentMode
+	isSilentMode,
+	getTasksForTag
 } from './utils.js';
 
 import { displayBanner } from './ui.js';
 
 import generateTaskFiles from './task-manager/generate-task-files.js';
-
 
 /**
  * Structured error class for dependency operations
@@ -1172,14 +1172,21 @@ function validateAndFixDependencies(
 	context = {}
 ) {
 	const logger = createLogger(context);
-	// If tasksData is a multi-tag object, and a tag is provided, re-assign tasksData
-	// to the data for that specific tag. This allows the rest of the function to
-	// work on the correct task list without major refactoring.
-	if (tasksData && !tasksData.tasks && tag && tasksData[tag]) {
-		tasksData = tasksData[tag];
+	// Use getTasksForTag to safely obtain the tagged data, validate that the returned value exists and is an object
+	const effectiveTasksData = getTasksForTag(tasksData, tag);
+	if (!effectiveTasksData || !Array.isArray(effectiveTasksData)) {
+		logger.error('Invalid tasks data or tag not found');
+		return false;
 	}
 
-	if (!tasksData || !tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+	// Create a task data object with the validated tasks array
+	const tasksDataObject = { tasks: effectiveTasksData };
+
+	if (
+		!tasksDataObject ||
+		!tasksDataObject.tasks ||
+		!Array.isArray(tasksDataObject.tasks)
+	) {
 		logger.error('Invalid tasks data');
 		return false;
 	}
@@ -1187,10 +1194,10 @@ function validateAndFixDependencies(
 	logger.debug('Validating and fixing dependencies...');
 
 	// Create a deep copy for comparison
-	const originalData = JSON.parse(JSON.stringify(tasksData));
+	const originalData = JSON.parse(JSON.stringify(tasksDataObject));
 
 	// 1. Remove duplicate dependencies from tasks and subtasks
-	tasksData.tasks = tasksData.tasks.map((task) => {
+	tasksDataObject.tasks = tasksDataObject.tasks.map((task) => {
 		// Handle task dependencies
 		if (task.dependencies) {
 			const uniqueDeps = [...new Set(task.dependencies)];
@@ -1211,7 +1218,7 @@ function validateAndFixDependencies(
 	});
 
 	// 2. Remove invalid task dependencies (non-existent tasks)
-	tasksData.tasks.forEach((task) => {
+	tasksDataObject.tasks.forEach((task) => {
 		// Clean up task dependencies
 		if (task.dependencies) {
 			task.dependencies = task.dependencies.filter((depId) => {
@@ -1220,7 +1227,7 @@ function validateAndFixDependencies(
 					return false;
 				}
 				// Remove non-existent dependencies
-				return taskExists(tasksData.tasks, depId);
+				return taskExists(tasksDataObject.tasks, depId);
 			});
 		}
 
@@ -1232,10 +1239,10 @@ function validateAndFixDependencies(
 						// Handle numeric subtask references
 						if (typeof depId === 'number' && depId < 100) {
 							const fullSubtaskId = `${task.id}.${depId}`;
-							return taskExists(tasksData.tasks, fullSubtaskId);
+							return taskExists(tasksDataObject.tasks, fullSubtaskId);
 						}
 						// Handle full task/subtask references
-						return taskExists(tasksData.tasks, depId);
+						return taskExists(tasksDataObject.tasks, depId);
 					});
 				}
 			});
@@ -1243,7 +1250,7 @@ function validateAndFixDependencies(
 	});
 
 	// 3. Ensure at least one subtask has no dependencies in each task
-	tasksData.tasks.forEach((task) => {
+	tasksDataObject.tasks.forEach((task) => {
 		if (task.subtasks && task.subtasks.length > 0) {
 			const hasIndependentSubtask = task.subtasks.some(
 				(st) =>
@@ -1260,11 +1267,17 @@ function validateAndFixDependencies(
 
 	// Check if any changes were made by comparing with original data
 	const changesDetected =
-		JSON.stringify(tasksData) !== JSON.stringify(originalData);
+		JSON.stringify(tasksDataObject) !== JSON.stringify(originalData);
 
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
 		try {
+			// Update the original tasksData with the modified tasks
+			if (tag && tasksData[tag]) {
+				tasksData[tag].tasks = tasksDataObject.tasks;
+			} else if (tasksData.tasks) {
+				tasksData.tasks = tasksDataObject.tasks;
+			}
 			writeJSON(tasksPath, tasksData, projectRoot, tag);
 			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {

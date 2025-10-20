@@ -24,18 +24,26 @@ When Taskmaster is configured to use an "AgentLLM" provider for a specific AI ro
         "status": "pending_agent_llm_action",
         "message": "Taskmaster requires an LLM call from the agent. Details provided in llmRequestForAgent. Agent must call agent_llm with this interactionId in response.",
         "llmRequestForAgent": {
-            // These are the parameters the agent needs to make the LLM call
-            "apiKey": null, // Typically null, as the agent handles its own LLM auth
-            "modelId": "agent-delegated-model", // Example model
-            "messages": [
-                { "role": "system", "content": "You are a helpful assistant." },
-                { "role": "user", "content": "Translate 'hello' to French." }
-            ],
-            "maxTokens": 100,
-            "temperature": 0.7,
-            // "schema": { ... }, // Present for 'generateObject'
-            // "objectName": "generated_data", // Present for 'generateObject'
-            // ... any other relevant LLM parameters
+            "delegatedCallDetails": {
+                "originalCommand": "parse_prd", // The Taskmaster command that initiated this delegation
+                "role": "main", // The AI role used (e.g., "main"|"research")
+                "serviceType": "generateText", // The type of LLM service (e.g., "generateText"|"generateObject"|"streamText")
+                "requestParameters": {
+                    // These are the actual LLM parameters the agent needs to make the call
+                    "apiKey": null, // Typically null, as the agent handles its own LLM auth
+                    "modelId": "agent-delegated-model", // Example model
+                    "messages": [
+                        { "role": "system", "content": "You are a helpful assistant." },
+                        { "role": "user", "content": "Translate 'hello' to French." }
+                    ],
+                    "maxTokens": 100,
+                    "temperature": 0.7,
+                    // "schema": { ... }, // Present for 'generateObject'
+                    // "objectName": "generated_data", // Present for 'generateObject'
+                    // "tagInfo": { ... }, // Optional metadata object describing the request (may include task context, tags, etc.)
+                    // ... any other relevant LLM parameters
+                }
+            }
         },
         "interactionId": "some-unique-uuid-string-generated-by-taskmaster",
         "pendingInteractionSignalToAgent": {

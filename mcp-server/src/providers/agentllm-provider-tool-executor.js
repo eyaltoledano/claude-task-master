@@ -35,6 +35,8 @@ async function _handlePostProcessing(
 			finalLLMOutput,
 			projectRoot,
 			log,
+			null,
+			null,
 			tag
 		);
 		if (postProcessingResult.success) {
@@ -85,6 +87,7 @@ async function _handlePostProcessing(
 			projectRoot,
 			log,
 			originalToolArgs,
+			null,
 			tag
 		);
 		if (postProcessingResult.success) {
@@ -282,8 +285,8 @@ async function _handlePostProcessing(
 			projectRoot,
 			log,
 			originalToolArgs,
-			tag,
-			'up'
+			'up',
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully scoped up tasks.`;
@@ -308,8 +311,8 @@ async function _handlePostProcessing(
 			projectRoot,
 			log,
 			originalToolArgs,
-			tag,
-			'down'
+			'down',
+			tag
 		);
 		if (postProcessingResult.success) {
 			mainResultMessage = `Successfully scoped down tasks.`;
@@ -456,9 +459,7 @@ export function AgentLLMProviderToolExecutor(
 						);
 						// Resolve with an error response instead of rejecting, to prevent server disconnect
 						pending.resolve(
-							createErrorResponse('Agent LLM interaction timed out', {
-								mcpToolError: true
-							})
+							createErrorResponse('Agent LLM interaction timed out')
 						);
 						serverContext.pendingAgentLLMInteractions.delete(interactionId);
 					}
@@ -482,7 +483,11 @@ export function AgentLLMProviderToolExecutor(
 					toolArgs.projectRoot || session?.roots?.[0]?.uri || '.';
 				agentLLMTool
 					.execute(
-						{ interactionId, delegatedCallDetails: llmRequestForAgent, projectRoot },
+						{
+							interactionId,
+							delegatedCallDetails: llmRequestForAgent,
+							projectRoot
+						},
 						{ log, session }
 					)
 					.then((agentDirectiveResult) => {

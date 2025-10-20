@@ -19,7 +19,7 @@ The `agent_llm` tool is used for managing delegated LLM calls between the Taskma
   - If no default is specified but the tool deals with tasks, use `.taskmaster/tasks/tasks.json`
   - If no default is specified but the tool deals with reports, use the appropriate report file path
 
-- **Never omit the `file` parameter** when it exists in a tool's schema, even if it's marked as optional.
+- **Never omit the `file` parameter** when it exists in a tool's schema, even if it's marked as optional. Omitting this parameter can cause issues with file operations, particularly on Windows systems.
 
 ## 1. Receiving a Delegated LLM Call
 
@@ -54,7 +54,9 @@ Your arguments for the `agent_llm` tool must include:
   - **data**: If status is `"success"`, this field should contain the actual LLM response.
   - **errorDetails**: If status is `"error"`, this field should contain details about the error, including a message and optionally a code.
 
-Do not use `get_tasks` tool  before `expand_all`.
-**Note on `research`:** When a research is made for a specific task always fill `saveToTask` parameter unless user explicitly asks you not to save the result.
+## Important Workflow Notes
+**Avoid redundant `get_tasks` calls:** Do not call `get_tasks` before `expand_all` in delegation mode, as `expand_all` already submits delegated task IDs for expansion.
+**Note on `research`:** When performing research for a specific task, always fill the `saveToTask` parameter unless the user explicitly requests otherwise.
+**Do not make assumptions on the tag parameter:** If you are unaware of the current tag get it with the 'list_tags' tool.
 
 The project is already initialized.

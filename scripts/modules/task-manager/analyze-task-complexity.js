@@ -429,7 +429,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 					objectName: 'complexityAnalysis',
 					schemaKey: 'analyze-complexity'
 				},
-				'generateObject'
+				{ serviceType: 'generateObject' }
 			);
 
 			if (delegationResult) {

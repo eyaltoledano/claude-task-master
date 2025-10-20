@@ -311,12 +311,12 @@ ${
 - Include extensive error handling, validation, and edge cases
 - Cover multiple integration scenarios and advanced testing
 - Provide thorough documentation and optimization approaches`
-		: strength === 'regular'
-			? `- Add more detailed implementation steps
+			: strength === 'regular'
+				? `- Add more detailed implementation steps
 - Include additional error handling and validation
 - Cover more edge cases and advanced features
 - Provide more comprehensive testing approaches`
-		: `- Add some additional implementation details
+				: `- Add some additional implementation details
 - Include basic error handling considerations
 - Cover a few common edge cases
 - Enhance testing approaches slightly`
@@ -326,12 +326,12 @@ ${
 - Provide only the minimum viable implementation
 - Eliminate any complex integrations or advanced scenarios
 - Aim for the simplest possible working solution`
-		: strength === 'regular'
-			? `- Focus on core functionality only
+			: strength === 'regular'
+				? `- Focus on core functionality only
 - Simplify implementation steps
 - Remove non-essential features
 - Streamline to basic requirements`
-			: `- Focus mainly on core functionality
+				: `- Focus mainly on core functionality
 - Slightly simplify implementation steps
 - Remove some non-essential features
 - Streamline most requirements`
@@ -563,11 +563,19 @@ async function adjustTaskComplexity(
 	});
 
 	// === BEGIN AGENT_LLM DELEGATION SIGNAL CHECK ===
+	const delegationContext = {
+		operation: 'scope-adjust',
+		taskId: context.taskId || context.currentTaskId || aiResult.taskId,
+		direction: aiResult.direction || context.direction,
+		strength: aiResult.strength || context.strength,
+		userId: context.userId,
+		sessionId: context.sessionId
+	};
 	const delegationResult = handleAgentLLMDelegation(
 		aiResult,
 		context,
 		context.research ? 'research' : 'main',
-		{}
+		delegationContext
 	);
 	if (delegationResult) return delegationResult;
 	// === END AGENT_LLM DELEGATION SIGNAL CHECK ===

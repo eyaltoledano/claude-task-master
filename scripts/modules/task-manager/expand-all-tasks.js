@@ -24,7 +24,7 @@ import boxen from 'boxen';
  * @param {string} [context.tag] - Tag for the task
  * @param {string} [context.complexityReportPath] - Path to the complexity report file
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
- * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
+ * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, delegationSignaledCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>, delegatedTaskIds: string[], message?: string}>} - Result summary.
  */
 async function expandAllTasks(
 	tasksPath,
@@ -159,8 +159,12 @@ async function expandAllTasks(
 							`Task ${task.id} signaled for agent delegation.`
 						);
 					}
+					const idInfo =
+						result && result.interactionId
+							? ` (interactionId: ${result.interactionId})`
+							: '';
 					logger.info(
-						`Agent delegation signaled for task ${task.id}. Local expansion skipped.`
+						`Agent delegation signaled for task ${task.id}${idInfo}. Local expansion skipped.`
 					);
 					// Do not attempt to use result.telemetryData or result.task here
 				} else if (result && result.task && result.task.id === task.id) {
@@ -200,9 +204,9 @@ async function expandAllTasks(
 						false
 					);
 				}
-				logger.error(
-					`Error during expandTask call for task ${task.id}: ${error.message}`
-				);
+				if (getDebugFlag(session)) {
+					console.error(error);
+				}
 				// Continue to the next task
 			}
 		}
@@ -253,7 +257,8 @@ async function expandAllTasks(
 			telemetryData: aggregatedTelemetryData,
 			delegatedTaskIds: delegatedTaskIds, // Add collected delegated task IDs
 			...(delegatedTaskIds.length > 0 && {
-				message: "directive: The 'expand_all' tool has returned a list of eligible 'delegatedTaskIds' for expansion, you have to expand tasks one by one using 'expand_task' tool."
+				message:
+					"directive: The 'expand_all' tool has returned a list of eligible 'delegatedTaskIds' for expansion, you have to expand tasks one by one using 'expand_task' tool."
 			})
 			// The 'message' in expandAllTasksDirect will use these counts.
 		};

@@ -20,83 +20,84 @@ const logger = createLogger();
  * @returns {object|null} A pending interaction object for agent delegation, or null if not a delegation.
  */
 export function handleAgentLLMDelegation(
-  aiServiceResponse,
-  context,
-  serviceRole,
-  delegationContext = {},
-  options = {}
+	aiServiceResponse,
+	context,
+	serviceRole,
+	delegationContext = {},
+	options = {}
 ) {
-  // Extract options with defaults
-  const {
-    serviceType = 'generateObject',
-    commandName = context?.commandName,
-    query = null,
-    detailLevel = null,
-    config = null,
-    returnErrorAsSuccess = false
-  } = options;
+	// Extract options with defaults
+	const {
+		serviceType = 'generateObject',
+		commandName = context?.commandName,
+		query = null,
+		detailLevel = null,
+		config = null,
+		returnErrorAsSuccess = false
+	} = options;
 
-  if (
-    aiServiceResponse &&
-    aiServiceResponse.mainResult &&
-    aiServiceResponse.mainResult.type === 'agent_llm_delegation'
-  ) {
-    logger.debug(
-      `${commandName || context?.commandName || 'unknown'} (core): Detected agent_llm_delegation signal.`
-    );
+	if (
+		aiServiceResponse &&
+		aiServiceResponse.mainResult &&
+		aiServiceResponse.mainResult.type === 'agent_llm_delegation'
+	) {
+		logger.debug(
+			`${commandName || 'unknown'} (core): Detected agent_llm_delegation signal.`
+		);
 
-    // Create base pendingInteraction
-    const pendingInteraction = {
-      type: 'agent_llm',
-      interactionId: aiServiceResponse.mainResult.interactionId,
-      llmRequestForAgent: {
-        originalCommand: commandName || context?.commandName || 'unknown',
-        role: serviceRole,
-        serviceType: serviceType,
-        requestParameters: {
-          ...aiServiceResponse.mainResult.details,
-          ...delegationContext,
-        },
-      },
-    };
+		// Create base pendingInteraction
+		const pendingInteraction = {
+			type: 'agent_llm',
+			interactionId: aiServiceResponse.mainResult.interactionId,
+			llmRequestForAgent: {
+				originalCommand: commandName || context?.commandName || 'unknown',
+				role: serviceRole,
+				serviceType: serviceType,
+				requestParameters: {
+					...aiServiceResponse.mainResult.details,
+					...delegationContext
+				}
+			}
+		};
 
-    // Add tagInfo if available
-    if (aiServiceResponse.tagInfo) {
-      pendingInteraction.llmRequestForAgent.requestParameters.tagInfo = aiServiceResponse.tagInfo;
-    }
+		// Add tagInfo if available
+		if (aiServiceResponse.tagInfo) {
+			pendingInteraction.llmRequestForAgent.requestParameters.tagInfo =
+				aiServiceResponse.tagInfo;
+		}
 
-    // Handle parse-prd specific logic
-    if (config && returnErrorAsSuccess) {
-      try {
-        return {
-          success: true,
-          needsAgentDelegation: true,
-          pendingInteraction,
-          message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
-          telemetryData: aiServiceResponse?.telemetryData ?? null,
-        };
-      } catch (err) {
-        logger.error(
-          `parsePRD: Failed to construct pendingInteraction - ${err.message}`
-        );
-        return {
-          success: false,
-          isError: true,
-          errorMessage: `Failed to prepare agent delegation payload: ${err.message}`,
-        };
-      }
-    }
+		// Handle parse-prd specific logic
+		if (config && returnErrorAsSuccess) {
+			try {
+				return {
+					success: true,
+					needsAgentDelegation: true,
+					pendingInteraction,
+					message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
+					telemetryData: aiServiceResponse?.telemetryData ?? null
+				};
+			} catch (err) {
+				logger.error(
+					`parsePRD: Failed to construct pendingInteraction - ${err.message}`
+				);
+				return {
+					success: false,
+					isError: true,
+					errorMessage: `Failed to prepare agent delegation payload: ${err.message}`
+				};
+			}
+		}
 
-    // Standard return for general and research use cases
-    return {
-      needsAgentDelegation: true,
-      pendingInteraction,
-      telemetryData: aiServiceResponse?.telemetryData ?? null,
-      tagInfo: aiServiceResponse?.tagInfo,
-      // Include research-specific fields if provided
-      ...(query && { query }),
-      ...(detailLevel && { detailLevel }),
-    };
-  }
-  return null;
+		// Standard return for general and research use cases
+		return {
+			needsAgentDelegation: true,
+			pendingInteraction,
+			telemetryData: aiServiceResponse?.telemetryData ?? null,
+			tagInfo: aiServiceResponse?.tagInfo,
+			// Include research-specific fields if provided
+			...(query && { query }),
+			...(detailLevel && { detailLevel })
+		};
+	}
+	return null;
 }

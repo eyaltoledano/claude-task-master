@@ -18,6 +18,8 @@ import {
 	findProjectRoot,
 	readJSON,
 	writeJSON,
+	getTasksForTag,
+	setTasksForTag,
 	flattenTasksWithSubtasks
 } from '../utils.js';
 import {
@@ -121,17 +123,11 @@ async function performResearch(
 		let autoDiscoveredIds = [];
 
 		try {
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
 			const tasksData = await readJSON(tasksPath, projectRoot, tag);
-
-			if (tasksData && tasksData.tasks && tasksData.tasks.length > 0) {
+			const taggedTasks = getTasksForTag(tasksData, tag) || [];
+			if (taggedTasks.length > 0) {
 				// Flatten tasks to include subtasks for fuzzy search
-				const flattenedTasks = flattenTasksWithSubtasks(tasksData.tasks);
+				const flattenedTasks = flattenTasksWithSubtasks(taggedTasks);
 				const fuzzySearch = new FuzzyTaskSearch(flattenedTasks, 'research');
 				const searchResults = fuzzySearch.findRelevantTasks(query, {
 					maxResults: 8,
@@ -160,8 +156,8 @@ async function performResearch(
 					if (taskIds.length > 0) {
 						const sortedProvidedIds = taskIds
 							.map((id) => parseInt(id))
-						.sort((a, b) => a - b)
-						.map((id) => id.toString());
+							.sort((a, b) => a - b)
+							.map((id) => id.toString());
 
 						console.log(
 							chalk.gray('Provided tasks: ') +
@@ -365,7 +361,8 @@ async function performResearch(
 					projectRoot,
 					logFn,
 					query,
-					researchResult
+					researchResult,
+					tasksPath
 				);
 			}
 		}
@@ -727,6 +724,7 @@ function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
  * @param {Object} logFn - Logger function
  * @param {string} initialQuery - Initial query for context
  * @param {string} initialResult - Initial AI result for context
+ * @param {string} tasksPath - Path to tasks file
  */
 async function handleFollowUpQuestions(
 	originalOptions, // This should be the full options object from performResearch
@@ -735,7 +733,8 @@ async function handleFollowUpQuestions(
 	projectRoot,
 	logFn,
 	initialQuery,
-	initialResult
+	initialResult,
+	tasksPath
 ) {
 	let interactiveSaveOccurred = false;
 
@@ -788,7 +787,8 @@ async function handleFollowUpQuestions(
 					conversationHistory,
 					projectRoot,
 					context, // Pass the original context
-					logFn // Pass the original logFn
+					logFn, // Pass the original logFn
+					tasksPath
 				);
 				if (saveResult) {
 					interactiveSaveOccurred = true;
@@ -868,13 +868,15 @@ async function handleFollowUpQuestions(
  * @param {string} projectRoot - Project root directory
  * @param {Object} context - Execution context (original from performResearch)
  * @param {Object} logFn - Logger function (original from performResearch)
+ * @param {string} tasksPath - Path to tasks file
  * @returns {Promise<boolean>} True if save was successful, false otherwise.
  */
 async function handleSaveToTask(
 	conversationHistory,
 	projectRoot,
 	context, // Original context from performResearch
-	logFn // Original logFn from performResearch
+	logFn, // Original logFn from performResearch
+	tasksPath
 ) {
 	try {
 		// Get task ID from user
@@ -899,12 +901,6 @@ async function handleSaveToTask(
 		const trimmedTaskId = taskId.trim();
 		const conversationThread = formatConversationForSaving(conversationHistory);
 		const isSubtask = trimmedTaskId.includes('.');
-		const tasksPath = path.join(
-			projectRoot,
-			'.taskmaster',
-			'tasks',
-			'tasks.json'
-		);
 
 		if (!fs.existsSync(tasksPath)) {
 			console.log(
@@ -914,15 +910,16 @@ async function handleSaveToTask(
 		}
 
 		const data = await readJSON(tasksPath, projectRoot, context.tag);
-		if (!data || !data.tasks) {
+		const tasksArr = getTasksForTag(data, context.tag) || [];
+		if (!data || tasksArr.length === 0) {
 			console.log(chalk.red('❌ No valid tasks found.'));
 			return false;
 		}
 
+		let currentTasks = tasksArr;
 		let taskFound = false;
 		if (isSubtask) {
 			const ids = trimmedTaskId.split('.').map(Number);
-			let currentTasks = data.tasks;
 			let task = null;
 			for (let i = 0; i < ids.length; i++) {
 				const currentId = ids[i];
@@ -940,7 +937,7 @@ async function handleSaveToTask(
 			}
 		} else {
 			const taskIdNum = parseInt(trimmedTaskId, 10);
-			const task = data.tasks.find((t) => t.id === taskIdNum);
+			const task = tasksArr.find((t) => t.id === taskIdNum);
 			if (task) {
 				task.details =
 					(task.details ? task.details + '\n\n' : '') + conversationThread;
@@ -961,7 +958,8 @@ async function handleSaveToTask(
 			)
 		);
 
-		// Write the modified data back to the file
+		// Persist via tag layer
+		setTasksForTag(data, context.tag, tasksArr);
 		await writeJSON(tasksPath, data, projectRoot, context.tag);
 
 		console.log(

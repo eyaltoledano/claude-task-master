@@ -205,21 +205,21 @@ async function updateSubtaskById(
 				id: parentTask.id,
 				title: parentTask.title
 			};
-			const prevSubtask = 
+			const prevSubtask =
 				subtaskIndex > 0
 					? {
-						id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex - 1].id}`,
-						title: parentTask.subtasks[subtaskIndex - 1].title,
-						status: parentTask.subtasks[subtaskIndex - 1].status
-					}
+							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex - 1].id}`,
+							title: parentTask.subtasks[subtaskIndex - 1].title,
+							status: parentTask.subtasks[subtaskIndex - 1].status
+						}
 					: undefined;
-			const nextSubtask = 
+			const nextSubtask =
 				subtaskIndex < parentTask.subtasks.length - 1
 					? {
-						id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex + 1].id}`,
-						title: parentTask.subtasks[subtaskIndex + 1].title,
-						status: parentTask.subtasks[subtaskIndex + 1].status
-					}
+							id: `${parentTask.id}.${parentTask.subtasks[subtaskIndex + 1].id}`,
+							title: parentTask.subtasks[subtaskIndex + 1].title,
+							status: parentTask.subtasks[subtaskIndex + 1].status
+						}
 					: undefined;
 
 			// Build prompts using PromptManager
@@ -236,7 +236,7 @@ async function updateSubtaskById(
 				hasCodebaseAnalysis: hasCodebaseAnalysis(
 					useResearch,
 					projectRoot,
-				session
+					session
 				),
 				projectRoot: projectRoot
 			};
@@ -269,9 +269,9 @@ async function updateSubtaskById(
 				role,
 				{
 					subtaskId: subtaskId,
-					originalUserPrompt: prompt
-				},
-				'generateText'
+					originalUserPrompt: prompt,
+					serviceType: 'generateText'
+				}
 			);
 			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===
@@ -400,7 +400,7 @@ ${generatedContentString.trim()}
 	} catch (error) {
 		if (outputFormat === 'text' && loadingIndicator) {
 			stopLoadingIndicator(loadingIndicator);
-				loadingIndicator = null;
+			loadingIndicator = null;
 		}
 		report('error', `Error updating subtask: ${error.message}`);
 		if (outputFormat === 'text') {

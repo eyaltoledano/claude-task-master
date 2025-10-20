@@ -764,16 +764,19 @@ function withNormalizedProjectRoot(executeFn) {
  * @param {string} [customInstructions] - Optional custom instructions to append to the standard instructions.
  * @returns {Object} - The response object for agent delegation.
  */
-function createAgentDelegationResponse(pendingInteraction, customInstructions = '') {
+function createAgentDelegationResponse(
+	pendingInteraction,
+	customInstructions = ''
+) {
 	const payload = {
 		isAgentLLMPendingInteraction: true,
 		details: pendingInteraction,
 		uri: 'agent-llm://pending-interaction',
 		mimeType: 'application/json',
 		directive:
-			'Taskmaster requires an LLM call from the Assistant/Agent (you). Details provided in the instructions.',
+			'Taskmaster requires an LLM call from the Assistant/Agent (you). You are returning the LLM respone. Details provided in the instructions.',
 		instructions:
-			"Assistant/Agent, please perform the LLM call using 'requestParameters' and invoke 'agent_llm' tool with your response, include 'agentLLMResponse', this 'interactionId' and 'projectRoot' parameters, exclude 'delegatedCallDetails'." +
+			"Assistant/Agent, you are the LLM being invoked. Do NOT make an API call. Instead, directly generate your response based on 'requestParameters.messages' and send it via 'agent_llm' tool, include 'agentLLMResponse', this 'interactionId' and 'projectRoot', exclude 'delegatedCallDetails' parameter." +
 			(customInstructions ? ` ${customInstructions}` : '')
 	};
 	return { ...createContentResponse(payload), isError: false };

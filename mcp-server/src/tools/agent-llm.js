@@ -58,7 +58,7 @@ const agentLLMParameters = z
 					.describe("Error details if the agent's LLM call failed.")
 			})
 			.optional()
-			.describe("The LLM response from the agent. Sent by Agent."),
+			.describe('The LLM response from the agent. Sent by Agent.'),
 		projectRoot: z
 			.string()
 			.describe('The directory of the project. Must be an absolute path.'),

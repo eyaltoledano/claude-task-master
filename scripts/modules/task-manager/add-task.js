@@ -138,46 +138,30 @@ async function addTask(
 		if (mcpLog) {
 			switch (level) {
 				case 'info':
-					// Check if the method exists before calling, with a fallback to console for safety
 					if (mcpLog.info) mcpLog.info(message);
-					else console.log(`[INFO] ${message}`);
 					break;
 				case 'warn':
 					if (mcpLog.warn) mcpLog.warn(message);
-					else console.log(`[WARN] ${message}`);
 					break;
 				case 'error':
 					if (mcpLog.error) mcpLog.error(message);
-					else console.log(`[ERROR] ${message}`);
 					break;
 				case 'debug':
-					// createLogWrapper provides .debug, which maps to server log.debug
 					if (mcpLog.debug) {
 						mcpLog.debug(message);
 					} else if (mcpLog.info) {
-						// Fallback for debug if .debug is not on mcpLog for some reason
-						mcpLog.info(`[DEBUG] ${message}`);
-					} else {
-						// Absolute fallback
-						console.log(`[DEBUG] ${message}`);
+						mcpLog.info(message);
 					}
 					break;
 				case 'success':
-					// createLogWrapper provides .success, which maps to server log.info
 					if (mcpLog.success) {
 						mcpLog.success(message);
 					} else if (mcpLog.info) {
-						// Fallback for success if .success is not on mcpLog
-						mcpLog.info(`[SUCCESS] ${message}`);
-					} else {
-						// Absolute fallback
-						console.log(`[SUCCESS] ${message}`);
+						mcpLog.info(message);
 					}
 					break;
 				default:
-					// For any other level string, default to info with a prefix
 					if (mcpLog.info) mcpLog.info(`[${level.toUpperCase()}] ${message}`);
-					else console.log(`[${level.toUpperCase()}] ${message}`);
 					break;
 			}
 		} else if (outputFormat === 'text') {

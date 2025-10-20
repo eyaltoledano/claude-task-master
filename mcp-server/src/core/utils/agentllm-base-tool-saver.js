@@ -6,97 +6,137 @@ import generateTaskFiles from '../../../../scripts/modules/task-manager/generate
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
 export class AgentLLMToolSaver {
-constructor(toolName) {
-this.toolName = toolName;
-}
+	constructor(toolName) {
+		this.toolName = toolName;
+	}
 
-  // Common: Load tasks.json
-  async loadTasksData(projectRoot, tag, logWrapper) {
-      const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
-      const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
+	// Common: Load tasks.json
+	async loadTasksData(projectRoot, tag, logWrapper) {
+		const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
+		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 
-      if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
-          const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
-          logWrapper.error(`${this.toolName}: ${errorMsg}`);
-          throw new Error(errorMsg);
-      }
+		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
+			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
+			logWrapper.error(`${this.toolName}: ${errorMsg}`);
+			throw new Error(errorMsg);
+		}
 
-      return { tasksJsonPath, allTasksData };
-  }
+		return { tasksJsonPath, allTasksData };
+	}
 
-  // Common: Save tasks.json
-  async saveTasksData(tasksJsonPath, allTasksData, projectRoot, tag, logWrapper) {
-      writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
-      logWrapper.info(`${this.toolName}: Successfully updated tasks.json for tag '${tag}'.`);
-  }
+	// Common: Save tasks.json
+	async saveTasksData(
+		tasksJsonPath,
+		allTasksData,
+		projectRoot,
+		tag,
+		logWrapper
+	) {
+		await writeJSON(tasksJsonPath, allTasksData, projectRoot, tag);
+		logWrapper.info(
+			`${this.toolName}: Successfully updated tasks.json for tag '${tag}'.`
+		);
+	}
 
-  // Common: Regenerate markdown files
-  async regenerateMarkdownFiles(tasksJsonPath, projectRoot, tag, logWrapper) {
-      const outputDir = path.dirname(tasksJsonPath);
-      await generateTaskFiles(tasksJsonPath, outputDir, {
-          mcpLog: logWrapper,
-          projectRoot: projectRoot,
-          tag: tag
-      });
-      logWrapper.info(`${this.toolName}: Markdown task files regenerated for tag '${tag}'.`);
-  }
+	// Common: Regenerate markdown files
+	async regenerateMarkdownFiles(tasksJsonPath, projectRoot, tag, logWrapper) {
+		const outputDir = path.dirname(tasksJsonPath);
+		await generateTaskFiles(tasksJsonPath, outputDir, {
+			mcpLog: logWrapper,
+			projectRoot: projectRoot,
+			tag: tag
+		});
+		logWrapper.info(
+			`${this.toolName}: Markdown task files regenerated for tag '${tag}'.`
+		);
+	}
 
-  // Common: Check if task is completed
-  isTaskCompleted(task) {
-      return task.status === 'done' || task.status === 'completed';
-  }
+	// Common: Check if task is completed
+	isTaskCompleted(task) {
+		return task.status === 'done' || task.status === 'completed';
+	}
 
-  // Common: Find task by ID
-  findTask(tasks, taskId) {
-      return tasks.find(t => parseInt(String(t.id), 10) === parseInt(String(taskId), 10));
-  }
+	// Common: Find task by ID
+	findTask(tasks, taskId) {
+		return tasks.find(
+			(t) => parseInt(String(t.id), 10) === parseInt(String(taskId), 10)
+		);
+	}
 
-  // Common: Find subtask
-  findSubtask(parentTask, subtaskId) {
-      if (!parentTask?.subtasks) return null;
-      return parentTask.subtasks.find(st =>
-          parseInt(String(st.id), 10) === parseInt(String(subtaskId), 10)
-      );
-  }
+	// Common: Find subtask
+	findSubtask(parentTask, subtaskId) {
+		if (!parentTask?.subtasks) return null;
+		return parentTask.subtasks.find(
+			(st) => parseInt(String(st.id), 10) === parseInt(String(subtaskId), 10)
+		);
+	}
 
-  // Template method - subclasses override processAgentOutput
-  async save(agentOutput, projectRoot, logWrapper, originalToolArgs, delegatedRequestParams, tag = 'master') {
-      const logger = createLogger({ mcpLog: logWrapper });
-      logger.info(`${this.toolName}: Starting save operation for tag '${tag}'.`);
+	// Template method - subclasses override processAgentOutput
+	async save(
+		agentOutput,
+		projectRoot,
+		logWrapper,
+		originalToolArgs,
+		delegatedRequestParams,
+		tag = 'master'
+	) {
+		const logger = createLogger({ mcpLog: logWrapper });
+		logger.info(`${this.toolName}: Starting save operation for tag '${tag}'.`);
 
-      try {
-          // Load tasks
-          const { tasksJsonPath, allTasksData } = await this.loadTasksData(projectRoot, tag, logger);
+		try {
+			// Load tasks
+			const { tasksJsonPath, allTasksData } = await this.loadTasksData(
+				projectRoot,
+				tag,
+				logger
+			);
 
-          // Subclass-specific processing
-          const result = await this.processAgentOutput(
-              agentOutput,
-              allTasksData,
-              logWrapper,
-              originalToolArgs,
-              delegatedRequestParams
-          );
+			// Subclass-specific processing
+			const result = await this.processAgentOutput(
+				agentOutput,
+				allTasksData,
+				logWrapper,
+				originalToolArgs,
+				delegatedRequestParams
+			);
 
-          if (!result.success) {
-              return result;
-          }
+			if (!result.success) {
+				return result;
+			}
 
-          // Save tasks
-          await this.saveTasksData(tasksJsonPath, allTasksData, projectRoot, tag, logWrapper);
+			// Save tasks
+			await this.saveTasksData(
+				tasksJsonPath,
+				allTasksData,
+				projectRoot,
+				tag,
+				logWrapper
+			);
 
-          // Regenerate markdown
-          await this.regenerateMarkdownFiles(tasksJsonPath, projectRoot, tag, logWrapper);
+			// Regenerate markdown
+			await this.regenerateMarkdownFiles(
+				tasksJsonPath,
+				projectRoot,
+				tag,
+				logWrapper
+			);
 
-          return { success: true, ...result.data };
-      } catch (error) {
-          logWrapper.error(`${this.toolName}: Error: ${error.message}`);
-          logWrapper.error(`${this.toolName}: Stack: ${error.stack}`);
-          return { success: false, error: error.message };
-      }
-  }
+			return { success: true, ...result.data };
+		} catch (error) {
+			logWrapper.error(`${this.toolName}: Error: ${error.message}`);
+			logWrapper.error(`${this.toolName}: Stack: ${error.stack}`);
+			return { success: false, error: error.message };
+		}
+	}
 
-  // Abstract method - subclasses must implement
-  async processAgentOutput(agentOutput, allTasksData, logWrapper, originalToolArgs, delegatedRequestParams) {
-      throw new Error('Subclasses must implement processAgentOutput');
-  }
+	// Abstract method - subclasses must implement
+	async processAgentOutput(
+		agentOutput,
+		allTasksData,
+		logWrapper,
+		originalToolArgs,
+		delegatedRequestParams
+	) {
+		throw new Error('Subclasses must implement processAgentOutput');
+	}
 }

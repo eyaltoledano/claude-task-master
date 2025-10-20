@@ -95,7 +95,7 @@ export function registerScopeDownTool(server) {
 					);
 					return createAgentDelegationResponse(
 						result.pendingInteraction,
-						"After scoping the task down, reanalyze project complexity with 'analyze_project_complexity' tool with this task ID."
+						"Next Step: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
 					);
 				}
 
