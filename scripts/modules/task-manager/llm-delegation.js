@@ -41,6 +41,18 @@ export function handleAgentLLMDelegation(
 		aiServiceResponse.mainResult &&
 		aiServiceResponse.mainResult.type === 'agent_llm_delegation'
 	) {
+		if (
+			!aiServiceResponse.mainResult.interactionId ||
+			!aiServiceResponse.mainResult.details
+		) {
+			logger.error(
+				`${commandName || 'unknown'}: delegation signal missing interactionId or details`
+			);
+			return {
+				needsAgentDelegation: true,
+				error: 'Malformed delegation signal'
+			};
+		}
 		logger.debug(
 			`${commandName || 'unknown'} (core): Detected agent_llm_delegation signal.`
 		);

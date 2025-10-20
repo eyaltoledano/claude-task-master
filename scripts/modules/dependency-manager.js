@@ -17,7 +17,8 @@ import {
 	findCycles,
 	traverseDependencies,
 	isSilentMode,
-	getTasksForTag
+	getTasksForTag,
+	setTasksForTag
 } from './utils.js';
 
 import { displayBanner } from './ui.js';
@@ -199,8 +200,10 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 			}
 		});
 
-		// Save changes
-		writeJSON(tasksPath, data, context.projectRoot, context.tag);
+		// Save changes using setTasksForTag for tag-aware writes
+		const tag = context.tag || 'master';
+		setTasksForTag(data, tag, data.tasks);
+		writeJSON(tasksPath, data, context.projectRoot, tag);
 		log(
 			'success',
 			`Added dependency ${formattedDependencyId} to task ${formattedTaskId}`
@@ -344,8 +347,10 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 	// Remove the dependency
 	targetTask.dependencies.splice(dependencyIndex, 1);
 
-	// Save the updated tasks
-	writeJSON(tasksPath, data, context.projectRoot, context.tag);
+	// Save the updated tasks using setTasksForTag for tag-aware writes
+	const tag = context.tag || 'master';
+	setTasksForTag(data, tag, data.tasks);
+	writeJSON(tasksPath, data, context.projectRoot, tag);
 
 	// Success message
 	log(
@@ -1043,8 +1048,10 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 		const dataChanged = JSON.stringify(data) !== JSON.stringify(originalData);
 
 		if (dataChanged) {
-			// Save the changes
-			writeJSON(tasksPath, data, context.projectRoot, context.tag);
+			// Save the changes using setTasksForTag for tag-aware writes
+			const tag = context.tag || 'master';
+			setTasksForTag(data, tag, data.tasks);
+			writeJSON(tasksPath, data, context.projectRoot, tag);
 			log('success', 'Fixed dependency issues in tasks.json');
 
 			// Regenerate task files
@@ -1272,13 +1279,10 @@ function validateAndFixDependencies(
 	// Save changes if needed
 	if (tasksPath && changesDetected) {
 		try {
-			// Update the original tasksData with the modified tasks
-			if (tag && tasksData[tag]) {
-				tasksData[tag].tasks = tasksDataObject.tasks;
-			} else if (tasksData.tasks) {
-				tasksData.tasks = tasksDataObject.tasks;
-			}
-			writeJSON(tasksPath, tasksData, projectRoot, tag);
+			// Use setTasksForTag for tag-aware writes instead of direct mutation
+			const effectiveTag = tag || 'master';
+			setTasksForTag(tasksData, effectiveTag, tasksDataObject.tasks);
+			writeJSON(tasksPath, tasksData, projectRoot, effectiveTag);
 			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {
 			logger.error('Failed to save dependency fixes to tasks.json', error);

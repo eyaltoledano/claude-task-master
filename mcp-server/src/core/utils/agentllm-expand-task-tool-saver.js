@@ -80,7 +80,7 @@ class ExpandTaskSaver extends AgentLLMToolSaver {
 					...st,
 					title: String(st.title || '').trim(),
 					description: st.description || '',
-					status: st.status || 'todo',
+					status: st.status || 'pending',
 					id: Number.isFinite(idNum) ? idNum : nextId++
 				};
 			})

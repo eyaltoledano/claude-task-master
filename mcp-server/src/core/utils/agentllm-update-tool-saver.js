@@ -117,17 +117,23 @@ class UpdateToolSaver extends AgentLLMToolSaver {
 		}
 
 		const agentTasksMap = new Map(
-			parsedAgentTasksArray.map((task) => [
-				parseInt(String(task.id), 10),
-				{ ...task, id: parseInt(String(task.id), 10) }
-			])
+			parsedAgentTasksArray.map((task) => {
+				const idNum = parseInt(String(task.id), 10);
+				if (!Number.isFinite(idNum)) {
+					throw new Error(
+						`Invalid task ID "${task.id}": cannot convert to number`
+					);
+				}
+				return [idNum, { ...task, id: idNum }];
+			})
 		);
 		const updatedTaskIds = [];
 		let actualUpdatesMade = 0;
 
 		allTasksData.tasks.forEach((originalTask, index) => {
-			if (agentTasksMap.has(originalTask.id)) {
-				const agentTask = agentTasksMap.get(originalTask.id);
+			const originalIdNum = parseInt(String(originalTask.id), 10);
+			if (agentTasksMap.has(originalIdNum)) {
+				const agentTask = agentTasksMap.get(originalIdNum);
 				if (this.isTaskCompleted(originalTask)) {
 					updatedTaskIds.push({
 						id: String(originalTask.id),

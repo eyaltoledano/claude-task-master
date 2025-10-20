@@ -63,14 +63,6 @@ class ParsePrdSaver extends AgentLLMToolSaver {
 		}
 
 		try {
-			// Validate tasks payload again before saving (additional safety check)
-			const validation = FlexibleTasksArraySchema.safeParse(agentOutput.tasks);
-			if (!validation.success) {
-				const errorMsg = `Tasks validation failed before save: ${validation.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`;
-				logWrapper.error(`${this.toolName}: ${errorMsg}`);
-				return { success: false, error: errorMsg };
-			}
-
 			// Manually resolve path, bypassing the strict loadTasksData method which fails if file doesn't exist.
 			const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
 

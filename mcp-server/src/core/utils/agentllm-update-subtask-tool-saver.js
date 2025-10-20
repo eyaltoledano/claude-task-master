@@ -14,7 +14,10 @@ class UpdateSubtaskSaver extends AgentLLMToolSaver {
 	) {
 		const { subtaskIdToUpdate } = delegatedRequestParams;
 
-		if (typeof agentOutput !== 'string' || !agentOutput.trim()) {
+		if (typeof agentOutput !== 'string') {
+			return { success: false, error: 'agentOutput must be a string' };
+		}
+		if (!agentOutput.trim()) {
 			return {
 				success: true,
 				data: {

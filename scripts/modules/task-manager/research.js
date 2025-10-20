@@ -923,7 +923,9 @@ async function handleSaveToTask(
 			let task = null;
 			for (let i = 0; i < ids.length; i++) {
 				const currentId = ids[i];
-				task = currentTasks?.find((t) => t.id === currentId);
+				task = currentTasks?.find(
+					(t) => parseInt(String(t.id), 10) === currentId
+				);
 				if (!task) break;
 				if (i < ids.length - 1) {
 					currentTasks = task.subtasks;
@@ -937,7 +939,9 @@ async function handleSaveToTask(
 			}
 		} else {
 			const taskIdNum = parseInt(trimmedTaskId, 10);
-			const task = tasksArr.find((t) => t.id === taskIdNum);
+			const task = tasksArr.find(
+				(t) => parseInt(String(t.id), 10) === taskIdNum
+			);
 			if (task) {
 				task.details =
 					(task.details ? task.details + '\n\n' : '') + conversationThread;

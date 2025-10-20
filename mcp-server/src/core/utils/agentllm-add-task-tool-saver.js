@@ -55,8 +55,9 @@ class AddTaskSaver extends AgentLLMToolSaver {
 		}
 
 		allTasksData.tasks.push(newTask);
-		allTasksData.tasks.sort((a, b) => a.id - b.id);
-
+		allTasksData.tasks.sort(
+			(a, b) => parseInt(String(a.id), 10) - parseInt(String(b.id), 10)
+		);
 		return { success: true, data: { newTask } };
 	}
 }
