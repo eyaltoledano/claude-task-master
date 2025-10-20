@@ -2,39 +2,39 @@
  * @fileoverview TaskMasterCore facade - main entry point for tm-core functionality
  */
 
-import { ConfigManager } from './config/config-manager.js';
+import { ConfigManager } from './modules/config/managers/config-manager.js';
 import {
 	TaskService,
 	type TaskListResult as ListTasksResult,
 	type GetTaskListOptions
-} from './services/task-service.js';
+} from './modules/tasks/services/task-service.js';
 import {
 	TaskExecutionService,
 	type StartTaskOptions,
 	type StartTaskResult,
 	type ConflictCheckResult
-} from './services/task-execution-service.js';
+} from './modules/tasks/services/task-execution-service.js';
 import {
 	ExportService,
 	type ExportTasksOptions,
 	type ExportResult
-} from './services/export.service.js';
-import { AuthManager } from './auth/auth-manager.js';
-import { ERROR_CODES, TaskMasterError } from './errors/task-master-error.js';
-import type { UserContext } from './auth/types.js';
-import type { IConfiguration } from './interfaces/configuration.interface.js';
+} from './modules/integration/services/export.service.js';
+import { AuthManager } from './modules/auth/managers/auth-manager.js';
+import { ERROR_CODES, TaskMasterError } from './common/errors/task-master-error.js';
+import type { UserContext } from './modules/auth/types.js';
+import type { IConfiguration } from './common/interfaces/configuration.interface.js';
 import type {
 	Task,
 	TaskStatus,
 	TaskFilter,
 	StorageType
-} from './types/index.js';
+} from './common/types/index.js';
 import {
 	ExecutorService,
 	type ExecutorServiceOptions,
 	type ExecutionResult,
 	type ExecutorType
-} from './executors/index.js';
+} from './modules/execution/index.js';
 
 /**
  * Options for creating TaskMasterCore instance
@@ -47,17 +47,17 @@ export interface TaskMasterCoreOptions {
 /**
  * Re-export result types from services
  */
-export type { TaskListResult as ListTasksResult } from './services/task-service.js';
-export type { GetTaskListOptions } from './services/task-service.js';
+export type { TaskListResult as ListTasksResult } from './modules/tasks/services/task-service.js';
+export type { GetTaskListOptions } from './modules/tasks/services/task-service.js';
 export type {
 	StartTaskOptions,
 	StartTaskResult,
 	ConflictCheckResult
-} from './services/task-execution-service.js';
+} from './modules/tasks/services/task-execution-service.js';
 export type {
 	ExportTasksOptions,
 	ExportResult
-} from './services/export.service.js';
+} from './modules/integration/services/export.service.js';
 
 /**
  * TaskMasterCore facade class
