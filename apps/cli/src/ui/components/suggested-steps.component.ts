@@ -5,6 +5,7 @@
 
 import chalk from 'chalk';
 import boxen from 'boxen';
+import { getBoxWidth } from '../../utils/ui.js';
 
 /**
  * Display suggested next steps section
@@ -24,7 +25,7 @@ export function displaySuggestedNextSteps(): void {
 				margin: { top: 0, bottom: 1 },
 				borderStyle: 'round',
 				borderColor: 'gray',
-				width: process.stdout.columns * 0.97
+				width: getBoxWidth(0.97)
 			}
 		)
 	);

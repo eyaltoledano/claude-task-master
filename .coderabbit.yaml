@@ -1,10 +1,7 @@
 reviews:
-  profile: assertive
+  profile: chill
   poem: false
   auto_review:
+    enabled: true
     base_branches:
-      - rc
-      - beta
-      - alpha
-      - production
-      - next
+      - ".*"

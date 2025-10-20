@@ -281,15 +281,26 @@ export class OAuthService {
 				// Exchange code for session using PKCE
 				const session = await this.supabaseClient.exchangeCodeForSession(code);
 
+				// Calculate expiration - can be overridden with TM_TOKEN_EXPIRY_MINUTES
+				let expiresAt: string | undefined;
+				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
+				if (tokenExpiryMinutes) {
+					const minutes = parseInt(tokenExpiryMinutes);
+					expiresAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+					this.logger.warn(`Token expiry overridden to ${minutes} minute(s)`);
+				} else {
+					expiresAt = session.expires_at
+						? new Date(session.expires_at * 1000).toISOString()
+						: undefined;
+				}
+
 				// Save authentication data
 				const authData: AuthCredentials = {
 					token: session.access_token,
 					refreshToken: session.refresh_token,
 					userId: session.user.id,
 					email: session.user.email,
-					expiresAt: session.expires_at
-						? new Date(session.expires_at * 1000).toISOString()
-						: undefined,
+					expiresAt,
 					tokenType: 'standard',
 					savedAt: new Date().toISOString()
 				};
@@ -340,10 +351,18 @@ export class OAuthService {
 				// Get user info from the session
 				const user = await this.supabaseClient.getUser();
 
-				// Calculate expiration time
-				const expiresAt = expiresIn
-					? new Date(Date.now() + parseInt(expiresIn) * 1000).toISOString()
-					: undefined;
+				// Calculate expiration time - can be overridden with TM_TOKEN_EXPIRY_MINUTES
+				let expiresAt: string | undefined;
+				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
+				if (tokenExpiryMinutes) {
+					const minutes = parseInt(tokenExpiryMinutes);
+					expiresAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+					this.logger.warn(`Token expiry overridden to ${minutes} minute(s)`);
+				} else {
+					expiresAt = expiresIn
+						? new Date(Date.now() + parseInt(expiresIn) * 1000).toISOString()
+						: undefined;
+				}
 
 				// Save authentication data
 				const authData: AuthCredentials = {
@@ -351,7 +370,7 @@ export class OAuthService {
 					refreshToken: refreshToken || undefined,
 					userId: user?.id || 'unknown',
 					email: user?.email,
-					expiresAt: expiresAt,
+					expiresAt,
 					tokenType: 'standard',
 					savedAt: new Date().toISOString()
 				};

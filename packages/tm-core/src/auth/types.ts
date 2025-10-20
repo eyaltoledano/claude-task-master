@@ -16,6 +16,7 @@ export interface AuthCredentials {
 export interface UserContext {
 	orgId?: string;
 	orgName?: string;
+	orgSlug?: string;
 	briefId?: string;
 	briefName?: string;
 	updatedAt: string;

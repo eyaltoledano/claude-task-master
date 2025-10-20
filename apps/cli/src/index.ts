@@ -6,11 +6,13 @@
 // Commands
 export { ListTasksCommand } from './commands/list.command.js';
 export { ShowCommand } from './commands/show.command.js';
+export { NextCommand } from './commands/next.command.js';
 export { AuthCommand } from './commands/auth.command.js';
 export { ContextCommand } from './commands/context.command.js';
 export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
 export { ExportCommand } from './commands/export.command.js';
+export { AutopilotCommand } from './commands/autopilot.command.js';
 
 // Command Registry
 export {
@@ -22,6 +24,9 @@ export {
 
 // UI utilities (for other commands to use)
 export * as ui from './utils/ui.js';
+
+// Error handling utilities
+export { displayError, isDebugMode } from './utils/error-handler.js';
 
 // Auto-update utilities
 export {

@@ -1,0 +1,25 @@
+{
+  "mode": "exit",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.29.0",
+    "@tm/cli": "",
+    "docs": "0.0.6",
+    "extension": "0.25.6",
+    "@tm/mcp": "0.28.0-rc.2",
+    "@tm/ai-sdk-provider-grok-cli": "",
+    "@tm/build-config": "",
+    "@tm/claude-code-plugin": "0.0.2",
+    "@tm/core": ""
+  },
+  "changesets": [
+    "dirty-hairs-know",
+    "fix-parent-directory-traversal",
+    "fix-warning-box-alignment",
+    "kind-lines-melt",
+    "light-owls-stay",
+    "metal-rocks-help",
+    "open-tips-notice",
+    "some-dodos-wonder"
+  ]
+}

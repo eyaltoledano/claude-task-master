@@ -47,21 +47,33 @@ export function normalizeProjectRoot(projectRoot) {
 
 /**
  * Find the project root directory by looking for project markers
- * @param {string} startDir - Directory to start searching from
- * @returns {string|null} - Project root path or null if not found
+ * Traverses upwards from startDir until a project marker is found or filesystem root is reached
+ * Limited to 50 parent directory levels to prevent excessive traversal
+ * @param {string} startDir - Directory to start searching from (defaults to process.cwd())
+ * @returns {string} - Project root path (falls back to current directory if no markers found)
  */
 export function findProjectRoot(startDir = process.cwd()) {
+	// Define project markers that indicate a project root
+	// Prioritize Task Master specific markers first
 	const projectMarkers = [
-		'.taskmaster',
-		TASKMASTER_TASKS_FILE,
-		'tasks.json',
-		LEGACY_TASKS_FILE,
-		'.git',
-		'.svn',
-		'package.json',
-		'yarn.lock',
-		'package-lock.json',
-		'pnpm-lock.yaml'
+		'.taskmaster', // Task Master directory (highest priority)
+		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
+		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
+		LEGACY_CONFIG_FILE, // .taskmasterconfig (legacy)
+		LEGACY_TASKS_FILE, // tasks/tasks.json (legacy)
+		'tasks.json', // Root tasks.json (legacy)
+		'.git', // Git repository
+		'.svn', // SVN repository
+		'package.json', // Node.js project
+		'yarn.lock', // Yarn project
+		'package-lock.json', // npm project
+		'pnpm-lock.yaml', // pnpm project
+		'Cargo.toml', // Rust project
+		'go.mod', // Go project
+		'pyproject.toml', // Python project
+		'requirements.txt', // Python project
+		'Gemfile', // Ruby project
+		'composer.json' // PHP project
 	];
 
 	let currentDir = path.resolve(startDir);
@@ -69,19 +81,36 @@ export function findProjectRoot(startDir = process.cwd()) {
 	const maxDepth = 50; // Reasonable limit to prevent infinite loops
 	let depth = 0;
 
+	// Traverse upwards looking for project markers
 	while (currentDir !== rootDir && depth < maxDepth) {
 		// Check if current directory contains any project markers
 		for (const marker of projectMarkers) {
 			const markerPath = path.join(currentDir, marker);
-			if (fs.existsSync(markerPath)) {
-				return currentDir;
+			try {
+				if (fs.existsSync(markerPath)) {
+					// Found a project marker - return this directory as project root
+					return currentDir;
+				}
+			} catch (error) {
+				// Ignore permission errors and continue searching
+				continue;
 			}
 		}
-		currentDir = path.dirname(currentDir);
+
+		// Move up one directory level
+		const parentDir = path.dirname(currentDir);
+
+		// Safety check: if dirname returns the same path, we've hit the root
+		if (parentDir === currentDir) {
+			break;
+		}
+
+		currentDir = parentDir;
 		depth++;
 	}
 
 	// Fallback to current working directory if no project root found
+	// This ensures the function always returns a valid path
 	return process.cwd();
 }
 

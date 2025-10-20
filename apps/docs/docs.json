@@ -52,6 +52,13 @@
 							"capabilities/cli-root-commands",
 							"capabilities/task-structure"
 						]
+					},
+					{
+						"group": "TDD Workflow (Autopilot)",
+						"pages": [
+							"tdd-workflow/quickstart",
+							"tdd-workflow/ai-agent-integration"
+						]
 					}
 				]
 			}

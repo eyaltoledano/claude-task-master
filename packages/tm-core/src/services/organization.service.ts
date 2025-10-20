@@ -27,6 +27,12 @@ export interface Brief {
 	status: string;
 	createdAt: string;
 	updatedAt: string;
+	document?: {
+		id: string;
+		title: string;
+		document_name: string;
+		description?: string;
+	};
 }
 
 /**
@@ -171,7 +177,12 @@ export class OrganizationService {
 					document_id,
 					status,
 					created_at,
-					updated_at
+					updated_at,
+					document:document_id (
+						id,
+						document_name,
+						title
+					)
 				`)
 				.eq('account_id', orgId);
 
@@ -196,7 +207,14 @@ export class OrganizationService {
 				documentId: brief.document_id,
 				status: brief.status,
 				createdAt: brief.created_at,
-				updatedAt: brief.updated_at
+				updatedAt: brief.updated_at,
+				document: brief.document
+					? {
+							id: brief.document.id,
+							document_name: brief.document.document_name,
+							title: brief.document.title
+						}
+					: undefined
 			}));
 		} catch (error) {
 			if (error instanceof TaskMasterError) {
@@ -224,7 +242,13 @@ export class OrganizationService {
 					document_id,
 					status,
 					created_at,
-					updated_at
+					updated_at,
+					document:document_id (
+						id,
+						document_name,
+						title,
+						description
+					)
 				`)
 				.eq('id', briefId)
 				.single();
@@ -253,7 +277,15 @@ export class OrganizationService {
 				documentId: briefData.document_id,
 				status: briefData.status,
 				createdAt: briefData.created_at,
-				updatedAt: briefData.updated_at
+				updatedAt: briefData.updated_at,
+				document: briefData.document
+					? {
+							id: briefData.document.id,
+							document_name: briefData.document.document_name,
+							title: briefData.document.title,
+							description: briefData.document.description
+						}
+					: undefined
 			};
 		} catch (error) {
 			if (error instanceof TaskMasterError) {

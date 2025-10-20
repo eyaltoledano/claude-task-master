@@ -72,3 +72,46 @@ export {
 	type ComplexityAnalysis,
 	type TaskComplexityData
 } from './reports/index.js';
+
+// Re-export services
+export {
+	PreflightChecker,
+	TaskLoaderService,
+	type CheckResult,
+	type PreflightResult,
+	type TaskValidationResult,
+	type ValidationErrorType,
+	type DependencyIssue
+} from './services/index.js';
+
+// Re-export Git adapter
+export { GitAdapter } from './git/git-adapter.js';
+export {
+	CommitMessageGenerator,
+	type CommitMessageOptions
+} from './git/commit-message-generator.js';
+
+// Re-export workflow orchestrator, state manager, activity logger, and types
+export { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
+export { WorkflowStateManager } from './workflow/workflow-state-manager.js';
+export { WorkflowActivityLogger } from './workflow/workflow-activity-logger.js';
+export type {
+	WorkflowPhase,
+	TDDPhase,
+	WorkflowContext,
+	WorkflowState,
+	WorkflowEvent,
+	WorkflowEventData,
+	WorkflowEventListener,
+	SubtaskInfo,
+	TestResult,
+	WorkflowError
+} from './workflow/types.js';
+
+// Re-export workflow service
+export { WorkflowService } from './services/workflow.service.js';
+export type {
+	StartWorkflowOptions,
+	WorkflowStatus,
+	NextAction
+} from './services/workflow.service.js';

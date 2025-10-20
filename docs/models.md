@@ -1,4 +1,4 @@
-# Available Models as of October 5, 2025
+# Available Models as of October 18, 2025
 
 ## Main Models
 
@@ -8,8 +8,11 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
+| anthropic   | claude-sonnet-4-5-20250929                     | 0.73      | 3          | 15          |
+| anthropic   | claude-haiku-4-5-20251001                      | 0.45      | 1          | 5           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| claude-code | haiku                                          | 0.45      | 0          | 0           |
 | codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
@@ -102,6 +105,7 @@
 | ----------- | -------------------------------------------- | --------- | ---------- | ----------- |
 | claude-code | opus                                         | 0.725     | 0          | 0           |
 | claude-code | sonnet                                       | 0.727     | 0          | 0           |
+| claude-code | haiku                                        | 0.45      | 0          | 0           |
 | codex-cli   | gpt-5                                        | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                  | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
@@ -142,8 +146,11 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
+| anthropic   | claude-sonnet-4-5-20250929                     | 0.73      | 3          | 15          |
+| anthropic   | claude-haiku-4-5-20251001                      | 0.45      | 1          | 5           |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
+| claude-code | haiku                                          | 0.45      | 0          | 0           |
 | codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
