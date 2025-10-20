@@ -26,6 +26,12 @@ class UpdateSubtaskSaver extends AgentLLMToolSaver {
 				}
 			};
 		}
+		if (!subtaskIdToUpdate || typeof subtaskIdToUpdate !== 'string') {
+			return {
+				success: false,
+				error: 'subtaskIdToUpdate is required and must be a string.'
+			};
+		}
 
 		const [parentIdStr, subIdStr] = subtaskIdToUpdate.split('.');
 		const parentId = parseInt(parentIdStr, 10);

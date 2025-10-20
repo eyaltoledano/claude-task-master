@@ -11,12 +11,23 @@ export class AgentLLMToolSaver {
 	}
 
 	// Common: Load tasks.json
-	async loadTasksData(projectRoot, tag, logWrapper) {
+	// options: { skipLoad: boolean } - when skipLoad is true, return an empty structure
+	// instead of throwing when the file/tag is missing.
+	async loadTasksData(projectRoot, tag, logWrapper, options = {}) {
 		const tasksJsonPath = path.resolve(projectRoot, TASKMASTER_TASKS_FILE);
+		const { skipLoad = false } = options;
+
 		const allTasksData = readJSON(tasksJsonPath, projectRoot, tag);
 
 		if (!allTasksData || !Array.isArray(allTasksData.tasks)) {
 			const errorMsg = `Invalid or missing tasks data in ${tasksJsonPath} for tag '${tag}'.`;
+			if (skipLoad) {
+				// Return minimal structure to allow savers that want to create/replace the tag
+				logWrapper.info(
+					`${this.toolName}: ${errorMsg} - continuing due to skipLoad=true`
+				);
+				return { tasksJsonPath, allTasksData: { tasks: [], metadata: {} } };
+			}
 			logWrapper.error(`${this.toolName}: ${errorMsg}`);
 			throw new Error(errorMsg);
 		}

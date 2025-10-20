@@ -31,12 +31,13 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'parse_prd'.`
 		);
+		// Forward originalToolArgs and the agent-requestParameters (if present)
 		postProcessingResult = await agentllmParsePrdSave(
 			finalLLMOutput,
 			projectRoot,
 			log,
-			null,
-			null,
+			originalToolArgs,
+			llmRequestForAgent?.requestParameters || null,
 			tag
 		);
 		if (postProcessingResult.success) {

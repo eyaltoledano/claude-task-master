@@ -19,6 +19,8 @@ class AddTaskSaver extends AgentLLMToolSaver {
 			userPriority = 'medium'
 		} = delegatedRequestParams;
 
+		const validPriorities = ['low', 'medium', 'high', 'urgent'];
+		const priority = validPriorities.includes(userPriority) ? userPriority : 'medium';
 		const parsedId =
 			typeof newTaskId === 'string' ? parseInt(newTaskId, 10) : newTaskId;
 		if (!Number.isFinite(parsedId) || parsedId <= 0) {
@@ -42,7 +44,7 @@ class AddTaskSaver extends AgentLLMToolSaver {
 			dependencies: Array.isArray(agentOutput.dependencies)
 				? agentOutput.dependencies
 				: userDependencies,
-			priority: userPriority,
+			priority: priority,
 			subtasks: []
 		};
 

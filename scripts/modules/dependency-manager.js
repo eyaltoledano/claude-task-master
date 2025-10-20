@@ -1179,26 +1179,30 @@ function validateAndFixDependencies(
 	context = {}
 ) {
 	const logger = createLogger(context);
+
+	// Default tag consistently at function start
+	const effectiveTag = tag || 'master';
+
+	// Validate root tasksData structure
+	if (!tasksData || typeof tasksData !== 'object') {
+		logger.error('Invalid tasks data: root object is missing or invalid');
+		return false;
+	}
+
 	// Use getTasksForTag to safely obtain the tagged data, validate that the returned value exists and is an object
-	const effectiveTasksData = getTasksForTag(tasksData, tag);
+	const effectiveTasksData = getTasksForTag(tasksData, effectiveTag);
 	if (!effectiveTasksData || !Array.isArray(effectiveTasksData)) {
-		logger.error('Invalid tasks data or tag not found');
+		logger.error(
+			`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`
+		);
 		return false;
 	}
 
 	// Create a task data object with the validated tasks array
 	const tasksDataObject = { tasks: effectiveTasksData };
-
-	if (
-		!tasksDataObject ||
-		!tasksDataObject.tasks ||
-		!Array.isArray(tasksDataObject.tasks)
-	) {
-		logger.error('Invalid tasks data');
-		return false;
-	}
-
-	logger.debug('Validating and fixing dependencies...');
+	logger.debug(
+		`Validating and fixing dependencies for tag '${effectiveTag}'...`
+	);
 
 	// Create a deep copy for comparison
 	const originalData = JSON.parse(JSON.stringify(tasksDataObject));
@@ -1280,7 +1284,6 @@ function validateAndFixDependencies(
 	if (tasksPath && changesDetected) {
 		try {
 			// Use setTasksForTag for tag-aware writes instead of direct mutation
-			const effectiveTag = tag || 'master';
 			setTasksForTag(tasksData, effectiveTag, tasksDataObject.tasks);
 			writeJSON(tasksPath, tasksData, projectRoot, effectiveTag);
 			logger.debug('Saved dependency fixes to tasks.json');

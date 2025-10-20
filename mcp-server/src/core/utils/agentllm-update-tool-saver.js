@@ -132,6 +132,12 @@ class UpdateToolSaver extends AgentLLMToolSaver {
 
 		allTasksData.tasks.forEach((originalTask, index) => {
 			const originalIdNum = parseInt(String(originalTask.id), 10);
+			if (!Number.isFinite(originalIdNum)) {
+				logWrapper.warn(
+					`${this.toolName}: Skipping task with invalid id "${originalTask.id}"`
+				);
+				return;
+			}
 			if (agentTasksMap.has(originalIdNum)) {
 				const agentTask = agentTasksMap.get(originalIdNum);
 				if (this.isTaskCompleted(originalTask)) {

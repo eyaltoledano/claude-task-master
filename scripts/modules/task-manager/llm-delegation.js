@@ -1,7 +1,5 @@
 import { createLogger } from '../utils.js';
 
-const logger = createLogger();
-
 /**
  * Handles the agent_llm_delegation signal from the AI service.
  * Consolidated function that handles all delegation scenarios: general, research, and parse-prd.
@@ -26,6 +24,9 @@ export function handleAgentLLMDelegation(
 	delegationContext = {},
 	options = {}
 ) {
+	// Create context-bound logger
+	const logger = createLogger(context);
+
 	// Extract options with defaults
 	const {
 		serviceType = 'generateObject',
@@ -43,7 +44,9 @@ export function handleAgentLLMDelegation(
 	) {
 		if (
 			!aiServiceResponse.mainResult.interactionId ||
-			!aiServiceResponse.mainResult.details
+			!aiServiceResponse.mainResult.details ||
+			typeof aiServiceResponse.mainResult.details !== 'object' ||
+			aiServiceResponse.mainResult.details === null
 		) {
 			logger.error(
 				`${commandName || 'unknown'}: delegation signal missing interactionId or details`
@@ -80,24 +83,13 @@ export function handleAgentLLMDelegation(
 
 		// Handle parse-prd specific logic
 		if (config && returnErrorAsSuccess) {
-			try {
-				return {
-					success: true,
-					needsAgentDelegation: true,
-					pendingInteraction,
-					message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
-					telemetryData: aiServiceResponse?.telemetryData ?? null
-				};
-			} catch (err) {
-				logger.error(
-					`parsePRD: Failed to construct pendingInteraction - ${err.message}`
-				);
-				return {
-					success: false,
-					isError: true,
-					errorMessage: `Failed to prepare agent delegation payload: ${err.message}`
-				};
-			}
+			return {
+				success: true,
+				needsAgentDelegation: true,
+				pendingInteraction,
+				message: 'Awaiting LLM processing via agent-llm for PRD parsing.',
+				telemetryData: aiServiceResponse?.telemetryData ?? null
+			};
 		}
 
 		// Standard return for general and research use cases
