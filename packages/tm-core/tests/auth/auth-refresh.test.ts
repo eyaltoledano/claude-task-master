@@ -50,7 +50,7 @@ describe('AuthManager Token Refresh', () => {
 		}
 	});
 
-	it('should not make concurrent refresh requests', async () => {
+	it('should return expired credentials to enable refresh flows', () => {
 		// Set up expired credentials with refresh token
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
@@ -63,50 +63,16 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(expiredCredentials);
 
-		// Mock the refreshToken method to track calls
-		const refreshTokenSpy = vi.spyOn(authManager as any, 'refreshToken');
-		const mockSession: Session = {
-			access_token: 'new_access_token',
-			refresh_token: 'new_refresh_token',
-			expires_at: Math.floor(Date.now() / 1000) + 3600,
-			user: {
-				id: 'test-user-id',
-				email: 'test@example.com',
-				app_metadata: {},
-				user_metadata: {},
-				aud: 'authenticated',
-				created_at: new Date().toISOString()
-			}
-		};
+		// Get credentials should return them even if expired
+		// Refresh will be handled by explicit calls or client operations
+		const credentials = authManager.getCredentials();
 
-		refreshTokenSpy.mockResolvedValue({
-			token: mockSession.access_token,
-			refreshToken: mockSession.refresh_token,
-			userId: mockSession.user.id,
-			email: mockSession.user.email,
-			expiresAt: new Date(mockSession.expires_at! * 1000).toISOString(),
-			savedAt: new Date().toISOString()
-		});
-
-		// Make multiple concurrent calls to getCredentials
-		const promises = [
-			authManager.getCredentials(),
-			authManager.getCredentials(),
-			authManager.getCredentials()
-		];
-
-		const results = await Promise.all(promises);
-
-		// Verify all calls returned the same new credentials
-		expect(results[0]?.token).toBe('new_access_token');
-		expect(results[1]?.token).toBe('new_access_token');
-		expect(results[2]?.token).toBe('new_access_token');
-
-		// Verify refreshToken was only called once, not three times
-		expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+		expect(credentials).not.toBeNull();
+		expect(credentials?.token).toBe('expired_access_token');
+		expect(credentials?.refreshToken).toBe('valid_refresh_token');
 	});
 
-	it('should return valid credentials without attempting refresh', async () => {
+	it('should return valid credentials', () => {
 		// Set up valid (non-expired) credentials
 		const validCredentials: AuthCredentials = {
 			token: 'valid_access_token',
@@ -119,17 +85,14 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(validCredentials);
 
-		// Spy on refreshToken to ensure it's not called
-		const refreshTokenSpy = vi.spyOn(authManager as any, 'refreshToken');
-
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
 		expect(credentials?.token).toBe('valid_access_token');
-		expect(refreshTokenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should return null if credentials are expired with no refresh token', async () => {
+	it('should return expired credentials even without refresh token', () => {
 		// Set up expired credentials WITHOUT refresh token
+		// We still return them - it's up to the caller to handle
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
 			refreshToken: undefined,
@@ -141,17 +104,19 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(expiredCredentials);
 
-		const credentials = await authManager.getCredentials();
+		const credentials = authManager.getCredentials();
 
+		// Returns credentials even if expired
+		expect(credentials).not.toBeNull();
+		expect(credentials?.token).toBe('expired_access_token');
+	});
+
+	it('should return null if no credentials exist', () => {
+		const credentials = authManager.getCredentials();
 		expect(credentials).toBeNull();
 	});
 
-	it('should return null if no credentials exist', async () => {
-		const credentials = await authManager.getCredentials();
-		expect(credentials).toBeNull();
-	});
-
-	it('should handle refresh failures gracefully', async () => {
+	it('should return credentials regardless of refresh token validity', () => {
 		// Set up expired credentials with refresh token
 		const expiredCredentials: AuthCredentials = {
 			token: 'expired_access_token',
@@ -164,13 +129,11 @@ describe('AuthManager Token Refresh', () => {
 
 		credentialStore.saveCredentials(expiredCredentials);
 
-		// Mock refreshToken to throw an error
-		const refreshTokenSpy = vi.spyOn(authManager as any, 'refreshToken');
-		refreshTokenSpy.mockRejectedValue(new Error('Refresh failed'));
+		const credentials = authManager.getCredentials();
 
-		const credentials = await authManager.getCredentials();
-
-		expect(credentials).toBeNull();
-		expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+		// Returns credentials - refresh will be attempted by the client which will handle failure
+		expect(credentials).not.toBeNull();
+		expect(credentials?.token).toBe('expired_access_token');
+		expect(credentials?.refreshToken).toBe('invalid_refresh_token');
 	});
 });

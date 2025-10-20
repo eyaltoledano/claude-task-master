@@ -41,8 +41,20 @@ import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
 import { registerAgentLLMTool } from './agent-llm.js';
 
+// Import TypeScript autopilot tools from apps/mcp
+import {
+	registerAutopilotStartTool,
+	registerAutopilotResumeTool,
+	registerAutopilotNextTool,
+	registerAutopilotStatusTool,
+	registerAutopilotCompleteTool,
+	registerAutopilotCommitTool,
+	registerAutopilotFinalizeTool,
+	registerAutopilotAbortTool
+} from '@tm/mcp';
+
 /**
- * Comprehensive tool registry mapping all 36 tool names to their registration functions
+ * Comprehensive tool registry mapping all 44 tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -82,7 +94,15 @@ export const toolRegistry = {
 	rename_tag: registerRenameTagTool,
 	copy_tag: registerCopyTagTool,
 	research: registerResearchTool,
-	agent_llm: registerAgentLLMTool
+	agent_llm: registerAgentLLMTool,
+	autopilot_start: registerAutopilotStartTool,
+	autopilot_resume: registerAutopilotResumeTool,
+	autopilot_next: registerAutopilotNextTool,
+	autopilot_status: registerAutopilotStatusTool,
+	autopilot_complete: registerAutopilotCompleteTool,
+	autopilot_commit: registerAutopilotCommitTool,
+	autopilot_finalize: registerAutopilotFinalizeTool,
+	autopilot_abort: registerAutopilotAbortTool
 };
 
 /**

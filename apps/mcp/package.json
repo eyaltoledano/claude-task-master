@@ -1,0 +1,54 @@
+{
+	"name": "@tm/mcp",
+	"description": "Task Master MCP Tools - TypeScript MCP server tools for AI agent integration",
+	"type": "module",
+	"private": true,
+	"version": "",
+	"main": "./dist/index.js",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./tools/autopilot": "./src/tools/autopilot/index.ts"
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"lint": "biome check src",
+		"format": "biome format --write src",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"test:unit": "vitest run -t unit",
+		"test:integration": "vitest run -t integration",
+		"test:ci": "vitest run --coverage --reporter=dot"
+	},
+	"dependencies": {
+		"@tm/core": "*",
+		"zod": "^4.1.11",
+		"fastmcp": "^3.19.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"keywords": [
+		"task-master",
+		"mcp",
+		"mcp-server",
+		"ai-agent",
+		"workflow",
+		"tdd"
+	],
+	"author": "",
+	"license": "MIT",
+	"typesVersions": {
+		"*": {
+			"*": ["src/*"]
+		}
+	}
+}

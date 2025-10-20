@@ -7,13 +7,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora, { Ora } from 'ora';
-import {
-	AuthManager,
-	AuthenticationError,
-	type UserContext
-} from '@tm/core/auth';
+import { AuthManager, type UserContext } from '@tm/core/auth';
 import { TaskMasterCore, type ExportResult } from '@tm/core';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from export command
@@ -197,8 +194,7 @@ export class ExportCommand extends Command {
 			};
 		} catch (error: any) {
 			if (spinner?.isSpinning) spinner.fail('Export failed');
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -332,26 +328,6 @@ export class ExportCommand extends Command {
 		]);
 
 		return confirmed;
-	}
-
-	/**
-	 * Handle errors
-	 */
-	private handleError(error: any): void {
-		if (error instanceof AuthenticationError) {
-			console.error(chalk.red(`\n✗ ${error.message}`));
-
-			if (error.code === 'NOT_AUTHENTICATED') {
-				ui.displayWarning('Please authenticate first: tm auth login');
-			}
-		} else {
-			const msg = error?.message ?? String(error);
-			console.error(chalk.red(`Error: ${msg}`));
-
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-		}
 	}
 
 	/**

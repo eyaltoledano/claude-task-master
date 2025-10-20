@@ -161,6 +161,16 @@ export class TaskService {
 				storageType: this.getStorageType()
 			};
 		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't log it as an internal error
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				// Just re-throw user-facing errors without wrapping
+				throw error;
+			}
+
+			// Log internal errors
 			this.logger.error('Failed to get task list', error);
 			throw new TaskMasterError(
 				'Failed to get task list',
@@ -186,6 +196,14 @@ export class TaskService {
 			// Delegate to storage layer which handles the specific logic for tasks vs subtasks
 			return await this.storage.loadTask(String(taskId), activeTag);
 		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
 			throw new TaskMasterError(
 				`Failed to get task ${taskId}`,
 				ERROR_CODES.STORAGE_ERROR,
@@ -522,6 +540,14 @@ export class TaskService {
 				activeTag
 			);
 		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
 			throw new TaskMasterError(
 				`Failed to update task status for ${taskIdStr}`,
 				ERROR_CODES.STORAGE_ERROR,

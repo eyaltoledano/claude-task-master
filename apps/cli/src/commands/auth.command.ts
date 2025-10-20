@@ -14,6 +14,8 @@ import {
 	type AuthCredentials
 } from '@tm/core/auth';
 import * as ui from '../utils/ui.js';
+import { ContextCommand } from './context.command.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from auth command
@@ -116,8 +118,7 @@ export class AuthCommand extends Command {
 				process.exit(0);
 			}, 100);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -133,8 +134,7 @@ export class AuthCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -143,11 +143,10 @@ export class AuthCommand extends Command {
 	 */
 	private async executeStatus(): Promise<void> {
 		try {
-			const result = await this.displayStatus();
+			const result = this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -163,16 +162,15 @@ export class AuthCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
 	/**
 	 * Display authentication status
 	 */
-	private async displayStatus(): Promise<AuthResult> {
-		const credentials = await this.authManager.getCredentials();
+	private displayStatus(): AuthResult {
+		const credentials = this.authManager.getCredentials();
 
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
@@ -325,7 +323,7 @@ export class AuthCommand extends Command {
 			]);
 
 			if (!continueAuth) {
-				const credentials = await this.authManager.getCredentials();
+				const credentials = this.authManager.getCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -351,6 +349,37 @@ export class AuthCommand extends Command {
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
 
+			// Post-auth: Set up workspace context
+			console.log(); // Add spacing
+			try {
+				const contextCommand = new ContextCommand();
+				const contextResult = await contextCommand.setupContextInteractive();
+				if (contextResult.success) {
+					if (contextResult.orgSelected && contextResult.briefSelected) {
+						console.log(
+							chalk.green('✓ Workspace context configured successfully')
+						);
+					} else if (contextResult.orgSelected) {
+						console.log(chalk.green('✓ Organization selected'));
+					}
+				} else {
+					console.log(
+						chalk.yellow('⚠ Context setup was skipped or encountered issues')
+					);
+					console.log(
+						chalk.gray('  You can set up context later with "tm context"')
+					);
+				}
+			} catch (contextError) {
+				console.log(chalk.yellow('⚠ Context setup encountered an error'));
+				console.log(
+					chalk.gray('  You can set up context later with "tm context"')
+				);
+				if (process.env.DEBUG) {
+					console.error(chalk.gray((contextError as Error).message));
+				}
+			}
+
 			return {
 				success: true,
 				action: 'login',
@@ -358,7 +387,7 @@ export class AuthCommand extends Command {
 				message: 'Authentication successful'
 			};
 		} catch (error) {
-			this.handleAuthError(error as AuthenticationError);
+			displayError(error, { skipExit: true });
 
 			return {
 				success: false,
@@ -422,51 +451,6 @@ export class AuthCommand extends Command {
 	}
 
 	/**
-	 * Handle authentication errors
-	 */
-	private handleAuthError(error: AuthenticationError): void {
-		console.error(chalk.red(`\n✗ ${error.message}`));
-
-		switch (error.code) {
-			case 'NETWORK_ERROR':
-				ui.displayWarning(
-					'Please check your internet connection and try again.'
-				);
-				break;
-			case 'INVALID_CREDENTIALS':
-				ui.displayWarning('Please check your credentials and try again.');
-				break;
-			case 'AUTH_EXPIRED':
-				ui.displayWarning(
-					'Your session has expired. Please authenticate again.'
-				);
-				break;
-			default:
-				if (process.env.DEBUG) {
-					console.error(chalk.gray(error.stack || ''));
-				}
-		}
-	}
-
-	/**
-	 * Handle general errors
-	 */
-	private handleError(error: any): void {
-		if (error instanceof AuthenticationError) {
-			this.handleAuthError(error);
-		} else {
-			const msg = error?.getSanitizedDetails?.() ?? {
-				message: error?.message ?? String(error)
-			};
-			console.error(chalk.red(`Error: ${msg.message || 'Unexpected error'}`));
-
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
-		}
-	}
-
-	/**
 	 * Set the last result for programmatic access
 	 */
 	private setLastResult(result: AuthResult): void {
@@ -490,7 +474,7 @@ export class AuthCommand extends Command {
 	/**
 	 * Get current credentials (for programmatic usage)
 	 */
-	getCredentials(): Promise<AuthCredentials | null> {
+	getCredentials(): AuthCredentials | null {
 		return this.authManager.getCredentials();
 	}
 

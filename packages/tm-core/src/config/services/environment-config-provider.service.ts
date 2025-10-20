@@ -4,6 +4,7 @@
  */
 
 import type { PartialConfiguration } from '../../interfaces/configuration.interface.js';
+import { getLogger } from '../../logger/index.js';
 
 /**
  * Environment variable mapping definition
@@ -24,6 +25,8 @@ interface EnvMapping {
  * Single responsibility: Environment variable configuration extraction
  */
 export class EnvironmentConfigProvider {
+	private readonly logger = getLogger('EnvironmentConfigProvider');
+
 	/**
 	 * Default environment variable mappings
 	 */
@@ -75,7 +78,7 @@ export class EnvironmentConfigProvider {
 
 			// Validate value if validator is provided
 			if (mapping.validate && !mapping.validate(value)) {
-				console.warn(`Invalid value for ${mapping.env}: ${value}`);
+				this.logger.warn(`Invalid value for ${mapping.env}: ${value}`);
 				continue;
 			}
 
