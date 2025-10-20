@@ -17,6 +17,17 @@ export {
 	type ActivityFilter
 } from './adapters/activity-logger.js';
 
+// Export file storage utilities
+export {
+	TaskWatcher,
+	type TaskWatcherEvent,
+	type TaskWatcherOptions,
+	type TaskFileAddedEvent,
+	type TaskFileChangedEvent,
+	type TaskFileDeletedEvent,
+	type TaskDirectoryChangedEvent
+} from './file-storage/index.js';
+
 // Export storage interface and types
 export type {
 	IStorage,

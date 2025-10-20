@@ -11,6 +11,7 @@ import { BriefsCommand } from './commands/briefs.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand } from './commands/export.command.js';
 // Import all commands
+import { InteractiveCommand } from './commands/interactive.command.js';
 import { ListTasksCommand } from './commands/list.command.js';
 import { NextCommand } from './commands/next.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
@@ -79,6 +80,14 @@ export class CommandRegistry {
 				'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
 			commandClass: AutopilotCommand as any,
 			category: 'development'
+		},
+
+		// UI Commands
+		{
+			name: 'interactive',
+			description: 'Launch the interactive terminal UI',
+			commandClass: InteractiveCommand as any,
+			category: 'utility'
 		},
 
 		// Authentication & Context Commands

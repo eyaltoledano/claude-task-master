@@ -31,12 +31,14 @@ export class FileStorage implements IStorage {
 	private fileOps: FileOperations;
 	private pathResolver: PathResolver;
 	private complexityManager: ComplexityReportManager;
+	private taskWatcher: TaskWatcher | null = null;
 
 	constructor(projectPath: string) {
 		this.formatHandler = new FormatHandler();
 		this.fileOps = new FileOperations();
 		this.pathResolver = new PathResolver(projectPath);
 		this.complexityManager = new ComplexityReportManager(projectPath);
+		this.taskWatcher = new TaskWatcher(this.pathResolver.getTasksDir());
 	}
 
 	/**
@@ -50,6 +52,10 @@ export class FileStorage implements IStorage {
 	 * Close storage and cleanup resources
 	 */
 	async close(): Promise<void> {
+		// Stop watching if active
+		if (this.taskWatcher?.getIsWatching()) {
+			await this.stopWatching();
+		}
 		await this.fileOps.cleanup();
 	}
 
@@ -920,6 +926,65 @@ export class FileStorage implements IStorage {
 				complexityReasoning: complexityData.complexityReasoning
 			};
 		});
+	}
+
+	/**
+	 * Start watching the .taskmaster directory for file changes
+	 * @returns Promise that resolves when watcher is ready
+	 */
+	async startWatching(): Promise<void> {
+		if (!this.taskWatcher) {
+			throw new Error('TaskWatcher not initialized');
+		}
+
+		if (this.taskWatcher.getIsWatching()) {
+			// Already watching, no-op
+			return;
+		}
+
+		await this.taskWatcher.start();
+	}
+
+	/**
+	 * Stop watching the .taskmaster directory
+	 */
+	async stopWatching(): Promise<void> {
+		if (!this.taskWatcher) {
+			return;
+		}
+
+		if (!this.taskWatcher.getIsWatching()) {
+			// Not watching, no-op
+			return;
+		}
+
+		await this.taskWatcher.stop();
+	}
+
+	/**
+	 * Check if file watching is currently active
+	 */
+	isWatching(): boolean {
+		return this.taskWatcher?.getIsWatching() ?? false;
+	}
+
+	/**
+	 * Get the TaskWatcher instance for advanced usage
+	 * Allows consumers to register custom event handlers
+	 */
+	getWatcher(): TaskWatcher | null {
+		return this.taskWatcher;
+	}
+
+	/**
+	 * Register a handler for any file change event
+	 * Convenience method that delegates to the TaskWatcher
+	 */
+	onTaskFileChange(handler: (event: TaskWatcherEvent) => void): void {
+		if (!this.taskWatcher) {
+			throw new Error('TaskWatcher not initialized');
+		}
+		this.taskWatcher.onChange(handler);
 	}
 }
 
