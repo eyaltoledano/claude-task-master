@@ -5,7 +5,7 @@
  * @module git-adapter
  */
 
-import { simpleGit, type SimpleGit } from 'simple-git';
+import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
 import fs from 'fs-extra';
 import path from 'path';
 
@@ -216,14 +216,14 @@ export class GitAdapter {
 	 * Gets the detailed status of the working tree.
 	 * Returns raw status from simple-git with all file changes.
 	 *
-	 * @returns {Promise<import('simple-git').StatusResult>} Detailed status object
+	 * @returns {Promise<StatusResult>} Detailed status object
 	 *
 	 * @example
 	 * const status = await git.getStatus();
 	 * console.log('Modified files:', status.modified);
 	 * console.log('Staged files:', status.staged);
 	 */
-	async getStatus(): Promise<import('simple-git').StatusResult> {
+	async getStatus(): Promise<StatusResult> {
 		return await this.git.status();
 	}
 

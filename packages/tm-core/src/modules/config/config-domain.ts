@@ -4,7 +4,10 @@
  */
 
 import type { ConfigManager } from './managers/config-manager.js';
-import type { PartialConfiguration, RuntimeStorageConfig } from '../../common/interfaces/configuration.interface.js';
+import type {
+	PartialConfiguration,
+	RuntimeStorageConfig
+} from '../../common/interfaces/configuration.interface.js';
 
 /**
  * Config Domain - Unified API for configuration operations

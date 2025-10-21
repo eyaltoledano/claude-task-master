@@ -15,7 +15,10 @@ import type {
 	TaskTag,
 	TaskStatus
 } from '../../../common/types/index.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';

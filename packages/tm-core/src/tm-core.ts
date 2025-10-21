@@ -9,8 +9,12 @@ import { AuthDomain } from './modules/auth/auth-domain.js';
 import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
 import { GitDomain } from './modules/git/git-domain.js';
 import { ConfigDomain } from './modules/config/config-domain.js';
+import { IntegrationDomain } from './modules/integration/integration-domain.js';
 
-import { ERROR_CODES, TaskMasterError } from './common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from './common/errors/task-master-error.js';
 import type { IConfiguration } from './common/interfaces/configuration.interface.js';
 
 /**
@@ -36,6 +40,7 @@ export interface TmCoreOptions {
  * await tmcore.workflow.start({ taskId: '1' });
  * await tmcore.git.commit('feat: add feature');
  * const mainModel = tmcore.config.get('models.main');
+ * await tmcore.integration.exportTasks({ ... });
  * ```
  */
 export class TmCore {
@@ -49,6 +54,7 @@ export class TmCore {
 	public readonly workflow: WorkflowDomain;
 	public readonly git: GitDomain;
 	public readonly config: ConfigDomain;
+	public readonly integration: IntegrationDomain;
 
 	/**
 	 * Create and initialize a new TmCore instance
@@ -87,6 +93,7 @@ export class TmCore {
 		this.workflow = null as any;
 		this.git = null as any;
 		this.config = null as any;
+		this.integration = null as any;
 	}
 
 	/**
@@ -96,7 +103,9 @@ export class TmCore {
 	private async initialize(): Promise<void> {
 		try {
 			// Create config manager
-			(this as any)._configManager = await ConfigManager.create(this._projectPath);
+			(this as any)._configManager = await ConfigManager.create(
+				this._projectPath
+			);
 
 			// Apply configuration overrides if provided
 			if (this._options.configuration) {
@@ -105,10 +114,11 @@ export class TmCore {
 
 			// Initialize domain facades
 			(this as any).tasks = new TasksDomain(this._configManager);
-			(this as any).auth = new AuthDomain();
+			(this as any).auth = new AuthDomain(this._configManager);
 			(this as any).workflow = new WorkflowDomain(this._configManager);
 			(this as any).git = new GitDomain(this._projectPath);
 			(this as any).config = new ConfigDomain(this._configManager);
+			(this as any).integration = new IntegrationDomain(this._configManager);
 
 			// Initialize domains that need async setup
 			await this.tasks.initialize();
@@ -127,14 +137,6 @@ export class TmCore {
 	 */
 	get projectPath(): string {
 		return this._projectPath;
-	}
-
-	/**
-	 * Get the underlying config manager (advanced use only)
-	 * @internal
-	 */
-	get _internal_configManager(): ConfigManager {
-		return this._configManager;
 	}
 }
 

@@ -8,7 +8,8 @@ import type {
 	WorkflowEventType,
 	WorkflowEventData,
 	WorkflowEventListener,
-	SubtaskInfo
+	SubtaskInfo,
+	WorkflowError
 } from '../types.js';
 import type { TestResultValidator } from '../services/test-result-validator.js';
 
@@ -564,7 +565,7 @@ export class WorkflowOrchestrator {
 	/**
 	 * Handle error event
 	 */
-	private handleError(error: import('../types.js').WorkflowError): void {
+	private handleError(error: WorkflowError): void {
 		this.context.errors.push(error);
 		this.emit('error:occurred', { error });
 	}

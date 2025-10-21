@@ -113,14 +113,20 @@ export class GitDomain {
 	/**
 	 * Create a new branch
 	 */
-	async createBranch(branchName: string, options?: { checkout?: boolean }): Promise<void> {
+	async createBranch(
+		branchName: string,
+		options?: { checkout?: boolean }
+	): Promise<void> {
 		return this.gitAdapter.createBranch(branchName, options);
 	}
 
 	/**
 	 * Checkout an existing branch
 	 */
-	async checkoutBranch(branchName: string, options?: { force?: boolean }): Promise<void> {
+	async checkoutBranch(
+		branchName: string,
+		options?: { force?: boolean }
+	): Promise<void> {
 		return this.gitAdapter.checkoutBranch(branchName, options);
 	}
 
@@ -134,7 +140,10 @@ export class GitDomain {
 	/**
 	 * Delete a branch
 	 */
-	async deleteBranch(branchName: string, options?: { force?: boolean }): Promise<void> {
+	async deleteBranch(
+		branchName: string,
+		options?: { force?: boolean }
+	): Promise<void> {
 		return this.gitAdapter.deleteBranch(branchName, options);
 	}
 

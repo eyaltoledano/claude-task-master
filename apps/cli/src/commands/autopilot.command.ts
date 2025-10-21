@@ -8,12 +8,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import ora, { type Ora } from 'ora';
-import {
-	createTaskMasterCore,
-	type TaskMasterCore,
-	type Task,
-	type Subtask
-} from '@tm/core';
+import { createTmCore, type TmCore, type Task, type Subtask } from '@tm/core';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -60,7 +55,7 @@ export interface AutopilotCommandResult {
  * This is a thin presentation layer over @tm/core's autopilot functionality
  */
 export class AutopilotCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: AutopilotCommandResult;
 
 	constructor(name?: string) {
@@ -164,11 +159,11 @@ export class AutopilotCommand extends Command {
 	}
 
 	/**
-	 * Initialize TaskMasterCore
+	 * Initialize TmCore
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
-			this.tmCore = await createTaskMasterCore({ projectPath: projectRoot });
+			this.tmCore = await createTmCore({ projectPath: projectRoot });
 		}
 	}
 
@@ -177,11 +172,11 @@ export class AutopilotCommand extends Command {
 	 */
 	private async loadTask(taskId: string): Promise<Task | null> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		try {
-			const { task } = await this.tmCore.getTaskWithSubtask(taskId);
+			const { task } = await this.tmCore.tasks.get(taskId);
 			return task;
 		} catch (error) {
 			return null;
@@ -499,7 +494,6 @@ export class AutopilotCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		if (this.tmCore) {
-			await this.tmCore.close();
 			this.tmCore = undefined;
 		}
 	}

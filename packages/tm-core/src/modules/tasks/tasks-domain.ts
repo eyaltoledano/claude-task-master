@@ -9,10 +9,7 @@ import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
 
-import type {
-	Task,
-	TaskStatus
-} from '../../common/types/index.js';
+import type { Task, TaskStatus } from '../../common/types/index.js';
 import type {
 	TaskListResult,
 	GetTaskListOptions
@@ -57,9 +54,38 @@ export class TasksDomain {
 
 	/**
 	 * Get a single task by ID
+	 * Automatically handles all ID formats:
+	 * - Simple task IDs (e.g., "1", "HAM-123")
+	 * - Subtask IDs with dot notation (e.g., "1.2", "HAM-123.2")
+	 *
+	 * @returns Task and whether the ID represents a subtask
 	 */
-	async get(taskId: string, tag?: string): Promise<Task | null> {
-		return this.taskService.getTask(taskId, tag);
+	async get(
+		taskId: string,
+		tag?: string
+	): Promise<{ task: Task | null; isSubtask: boolean }> {
+		// Parse ID - check for dot notation (subtask)
+		const parts = taskId.split('.');
+		const parentId = parts[0];
+		const subtaskIdPart = parts[1];
+
+		// Fetch the task
+		const task = await this.taskService.getTask(parentId, tag);
+		if (!task) {
+			return { task: null, isSubtask: false };
+		}
+
+		// Handle subtask notation (1.2, HAM-123.2)
+		if (subtaskIdPart && task.subtasks) {
+			const subtask = task.subtasks.find(
+				(st) => String(st.id) === subtaskIdPart
+			);
+			// Return parent task with isSubtask flag
+			return { task, isSubtask: !!subtask };
+		}
+
+		// It's a regular task
+		return { task, isSubtask: false };
 	}
 
 	/**

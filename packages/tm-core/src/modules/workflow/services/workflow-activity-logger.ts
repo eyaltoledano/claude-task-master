@@ -7,7 +7,10 @@
 
 import type { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
 import type { WorkflowEventData, WorkflowEventType } from '../types.js';
-import { logActivity, type ActivityEvent } from '../../storage/adapters/activity-logger.js';
+import {
+	logActivity,
+	type ActivityEvent
+} from '../../storage/adapters/activity-logger.js';
 import { getLogger } from '../../../common/logger/index.js';
 
 /**

@@ -10,7 +10,10 @@ import {
 import type {
 	AIOptions,
 	AIResponse,
-	IAIProvider
+	IAIProvider,
+	ProviderUsageStats,
+	ProviderInfo,
+	AIModel
 } from '../interfaces/ai-provider.interface.js';
 
 // Constants for retry logic
@@ -428,17 +431,10 @@ export abstract class BaseProvider implements IAIProvider {
 		options?: AIOptions
 	): AsyncIterator<Partial<AIResponse>>;
 	abstract isAvailable(): Promise<boolean>;
-	abstract getProviderInfo(): import(
-		'../interfaces/ai-provider.interface.js'
-	).ProviderInfo;
-	abstract getAvailableModels(): import(
-		'../interfaces/ai-provider.interface.js'
-	).AIModel[];
+	abstract getProviderInfo(): ProviderInfo;
+	abstract getAvailableModels(): AIModel[];
 	abstract validateCredentials(): Promise<boolean>;
-	abstract getUsageStats(): Promise<
-		| import('../interfaces/ai-provider.interface.js').ProviderUsageStats
-		| null
-	>;
+	abstract getUsageStats(): Promise<ProviderUsageStats | null>;
 	abstract initialize(): Promise<void>;
 	abstract close(): Promise<void>;
 }

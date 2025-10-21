@@ -5,7 +5,10 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../../../common/types/database.types.js';
-import { TaskMasterError, ERROR_CODES } from '../../../common/errors/task-master-error.js';
+import {
+	TaskMasterError,
+	ERROR_CODES
+} from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
 
 /**

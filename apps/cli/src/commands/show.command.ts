@@ -6,8 +6,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
-import type { StorageType } from '@tm/core/types';
+import { createTmCore, type Task, type TmCore } from '@tm/core';
+import type { StorageType } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
@@ -47,7 +47,7 @@ export interface ShowMultipleTasksResult {
  * This is a thin presentation layer over @tm/core
  */
 export class ShowCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: ShowTaskResult | ShowMultipleTasksResult;
 
 	constructor(name?: string) {
@@ -133,11 +133,11 @@ export class ShowCommand extends Command {
 	}
 
 	/**
-	 * Initialize TaskMasterCore
+	 * Initialize TmCore
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
-			this.tmCore = await createTaskMasterCore({ projectPath: projectRoot });
+			this.tmCore = await createTmCore({ projectPath: projectRoot });
 		}
 	}
 
@@ -149,18 +149,18 @@ export class ShowCommand extends Command {
 		_options: ShowCommandOptions
 	): Promise<ShowTaskResult> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		// Get the task
-		const task = await this.tmCore.getTask(taskId);
+		const result = await this.tmCore.tasks.get(taskId);
 
 		// Get storage type
-		const storageType = this.tmCore.getStorageType();
+		const storageType = this.tmCore.config.getStorageConfig().type;
 
 		return {
-			task,
-			found: task !== null,
+			task: result.task,
+			found: result.task !== null,
 			storageType: storageType as Exclude<StorageType, 'auto'>
 		};
 	}
@@ -173,7 +173,7 @@ export class ShowCommand extends Command {
 		_options: ShowCommandOptions
 	): Promise<ShowMultipleTasksResult> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		const tasks: Task[] = [];
@@ -181,16 +181,16 @@ export class ShowCommand extends Command {
 
 		// Get each task individually
 		for (const taskId of taskIds) {
-			const task = await this.tmCore.getTask(taskId);
-			if (task) {
-				tasks.push(task);
+			const result = await this.tmCore.tasks.get(taskId);
+			if (result.task) {
+				tasks.push(result.task);
 			} else {
 				notFound.push(taskId);
 			}
 		}
 
 		// Get storage type
-		const storageType = this.tmCore.getStorageType();
+		const storageType = this.tmCore.config.getStorageConfig().type;
 
 		return {
 			tasks,
@@ -253,7 +253,7 @@ export class ShowCommand extends Command {
 		}
 
 		// Display header with storage info
-		const activeTag = this.tmCore?.getActiveTag() || 'master';
+		const activeTag = this.tmCore?.config.getActiveTag() || 'master';
 		displayCommandHeader(this.tmCore, {
 			tag: activeTag,
 			storageType: result.storageType
@@ -276,7 +276,7 @@ export class ShowCommand extends Command {
 		_options: ShowCommandOptions
 	): void {
 		// Display header with storage info
-		const activeTag = this.tmCore?.getActiveTag() || 'master';
+		const activeTag = this.tmCore?.config.getActiveTag() || 'master';
 		displayCommandHeader(this.tmCore, {
 			tag: activeTag,
 			storageType: result.storageType
@@ -322,7 +322,6 @@ export class ShowCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		if (this.tmCore) {
-			await this.tmCore.close();
 			this.tmCore = undefined;
 		}
 	}

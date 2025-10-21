@@ -10,7 +10,10 @@ import type {
 } from '../../../common/interfaces/configuration.interface.js';
 import { FileStorage } from '../adapters/file-storage/index.js';
 import { ApiStorage } from '../adapters/api-storage.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';

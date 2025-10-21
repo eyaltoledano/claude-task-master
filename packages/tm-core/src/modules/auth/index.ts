@@ -2,6 +2,7 @@
  * Authentication module exports
  */
 
+export { AuthDomain, type StorageDisplayInfo } from './auth-domain.js';
 export { AuthManager } from './managers/auth-manager.js';
 export { CredentialStore } from './services/credential-store.js';
 export { OAuthService } from './services/oauth-service.js';

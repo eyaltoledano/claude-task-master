@@ -3,22 +3,45 @@
  * Public API for authentication and authorization
  */
 
+import path from 'node:path';
 import { AuthManager } from './managers/auth-manager.js';
+import type { ConfigManager } from '../config/managers/config-manager.js';
 import type {
 	AuthCredentials,
 	OAuthFlowOptions,
 	UserContext
 } from './types.js';
-import type { Organization, Brief, RemoteTask } from './services/organization.service.js';
+import type {
+	Organization,
+	Brief,
+	RemoteTask
+} from './services/organization.service.js';
+import type { StorageType } from '../../common/types/index.js';
+
+/**
+ * Display information for storage context
+ */
+export interface StorageDisplayInfo {
+	storageType: Exclude<StorageType, 'auto'>;
+	briefInfo?: {
+		briefId: string;
+		briefName: string;
+		orgSlug?: string;
+		webAppUrl?: string;
+	};
+	filePath?: string;
+}
 
 /**
  * Auth Domain - Unified API for authentication operations
  */
 export class AuthDomain {
 	private authManager: AuthManager;
+	private configManager: ConfigManager;
 
-	constructor() {
+	constructor(configManager: ConfigManager) {
 		this.authManager = AuthManager.getInstance();
+		this.configManager = configManager;
 	}
 
 	// ========== Authentication ==========
@@ -40,7 +63,9 @@ export class AuthDomain {
 	/**
 	 * Authenticate with OAuth flow
 	 */
-	async authenticateWithOAuth(options?: OAuthFlowOptions): Promise<AuthCredentials> {
+	async authenticateWithOAuth(
+		options?: OAuthFlowOptions
+	): Promise<AuthCredentials> {
 		return this.authManager.authenticateWithOAuth(options);
 	}
 
@@ -123,5 +148,62 @@ export class AuthDomain {
 	 */
 	async getTasks(briefId: string): Promise<RemoteTask[]> {
 		return this.authManager.getTasks(briefId);
+	}
+
+	// ========== Display Information ==========
+
+	/**
+	 * Get storage display information for UI presentation
+	 * Includes brief info for API storage, file path for file storage
+	 */
+	getStorageDisplayInfo(): StorageDisplayInfo {
+		const storageConfig = this.configManager.getStorageConfig();
+		const storageType = storageConfig.type as Exclude<StorageType, 'auto'>;
+
+		if (storageType === 'api') {
+			const context = this.getContext();
+			if (context?.briefId && context?.briefName) {
+				return {
+					storageType: 'api',
+					briefInfo: {
+						briefId: context.briefId,
+						briefName: context.briefName,
+						orgSlug: context.orgSlug,
+						webAppUrl: this.getWebAppUrl()
+					}
+				};
+			}
+		}
+
+		// Default to file storage display
+		return {
+			storageType: 'file',
+			filePath: path.join('.taskmaster', 'tasks', 'tasks.json')
+		};
+	}
+
+	/**
+	 * Get web app base URL from environment configuration
+	 * @private
+	 */
+	private getWebAppUrl(): string | undefined {
+		const baseDomain =
+			process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+
+		if (!baseDomain) {
+			return undefined;
+		}
+
+		// If it already includes protocol, use as-is
+		if (baseDomain.startsWith('http://') || baseDomain.startsWith('https://')) {
+			return baseDomain;
+		}
+
+		// Otherwise, add protocol based on domain
+		if (baseDomain.includes('localhost') || baseDomain.includes('127.0.0.1')) {
+			return `http://${baseDomain}`;
+		}
+
+		return `https://${baseDomain}`;
 	}
 }

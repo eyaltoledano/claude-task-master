@@ -17,7 +17,7 @@ import { CredentialStore } from '../services/credential-store.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
 import { getLogger } from '../../../common/logger/index.js';
-import packageJson from '../../../../package.json' with { type: 'json' };
+import packageJson from '../../../../../../package.json' with { type: 'json' };
 
 export class OAuthService {
 	private logger = getLogger('OAuthService');

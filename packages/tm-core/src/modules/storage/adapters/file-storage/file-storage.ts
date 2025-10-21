@@ -2,7 +2,11 @@
  * @fileoverview Refactored file-based storage implementation for Task Master
  */
 
-import type { Task, TaskMetadata, TaskStatus } from '../../../../common/types/index.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskStatus
+} from '../../../../common/types/index.js';
 import type {
 	IStorage,
 	StorageStats,

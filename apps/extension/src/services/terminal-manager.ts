@@ -4,7 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import { createTaskMasterCore, type TaskMasterCore } from '@tm/core';
+import { createTmCore, type TmCore } from '@tm/core';
 import type { ExtensionLogger } from '../utils/logger';
 
 export interface TerminalExecutionOptions {
@@ -21,7 +21,7 @@ export interface TerminalExecutionResult {
 
 export class TerminalManager {
 	private terminals = new Map<string, vscode.Terminal>();
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 
 	constructor(
 		private context: vscode.ExtensionContext,
@@ -110,7 +110,7 @@ export class TerminalManager {
 			if (!workspaceRoot) {
 				throw new Error('No workspace folder found');
 			}
-			this.tmCore = await createTaskMasterCore({ projectPath: workspaceRoot });
+			this.tmCore = await createTmCore({ projectPath: workspaceRoot });
 		}
 	}
 
