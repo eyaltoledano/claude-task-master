@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import { execSync } from 'node:child_process';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import * as gitUtils from './utils/git-utils.js';
@@ -19,6 +20,54 @@ import {
 // Global silent mode flag
 let silentMode = false;
 
+// --- Command-based API Key Resolution Utilities ---
+
+/**
+ * Parses the timeout configuration from environment variable
+ * @returns {number} Timeout in milliseconds
+ */
+function parseTimeout() {
+	const raw = process.env.TASKMASTER_CMD_TIMEOUT;
+	if (!raw) return 5000;
+
+	const n = parseInt(raw, 10);
+	if (!Number.isFinite(n) || n <= 0) return 5000;
+
+	// Heuristic: <=60 => seconds; else milliseconds
+	return n <= 60 ? n * 1000 : n;
+}
+
+/**
+ * Executes a command to retrieve an API key
+ * @param {string} command - The shell command to execute
+ * @param {string} keyName - The environment variable key name (for logging)
+ * @param {Object} [opts={}] - Options
+ * @param {number} [opts.timeoutMs] - Custom timeout in milliseconds
+ * @returns {string|null} The trimmed command output or null on failure
+ */
+function executeCommandForKey(command, keyName, opts = {}) {
+	try {
+		const timeout = opts.timeoutMs ?? parseTimeout();
+		const result = execSync(command, {
+			encoding: 'utf8',
+			timeout,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			shell: '/bin/sh'
+		});
+
+		const trimmed = (result ?? '').trim();
+		if (!trimmed) throw new Error('empty-result');
+
+		return trimmed;
+	} catch (err) {
+		const reason = err?.killed
+			? 'timeout'
+			: (err?.status ?? err?.code ?? 'exec-failed');
+		console.error(`Error executing command for ${keyName}: ${String(reason)}`);
+		return null;
+	}
+}
+
 // --- Environment Variable Resolution Utility ---
 /**
  * Resolves an environment variable's value.
@@ -26,19 +75,22 @@ let silentMode = false;
  * 1. session.env (if session provided)
  * 2. process.env
  * 3. .env file at projectRoot (if projectRoot provided)
+ *
+ * Supports command-based resolution with !cmd: prefix
  * @param {string} key - The environment variable key.
  * @param {object|null} [session=null] - The MCP session object.
  * @param {string|null} [projectRoot=null] - The project root directory (for .env fallback).
- * @returns {string|undefined} The value of the environment variable or undefined if not found.
+ * @returns {string|undefined|null} The value of the environment variable, null if command fails, or undefined if not found.
  */
 function resolveEnvVariable(key, session = null, projectRoot = null) {
+	let rawValue;
+
 	// 1. Check session.env
 	if (session?.env?.[key]) {
-		return session.env[key];
+		rawValue = session.env[key];
 	}
-
 	// 2. Read .env file at projectRoot
-	if (projectRoot) {
+	else if (projectRoot) {
 		const envPath = path.join(projectRoot, '.env');
 		if (fs.existsSync(envPath)) {
 			try {
@@ -46,7 +98,7 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 				const parsedEnv = dotenv.parse(envFileContent); // Use dotenv to parse
 				if (parsedEnv && parsedEnv[key]) {
 					// console.log(`DEBUG: Found key ${key} in ${envPath}`); // Optional debug log
-					return parsedEnv[key];
+					rawValue = parsedEnv[key];
 				}
 			} catch (error) {
 				// Log error but don't crash, just proceed as if key wasn't found in file
@@ -56,12 +108,28 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 	}
 
 	// 3. Fallback: Check process.env
-	if (process.env[key]) {
-		return process.env[key];
+	if (!rawValue && process.env[key]) {
+		rawValue = process.env[key];
 	}
 
-	// Not found anywhere
-	return undefined;
+	// If no value found anywhere, return undefined
+	if (!rawValue) {
+		return undefined;
+	}
+
+	// Check if value is a command (!cmd: prefix)
+	const cmdPrefix = '!cmd:';
+	if (rawValue.startsWith(cmdPrefix)) {
+		const command = rawValue.slice(cmdPrefix.length).trim();
+		if (!command) {
+			console.error(`Error: ${key} has !cmd: prefix but no command specified`);
+			return undefined;
+		}
+		return executeCommandForKey(command, key);
+	}
+
+	// Not a command, return raw value
+	return rawValue;
 }
 
 // --- Tag-Aware Path Resolution Utility ---
