@@ -13,11 +13,11 @@ import { ConfigPersistence } from '../services/config-persistence.service.js';
 import { EnvironmentConfigProvider } from '../services/environment-config-provider.service.js';
 
 // Mock all services
-vi.mock('./services/config-loader.service.js');
-vi.mock('./services/config-merger.service.js');
-vi.mock('./services/runtime-state-manager.service.js');
-vi.mock('./services/config-persistence.service.js');
-vi.mock('./services/environment-config-provider.service.js');
+vi.mock('../services/config-loader.service.js');
+vi.mock('../services/config-merger.service.js');
+vi.mock('../services/runtime-state-manager.service.js');
+vi.mock('../services/config-persistence.service.js');
+vi.mock('../services/environment-config-provider.service.js');
 
 describe('ConfigManager', () => {
 	let manager: ConfigManager;

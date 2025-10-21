@@ -231,11 +231,7 @@ export class AutopilotCommand extends Command {
 		}
 
 		// Validate task structure and get execution order
-		const validationResult = await this.validateTaskStructure(
-			taskId,
-			task,
-			options
-		);
+		const validationResult = await this.validateTaskStructure(taskId, task);
 		if (!validationResult.success) {
 			return validationResult;
 		}
@@ -283,19 +279,23 @@ export class AutopilotCommand extends Command {
 	 */
 	private async validateTaskStructure(
 		taskId: string,
-		task: Task,
-		options: AutopilotCommandOptions
+		task: Task
 	): Promise<AutopilotCommandResult & { orderedSubtasks?: Subtask[] }> {
-		const { TaskLoaderService } = await import('@tm/core');
+		if (!this.tmCore) {
+			return {
+				success: false,
+				taskId,
+				task,
+				error: 'TmCore not initialized'
+			};
+		}
 
 		console.log();
 		console.log(chalk.cyan.bold('Validating task structure...'));
 
-		const taskLoader = new TaskLoaderService(options.project || process.cwd());
-		const validationResult = await taskLoader.loadAndValidateTask(taskId);
+		const validationResult = await this.tmCore.tasks.loadAndValidate(taskId);
 
 		if (!validationResult.success) {
-			await taskLoader.cleanup();
 			return {
 				success: false,
 				taskId,
@@ -305,11 +305,9 @@ export class AutopilotCommand extends Command {
 			};
 		}
 
-		const orderedSubtasks = taskLoader.getExecutionOrder(
+		const orderedSubtasks = this.tmCore.tasks.getExecutionOrder(
 			validationResult.task!
 		);
-
-		await taskLoader.cleanup();
 
 		return {
 			success: true,

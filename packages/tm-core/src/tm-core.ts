@@ -3,6 +3,7 @@
  * This is the ONLY entry point for using tm-core
  */
 
+import path from 'node:path';
 import { ConfigManager } from './modules/config/managers/config-manager.js';
 import { TasksDomain } from './modules/tasks/tasks-domain.js';
 import { AuthDomain } from './modules/auth/auth-domain.js';
@@ -103,7 +104,16 @@ export class TmCore {
 			);
 		}
 
-		this._projectPath = options.projectPath;
+		// Validate that projectPath is absolute
+		if (!path.isAbsolute(options.projectPath)) {
+			throw new TaskMasterError(
+				`Project path must be an absolute path, received: "${options.projectPath}"`,
+				ERROR_CODES.INVALID_INPUT
+			);
+		}
+
+		// Normalize the path
+		this._projectPath = path.resolve(options.projectPath);
 		this._options = options;
 		// Domain facades will be initialized in initialize()
 	}

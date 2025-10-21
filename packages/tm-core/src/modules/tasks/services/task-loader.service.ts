@@ -4,8 +4,7 @@
  */
 
 import type { Task, Subtask, TaskStatus } from '../../../common/types/index.js';
-import { TaskService } from './task-service.js';
-import { ConfigManager } from '../../config/managers/config-manager.js';
+import type { TaskService } from './task-service.js';
 import { getLogger } from '../../../common/logger/factory.js';
 
 const logger = getLogger('TaskLoader');
@@ -57,25 +56,13 @@ export interface DependencyIssue {
  * TaskLoaderService loads and validates tasks for autopilot execution
  */
 export class TaskLoaderService {
-	private taskService: TaskService | null = null;
-	private projectRoot: string;
+	private taskService: TaskService;
 
-	constructor(projectRoot: string) {
-		if (!projectRoot) {
-			throw new Error('projectRoot is required for TaskLoaderService');
+	constructor(taskService: TaskService) {
+		if (!taskService) {
+			throw new Error('taskService is required for TaskLoaderService');
 		}
-		this.projectRoot = projectRoot;
-	}
-
-	/**
-	 * Ensure TaskService is initialized
-	 */
-	private async ensureInitialized(): Promise<void> {
-		if (this.taskService) return;
-
-		const configManager = await ConfigManager.create(this.projectRoot);
-		this.taskService = new TaskService(configManager);
-		await this.taskService.initialize();
+		this.taskService = taskService;
 	}
 
 	/**
@@ -133,10 +120,6 @@ export class TaskLoaderService {
 	 */
 	private async loadTask(taskId: string): Promise<Task | null> {
 		try {
-			await this.ensureInitialized();
-			if (!this.taskService) {
-				throw new Error('TaskService initialization failed');
-			}
 			return await this.taskService.getTask(taskId);
 		} catch (error) {
 			logger.error(`Failed to load task ${taskId}:`, error);

@@ -35,7 +35,7 @@ export class TasksDomain {
 	constructor(configManager: ConfigManager) {
 		this.taskService = new TaskService(configManager);
 		this.executionService = new TaskExecutionService(this.taskService);
-		this.loaderService = new TaskLoaderService(configManager.getProjectRoot());
+		this.loaderService = new TaskLoaderService(this.taskService);
 		this.preflightChecker = new PreflightChecker(configManager.getProjectRoot());
 	}
 
