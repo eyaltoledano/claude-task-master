@@ -97,3 +97,9 @@ apps/extension/vsix-build/
 
 # turbo
 .turbo
+
+# Claude
+.claude
+
+# Task Master
+.taskmaster
