@@ -12,6 +12,7 @@ export const geminiProfile = createProfile({
 	mcpConfigName: 'settings.json', // Override default 'mcp.json'
 	includeDefaultRules: false,
 	fileMap: {
-		'AGENTS.md': 'GEMINI.md'
+		'AGENT.md': 'AGENTS.md', // Generic base for all AI agents
+		'GEMINI.md': 'GEMINI.md' // Gemini-specific features only
 	}
 });
