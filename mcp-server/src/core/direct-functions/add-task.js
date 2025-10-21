@@ -9,6 +9,11 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
+import {
+	getMainProvider,
+	getResearchProvider,
+	getFallbackProvider
+} from '../../../../scripts/modules/config-manager.js';
 
 /**
  * Direct function wrapper for adding a new task with error handling.
@@ -68,8 +73,49 @@ export async function addTaskDirect(args, log, context = {}) {
 		// Check if this is manual task creation or AI-driven task creation
 		const isManualCreation = args.title && args.description;
 
+		// When AgentLLM provider is configured for the effective role (main or research)
+		// or as a fallback, prefer AI-driven path.
+		const roleToCheckProvider = (() => {
+			try {
+				if (research) return getResearchProvider(projectRoot)?.toLowerCase();
+				return getMainProvider(projectRoot)?.toLowerCase();
+			} catch (e) {
+				return undefined;
+			}
+		})();
+
+		const fallbackProvider = (() => {
+			try {
+				return getFallbackProvider(projectRoot)?.toLowerCase();
+			} catch (e) {
+				return undefined;
+			}
+		})();
+
+		const isAgentLLMPreferred = [roleToCheckProvider, fallbackProvider].some(
+			(p) => p === 'agentllm' || p === 'agent-llm' || p === 'agent_llm'
+		);
+
+		// If prompt is missing and title or description are provided, but AgentLLM is configured,
+		// synthesize a prompt from available fields and take the AI-driven path.
+		let effectivePrompt = prompt;
+		if (
+			isAgentLLMPreferred &&
+			!effectivePrompt &&
+			(args.title || args.description)
+		) {
+			const parts = [];
+			if (args.title) parts.push(`Title: ${args.title}`);
+			if (args.description) parts.push(`Description: ${args.description}`);
+			if (args.details) parts.push(`Details: ${args.details}`);
+			effectivePrompt = parts.join('\n');
+		}
+
+		// If both title+description are provided and AgentLLM is not preferred, take manual path as before.
+		const finalIsManualCreation = !isAgentLLMPreferred && isManualCreation;
+
 		// Check required parameters
-		if (!args.prompt && !isManualCreation) {
+		if (!effectivePrompt && !finalIsManualCreation) {
 			log.error(
 				'Missing required parameters: either prompt or title+description must be provided'
 			);
@@ -99,7 +145,7 @@ export async function addTaskDirect(args, log, context = {}) {
 		let telemetryData;
 		let tagInfo;
 
-		if (isManualCreation) {
+		if (finalIsManualCreation) {
 			// Create manual task data object
 			manualTaskData = {
 				title: args.title,
@@ -136,18 +182,19 @@ export async function addTaskDirect(args, log, context = {}) {
 		} else {
 			// AI-driven task creation
 			log.info(
-				`Adding new task with prompt: "${prompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${taskPriority}, research: ${research}`
+				// Use log from direct function args for direct function's own logging
+				`Adding new task with prompt: "${effectivePrompt}", dependencies: [${taskDependencies.join(', ')}], priority: ${taskPriority}, research: ${research}`
 			);
 
 			// Call the addTask function, passing the research flag
 			const result = await addTask(
 				tasksPath,
-				prompt, // Use the prompt for AI creation
+				effectivePrompt, // Use the effectivePrompt for AI creation
 				taskDependencies,
 				taskPriority,
 				{
 					session,
-					mcpLog,
+					mcpLog, // This is the logWrapper passed to core addTask
 					projectRoot,
 					commandName: 'add-task',
 					outputType: 'mcp',
@@ -157,6 +204,17 @@ export async function addTaskDirect(args, log, context = {}) {
 				null, // manualTaskData is null for AI creation
 				research // Pass the research flag
 			);
+
+			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
+			if (result && result.needsAgentDelegation === true) {
+				log.debug(
+					'addTaskDirect: Propagating agent_llm_delegation signal from core addTask.'
+				);
+				disableSilentMode(); // Ensure silent mode is disabled before returning
+				return result; // Propagate the signal object
+			}
+			// === END AGENT_LLM_DELEGATION PROPAGATION ===
+
 			newTaskId = result.newTaskId;
 			telemetryData = result.telemetryData;
 			tagInfo = result.tagInfo;

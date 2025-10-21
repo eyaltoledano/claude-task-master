@@ -1,6 +1,6 @@
 /**
  * tool-registry.js
- * Tool Registry Object Structure - Maps all 36 tool names to registration functions
+ * Tool Registry Object Structure - Maps all 37 tool names to registration functions
  */
 
 import { registerListTasksTool } from './get-tasks.js';
@@ -39,6 +39,7 @@ import { registerResearchTool } from './research.js';
 import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
+import { registerAgentLLMTool } from './agent-llm.js';
 
 // Import TypeScript autopilot tools from apps/mcp
 import {
@@ -53,7 +54,7 @@ import {
 } from '@tm/mcp';
 
 /**
- * Comprehensive tool registry mapping all 44 tool names to their registration functions
+ * Comprehensive tool registry mapping all 45 tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -93,6 +94,7 @@ export const toolRegistry = {
 	rename_tag: registerRenameTagTool,
 	copy_tag: registerCopyTagTool,
 	research: registerResearchTool,
+	agent_llm: registerAgentLLMTool,
 	autopilot_start: registerAutopilotStartTool,
 	autopilot_resume: registerAutopilotResumeTool,
 	autopilot_next: registerAutopilotNextTool,
@@ -104,7 +106,7 @@ export const toolRegistry = {
 };
 
 /**
- * Core tools array containing the 7 essential tools for daily development
+ * Core tools array containing the 8 essential tools for daily development
  * These represent the minimal set needed for basic task management operations
  */
 export const coreTools = [
@@ -114,11 +116,12 @@ export const coreTools = [
 	'set_task_status',
 	'update_subtask',
 	'parse_prd',
-	'expand_task'
+	'expand_task',
+	'agent_llm'
 ];
 
 /**
- * Standard tools array containing the 15 most commonly used tools
+ * Standard tools array containing the 16 most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [

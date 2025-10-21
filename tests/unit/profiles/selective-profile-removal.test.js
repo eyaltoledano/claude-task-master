@@ -137,7 +137,8 @@ describe('Selective Rules Removal', () => {
 				'cursor_rules.mdc',
 				'taskmaster/dev_workflow.mdc',
 				'self_improve.mdc',
-				'taskmaster/taskmaster.mdc'
+				'taskmaster/taskmaster.mdc',
+				'taskmaster/agentllm.mdc'
 			]);
 			expect(result.notice).toContain('Preserved 2 existing rule files');
 
@@ -227,7 +228,8 @@ describe('Selective Rules Removal', () => {
 				'cursor_rules.mdc',
 				'taskmaster/dev_workflow.mdc',
 				'self_improve.mdc',
-				'taskmaster/taskmaster.mdc'
+				'taskmaster/taskmaster.mdc',
+				'taskmaster/agentllm.mdc'
 			]);
 
 			// The function may fail due to directory reading issues in the test environment,

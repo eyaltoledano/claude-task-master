@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -109,6 +110,21 @@ export function registerAddTaskTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`add_task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
+				// If not delegating (e.g., manual task creation or direct AI success),
+				// proceed with existing result handling:
 				return handleApiResult(
 					result,
 					log,

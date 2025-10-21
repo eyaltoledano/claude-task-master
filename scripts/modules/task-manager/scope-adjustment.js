@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 import {
 	log,
 	readJSON,
@@ -488,10 +489,15 @@ ADJUSTMENT REQUIREMENTS:
 	}
 
 	if (customPrompt) {
-		basePrompt += `\n\nCUSTOM INSTRUCTIONS:\n${customPrompt}`;
+		basePrompt += `
+
+CUSTOM INSTRUCTIONS:
+${customPrompt}`;
 	}
 
-	basePrompt += `\n\nReturn a JSON object with the updated task containing these fields:
+	basePrompt += `
+
+Return a JSON object with the updated task containing these fields:
 - title: Updated task title
 - description: Updated task description  
 - details: Updated implementation details
@@ -547,6 +553,7 @@ async function adjustTaskComplexity(
 	const aiResult = await generateObjectService({
 		role: context.research ? 'research' : 'main',
 		session: context.session,
+		projectRoot: context.projectRoot,
 		systemPrompt,
 		prompt,
 		schema: taskSchema,
@@ -554,6 +561,24 @@ async function adjustTaskComplexity(
 		commandName: context.commandName || `scope-${direction}`,
 		outputType: context.outputType || 'cli'
 	});
+
+	// === BEGIN AGENT_LLM DELEGATION SIGNAL CHECK ===
+	const delegationContext = {
+		operation: 'scope-adjust',
+		taskId: context.taskId || context.currentTaskId || aiResult.taskId,
+		direction: aiResult.direction || context.direction,
+		strength: aiResult.strength || context.strength,
+		userId: context.userId,
+		sessionId: context.sessionId
+	};
+	const delegationResult = handleAgentLLMDelegation(
+		aiResult,
+		context,
+		context.research ? 'research' : 'main',
+		delegationContext
+	);
+	if (delegationResult) return delegationResult;
+	// === END AGENT_LLM DELEGATION SIGNAL CHECK ===
 
 	const updatedTaskData = aiResult.mainResult;
 
@@ -638,6 +663,10 @@ export async function scopeUpTask(
 			customPrompt,
 			context
 		);
+
+		if (adjustResult.needsAgentDelegation) {
+			return adjustResult;
+		}
 
 		// Regenerate subtasks based on new complexity while preserving completed work
 		const subtaskResult = await regenerateSubtasksForComplexity(
@@ -789,6 +818,10 @@ export async function scopeDownTask(
 			customPrompt,
 			context
 		);
+
+		if (adjustResult.needsAgentDelegation) {
+			return adjustResult;
+		}
 
 		// Regenerate subtasks based on new complexity while preserving completed work
 		const subtaskResult = await regenerateSubtasksForComplexity(

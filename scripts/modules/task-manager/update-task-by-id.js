@@ -34,6 +34,7 @@ import {
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -329,6 +330,19 @@ async function updateTaskById(
 				});
 			}
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				serviceRole,
+				{
+					originalTaskId: taskId
+				},
+				appendMode ? 'generateText' : 'generateObject'
+			);
+			if (delegationResult) return delegationResult;
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
@@ -545,4 +559,4 @@ async function updateTaskById(
 	}
 }
 
-export default updateTaskById;
+export { updateTaskById as default };

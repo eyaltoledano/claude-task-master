@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { researchDirect } from '../core/task-master-core.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -51,7 +52,7 @@ export function registerResearchTool(server) {
 				.enum(['low', 'medium', 'high'])
 				.optional()
 				.describe('Detail level for the research response (default: medium)'),
-			saveTo: z
+			saveToTask: z
 				.string()
 				.optional()
 				.describe(
@@ -87,7 +88,9 @@ export function registerResearchTool(server) {
 						customContext: args.customContext,
 						includeProjectTree: args.includeProjectTree || false,
 						detailLevel: args.detailLevel || 'medium',
-						saveTo: args.saveTo,
+						// The public tool parameter is `saveToTask` but the internal direct
+						// function expects `saveTo`. Support both for backward compatibility.
+						saveTo: args.saveToTask || args.saveTo,
 						saveToFile: args.saveToFile || false,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
@@ -96,6 +99,20 @@ export function registerResearchTool(server) {
 					{ session }
 				);
 
+				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				if (
+					result &&
+					result.needsAgentDelegation === true &&
+					result.pendingInteraction
+				) {
+					log.info(
+						`research tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+					);
+					return createAgentDelegationResponse(result.pendingInteraction);
+				}
+				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+
+				// If not delegating, proceed with existing result handling
 				return handleApiResult(
 					result,
 					log,

@@ -4,6 +4,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	findProjectRoot: jest.fn(() => '/test/project/root'),
 	log: jest.fn(),
 	readJSON: jest.fn(),
+	writeJSON: jest.fn(),
 	flattenTasksWithSubtasks: jest.fn(() => []),
 	isEmpty: jest.fn(() => false)
 }));
