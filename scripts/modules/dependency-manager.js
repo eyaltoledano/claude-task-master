@@ -74,7 +74,7 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 	const formattedDependencyId = formatTaskId(dependencyId);
 
 	// Check if the dependency task or subtask actually exists
-	if (!taskExists(data.tasks, formattedDependencyId)) {
+	if (!taskExists(tasks, formattedDependencyId)) {
 		log(
 			'error',
 			`Dependency target ${formattedDependencyId} does not exist in tasks.json`
@@ -91,7 +91,7 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 		const [parentId, subtaskId] = formattedTaskId
 			.split('.')
 			.map((id) => parseInt(id, 10));
-		const parentTask = data.tasks.find((t) => t.id === parentId);
+		const parentTask = tasks.find((t) => t.id === parentId);
 
 		if (!parentTask) {
 			log('error', `Parent task ${parentId} not found.`);
@@ -112,7 +112,7 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 		}
 	} else {
 		// Regular task (not a subtask)
-		targetTask = data.tasks.find((t) => t.id === formattedTaskId);
+		targetTask = tasks.find((t) => t.id === formattedTaskId);
 
 		if (!targetTask) {
 			log('error', `Task ${formattedTaskId} not found.`);
@@ -179,9 +179,7 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 
 	// Check for circular dependencies
 	const dependencyChain = [formattedTaskId];
-	if (
-		!isCircularDependency(data.tasks, formattedDependencyId, dependencyChain)
-	) {
+	if (!isCircularDependency(tasks, formattedDependencyId, dependencyChain)) {
 		// Add the dependency
 		targetTask.dependencies.push(formattedDependencyId);
 
@@ -201,8 +199,7 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 		});
 
 		// Save changes using setTasksForTag for tag-aware writes
-		const tag = context.tag || 'master';
-		setTasksForTag(data, tag, data.tasks);
+		setTasksForTag(data, tag, tasks);
 		writeJSON(tasksPath, data, context.projectRoot, tag);
 		log(
 			'success',
@@ -252,7 +249,9 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 
 	// Read tasks file
 	const data = readJSON(tasksPath, context.projectRoot, context.tag);
-	if (!data || !data.tasks) {
+	const tag = context.tag || 'master';
+	const tasks = getTasksForTag(data, tag);
+	if (!data || !tasks) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
 	}
@@ -274,7 +273,7 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 		const [parentId, subtaskId] = formattedTaskId
 			.split('.')
 			.map((id) => parseInt(id, 10));
-		const parentTask = data.tasks.find((t) => t.id === parentId);
+		const parentTask = tasks.find((t) => t.id === parentId);
 
 		if (!parentTask) {
 			log('error', `Parent task ${parentId} not found.`);
@@ -295,7 +294,7 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 		}
 	} else {
 		// Regular task (not a subtask)
-		targetTask = data.tasks.find((t) => t.id === formattedTaskId);
+		targetTask = tasks.find((t) => t.id === formattedTaskId);
 
 		if (!targetTask) {
 			log('error', `Task ${formattedTaskId} not found.`);
@@ -348,8 +347,7 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 	targetTask.dependencies.splice(dependencyIndex, 1);
 
 	// Save the updated tasks using setTasksForTag for tag-aware writes
-	const tag = context.tag || 'master';
-	setTasksForTag(data, tag, data.tasks);
+	setTasksForTag(data, tag, tasks);
 	writeJSON(tasksPath, data, context.projectRoot, tag);
 
 	// Success message
@@ -611,15 +609,17 @@ async function validateDependenciesCommand(tasksPath, options = {}) {
 
 	// Read tasks data
 	const data = readJSON(tasksPath, context.projectRoot, context.tag);
-	if (!data || !data.tasks) {
+	const tag = context.tag || 'master';
+	const tasks = getTasksForTag(data, tag);
+	if (!data || !tasks) {
 		log('error', 'No valid tasks found in tasks.json');
 		process.exit(1);
 	}
 
 	// Count of tasks and subtasks for reporting
-	const taskCount = data.tasks.length;
+	const taskCount = tasks.length;
 	let subtaskCount = 0;
-	data.tasks.forEach((task) => {
+	tasks.forEach((task) => {
 		if (task.subtasks && Array.isArray(task.subtasks)) {
 			subtaskCount += task.subtasks.length;
 		}
@@ -632,7 +632,7 @@ async function validateDependenciesCommand(tasksPath, options = {}) {
 
 	try {
 		// Directly call the validation function
-		const validationResult = validateTaskDependencies(data.tasks);
+		const validationResult = validateTaskDependencies(tasks);
 
 		if (!validationResult.valid) {
 			log(
@@ -680,7 +680,7 @@ async function validateDependenciesCommand(tasksPath, options = {}) {
 						chalk.green(`All Dependencies Are Valid\n\n`) +
 							`${chalk.cyan('Tasks checked:')} ${taskCount}\n` +
 							`${chalk.cyan('Subtasks checked:')} ${subtaskCount}\n` +
-							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
+							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(tasks)}`,
 						{
 							padding: 1,
 							borderColor: 'green',
@@ -736,7 +736,9 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 	try {
 		// Read tasks data
 		const data = readJSON(tasksPath, context.projectRoot, context.tag);
-		if (!data || !data.tasks) {
+		const tag = context.tag || 'master';
+		const tasks = getTasksForTag(data, tag);
+		if (!data || !tasks) {
 			log('error', 'No valid tasks found in tasks.json');
 			process.exit(1);
 		}
@@ -1099,7 +1101,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 					boxen(
 						chalk.green(`All Dependencies Are Valid\n\n`) +
 							`${chalk.cyan('Tasks checked:')} ${data.tasks.length}\n` +
-							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(data.tasks)}`,
+							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(tasks)}`,
 						{
 							padding: 1,
 							borderColor: 'green',
@@ -1289,6 +1291,7 @@ function validateAndFixDependencies(
 			logger.debug('Saved dependency fixes to tasks.json');
 		} catch (error) {
 			logger.error('Failed to save dependency fixes to tasks.json', error);
+			return false;
 		}
 	}
 

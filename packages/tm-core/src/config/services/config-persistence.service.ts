@@ -10,6 +10,7 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../errors/task-master-error.js';
+import { getLogger } from '../../logger/index.js';
 
 /**
  * Persistence options
@@ -30,6 +31,7 @@ export interface PersistenceOptions {
 export class ConfigPersistence {
 	private localConfigPath: string;
 	private backupDir: string;
+	private readonly logger = getLogger('ConfigPersistence');
 
 	constructor(projectRoot: string) {
 		this.localConfigPath = path.join(projectRoot, '.taskmaster', 'config.json');
@@ -94,7 +96,7 @@ export class ConfigPersistence {
 
 			return backupPath;
 		} catch (error) {
-			console.warn('Failed to create backup:', error);
+			this.logger.warn('Failed to create backup:', error);
 			throw error;
 		}
 	}
@@ -116,7 +118,7 @@ export class ConfigPersistence {
 				await fs.unlink(path.join(this.backupDir, file));
 			}
 		} catch (error) {
-			console.warn('Failed to clean old backups:', error);
+			this.logger.warn('Failed to clean old backups:', error);
 		}
 	}
 

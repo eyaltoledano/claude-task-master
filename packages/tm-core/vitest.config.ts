@@ -22,12 +22,15 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'json', 'html', 'lcov'],
 			exclude: [
-				'node_modules',
-				'dist',
-				'tests',
+				'node_modules/',
+				'dist/',
+				'tests/',
 				'**/*.test.ts',
 				'**/*.spec.ts',
 				'**/*.d.ts',
+				'**/mocks/**',
+				'**/fixtures/**',
+				'vitest.config.ts',
 				'src/index.ts'
 			],
 			thresholds: {

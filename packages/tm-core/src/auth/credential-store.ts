@@ -24,6 +24,8 @@ export class CredentialStore {
 	private config: AuthConfig;
 	// Clock skew tolerance for expiry checks (30 seconds)
 	private readonly CLOCK_SKEW_MS = 30_000;
+	// Track if we've already warned about missing expiration to avoid spam
+	private hasWarnedAboutMissingExpiration = false;
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.config = getAuthConfig(config);
@@ -54,9 +56,12 @@ export class CredentialStore {
 
 	/**
 	 * Get stored authentication credentials
+	 * @param options.allowExpired - Whether to return expired credentials (default: true)
 	 * @returns AuthCredentials with expiresAt as number (milliseconds) for runtime use
 	 */
-	getCredentials(options?: { allowExpired?: boolean }): AuthCredentials | null {
+	getCredentials({
+		allowExpired = true
+	}: { allowExpired?: boolean } = {}): AuthCredentials | null {
 		try {
 			if (!fs.existsSync(this.config.configFile)) {
 				return null;
@@ -81,7 +86,11 @@ export class CredentialStore {
 
 			// Validate expiration time for tokens
 			if (expiresAtMs === undefined) {
-				this.logger.warn('No valid expiration time provided for token');
+				// Only log this warning once to avoid spam during auth flows
+				if (!this.hasWarnedAboutMissingExpiration) {
+					this.logger.warn('No valid expiration time provided for token');
+					this.hasWarnedAboutMissingExpiration = true;
+				}
 				return null;
 			}
 
@@ -90,7 +99,6 @@ export class CredentialStore {
 
 			// Check if the token has expired (with clock skew tolerance)
 			const now = Date.now();
-			const allowExpired = options?.allowExpired ?? false;
 			if (now >= expiresAtMs - this.CLOCK_SKEW_MS && !allowExpired) {
 				this.logger.warn(
 					'Authentication token has expired or is about to expire',
@@ -103,7 +111,7 @@ export class CredentialStore {
 				return null;
 			}
 
-			// Return valid token
+			// Return credentials (even if expired) to enable refresh flows
 			return authData;
 		} catch (error) {
 			this.logger.error(
@@ -172,6 +180,9 @@ export class CredentialStore {
 				mode: 0o600
 			});
 			fs.renameSync(tempFile, this.config.configFile);
+
+			// Reset the warning flag so it can be shown again for future invalid tokens
+			this.hasWarnedAboutMissingExpiration = false;
 		} catch (error) {
 			throw new AuthenticationError(
 				`Failed to save auth credentials: ${(error as Error).message}`,
@@ -199,10 +210,11 @@ export class CredentialStore {
 	}
 
 	/**
-	 * Check if credentials exist and are valid
+	 * Check if credentials exist (regardless of expiration status)
+	 * @returns true if credentials are stored, including expired credentials
 	 */
-	hasValidCredentials(): boolean {
-		const credentials = this.getCredentials({ allowExpired: false });
+	hasCredentials(): boolean {
+		const credentials = this.getCredentials({ allowExpired: true });
 		return credentials !== null;
 	}
 

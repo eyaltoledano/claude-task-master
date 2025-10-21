@@ -35,7 +35,7 @@ vi.mock('./credential-store.js', () => {
 			}
 			saveCredentials() {}
 			clearCredentials() {}
-			hasValidCredentials() {
+			hasCredentials() {
 				return false;
 			}
 		}

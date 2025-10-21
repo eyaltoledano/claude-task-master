@@ -10,6 +10,7 @@ import {
 	TaskMasterError
 } from '../../errors/task-master-error.js';
 import { DEFAULT_CONFIG_VALUES } from '../../interfaces/configuration.interface.js';
+import { getLogger } from '../../logger/index.js';
 
 /**
  * Runtime state data structure
@@ -30,6 +31,7 @@ export interface RuntimeState {
 export class RuntimeStateManager {
 	private stateFilePath: string;
 	private currentState: RuntimeState;
+	private readonly logger = getLogger('RuntimeStateManager');
 
 	constructor(projectRoot: string) {
 		this.stateFilePath = path.join(projectRoot, '.taskmaster', 'state.json');
@@ -66,7 +68,7 @@ export class RuntimeStateManager {
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				// State file doesn't exist, use defaults
-				console.debug('No state.json found, using default state');
+				this.logger.debug('No state.json found, using default state');
 
 				// Check environment variable
 				if (process.env.TASKMASTER_TAG) {
@@ -76,7 +78,8 @@ export class RuntimeStateManager {
 				return this.currentState;
 			}
 
-			console.warn('Failed to load state file:', error.message);
+			// Failed to load, use defaults
+			this.logger.warn('Failed to load state file:', error.message);
 			return this.currentState;
 		}
 	}

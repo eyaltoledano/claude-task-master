@@ -6,13 +6,11 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import search from '@inquirer/search';
 import ora, { Ora } from 'ora';
-import {
-	AuthManager,
-	AuthenticationError,
-	type UserContext
-} from '@tm/core/auth';
+import { AuthManager, type UserContext } from '@tm/core/auth';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from context command
@@ -115,18 +113,17 @@ export class ContextCommand extends Command {
 	 */
 	private async executeShow(): Promise<void> {
 		try {
-			const result = await this.displayContext();
+			const result = this.displayContext();
 			this.setLastResult(result);
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
 	/**
 	 * Display current context
 	 */
-	private async displayContext(): Promise<ContextResult> {
+	private displayContext(): ContextResult {
 		// Check authentication first
 		if (!this.authManager.isAuthenticated()) {
 			console.log(chalk.yellow('✗ Not authenticated'));
@@ -139,7 +136,7 @@ export class ContextCommand extends Command {
 			};
 		}
 
-		const context = await this.authManager.getContext();
+		const context = this.authManager.getContext();
 
 		console.log(chalk.cyan('\n🌍 Workspace Context\n'));
 
@@ -156,10 +153,14 @@ export class ContextCommand extends Command {
 
 			if (context.briefName || context.briefId) {
 				console.log(chalk.green('\n✓ Brief'));
-				if (context.briefName) {
+				if (context.briefName && context.briefId) {
+					const shortId = context.briefId.slice(0, 8);
+					console.log(
+						chalk.white(`  ${context.briefName} `) + chalk.gray(`(${shortId})`)
+					);
+				} else if (context.briefName) {
 					console.log(chalk.white(`  ${context.briefName}`));
-				}
-				if (context.briefId) {
+				} else if (context.briefId) {
 					console.log(chalk.gray(`  ID: ${context.briefId}`));
 				}
 			}
@@ -211,8 +212,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -250,9 +250,10 @@ export class ContextCommand extends Command {
 			]);
 
 			// Update context
-			await this.authManager.updateContext({
+			this.authManager.updateContext({
 				orgId: selectedOrg.id,
 				orgName: selectedOrg.name,
+				orgSlug: selectedOrg.slug,
 				// Clear brief when changing org
 				briefId: undefined,
 				briefName: undefined
@@ -263,7 +264,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'select-org',
-				context: (await this.authManager.getContext()) || undefined,
+				context: this.authManager.getContext() || undefined,
 				message: `Selected organization: ${selectedOrg.name}`
 			};
 		} catch (error) {
@@ -284,7 +285,7 @@ export class ContextCommand extends Command {
 			}
 
 			// Check if org is selected
-			const context = await this.authManager.getContext();
+			const context = this.authManager.getContext();
 			if (!context?.orgId) {
 				ui.displayError(
 					'No organization selected. Run "tm context org" first.'
@@ -299,8 +300,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -324,26 +324,54 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			// Prompt for selection
-			const { selectedBrief } = await inquirer.prompt([
-				{
-					type: 'list',
-					name: 'selectedBrief',
-					message: 'Select a brief:',
-					choices: [
-						{ name: '(No brief - organization level)', value: null },
-						...briefs.map((brief) => ({
-							name: `Brief ${brief.id} (${new Date(brief.createdAt).toLocaleDateString()})`,
-							value: brief
-						}))
-					]
+			// Prompt for selection with search
+			const selectedBrief = await search<(typeof briefs)[0] | null>({
+				message: 'Search for a brief:',
+				source: async (input) => {
+					const searchTerm = input?.toLowerCase() || '';
+
+					// Static option for no brief
+					const noBriefOption = {
+						name: '(No brief - organization level)',
+						value: null as any,
+						description: 'Clear brief selection'
+					};
+
+					// Filter and map brief options
+					const briefOptions = briefs
+						.filter((brief) => {
+							if (!searchTerm) return true;
+
+							const title = brief.document?.title || '';
+							const shortId = brief.id.slice(0, 8);
+
+							// Search by title first, then by UUID
+							return (
+								title.toLowerCase().includes(searchTerm) ||
+								brief.id.toLowerCase().includes(searchTerm) ||
+								shortId.toLowerCase().includes(searchTerm)
+							);
+						})
+						.map((brief) => {
+							const title =
+								brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
+							const shortId = brief.id.slice(0, 8);
+							return {
+								name: `${title} ${chalk.gray(`(${shortId})`)}`,
+								value: brief
+							};
+						});
+
+					return [noBriefOption, ...briefOptions];
 				}
-			]);
+			});
 
 			if (selectedBrief) {
 				// Update context with brief
-				const briefName = `Brief ${selectedBrief.id.slice(0, 8)}`;
-				await this.authManager.updateContext({
+				const briefName =
+					selectedBrief.document?.title ||
+					`Brief ${selectedBrief.id.slice(0, 8)}`;
+				this.authManager.updateContext({
 					briefId: selectedBrief.id,
 					briefName: briefName
 				});
@@ -353,12 +381,12 @@ export class ContextCommand extends Command {
 				return {
 					success: true,
 					action: 'select-brief',
-					context: (await this.authManager.getContext()) || undefined,
-					message: `Selected brief: ${selectedBrief.name}`
+					context: this.authManager.getContext() || undefined,
+					message: `Selected brief: ${selectedBrief.document?.title}`
 				};
 			} else {
 				// Clear brief selection
-				await this.authManager.updateContext({
+				this.authManager.updateContext({
 					briefId: undefined,
 					briefName: undefined
 				});
@@ -368,7 +396,7 @@ export class ContextCommand extends Command {
 				return {
 					success: true,
 					action: 'select-brief',
-					context: (await this.authManager.getContext()) || undefined,
+					context: this.authManager.getContext() || undefined,
 					message: 'Cleared brief selection'
 				};
 			}
@@ -396,8 +424,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -443,8 +470,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -468,7 +494,7 @@ export class ContextCommand extends Command {
 			if (!briefId) {
 				spinner.fail('Could not extract a brief ID from the provided input');
 				ui.displayError(
-					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
+					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
 				);
 				process.exit(1);
 			}
@@ -480,20 +506,24 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			// Fetch org to get a friendly name (optional)
+			// Fetch org to get a friendly name and slug (optional)
 			let orgName: string | undefined;
+			let orgSlug: string | undefined;
 			try {
 				const org = await this.authManager.getOrganization(brief.accountId);
 				orgName = org?.name;
+				orgSlug = org?.slug;
 			} catch {
 				// Non-fatal if org lookup fails
 			}
 
 			// Update context: set org and brief
-			const briefName = `Brief ${brief.id.slice(0, 8)}`;
-			await this.authManager.updateContext({
+			const briefName =
+				brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
+			this.authManager.updateContext({
 				orgId: brief.accountId,
 				orgName,
+				orgSlug,
 				briefId: brief.id,
 				briefName
 			});
@@ -508,15 +538,14 @@ export class ContextCommand extends Command {
 			this.setLastResult({
 				success: true,
 				action: 'set',
-				context: (await this.authManager.getContext()) || undefined,
+				context: this.authManager.getContext() || undefined,
 				message: 'Context set from brief'
 			});
 		} catch (error: any) {
 			try {
 				if (spinner?.isSpinning) spinner.stop();
 			} catch {}
-			this.handleError(error);
-			process.exit(1);
+			displayError(error);
 		}
 	}
 
@@ -613,7 +642,7 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			await this.authManager.updateContext(context);
+			this.authManager.updateContext(context);
 			ui.displaySuccess('Context updated');
 
 			// Display what was set
@@ -631,7 +660,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'set',
-				context: (await this.authManager.getContext()) || undefined,
+				context: this.authManager.getContext() || undefined,
 				message: 'Context updated'
 			};
 		} catch (error) {
@@ -642,26 +671,6 @@ export class ContextCommand extends Command {
 				action: 'set',
 				message: `Failed to set context: ${(error as Error).message}`
 			};
-		}
-	}
-
-	/**
-	 * Handle errors
-	 */
-	private handleError(error: any): void {
-		if (error instanceof AuthenticationError) {
-			console.error(chalk.red(`\n✗ ${error.message}`));
-
-			if (error.code === 'NOT_AUTHENTICATED') {
-				ui.displayWarning('Please authenticate first: tm auth login');
-			}
-		} else {
-			const msg = error?.message ?? String(error);
-			console.error(chalk.red(`Error: ${msg}`));
-
-			if (error.stack && process.env.DEBUG) {
-				console.error(chalk.gray(error.stack));
-			}
 		}
 	}
 
@@ -682,8 +691,55 @@ export class ContextCommand extends Command {
 	/**
 	 * Get current context (for programmatic usage)
 	 */
-	getContext(): Promise<UserContext | null> {
+	getContext(): UserContext | null {
 		return this.authManager.getContext();
+	}
+
+	/**
+	 * Interactive context setup (for post-auth flow)
+	 * Prompts user to select org and brief
+	 */
+	async setupContextInteractive(): Promise<{
+		success: boolean;
+		orgSelected: boolean;
+		briefSelected: boolean;
+	}> {
+		try {
+			// Ask if user wants to set up workspace context
+			const { setupContext } = await inquirer.prompt([
+				{
+					type: 'confirm',
+					name: 'setupContext',
+					message: 'Would you like to set up your workspace context now?',
+					default: true
+				}
+			]);
+
+			if (!setupContext) {
+				return { success: true, orgSelected: false, briefSelected: false };
+			}
+
+			// Select organization
+			const orgResult = await this.selectOrganization();
+			if (!orgResult.success || !orgResult.context?.orgId) {
+				return { success: false, orgSelected: false, briefSelected: false };
+			}
+
+			// Select brief
+			const briefResult = await this.selectBrief(orgResult.context.orgId);
+			return {
+				success: true,
+				orgSelected: true,
+				briefSelected: briefResult.success
+			};
+		} catch (error) {
+			console.error(
+				chalk.yellow(
+					'\nContext setup skipped due to error. You can set it up later with "tm context"'
+				)
+			);
+			return { success: false, orgSelected: false, briefSelected: false };
+		}
 	}
 
 	/**

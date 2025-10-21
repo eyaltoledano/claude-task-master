@@ -76,7 +76,7 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 	});
 
 	describe('Expired Token Detection', () => {
-		it('should detect expired token', async () => {
+		it('should return expired token for Supabase to refresh', () => {
 			// Set up expired credentials
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
@@ -91,24 +91,15 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			// Mock the Supabase refreshSession to return new tokens
-			const mockRefreshSession = vi
-				.fn()
-				.mockResolvedValue(mockRefreshedSession);
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockImplementation(mockRefreshSession);
+			// Get credentials returns them even if expired
+			const credentials = authManager.getCredentials();
 
-			// Get credentials should trigger refresh
-			const credentials = await authManager.getCredentials();
-
-			expect(mockRefreshSession).toHaveBeenCalledTimes(1);
 			expect(credentials).not.toBeNull();
-			expect(credentials?.token).toBe('new-access-token-xyz');
+			expect(credentials?.token).toBe('expired-token');
+			expect(credentials?.refreshToken).toBe('valid-refresh-token');
 		});
 
-		it('should not refresh valid token', async () => {
+		it('should return valid token', () => {
 			// Set up valid credentials
 			const validCredentials: AuthCredentials = {
 				token: 'valid-token',
@@ -123,22 +114,14 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			// Mock refresh to ensure it's not called
-			const mockRefreshSession = vi.fn();
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockImplementation(mockRefreshSession);
+			const credentials = authManager.getCredentials();
 
-			const credentials = await authManager.getCredentials();
-
-			expect(mockRefreshSession).not.toHaveBeenCalled();
 			expect(credentials?.token).toBe('valid-token');
 		});
 	});
 
 	describe('Token Refresh Flow', () => {
-		it('should refresh expired token and save new credentials', async () => {
+		it('should manually refresh expired token and save new credentials', async () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'old-token',
 				refreshToken: 'old-refresh-token',
@@ -162,23 +145,24 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 				'refreshSession'
 			).mockResolvedValue(mockRefreshedSession);
 
-			const refreshedCredentials = await authManager.getCredentials();
+			// Explicitly call refreshToken() method
+			const refreshedCredentials = await authManager.refreshToken();
 
 			expect(refreshedCredentials).not.toBeNull();
-			expect(refreshedCredentials?.token).toBe('new-access-token-xyz');
-			expect(refreshedCredentials?.refreshToken).toBe('new-refresh-token-xyz');
+			expect(refreshedCredentials.token).toBe('new-access-token-xyz');
+			expect(refreshedCredentials.refreshToken).toBe('new-refresh-token-xyz');
 
 			// Verify context was preserved
-			expect(refreshedCredentials?.selectedContext?.orgId).toBe('test-org');
-			expect(refreshedCredentials?.selectedContext?.briefId).toBe('test-brief');
+			expect(refreshedCredentials.selectedContext?.orgId).toBe('test-org');
+			expect(refreshedCredentials.selectedContext?.briefId).toBe('test-brief');
 
 			// Verify new expiration is in the future
-			const newExpiry = new Date(refreshedCredentials!.expiresAt!).getTime();
+			const newExpiry = new Date(refreshedCredentials.expiresAt!).getTime();
 			const now = Date.now();
 			expect(newExpiry).toBeGreaterThan(now);
 		});
 
-		it('should return null if refresh fails', async () => {
+		it('should throw error if manual refresh fails', async () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
 				refreshToken: 'invalid-refresh-token',
@@ -198,12 +182,11 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 				'refreshSession'
 			).mockRejectedValue(new Error('Refresh token expired'));
 
-			const credentials = await authManager.getCredentials();
-
-			expect(credentials).toBeNull();
+			// Explicit refreshToken() call should throw
+			await expect(authManager.refreshToken()).rejects.toThrow();
 		});
 
-		it('should return null if no refresh token available', async () => {
+		it('should return expired credentials even without refresh token', () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
 				// No refresh token
@@ -217,18 +200,21 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			const credentials = await authManager.getCredentials();
+			const credentials = authManager.getCredentials();
 
-			expect(credentials).toBeNull();
+			// Credentials are returned even without refresh token
+			expect(credentials).not.toBeNull();
+			expect(credentials?.token).toBe('expired-token');
+			expect(credentials?.refreshToken).toBeUndefined();
 		});
 
-		it('should return null if credentials missing expiresAt', async () => {
+		it('should return null if credentials missing expiresAt', () => {
 			const credentialsWithoutExpiry: AuthCredentials = {
 				token: 'test-token',
 				refreshToken: 'refresh-token',
 				userId: 'test-user-id',
 				email: 'test@example.com',
-				// Missing expiresAt
+				// Missing expiresAt - invalid token
 				savedAt: new Date().toISOString()
 			} as any;
 
@@ -236,16 +222,17 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			const credentials = await authManager.getCredentials();
+			const credentials = authManager.getCredentials();
 
-			// Should return null because no valid expiration
+			// Tokens without valid expiration are considered invalid
 			expect(credentials).toBeNull();
 		});
 	});
 
 	describe('Clock Skew Tolerance', () => {
-		it('should refresh token within 30-second expiry window', async () => {
+		it('should return credentials within 30-second expiry window', () => {
 			// Token expires in 15 seconds (within 30-second buffer)
+			// Supabase will handle refresh automatically
 			const almostExpiredCredentials: AuthCredentials = {
 				token: 'almost-expired-token',
 				refreshToken: 'valid-refresh-token',
@@ -259,23 +246,16 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			const mockRefreshSession = vi
-				.fn()
-				.mockResolvedValue(mockRefreshedSession);
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockImplementation(mockRefreshSession);
+			const credentials = authManager.getCredentials();
 
-			const credentials = await authManager.getCredentials();
-
-			// Should trigger refresh due to 30-second buffer
-			expect(mockRefreshSession).toHaveBeenCalledTimes(1);
-			expect(credentials?.token).toBe('new-access-token-xyz');
+			// Credentials are returned (Supabase handles auto-refresh in background)
+			expect(credentials).not.toBeNull();
+			expect(credentials?.token).toBe('almost-expired-token');
+			expect(credentials?.refreshToken).toBe('valid-refresh-token');
 		});
 
-		it('should not refresh token well before expiry', async () => {
-			// Token expires in 5 minutes (well outside 30-second buffer)
+		it('should return valid token well before expiry', () => {
+			// Token expires in 5 minutes
 			const validCredentials: AuthCredentials = {
 				token: 'valid-token',
 				refreshToken: 'valid-refresh-token',
@@ -289,21 +269,17 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			const mockRefreshSession = vi.fn();
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockImplementation(mockRefreshSession);
+			const credentials = authManager.getCredentials();
 
-			const credentials = await authManager.getCredentials();
-
-			expect(mockRefreshSession).not.toHaveBeenCalled();
+			// Valid credentials are returned as-is
+			expect(credentials).not.toBeNull();
 			expect(credentials?.token).toBe('valid-token');
+			expect(credentials?.refreshToken).toBe('valid-refresh-token');
 		});
 	});
 
 	describe('Synchronous vs Async Methods', () => {
-		it('getCredentialsSync should not trigger refresh', () => {
+		it('getCredentials should return expired credentials', () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
 				refreshToken: 'valid-refresh-token',
@@ -317,40 +293,17 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			// Synchronous call should return null without refresh
-			const credentials = authManager.getCredentialsSync();
-
-			expect(credentials).toBeNull();
-		});
-
-		it('getCredentials async should trigger refresh', async () => {
-			const expiredCredentials: AuthCredentials = {
-				token: 'expired-token',
-				refreshToken: 'valid-refresh-token',
-				userId: 'test-user-id',
-				email: 'test@example.com',
-				expiresAt: new Date(Date.now() - 60000).toISOString(),
-				savedAt: new Date().toISOString()
-			};
-
-			credentialStore.saveCredentials(expiredCredentials);
-
-			authManager = AuthManager.getInstance();
-
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockResolvedValue(mockRefreshedSession);
-
-			const credentials = await authManager.getCredentials();
+			// Returns credentials even if expired - Supabase will handle refresh
+			const credentials = authManager.getCredentials();
 
 			expect(credentials).not.toBeNull();
-			expect(credentials?.token).toBe('new-access-token-xyz');
+			expect(credentials?.token).toBe('expired-token');
+			expect(credentials?.refreshToken).toBe('valid-refresh-token');
 		});
 	});
 
 	describe('Multiple Concurrent Calls', () => {
-		it('should handle concurrent getCredentials calls gracefully', async () => {
+		it('should handle concurrent getCredentials calls gracefully', () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
 				refreshToken: 'valid-refresh-token',
@@ -364,29 +317,20 @@ describe('AuthManager - Token Auto-Refresh Integration', () => {
 
 			authManager = AuthManager.getInstance();
 
-			const mockRefreshSession = vi
-				.fn()
-				.mockResolvedValue(mockRefreshedSession);
-			vi.spyOn(
-				authManager['supabaseClient'],
-				'refreshSession'
-			).mockImplementation(mockRefreshSession);
+			// Make multiple concurrent calls (synchronous now)
+			const creds1 = authManager.getCredentials();
+			const creds2 = authManager.getCredentials();
+			const creds3 = authManager.getCredentials();
 
-			// Make multiple concurrent calls
-			const [creds1, creds2, creds3] = await Promise.all([
-				authManager.getCredentials(),
-				authManager.getCredentials(),
-				authManager.getCredentials()
-			]);
+			// All should get the same credentials (even if expired)
+			expect(creds1?.token).toBe('expired-token');
+			expect(creds2?.token).toBe('expired-token');
+			expect(creds3?.token).toBe('expired-token');
 
-			// All should get the refreshed token
-			expect(creds1?.token).toBe('new-access-token-xyz');
-			expect(creds2?.token).toBe('new-access-token-xyz');
-			expect(creds3?.token).toBe('new-access-token-xyz');
-
-			// Refresh might be called multiple times, but that's okay
-			// (ideally we'd debounce, but this is acceptable behavior)
-			expect(mockRefreshSession).toHaveBeenCalled();
+			// All include refresh token for Supabase to use
+			expect(creds1?.refreshToken).toBe('valid-refresh-token');
+			expect(creds2?.refreshToken).toBe('valid-refresh-token');
+			expect(creds3?.refreshToken).toBe('valid-refresh-token');
 		});
 	});
 });

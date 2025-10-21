@@ -40,14 +40,14 @@ describe('Claude Code Integration (Optional)', () => {
 	it('should create a working provider instance', () => {
 		const provider = new ClaudeCodeProvider();
 		expect(provider.name).toBe('Claude Code');
-		expect(provider.getSupportedModels()).toEqual(['sonnet', 'opus']);
+		expect(provider.getSupportedModels()).toEqual(['opus', 'sonnet', 'haiku']);
 	});
 
 	it('should support model validation', () => {
 		const provider = new ClaudeCodeProvider();
 		expect(provider.isModelSupported('sonnet')).toBe(true);
 		expect(provider.isModelSupported('opus')).toBe(true);
-		expect(provider.isModelSupported('haiku')).toBe(false);
+		expect(provider.isModelSupported('haiku')).toBe(true);
 		expect(provider.isModelSupported('unknown')).toBe(false);
 	});
 

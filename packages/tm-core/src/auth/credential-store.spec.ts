@@ -52,7 +52,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(expiredCredentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).toBeNull();
 		});
@@ -69,7 +69,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(validCredentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).not.toBeNull();
 			expect(retrieved?.token).toBe('valid-token');
@@ -92,6 +92,25 @@ describe('CredentialStore - Token Expiration', () => {
 			expect(retrieved).not.toBeNull();
 			expect(retrieved?.token).toBe('expired-token');
 		});
+
+		it('should return expired token by default (allowExpired defaults to true)', () => {
+			const expiredCredentials: AuthCredentials = {
+				token: 'expired-token-default',
+				refreshToken: 'refresh-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				expiresAt: new Date(Date.now() - 60000).toISOString(),
+				savedAt: new Date().toISOString()
+			};
+
+			credentialStore.saveCredentials(expiredCredentials);
+
+			// Call without options - should default to allowExpired: true
+			const retrieved = credentialStore.getCredentials();
+
+			expect(retrieved).not.toBeNull();
+			expect(retrieved?.token).toBe('expired-token-default');
+		});
 	});
 
 	describe('Clock Skew Tolerance', () => {
@@ -108,7 +127,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(almostExpiredCredentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).toBeNull();
 		});
@@ -126,7 +145,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(validCredentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).not.toBeNull();
 			expect(retrieved?.token).toBe('valid-token');
@@ -146,7 +165,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(credentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).not.toBeNull();
 			expect(typeof retrieved?.expiresAt).toBe('number'); // Normalized to number
@@ -164,7 +183,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(credentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).not.toBeNull();
 			expect(typeof retrieved?.expiresAt).toBe('number');
@@ -185,7 +204,7 @@ describe('CredentialStore - Token Expiration', () => {
 				mode: 0o600
 			});
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).toBeNull();
 		});
@@ -203,7 +222,7 @@ describe('CredentialStore - Token Expiration', () => {
 				mode: 0o600
 			});
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			expect(retrieved).toBeNull();
 		});
@@ -244,15 +263,15 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(credentials);
 
-			const retrieved = credentialStore.getCredentials();
+			const retrieved = credentialStore.getCredentials({ allowExpired: false });
 
 			// Should be normalized to number for runtime use
 			expect(typeof retrieved?.expiresAt).toBe('number');
 		});
 	});
 
-	describe('hasValidCredentials', () => {
-		it('should return false for expired credentials', () => {
+	describe('hasCredentials', () => {
+		it('should return true for expired credentials', () => {
 			const expiredCredentials: AuthCredentials = {
 				token: 'expired-token',
 				refreshToken: 'refresh-token',
@@ -264,7 +283,7 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(expiredCredentials);
 
-			expect(credentialStore.hasValidCredentials()).toBe(false);
+			expect(credentialStore.hasCredentials()).toBe(true);
 		});
 
 		it('should return true for valid credentials', () => {
@@ -279,11 +298,11 @@ describe('CredentialStore - Token Expiration', () => {
 
 			credentialStore.saveCredentials(validCredentials);
 
-			expect(credentialStore.hasValidCredentials()).toBe(true);
+			expect(credentialStore.hasCredentials()).toBe(true);
 		});
 
 		it('should return false when no credentials exist', () => {
-			expect(credentialStore.hasValidCredentials()).toBe(false);
+			expect(credentialStore.hasCredentials()).toBe(false);
 		});
 	});
 });

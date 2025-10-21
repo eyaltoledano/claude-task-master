@@ -25,7 +25,7 @@ export interface LoggerConfig {
 export class Logger {
 	private config: Required<LoggerConfig>;
 	private static readonly DEFAULT_CONFIG: Required<LoggerConfig> = {
-		level: LogLevel.WARN,
+		level: LogLevel.SILENT,
 		silent: false,
 		prefix: '',
 		timestamp: false,

@@ -43,6 +43,28 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 8192,
 			"supported": true
+		},
+		{
+			"id": "claude-sonnet-4-5-20250929",
+			"swe_score": 0.73,
+			"cost_per_1m_tokens": {
+				"input": 3.0,
+				"output": 15.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 64000,
+			"supported": true
+		},
+		{
+			"id": "claude-haiku-4-5-20251001",
+			"swe_score": 0.45,
+			"cost_per_1m_tokens": {
+				"input": 1.0,
+				"output": 5.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 200000,
+			"supported": true
 		}
 	],
 	"claude-code": [
@@ -66,6 +88,17 @@
 			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 64000,
+			"supported": true
+		},
+		{
+			"id": "haiku",
+			"swe_score": 0.45,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 200000,
 			"supported": true
 		}
 	],

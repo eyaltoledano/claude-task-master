@@ -1,0 +1,197 @@
+{
+	"meta": {
+		"generatedAt": "2025-10-07T09:46:06.248Z",
+		"tasksAnalyzed": 23,
+		"totalTasks": 23,
+		"analysisCount": 23,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 31,
+			"taskTitle": "Create WorkflowOrchestrator service foundation",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down the WorkflowOrchestrator foundation into its core architectural components: phase management system, event emitter infrastructure, state management interfaces, service integration, and lifecycle control methods. Each subtask should focus on a specific architectural concern with clear interfaces and testable units.",
+			"reasoning": "This is a foundational service requiring state machine implementation, event-driven architecture, and integration with existing services. The complexity is high due to the need for robust phase management, error handling, and service orchestration patterns."
+		},
+		{
+			"taskId": 32,
+			"taskTitle": "Implement GitAdapter for repository operations",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose the GitAdapter implementation into: TypeScript wrapper creation around existing git-utils.js, core git operation methods with comprehensive error handling, branch naming pattern system with token replacement, and confirmation gates for destructive operations. Focus on type safety and existing code integration.",
+			"reasoning": "Moderate-high complexity due to TypeScript integration over existing JavaScript utilities, branch pattern implementation, and safety mechanisms. The existing git-utils.js provides a solid foundation, reducing complexity."
+		},
+		{
+			"taskId": 33,
+			"taskTitle": "Create TestRunnerAdapter for framework detection and execution",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down TestRunnerAdapter into framework detection logic, test execution engine with process management, Jest-specific result parsing, Vitest-specific result parsing, unified result interfaces, and final integration. Each framework parser should be separate to handle their unique output formats.",
+			"reasoning": "High complexity due to multiple framework support (Jest, Vitest), child process management, result parsing from different formats, coverage reporting, and timeout handling. Each framework has unique output formats requiring specialized parsers."
+		},
+		{
+			"taskId": 34,
+			"taskTitle": "Implement autopilot CLI command structure",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure the autopilot command into: basic command setup with Commander.js integration, comprehensive flag handling and validation system, preflight check validation with environment validation, and WorkflowOrchestrator integration with dry-run execution planning. Follow existing CLI patterns from the codebase.",
+			"reasoning": "Moderate complexity involving CLI structure, flag handling, and integration with WorkflowOrchestrator. The existing CLI patterns and Commander.js usage in the codebase provide good guidance, reducing implementation complexity."
+		},
+		{
+			"taskId": 35,
+			"taskTitle": "Integrate surgical test generator with WorkflowOrchestrator",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose the test generation integration into: TaskExecutionService enhancement for test generation mode, TestGenerationService creation using executor framework, prompt composition system for rule integration, and framework-specific test pattern support. Leverage existing executor patterns from the codebase.",
+			"reasoning": "Moderate-high complexity due to integration with existing services, prompt composition system, and framework-specific test generation. The existing executor framework and TaskExecutionService provide good integration points."
+		},
+		{
+			"taskId": 36,
+			"taskTitle": "Implement subtask TDD loop execution",
+			"complexityScore": 9,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down the TDD loop into: SubtaskExecutor class architecture, RED phase test generation, GREEN phase code generation, COMMIT phase with conventional commits, retry mechanism for GREEN phase, timeout and backoff policies, and TaskService integration. Each phase should be independently testable.",
+			"reasoning": "Very high complexity due to implementing the complete TDD red-green-commit cycle with AI integration, retry logic, timeout handling, and git operations. This is the core autonomous workflow requiring robust error handling and state management."
+		},
+		{
+			"taskId": 37,
+			"taskTitle": "Add configuration schema for autopilot settings",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Expand configuration support into: extending configuration interfaces with autopilot settings, updating ConfigManager validation logic, and implementing default configuration values. Build on existing configuration patterns and maintain backward compatibility.",
+			"reasoning": "Low-moderate complexity involving schema extension and validation logic. The existing configuration system provides clear patterns to follow, making this primarily an extension task rather than new architecture."
+		},
+		{
+			"taskId": 38,
+			"taskTitle": "Implement run state persistence and logging",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Structure run state management into: RunStateManager service class creation, run directory structure and manifest creation, JSONL event logging system, test result and commit tracking storage, and state checkpointing with resume functionality. Focus on data integrity and structured logging.",
+			"reasoning": "Moderate-high complexity due to file system operations, structured logging, state serialization, and resume functionality. Requires careful design of data formats and error handling for persistence operations."
+		},
+		{
+			"taskId": 39,
+			"taskTitle": "Add GitHub PR creation with run reports",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose PR creation into: PRAdapter service foundation with interfaces, GitHub CLI integration and command execution, PR body generation from run data and test results, and custom PR template system with configuration support. Leverage existing git-utils.js patterns for CLI integration.",
+			"reasoning": "Moderate complexity involving GitHub CLI integration, report generation, and template systems. The existing git-utils.js provides patterns for CLI tool integration, reducing implementation complexity."
+		},
+		{
+			"taskId": 40,
+			"taskTitle": "Implement task dependency resolution for subtask ordering",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down dependency resolution into: dependency resolution algorithm with cycle detection, topological sorting for subtask ordering, task eligibility checking system, and TaskService integration. Implement graph algorithms for dependency management with proper error handling.",
+			"reasoning": "Moderate-high complexity due to graph algorithm implementation, cycle detection, and integration with existing task management. Requires careful design of dependency resolution logic and edge case handling."
+		},
+		{
+			"taskId": 41,
+			"taskTitle": "Create resume functionality for interrupted runs",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Structure resume functionality into: checkpoint creation in RunStateManager, state restoration logic with validation, state validation for safe resume operations, CLI flag implementation for resume command, and partial phase resume functionality. Focus on data integrity and workflow consistency.",
+			"reasoning": "High complexity due to state serialization/deserialization, workflow restoration, validation logic, and CLI integration. Requires robust error handling and state consistency checks for reliable resume operations."
+		},
+		{
+			"taskId": 42,
+			"taskTitle": "Add coverage threshold enforcement",
+			"complexityScore": 5,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Decompose coverage enforcement into: coverage report parsing from Jest/Vitest, configurable threshold validation logic, coverage gates integration in workflow phases, and detailed coverage failure reporting system. Build on existing TestRunnerAdapter patterns.",
+			"reasoning": "Moderate complexity involving coverage report parsing, validation logic, and workflow integration. The existing TestRunnerAdapter provides good foundation for extending coverage capabilities."
+		},
+		{
+			"taskId": 43,
+			"taskTitle": "Implement tmux-based TUI navigator",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down TUI implementation into: framework selection and basic structure setup, left pane interface layout with status indicators, tmux integration and terminal coordination, navigation system with keybindings, real-time status updates system, and comprehensive event handling with UX polish. Each component should be independently testable.",
+			"reasoning": "High complexity due to terminal UI framework integration, tmux session management, real-time updates, keyboard event handling, and terminal interface design. Requires expertise in terminal UI libraries and tmux integration."
+		},
+		{
+			"taskId": 44,
+			"taskTitle": "Add prompt composition system for context-aware test generation",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure prompt composition into: PromptComposer service foundation, template processing engine with token replacement, rule loading system with precedence handling, and context injection with phase-specific prompt generation. Focus on flexible template system and rule management.",
+			"reasoning": "Moderate-high complexity due to template processing, rule precedence systems, and context injection logic. Requires careful design of template syntax and rule loading mechanisms."
+		},
+		{
+			"taskId": 45,
+			"taskTitle": "Implement tag-branch mapping and automatic tag switching",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Decompose tag-branch mapping into: GitAdapter enhancement with branch-to-tag extraction logic, automatic tag switching workflow integration, and branch-to-tag mapping persistence with validation. Build on existing git-utils.js and tag management functionality.",
+			"reasoning": "Moderate complexity involving pattern matching, tag management integration, and workflow automation. The existing git-utils.js and tag management systems provide good foundation for implementation."
+		},
+		{
+			"taskId": 46,
+			"taskTitle": "Add comprehensive error handling and recovery",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Structure error handling into: error classification system with specific error types, recovery suggestion engine with actionable recommendations, error context management and preservation, force flag implementation with selective bypass, and logging/reporting system integration. Focus on actionable error messages and automated recovery where possible.",
+			"reasoning": "High complexity due to comprehensive error taxonomy, recovery automation, context preservation, and integration across all workflow components. Requires deep understanding of failure modes and recovery strategies."
+		},
+		{
+			"taskId": 47,
+			"taskTitle": "Implement conventional commit message generation",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down commit message generation into: template system creation with variable substitution, commit type auto-detection based on task content and file changes, and validation with GitAdapter integration. Follow conventional commit standards and integrate with existing git operations.",
+			"reasoning": "Low-moderate complexity involving template processing, pattern matching for commit type detection, and validation logic. Well-defined conventional commit standards provide clear implementation guidance."
+		},
+		{
+			"taskId": 48,
+			"taskTitle": "Add multi-framework test execution support",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Expand test framework support into: framework detection system for multiple languages, common adapter interface design, Python pytest adapter implementation, Go and Rust adapter implementations, and integration with existing TestRunnerAdapter. Each language adapter should follow the unified interface pattern.",
+			"reasoning": "High complexity due to multi-language support, framework detection across different ecosystems, and adapter pattern implementation. Each language has unique testing conventions and output formats."
+		},
+		{
+			"taskId": 49,
+			"taskTitle": "Implement workflow event streaming for real-time monitoring",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure event streaming into: WorkflowOrchestrator EventEmitter enhancement, structured event format with metadata, event persistence to run logs, and optional WebSocket streaming for external monitoring. Focus on event consistency and real-time delivery.",
+			"reasoning": "Moderate-high complexity due to event-driven architecture, structured event formats, persistence integration, and WebSocket implementation. Requires careful design of event schemas and delivery mechanisms."
+		},
+		{
+			"taskId": 50,
+			"taskTitle": "Add intelligent test targeting for faster feedback",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Decompose test targeting into: file change detection system, test dependency analysis engine, framework-specific targeting adapters, test impact calculation algorithm, and fallback integration with TestRunnerAdapter. Focus on accuracy and performance optimization.",
+			"reasoning": "High complexity due to dependency analysis, impact calculation algorithms, framework-specific targeting, and integration with existing test execution. Requires sophisticated analysis of code relationships and test dependencies."
+		},
+		{
+			"taskId": 51,
+			"taskTitle": "Implement dry-run visualization with execution timeline",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure dry-run visualization into: timeline calculation engine with duration estimates, estimation algorithms based on task complexity, ASCII art progress visualization with formatting, and resource validation with preflight checks. Focus on accurate planning and clear visual presentation.",
+			"reasoning": "Moderate-high complexity due to timeline calculation, estimation algorithms, ASCII visualization, and resource validation. Requires understanding of workflow timing and visual formatting for terminal output."
+		},
+		{
+			"taskId": 52,
+			"taskTitle": "Add autopilot workflow integration tests",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Structure integration testing into: isolated test environment infrastructure, mock integrations and service stubs, end-to-end workflow test scenarios, performance benchmarking and resource monitoring, test isolation and parallelization strategies, and comprehensive result validation and reporting. Focus on realistic test scenarios and reliable automation.",
+			"reasoning": "High complexity due to end-to-end testing requirements, mock service integration, performance testing, isolation mechanisms, and comprehensive validation. Requires sophisticated test infrastructure and scenario design."
+		},
+		{
+			"taskId": 53,
+			"taskTitle": "Finalize autopilot documentation and examples",
+			"complexityScore": 3,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Structure documentation into: comprehensive autopilot documentation covering setup and usage, example PRD files and templates for different project types, troubleshooting guide for common issues and solutions, and demo materials with workflow visualization. Focus on clarity and practical examples.",
+			"reasoning": "Low complexity involving documentation writing, example creation, and demo material production. The main challenge is ensuring accuracy and completeness rather than technical implementation."
+		}
+	]
+}

@@ -12,7 +12,10 @@
 
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 import { BaseAIProvider } from './base-provider.js';
-import { getClaudeCodeSettingsForCommand } from '../../scripts/modules/config-manager.js';
+import {
+	getClaudeCodeSettingsForCommand,
+	getSupportedModelsForProvider
+} from '../../scripts/modules/config-manager.js';
 import { execSync } from 'child_process';
 import { log } from '../../scripts/modules/utils.js';
 
@@ -24,14 +27,24 @@ let _claudeCliAvailable = null;
  *
  * Features:
  * - No API key required (uses local Claude Code CLI)
- * - Supports 'sonnet' and 'opus' models
+ * - Supported models loaded from supported-models.json
  * - Command-specific configuration support
  */
 export class ClaudeCodeProvider extends BaseAIProvider {
 	constructor() {
 		super();
 		this.name = 'Claude Code';
-		this.supportedModels = ['sonnet', 'opus'];
+		// Load supported models from supported-models.json
+		this.supportedModels = getSupportedModelsForProvider('claude-code');
+
+		// Validate that models were loaded successfully
+		if (this.supportedModels.length === 0) {
+			log(
+				'warn',
+				'No supported models found for claude-code provider. Check supported-models.json configuration.'
+			);
+		}
+
 		// Claude Code requires explicit JSON schema mode
 		this.needsExplicitJsonSchema = true;
 		// Claude Code does not support temperature parameter
