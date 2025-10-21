@@ -5600,12 +5600,633 @@
             "testStrategy": "Test error handling by simulating various failure conditions. Verify that appropriate error messages are displayed. Test MCP tool integration and ensure consistent behavior between CLI and MCP interfaces. Perform end-to-end testing with real tasks to verify the complete workflow."
           }
         ]
+      },
+      {
+        "id": 105,
+        "title": "Add command-based key resolution in utils.js",
+        "description": "Modify resolveEnvVariable in scripts/modules/utils.js to detect !cmd: syntax and synchronously execute the shell command to fetch an API key while preserving backward compatibility.",
+        "details": "Scope: scripts/modules/utils.js\nKey points:\n- Continue to source raw values via existing resolveRawValue(key, session, projectRoot).\n- If value startsWith '!cmd:', strip prefix and execute using child_process.execSync in /bin/sh.\n- Default timeout 5000ms; respect TASKMASTER_CMD_TIMEOUT (ms or seconds, accept both; treat <=60 as seconds for ergonomics).\n- Capture stdout only; trim whitespace; if empty, return null.\n- Never log the command or output; only log the key name and error type.\n- Do not construct command strings from user input; execute as-is.\n\nPseudocode:\nimport { execSync } from 'node:child_process'\n\nfunction parseTimeout() {\n  const raw = process.env.TASKMASTER_CMD_TIMEOUT\n  if (!raw) return 5000\n  const n = parseInt(raw, 10)\n  if (!Number.isFinite(n) || n <= 0) return 5000\n  // Heuristic: <=60 => seconds; else milliseconds\n  return n <= 60 ? n * 1000 : n\n}\n\nexport function resolveEnvVariable(key, session = null, projectRoot = null) {\n  const rawValue = resolveRawValue(key, session, projectRoot)\n  if (rawValue && typeof rawValue === 'string' && rawValue.startsWith('!cmd:')) {\n    const command = rawValue.slice(5).trim()\n    return executeCommandForKey(command, key)\n  }\n  return rawValue\n}\n\nexport function executeCommandForKey(command, keyName, opts = {}) {\n  try {\n    const timeout = opts.timeoutMs ?? parseTimeout()\n    const result = execSync(command, {\n      encoding: 'utf8',\n      timeout,\n      stdio: ['ignore', 'pipe', 'pipe'],\n      shell: '/bin/sh'\n    })\n    const trimmed = (result ?? '').trim()\n    if (!trimmed) throw new Error('empty-result')\n    return trimmed\n  } catch (err) {\n    const reason = err?.killed ? 'timeout' : (err?.status ?? err?.code ?? 'exec-failed')\n    console.error(`Error executing command for ${keyName}: ${String(reason)}`)\n    return null\n  }\n}\n\nBackward compatibility:\n- If value does not start with '!cmd:', return as-is.\n- No behavior change for current env resolution.",
+        "testStrategy": "Unit tests with mocked execSync:\n- Detect prefix and execute: OPENAI_API_KEY='!cmd:echo abc' => 'abc'.\n- Backward compatibility: 'plain-value' returns unchanged.\n- Timeout respected: simulate execSync throwing with .killed=true.\n- Empty output: '!cmd:echo -n \"\"' returns null.\n- Error handling: non-zero exit code returns null and logs sanitized message.\n- Ensure /bin/sh is specified in options.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement parseTimeout helper in scripts/modules/utils.js",
+            "description": "Add a robust timeout parser that reads TASKMASTER_CMD_TIMEOUT and returns a millisecond value with sensible defaults.",
+            "dependencies": [],
+            "details": "Create a new `parseTimeout()` in `scripts/modules/utils.js` that: reads `process.env.TASKMASTER_CMD_TIMEOUT`; returns `5000` when unset, non-numeric, NaN, or <=0; parses base-10 integer; applies heuristic: values <=60 are seconds (multiply by 1000), otherwise treat as milliseconds. Ensure the function is pure, side-effect free, and exported for internal use. Acceptance criteria: function behaves exactly as specified for unset/invalid/seconds/ms inputs; covered by unit tests; no logging from this helper.",
+            "status": "pending",
+            "testStrategy": "Unit tests validate default (5000), seconds heuristic (e.g., 5 => 5000ms), ms pass-through (e.g., 1500 => 1500), and invalid inputs (e.g., 'abc', '0', '-1') returning 5000."
+          },
+          {
+            "id": 2,
+            "title": "Add executeCommandForKey using execSync with sanitized error handling",
+            "description": "Implement a synchronous command executor that captures stdout, trims, and returns null on failure while never logging sensitive data.",
+            "dependencies": [
+              1
+            ],
+            "details": "In `scripts/modules/utils.js`, add and export `executeCommandForKey(command, keyName, opts={})` that uses `child_process.execSync` with `encoding:'utf8'`, `stdio:['ignore','pipe','pipe']`, `shell:'/bin/sh'`, and `timeout` from `opts.timeoutMs ?? parseTimeout()`. Trim stdout; if empty after trim, return null. On error, determine reason: if `err.killed===true` then 'timeout'; else use `err.status ?? err.code ?? 'exec-failed'`. Log only `Error executing command for ${keyName}: ${reason}` to stderr; never log the command or its output. Execute the provided command as-is (do not construct or interpolate). Acceptance criteria: correct use of `/bin/sh`, stdout-only capture, trimmed non-empty return, null on empty/timeout/errors, sanitized logging with only key name and reason.",
+            "status": "pending",
+            "testStrategy": "Mock `child_process.execSync` to simulate: success with 'abc\\n' -> 'abc'; empty output -> null; throw with `{ killed:true }` -> log 'timeout' and return null; throw with `{ status:127 }` -> log '127' and return null. Verify no logs include the command or output."
+          },
+          {
+            "id": 3,
+            "title": "Extend resolveEnvVariable to support '!cmd:' prefix with backward compatibility",
+            "description": "Detect '!cmd:' values and delegate to the command executor while preserving existing behavior for non-prefixed values.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update `resolveEnvVariable(key, session=null, projectRoot=null)` in `scripts/modules/utils.js` to first obtain the raw value via existing `resolveRawValue(key, session, projectRoot)`. If the raw value is a string starting with '!cmd:', strip the prefix, trim, and call `executeCommandForKey(command, key)`. Otherwise return the raw value unchanged. Do not log the command or output; only rely on executor logging when needed. Acceptance criteria: non-prefixed values are returned exactly as before; '!cmd:' values are executed synchronously and produce trimmed stdout or null on failure; no regression in existing env resolution.",
+            "status": "pending",
+            "testStrategy": "Unit tests stub `resolveRawValue` to return: (1) 'plain-value' -> returns 'plain-value'; (2) '!cmd:echo abc' -> delegates to executor and returns 'abc'; (3) '!cmd:   echo abc' with spaces -> still executes; verify executor is called with the stripped command and key name."
+          },
+          {
+            "id": 4,
+            "title": "Add focused unit tests for command-based resolution with execSync mocking",
+            "description": "Create comprehensive tests covering success, backward compatibility, timeout, empty output, and generic errors for the new behavior.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add tests for `parseTimeout`, `executeCommandForKey`, and `resolveEnvVariable` in the project's test suite (co-located with existing module tests). Mock `child_process.execSync` and, where needed, stub `resolveRawValue` to isolate behavior. Ensure logs are sanitized (contain only key name and reason). Acceptance criteria: all specified cases are covered and pass; tests do not rely on actual shell; no test logs contain command strings or outputs; backward compatibility case validated.",
+            "status": "pending",
+            "testStrategy": "Use the project's test runner; mock `child_process.execSync` and verify outcomes for: success ('!cmd:echo abc' -> 'abc'), non-prefixed passthrough, timeout (killed=true), empty stdout (null), and generic error codes. Assert stderr contains 'Error executing command for <KEY>:' with reason only."
+          }
+        ]
+      },
+      {
+        "id": 106,
+        "title": "Implement session cache for command results",
+        "description": "Add in-process caching for executed commands keyed by keyName+command with configurable TTL and ability to disable via env.",
+        "details": "Scope: scripts/modules/utils.js\n- Introduce a module-level Map commandCache: Map<string, {value:string, timestamp:number}>.\n- Cache key: `${keyName}:${command}`.\n- TTL default 300s; configure via TASKMASTER_CMD_CACHE_TTL (seconds). Disable via TASKMASTER_CMD_CACHE_ENABLED=false.\n- Clear cache on demand via exported function clearCommandCache().\n- Do not cache null/empty failures.\n\nPseudocode:\nconst commandCache = new Map()\n\nfunction getTtlMs(){\n  const raw = process.env.TASKMASTER_CMD_CACHE_TTL\n  const s = parseInt(raw ?? '300', 10)\n  return Number.isFinite(s) && s >= 0 ? s * 1000 : 300000\n}\n\nfunction cacheEnabled(){\n  return String(process.env.TASKMASTER_CMD_CACHE_ENABLED ?? 'true').toLowerCase() !== 'false'\n}\n\nexport function clearCommandCache(){ commandCache.clear() }\n\nexport function executeCommandForKey(command, keyName, opts={}) {\n  const useCache = opts.useCache ?? cacheEnabled()\n  const cacheKey = `${keyName}:${command}`\n  if (useCache && commandCache.has(cacheKey)){\n    const { value, timestamp } = commandCache.get(cacheKey)\n    if (Date.now() - timestamp < getTtlMs()) return value\n  }\n  const value = coreExecute(command, keyName, opts) // refactor core logic from previous task\n  if (useCache && value){\n    commandCache.set(cacheKey, { value, timestamp: Date.now() })\n  }\n  return value\n}\n\nRefactor: Split the execution into coreExecute (no cache) to reuse in tests.",
+        "testStrategy": "Unit tests:\n- First call executes, second returns cached value (spy on execSync called once).\n- Cache expiration: set TTL=1s, advance timers/Date.now to expire, ensure re-exec.\n- Disabled cache: TASKMASTER_CMD_CACHE_ENABLED=false forces re-exec.\n- Clear cache function empties cache and forces re-exec.\n- Do not cache null results after failures.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Introduce module-level command cache Map in scripts/modules/utils.js",
+            "description": "Create a module-level Map to store command results with timestamps.",
+            "dependencies": [],
+            "details": "Add `commandCache = new Map<string, { value: string, timestamp: number }>()` at module scope in `scripts/modules/utils.js`. Ensure the structure is documented and ready for use by helper functions and executors.",
+            "status": "pending",
+            "testStrategy": "Basic smoke test: import module and verify `commandCache` exists and is empty."
+          },
+          {
+            "id": 2,
+            "title": "Implement TTL and enable/disable helpers using environment variables",
+            "description": "Add functions to compute TTL and determine if caching is enabled.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `getTtlMs()` to read `TASKMASTER_CMD_CACHE_TTL` (seconds), parse as integer, default to 300s, clamp invalid values to default, and return milliseconds. Implement `cacheEnabled()` to read `TASKMASTER_CMD_CACHE_ENABLED` and treat any value other than case-insensitive 'false' as enabled.",
+            "status": "pending",
+            "testStrategy": "Unit test helpers with various env values (missing, invalid, zero, negative, large, 'false', 'TRUE')."
+          },
+          {
+            "id": 3,
+            "title": "Refactor core, cache-agnostic execution into `coreExecute(command, keyName, opts)`",
+            "description": "Extract existing command execution logic into a pure function without caching.",
+            "dependencies": [
+              1
+            ],
+            "details": "Move the current execution logic from `executeCommandForKey` into a new exported `coreExecute(command, keyName, opts)` that performs the command and returns the string result without any cache checks or mutations. Preserve existing behavior and options.",
+            "status": "pending",
+            "testStrategy": "Mock/spies for underlying exec to assert `coreExecute` is called and returns expected output; verify no cache interaction."
+          },
+          {
+            "id": 4,
+            "title": "Implement cache-aware `executeCommandForKey` and `clearCommandCache` export",
+            "description": "Wrap core execution with cache lookup/set keyed by `${keyName}:${command}` and export a cache clear function.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "In `executeCommandForKey`, compute cacheKey `${keyName}:${command}`. If `opts.useCache ?? cacheEnabled()` is true, return cached value when `Date.now() - timestamp < getTtlMs()`. Otherwise call `coreExecute`. After success, cache only truthy/non-empty values with `{ value, timestamp: Date.now() }`. Implement and export `clearCommandCache()` to call `commandCache.clear()`.",
+            "status": "pending",
+            "testStrategy": "Integration tests to ensure first call executes, second returns cached, and that `clearCommandCache()` forces re-execution."
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive unit tests for cache hits, expiry, disabled mode, and null handling",
+            "description": "Create tests using fake timers/Date.now spies covering key cache behaviors and edge cases.",
+            "dependencies": [
+              4
+            ],
+            "details": "Write tests to: (1) verify first call executes and second is cached (spy on exec called once), (2) verify expiry by setting TTL=1s and advancing fake time to force re-exec, (3) verify disabled behavior with `TASKMASTER_CMD_CACHE_ENABLED=false`, (4) verify `clearCommandCache()` empties cache and forces re-exec, (5) ensure null/empty results are never cached, (6) confirm cache key combines `keyName` and `command`. Include setup/teardown to reset env, timers, and cache.",
+            "status": "pending",
+            "testStrategy": "Use Jest or equivalent: fake timers or Date.now mocks, env var manipulation, and spies/mocks for underlying execution to assert call counts and behaviors."
+          }
+        ]
+      },
+      {
+        "id": 107,
+        "title": "Add command validation and security hardening",
+        "description": "Introduce lightweight validation to block clearly dangerous command patterns, sanitize error logging, and prepare optional allow-list support for enterprise use.",
+        "details": "Scope: scripts/modules/utils.js (and optionally config reader)\n- Validation runs only when value uses '!cmd:' prefix.\n- Deny-list regex for dangerous patterns; examples: /(\\brm\\b[^|;\\n]*)/i, /(\\bdd\\b)/i, /(curl|wget)\\s+[^|\\n]*\\|\\s*(sh|bash)/i, /\\bsudo\\b/i, /\\bmkfs\\b/i, /\\bssh\\b\\s+[^;|\\n]*/, /(>\\s*\\/dev\\/(sd|nvme|disk))/i.\n- Reject if matched: log sanitized message and return null.\n- Do not attempt to parse/escape; we execute the command string as-is to avoid injection.\n- Keep environment passthrough (process.env) to support AWS/Azure/1Password; do not inject extra env from configs.\n- Prepare allow-list hook: read optional array from config (e.g., security.allowedCommandPrefixes) and require command.startsWith any prefix when present.\n\nPseudocode:\nfunction isDangerousCommand(cmd){\n  const patterns = [ /* regexes above */ ]\n  return patterns.some(rx => rx.test(cmd))\n}\n\nfunction isAllowedByPrefix(cmd, prefixes){\n  if (!Array.isArray(prefixes) || prefixes.length===0) return true\n  return prefixes.some(p => cmd.startsWith(p))\n}\n\nIn resolveEnvVariable / executeCommandForKey path:\n- If isDangerousCommand(command) => log `Command blocked for ${keyName}` and return null.\n- If prefixes defined and not allowed => log and return null.",
+        "testStrategy": "Unit tests:\n- Block 'rm -rf /tmp/x' and 'curl http://... | sh'.\n- Allow benign commands like 'echo test' and 'pass show path'.\n- When allow-list is configured, disallow non-matching command, allow matching prefix.\n- Verify logs do not include the command string (only key name + reason).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Survey utils.js command execution path and design validation hooks",
+            "description": "Map where '!cmd:' is handled and define the validation hook points.",
+            "dependencies": [],
+            "details": "Review `scripts/modules/utils.js` to locate `resolveEnvVariable`/command execution path. Draft function signatures for `isDangerousCommand(cmd)` and `isAllowedByPrefix(cmd, prefixes)`. Identify how to access `keyName` for sanitized logging. Decide where to read optional config (`security.allowedCommandPrefixes`). Add TODO comments and placeholders without altering behavior yet.",
+            "status": "pending",
+            "testStrategy": "Lightweight code review checklist confirming locations and hook points are correct."
+          },
+          {
+            "id": 2,
+            "title": "Implement deny-list regex checks in utils.js",
+            "description": "Create and wire `isDangerousCommand` using provided dangerous command regexes.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add `isDangerousCommand(cmd)` in `scripts/modules/utils.js` with compiled, case-insensitive regexes: /(\\brm\\b[^|;\\n]*)/i, /(\\bdd\\b)/i, /(curl|wget)\\s+[^|\\n]*\\|\\s*(sh|bash)/i, /\\bsudo\\b/i, /\\bmkfs\\b/i, /\\bssh\\b\\s+[^;|\\n]*/ , /(>\\s*\\/dev\\/(sd|nvme|disk))/i. Ensure it returns true on first match and remains side-effect free. Keep function local and easily testable.",
+            "status": "pending",
+            "testStrategy": "Unit tests: inputs match each pattern and return true; benign commands like 'echo ok' return false."
+          },
+          {
+            "id": 3,
+            "title": "Add optional allow-list prefix support and config reader hook",
+            "description": "Implement `isAllowedByPrefix` and read optional allow-list from config.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add `isAllowedByPrefix(cmd, prefixes)` that returns true if `prefixes` is empty/invalid, otherwise requires `cmd.startsWith(prefix)` for any allowed prefix. Introduce a small config accessor to read `security.allowedCommandPrefixes` (array) from existing config reader (if present) or guard if absent. Do not mutate env or inject new variables.",
+            "status": "pending",
+            "testStrategy": "Unit tests: with no prefixes -> true; with prefixes -> only commands starting with a listed prefix are allowed; invalid types gracefully treated as allow-all."
+          },
+          {
+            "id": 4,
+            "title": "Integrate validation into '!cmd:' execution path with sanitized logging",
+            "description": "Gate command execution by deny-list and allow-list checks before `execSync`.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "In `resolveEnvVariable` (or the exact '!cmd:' branch in `scripts/modules/utils.js`), call `isDangerousCommand(cmd)` and, if true, log `Command blocked for ${keyName}` without echoing the command or output; return null. If allow-list prefixes exist and `!isAllowedByPrefix(cmd, prefixes)`, log a similarly sanitized message and return null. Keep execution as-is (no escaping/parsing), preserve `process.env` passthrough, and keep existing timeout semantics.",
+            "status": "pending",
+            "testStrategy": "Integration tests with mocked `execSync`: dangerous commands are not executed and return null; non-matching allow-list commands blocked; allowed/benign commands execute. Validate logs exclude the command string."
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive unit tests for validation and logging behavior",
+            "description": "Cover deny-list, allow-list, benign cases, and sanitized logging across scenarios.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create tests to assert: (1) 'rm -rf /tmp/x' and 'curl http://x | sh' are blocked; (2) benign 'echo test' and 'pass show path' are allowed; (3) when `security.allowedCommandPrefixes` is set, non-matching commands are blocked while matching prefixes pass; (4) logs contain only key name and reason without echoing the command or output. Mock `execSync` to avoid real execution and to verify it is not called on blocked inputs.",
+            "status": "pending",
+            "testStrategy": "Unit/integration tests using the project’s test framework (e.g., Jest). Snapshot or regex-assert logs; assert `execSync` call counts and parameters."
+          },
+          {
+            "id": 6,
+            "title": "Document security validation and define acceptance criteria",
+            "description": "Add documentation/comments explaining validation rules and enterprise allow-list hook.",
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Add README or `docs/security.md` section describing '!cmd:' validation, deny-list coverage, allow-list behavior, sanitized logging, and environment passthrough. Include a TODO stub for future enterprise allow-list source integration. Record acceptance criteria: each deny-list rule blocks as specified, allow-list enforcement when configured, benign commands pass, and logs are sanitized.",
+            "status": "pending",
+            "testStrategy": "Documentation review plus a short acceptance checklist aligning with implemented tests."
+          }
+        ]
+      },
+      {
+        "id": 108,
+        "title": "Add local config override support (.taskmaster/config.json)",
+        "description": "Allow environment overrides from .taskmaster/config.json and ensure command-based values are handled consistently with other sources.",
+        "details": "Scope: config loading + scripts/modules/utils.js\n- Define path: `${projectRoot}/.taskmaster/config.json`.\n- JSON shape: { \"environment\": { KEY: VALUE, ... }, \"security\"?: { \"allowedCommandPrefixes\": string[] } }.\n- Precedence: System env > local config environment > MCP config > .env (confirm with existing app rules; if different, document and apply consistently).\n- Implement loader: safe JSON parse; on file changes, trigger cache clear via clearCommandCache().\n- Integrate resolveRawValue to include local config source.\n\nPseudocode:\nfunction loadLocalConfig(projectRoot){\n  const p = path.join(projectRoot ?? process.cwd(), '.taskmaster', 'config.json')\n  if (!fs.existsSync(p)) return null\n  try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return null }\n}\n\nfunction resolveRawValue(key, session, projectRoot){\n  // existing sources...\n  const cfg = loadLocalConfig(projectRoot)\n  if (cfg?.environment && key in cfg.environment) return cfg.environment[key]\n  // otherwise fall through to existing logic\n}\n\nOn configuration reload/hot-reload:\n- Call clearCommandCache().\n\nSecurity prefix integration:\n- If cfg.security.allowedCommandPrefixes exists, pass down to validation in executeCommandForKey.",
+        "testStrategy": "Unit tests:\n- Provide a temp projectRoot with .taskmaster/config.json and ensure values are read.\n- Ensure '!cmd:' values in local config execute and resolve.\n- Modify the file and call reload; verify clearCommandCache was called (spy) and new values take effect.\n- Invalid/malformed JSON handled gracefully without crash.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement safe local config loader for .taskmaster/config.json with projectRoot resolution",
+            "description": "Create a robust loader that resolves and safely parses the local config file.",
+            "dependencies": [],
+            "details": "Add loadLocalConfig(projectRoot) that resolves `${projectRoot || process.cwd()}/.taskmaster/config.json`, checks existence, reads UTF-8, parses JSON in try/catch, and returns null on error. Ensure path handling works cross-platform and function lives alongside existing config utilities.",
+            "status": "pending",
+            "testStrategy": "Unit test: returns object for valid JSON; returns null for missing file; returns null for malformed JSON without throwing."
+          },
+          {
+            "id": 2,
+            "title": "Integrate local config into resolveRawValue with correct precedence",
+            "description": "Wire loader into value resolution while preserving existing sources.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update resolveRawValue(key, session, projectRoot) to include local config: System env > local config environment > MCP config > .env. If cfg?.environment has key, return it. Preserve existing '!cmd:' handling so command-based values behave consistently with other sources. Update docs/comments to reflect precedence.",
+            "status": "pending",
+            "testStrategy": "Unit tests using temp project dir: verify precedence ordering; verify '!cmd:' values from local config execute and resolve as expected."
+          },
+          {
+            "id": 3,
+            "title": "Plumb security.allowedCommandPrefixes to command validator",
+            "description": "Pass allowedCommandPrefixes from local config into executeCommandForKey validation.",
+            "dependencies": [
+              1
+            ],
+            "details": "If cfg.security.allowedCommandPrefixes exists, pass it to the command validation layer used by executeCommandForKey. Ensure defaults remain when not provided, and that provided prefixes override or augment per current validation rules (document chosen behavior).",
+            "status": "pending",
+            "testStrategy": "Unit test: with prefixes set, commands with allowed prefixes pass and others are rejected; without prefixes, default behavior remains unchanged."
+          },
+          {
+            "id": 4,
+            "title": "Trigger clearCommandCache() on config reload or file changes",
+            "description": "Ensure cache invalidates when local config is reloaded or modified.",
+            "dependencies": [
+              1
+            ],
+            "details": "On configuration reload/hot-reload, call clearCommandCache(). If a file watcher exists, watch `.taskmaster/config.json` and invoke clearCommandCache() on change; otherwise, ensure reloadConfig(projectRoot) explicitly triggers it after re-reading local config.",
+            "status": "pending",
+            "testStrategy": "Unit test with spy: modify temp config file, call reload, assert clearCommandCache() was called and new values are used subsequently."
+          },
+          {
+            "id": 5,
+            "title": "Handle malformed/partial JSON and missing fields gracefully",
+            "description": "Harden loader and integration to be tolerant of bad config input.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Keep parsing in try/catch, returning null on failure. Validate the shape: if environment is not an object or security.allowedCommandPrefixes is not an array of strings, ignore invalid sections. Log at debug level but never throw; fallback to other sources without breaking precedence.",
+            "status": "pending",
+            "testStrategy": "Unit tests: malformed JSON returns null without throw; invalid shapes are ignored while other valid sections still apply; resolution falls back to MCP/.env as expected."
+          },
+          {
+            "id": 6,
+            "title": "Add comprehensive tests for precedence, '!cmd:' handling, and hot reload (with acceptance criteria)",
+            "description": "Create end-to-end unit tests using a temp project directory covering all behaviors.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Set up temp projectRoot; create `.taskmaster/config.json`, MCP config mocks, and .env. Verify precedence: System env overrides local; local overrides MCP; MCP overrides .env. Verify '!cmd:' values resolve consistently. Verify updating the config triggers clearCommandCache() and subsequent resolves use new values. Include acceptance criteria explicitly.",
+            "status": "pending",
+            "testStrategy": "Acceptance criteria: (1) Precedence order exactly System env > Local config > MCP > .env; (2) '!cmd:' from local config executes and resolves like other sources; (3) On config change and reload, clearCommandCache() is called and new values are visible on next resolve; (4) Malformed JSON does not crash and is ignored while others still work."
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "title": "Unit test suite for command execution and caching",
+        "description": "Create comprehensive unit tests covering command detection, execution, timeout, errors, caching, and security validation with >90% coverage of new logic.",
+        "details": "Scope: test runner used by repo (e.g., Jest). If no runner, add minimal Jest dev dependency and config strictly for unit tests of utils.\n- Mock child_process.execSync to simulate outputs, timeouts, failures.\n- Use temporary overrides of process.env for TTL/timeout toggles.\n- Use fake timers or Date.now spies for TTL expiry tests.\n- Verify logs are sanitized (spy on console.error).\n- Backward compatibility tests for non-command values.\n\nExample Jest snippets:\njest.mock('node:child_process', () => ({ execSync: jest.fn() }))\n\ntest('executes echo', () => { execSync.mockReturnValue('abc\\n'); expect(resolveEnvVariable('OPENAI_API_KEY', null, cwd)).toBe('abc') })\n\ntest('timeout handled', () => { const e = new Error('ETIMEDOUT'); e.killed=true; execSync.mockImplementation(() => { throw e }) ; expect(executeCommandForKey('sleep 10','OPENAI_API_KEY')).toBeNull() })\n\ntest('caching enabled/disabled', ...)",
+        "testStrategy": "Run unit tests locally across Node LTS. Assertions:\n- Success, failure, empty output mapping to null.\n- Timeout derived from TASKMASTER_CMD_TIMEOUT values (ms and seconds heuristic).\n- Cache hit/miss behavior, TTL, disabled caching.\n- Security deny-list blocks known bad commands.\n- No logs contain command strings or key values.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up or validate Jest configuration dedicated to utils unit tests",
+            "description": "Ensure a minimal, repo-aligned Jest setup exists or add one strictly for unit testing utils with Node environment.",
+            "dependencies": [],
+            "details": "Create/verify Jest config (Node env, no Babel needed). Limit testMatch to utils tests, add collectCoverage and coverageThreshold >90% for scripts/modules/utils.js. Add npm scripts: test, test:watch, test:cov. Do not alter app runtime config.",
+            "status": "pending",
+            "testStrategy": "Run `npm test` to confirm Jest boots. Verify coverage output and that only utils tests run. Fail build under 90% coverage."
+          },
+          {
+            "id": 2,
+            "title": "Implement shared test harness: mocks, env isolation, timers, and log spies",
+            "description": "Create reusable helpers to mock execSync, isolate process.env, control time, and verify sanitized logging.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add jest.setup file to mock node:child_process execSync, reset mocks afterEach. Provide helpers to snapshot/restore process.env, set TASKMASTER_CMD_TIMEOUT values, and use fake timers/Date.now spies. Spy on console.error and ensure automatic cleanup between tests.",
+            "status": "pending",
+            "testStrategy": "Unit test helpers themselves: verify env restored, timers reset, and console spies cleared. Confirm execSync mock is controllable per test."
+          },
+          {
+            "id": 3,
+            "title": "Write detection and passthrough tests for '!cmd:' and raw values",
+            "description": "Verify command prefix detection works and non-command values remain backward compatible.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Target scripts/modules/utils.js resolveEnvVariable and related helpers. Test values starting with '!cmd:' are parsed; non-prefixed values return unchanged. Include edge cases: leading/trailing spaces trimming where applicable and multiple keys handling.",
+            "status": "pending",
+            "testStrategy": "Mock execSync to ensure no call for non-prefixed values; assert exact returns. For prefixed values, assert parsing path taken (mock call count) without executing real shell."
+          },
+          {
+            "id": 4,
+            "title": "Write success and empty-output handling tests for command execution",
+            "description": "Confirm successful command execution returns trimmed stdout and empty output maps to null.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Mock execSync to return 'abc\\n' and expect resolved value 'abc'. Mock to return '' or Buffer.from('') and expect null. Ensure no logs leak command or output on success by checking console spies saw no sensitive strings.",
+            "status": "pending",
+            "testStrategy": "Use execSync.mockReturnValue for strings/Buffers. Assert returned values and that console.error was not called with command contents."
+          },
+          {
+            "id": 5,
+            "title": "Write timeout, error, and security validation tests with sanitized logging",
+            "description": "Cover timeouts, non-zero exit errors, environment-driven timeouts, and deny-list security checks with sanitized logs.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Simulate timeout via Error with killed=true and ensure null result. Test TASKMASTER_CMD_TIMEOUT in ms and seconds (<=60 => seconds). Simulate non-zero exit to ensure null and sanitized console.error (only key name and reason). Validate deny-list blocks 'rm -rf', 'curl ... | sh', 'sudo', etc., without printing the command string.",
+            "status": "pending",
+            "testStrategy": "execSync.mockImplementation(() => { throw err }). Assert error handling, timeout behavior, and that console.error never includes the raw command. Verify allowed benign commands still execute."
+          },
+          {
+            "id": 6,
+            "title": "Write caching, TTL/disable/clear tests and enforce >90% coverage",
+            "description": "Test cache hit/miss, TTL expiry via fake timers, disabled caching via env, and cache clearing behavior; finalize coverage checks.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Seed cache via first execution; verify hit without re-calling execSync. Advance fake timers/Date.now beyond TTL to force miss and refresh. Toggle env to disable caching and assert every call executes. If clear API exists, verify it. Ensure coverage thresholds in config enforce >90% for new logic.",
+            "status": "pending",
+            "testStrategy": "Use fake timers/Date.now spy to simulate TTL expiry. Inspect execSync call counts for hit/miss. Run coverage report and confirm thresholds pass."
+          }
+        ]
+      },
+      {
+        "id": 110,
+        "title": "Integration tests for common credential store commands",
+        "description": "Add opt-in integration tests that execute real commands when CLIs are available to validate interoperability with Keychain, pass, 1Password CLI, AWS, and Azure.",
+        "details": "Scope: test/integration/* (skipped by default unless ENABLE_SECRET_IT=true)\n- Detect availability of each CLI via `command -v` before running corresponding tests; skip if missing.\n- Use non-sensitive fixtures: for each provider, prepare ephemeral secrets OR simulate with echo fallbacks when not configured.\n- Validate parsing and trimming, including commands with quotes and pipes.\n- Ensure failures return null without leaking command strings.\n\nTest matrix examples:\n- Simple: !cmd:echo \"test-key-123\"\n- Keychain (macOS only): security add-generic-password -a test -s tm-int -w test123; then read with -w\n- pass: create a temp store under GNUPGHOME in tmp, insert secret, read via pass show\n- 1Password CLI: only run if `op --version` and signed in; else skip\n- AWS: if AWS_PROFILE present, use a dedicated test secret name; else skip\n- Azure: same pattern via az keyvault secret show (use environment variables for vault name)\n- Pipes: aws ... | jq -r .SecretString (skip if jq missing)",
+        "testStrategy": "CI-marked as optional:\n- Locally or in specialized CI jobs with required CLIs pre-installed.\n- Use setup/teardown to avoid leaving real secrets.\n- Assertions: non-empty string returned; respects timeout on slow commands; returns null on failures; logs sanitized.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Scaffold opt-in integration test harness under test/integration gated by ENABLE_SECRET_IT",
+            "description": "Create the base integration test harness that runs only when ENABLE_SECRET_IT=1.",
+            "dependencies": [],
+            "details": "Add test/integration/ structure, common setup module, and a global gate that skips all integration tests unless process.env.ENABLE_SECRET_IT is truthy. Provide utilities to mark and explain skipped tests.",
+            "status": "pending",
+            "testStrategy": "Run tests with and without ENABLE_SECRET_IT set; verify all suites skip by default and run when enabled."
+          },
+          {
+            "id": 2,
+            "title": "Implement CLI and environment detection utilities for providers and tools",
+            "description": "Create helpers to detect required CLIs and relevant environment hints.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add functions to check command availability via `command -v`, detect macOS for Keychain, verify `op --version` and signed-in status, and probe env like AWS_PROFILE, AZURE vault vars, and jq presence. Expose skip reasons.",
+            "status": "pending",
+            "testStrategy": "Mock `command -v` calls where possible and verify detection returns expected booleans; on real systems, print diagnostic skip reasons."
+          },
+          {
+            "id": 3,
+            "title": "Add sanitized command execution helper with timeout and null-on-failure behavior",
+            "description": "Provide a safe exec wrapper that trims output and redacts logs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement an exec/spawn wrapper enforcing timeouts, capturing stdout/stderr, trimming output, and returning null on nonzero exit or timeout. Ensure logs redact raw command strings and any suspected secrets.",
+            "status": "pending",
+            "testStrategy": "Assert timeout by running a sleep command, assert null on failure exit, and verify sanitized logs do not contain the raw command string."
+          },
+          {
+            "id": 4,
+            "title": "Author baseline echo and pipe parsing tests with trimming and jq skip",
+            "description": "Create simple tests for echo commands, quotes, and optional jq piping.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Add tests for !cmd:echo \"test-key-123\" ensuring correct parsing and trimming. Add pipeline test using jq (e.g., echo '{\"k\":\"v\"}' | jq -r .k) and skip when jq is unavailable using detection utilities.",
+            "status": "pending",
+            "testStrategy": "Verify returned values match expected strings, whitespace is trimmed, jq tests are conditionally skipped if jq is missing."
+          },
+          {
+            "id": 5,
+            "title": "Implement macOS Keychain integration tests using `security` with setup/teardown",
+            "description": "Test reading a generic password on macOS using the security CLI.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Only on darwin with `security` present: create an ephemeral item via `security add-generic-password -a test -s tm-int -w test123`, read with `security find-generic-password -s tm-int -w`, and delete in teardown. Ensure no secrets are logged and failures return null.",
+            "status": "pending",
+            "testStrategy": "On macOS, assert read value equals the written secret, verify cleanup succeeds; on other platforms or missing CLI, confirm tests are skipped with clear reasons."
+          },
+          {
+            "id": 6,
+            "title": "Implement `pass` integration tests using isolated temp store and safe fallbacks",
+            "description": "Test pass-based secret retrieval with temporary store or skip/fallback when not configured.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Create a temp PASSWORD_STORE_DIR (and GNUPGHOME if needed). If GPG and pass are configured, init store, insert a test secret, and read via `pass show`. If prerequisites are missing, skip or simulate with echo without touching real stores.",
+            "status": "pending",
+            "testStrategy": "When available, assert retrieved value matches inserted secret and that teardown removes files; otherwise, ensure tests are cleanly skipped with documented reason."
+          },
+          {
+            "id": 7,
+            "title": "Add integration tests for 1Password CLI, AWS Secrets Manager, and Azure Key Vault with conditional skips",
+            "description": "Cover op, AWS, and Azure providers using non-sensitive, ephemeral fixtures and environment-based gating.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "For 1Password: run only if `op --version` and signed in; read a dedicated test item or ephemeral item, then clean up. For AWS: require AWS_PROFILE and a test secret name; read via CLI, optionally piping to jq when present. For Azure: use env-provided vault and secret name; read via `az keyvault secret show`. All tests must avoid logging secrets and skip when prerequisites are absent.",
+            "status": "pending",
+            "testStrategy": "For each provider, assert non-empty string equals expected test value, verify pipeline path when jq exists, and confirm tests are skipped with explicit reasons when env/CLIs are missing."
+          },
+          {
+            "id": 8,
+            "title": "Provide setup/teardown scripts, documentation, and acceptance criteria for safe local runs",
+            "description": "Add helper scripts and docs describing prerequisites, environment variables, and safety constraints.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "Create optional setup/teardown scripts in test/integration for ephemeral resources. Document ENABLE_SECRET_IT gating, required CLIs, env variables, and how to run/skip provider tests. Define acceptance criteria: correct parsing/trim, null on failure, sanitized logs, timeouts respected, and no leftover secrets.",
+            "status": "pending",
+            "testStrategy": "Manual verification: follow docs to run locally; confirm scripts operate idempotently, acceptance criteria are met across providers, and teardown leaves no residual secrets."
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "title": "Cross-platform and CI integration",
+        "description": "Validate behavior on macOS, Linux, and Windows WSL; add CI matrix jobs and WSL-specific guidance to ensure cross-platform compatibility and performance with caching.",
+        "details": "Scope: CI config (e.g., GitHub Actions) and contributor docs\n- Add matrix: os: [macos-latest, ubuntu-latest]; WSL: document running under Ubuntu on Windows.\n- Ensure shell is /bin/sh for Linux/macOS; WSL uses the same path; native Windows remains out-of-scope but document limitation.\n- Split CI jobs: unit tests (always), integration (conditional env ENABLE_SECRET_IT=true, tools preinstalled).\n- Collect timing metrics to ensure added latency <100ms when cached (informational logs only in CI).\n- Ensure environment isolation does not strip needed creds; do not inject secrets.\n\nPseudocode (GitHub Actions idea):\njobs:\n  unit:\n    runs-on: ${{ matrix.os }}\n    strategy: { matrix: { os: [ubuntu-latest, macos-latest], node: [lts/*] } }\n    steps: checkout, setup-node, install, test\n  integration:\n    if: env.ENABLE_SECRET_IT == 'true'\n    runs-on: ubuntu-latest\n    steps: preinstall CLIs, setup secrets via CI store, run integration tests",
+        "testStrategy": "- Verify unit suite passes on macOS and Linux runners.\n- Manual validation instructions for WSL in docs; quick script to assert resolveEnvVariable works under WSL.\n- Measure cold vs warm execution time via simple script; assert warm < threshold when cached (non-blocking).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add GitHub Actions matrix for macOS and Ubuntu with Node LTS and caching",
+            "description": "Create/adjust CI workflow to run unit tests on macOS and Ubuntu using Node.js LTS with dependency caching for cross-platform validation.",
+            "dependencies": [],
+            "details": "Create `.github/workflows/ci.yml` (or update existing) with `strategy.matrix` over `os: [ubuntu-latest, macos-latest]` and `node: [lts/*]`. Steps: `actions/checkout`, `actions/setup-node` with built-in cache (npm/pnpm/yarn as appropriate), install, and run unit tests. Set `defaults.run.shell: sh` or per-step `shell: sh` to ensure POSIX shell. Trigger on push and pull_request.",
+            "status": "pending",
+            "testStrategy": "Confirm both runners execute and pass unit tests; verify Node resolves to LTS; check logs for cache restore/save and shell shows `/bin/sh` via `command -v sh`."
+          },
+          {
+            "id": 2,
+            "title": "Split CI into always-on unit job and optional integration job gated by ENABLE_SECRET_IT",
+            "description": "Introduce a separate integration job that runs only when `ENABLE_SECRET_IT` is true while keeping unit tests always on in a matrix.",
+            "dependencies": [
+              1
+            ],
+            "details": "Keep `unit` job as matrix across `os` and `node`. Add `integration` job on `ubuntu-latest` with `if: ${{ env.ENABLE_SECRET_IT == 'true' }}`. Preinstall required CLIs, load secrets from CI secrets store only in this job, and execute integration tests. Ensure unit job does not read or reference secrets.",
+            "status": "pending",
+            "testStrategy": "Run default CI to verify integration job is skipped. Manually dispatch or set `ENABLE_SECRET_IT=true` to validate the integration job runs, preinstalls tools, and executes tests with skips where CLIs are absent."
+          },
+          {
+            "id": 3,
+            "title": "Enforce `/bin/sh` usage across runners and document shell expectations",
+            "description": "Ensure all CI steps use POSIX `sh` path `/bin/sh` on Linux, macOS, and note the same path for WSL.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set `defaults.run.shell: sh` (maps to `/bin/sh` on Ubuntu/macOS). Add a diagnostic step `command -v sh` and `ps -p $$` to log the shell path/parent. Remove any `bash`-specific constructs from CI scripts. Document that WSL uses the same `/bin/sh` path.",
+            "status": "pending",
+            "testStrategy": "Inspect CI logs for `/bin/sh` resolution and successful execution of POSIX-compliant commands on both OS runners; ensure no bashisms cause failures."
+          },
+          {
+            "id": 4,
+            "title": "Add non-blocking timing metrics to compare cold vs warm cache overhead",
+            "description": "Collect and log simple duration metrics in CI to confirm warm-cache overhead remains below ~100ms (informational only).",
+            "dependencies": [
+              2
+            ],
+            "details": "Add a small timing step around a no-op script after cache restore (e.g., `START=$(date +%s%3N)` … `END=$(date +%s%3N)`; echo `metrics:warm_ms=$((END-START))`). On first run (cold) capture baseline; on subsequent runs (warm) confirm reduced overhead. Do not gate success on thresholds—purely informational logging.",
+            "status": "pending",
+            "testStrategy": "Compare logs across two consecutive runs: verify second run shows significantly lower warm time and warm overhead under ~100ms. Ensure workflow never fails due to metric values."
+          },
+          {
+            "id": 5,
+            "title": "Document WSL usage, limitations, and quick validation script in contributors guide",
+            "description": "Add WSL-specific instructions for running under Ubuntu on Windows, with limitations and a small validation script.",
+            "dependencies": [
+              3
+            ],
+            "details": "Update `docs/CONTRIBUTING.md` (or README) with steps for installing Node LTS in WSL Ubuntu, confirming `/bin/sh` path, running unit tests, and a small script to validate `resolveEnvVariable` under WSL. Explicitly document native Windows (non-WSL) as out-of-scope, expected performance/caching notes, and how CI mirrors WSL shell behavior.",
+            "status": "pending",
+            "testStrategy": "Follow the documented steps in a WSL environment to run the validation script and unit tests; confirm instructions are accurate and unambiguous."
+          },
+          {
+            "id": 6,
+            "title": "Verify environment isolation and secrets policy; add safeguards and docs",
+            "description": "Ensure unit jobs have no secrets, integration job reads secrets only when enabled; document the policy and safeguards.",
+            "dependencies": [
+              2,
+              5
+            ],
+            "details": "Set minimal `permissions` on workflows; remove secret references from unit job. In integration job, reference secrets only when `ENABLE_SECRET_IT=='true'`. Add a CI step that prints which expected env vars are present (masked) and asserts secrets are absent in unit context. Update docs to explain opt-in flow and no secret injection by default.",
+            "status": "pending",
+            "testStrategy": "Review workflow to confirm no `secrets.*` in unit job; CI logs show unit job lacks secrets while integration job has access only when enabled. Perform a dry-run with and without `ENABLE_SECRET_IT` to validate behavior."
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "title": "Documentation and examples update",
+        "description": "Update README, .env.example, CLAUDE.md, .taskmaster/CLAUDE.md, and docs/ with command-based key syntax, security guidance, configuration options, and troubleshooting.",
+        "details": "Files to update:\n- README.md: New section \"Command-Based API Keys\" with syntax `!cmd:`, examples for Keychain, pass, 1Password, AWS, Azure, Doppler, custom script; note timeout env and caching envs.\n- .env.example: Replace plaintext keys with command examples; include CI pattern using env var indirection.\n- CLAUDE.md and .taskmaster/CLAUDE.md: How to enable dynamic keys for Claude Code integration.\n- docs/credential-management.md: Dedicated guide with security best practices, deny-list behavior, optional allow-list prefixes, caching, TTL, and performance notes.\n- Troubleshooting: common failures (CLI not installed, auth not set, empty output), how to enable debug logs without exposing secrets.\n- Migration guide snippet: existing hardcoded keys continue to work; how to switch to !cmd: safely.\n\nEnsure wording: never include actual secrets; sanitize all examples; highlight cross-platform support (macOS, Linux, Windows WSL).",
+        "testStrategy": "- Docs lint/build if applicable.\n- Manually verify links and file paths exist.\n- Copy-paste test: run each example command locally (where applicable) to ensure syntax correctness.\n- Validate .env.example loads without syntax errors and does not leak secrets.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add README section: Command-Based API Keys (`!cmd:`) with sanitized provider examples and env options",
+            "description": "Create a new README.md section introducing `!cmd:` syntax, usage, and behavior.",
+            "dependencies": [],
+            "details": "Update `README.md` with a \"Command-Based API Keys\" section covering: how `!cmd:` works, cross-platform support (macOS, Linux, Windows/WSL), and sanitized examples for Keychain, pass, 1Password, AWS Secrets Manager, Azure Key Vault, Doppler, and a custom script. Document timeout and caching environment variables (names, defaults, and examples) and note that secrets must never be in plaintext or logs.",
+            "status": "pending",
+            "testStrategy": "Build/lint docs if applicable; verify anchors and intra-doc links; copy-paste each example command (with placeholders) to confirm syntax; confirm no secrets or real tokens are present."
+          },
+          {
+            "id": 2,
+            "title": "Refresh `.env.example` with `!cmd:` patterns and CI indirection",
+            "description": "Replace plaintext keys with command-based examples and add CI-friendly env indirection patterns.",
+            "dependencies": [
+              1
+            ],
+            "details": "Revise `.env.example` to use `!cmd:` for all API keys with commented, sanitized examples for multiple providers. Include a CI pattern via env indirection (e.g., `FOO_API_KEY=\"!cmd:$FOO_API_KEY_CMD\"`) and document how to set `*_CMD` in CI secrets. Add commented entries for command timeout and caching TTL envs. Ensure comments emphasize no plaintext secrets and note any Windows/WSL shell nuances for quoting and paths.",
+            "status": "pending",
+            "testStrategy": "Load with the project’s dotenv loader to ensure no syntax errors; scan for accidental secrets; manually validate that example lines are parseable by standard dotenv parsers."
+          },
+          {
+            "id": 3,
+            "title": "Update `CLAUDE.md` and `.taskmaster/CLAUDE.md` for dynamic keys with `!cmd:`",
+            "description": "Explain enabling dynamic keys for Claude Code using `!cmd:` with secure examples and integration notes.",
+            "dependencies": [
+              1
+            ],
+            "details": "Revise `CLAUDE.md` and `.taskmaster/CLAUDE.md` to show how to enable dynamic Anthropic keys via `!cmd:`. Include sanitized provider examples (e.g., Keychain, 1Password), required env variables, caching/TTL guidance, security best practices (no secrets in logs), and cross-platform considerations. Add steps to verify integration without exposing secrets.",
+            "status": "pending",
+            "testStrategy": "Follow the docs end-to-end in a clean shell: set placeholder envs, run a non-invasive CLI invocation that triggers key resolution, ensure no secret output is logged, and check links to README and credential guide."
+          },
+          {
+            "id": 4,
+            "title": "Create `docs/credential-management.md` with security, deny-list/allow-list, caching, TTL, and performance",
+            "description": "Author a dedicated guide detailing command-based credential management and security posture.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add `docs/credential-management.md` covering: how `!cmd:` resolution works, security best practices, deny-list behavior, optional allow-list prefixes, cache behavior and TTL envs, performance tips, provider snippets, and debugging guidance (enable debug logs without exposing secrets). Emphasize sanitized examples and cross-platform notes.",
+            "status": "pending",
+            "testStrategy": "Manually verify structure, headings, and examples render correctly; check all cross-references; ensure deny-list/allow-list guidance is explicit and consistent with README; confirm no secrets appear."
+          },
+          {
+            "id": 5,
+            "title": "Add troubleshooting, migration guidance, and doc review checklist with acceptance criteria",
+            "description": "Provide troubleshooting for common failures, migration notes for `!cmd:`, and a review checklist.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Create or update troubleshooting content (new `docs/troubleshooting.md` or README section) for missing CLIs, auth not configured, empty command output, and enabling debug logs safely. Add a migration snippet clarifying hardcoded keys still work and how to switch to `!cmd:` safely. Add a docs review checklist (e.g., `docs/docs-review-checklist.md`) and acceptance criteria: no secrets in repo, all links valid, examples run without exposing secrets, `.env.example` parses, and cross-platform notes included.",
+            "status": "pending",
+            "testStrategy": "Run a link checker or manual link validation; simulate common failure scenarios with placeholder commands; confirm debug instructions do not leak secret values; ensure the checklist items can be verified objectively."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-06-13T23:52:56.848Z",
-      "updated": "2025-08-02T14:13:14.826Z",
-      "description": "Main tag for the taskmaster project"
+      "updated": "2025-10-20T17:19:50.066Z",
+      "description": "Tasks for master context"
     }
   },
   "test-tag": {
