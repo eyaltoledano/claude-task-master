@@ -49,7 +49,7 @@ export class TerminalManager {
 			await this.initializeCore();
 
 			// Use tm-core to start the task (same as CLI)
-			const startResult = await this.tmCore!.startTask(taskId, {
+			const startResult = await this.tmCore!.tasks.start(taskId, {
 				dryRun: false,
 				force: false,
 				updateStatus: true
@@ -144,13 +144,9 @@ export class TerminalManager {
 		});
 		this.terminals.clear();
 
+		// Clear tm-core reference (no explicit cleanup needed)
 		if (this.tmCore) {
-			try {
-				await this.tmCore.close();
-				this.tmCore = undefined;
-			} catch (error) {
-				this.logger.error('Failed to close tm-core:', error);
-			}
+			this.tmCore = undefined;
 		}
 	}
 }
