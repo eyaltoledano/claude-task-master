@@ -12,7 +12,7 @@ import {
 	AuthManager,
 	AuthenticationError,
 	type AuthCredentials
-} from '@tm/core/auth';
+} from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
 import { displayError } from '../utils/error-handler.js';

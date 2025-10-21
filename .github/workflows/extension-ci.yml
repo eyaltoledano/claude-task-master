@@ -6,15 +6,15 @@ on:
       - main
       - next
     paths:
-      - 'apps/extension/**'
-      - '.github/workflows/extension-ci.yml'
+      - "apps/extension/**"
+      - ".github/workflows/extension-ci.yml"
   pull_request:
     branches:
       - main
       - next
     paths:
-      - 'apps/extension/**'
-      - '.github/workflows/extension-ci.yml'
+      - "apps/extension/**"
+      - ".github/workflows/extension-ci.yml"
 
 permissions:
   contents: read
@@ -55,7 +55,6 @@ jobs:
         with:
           node-version: 20
 
-
       - name: Restore node_modules
         uses: actions/cache@v4
         with:
@@ -72,7 +71,7 @@ jobs:
 
       - name: Type Check Extension
         working-directory: apps/extension
-        run: npm run check-types
+        run: npm run typecheck
         env:
           FORCE_COLOR: 1
 
@@ -85,7 +84,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
 
       - name: Restore node_modules
         uses: actions/cache@v4
@@ -137,4 +135,3 @@ jobs:
             apps/extension/vsix-build/*.vsix
             apps/extension/dist/
           retention-days: 30
-

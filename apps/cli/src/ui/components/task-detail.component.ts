@@ -8,7 +8,7 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import { marked, MarkedExtension } from 'marked';
 import { markedTerminal } from 'marked-terminal';
-import type { Task } from '@tm/core/types';
+import type { Task } from '@tm/core';
 import {
 	getStatusWithColor,
 	getPriorityWithColor,

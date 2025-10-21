@@ -8,7 +8,7 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import search from '@inquirer/search';
 import ora, { Ora } from 'ora';
-import { AuthManager, type UserContext } from '@tm/core/auth';
+import { AuthManager, type UserContext } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 

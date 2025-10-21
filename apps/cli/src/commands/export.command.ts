@@ -7,8 +7,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora, { Ora } from 'ora';
-import { AuthManager, type UserContext } from '@tm/core/auth';
-import { TaskMasterCore, type ExportResult } from '@tm/core';
+import {
+	AuthManager,
+	type UserContext,
+	type ExportResult,
+	createTmCore,
+	type TmCore
+} from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 
@@ -28,7 +33,7 @@ export interface ExportCommandResult {
  */
 export class ExportCommand extends Command {
 	private authManager: AuthManager;
-	private taskMasterCore?: TaskMasterCore;
+	private taskMasterCore?: TmCore;
 	private lastResult?: ExportCommandResult;
 
 	constructor(name?: string) {
@@ -61,7 +66,7 @@ export class ExportCommand extends Command {
 	}
 
 	/**
-	 * Initialize the TaskMasterCore
+	 * Initialize the TmCore
 	 */
 	private async initializeServices(): Promise<void> {
 		if (this.taskMasterCore) {
@@ -69,8 +74,8 @@ export class ExportCommand extends Command {
 		}
 
 		try {
-			// Initialize TaskMasterCore
-			this.taskMasterCore = await TaskMasterCore.create({
+			// Initialize TmCore
+			this.taskMasterCore = await createTmCore({
 				projectPath: process.cwd()
 			});
 		} catch (error) {
@@ -152,7 +157,8 @@ export class ExportCommand extends Command {
 			// Perform export
 			spinner = ora('Exporting tasks...').start();
 
-			const exportResult = await this.taskMasterCore!.exportTasks({
+			// Use integration domain facade
+			const exportResult = await this.taskMasterCore!.integration.exportTasks({
 				orgId,
 				briefId,
 				tag: options?.tag,

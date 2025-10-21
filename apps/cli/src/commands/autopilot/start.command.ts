@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { createTaskMasterCore, type WorkflowContext } from '@tm/core';
+import { createTmCore, type WorkflowContext } from '@tm/core';
 import {
 	AutopilotBaseOptions,
 	hasWorkflowState,
@@ -67,20 +67,19 @@ export class StartCommand extends Command {
 			}
 
 			// Initialize Task Master Core
-			const tmCore = await createTaskMasterCore({
+			const tmCore = await createTmCore({
 				projectPath: mergedOptions.projectRoot!
 			});
 
 			// Get current tag from ConfigManager
-			const currentTag = tmCore.getActiveTag();
+			const currentTag = tmCore.config.getActiveTag();
 
 			// Load task
 			formatter.info(`Loading task ${taskId}...`);
-			const { task } = await tmCore.getTaskWithSubtask(taskId);
+			const { task } = await tmCore.tasks.get(taskId);
 
 			if (!task) {
 				formatter.error('Task not found', { taskId });
-				await tmCore.close();
 				process.exit(1);
 			}
 
@@ -90,7 +89,6 @@ export class StartCommand extends Command {
 					taskId,
 					suggestion: `Run: task-master expand --id=${taskId}`
 				});
-				await tmCore.close();
 				process.exit(1);
 			}
 
@@ -156,7 +154,6 @@ export class StartCommand extends Command {
 			});
 
 			// Clean up
-			await tmCore.close();
 		} catch (error) {
 			formatter.error((error as Error).message);
 			if (mergedOptions.verbose) {

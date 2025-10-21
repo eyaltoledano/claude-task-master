@@ -7,8 +7,8 @@ import path from 'node:path';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { createTaskMasterCore, type Task, type TaskMasterCore } from '@tm/core';
-import type { StorageType } from '@tm/core/types';
+import { createTmCore, type Task, type TmCore } from '@tm/core';
+import type { StorageType } from '@tm/core';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
@@ -38,7 +38,7 @@ export interface NextTaskResult {
  * This is a thin presentation layer over @tm/core
  */
 export class NextCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: NextTaskResult;
 
 	constructor(name?: string) {
@@ -104,12 +104,12 @@ export class NextCommand extends Command {
 	}
 
 	/**
-	 * Initialize TaskMasterCore
+	 * Initialize TmCore
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
 			const resolved = path.resolve(projectRoot);
-			this.tmCore = await createTaskMasterCore({ projectPath: resolved });
+			this.tmCore = await createTmCore({ projectPath: resolved });
 		}
 	}
 
@@ -120,18 +120,18 @@ export class NextCommand extends Command {
 		options: NextCommandOptions
 	): Promise<NextTaskResult> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		// Call tm-core to get next task
-		const task = await this.tmCore.getNextTask(options.tag);
+		const task = await this.tmCore.tasks.getNext(options.tag);
 
 		// Get storage type and active tag
-		const storageType = this.tmCore.getStorageType();
+		const storageType = this.tmCore.config.getStorageConfig().type;
 		if (storageType === 'auto') {
 			throw new Error('Storage type must be resolved before use');
 		}
-		const activeTag = options.tag || this.tmCore.getActiveTag();
+		const activeTag = options.tag || this.tmCore.config.getActiveTag();
 
 		return {
 			task,
@@ -232,7 +232,6 @@ export class NextCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		if (this.tmCore) {
-			await this.tmCore.close();
 			this.tmCore = undefined;
 		}
 	}

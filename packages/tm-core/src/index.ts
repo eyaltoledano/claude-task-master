@@ -1,117 +1,127 @@
 /**
- * @fileoverview Main entry point for the tm-core package
- * This file exports all public APIs from the core Task Master library
+ * @fileoverview Main entry point for @tm/core
+ * Provides unified access to all Task Master functionality through TmCore
  */
 
-// Export main facade
-export {
-	TaskMasterCore,
-	createTaskMasterCore,
-	type TaskMasterCoreOptions,
-	type ListTasksResult,
-	type StartTaskOptions,
-	type StartTaskResult,
-	type ConflictCheckResult,
-	type ExportTasksOptions,
-	type ExportResult
-} from './task-master-core.js';
+import type { TasksDomain } from './modules/tasks/tasks-domain.js';
 
-// Re-export types
-export type * from './types/index.js';
+// ========== Primary API ==========
 
-// Re-export interfaces (types only to avoid conflicts)
-export type * from './interfaces/index.js';
+/**
+ * Create a new TmCore instance - The ONLY way to use tm-core
+ *
+ * @example
+ * ```typescript
+ * import { createTmCore } from '@tm/core';
+ *
+ * const tmcore = await createTmCore({
+ *   projectPath: process.cwd()
+ * });
+ *
+ * // Access domains
+ * await tmcore.auth.login({ ... });
+ * const tasks = await tmcore.tasks.list();
+ * await tmcore.workflow.start({ taskId: '1' });
+ * await tmcore.git.commit('feat: add feature');
+ * const config = tmcore.config.get('models.main');
+ * ```
+ */
+export { createTmCore, TmCore, type TmCoreOptions } from './tm-core.js';
 
-// Re-export constants
-export * from './constants/index.js';
+// ========== Type Exports ==========
 
-// Re-export providers
-export * from './providers/index.js';
+// Common types that consumers need
+export type * from './common/types/index.js';
 
-// Re-export storage (selectively to avoid conflicts)
-export {
-	FileStorage,
-	ApiStorage,
-	StorageFactory,
-	type ApiStorageConfig
-} from './storage/index.js';
-export { PlaceholderStorage, type StorageAdapter } from './storage/index.js';
+// Common interfaces
+export type * from './common/interfaces/index.js';
 
-// Re-export parser
-export * from './parser/index.js';
+// Constants
+export * from './common/constants/index.js';
 
-// Re-export utilities
-export * from './utils/index.js';
+// Errors
+export * from './common/errors/index.js';
 
-// Re-export errors
-export * from './errors/index.js';
+// ========== Domain-Specific Type Exports ==========
 
-// Re-export entities
-export { TaskEntity } from './entities/task.entity.js';
+// Task types
+export type {
+	TaskListResult,
+	GetTaskListOptions
+} from './modules/tasks/services/task-service.js';
 
-// Re-export authentication
-export {
-	AuthManager,
-	AuthenticationError,
-	type AuthCredentials,
-	type OAuthFlowOptions,
-	type AuthConfig
-} from './auth/index.js';
+export type {
+	StartTaskOptions,
+	StartTaskResult,
+	ConflictCheckResult
+} from './modules/tasks/services/task-execution-service.js';
 
-// Re-export logger
-export { getLogger, createLogger, setGlobalLogger } from './logger/index.js';
+export type {
+	PreflightResult,
+	CheckResult
+} from './modules/tasks/services/preflight-checker.service.js';
 
-// Re-export executors
-export * from './executors/index.js';
+// Task domain result types
+export type TaskWithSubtaskResult = Awaited<ReturnType<TasksDomain['get']>>;
 
-// Re-export reports
-export {
-	ComplexityReportManager,
-	type ComplexityReport,
-	type ComplexityReportMetadata,
-	type ComplexityAnalysis,
-	type TaskComplexityData
-} from './reports/index.js';
+// Auth types
+export type {
+	AuthCredentials,
+	OAuthFlowOptions,
+	UserContext
+} from './modules/auth/types.js';
+export { AuthenticationError } from './modules/auth/types.js';
 
-// Re-export services
-export {
-	PreflightChecker,
-	TaskLoaderService,
-	type CheckResult,
-	type PreflightResult,
-	type TaskValidationResult,
-	type ValidationErrorType,
-	type DependencyIssue
-} from './services/index.js';
+// Workflow types
+export type {
+	StartWorkflowOptions,
+	WorkflowStatus,
+	NextAction
+} from './modules/workflow/services/workflow.service.js';
 
-// Re-export Git adapter
-export { GitAdapter } from './git/git-adapter.js';
-export {
-	CommitMessageGenerator,
-	type CommitMessageOptions
-} from './git/commit-message-generator.js';
-
-// Re-export workflow orchestrator, state manager, activity logger, and types
-export { WorkflowOrchestrator } from './workflow/workflow-orchestrator.js';
-export { WorkflowStateManager } from './workflow/workflow-state-manager.js';
-export { WorkflowActivityLogger } from './workflow/workflow-activity-logger.js';
 export type {
 	WorkflowPhase,
 	TDDPhase,
 	WorkflowContext,
 	WorkflowState,
-	WorkflowEvent,
-	WorkflowEventData,
-	WorkflowEventListener,
-	SubtaskInfo,
-	TestResult,
-	WorkflowError
-} from './workflow/types.js';
+	TestResult
+} from './modules/workflow/types.js';
 
-// Re-export workflow service
-export { WorkflowService } from './services/workflow.service.js';
+// Git types
+export type { CommitMessageOptions } from './modules/git/services/commit-message-generator.js';
+
+// Integration types
 export type {
-	StartWorkflowOptions,
-	WorkflowStatus,
-	NextAction
-} from './services/workflow.service.js';
+	ExportTasksOptions,
+	ExportResult
+} from './modules/integration/services/export.service.js';
+
+// Reports types
+export type {
+	ComplexityReport,
+	ComplexityReportMetadata,
+	ComplexityAnalysis,
+	TaskComplexityData
+} from './modules/reports/types.js';
+
+// ========== Advanced API (for CLI/Extension/MCP) ==========
+
+// Auth - Advanced
+export { AuthManager } from './modules/auth/managers/auth-manager.js';
+
+// Workflow - Advanced
+export { WorkflowOrchestrator } from './modules/workflow/orchestrators/workflow-orchestrator.js';
+export { WorkflowStateManager } from './modules/workflow/managers/workflow-state-manager.js';
+export { WorkflowService } from './modules/workflow/services/workflow.service.js';
+export type { SubtaskInfo } from './modules/workflow/types.js';
+
+// Git - Advanced
+export { GitAdapter } from './modules/git/adapters/git-adapter.js';
+export { CommitMessageGenerator } from './modules/git/services/commit-message-generator.js';
+
+// Tasks - Advanced
+export { PreflightChecker } from './modules/tasks/services/preflight-checker.service.js';
+export { TaskLoaderService } from './modules/tasks/services/task-loader.service.js';
+
+// Integration - Advanced
+export { ExportService } from './modules/integration/services/export.service.js';
