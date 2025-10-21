@@ -20,7 +20,7 @@ To optimize LLM context usage, you can control which Task Master MCP tools are l
 ### Configuration Modes
 
 #### All Tools (Default)
-Loads all 36 available tools. Use when you need full Task Master functionality.
+Loads all 43 available tools. Use when you need full Task Master functionality.
 
 ```json
 {
@@ -186,3 +186,13 @@ The MCP tools can be categorized in the same way as the core functionalities:
 -   **`use_tag`**: Switches to a different tag.
 -   **`rename_tag`**: Renames a tag.
 -   **`copy_tag`**: Copies a tag.
+
+### 7. Autopilot TDD Workflow
+
+-   **`autopilot_start`**: Initialize autonomous TDD workflow for a task.
+-   **`autopilot_next`**: Get the next action in the current workflow.
+-   **`autopilot_status`**: Check current workflow progress and status.
+-   **`autopilot_complete_phase`**: Complete current TDD phase (RED/GREEN/COMMIT).
+-   **`autopilot_commit`**: Save workflow progress with generated commit message.
+-   **`autopilot_resume`**: Resume an interrupted workflow from checkpoint.
+-   **`autopilot_abort`**: Cancel current workflow and cleanup state.
