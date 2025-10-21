@@ -36,11 +36,11 @@ export interface TmCoreOptions {
  * const tmcore = await createTmCore({ projectPath: process.cwd() });
  *
  * // Access any domain
- * await tmcore.auth.login({ ... });
+ * await tmcore.auth.authenticateWithOAuth();
  * const tasks = await tmcore.tasks.list();
  * await tmcore.workflow.start({ taskId: '1' });
  * await tmcore.git.commit('feat: add feature');
- * const mainModel = tmcore.config.get('models.main');
+ * const modelConfig = tmcore.config.getModelConfig();
  * await tmcore.integration.exportTasks({ ... });
  * ```
  */

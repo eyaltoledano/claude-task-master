@@ -29,20 +29,14 @@ export class SupabaseSessionStorage implements SupportedStorage {
 		const session = {
 			access_token: credentials.token,
 			refresh_token: credentials.refreshToken || '',
-			expires_at: credentials.expiresAt
-				? Math.floor(new Date(credentials.expiresAt).getTime() / 1000)
-				: Math.floor(Date.now() / 1000) + 3600, // Default to 1 hour
+			// Don't default to arbitrary values - let Supabase handle refresh
+			...(credentials.expiresAt && {
+				expires_at: Math.floor(new Date(credentials.expiresAt).getTime() / 1000)
+			}),
 			token_type: 'bearer',
 			user: {
 				id: credentials.userId,
-				email: credentials.email || '',
-				aud: 'authenticated',
-				role: 'authenticated',
-				email_confirmed_at: new Date().toISOString(),
-				app_metadata: {},
-				user_metadata: {},
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
+				email: credentials.email || ''
 			}
 		};
 		return session;
@@ -55,7 +49,10 @@ export class SupabaseSessionStorage implements SupportedStorage {
 		sessionData: any
 	): Partial<AuthCredentials> {
 		try {
-			const session = JSON.parse(sessionData);
+			// Handle both string and object formats (Supabase may pass either)
+			const session =
+				typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData;
+
 			return {
 				token: session.access_token,
 				refreshToken: session.refresh_token,
@@ -78,21 +75,29 @@ export class SupabaseSessionStorage implements SupportedStorage {
 		// Supabase uses a specific key pattern for sessions
 		if (key === STORAGE_KEY || key.includes('auth-token')) {
 			try {
-				const credentials = this.store.getCredentials({ allowExpired: true });
-				if (credentials && credentials.token) {
-					// Build and return a session object from our stored credentials
-					const session = this.buildSessionFromCredentials(credentials);
-					return JSON.stringify(session);
+				// Get credentials and let Supabase handle expiry/refresh internally
+				const credentials = this.store.getCredentials();
+
+				// Only return a session if we have BOTH access token AND refresh token
+				// Supabase will handle refresh if session is expired
+				if (!credentials?.token || !credentials?.refreshToken) {
+					this.logger.debug('No valid credentials found');
+					return null;
 				}
+
+				const session = this.buildSessionFromCredentials(credentials);
+				return JSON.stringify(session);
 			} catch (error) {
 				this.logger.error('Error getting session:', error);
 			}
 		}
+		// Return null if no valid session exists - Supabase expects this
 		return null;
 	}
 
 	/**
 	 * Set item in storage - Supabase will store the session with a specific key
+	 * CRITICAL: This is called during refresh token rotation - must be atomic
 	 */
 	setItem(key: string, value: string): void {
 		// Only handle Supabase session keys
@@ -102,21 +107,64 @@ export class SupabaseSessionStorage implements SupportedStorage {
 
 				// Parse the session and update our credentials
 				const sessionUpdates = this.parseSessionToCredentials(value);
-				const existingCredentials = this.store.getCredentials();
+				const existingCredentials = this.store.getCredentials({
+					allowExpired: true
+				});
 
-				if (sessionUpdates.token) {
-					const updatedCredentials: AuthCredentials = {
-						...existingCredentials,
-						...sessionUpdates,
-						savedAt: new Date().toISOString(),
-						selectedContext: existingCredentials?.selectedContext
-					} as AuthCredentials;
+				// CRITICAL: Only save if we have both tokens - prevents partial session states
+				// Refresh token rotation means we MUST persist the new refresh token immediately
+				if (!sessionUpdates.token || !sessionUpdates.refreshToken) {
+					this.logger.warn(
+						'Received incomplete session update - skipping save to prevent token rotation issues',
+						{
+							hasToken: !!sessionUpdates.token,
+							hasRefreshToken: !!sessionUpdates.refreshToken
+						}
+					);
+					return;
+				}
 
-					this.store.saveCredentials(updatedCredentials);
-					this.logger.info(
-						'Successfully saved refreshed credentials from Supabase'
+				// Log the refresh token rotation for debugging
+				const isRotation =
+					existingCredentials?.refreshToken !== sessionUpdates.refreshToken;
+				if (isRotation) {
+					this.logger.debug(
+						'Refresh token rotated - storing new refresh token atomically'
 					);
 				}
+
+				// Build updated credentials - ATOMIC update of both tokens
+				const userId = sessionUpdates.userId || existingCredentials?.userId;
+
+				// Runtime assertion: userId is required for AuthCredentials
+				if (!userId) {
+					this.logger.error(
+						'Cannot save credentials: userId is missing from both session update and existing credentials'
+					);
+					throw new Error('Invalid session state: userId is required');
+				}
+
+				const updatedCredentials: AuthCredentials = {
+					...existingCredentials,
+					token: sessionUpdates.token,
+					refreshToken: sessionUpdates.refreshToken,
+					expiresAt: sessionUpdates.expiresAt,
+					userId,
+					email: sessionUpdates.email || existingCredentials?.email,
+					savedAt: new Date().toISOString(),
+					selectedContext: existingCredentials?.selectedContext
+				} as AuthCredentials;
+
+				// Save synchronously to ensure atomicity during refresh
+				this.store.saveCredentials(updatedCredentials);
+
+				this.logger.info(
+					'Successfully saved refreshed credentials from Supabase',
+					{
+						tokenRotated: isRotation,
+						expiresAt: updatedCredentials.expiresAt
+					}
+				);
 			} catch (error) {
 				this.logger.error('Error setting session:', error);
 			}
