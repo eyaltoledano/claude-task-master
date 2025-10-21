@@ -13,6 +13,7 @@ export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
 export { ExportCommand } from './commands/export.command.js';
 export { AutopilotCommand } from './commands/autopilot.command.js';
+export { InteractiveCommand } from './commands/interactive.command.js';
 
 // Command Registry
 export {
