@@ -6,9 +6,9 @@
  * auth.json credential storage, maintaining backward compatibility
  */
 
-import { SupportedStorage } from '@supabase/supabase-js';
-import { CredentialStore } from '../services/credential-store.js';
-import { AuthCredentials } from '../types.js';
+import type { SupportedStorage } from '@supabase/supabase-js';
+import { CredentialStore } from './credential-store.js';
+import type { AuthCredentials } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
 
 const STORAGE_KEY = 'sb-taskmaster-auth-token';
@@ -56,7 +56,7 @@ export class SupabaseSessionStorage implements SupportedStorage {
 			return {
 				token: session.access_token,
 				refreshToken: session.refresh_token,
-				userId: session.user?.id || 'unknown',
+				userId: session.user?.id,
 				email: session.user?.email,
 				expiresAt: session.expires_at
 					? new Date(session.expires_at * 1000).toISOString()
@@ -134,7 +134,7 @@ export class SupabaseSessionStorage implements SupportedStorage {
 				}
 
 				// Build updated credentials - ATOMIC update of both tokens
-				const userId = sessionUpdates.userId || existingCredentials?.userId;
+				const userId = sessionUpdates.userId ?? existingCredentials?.userId;
 
 				// Runtime assertion: userId is required for AuthCredentials
 				if (!userId) {
@@ -145,12 +145,12 @@ export class SupabaseSessionStorage implements SupportedStorage {
 				}
 
 				const updatedCredentials: AuthCredentials = {
-					...existingCredentials,
+					...(existingCredentials ?? {}),
 					token: sessionUpdates.token,
 					refreshToken: sessionUpdates.refreshToken,
 					expiresAt: sessionUpdates.expiresAt,
 					userId,
-					email: sessionUpdates.email || existingCredentials?.email,
+					email: sessionUpdates.email ?? existingCredentials?.email,
 					savedAt: new Date().toISOString(),
 					selectedContext: existingCredentials?.selectedContext
 				} as AuthCredentials;
