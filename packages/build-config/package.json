@@ -24,6 +24,5 @@
 	},
 	"dependencies": {
 		"tsup": "^8.5.0"
-	},
-	"version": ""
+	}
 }
