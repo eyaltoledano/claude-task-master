@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	generateBranchName,
 	sanitizeBranchName
-} from './services/branch-name-generator.js';
+} from './branch-name-generator.js';
 
 describe('Branch Name Generator', () => {
 	describe('sanitizeBranchName', () => {

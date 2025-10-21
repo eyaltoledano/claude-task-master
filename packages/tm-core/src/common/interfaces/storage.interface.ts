@@ -164,6 +164,12 @@ export interface IStorage {
 	 * @returns Promise that resolves to storage statistics
 	 */
 	getStats(): Promise<StorageStats>;
+
+	/**
+	 * Get the storage type identifier
+	 * @returns The type of storage implementation ('file' or 'api')
+	 */
+	getStorageType(): 'file' | 'api';
 }
 
 /**
@@ -241,6 +247,7 @@ export abstract class BaseStorage implements IStorage {
 	abstract initialize(): Promise<void>;
 	abstract close(): Promise<void>;
 	abstract getStats(): Promise<StorageStats>;
+	abstract getStorageType(): 'file' | 'api';
 
 	/**
 	 * Utility method to generate backup filename

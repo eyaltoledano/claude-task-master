@@ -73,7 +73,7 @@ vi.mock('../clients/supabase-client.js', () => {
 });
 
 // Import SUT after mocks
-import { AuthManager } from '../managers/auth-manager.js';
+import { AuthManager } from './auth-manager.js';
 
 describe('AuthManager Singleton', () => {
 	beforeEach(() => {

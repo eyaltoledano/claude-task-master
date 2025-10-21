@@ -27,8 +27,11 @@ export function displayCommandHeader(
 		return;
 	}
 
+	// Get the resolved storage type from tasks domain
+	const resolvedStorageType = tmCore.tasks.getStorageType();
+
 	// Get storage display info from tm-core (single source of truth)
-	const displayInfo = tmCore.auth.getStorageDisplayInfo();
+	const displayInfo = tmCore.auth.getStorageDisplayInfo(resolvedStorageType);
 
 	// Display header with computed display info
 	displayHeader({

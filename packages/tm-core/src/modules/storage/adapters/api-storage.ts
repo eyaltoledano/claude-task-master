@@ -125,7 +125,7 @@ export class ApiStorage implements IStorage {
 	/**
 	 * Get the storage type
 	 */
-	getType(): 'api' {
+	getStorageType(): 'api' {
 		return 'api';
 	}
 

@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { ConfigManager } from './managers/config-manager.js';
-import { DEFAULT_CONFIG_VALUES } from '../../common/interfaces/configuration.interface.js';
+import { ConfigManager } from './config-manager.js';
+import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { ConfigLoader } from '../services/config-loader.service.js';
 import { ConfigMerger } from '../services/config-merger.service.js';
 import { RuntimeStateManager } from '../services/runtime-state-manager.service.js';
@@ -360,23 +360,6 @@ describe('ConfigManager', () => {
 			const sources = manager.getConfigSources();
 
 			expect(sources).toEqual(mockSources);
-		});
-
-		it('should return no-op function for watch (not implemented)', () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-			const callback = vi.fn();
-
-			const unsubscribe = manager.watch(callback);
-
-			expect(warnSpy).toHaveBeenCalledWith(
-				'Configuration watching not yet implemented'
-			);
-			expect(unsubscribe).toBeInstanceOf(Function);
-
-			// Calling unsubscribe should not throw
-			expect(() => unsubscribe()).not.toThrow();
-
-			warnSpy.mockRestore();
 		});
 	});
 

@@ -207,4 +207,13 @@ export class TasksDomain {
 	async detectDefaultBranch() {
 		return this.preflightChecker.detectDefaultBranch();
 	}
+
+	// ========== Storage Information ==========
+
+	/**
+	 * Get the resolved storage type (actual type being used at runtime)
+	 */
+	getStorageType(): 'file' | 'api' {
+		return this.taskService.getStorageType();
+	}
 }

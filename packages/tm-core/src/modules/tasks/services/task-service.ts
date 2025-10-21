@@ -483,14 +483,12 @@ export class TaskService {
 	}
 
 	/**
-	 * Get current storage type
+	 * Get current storage type (resolved at runtime)
+	 * Returns the actual storage type being used, never 'auto'
 	 */
-	getStorageType(): StorageType {
-		// Prefer the runtime storage type if available to avoid exposing 'auto'
-		const s = this.storage as { getType?: () => 'file' | 'api' } | null;
-		const runtimeType = s?.getType?.();
-		return (runtimeType ??
-			this.configManager.getStorageConfig().type) as StorageType;
+	getStorageType(): 'file' | 'api' {
+		// Storage interface guarantees this method exists
+		return this.storage.getStorageType();
 	}
 
 	/**

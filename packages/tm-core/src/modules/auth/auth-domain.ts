@@ -5,7 +5,6 @@
 
 import path from 'node:path';
 import { AuthManager } from './managers/auth-manager.js';
-import type { ConfigManager } from '../config/managers/config-manager.js';
 import type {
 	AuthCredentials,
 	OAuthFlowOptions,
@@ -37,11 +36,9 @@ export interface StorageDisplayInfo {
  */
 export class AuthDomain {
 	private authManager: AuthManager;
-	private configManager: ConfigManager;
 
-	constructor(configManager: ConfigManager) {
+	constructor() {
 		this.authManager = AuthManager.getInstance();
-		this.configManager = configManager;
 	}
 
 	// ========== Authentication ==========
@@ -155,12 +152,14 @@ export class AuthDomain {
 	/**
 	 * Get storage display information for UI presentation
 	 * Includes brief info for API storage, file path for file storage
+	 *
+	 * @param resolvedStorageType - The actual storage type being used at runtime.
+	 *                              Get this from tmCore.tasks.getStorageType()
 	 */
-	getStorageDisplayInfo(): StorageDisplayInfo {
-		const storageConfig = this.configManager.getStorageConfig();
-		const storageType = storageConfig.type as Exclude<StorageType, 'auto'>;
-
-		if (storageType === 'api') {
+	getStorageDisplayInfo(
+		resolvedStorageType: 'file' | 'api'
+	): StorageDisplayInfo {
+		if (resolvedStorageType === 'api') {
 			const context = this.getContext();
 			if (context?.briefId && context?.briefName) {
 				return {

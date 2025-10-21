@@ -51,7 +51,7 @@ export class FileStorage implements IStorage {
 	/**
 	 * Get the storage type
 	 */
-	getType(): 'file' {
+	getStorageType(): 'file' {
 		return 'file';
 	}
 

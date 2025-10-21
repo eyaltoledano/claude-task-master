@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { WorkflowStateManager } from '../managers/workflow-state-manager.js';
+import { WorkflowStateManager } from './workflow-state-manager.js';
 import os from 'node:os';
 import path from 'node:path';
 

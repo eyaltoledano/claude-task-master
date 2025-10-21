@@ -46,15 +46,35 @@ export interface TmCoreOptions {
 export class TmCore {
 	// Core infrastructure
 	private readonly _projectPath: string;
-	private readonly _configManager: ConfigManager;
+	private _configManager!: ConfigManager;
 
-	// Domain facades (public, readonly)
-	public readonly tasks: TasksDomain;
-	public readonly auth: AuthDomain;
-	public readonly workflow: WorkflowDomain;
-	public readonly git: GitDomain;
-	public readonly config: ConfigDomain;
-	public readonly integration: IntegrationDomain;
+	// Private writable properties
+	private _tasks!: TasksDomain;
+	private _auth!: AuthDomain;
+	private _workflow!: WorkflowDomain;
+	private _git!: GitDomain;
+	private _config!: ConfigDomain;
+	private _integration!: IntegrationDomain;
+
+	// Public readonly getters
+	get tasks(): TasksDomain {
+		return this._tasks;
+	}
+	get auth(): AuthDomain {
+		return this._auth;
+	}
+	get workflow(): WorkflowDomain {
+		return this._workflow;
+	}
+	get git(): GitDomain {
+		return this._git;
+	}
+	get config(): ConfigDomain {
+		return this._config;
+	}
+	get integration(): IntegrationDomain {
+		return this._integration;
+	}
 
 	/**
 	 * Create and initialize a new TmCore instance
@@ -85,15 +105,7 @@ export class TmCore {
 
 		this._projectPath = options.projectPath;
 		this._options = options;
-		this._configManager = null as any; // Will be initialized in initialize()
-
-		// Initialize domain facades (services will be wired up in initialize())
-		this.tasks = null as any;
-		this.auth = null as any;
-		this.workflow = null as any;
-		this.git = null as any;
-		this.config = null as any;
-		this.integration = null as any;
+		// Domain facades will be initialized in initialize()
 	}
 
 	/**
@@ -103,9 +115,7 @@ export class TmCore {
 	private async initialize(): Promise<void> {
 		try {
 			// Create config manager
-			(this as any)._configManager = await ConfigManager.create(
-				this._projectPath
-			);
+			this._configManager = await ConfigManager.create(this._projectPath);
 
 			// Apply configuration overrides if provided
 			if (this._options.configuration) {
@@ -113,15 +123,15 @@ export class TmCore {
 			}
 
 			// Initialize domain facades
-			(this as any).tasks = new TasksDomain(this._configManager);
-			(this as any).auth = new AuthDomain(this._configManager);
-			(this as any).workflow = new WorkflowDomain(this._configManager);
-			(this as any).git = new GitDomain(this._projectPath);
-			(this as any).config = new ConfigDomain(this._configManager);
-			(this as any).integration = new IntegrationDomain(this._configManager);
+			this._tasks = new TasksDomain(this._configManager);
+			this._auth = new AuthDomain();
+			this._workflow = new WorkflowDomain(this._configManager);
+			this._git = new GitDomain(this._projectPath);
+			this._config = new ConfigDomain(this._configManager);
+			this._integration = new IntegrationDomain(this._configManager);
 
 			// Initialize domains that need async setup
-			await this.tasks.initialize();
+			await this._tasks.initialize();
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to initialize TmCore',
