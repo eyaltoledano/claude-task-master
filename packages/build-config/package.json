@@ -11,15 +11,8 @@
 			"import": "./dist/tsdown.base.js"
 		}
 	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"keywords": [
-		"build-config",
-		"tsup",
-		"monorepo"
-	],
+	"files": ["dist", "src"],
+	"keywords": ["build-config", "tsup", "monorepo"],
 	"author": "",
 	"license": "MIT",
 	"scripts": {
@@ -32,5 +25,5 @@
 	"dependencies": {
 		"tsup": "^8.5.0"
 	},
-	"version": null
+	"version": ""
 }

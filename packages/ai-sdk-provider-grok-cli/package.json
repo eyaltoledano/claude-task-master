@@ -27,20 +27,10 @@
 	"engines": {
 		"node": ">=18"
 	},
-	"keywords": [
-		"ai",
-		"grok",
-		"x.ai",
-		"cli",
-		"language-model",
-		"provider"
-	],
-	"files": [
-		"dist/**/*",
-		"README.md"
-	],
+	"keywords": ["ai", "grok", "x.ai", "cli", "language-model", "provider"],
+	"files": ["dist/**/*", "README.md"],
 	"publishConfig": {
 		"access": "public"
 	},
-	"version": null
+	"version": ""
 }
