@@ -61,7 +61,7 @@ npm run build:css
 npm run build
 
 # Type checking
-npm run check-types
+npm run typecheck
 
 # Linting
 npm run lint
