@@ -1,21 +1,21 @@
 {
 	"models": {
 		"main": {
-			"provider": "anthropic",
-			"modelId": "claude-sonnet-4-20250514",
-			"maxTokens": 64000,
+			"provider": "openai",
+			"modelId": "gpt-5",
+			"maxTokens": 128000,
 			"temperature": 0.2
 		},
 		"research": {
 			"provider": "perplexity",
-			"modelId": "sonar",
+			"modelId": "sonar-pro",
 			"maxTokens": 8700,
 			"temperature": 0.1
 		},
 		"fallback": {
-			"provider": "anthropic",
-			"modelId": "claude-3-7-sonnet-20250219",
-			"maxTokens": 120000,
+			"provider": "codex-cli",
+			"modelId": "gpt-5",
+			"maxTokens": 128000,
 			"temperature": 0.2
 		}
 	},
@@ -35,6 +35,7 @@
 		"defaultTag": "master"
 	},
 	"claudeCode": {},
+	"codexCli": {},
 	"grokCli": {
 		"timeout": 120000,
 		"workingDirectory": null,
