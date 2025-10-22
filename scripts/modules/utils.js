@@ -52,7 +52,7 @@ function executeCommandForKey(command, keyName, opts = {}) {
 			encoding: 'utf8',
 			timeout,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			shell: '/bin/sh'
+			shell: true
 		});
 
 		const trimmed = (result ?? '').trim();
@@ -1669,6 +1669,7 @@ export {
 	isSilentMode,
 	addComplexityToTask,
 	resolveEnvVariable,
+	parseTimeout,
 	findProjectRoot,
 	getTagAwareFilePath,
 	slugifyTagForFilePath,

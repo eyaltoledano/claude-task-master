@@ -76,6 +76,7 @@ jest.mock('../../../../scripts/modules/utils/git-utils.js', () => ({
 
 describe('Command-based API key resolution', () => {
 	let resolveEnvVariable;
+	let parseTimeout;
 	let consoleErrorSpy;
 
 	beforeEach(async () => {
@@ -93,6 +94,7 @@ describe('Command-based API key resolution', () => {
 		// Import after mocks are set up
 		const utils = await import('../../../../scripts/modules/utils.js');
 		resolveEnvVariable = utils.resolveEnvVariable;
+		parseTimeout = utils.parseTimeout;
 	});
 
 	afterEach(() => {
@@ -101,34 +103,34 @@ describe('Command-based API key resolution', () => {
 
 	describe('parseTimeout helper', () => {
 		test('returns 5000ms when TASKMASTER_CMD_TIMEOUT is not set', () => {
-			// We'll test this indirectly through command execution timeout behavior
-			// The timeout should default to 5000ms
-			expect(process.env.TASKMASTER_CMD_TIMEOUT).toBeUndefined();
+			delete process.env.TASKMASTER_CMD_TIMEOUT;
+			expect(parseTimeout()).toBe(5000);
 		});
 
 		test('converts seconds to milliseconds for values <=60', () => {
 			process.env.TASKMASTER_CMD_TIMEOUT = '5';
-			// This will be tested through the actual execution
+			expect(parseTimeout()).toBe(5000);
 		});
 
 		test('treats values >60 as milliseconds', () => {
 			process.env.TASKMASTER_CMD_TIMEOUT = '1500';
-			// This will be tested through the actual execution
+			expect(parseTimeout()).toBe(1500);
 		});
 
 		test('returns 5000ms for invalid values', () => {
 			process.env.TASKMASTER_CMD_TIMEOUT = 'invalid';
-			// Should fall back to 5000ms
+			expect(parseTimeout()).toBe(5000);
 		});
 	});
 
 	describe('executeCommandForKey', () => {
 		test('executes command and returns trimmed stdout', () => {
+			mockExecSync.mockReturnValue('abc');
+
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:echo abc' }
 			});
 
-			// The command actually executes and returns the trimmed result
 			expect(result).toBe('abc');
 		});
 
@@ -187,8 +189,9 @@ describe('Command-based API key resolution', () => {
 			});
 		});
 
-		test('uses /bin/sh as the shell', () => {
-			// Test that shell-specific syntax works (which verifies /bin/sh is being used)
+		test('uses system shell for command execution', () => {
+			mockExecSync.mockReturnValue('ok');
+
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:echo ok' }
 			});
@@ -198,29 +201,31 @@ describe('Command-based API key resolution', () => {
 
 		test('respects TASKMASTER_CMD_TIMEOUT environment variable (seconds)', () => {
 			process.env.TASKMASTER_CMD_TIMEOUT = '10';
+			mockExecSync.mockReturnValue('ok');
 
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:echo ok' }
 			});
 
-			// Command should execute successfully with configured timeout
 			expect(result).toBe('ok');
 		});
 
 		test('respects TASKMASTER_CMD_TIMEOUT environment variable (milliseconds)', () => {
 			process.env.TASKMASTER_CMD_TIMEOUT = '1500';
+			mockExecSync.mockReturnValue('ok');
 
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:echo ok' }
 			});
 
-			// Command should execute successfully with configured timeout
 			expect(result).toBe('ok');
 		});
 	});
 
 	describe('resolveEnvVariable with !cmd: prefix', () => {
 		test('detects !cmd: prefix and executes command', () => {
+			mockExecSync.mockReturnValue('my-api-key');
+
 			const result = resolveEnvVariable('OPENAI_API_KEY', {
 				env: { OPENAI_API_KEY: '!cmd:echo my-api-key' }
 			});
@@ -229,6 +234,8 @@ describe('Command-based API key resolution', () => {
 		});
 
 		test('handles !cmd: with leading/trailing spaces in command', () => {
+			mockExecSync.mockReturnValue('trimmed');
+
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:   echo trimmed   ' }
 			});
@@ -276,11 +283,12 @@ describe('Command-based API key resolution', () => {
 
 	describe('edge cases', () => {
 		test('handles command with special characters', () => {
+			mockExecSync.mockReturnValue('hello world');
+
 			const result = resolveEnvVariable('TEST_KEY', {
 				env: { TEST_KEY: '!cmd:echo "hello world"' }
 			});
 
-			// The command executes and returns the actual output
 			expect(result).toBe('hello world');
 		});
 
