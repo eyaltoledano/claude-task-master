@@ -122,8 +122,15 @@ export { CommitMessageGenerator } from './modules/git/services/commit-message-ge
 // Tasks - Advanced
 export { PreflightChecker } from './modules/tasks/services/preflight-checker.service.js';
 export { TaskLoaderService } from './modules/tasks/services/task-loader.service.js';
-export { ContextGatherer, createContextGatherer } from './modules/tasks/utils/context-gatherer.js';
-export { FuzzyTaskSearch, createFuzzyTaskSearch, findRelevantTaskIds } from './modules/tasks/utils/fuzzy-task-search.js';
+export {
+	ContextGatherer,
+	createContextGatherer
+} from './modules/tasks/utils/context-gatherer.js';
+export {
+	FuzzyTaskSearch,
+	createFuzzyTaskSearch,
+	findRelevantTaskIds
+} from './modules/tasks/utils/fuzzy-task-search.js';
 
 // Integration - Advanced
 export { ExportService } from './modules/integration/services/export.service.js';

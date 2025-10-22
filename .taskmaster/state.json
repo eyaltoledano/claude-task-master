@@ -1,9 +1,9 @@
 {
-  "currentTag": "update-task-remote",
-  "lastSwitched": "2025-10-21T19:26:58.740Z",
-  "branchTagMapping": {
-    "v017-adds": "v017-adds",
-    "next": "next"
-  },
-  "migrationNoticeShown": true
+	"currentTag": "update-task-remote",
+	"lastSwitched": "2025-10-21T19:26:58.740Z",
+	"branchTagMapping": {
+		"v017-adds": "v017-adds",
+		"next": "next"
+	},
+	"migrationNoticeShown": true
 }

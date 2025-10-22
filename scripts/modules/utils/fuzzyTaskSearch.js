@@ -12,4 +12,8 @@
  * import { FuzzyTaskSearch } from '@tm/core';
  */
 
-export { FuzzyTaskSearch, createFuzzyTaskSearch, findRelevantTaskIds } from '@tm/core';
+export {
+	FuzzyTaskSearch,
+	createFuzzyTaskSearch,
+	findRelevantTaskIds
+} from '@tm/core';

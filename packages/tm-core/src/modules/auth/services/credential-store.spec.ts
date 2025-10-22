@@ -2,12 +2,12 @@
  * @fileoverview Unit tests for CredentialStore token expiration handling
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CredentialStore } from './credential-store';
-import type { AuthCredentials } from './types';
+import { AuthCredentials } from '../types.js';
 
 describe('CredentialStore - Token Expiration', () => {
 	let credentialStore: CredentialStore;

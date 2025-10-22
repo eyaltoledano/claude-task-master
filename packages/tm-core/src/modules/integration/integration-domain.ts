@@ -3,12 +3,12 @@
  * Public API for integration with external systems
  */
 
-import type { ConfigManager } from '../config/managers/config-manager.js';
 import { AuthManager } from '../auth/managers/auth-manager.js';
+import type { ConfigManager } from '../config/managers/config-manager.js';
 import { ExportService } from './services/export.service.js';
 import type {
-	ExportTasksOptions,
-	ExportResult
+	ExportResult,
+	ExportTasksOptions
 } from './services/export.service.js';
 
 /**

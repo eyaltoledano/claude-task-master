@@ -2,13 +2,13 @@
  * Tests for CredentialStore with numeric and string timestamp handling
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CredentialStore } from '../services/credential-store.js';
 import { AuthenticationError } from '../types.js';
 import type { AuthCredentials } from '../types.js';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 
 // Mock fs module
 vi.mock('fs');

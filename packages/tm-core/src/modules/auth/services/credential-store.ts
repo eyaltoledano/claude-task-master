@@ -4,9 +4,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import { AuthCredentials, AuthenticationError, AuthConfig } from '../types.js';
-import { getAuthConfig } from '../config.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { getAuthConfig } from '../config.js';
+import { AuthConfig, AuthCredentials, AuthenticationError } from '../types.js';
 
 /**
  * CredentialStore manages the persistence and retrieval of authentication credentials.

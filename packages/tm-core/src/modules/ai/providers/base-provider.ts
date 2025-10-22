@@ -8,12 +8,12 @@ import {
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import type {
+	AIModel,
 	AIOptions,
 	AIResponse,
 	IAIProvider,
-	ProviderUsageStats,
 	ProviderInfo,
-	AIModel
+	ProviderUsageStats
 } from '../interfaces/ai-provider.interface.js';
 
 // Constants for retry logic

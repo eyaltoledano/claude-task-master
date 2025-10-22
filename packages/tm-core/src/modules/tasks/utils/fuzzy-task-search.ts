@@ -5,26 +5,9 @@
 
 import Fuse from 'fuse.js';
 import type { IFuseOptions, FuseResult } from 'fuse.js';
+import type { Task } from '../../../common/types/index.js';
 
-// Type definitions
-export interface Task {
-	id: number;
-	title: string;
-	description: string;
-	details?: string;
-	status: string;
-	dependencies: number[];
-	subtasks?: Subtask[];
-}
-
-export interface Subtask {
-	id: number;
-	title: string;
-	description: string;
-	status: string;
-	dependencies?: number[];
-}
-
+// Type definitions (fuzzy-search specific)
 export interface SearchableTask extends Task {
 	dependencyTitles: string;
 	score?: number;
@@ -77,7 +60,7 @@ export interface FindRelevantTasksOptions {
 }
 
 export interface FormatSearchSummaryOptions {
-	includeScores?: boolean;
+	_includeScores?: boolean;
 	includeBreakdown?: boolean;
 }
 
@@ -280,7 +263,16 @@ export class FuzzyTaskSearch {
 
 		// Get recent tasks (newest first) if requested
 		const recentTasks = includeRecent
-			? [...this.tasks].sort((a, b) => b.id - a.id).slice(0, 5)
+			? [...this.tasks].sort((a, b) => {
+					// Handle both numeric and string IDs
+					const aNum = Number(a.id);
+					const bNum = Number(b.id);
+					if (!isNaN(aNum) && !isNaN(bNum)) {
+						return bNum - aNum;
+					}
+					// Fallback to string comparison for non-numeric IDs
+					return String(b.id).localeCompare(String(a.id));
+				}).slice(0, 5)
 			: [];
 
 		// Find category-based matches if requested
@@ -363,7 +355,7 @@ export class FuzzyTaskSearch {
 	 * @returns Array of task ID strings
 	 */
 	getTaskIds(searchResults: SearchResults): string[] {
-		return searchResults.results.map((task) => task.id.toString());
+		return searchResults.results.map((task) => String(task.id));
 	}
 
 	/**
@@ -379,7 +371,7 @@ export class FuzzyTaskSearch {
 		const taskIds: string[] = [];
 
 		for (const task of searchResults.results) {
-			taskIds.push(task.id.toString());
+			taskIds.push(String(task.id));
 
 			if (includeSubtasks && task.subtasks && task.subtasks.length > 0) {
 				for (const subtask of task.subtasks) {
@@ -401,7 +393,7 @@ export class FuzzyTaskSearch {
 		searchResults: SearchResults,
 		options: FormatSearchSummaryOptions = {}
 	): string {
-		const { includeScores = false, includeBreakdown = false } = options;
+		const { _includeScores = false, includeBreakdown = false } = options;
 		const { results, breakdown, metadata } = searchResults;
 
 		let summary = `Found ${results.length} relevant tasks from ${metadata.totalSearched} total tasks`;

@@ -12,21 +12,27 @@
 describe('Backward Compatibility - Old Import Paths', () => {
 	describe('contextGatherer.js', () => {
 		it('should export ContextGatherer class from old path', async () => {
-			const { ContextGatherer } = await import('../../scripts/modules/utils/contextGatherer.js');
+			const { ContextGatherer } = await import(
+				'../../scripts/modules/utils/contextGatherer.js'
+			);
 
 			expect(ContextGatherer).toBeDefined();
 			expect(typeof ContextGatherer).toBe('function');
 		});
 
 		it('should export createContextGatherer function from old path', async () => {
-			const { createContextGatherer } = await import('../../scripts/modules/utils/contextGatherer.js');
+			const { createContextGatherer } = await import(
+				'../../scripts/modules/utils/contextGatherer.js'
+			);
 
 			expect(createContextGatherer).toBeDefined();
 			expect(typeof createContextGatherer).toBe('function');
 		});
 
 		it('should be able to instantiate ContextGatherer from old path', async () => {
-			const { ContextGatherer } = await import('../../scripts/modules/utils/contextGatherer.js');
+			const { ContextGatherer } = await import(
+				'../../scripts/modules/utils/contextGatherer.js'
+			);
 
 			expect(() => {
 				new ContextGatherer('/fake/path', 'test-tag');
@@ -36,28 +42,36 @@ describe('Backward Compatibility - Old Import Paths', () => {
 
 	describe('fuzzyTaskSearch.js', () => {
 		it('should export FuzzyTaskSearch class from old path', async () => {
-			const { FuzzyTaskSearch } = await import('../../scripts/modules/utils/fuzzyTaskSearch.js');
+			const { FuzzyTaskSearch } = await import(
+				'../../scripts/modules/utils/fuzzyTaskSearch.js'
+			);
 
 			expect(FuzzyTaskSearch).toBeDefined();
 			expect(typeof FuzzyTaskSearch).toBe('function');
 		});
 
 		it('should export createFuzzyTaskSearch function from old path', async () => {
-			const { createFuzzyTaskSearch } = await import('../../scripts/modules/utils/fuzzyTaskSearch.js');
+			const { createFuzzyTaskSearch } = await import(
+				'../../scripts/modules/utils/fuzzyTaskSearch.js'
+			);
 
 			expect(createFuzzyTaskSearch).toBeDefined();
 			expect(typeof createFuzzyTaskSearch).toBe('function');
 		});
 
 		it('should export findRelevantTaskIds function from old path', async () => {
-			const { findRelevantTaskIds } = await import('../../scripts/modules/utils/fuzzyTaskSearch.js');
+			const { findRelevantTaskIds } = await import(
+				'../../scripts/modules/utils/fuzzyTaskSearch.js'
+			);
 
 			expect(findRelevantTaskIds).toBeDefined();
 			expect(typeof findRelevantTaskIds).toBe('function');
 		});
 
 		it('should be able to instantiate FuzzyTaskSearch from old path', async () => {
-			const { FuzzyTaskSearch } = await import('../../scripts/modules/utils/fuzzyTaskSearch.js');
+			const { FuzzyTaskSearch } = await import(
+				'../../scripts/modules/utils/fuzzyTaskSearch.js'
+			);
 
 			const testTasks = [
 				{
@@ -77,7 +91,9 @@ describe('Backward Compatibility - Old Import Paths', () => {
 
 	describe('Cross-compatibility', () => {
 		it('should export the same ContextGatherer from both paths', async () => {
-			const { ContextGatherer: OldContextGatherer } = await import('../../scripts/modules/utils/contextGatherer.js');
+			const { ContextGatherer: OldContextGatherer } = await import(
+				'../../scripts/modules/utils/contextGatherer.js'
+			);
 			const { ContextGatherer: NewContextGatherer } = await import('@tm/core');
 
 			// They should be the exact same class reference
@@ -85,7 +101,9 @@ describe('Backward Compatibility - Old Import Paths', () => {
 		});
 
 		it('should export the same FuzzyTaskSearch from both paths', async () => {
-			const { FuzzyTaskSearch: OldFuzzyTaskSearch } = await import('../../scripts/modules/utils/fuzzyTaskSearch.js');
+			const { FuzzyTaskSearch: OldFuzzyTaskSearch } = await import(
+				'../../scripts/modules/utils/fuzzyTaskSearch.js'
+			);
 			const { FuzzyTaskSearch: NewFuzzyTaskSearch } = await import('@tm/core');
 
 			// They should be the exact same class reference

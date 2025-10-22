@@ -9,28 +9,7 @@ import path from 'path';
 import { GPTTokens } from 'gpt-tokens';
 import Fuse from 'fuse.js';
 import type { IFuseOptions, FuseResult } from 'fuse.js';
-
-// Type definitions
-export interface Task {
-	id: number;
-	title: string;
-	description: string;
-	status?: string;
-	priority?: string;
-	dependencies?: number[];
-	details?: string;
-	testStrategy?: string;
-	subtasks?: Subtask[];
-}
-
-export interface Subtask {
-	id: number;
-	title: string;
-	description: string;
-	status?: string;
-	dependencies?: number[];
-	details?: string;
-}
+import type { Task, Subtask } from '../../../common/types/index.js';
 
 export interface ContextGathererOptions {
 	tasks?: string[];
@@ -95,9 +74,9 @@ export interface ContextResult {
 
 interface ParsedTaskId {
 	type: 'task' | 'subtask';
-	taskId?: number;
-	parentId?: number;
-	subtaskId?: number;
+	taskId?: string;
+	parentId?: string;
+	subtaskId?: string | number;
 	fullId: string;
 }
 
@@ -142,13 +121,13 @@ interface SemanticSearchResult {
 }
 
 interface DependencyGraphResult {
-	allRelatedTaskIds: Set<number>;
+	allRelatedTaskIds: Set<string>;
 	graphs: DependencyGraphNode[];
-	depthMap: Map<number, number>;
+	depthMap: Map<string, number>;
 }
 
 // Placeholder utility functions that need to be imported from utils
-function readJSON(tasksPath: string, projectRoot: string, tag: string): { tasks: Task[] } | null {
+function readJSON(tasksPath: string): { tasks: Task[] } | null {
 	try {
 		const content = fs.readFileSync(tasksPath, 'utf-8');
 		return JSON.parse(content);
@@ -157,8 +136,8 @@ function readJSON(tasksPath: string, projectRoot: string, tag: string): { tasks:
 	}
 }
 
-function findTaskById(tasks: Task[], taskId: number): { task: Task | null } {
-	const task = tasks.find(t => t.id === taskId);
+function findTaskById(tasks: Task[], taskId: string | number): { task: Task | null } {
+	const task = tasks.find(t => String(t.id) === String(taskId));
 	return { task: task || null };
 }
 
@@ -167,27 +146,16 @@ function truncate(text: string, maxLength: number): string {
 	return text.substring(0, maxLength) + '...';
 }
 
-function flattenTasksWithSubtasks(tasks: Task[]): Array<Task | Subtask> {
-	const flattened: Array<Task | Subtask> = [];
-	for (const task of tasks) {
-		flattened.push(task);
-		if (task.subtasks) {
-			flattened.push(...task.subtasks);
-		}
-	}
-	return flattened;
-}
-
 /**
  * Context Gatherer class for collecting and formatting context from various sources
  */
 export class ContextGatherer {
 	private projectRoot: string;
 	private tasksPath: string;
-	private tag: string;
+	private tag: string; // kept for future use
 	private allTasks: Task[];
 
-	constructor(projectRoot: string, tag: string) {
+	constructor(projectRoot: string, _tag: string) {
 		this.projectRoot = projectRoot;
 		this.tasksPath = path.join(
 			projectRoot,
@@ -195,13 +163,13 @@ export class ContextGatherer {
 			'tasks',
 			'tasks.json'
 		);
-		this.tag = tag;
+		this.tag = _tag;
 		this.allTasks = this._loadAllTasks();
 	}
 
 	private _loadAllTasks(): Task[] {
 		try {
-			const data = readJSON(this.tasksPath, this.projectRoot, this.tag);
+			const data = readJSON(this.tasksPath);
 			const tasks = data?.tasks || [];
 			return tasks;
 		} catch (error) {
@@ -281,9 +249,9 @@ export class ContextGatherer {
 
 		// Dependency Graph Analysis
 		if (dependencyTasks.length > 0) {
-			const dependencyResults = this._buildDependencyGraphs(dependencyTasks);
+			const dependencyResults = this._buildDependencyGraphs(dependencyTasks.map(String));
 			dependencyResults.allRelatedTaskIds.forEach((id) =>
-				finalTaskIds.add(String(id))
+				finalTaskIds.add(id)
 			);
 		}
 
@@ -456,7 +424,16 @@ export class ContextGatherer {
 
 		// Get recent tasks (newest first)
 		const recentTasks = [...this.allTasks]
-			.sort((a, b) => b.id - a.id)
+			.sort((a, b) => {
+				// Handle both numeric and string IDs
+				const aNum = Number(a.id);
+				const bNum = Number(b.id);
+				if (!isNaN(aNum) && !isNaN(bNum)) {
+					return bNum - aNum;
+				}
+				// Fallback to string comparison for non-numeric IDs
+				return String(b.id).localeCompare(String(a.id));
+			})
 			.slice(0, 5)
 			.map((task): SearchableTask => ({ ...task, dependencyTitles: '' }));
 
@@ -490,9 +467,9 @@ export class ContextGatherer {
 		};
 	}
 
-	private _buildDependencyGraphs(taskIds: number[]): DependencyGraphResult {
-		const visited = new Set<number>();
-		const depthMap = new Map<number, number>();
+	private _buildDependencyGraphs(taskIds: string[]): DependencyGraphResult {
+		const visited = new Set<string>();
+		const depthMap = new Map<string, number>();
 		const graphs: DependencyGraphNode[] = [];
 
 		for (const id of taskIds) {
@@ -504,24 +481,24 @@ export class ContextGatherer {
 	}
 
 	private _buildDependencyGraph(
-		taskId: number,
-		visited: Set<number>,
-		depthMap: Map<number, number>,
+		taskId: string,
+		visited: Set<string>,
+		depthMap: Map<string, number>,
 		depth = 0
 	): DependencyGraphNode | null {
 		if (visited.has(taskId) || depth > 5) return null;
-		const task = this.allTasks.find((t) => t.id === taskId);
+		const task = this.allTasks.find((t) => String(t.id) === String(taskId));
 		if (!task) return null;
 
-		visited.add(taskId);
-		if (!depthMap.has(taskId) || depth < depthMap.get(taskId)!) {
-			depthMap.set(taskId, depth);
+		visited.add(String(task.id));
+		if (!depthMap.has(String(task.id)) || depth < depthMap.get(String(task.id))!) {
+			depthMap.set(String(task.id), depth);
 		}
 
 		const dependencies =
 			task.dependencies
 				?.map((depId) =>
-					this._buildDependencyGraph(depId, visited, depthMap, depth + 1)
+					this._buildDependencyGraph(String(depId), visited, depthMap, depth + 1)
 				)
 				.filter((node): node is DependencyGraphNode => node !== null) || [];
 
@@ -539,19 +516,19 @@ export class ContextGatherer {
 
 		for (const idStr of taskIds) {
 			if (idStr.includes('.')) {
-				// Subtask format: "15.2"
+				// Subtask format: "15.2" or "HAM-123.2"
 				const [parentId, subtaskId] = idStr.split('.');
 				parsed.push({
 					type: 'subtask',
-					parentId: parseInt(parentId, 10),
-					subtaskId: parseInt(subtaskId, 10),
+					parentId: parentId,
+					subtaskId: isNaN(Number(subtaskId)) ? subtaskId : parseInt(subtaskId, 10),
 					fullId: idStr
 				});
 			} else {
-				// Task format: "15"
+				// Task format: "15" or "HAM-123"
 				parsed.push({
 					type: 'task',
-					taskId: parseInt(idStr, 10),
+					taskId: idStr,
 					fullId: idStr
 				});
 			}
@@ -588,7 +565,7 @@ export class ContextGatherer {
 				if (parsed.type === 'task' && parsed.taskId) {
 					const result = findTaskById(this.allTasks, parsed.taskId);
 					if (result.task) {
-						formattedItem = this._formatTaskForContext(result.task, format);
+						formattedItem = this._formatTaskForContext(result.task);
 						itemInfo = {
 							id: parsed.fullId,
 							type: 'task',
@@ -597,17 +574,16 @@ export class ContextGatherer {
 							characters: formattedItem.length
 						};
 					}
-				} else if (parsed.type === 'subtask' && parsed.parentId && parsed.subtaskId) {
+				} else if (parsed.type === 'subtask' && parsed.parentId && parsed.subtaskId !== undefined) {
 					const parentResult = findTaskById(this.allTasks, parsed.parentId);
 					if (parentResult.task && parentResult.task.subtasks) {
 						const subtask = parentResult.task.subtasks.find(
-							(st) => st.id === parsed.subtaskId
+							(st) => String(st.id) === String(parsed.subtaskId)
 						);
 						if (subtask) {
 							formattedItem = this._formatSubtaskForContext(
 								subtask,
 								parentResult.task,
-								format
 							);
 							itemInfo = {
 								id: parsed.fullId,
@@ -649,10 +625,9 @@ export class ContextGatherer {
 	/**
 	 * Format a task for context inclusion
 	 * @param task - Task object
-	 * @param format - Output format
 	 * @returns Formatted task context
 	 */
-	private _formatTaskForContext(task: Task, format: string): string {
+	private _formatTaskForContext(task: Task): string {
 		const sections: string[] = [];
 
 		sections.push(`**Task ${task.id}: ${task.title}**`);
@@ -685,10 +660,9 @@ export class ContextGatherer {
 	 * Format a subtask for context inclusion
 	 * @param subtask - Subtask object
 	 * @param parentTask - Parent task object
-	 * @param format - Output format
 	 * @returns Formatted subtask context
 	 */
-	private _formatSubtaskForContext(subtask: Subtask, parentTask: Task, format: string): string {
+	private _formatSubtaskForContext(subtask: Subtask, parentTask: Task): string {
 		const sections: string[] = [];
 
 		sections.push(
@@ -760,9 +734,7 @@ export class ContextGatherer {
 				// Calculate tokens for this individual file if requested
 				if (includeTokenCounts) {
 					const formattedFile = this._formatSingleFileForContext(
-						fileData,
-						format
-					);
+						fileData);
 					breakdown.push({
 						path: relativePath,
 						sizeKB: Math.round(stats.size / 1024),
@@ -826,10 +798,9 @@ export class ContextGatherer {
 	/**
 	 * Format a single file for context (used for token counting)
 	 * @param fileData - File data object
-	 * @param format - Output format
 	 * @returns Formatted file context
 	 */
-	private _formatSingleFileForContext(fileData: FileData, format: string): string {
+	private _formatSingleFileForContext(fileData: FileData): string{
 		const header = `**File: ${fileData.path}** (${Math.round(fileData.size / 1024)}KB)`;
 		const content = `\`\`\`\n${fileData.content}\n\`\`\``;
 		return `${header}\n\n${content}`;

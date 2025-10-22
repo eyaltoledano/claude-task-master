@@ -2,22 +2,22 @@
  * OAuth 2.0 Authorization Code Flow service
  */
 
-import http from 'http';
-import { URL } from 'url';
 import crypto from 'crypto';
+import http from 'http';
 import os from 'os';
-import {
-	AuthCredentials,
-	AuthenticationError,
-	OAuthFlowOptions,
-	AuthConfig,
-	CliData
-} from '../types.js';
-import { CredentialStore } from '../services/credential-store.js';
+import { URL } from 'url';
+import packageJson from '../../../../../../package.json' with { type: 'json' };
+import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
-import { getLogger } from '../../../common/logger/index.js';
-import packageJson from '../../../../../../package.json' with { type: 'json' };
+import { CredentialStore } from '../services/credential-store.js';
+import {
+	AuthConfig,
+	AuthCredentials,
+	AuthenticationError,
+	CliData,
+	OAuthFlowOptions
+} from '../types.js';
 
 export class OAuthService {
 	private logger = getLogger('OAuthService');
