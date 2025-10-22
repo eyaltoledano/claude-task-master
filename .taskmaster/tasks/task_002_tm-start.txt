@@ -1,0 +1,26 @@
+# Task ID: 2
+# Title: Register start command in CLI
+# Status: pending
+# Dependencies: 7
+# Priority: high
+# Description: Register the start command in the CLI application
+# Details:
+Update the CLI application to register the new start command. This involves importing the StartCommand class and adding it to the commands array in the CLI initialization.
+
+In `apps/cli/src/index.ts` or the appropriate file where commands are registered:
+
+```typescript
+import { StartCommand } from './commands/start.command';
+
+// Add StartCommand to the commands array
+const commands = [
+  // ... existing commands
+  new StartCommand(),
+];
+
+// Register all commands
+commands.forEach(command => command.register(program));
+```
+
+# Test Strategy:
+Verify the command is correctly registered by running the CLI with --help and checking that the start command appears in the list of available commands.

@@ -1,0 +1,49 @@
+# Task ID: 7
+# Title: Integrate execution flow in start command
+# Status: pending
+# Dependencies: 3, 4
+# Priority: high
+# Description: Connect all the components to implement the complete execution flow for the start command
+# Details:
+Update the execute method in the StartCommand class to integrate all the components and implement the complete execution flow as described in the PRD:
+1. Validate task exists
+2. Build standardized prompt
+3. Execute claude-code
+4. Check git status for changes
+5. Auto-mark task as done if changes detected
+
+```typescript
+public async execute(taskId: string): Promise<void> {
+  // Validate task exists
+  const core = await createTaskMasterCore();
+  const task = await core.tasks.getById(parseInt(taskId, 10));
+  
+  if (!task) {
+    console.error(`Task with ID ${taskId} not found`);
+    process.exit(1);
+  }
+  
+  // Build prompt
+  const prompt = this.buildPrompt(taskId);
+  
+  // Execute claude-code
+  await this.executeClaude(prompt);
+  
+  // Check git status
+  const changedFiles = await this.checkGitChanges();
+  
+  if (changedFiles.length > 0) {
+    console.log('\nChanges detected in the following files:');
+    changedFiles.forEach(file => console.log(`- ${file}`));
+    
+    // Auto-mark task as done
+    await this.markTaskAsDone(taskId);
+    console.log(`\nTask ${taskId} completed successfully and marked as done.`);
+  } else {
+    console.warn('\nNo changes detected after claude-code execution. Task not marked as done.');
+  }
+}
+```
+
+# Test Strategy:
+Test the complete execution flow by running the start command with a valid task ID and verifying that all steps are executed correctly. Test with both scenarios: when changes are detected and when no changes are detected.
