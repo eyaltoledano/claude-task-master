@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-10-21T20:03:50.414Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Migrate context gathering utilities from scripts to tm-core",
+			"complexityScore": 6,
+			"recommendedSubtasks": 8,
+			"expansionPrompt": "Break down the migration of contextGatherer.js and fuzzyTaskSearch.js from scripts to tm-core. Include: 1) TypeScript conversion with proper types and interfaces, 2) ES module migration, 3) Error handling improvements, 4) Unit test creation for token counting, task filtering, file reading, project tree generation, and fuzzy search functionality, 5) Import path updates across the codebase, 6) Maintain backward compatibility during transition.",
+			"reasoning": "Moderate complexity due to TypeScript conversion, maintaining existing functionality, comprehensive test coverage requirements, and potential import updates across the codebase. The utilities are substantial (957 lines for contextGatherer, 372 lines for fuzzyTaskSearch) with multiple features to preserve."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Create prompt building service wrapper",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create a TypeScript service wrapper for PromptManager functionality. Include: 1) Move prompt-manager.js to tm-core with proper TypeScript interfaces, 2) Maintain compatibility with existing JSON prompt templates, 3) Create methods for building update-tasks, update-task, and update-subtask prompts, 4) Add context injection capabilities, 5) Unit tests for template loading, parameter substitution, and validation, 6) Integration tests with existing prompt JSON files.",
+			"reasoning": "Medium complexity involving TypeScript conversion of existing JavaScript class, maintaining template compatibility, and ensuring proper integration with existing prompt infrastructure. The PromptManager has validation logic and template caching that must be preserved."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Create AI service wrapper",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create a central AI service wrapper for existing generation services. Include: 1) Create AI service interface with generateObject() and generateText() methods, 2) Implement TypeScript types and schema validation, 3) Add role-based model selection (main/research/fallback), 4) Temporarily delegate to existing scripts/ implementations, 5) Add comprehensive error handling and logging, 6) Unit tests with mocked dependencies and integration tests.",
+			"reasoning": "Medium complexity requiring clean interface design, proper abstraction of existing services, and maintaining compatibility while providing a clean TypeScript API. Dependencies on prompt builder service add coordination complexity."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Implement task merger service",
+			"complexityScore": 7,
+			"recommendedSubtasks": 9,
+			"expansionPrompt": "Create task merger service for AI-generated updates. Include: 1) Design merger interfaces and data structures, 2) Implement mergeBulkUpdate() for multiple task updates, 3) Implement mergeSingleUpdate() for individual task changes, 4) Implement mergeSubtaskUpdate() with timestamp appending, 5) Add field preservation logic, 6) Implement conflict resolution strategies, 7) Handle edge cases like missing subtasks, 8) Comprehensive unit tests for all merge scenarios, 9) Performance optimization for bulk operations.",
+			"reasoning": "Higher complexity due to data merging logic, conflict resolution, edge case handling, and the need for robust testing. This service is critical for data integrity and requires careful design to handle various update scenarios safely."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Define strategy pattern interfaces",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Define strategy pattern interfaces for update operations. Include: 1) Create ITaskUpdateStrategy interface with updateBulk(), updateSingle(), and updateSubtask() methods, 2) Define UpdateOptions interface with all required parameters, 3) Define UpdateResult interface with success status and telemetry, 4) Create TypeScript type definitions for all data structures, 5) Add interface documentation and examples.",
+			"reasoning": "Lower-medium complexity focused on interface design and type definitions. Requires careful consideration of method signatures and data structures but is primarily architectural without complex implementation logic."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement local task update strategy",
+			"complexityScore": 8,
+			"recommendedSubtasks": 12,
+			"expansionPrompt": "Implement local file storage strategy with full client-side orchestration. Include: 1) Implement ITaskUpdateStrategy interface, 2) Create workflow for loading tasks from file storage, 3) Implement task filtering logic, 4) Integrate ContextGatherer for context collection, 5) Integrate PromptBuilder for AI prompt creation, 6) Integrate AI service for generation, 7) Integrate TaskMerger for result processing, 8) Implement file persistence, 9) Handle all three update types (bulk/single/subtask), 10) Add comprehensive error handling, 11) Unit tests with mocked dependencies, 12) Integration tests with real file operations.",
+			"reasoning": "High complexity as it orchestrates multiple services and implements the complete update workflow. Requires integration of 4 major dependencies, file I/O operations, error handling, and comprehensive testing. This is the core implementation of the update system."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implement remote task update strategy",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Implement API delegation strategy for remote updates. Include: 1) Implement ITaskUpdateStrategy interface, 2) Create API client for bulk updates (POST /projects/{id}/tasks/bulk-update), 3) Create API client for single updates (POST /projects/{id}/tasks/{taskId}/update), 4) Create API client for subtask updates (POST /projects/{id}/tasks/{taskId}/subtasks/{index}/update), 5) Add error handling and network failure recovery, 6) Unit tests with mocked API responses and error scenarios.",
+			"reasoning": "Medium complexity involving API integration patterns, HTTP client implementation, and error handling. Simpler than local strategy as it delegates complex logic to server endpoints, but requires robust network error handling."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Create strategy factory",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Implement factory pattern for strategy creation. Include: 1) Create strategy factory with storage type detection, 2) Implement dependency injection for LocalTaskUpdateStrategy (AI service, context gatherer, prompt builder, task merger), 3) Implement dependency injection for RemoteTaskUpdateStrategy (API client, project ID), 4) Add error handling for unsupported storage types, 5) Unit tests for factory logic and dependency injection.",
+			"reasoning": "Lower-medium complexity focused on factory pattern implementation and dependency injection. Straightforward design pattern with clear responsibilities, but requires proper handling of different strategy dependencies."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement task update service orchestrator",
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Create application layer service for update orchestration. Include: 1) Create task update service using strategy factory, 2) Implement proper initialization and error handling, 3) Add comprehensive logging for operations, 4) Ensure storage-agnostic design without branching logic, 5) Unit tests with mocked strategy factory and strategies, 6) Integration tests with both file and API storage strategies.",
+			"reasoning": "Medium complexity requiring clean service design and proper delegation patterns. Must be storage-agnostic and provide consistent interface while coordinating with the strategy factory. Integration testing adds complexity."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Integrate update operations into tasks domain",
+			"complexityScore": 7,
+			"recommendedSubtasks": 9,
+			"expansionPrompt": "Add update methods to TasksDomain and wire up presentation layers. Include: 1) Add updateBulk(), updateSingle(), and updateSubtask() methods to TasksDomain, 2) Update CLI commands to use new domain methods, 3) Update MCP tools to call domain methods, 4) Ensure backward compatibility with existing CLI interfaces, 5) Implement consistent error handling across all layers, 6) Add proper response formatting, 7) Integration tests for full stack (CLI/MCP through domain to storage), 8) Test both file and API storage workflows, 9) Verify real task data scenarios.",
+			"reasoning": "Higher complexity due to integration across multiple layers (domain, CLI, MCP), backward compatibility requirements, and comprehensive testing needs. This task completes the full implementation and requires coordination across the entire architecture."
+		}
+	]
+}
