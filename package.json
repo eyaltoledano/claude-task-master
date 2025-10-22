@@ -50,9 +50,7 @@
 		"context"
 	],
 	"author": "Eyal Toledano",
-	"contributors": [
-		"Filip Kalný <filip@kalny.net>"
-	],
+	"contributors": ["Filip Kalný <filip@kalny.net>"],
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
 		"@ai-sdk/amazon-bedrock": "^3.0.23",
