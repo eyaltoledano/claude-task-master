@@ -7,9 +7,9 @@
  */
 
 import type { SupportedStorage } from '@supabase/supabase-js';
-import { CredentialStore } from './credential-store.js';
-import type { AuthCredentials } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
+import type { AuthCredentials } from '../types.js';
+import { CredentialStore } from './credential-store.js';
 
 const STORAGE_KEY = 'sb-taskmaster-auth-token';
 

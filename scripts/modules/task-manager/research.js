@@ -9,8 +9,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import inquirer from 'inquirer';
 import { highlight } from 'cli-highlight';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { ContextGatherer, FuzzyTaskSearch } from '@tm/core';
 import { generateTextService } from '../ai-services-unified.js';
 import { getPromptManager } from '../prompt-manager.js';
 import {

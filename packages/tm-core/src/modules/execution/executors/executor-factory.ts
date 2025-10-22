@@ -2,9 +2,9 @@
  * Factory for creating task executors
  */
 
-import type { ITaskExecutor, ExecutorOptions, ExecutorType } from '../types.js';
-import { ClaudeExecutor } from '../executors/claude-executor.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { ClaudeExecutor } from '../executors/claude-executor.js';
+import type { ExecutorOptions, ExecutorType, ITaskExecutor } from '../types.js';
 
 export class ExecutorFactory {
 	private static logger = getLogger('ExecutorFactory');

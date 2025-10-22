@@ -2,12 +2,10 @@
  * Tests for executor functionality
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-	ExecutorFactory,
-	ClaudeExecutor,
-	type ExecutorOptions
-} from '../../src/executors/index.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExecutorFactory } from '../../src/modules/execution/executors/executor-factory.js';
+import { ClaudeExecutor } from '../../src/modules/execution/executors/claude-executor.js';
+import type { ExecutorOptions } from '../../src/modules/execution/types.js';
 
 describe('ExecutorFactory', () => {
 	const mockProjectRoot = '/test/project';

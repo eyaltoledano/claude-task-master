@@ -2,15 +2,15 @@
  * Service for managing task execution
  */
 
-import type { Task } from '../../../common/types/index.js';
-import type {
-	ITaskExecutor,
-	ExecutorOptions,
-	ExecutionResult,
-	ExecutorType
-} from '../types.js';
-import { ExecutorFactory } from '../executors/executor-factory.js';
 import { getLogger } from '../../../common/logger/index.js';
+import type { Task } from '../../../common/types/index.js';
+import { ExecutorFactory } from '../executors/executor-factory.js';
+import type {
+	ExecutionResult,
+	ExecutorOptions,
+	ExecutorType,
+	ITaskExecutor
+} from '../types.js';
 
 export interface ExecutorServiceOptions {
 	projectRoot: string;

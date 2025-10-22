@@ -3,10 +3,10 @@
  * Public API for Git operations
  */
 
+import type { StatusResult } from 'simple-git';
 import { GitAdapter } from './adapters/git-adapter.js';
 import { CommitMessageGenerator } from './services/commit-message-generator.js';
 import type { CommitMessageOptions } from './services/commit-message-generator.js';
-import type { StatusResult } from 'simple-git';
 
 /**
  * Git Domain - Unified API for Git operations

@@ -3,7 +3,7 @@
  * This demonstrates how consumers can use granular imports for better tree-shaking
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Subpath Exports', () => {
 	it('should allow importing from auth subpath', async () => {

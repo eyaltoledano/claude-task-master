@@ -4,12 +4,12 @@
 
 import { spawn } from 'child_process';
 import type { Task } from '../../../common/types/index.js';
-import type {
-	ExecutorType,
-	ExecutionResult,
-	ClaudeExecutorConfig
-} from '../types.js';
 import { BaseExecutor } from '../executors/base-executor.js';
+import type {
+	ClaudeExecutorConfig,
+	ExecutionResult,
+	ExecutorType
+} from '../types.js';
 
 export class ClaudeExecutor extends BaseExecutor {
 	private claudeConfig: ClaudeExecutorConfig;

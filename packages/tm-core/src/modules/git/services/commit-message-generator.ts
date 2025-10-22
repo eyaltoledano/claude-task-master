@@ -5,8 +5,8 @@
  * that follow conventional commits specification and include task metadata.
  */
 
-import { TemplateEngine } from './template-engine.js';
 import { ScopeDetector } from './scope-detector.js';
+import { TemplateEngine } from './template-engine.js';
 
 export interface CommitMessageOptions {
 	type: string;

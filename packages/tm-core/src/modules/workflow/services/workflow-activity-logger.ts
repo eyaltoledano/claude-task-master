@@ -5,13 +5,13 @@
  * for debugging, auditing, and workflow analysis.
  */
 
+import { getLogger } from '../../../common/logger/index.js';
+import {
+	type ActivityEvent,
+	logActivity
+} from '../../storage/adapters/activity-logger.js';
 import type { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
 import type { WorkflowEventData, WorkflowEventType } from '../types.js';
-import {
-	logActivity,
-	type ActivityEvent
-} from '../../storage/adapters/activity-logger.js';
-import { getLogger } from '../../../common/logger/index.js';
 
 /**
  * All workflow event types that should be logged

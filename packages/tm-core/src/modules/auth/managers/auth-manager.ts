@@ -2,23 +2,23 @@
  * Authentication manager for Task Master CLI
  */
 
-import {
-	AuthCredentials,
-	OAuthFlowOptions,
-	AuthenticationError,
-	AuthConfig,
-	UserContext
-} from '../types.js';
+import { getLogger } from '../../../common/logger/index.js';
+import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { CredentialStore } from '../services/credential-store.js';
 import { OAuthService } from '../services/oauth-service.js';
-import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import {
-	OrganizationService,
-	type Organization,
 	type Brief,
+	type Organization,
+	OrganizationService,
 	type RemoteTask
 } from '../services/organization.service.js';
-import { getLogger } from '../../../common/logger/index.js';
+import {
+	AuthConfig,
+	AuthCredentials,
+	AuthenticationError,
+	OAuthFlowOptions,
+	UserContext
+} from '../types.js';
 
 /**
  * Authentication manager class

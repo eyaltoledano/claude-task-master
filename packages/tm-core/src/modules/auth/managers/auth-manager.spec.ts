@@ -2,7 +2,7 @@
  * Tests for AuthManager singleton behavior
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to verify warnings (must be hoisted before SUT import)
 const mockLogger = {

@@ -5,11 +5,11 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
+import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import { getLogger } from '../../../common/logger/index.js';
 
 /**

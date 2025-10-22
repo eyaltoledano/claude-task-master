@@ -23,8 +23,7 @@ import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { ContextGatherer, FuzzyTaskSearch } from '@tm/core';
 
 /**
  * Update a subtask by appending additional timestamped information using the unified AI service.

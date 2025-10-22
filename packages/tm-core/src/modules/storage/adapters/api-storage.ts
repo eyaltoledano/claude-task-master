@@ -3,26 +3,26 @@
  * This provides storage via repository abstraction for flexibility
  */
 
-import type {
-	IStorage,
-	StorageStats,
-	UpdateStatusResult,
-	LoadTasksOptions
-} from '../../../common/interfaces/storage.interface.js';
-import type {
-	Task,
-	TaskMetadata,
-	TaskTag,
-	TaskStatus
-} from '../../../common/types/index.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
-import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
-import { SupabaseClient } from '@supabase/supabase-js';
+import type {
+	IStorage,
+	LoadTasksOptions,
+	StorageStats,
+	UpdateStatusResult
+} from '../../../common/interfaces/storage.interface.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskStatus,
+	TaskTag
+} from '../../../common/types/index.js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
+import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 
 /**
  * API storage configuration

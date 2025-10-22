@@ -2,8 +2,8 @@
  * @fileoverview Unit tests for ConfigPersistence service
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigPersistence } from './config-persistence.service.js';
 
 vi.mock('node:fs', () => ({

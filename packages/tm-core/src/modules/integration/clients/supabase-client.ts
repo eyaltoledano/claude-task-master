@@ -3,15 +3,15 @@
  */
 
 import {
-	createClient,
+	Session,
 	SupabaseClient as SupabaseJSClient,
 	User,
-	Session
+	createClient
 } from '@supabase/supabase-js';
-import { AuthenticationError } from '../../auth/types.js';
 import { getLogger } from '../../../common/logger/index.js';
-import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
 import { CredentialStore } from '../../auth/services/credential-store.js';
+import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
+import { AuthenticationError } from '../../auth/types.js';
 
 export class SupabaseAuthClient {
 	private client: SupabaseJSClient | null = null;

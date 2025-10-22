@@ -4,12 +4,12 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '../../../common/types/database.types.js';
 import {
-	TaskMasterError,
-	ERROR_CODES
+	ERROR_CODES,
+	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { Database } from '../../../common/types/database.types.js';
 
 /**
  * Organization data structure

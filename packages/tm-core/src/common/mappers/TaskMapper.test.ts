@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { TaskMapper } from './TaskMapper.js';
+import { describe, expect, it, vi } from 'vitest';
 import type { Tables } from '../types/database.types.js';
+import { TaskMapper } from './TaskMapper.js';
 
 type TaskRow = Tables<'tasks'>;
 

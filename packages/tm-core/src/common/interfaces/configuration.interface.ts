@@ -4,9 +4,9 @@
  */
 
 import type {
+	StorageType,
 	TaskComplexity,
-	TaskPriority,
-	StorageType
+	TaskPriority
 } from '../types/index.js';
 
 /**

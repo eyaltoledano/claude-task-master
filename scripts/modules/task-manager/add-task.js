@@ -26,7 +26,7 @@ import {
 import { generateObjectService } from '../ai-services-unified.js';
 import { getDefaultPriority, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import ContextGatherer from '../utils/contextGatherer.js';
+import { ContextGatherer } from '@tm/core';
 import generateTaskFiles from './generate-task-files.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import {

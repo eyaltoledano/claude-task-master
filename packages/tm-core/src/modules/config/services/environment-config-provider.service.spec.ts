@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for EnvironmentConfigProvider service
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnvironmentConfigProvider } from './environment-config-provider.service.js';
 
 describe('EnvironmentConfigProvider', () => {

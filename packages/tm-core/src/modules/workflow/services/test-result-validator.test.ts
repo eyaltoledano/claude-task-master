@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { TestResultValidator } from './test-result-validator.js';
 import type {
+	TestPhase,
 	TestResult,
-	ValidationResult,
-	TestPhase
+	ValidationResult
 } from './test-result-validator.types.js';
 
 describe('TestResultValidator - Input Validation', () => {

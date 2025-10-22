@@ -5,8 +5,8 @@
  * @module activity-logger
  */
 
-import fs from 'fs-extra';
 import path from 'path';
+import fs from 'fs-extra';
 
 /**
  * Activity log entry structure

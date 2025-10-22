@@ -24,8 +24,7 @@ import generateTaskFiles from './generate-task-files.js';
 import { generateObjectService } from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { getModelConfiguration } from './models.js';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { ContextGatherer, FuzzyTaskSearch } from '@tm/core';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
 
 /**

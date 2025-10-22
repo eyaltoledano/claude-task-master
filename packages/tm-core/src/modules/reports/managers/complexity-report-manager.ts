@@ -5,12 +5,12 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getLogger } from '../../../common/logger/index.js';
 import type {
-	ComplexityReport,
 	ComplexityAnalysis,
+	ComplexityReport,
 	TaskComplexityData
 } from '../types.js';
-import { getLogger } from '../../../common/logger/index.js';
 
 const logger = getLogger('ComplexityReportManager');
 

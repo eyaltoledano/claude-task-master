@@ -7,10 +7,10 @@
  */
 
 import { promises as fs } from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
-import type { WorkflowState } from '../types.js';
+import path from 'node:path';
 import { getLogger } from '../../../common/logger/index.js';
+import type { WorkflowState } from '../types.js';
 
 export interface WorkflowStateBackup {
 	timestamp: string;

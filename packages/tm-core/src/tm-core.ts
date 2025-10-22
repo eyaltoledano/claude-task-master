@@ -4,13 +4,13 @@
  */
 
 import path from 'node:path';
-import { ConfigManager } from './modules/config/managers/config-manager.js';
-import { TasksDomain } from './modules/tasks/tasks-domain.js';
 import { AuthDomain } from './modules/auth/auth-domain.js';
-import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
-import { GitDomain } from './modules/git/git-domain.js';
 import { ConfigDomain } from './modules/config/config-domain.js';
+import { ConfigManager } from './modules/config/managers/config-manager.js';
+import { GitDomain } from './modules/git/git-domain.js';
 import { IntegrationDomain } from './modules/integration/integration-domain.js';
+import { TasksDomain } from './modules/tasks/tasks-domain.js';
+import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
 
 import {
 	ERROR_CODES,

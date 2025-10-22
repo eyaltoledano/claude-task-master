@@ -2,10 +2,10 @@
  * @fileoverview Tests for WorkflowStateManager path sanitization
  */
 
-import { describe, it, expect } from 'vitest';
-import { WorkflowStateManager } from './workflow-state-manager.js';
 import os from 'node:os';
 import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { WorkflowStateManager } from './workflow-state-manager.js';
 
 describe('WorkflowStateManager', () => {
 	describe('getProjectIdentifier', () => {

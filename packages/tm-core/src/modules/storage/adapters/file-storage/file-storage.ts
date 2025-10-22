@@ -3,20 +3,20 @@
  */
 
 import type {
+	IStorage,
+	LoadTasksOptions,
+	StorageStats,
+	UpdateStatusResult
+} from '../../../../common/interfaces/storage.interface.js';
+import type {
 	Task,
 	TaskMetadata,
 	TaskStatus
 } from '../../../../common/types/index.js';
-import type {
-	IStorage,
-	StorageStats,
-	UpdateStatusResult,
-	LoadTasksOptions
-} from '../../../../common/interfaces/storage.interface.js';
-import { FormatHandler } from './format-handler.js';
-import { FileOperations } from './file-operations.js';
-import { PathResolver } from './path-resolver.js';
 import { ComplexityReportManager } from '../../../reports/managers/complexity-report-manager.js';
+import { FileOperations } from './file-operations.js';
+import { FormatHandler } from './format-handler.js';
+import { PathResolver } from './path-resolver.js';
 
 /**
  * File-based storage implementation using a single tasks.json file with separated concerns

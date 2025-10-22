@@ -1,5 +1,5 @@
-import { Task, Subtask } from '../types/index.js';
 import { Database, Tables } from '../types/database.types.js';
+import { Subtask, Task } from '../types/index.js';
 
 type TaskRow = Tables<'tasks'>;
 

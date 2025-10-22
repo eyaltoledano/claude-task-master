@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+	compareRunIds,
 	generateRunId,
 	isValidRunId,
-	parseRunId,
-	compareRunIds
+	parseRunId
 } from './run-id-generator.js';
 
 describe('Run ID Generator', () => {
