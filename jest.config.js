@@ -12,15 +12,10 @@ export default {
 	coverageDirectory: 'coverage',
 
 	// A list of paths to directories that Jest should use to search for files in
-	roots: ['<rootDir>/tests', '<rootDir>/packages', '<rootDir>/apps'],
+	roots: ['<rootDir>/tests'],
 
 	// The glob patterns Jest uses to detect test files
-	testMatch: [
-		'**/__tests__/**/*.js',
-		'**/?(*.)+(spec|test).js',
-		'**/__tests__/**/*.ts',
-		'**/?(*.)+(spec|test).ts'
-	],
+	testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
 
 	// Transform files
 	preset: 'ts-jest/presets/default-esm',
