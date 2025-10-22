@@ -1,0 +1,8 @@
+Simple Todo App PRD
+
+Create a basic todo list application with the following features:
+1. Add new todos
+2. Mark todos as complete
+3. Delete todos
+
+That's it. Keep it simple.
