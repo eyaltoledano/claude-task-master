@@ -1,0 +1,21 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-02T14:28:59.851Z",
+		"tasksAnalyzed": 1,
+		"totalTasks": 93,
+		"analysisCount": 1,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 24,
+			"taskTitle": "Implement AI-Powered Test Generation Command",
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Expand task 24 'Implement AI-Powered Test Generation Command' into 6 subtasks, focusing on: 1) Command structure implementation, 2) AI prompt engineering for test generation, 3) Test file generation and output, 4) Framework-specific template implementation, 5) MCP tool integration, and 6) Documentation and help system integration. Include detailed implementation steps, dependencies, and testing approaches for each subtask.",
+			"reasoning": "This task has high complexity due to several challenging aspects: 1) AI integration requiring sophisticated prompt engineering, 2) Test generation across multiple frameworks, 3) File system operations with proper error handling, 4) MCP tool integration, 5) Complex configuration requirements, and 6) Framework-specific template generation. The task already has 5 subtasks but could benefit from reorganization based on the updated implementation details in the info blocks, particularly around framework support and configuration."
+		}
+	]
+}
