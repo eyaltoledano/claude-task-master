@@ -28,6 +28,7 @@ export class WorkflowStateManager {
 	private readonly sessionDir: string;
 	private maxBackups: number;
 	private readonly logger = getLogger('WorkflowStateManager');
+	private savePromise: Promise<void> | null = null;
 
 	constructor(projectRoot: string, maxBackups = 5) {
 		this.projectRoot = path.resolve(projectRoot);
@@ -98,8 +99,28 @@ export class WorkflowStateManager {
 
 	/**
 	 * Save workflow state to disk
+	 * Uses a mutex to prevent concurrent saves from corrupting the file
 	 */
 	async save(state: WorkflowState): Promise<void> {
+		// Wait for any pending save operation to complete
+		if (this.savePromise) {
+			await this.savePromise;
+		}
+
+		// Create new save operation
+		this.savePromise = this.performSave(state);
+
+		try {
+			await this.savePromise;
+		} finally {
+			this.savePromise = null;
+		}
+	}
+
+	/**
+	 * Internal method that performs the actual save operation
+	 */
+	private async performSave(state: WorkflowState): Promise<void> {
 		try {
 			// Ensure session directory exists
 			await fs.mkdir(this.sessionDir, { recursive: true });
@@ -116,7 +137,9 @@ export class WorkflowStateManager {
 			}
 
 			// Write state atomically with newline at end
-			const tempPath = `${this.statePath}.tmp`;
+			// Use unique temp path to avoid conflicts
+			const timestamp = Date.now();
+			const tempPath = `${this.statePath}.${timestamp}.tmp`;
 			await fs.writeFile(tempPath, jsonContent + '\n', 'utf-8');
 			await fs.rename(tempPath, this.statePath);
 
