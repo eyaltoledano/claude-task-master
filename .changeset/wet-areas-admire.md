@@ -2,4 +2,4 @@
 "task-master-ai": minor
 ---
 
-Added !cmd: prefix syntax to retrieve API keys from credential
+Add !cmd: prefix syntax to retrieve API keys from credential managers instead of hardcoding them in configuration files.
