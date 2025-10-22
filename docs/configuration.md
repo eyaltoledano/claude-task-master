@@ -164,11 +164,12 @@ GOOGLE_API_KEY=!cmd:aws secretsmanager get-secret-value --secret-id taskmaster/g
 ```
 
 **Features:**
-- Commands are executed using `/bin/sh` shell
+- Commands are executed using the system shell (auto-detected per platform)
 - Output is automatically trimmed of whitespace
 - Commands that fail or return empty output are treated as missing keys
 - Timeout configurable via `TASKMASTER_CMD_TIMEOUT` (default: 5000ms)
 - Backward compatible: plain text keys continue to work
+- Cross-platform compatible (Windows, macOS, Linux)
 
 **Security Benefits:**
 - Keep API keys out of version control
