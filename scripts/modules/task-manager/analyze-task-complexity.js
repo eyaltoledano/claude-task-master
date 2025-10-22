@@ -26,8 +26,7 @@ import {
 } from '../../../src/constants/paths.js';
 import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
 import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { ContextGatherer, FuzzyTaskSearch } from '@tm/core';
 import { flattenTasksWithSubtasks } from '../utils.js';
 
 /**

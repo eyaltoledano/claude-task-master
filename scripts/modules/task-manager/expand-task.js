@@ -25,8 +25,7 @@ import {
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { ContextGatherer, FuzzyTaskSearch } from '@tm/core';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).
