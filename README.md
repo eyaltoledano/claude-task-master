@@ -137,6 +137,12 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
 
+> 💡 **New in v0.30.0**: Use `!cmd:` prefix to retrieve keys from credential managers:
+> ```json
+> "ANTHROPIC_API_KEY": "!cmd:security find-generic-password -a taskmaster -s anthropic -w"
+> ```
+> See [Command-Based API Key Resolution](docs/configuration.md#command-based-api-key-resolution-v0300) for details.
+
 > **Note**: If you see `0 tools enabled` in the MCP settings, restart your editor and check that your API keys are correctly configured.
 
 ###### VS Code (`servers` + `type`)
@@ -166,6 +172,8 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 ```
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
+
+> 💡 **New in v0.30.0**: Use `!cmd:` prefix to retrieve keys from credential managers. See [Command-Based API Key Resolution](docs/configuration.md#command-based-api-key-resolution-v0300) for details.
 
 #### 2. (Cursor-only) Enable Taskmaster MCP
 
