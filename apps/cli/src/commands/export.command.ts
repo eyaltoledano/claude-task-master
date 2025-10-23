@@ -96,7 +96,8 @@ export class ExportCommand extends Command {
 
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
