@@ -48,6 +48,22 @@ type ContextWithBrief = NonNullable<
 > & { briefId: string };
 
 /**
+ * Response from the update task with prompt API endpoint
+ */
+interface UpdateTaskWithPromptResponse {
+	success: boolean;
+	task: {
+		id: string;
+		displayId: string | null;
+		title: string;
+		description: string | null;
+		status: string;
+		priority: string | null;
+	};
+	message: string;
+}
+
+/**
  * ApiStorage implementation using repository pattern
  * Provides flexibility to swap between different backend implementations
  */
@@ -509,23 +525,79 @@ export class ApiStorage implements IStorage {
 		taskId: string,
 		prompt: string,
 		tag?: string,
-		options?: { useResearch?: boolean }
+		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void> {
 		await this.ensureInitialized();
 
+		const mode = options?.mode ?? 'append';
+
 		try {
-			// TODO: Implement backend endpoint for AI-powered task updates
-			// For now, throw a clear error
-			// Future: this.repository.updateTaskWithPrompt(this.projectId, taskId, prompt, options)
-			throw new Error(
-				'API storage updateTaskWithPrompt not yet implemented. ' +
-					'Backend endpoint needed for server-side AI processing.'
+			this.ensureBriefSelected('updateTaskWithPrompt');
+
+			// Get API endpoint
+			const apiEndpoint =
+				process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+
+			if (!apiEndpoint) {
+				throw new Error(
+					'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.'
+				);
+			}
+
+			// Get auth token
+			const authManager = AuthManager.getInstance();
+			const credentials = authManager.getCredentials();
+			if (!credentials || !credentials.token) {
+				throw new Error('Not authenticated');
+			}
+
+			// Make API request
+			const apiUrl = `${apiEndpoint}/ai/api/v1/tasks/${taskId}`;
+			const response = await fetch(apiUrl, {
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${credentials.token}`
+				},
+				body: JSON.stringify({
+					prompt,
+					mode
+				})
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(
+					`API request failed: ${response.status} - ${errorText}`
+				);
+			}
+
+			const result = (await response.json()) as UpdateTaskWithPromptResponse;
+
+			if (!result.success) {
+				throw new Error(result.message || 'Failed to update task with prompt');
+			}
+
+			// Log success with task details
+			console.log(
+				`Successfully updated task ${result.task.displayId || result.task.id} using AI prompt (mode: ${mode})`
 			);
+			console.log(`  Title: ${result.task.title}`);
+			console.log(`  Status: ${result.task.status}`);
+			if (result.message) {
+				console.log(`  ${result.message}`);
+			}
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to update task with prompt via API',
 				ERROR_CODES.STORAGE_ERROR,
-				{ operation: 'updateTaskWithPrompt', taskId, tag, promptLength: prompt.length },
+				{
+					operation: 'updateTaskWithPrompt',
+					taskId,
+					tag,
+					promptLength: prompt.length,
+					mode
+				},
 				error as Error
 			);
 		}

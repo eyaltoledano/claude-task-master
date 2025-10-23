@@ -80,14 +80,16 @@ export interface IStorage {
 	 * @param taskId - ID of the task to update
 	 * @param prompt - Natural language prompt describing the update
 	 * @param tag - Optional tag context for the task
-	 * @param options - Optional update options (useResearch, etc.)
+	 * @param options - Optional update options
+	 * @param options.useResearch - Whether to use research capabilities (for file storage)
+	 * @param options.mode - Update mode: 'append' adds info, 'update' makes targeted changes, 'rewrite' restructures (for API storage)
 	 * @returns Promise that resolves when update is complete
 	 */
 	updateTaskWithPrompt(
 		taskId: string,
 		prompt: string,
 		tag?: string,
-		options?: { useResearch?: boolean }
+		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void>;
 
 	/**
