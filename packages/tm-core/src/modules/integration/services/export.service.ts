@@ -99,8 +99,9 @@ export class ExportService {
 	 * Export tasks to a brief
 	 */
 	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
 		// Validate authentication
-		if (!this.authManager.isAuthenticated()) {
+		if (!isAuthenticated) {
 			throw new TaskMasterError(
 				'Authentication required for export',
 				ERROR_CODES.AUTHENTICATION_ERROR

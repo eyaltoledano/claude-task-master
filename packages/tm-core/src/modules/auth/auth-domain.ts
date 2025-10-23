@@ -44,10 +44,24 @@ export class AuthDomain {
 	// ========== Authentication ==========
 
 	/**
-	 * Check if user is authenticated
+	 * Check if valid Supabase session exists
 	 */
-	isAuthenticated(): boolean {
-		return this.authManager.isAuthenticated();
+	async hasValidSession(): Promise<boolean> {
+		return this.authManager.hasValidSession();
+	}
+
+	/**
+	 * Get the current Supabase session with full details
+	 */
+	async getSession() {
+		return this.authManager.getSession();
+	}
+
+	/**
+	 * Get stored user context (userId, email)
+	 */
+	getStoredContext() {
+		return this.authManager.getStoredContext();
 	}
 
 	/**

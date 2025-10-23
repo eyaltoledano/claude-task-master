@@ -143,7 +143,7 @@ export class AuthCommand extends Command {
 	 */
 	private async executeStatus(): Promise<void> {
 		try {
-			const result = this.displayStatus();
+			const result = await this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
 			displayError(error);
@@ -169,21 +169,28 @@ export class AuthCommand extends Command {
 	/**
 	 * Display authentication status
 	 */
-	private displayStatus(): AuthResult {
-		const credentials = this.authManager.getCredentials();
-
+	private async displayStatus(): Promise<AuthResult> {
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
-		if (credentials) {
-			console.log(chalk.green('✓ Authenticated'));
-			console.log(chalk.gray(`  Email: ${credentials.email || 'N/A'}`));
-			console.log(chalk.gray(`  User ID: ${credentials.userId}`));
-			console.log(
-				chalk.gray(`  Token Type: ${credentials.tokenType || 'standard'}`)
-			);
+		// Check if user has valid session
+		const hasSession = await this.authManager.hasValidSession();
 
-			if (credentials.expiresAt) {
-				const expiresAt = new Date(credentials.expiresAt);
+		if (hasSession) {
+			// Get session from Supabase (has tokens and expiry)
+			const session = await this.authManager.getSession();
+
+			// Get user context (has email, userId, org/brief selection)
+			const context = this.authManager.getContext();
+			const contextStore = this.authManager.getStoredContext();
+
+			console.log(chalk.green('✓ Authenticated'));
+			console.log(chalk.gray(`  Email: ${contextStore?.email || 'N/A'}`));
+			console.log(chalk.gray(`  User ID: ${contextStore?.userId || 'N/A'}`));
+			console.log(chalk.gray(`  Token Type: standard`));
+
+			// Display expiration info
+			if (session?.expires_at) {
+				const expiresAt = new Date(session.expires_at * 1000);
 				const now = new Date();
 				const timeRemaining = expiresAt.getTime() - now.getTime();
 				const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
@@ -210,13 +217,32 @@ export class AuthCommand extends Command {
 						chalk.yellow(`  Expired at: ${expiresAt.toLocaleString()}`)
 					);
 				}
-			} else {
-				console.log(chalk.gray('  Expires: Never (API key)'));
 			}
 
-			console.log(
-				chalk.gray(`  Saved: ${new Date(credentials.savedAt).toLocaleString()}`)
-			);
+			// Display context if available
+			if (context) {
+				console.log(chalk.gray('\n  Context:'));
+				if (context.orgName) {
+					console.log(chalk.gray(`    Organization: ${context.orgName}`));
+				}
+				if (context.briefName) {
+					console.log(chalk.gray(`    Brief: ${context.briefName}`));
+				}
+			}
+
+			// Build credentials for backward compatibility
+			const credentials = {
+				token: session?.access_token || '',
+				refreshToken: session?.refresh_token,
+				userId: contextStore?.userId || '',
+				email: contextStore?.email,
+				expiresAt: session?.expires_at
+					? new Date(session.expires_at * 1000).toISOString()
+					: undefined,
+				tokenType: 'standard' as const,
+				savedAt: contextStore?.lastUpdated || new Date().toISOString(),
+				selectedContext: context || undefined
+			};
 
 			return {
 				success: true,
@@ -309,9 +335,10 @@ export class AuthCommand extends Command {
 	 */
 	private async performInteractiveAuth(): Promise<AuthResult> {
 		ui.displayBanner('Task Master Authentication');
+		const isAuthenticated = await this.authManager.hasValidSession();
 
 		// Check if already authenticated
-		if (this.authManager.isAuthenticated()) {
+		if (isAuthenticated) {
 			const { continueAuth } = await inquirer.prompt([
 				{
 					type: 'confirm',
@@ -462,13 +489,6 @@ export class AuthCommand extends Command {
 	 */
 	getLastResult(): AuthResult | undefined {
 		return this.lastResult;
-	}
-
-	/**
-	 * Get current authentication status (for programmatic usage)
-	 */
-	isAuthenticated(): boolean {
-		return this.authManager.isAuthenticated();
 	}
 
 	/**

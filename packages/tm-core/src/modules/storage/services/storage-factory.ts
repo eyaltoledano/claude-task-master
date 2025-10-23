@@ -29,10 +29,10 @@ export class StorageFactory {
 	 * @param projectPath - Project root path (for file storage)
 	 * @returns Storage implementation
 	 */
-	static createFromStorageConfig(
+	static async createFromStorageConfig(
 		storageConfig: RuntimeStorageConfig,
 		projectPath: string
-	): IStorage {
+	): Promise<IStorage> {
 		// Wrap the storage config in the expected format, including projectPath
 		// This ensures ApiStorage receives the projectPath for projectId
 		return StorageFactory.create(
@@ -47,10 +47,10 @@ export class StorageFactory {
 	 * @param projectPath - Project root path (for file storage)
 	 * @returns Storage implementation
 	 */
-	static create(
+	static async create(
 		config: Partial<IConfiguration>,
 		projectPath: string
-	): IStorage {
+	): Promise<IStorage> {
 		const storageType = config.storage?.type || 'auto';
 
 		const logger = getLogger('StorageFactory');
@@ -68,14 +68,15 @@ export class StorageFactory {
 
 					// Check if authenticated via AuthManager
 					const authManager = AuthManager.getInstance();
-					if (!authManager.isAuthenticated()) {
+					const hasSession = await authManager.hasValidSession();
+					if (!hasSession) {
 						throw new TaskMasterError(
 							`API storage not fully configured (${missing.join(', ') || 'credentials missing'}). Run: tm auth login, or set the missing field(s).`,
 							ERROR_CODES.MISSING_CONFIGURATION,
 							{ storageType: 'api', missing }
 						);
 					}
-					// Use auth token from AuthManager (synchronous - no auto-refresh here)
+					// Use auth token from AuthManager
 					const credentials = authManager.getCredentials();
 					if (credentials) {
 						// Merge with existing storage config, ensuring required fields
@@ -105,7 +106,8 @@ export class StorageFactory {
 				}
 
 				// Then check if authenticated via AuthManager
-				if (authManager.isAuthenticated()) {
+				const hasSession = await authManager.hasValidSession();
+				if (hasSession) {
 					const credentials = authManager.getCredentials();
 					if (credentials) {
 						// Configure API storage with auth credentials

@@ -13,15 +13,16 @@ import {
 	AuthConfig,
 	CliData
 } from '../types.js';
-import { CredentialStore } from '../services/credential-store.js';
+import { ContextStore } from '../services/context-store.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
 import { getLogger } from '../../../common/logger/index.js';
 import packageJson from '../../../../../../package.json' with { type: 'json' };
+import { Session } from '@supabase/supabase-js';
 
 export class OAuthService {
 	private logger = getLogger('OAuthService');
-	private credentialStore: CredentialStore;
+	private contextStore: ContextStore;
 	private supabaseClient: SupabaseAuthClient;
 	private baseUrl: string;
 	private authorizationUrl: string | null = null;
@@ -30,11 +31,12 @@ export class OAuthService {
 	private resolveAuthorizationReady: (() => void) | null = null;
 
 	constructor(
-		credentialStore: CredentialStore,
+		contextStore: ContextStore,
+		supabaseClient: SupabaseAuthClient,
 		config: Partial<AuthConfig> = {}
 	) {
-		this.credentialStore = credentialStore;
-		this.supabaseClient = new SupabaseAuthClient();
+		this.contextStore = contextStore;
+		this.supabaseClient = supabaseClient;
 		const authConfig = getAuthConfig(config);
 		this.baseUrl = authConfig.baseUrl;
 	}
@@ -274,12 +276,18 @@ export class OAuthService {
 
 		// Handle authorization code for PKCE flow
 		const code = url.searchParams.get('code');
+		this.logger.info(`Code: ${code}, type: ${type}`);
 		if (code && type === 'pkce_callback') {
 			try {
 				this.logger.info('Received authorization code for PKCE flow');
 
-				// Exchange code for session using PKCE
 				const session = await this.supabaseClient.exchangeCodeForSession(code);
+
+				// Save user info to context store
+				this.contextStore.saveContext({
+					userId: session.user.id,
+					email: session.user.email
+				});
 
 				// Calculate expiration - can be overridden with TM_TOKEN_EXPIRY_MINUTES
 				let expiresAt: string | undefined;
@@ -294,7 +302,7 @@ export class OAuthService {
 						: undefined;
 				}
 
-				// Save authentication data
+				// Return credentials for backward compatibility
 				const authData: AuthCredentials = {
 					token: session.access_token,
 					refreshToken: session.refresh_token,
@@ -304,8 +312,6 @@ export class OAuthService {
 					tokenType: 'standard',
 					savedAt: new Date().toISOString()
 				};
-
-				this.credentialStore.saveCredentials(authData);
 
 				if (server.listening) {
 					server.close();
@@ -331,25 +337,31 @@ export class OAuthService {
 			(type === 'oauth_success' || type === 'session_transfer')
 		) {
 			try {
-				this.logger.info(`Received tokens via ${type}`);
+				this.logger.info(
+					`\n\n==============================================\n Received tokens via ${type}\n==============================================\n`
+				);
 
 				// Create a session with the tokens and set it in Supabase client
-				const session = {
+				// This automatically saves the session to session.json via SupabaseSessionStorage
+				const session: Session = {
 					access_token: accessToken,
 					refresh_token: refreshToken || '',
-					expires_at: expiresIn
-						? Math.floor(Date.now() / 1000) + parseInt(expiresIn)
-						: undefined,
-					expires_in: expiresIn ? parseInt(expiresIn) : undefined,
+					expires_in: expiresIn ? parseInt(expiresIn) : 0,
 					token_type: 'bearer',
 					user: null as any // Will be populated by setSession
 				};
 
 				// Set the session in Supabase client
-				await this.supabaseClient.setSession(session as any);
+				await this.supabaseClient.setSession(session);
 
 				// Get user info from the session
 				const user = await this.supabaseClient.getUser();
+
+				// Save user info to context store
+				this.contextStore.saveContext({
+					userId: user?.id || 'unknown',
+					email: user?.email
+				});
 
 				// Calculate expiration time - can be overridden with TM_TOKEN_EXPIRY_MINUTES
 				let expiresAt: string | undefined;
@@ -364,7 +376,7 @@ export class OAuthService {
 						: undefined;
 				}
 
-				// Save authentication data
+				// Return credentials for backward compatibility
 				const authData: AuthCredentials = {
 					token: accessToken,
 					refreshToken: refreshToken || undefined,
@@ -374,8 +386,6 @@ export class OAuthService {
 					tokenType: 'standard',
 					savedAt: new Date().toISOString()
 				};
-
-				this.credentialStore.saveCredentials(authData);
 
 				if (server.listening) {
 					server.close();
