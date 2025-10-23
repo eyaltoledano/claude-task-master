@@ -10,6 +10,7 @@ import {
 	UserContext
 } from '../types.js';
 import { CredentialStore } from '../services/credential-store.js';
+import { ContextStore } from '../services/context-store.js';
 import { OAuthService } from '../services/oauth-service.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import {
@@ -27,6 +28,7 @@ export class AuthManager {
 	private static instance: AuthManager | null = null;
 	private static readonly staticLogger = getLogger('AuthManager');
 	private credentialStore: CredentialStore;
+	private contextStore: ContextStore;
 	private oauthService: OAuthService;
 	public supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
@@ -34,8 +36,14 @@ export class AuthManager {
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.credentialStore = CredentialStore.getInstance(config);
+		this.contextStore = ContextStore.getInstance();
 		this.supabaseClient = new SupabaseAuthClient();
-		this.oauthService = new OAuthService(this.credentialStore, config);
+		// Pass the supabase client to OAuthService so they share the same instance
+		this.oauthService = new OAuthService(
+			this.contextStore,
+			this.supabaseClient,
+			config
+		);
 
 		// Initialize Supabase client with session restoration
 		// Fire-and-forget with catch handler to prevent unhandled rejections
@@ -77,6 +85,7 @@ export class AuthManager {
 	static resetInstance(): void {
 		AuthManager.instance = null;
 		CredentialStore.resetInstance();
+		ContextStore.resetInstance();
 	}
 
 	/**
@@ -106,6 +115,8 @@ export class AuthManager {
 
 	/**
 	 * Refresh authentication token using Supabase session
+	 * Note: Supabase handles token refresh automatically via the session storage adapter.
+	 * This method is mainly for explicit refresh requests.
 	 */
 	async refreshToken(): Promise<AuthCredentials> {
 		try {
@@ -119,13 +130,15 @@ export class AuthManager {
 				);
 			}
 
-			// Get existing credentials to preserve context
-			const existingCredentials = this.credentialStore.getCredentials({
-				allowExpired: true
+			// Sync user info to context store
+			this.contextStore.saveContext({
+				userId: session.user.id,
+				email: session.user.email
 			});
 
-			// Update authentication data from session
-			const newAuthData: AuthCredentials = {
+			// Build credentials response
+			const context = this.contextStore.getContext();
+			const credentials: AuthCredentials = {
 				token: session.access_token,
 				refreshToken: session.refresh_token,
 				userId: session.user.id,
@@ -134,11 +147,10 @@ export class AuthManager {
 					? new Date(session.expires_at * 1000).toISOString()
 					: undefined,
 				savedAt: new Date().toISOString(),
-				selectedContext: existingCredentials?.selectedContext
+				selectedContext: context?.selectedContext
 			};
 
-			this.credentialStore.saveCredentials(newAuthData);
-			return newAuthData;
+			return credentials;
 		} catch (error) {
 			if (error instanceof AuthenticationError) {
 				throw error;
@@ -162,80 +174,80 @@ export class AuthManager {
 			this.logger.warn('Failed to sign out from Supabase:', error);
 		}
 
-		// Always clear local credentials (removes auth.json file)
-		this.credentialStore.clearCredentials();
+		// Clear all auth data
+		this.credentialStore.clearCredentials(); // Legacy store
+		this.contextStore.clearContext(); // App context
+		// Session is cleared by supabaseClient.signOut()
 	}
 
 	/**
-	 * Check if authenticated (credentials exist, regardless of expiration)
-	 * @returns true if credentials are stored, including expired credentials
+	 * Check if valid Supabase session exists
+	 * @returns true if a valid session exists
 	 */
-	isAuthenticated(): boolean {
-		return this.credentialStore.hasCredentials();
+	async hasValidSession(): Promise<boolean> {
+		try {
+			const session = await this.supabaseClient.getSession();
+			return session !== null;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Get the current Supabase session
+	 */
+	async getSession() {
+		return this.supabaseClient.getSession();
+	}
+
+	/**
+	 * Get stored user context (userId, email)
+	 */
+	getStoredContext() {
+		return this.contextStore.getContext();
 	}
 
 	/**
 	 * Get the current user context (org/brief selection)
 	 */
 	getContext(): UserContext | null {
-		const credentials = this.getCredentials();
-		return credentials?.selectedContext || null;
+		return this.contextStore.getUserContext();
 	}
 
 	/**
 	 * Update the user context (org/brief selection)
 	 */
 	updateContext(context: Partial<UserContext>): void {
-		const credentials = this.getCredentials();
-		if (!credentials) {
+		if (!this.hasValidSession()) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
 
-		// Merge with existing context
-		const existingContext = credentials.selectedContext || {};
-		const newContext: UserContext = {
-			...existingContext,
-			...context,
-			updatedAt: new Date().toISOString()
-		};
-
-		// Save updated credentials with new context
-		const updatedCredentials: AuthCredentials = {
-			...credentials,
-			selectedContext: newContext
-		};
-
-		this.credentialStore.saveCredentials(updatedCredentials);
+		this.contextStore.updateUserContext(context);
 	}
 
 	/**
 	 * Clear the user context
 	 */
 	clearContext(): void {
-		const credentials = this.getCredentials();
-		if (!credentials) {
+		if (!this.hasValidSession()) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
 
-		// Remove context from credentials
-		const { selectedContext, ...credentialsWithoutContext } = credentials;
-		this.credentialStore.saveCredentials(credentialsWithoutContext);
+		this.contextStore.clearUserContext();
 	}
 
 	/**
 	 * Get the organization service instance
-	 * Uses the Supabase client with the current session or token
+	 * Uses the Supabase client with the current session
 	 */
 	private async getOrganizationService(): Promise<OrganizationService> {
 		if (!this.organizationService) {
-			// First check if we have credentials with a token
-			const credentials = this.getCredentials();
-			if (!credentials || !credentials.token) {
+			// Check if we have a valid Supabase session
+			const session = await this.supabaseClient.getSession();
+
+			if (!session) {
 				throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 			}
-
-			// Initialize session if needed (this will load from our storage adapter)
-			await this.supabaseClient.initialize();
 
 			// Use the SupabaseAuthClient which now has the session
 			const supabaseClient = this.supabaseClient.getClient();

@@ -11,17 +11,14 @@ import {
 import { AuthenticationError } from '../../auth/types.js';
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
-import { CredentialStore } from '../../auth/services/credential-store.js';
 
 export class SupabaseAuthClient {
 	private client: SupabaseJSClient | null = null;
 	private sessionStorage: SupabaseSessionStorage;
 	private logger = getLogger('SupabaseAuthClient');
-	private credentialStore: CredentialStore;
 
 	constructor() {
-		this.credentialStore = CredentialStore.getInstance();
-		this.sessionStorage = new SupabaseSessionStorage(this.credentialStore);
+		this.sessionStorage = new SupabaseSessionStorage();
 	}
 
 	/**
