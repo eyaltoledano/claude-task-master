@@ -63,7 +63,7 @@ export interface IStorage {
 	appendTasks(tasks: Task[], tag?: string): Promise<void>;
 
 	/**
-	 * Update a specific task by ID
+	 * Update a specific task by ID (direct structural update)
 	 * @param taskId - ID of the task to update
 	 * @param updates - Partial task object with fields to update
 	 * @param tag - Optional tag context for the task
@@ -73,6 +73,21 @@ export interface IStorage {
 		taskId: string,
 		updates: Partial<Task>,
 		tag?: string
+	): Promise<void>;
+
+	/**
+	 * Update a task using AI-powered prompt (natural language update)
+	 * @param taskId - ID of the task to update
+	 * @param prompt - Natural language prompt describing the update
+	 * @param tag - Optional tag context for the task
+	 * @param options - Optional update options (useResearch, etc.)
+	 * @returns Promise that resolves when update is complete
+	 */
+	updateTaskWithPrompt(
+		taskId: string,
+		prompt: string,
+		tag?: string,
+		options?: { useResearch?: boolean }
 	): Promise<void>;
 
 	/**
@@ -230,6 +245,12 @@ export abstract class BaseStorage implements IStorage {
 		taskId: string,
 		updates: Partial<Task>,
 		tag?: string
+	): Promise<void>;
+	abstract updateTaskWithPrompt(
+		taskId: string,
+		prompt: string,
+		tag?: string,
+		options?: { useResearch?: boolean }
 	): Promise<void>;
 	abstract updateTaskStatus(
 		taskId: string,

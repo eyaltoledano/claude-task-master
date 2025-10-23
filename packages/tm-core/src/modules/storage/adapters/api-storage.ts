@@ -502,6 +502,36 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Update task with AI-powered prompt
+	 * Sends prompt to backend for server-side AI processing
+	 */
+	async updateTaskWithPrompt(
+		taskId: string,
+		prompt: string,
+		tag?: string,
+		options?: { useResearch?: boolean }
+	): Promise<void> {
+		await this.ensureInitialized();
+
+		try {
+			// TODO: Implement backend endpoint for AI-powered task updates
+			// For now, throw a clear error
+			// Future: this.repository.updateTaskWithPrompt(this.projectId, taskId, prompt, options)
+			throw new Error(
+				'API storage updateTaskWithPrompt not yet implemented. ' +
+					'Backend endpoint needed for server-side AI processing.'
+			);
+		} catch (error) {
+			throw new TaskMasterError(
+				'Failed to update task with prompt via API',
+				ERROR_CODES.STORAGE_ERROR,
+				{ operation: 'updateTaskWithPrompt', taskId, tag, promptLength: prompt.length },
+				error as Error
+			);
+		}
+	}
+
+	/**
 	 * Update task or subtask status by ID - for API storage
 	 */
 	async updateTaskStatus(
