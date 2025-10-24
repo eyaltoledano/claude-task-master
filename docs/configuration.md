@@ -220,11 +220,92 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 ## Troubleshooting
 
+### API Key Configuration Issues
+
+#### MCP Connection Errors (`ENOTFOUND`, `getaddrinfo` failures)
+
+**Symptoms:**
+- AI operations fail with errors like: `Cannot connect to API: getaddrinfo ENOTFOUND api.anthropic.com`
+- Parse PRD, expand task, or other AI-powered tools timeout or fail
+- Error messages mention network connectivity issues
+
+**Root Cause:**
+Task Master's MCP server requires API keys to be configured in the **MCP configuration file's `env` section**, not in the project's `.env` file.
+
+**Solution:**
+
+1. **Locate your MCP configuration file:**
+   - **Cursor**: `~/.cursor/mcp.json` or `.cursor/mcp.json`
+   - **Claude Code**: Project-specific `mcp.json` or global configuration
+   - **Windsurf**: Project-specific `mcp.json`
+   - **VS Code**: `.vscode/mcp.json`
+
+2. **Add API keys to the `env` section** of your `task-master-ai` server configuration:
+
+   ```json
+   {
+     "mcpServers": {
+       "task-master-ai": {
+         "command": "npx",
+         "args": ["-y", "task-master-ai"],
+         "env": {
+           "ANTHROPIC_API_KEY": "sk-ant-api03-YOUR_ACTUAL_KEY_HERE",
+           "OPENAI_API_KEY": "sk-proj-YOUR_ACTUAL_KEY_HERE",
+           "PERPLEXITY_API_KEY": "pplx-YOUR_ACTUAL_KEY_HERE"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Get API keys** from the provider websites:
+   - **Anthropic (Recommended)**: https://console.anthropic.com/
+   - **OpenAI**: https://platform.openai.com/
+   - **Perplexity (For Research)**: https://www.perplexity.ai/
+
+4. **Restart your editor/IDE** after updating the MCP configuration
+
+5. **Update Task Master model configuration** to use a provider for which you have a valid API key:
+   ```bash
+   task-master models --set-main claude-3-5-sonnet-20241022 --anthropic
+   task-master models --set-research sonar-pro --perplexity
+   ```
+
+**Important Notes:**
+- API keys in the project's `.env` file are ONLY used for **CLI** operations
+- API keys in the MCP configuration file's `env` section are used for **MCP** operations
+- You need **at least one valid API key** for a provider configured in your `.taskmaster/config.json`
+- The `models` configuration determines which providers are used; ensure you have API keys for those providers
+
+#### Verifying API Key Configuration
+
+To verify your API keys are properly configured:
+
+1. **Check your model configuration:**
+   ```bash
+   task-master models
+   ```
+   This shows which providers are configured for each role (main, research, fallback).
+
+2. **For MCP usage**, verify that:
+   - The MCP configuration file contains API keys in the `env` section
+   - The API keys match the providers shown in `task-master models`
+   - You have at least one valid API key for the primary provider
+
+3. **Test with a simple operation:**
+   ```bash
+   # For CLI (uses .env file)
+   task-master add-task --prompt="Test task"
+   
+   # For MCP (uses MCP config env)
+   # Use the tool through your IDE's MCP interface
+   ```
+
 ### Configuration Errors
 
 - If Task Master reports errors about missing configuration or cannot find the config file, run `task-master models --setup` in your project root to create or repair the file.
 - For new projects, config will be created at `.taskmaster/config.json`. For legacy projects, you may want to use `task-master migrate` to move to the new structure.
-- Ensure API keys are correctly placed in your `.env` file (for CLI) or `.cursor/mcp.json` (for MCP) and are valid for the providers selected in your config file.
+- Ensure API keys are correctly placed in your `.env` file (for CLI) or MCP configuration file's `env` section (for MCP usage) and are valid for the providers selected in your config file.
 
 ### If `task-master init` doesn't respond:
 
