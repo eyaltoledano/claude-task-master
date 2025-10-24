@@ -5,6 +5,7 @@
 
 import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { execSync } from 'node:child_process';
 
 /**
  * Environment variable mapping definition
@@ -55,12 +56,83 @@ export class EnvironmentConfigProvider {
 	];
 
 	private mappings: EnvMapping[];
+	private readonly CMD_PREFIX = '!cmd:';
 
 	constructor(customMappings?: EnvMapping[]) {
 		this.mappings = customMappings || [
 			...EnvironmentConfigProvider.DEFAULT_MAPPINGS,
 			...EnvironmentConfigProvider.RUNTIME_STATE_MAPPINGS
 		];
+	}
+
+	/**
+	 * Parse timeout from TASKMASTER_CMD_TIMEOUT environment variable
+	 * @returns Timeout in milliseconds (default: 5000ms)
+	 * @private
+	 */
+	private parseTimeout(): number {
+		const raw = process.env.TASKMASTER_CMD_TIMEOUT;
+		if (!raw) return 5000;
+
+		const n = parseInt(raw, 10);
+		if (!Number.isFinite(n) || n <= 0) return 5000;
+
+		// Heuristic: <=60 => seconds; else milliseconds
+		return n <= 60 ? n * 1000 : n;
+	}
+
+	/**
+	 * Execute a command to retrieve an environment variable value
+	 * Security: Never logs the command or its output
+	 * @param command - The shell command to execute
+	 * @param envName - The environment variable name (for error logging)
+	 * @returns The trimmed command output or null on failure
+	 * @private
+	 */
+	private executeCommand(command: string, envName: string): string | null {
+		try {
+			const timeout = this.parseTimeout();
+			const result = execSync(command, {
+				encoding: 'utf8',
+				timeout,
+				stdio: ['ignore', 'pipe', 'pipe'],
+				shell: true
+			});
+
+			const trimmed = (result ?? '').trim();
+			if (!trimmed) {
+				throw new Error('empty-result');
+			}
+
+			return trimmed;
+		} catch (err: any) {
+			const reason = err?.killed
+				? 'timeout'
+				: (err?.status ?? err?.code ?? 'exec-failed');
+			this.logger.error(`Error executing command for ${envName}: ${String(reason)}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Resolve environment variable value, handling !cmd: prefix
+	 * @param value - The raw environment variable value
+	 * @param envName - The environment variable name
+	 * @returns The resolved value or null if command failed
+	 * @private
+	 */
+	private resolveValue(value: string, envName: string): string | null {
+		if (!value.startsWith(this.CMD_PREFIX)) {
+			return value;
+		}
+
+		const command = value.slice(this.CMD_PREFIX.length).trim();
+		if (!command) {
+			this.logger.warn(`Empty command for ${envName}`);
+			return null;
+		}
+
+		return this.executeCommand(command, envName);
 	}
 
 	/**
