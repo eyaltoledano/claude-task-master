@@ -289,7 +289,6 @@ jest.unstable_mockModule('@tm/core/config', () => ({
 
 // Mock utils logger, API key resolver, AND findProjectRoot
 const mockLog = jest.fn();
-const mockResolveEnvVariable = jest.fn(); // Keep for backward compatibility in tests
 const mockFindProjectRoot = jest.fn();
 const mockIsSilentMode = jest.fn();
 const mockLogAiUsage = jest.fn();
@@ -317,7 +316,6 @@ const mockGetTasksForTag = jest.fn(() => []);
 jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	LOG_LEVELS: { error: 0, warn: 1, info: 2, debug: 3 },
 	log: mockLog,
-	resolveEnvVariable: mockResolveEnvVariable,
 	findProjectRoot: mockFindProjectRoot,
 	isSilentMode: mockIsSilentMode,
 	logAiUsage: mockLogAiUsage,
