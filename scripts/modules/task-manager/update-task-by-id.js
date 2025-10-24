@@ -34,6 +34,7 @@ import {
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { createTmCore } from '@tm/core';
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -76,13 +77,21 @@ async function updateTaskById(
 	try {
 		report('info', `Updating single task ${taskId} with prompt: "${prompt}"`);
 
-		// --- Input Validations (Keep existing) ---
-		if (!Number.isInteger(taskId) || taskId <= 0)
-			throw new Error(
-				`Invalid task ID: ${taskId}. Task ID must be a positive integer.`
-			);
+		// --- Input Validations ---
+		// Note: taskId can be a number (1), string with dot (1.2), or display ID (HAM-123)
+		// So we don't validate it as strictly anymore
+		if (taskId === null || taskId === undefined || String(taskId).trim() === '')
+			throw new Error('Task ID cannot be empty.');
+
 		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '')
 			throw new Error('Prompt cannot be empty.');
+
+		// Determine project root first (needed for API key checks)
+		const projectRoot = providedProjectRoot || findProjectRoot();
+		if (!projectRoot) {
+			throw new Error('Could not determine project root directory');
+		}
+
 		if (useResearch && !isApiKeySet('perplexity', session)) {
 			report(
 				'warn',
@@ -94,21 +103,127 @@ async function updateTaskById(
 				);
 			useResearch = false;
 		}
+
 		if (!fs.existsSync(tasksPath))
 			throw new Error(`Tasks file not found: ${tasksPath}`);
 		// --- End Input Validations ---
 
-		// Determine project root
-		const projectRoot = providedProjectRoot || findProjectRoot();
-		if (!projectRoot) {
-			throw new Error('Could not determine project root directory');
+		// --- BRIDGE: Check if using API storage and handle via tm-core ---
+		try {
+			const tmCore = await createTmCore({
+				projectPath: projectRoot || process.cwd()
+			});
+
+			// Check if we're using API storage (use resolved storage type, not config)
+			const storageType = tmCore.tasks.getStorageType();
+
+			if (storageType === 'api') {
+				report('info', `Delegating update to Hamster for task ${taskId}`);
+
+				// For API storage, use the new updateTaskWithPrompt method
+				// which calls the remote AI service
+				const mode = appendMode ? 'append' : 'update';
+
+				if (!isMCP && outputFormat === 'text') {
+					console.log(
+						boxen(
+							chalk.blue.bold(`Updating Task via Hamster`) +
+								'\n\n' +
+								chalk.white(`Task ID: ${taskId}`) +
+								'\n' +
+								chalk.white(`Mode: ${mode}`) +
+								'\n' +
+								chalk.white(
+									`Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`
+								),
+							{
+								padding: 1,
+								borderColor: 'blue',
+								borderStyle: 'round',
+								margin: { top: 1, bottom: 1 }
+							}
+						)
+					);
+				}
+
+				let loadingIndicator = null;
+				if (!isMCP && outputFormat === 'text') {
+					loadingIndicator = startLoadingIndicator(
+						'Updating task on Hamster...\n'
+					);
+				}
+
+				try {
+					// Call the API storage method which handles the remote update
+					await tmCore.tasks.updateWithPrompt(taskId, prompt, tag, { mode });
+
+					if (loadingIndicator)
+						stopLoadingIndicator(
+							loadingIndicator,
+							'Task updated successfully.'
+						);
+
+					if (outputFormat === 'text') {
+						console.log(
+							boxen(
+								chalk.green(
+									`Successfully updated task ${taskId} via remote AI`
+								) +
+									'\n\n' +
+									chalk.white(
+										'The task has been updated on the remote server.'
+									) +
+									'\n' +
+									chalk.white(
+										`Run ${chalk.yellow(`task-master show ${taskId}`)} to view the updated task.`
+									),
+								{
+									padding: 1,
+									borderColor: 'green',
+									borderStyle: 'round'
+								}
+							)
+						);
+					}
+
+					// Return success result
+					return {
+						success: true,
+						taskId: taskId,
+						message: 'Task updated via remote AI service'
+					};
+				} catch (updateError) {
+					if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
+
+					throw new Error(
+						`Failed to update task via API: ${updateError.message}`
+					);
+				}
+			}
+
+			// If not API storage, fall through to local file-based update logic below
+			report(
+				'info',
+				`Using file storage - processing update locally for task ${taskId}`
+			);
+		} catch (tmCoreError) {
+			report(
+				'warn',
+				`TmCore check failed, falling back to legacy file-based update: ${tmCoreError.message}`
+			);
+			// Fall through to existing logic
 		}
+		// --- End BRIDGE ---
 
 		// --- Task Loading and Status Check (Keep existing) ---
 		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
-		const taskIndex = data.tasks.findIndex((task) => task.id === taskId);
+		// Convert taskId to number for comparison if it's a numeric string
+		const numericTaskId = Number.isInteger(taskId)
+			? taskId
+			: parseInt(taskId, 10);
+		const taskIndex = data.tasks.findIndex((task) => task.id === numericTaskId);
 		if (taskIndex === -1) throw new Error(`Task with ID ${taskId} not found.`);
 		const taskToUpdate = data.tasks[taskIndex];
 		if (taskToUpdate.status === 'done' || taskToUpdate.status === 'completed') {

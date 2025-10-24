@@ -28,7 +28,7 @@ export class AuthManager {
 	private static readonly staticLogger = getLogger('AuthManager');
 	private credentialStore: CredentialStore;
 	private oauthService: OAuthService;
-	private supabaseClient: SupabaseAuthClient;
+	public supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
 	private readonly logger = getLogger('AuthManager');
 

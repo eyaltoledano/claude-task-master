@@ -544,25 +544,34 @@ export class ApiStorage implements IStorage {
 				);
 			}
 
-			// Get auth token
+			// Get auth token - refresh first to ensure we have a valid token
 			const authManager = AuthManager.getInstance();
-			const credentials = authManager.getCredentials();
-			if (!credentials || !credentials.token) {
+			const session = await authManager.supabaseClient.getSession();
+
+			// Refresh the token to get a fresh one
+			if (!session) {
 				throw new Error('Not authenticated');
 			}
 
-			// Make API request
+			// Get account/organization ID from context
+			const context = this.ensureBriefSelected('updateTaskWithPrompt');
+			const accountId = context.orgId;
+
+			// Make API request using the internal ID
 			const apiUrl = `${apiEndpoint}/ai/api/v1/tasks/${taskId}`;
+			const requestBody = JSON.stringify({
+				prompt,
+				mode
+			});
+
 			const response = await fetch(apiUrl, {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${credentials.token}`
+					Authorization: `Bearer ${session.access_token}`,
+					...(accountId ? { 'x-account-id': accountId } : {})
 				},
-				body: JSON.stringify({
-					prompt,
-					mode
-				})
+				body: requestBody
 			});
 
 			if (!response.ok) {

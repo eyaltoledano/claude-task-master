@@ -130,13 +130,15 @@ export class TasksDomain {
 	 * @param taskId - Task ID (supports numeric, alphanumeric like TAS-49, and subtask IDs like 1.2)
 	 * @param prompt - Natural language prompt describing the update
 	 * @param tag - Optional tag context
-	 * @param options - Optional update options (useResearch, etc.)
+	 * @param options - Optional update options
+	 * @param options.useResearch - Use research AI for file storage updates
+	 * @param options.mode - Update mode for API storage: 'append', 'update', or 'rewrite'
 	 */
 	async updateWithPrompt(
 		taskId: string | number,
 		prompt: string,
 		tag?: string,
-		options?: { useResearch?: boolean }
+		options?: { mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void> {
 		return this.taskService.updateTaskWithPrompt(taskId, prompt, tag, options);
 	}

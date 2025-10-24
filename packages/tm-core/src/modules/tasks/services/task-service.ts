@@ -559,13 +559,15 @@ export class TaskService {
 	 * @param taskId - Task ID (supports numeric, alphanumeric, and subtask IDs)
 	 * @param prompt - Natural language prompt describing the update
 	 * @param tag - Optional tag context
-	 * @param options - Optional update options (useResearch, etc.)
+	 * @param options - Optional update options
+	 * @param options.useResearch - Use research AI for file storage updates
+	 * @param options.mode - Update mode for API storage: 'append', 'update', or 'rewrite'
 	 */
 	async updateTaskWithPrompt(
 		taskId: string | number,
 		prompt: string,
 		tag?: string,
-		options?: { useResearch?: boolean }
+		options?: { mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void> {
 		// Ensure we have storage
 		if (!this.storage) {
