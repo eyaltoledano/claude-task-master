@@ -3,7 +3,7 @@
  * Validates environment and prerequisites for autopilot execution
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { getLogger } from '../../../common/logger/factory.js';

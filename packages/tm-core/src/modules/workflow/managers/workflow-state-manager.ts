@@ -6,7 +6,7 @@
  * Each project gets its own directory for organizing workflow-related data.
  */
 
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import type { WorkflowState } from '../types.js';

@@ -376,12 +376,7 @@ export class FileStorage implements IStorage {
 	 * Update task with AI-powered prompt
 	 * For file storage, this should NOT be called - client must handle AI processing first
 	 */
-	async updateTaskWithPrompt(
-		taskId: string,
-		prompt: string,
-		tag?: string,
-		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
-	): Promise<void> {
+	async updateTaskWithPrompt(): Promise<void> {
 		throw new Error(
 			'File storage does not support updateTaskWithPrompt. ' +
 				'Client-side AI logic must process the prompt before calling updateTask().'

@@ -3,7 +3,7 @@
  * Handles saving and backup of configuration files
  */
 
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import {

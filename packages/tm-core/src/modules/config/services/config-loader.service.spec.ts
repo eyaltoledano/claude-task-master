@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import { ConfigLoader } from './config-loader.service.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 

@@ -2,7 +2,7 @@
  * @fileoverview File operations with atomic writes and locking
  */
 
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import type { FileStorageData } from './format-handler.js';
 
 /**
