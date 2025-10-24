@@ -900,7 +900,7 @@
 				"input": 3.0,
 				"output": 15.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 8192,
 			"supported": true
 		},
@@ -911,7 +911,7 @@
 				"input": 2.5,
 				"output": 10.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 16384,
 			"supported": true
 		},
@@ -922,7 +922,7 @@
 				"input": 0.15,
 				"output": 0.6
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 16384,
 			"supported": true
 		},
@@ -933,7 +933,7 @@
 				"input": 10.0,
 				"output": 30.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 128000,
 			"supported": true
 		},
@@ -944,7 +944,7 @@
 				"input": 15.0,
 				"output": 75.0
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 4096,
 			"supported": true
 		},
@@ -955,7 +955,7 @@
 				"input": 0.25,
 				"output": 1.25
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "research", "fallback"],
 			"max_tokens": 4096,
 			"supported": true
 		},
