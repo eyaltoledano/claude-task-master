@@ -18,13 +18,6 @@ import {
 // Global silent mode flag
 let silentMode = false;
 
-// --- Environment Variable Resolution ---
-// REMOVED: parseTimeout, executeCommandForKey, resolveEnvVariable
-// These functions have been migrated to @tm/core EnvironmentConfigProvider
-// Use: import { EnvironmentConfigProvider } from '@tm/core/config'
-// Then: const provider = new EnvironmentConfigProvider();
-//       const value = provider.resolveVariable(key, envObject, envFilePath);
-
 // --- Tag-Aware Path Resolution Utility ---
 
 /**
@@ -1539,8 +1532,6 @@ function stripAnsiCodes(text) {
 }
 
 // Export all utility functions and configuration
-// NOTE: resolveEnvVariable, parseTimeout, executeCommandForKey have been removed
-// Use EnvironmentConfigProvider from @tm/core/config instead
 export {
 	LOG_LEVELS,
 	log,
