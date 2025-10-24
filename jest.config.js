@@ -35,7 +35,9 @@ export default {
 
 	// Set moduleNameMapper for absolute paths
 	moduleNameMapper: {
-		'^@/(.*)$': '<rootDir>/$1'
+		'^@/(.*)$': '<rootDir>/$1',
+		'^@tm/mcp$': '<rootDir>/apps/mcp/src/index.ts',
+		'^@tm/mcp/(.*)$': '<rootDir>/apps/mcp/$1'
 	},
 	resolver: '<rootDir>/jest.resolver.cjs',
 
