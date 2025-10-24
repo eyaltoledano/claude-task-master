@@ -6,8 +6,6 @@
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
-import dotenv from 'dotenv';
-import { execSync } from 'node:child_process';
 // Import specific config getters needed here
 import { getLogLevel, getDebugFlag } from './config-manager.js';
 import * as gitUtils from './utils/git-utils.js';
@@ -20,136 +18,12 @@ import {
 // Global silent mode flag
 let silentMode = false;
 
-// --- Command-based API Key Resolution Utilities ---
-// NOTE: These functions are deprecated and will be removed in a future release.
-// Use EnvironmentConfigProvider from @tm/core/config instead.
-
-/**
- * @deprecated Use EnvironmentConfigProvider from @tm/core/config
- * Parses the timeout configuration from environment variable
- * @returns {number} Timeout in milliseconds
- */
-function parseTimeout() {
-	const raw = process.env.TASKMASTER_CMD_TIMEOUT;
-	if (!raw) return 5000;
-
-	const n = parseInt(raw, 10);
-	if (!Number.isFinite(n) || n <= 0) return 5000;
-
-	// Heuristic: <=60 => seconds; else milliseconds
-	return n <= 60 ? n * 1000 : n;
-}
-
-/**
- * @deprecated Use EnvironmentConfigProvider from @tm/core/config
- * Executes a command to retrieve an API key
- * @param {string} command - The shell command to execute
- * @param {string} keyName - The environment variable key name (for logging)
- * @param {Object} [opts={}] - Options
- * @param {number} [opts.timeoutMs] - Custom timeout in milliseconds
- * @returns {string|null} The trimmed command output or null on failure
- */
-function executeCommandForKey(command, keyName, opts = {}) {
-	try {
-		const timeout = opts.timeoutMs ?? parseTimeout();
-		const result = execSync(command, {
-			encoding: 'utf8',
-			timeout,
-			stdio: ['ignore', 'pipe', 'pipe'],
-			shell: true
-		});
-
-		const trimmed = (result ?? '').trim();
-		if (!trimmed) throw new Error('empty-result');
-
-		return trimmed;
-	} catch (err) {
-		const reason = err?.killed
-			? 'timeout'
-			: (err?.status ?? err?.code ?? 'exec-failed');
-		console.error(`Error executing command for ${keyName}: ${String(reason)}`);
-		return null;
-	}
-}
-
-// --- Environment Variable Resolution Utility ---
-/**
- * @deprecated Use EnvironmentConfigProvider.resolveVariable() from @tm/core/config instead
- *
- * Resolves an environment variable's value.
- * Precedence:
- * 1. session.env (if session provided)
- * 2. process.env
- * 3. .env file at projectRoot (if projectRoot provided)
- *
- * Supports command-based resolution with !cmd: prefix
- *
- * Migration:
- * ```js
- * // Old way:
- * import { resolveEnvVariable } from './utils.js';
- * const value = resolveEnvVariable('MY_VAR', session, projectRoot);
- *
- * // New way:
- * import { EnvironmentConfigProvider } from '@tm/core/config';
- * const provider = new EnvironmentConfigProvider();
- * const value = provider.resolveVariable('MY_VAR', session?.env, projectRoot ? path.join(projectRoot, '.env') : undefined);
- * ```
- *
- * @param {string} key - The environment variable key.
- * @param {object|null} [session=null] - The MCP session object.
- * @param {string|null} [projectRoot=null] - The project root directory (for .env fallback).
- * @returns {string|undefined|null} The value of the environment variable, null if command fails, or undefined if not found.
- */
-function resolveEnvVariable(key, session = null, projectRoot = null) {
-	let rawValue;
-
-	// 1. Check session.env
-	if (session?.env?.[key]) {
-		rawValue = session.env[key];
-	}
-	// 2. Read .env file at projectRoot
-	else if (projectRoot) {
-		const envPath = path.join(projectRoot, '.env');
-		if (fs.existsSync(envPath)) {
-			try {
-				const envFileContent = fs.readFileSync(envPath, 'utf-8');
-				const parsedEnv = dotenv.parse(envFileContent); // Use dotenv to parse
-				if (parsedEnv && parsedEnv[key]) {
-					// console.log(`DEBUG: Found key ${key} in ${envPath}`); // Optional debug log
-					rawValue = parsedEnv[key];
-				}
-			} catch (error) {
-				// Log error but don't crash, just proceed as if key wasn't found in file
-				log('warn', `Could not read or parse ${envPath}: ${error.message}`);
-			}
-		}
-	}
-
-	// 3. Fallback: Check process.env
-	if (!rawValue && process.env[key]) {
-		rawValue = process.env[key];
-	}
-
-	// If no value found anywhere, return undefined
-	if (!rawValue) {
-		return undefined;
-	}
-
-	// Check if value is a command (!cmd: prefix)
-	const cmdPrefix = '!cmd:';
-	if (rawValue.startsWith(cmdPrefix)) {
-		const command = rawValue.slice(cmdPrefix.length).trim();
-		if (!command) {
-			console.error(`Error: ${key} has !cmd: prefix but no command specified`);
-			return undefined;
-		}
-		return executeCommandForKey(command, key);
-	}
-
-	// Not a command, return raw value
-	return rawValue;
-}
+// --- Environment Variable Resolution ---
+// REMOVED: parseTimeout, executeCommandForKey, resolveEnvVariable
+// These functions have been migrated to @tm/core EnvironmentConfigProvider
+// Use: import { EnvironmentConfigProvider } from '@tm/core/config'
+// Then: const provider = new EnvironmentConfigProvider();
+//       const value = provider.resolveVariable(key, envObject, envFilePath);
 
 // --- Tag-Aware Path Resolution Utility ---
 
@@ -1665,6 +1539,8 @@ function stripAnsiCodes(text) {
 }
 
 // Export all utility functions and configuration
+// NOTE: resolveEnvVariable, parseTimeout, executeCommandForKey have been removed
+// Use EnvironmentConfigProvider from @tm/core/config instead
 export {
 	LOG_LEVELS,
 	log,
@@ -1687,8 +1563,6 @@ export {
 	getTaskManager,
 	isSilentMode,
 	addComplexityToTask,
-	resolveEnvVariable,
-	parseTimeout,
 	findProjectRoot,
 	getTagAwareFilePath,
 	slugifyTagForFilePath,
