@@ -15,12 +15,16 @@ import {
 	VALIDATED_PROVIDERS
 } from '@tm/core';
 import { findConfigPath } from '../../src/utils/path-utils.js';
-import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import { findProjectRoot, isEmpty, log } from './utils.js';
 import MODEL_MAP from './supported-models.json' with { type: 'json' };
+import { EnvironmentConfigProvider } from '@tm/core/config';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize environment config provider for !cmd: support
+const envProvider = new EnvironmentConfigProvider();
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
@@ -533,10 +537,10 @@ function getResearchProvider(explicitRoot = null) {
  */
 function isCodebaseAnalysisEnabled(session = null, projectRoot = null) {
 	// Priority 1: Environment variable
-	const envFlag = resolveEnvVariable(
+	const envFlag = envProvider.resolveVariable(
 		'TASKMASTER_ENABLE_CODEBASE_ANALYSIS',
-		session,
-		projectRoot
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
 	);
 	if (envFlag !== null && envFlag !== undefined && envFlag !== '') {
 		return envFlag.toLowerCase() === 'true' || envFlag === '1';
@@ -852,7 +856,11 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	}
 
 	const envVarName = keyMap[providerKey];
-	const apiKeyValue = resolveEnvVariable(envVarName, session, projectRoot);
+	const apiKeyValue = envProvider.resolveVariable(
+		envVarName,
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
+	);
 
 	// Check if the key exists, is not empty, and is not a placeholder
 	return (
@@ -1120,7 +1128,11 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	const provider = roleConfig?.provider;
 	if (provider) {
 		const envVarName = `${provider.toUpperCase()}_BASE_URL`;
-		return resolveEnvVariable(envVarName, null, explicitRoot);
+		return envProvider.resolveVariable(
+			envVarName,
+			undefined,
+			explicitRoot ? path.join(explicitRoot, '.env') : undefined
+		);
 	}
 	return undefined;
 }

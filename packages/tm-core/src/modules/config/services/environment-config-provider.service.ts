@@ -6,6 +6,8 @@
 import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import { getLogger } from '../../../common/logger/index.js';
 import { execSync } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
+import { parse as parseDotenv } from 'dotenv';
 
 /**
  * Environment variable mapping definition
@@ -242,6 +244,59 @@ export class EnvironmentConfigProvider {
 		}
 
 		return vars;
+	}
+
+	/**
+	 * Resolve a single environment variable value
+	 * Precedence:
+	 * 1. envObject (if provided, e.g., session.env from MCP)
+	 * 2. process.env
+	 * 3. .env file at envFilePath (if provided)
+	 *
+	 * Supports command-based resolution with !cmd: prefix
+	 *
+	 * @param key - The environment variable key
+	 * @param envObject - Optional env object (e.g., session.env)
+	 * @param envFilePath - Optional path to .env file
+	 * @returns The resolved value, null if command failed, or undefined if not found
+	 */
+	resolveVariable(
+		key: string,
+		envObject?: Record<string, string | undefined>,
+		envFilePath?: string
+	): string | null | undefined {
+		let rawValue: string | undefined;
+
+		// 1. Check envObject (e.g., session.env from MCP)
+		if (envObject?.[key]) {
+			rawValue = envObject[key];
+		}
+		// 2. Check process.env
+		else if (process.env[key]) {
+			rawValue = process.env[key];
+		}
+		// 3. Read .env file if path provided
+		else if (envFilePath) {
+			try {
+				if (existsSync(envFilePath)) {
+					const envFileContent = readFileSync(envFilePath, 'utf-8');
+					const parsedEnv = parseDotenv(envFileContent);
+					if (parsedEnv?.[key]) {
+						rawValue = parsedEnv[key];
+					}
+				}
+			} catch (error: any) {
+				this.logger.warn(`Could not read or parse ${envFilePath}: ${error.message}`);
+			}
+		}
+
+		// If no value found anywhere, return undefined
+		if (!rawValue) {
+			return undefined;
+		}
+
+		// Resolve value (handles !cmd: prefix)
+		return this.resolveValue(rawValue, key);
 	}
 
 	/**

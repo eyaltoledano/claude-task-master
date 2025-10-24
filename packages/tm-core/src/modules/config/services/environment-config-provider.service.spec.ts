@@ -474,4 +474,101 @@ describe('EnvironmentConfigProvider', () => {
 			expect(config.models?.main).toBe('TEST');
 		});
 	});
+
+	describe('resolveVariable', () => {
+		it('should resolve value from process.env', () => {
+			process.env.TEST_VAR = 'test-value';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBe('test-value');
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should resolve value from envObject with priority over process.env', () => {
+			process.env.TEST_VAR = 'process-value';
+			const envObject = { TEST_VAR: 'object-value' };
+
+			const result = provider.resolveVariable('TEST_VAR', envObject);
+
+			expect(result).toBe('object-value');
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should resolve !cmd: prefix from envObject', () => {
+			const envObject = { TEST_VAR: '!cmd:echo test-from-cmd' };
+
+			const result = provider.resolveVariable('TEST_VAR', envObject);
+
+			expect(result).toBe('test-from-cmd');
+		});
+
+		it('should resolve !cmd: prefix from process.env', () => {
+			process.env.TEST_VAR = '!cmd:echo cmd-value';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBe('cmd-value');
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should return undefined when variable not found', () => {
+			const result = provider.resolveVariable('NONEXISTENT_VAR');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return null when !cmd: command fails', () => {
+			process.env.TEST_VAR = '!cmd:exit 1';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBeNull();
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should return null when !cmd: command returns empty output', () => {
+			process.env.TEST_VAR = '!cmd:echo ""';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBeNull();
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should handle !cmd: with only whitespace after prefix', () => {
+			process.env.TEST_VAR = '!cmd:   ';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBeNull();
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should trim command output', () => {
+			process.env.TEST_VAR = '!cmd:echo "  spaced  "';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBe('spaced');
+
+			delete process.env.TEST_VAR;
+		});
+
+		it('should work with shell features (pipes)', () => {
+			process.env.TEST_VAR = '!cmd:echo "hello" | tr a-z A-Z';
+
+			const result = provider.resolveVariable('TEST_VAR');
+
+			expect(result).toBe('HELLO');
+
+			delete process.env.TEST_VAR;
+		});
+	});
 });
