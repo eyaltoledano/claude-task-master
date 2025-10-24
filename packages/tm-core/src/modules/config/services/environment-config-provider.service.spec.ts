@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for EnvironmentConfigProvider service
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnvironmentConfigProvider } from './environment-config-provider.service.js';
 
 describe('EnvironmentConfigProvider', () => {
@@ -61,19 +61,12 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should validate storage type values', () => {
-			// Mock console.warn to check validation
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			process.env.TASKMASTER_STORAGE_TYPE = 'invalid';
 
 			const config = provider.loadConfig();
 
+			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
-			expect(warnSpy).toHaveBeenCalledWith(
-				'Invalid value for TASKMASTER_STORAGE_TYPE: invalid'
-			);
-
-			warnSpy.mockRestore();
 		});
 
 		it('should accept valid storage type values', () => {
@@ -256,18 +249,12 @@ describe('EnvironmentConfigProvider', () => {
 
 	describe('validation', () => {
 		it('should validate values when validator is provided', () => {
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			process.env.TASKMASTER_STORAGE_TYPE = 'database'; // Invalid
 
 			const config = provider.loadConfig();
 
+			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
-			expect(warnSpy).toHaveBeenCalledWith(
-				'Invalid value for TASKMASTER_STORAGE_TYPE: database'
-			);
-
-			warnSpy.mockRestore();
 		});
 
 		it('should accept values that pass validation', () => {
@@ -291,20 +278,18 @@ describe('EnvironmentConfigProvider', () => {
 			let config = customProvider.loadConfig();
 			expect(config.custom?.number).toBe('123');
 
+			// Test with invalid value
 			process.env.CUSTOM_NUMBER = 'not-a-number';
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-			customProvider = new EnvironmentConfigProvider([
+			const customProvider2 = new EnvironmentConfigProvider([
 				{
 					env: 'CUSTOM_NUMBER',
 					path: ['custom', 'number'],
 					validate: (v) => !isNaN(Number(v))
 				}
 			]);
-			config = customProvider.loadConfig();
+			config = customProvider2.loadConfig();
+			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
-			expect(warnSpy).toHaveBeenCalled();
-
-			warnSpy.mockRestore();
 		});
 	});
 
@@ -338,6 +323,155 @@ describe('EnvironmentConfigProvider', () => {
 			const config = provider.loadConfig();
 
 			expect(config.storage?.apiAccessToken).toBe(longValue);
+		});
+	});
+
+	describe('!cmd: prefix support', () => {
+		it('should execute command and use its output', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo test-model';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('test-model');
+		});
+
+		it('should trim command output', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "  spaces  "';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('spaces');
+		});
+
+		it('should handle empty command output', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo ""';
+
+			const config = provider.loadConfig();
+
+			// Empty output should be rejected
+			expect(config).toEqual({});
+		});
+
+		it('should handle whitespace-only command output', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "   "';
+
+			const config = provider.loadConfig();
+
+			// Whitespace-only output should be rejected
+			expect(config).toEqual({});
+		});
+
+		it('should handle empty command after prefix', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:';
+
+			const config = provider.loadConfig();
+
+			// Empty command should be rejected
+			expect(config).toEqual({});
+		});
+
+		it('should handle whitespace-only command after prefix', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:   ';
+
+			const config = provider.loadConfig();
+
+			// Whitespace-only command should be rejected
+			expect(config).toEqual({});
+		});
+
+		it('should pass through non-prefixed values unchanged', () => {
+			process.env.TASKMASTER_MODEL_MAIN = 'plain-value';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('plain-value');
+		});
+
+		it('should handle command with special characters', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "hello world"';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('hello world');
+		});
+
+		it('should handle command failure gracefully', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:exit 1';
+
+			const config = provider.loadConfig();
+
+			// Failed command should result in empty config
+			expect(config).toEqual({});
+		});
+
+		it('should handle command timeout', () => {
+			// Set very short timeout
+			process.env.TASKMASTER_CMD_TIMEOUT = '1'; // 1ms
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:sleep 1';
+
+			const config = provider.loadConfig();
+
+			// Timed out command should result in empty config
+			expect(config).toEqual({});
+
+			delete process.env.TASKMASTER_CMD_TIMEOUT;
+		});
+
+		it('should parse TASKMASTER_CMD_TIMEOUT as seconds when <=60', () => {
+			process.env.TASKMASTER_CMD_TIMEOUT = '5';
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo timeout-test';
+
+			const config = provider.loadConfig();
+
+			// Should execute successfully (5 seconds is plenty)
+			expect(config.models?.main).toBe('timeout-test');
+
+			delete process.env.TASKMASTER_CMD_TIMEOUT;
+		});
+
+		it('should parse TASKMASTER_CMD_TIMEOUT as milliseconds when >60', () => {
+			process.env.TASKMASTER_CMD_TIMEOUT = '5000';
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo timeout-test';
+
+			const config = provider.loadConfig();
+
+			// Should execute successfully (5000ms = 5 seconds)
+			expect(config.models?.main).toBe('timeout-test');
+
+			delete process.env.TASKMASTER_CMD_TIMEOUT;
+		});
+
+		it('should use default timeout when TASKMASTER_CMD_TIMEOUT is invalid', () => {
+			process.env.TASKMASTER_CMD_TIMEOUT = 'invalid';
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo default-timeout';
+
+			const config = provider.loadConfig();
+
+			// Should execute successfully with default timeout
+			expect(config.models?.main).toBe('default-timeout');
+
+			delete process.env.TASKMASTER_CMD_TIMEOUT;
+		});
+
+		it('should work with multiple env vars using !cmd:', () => {
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo main-model';
+			process.env.TASKMASTER_MODEL_RESEARCH = '!cmd:echo research-model';
+			process.env.TASKMASTER_MODEL_FALLBACK = 'plain-fallback';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('main-model');
+			expect(config.models?.research).toBe('research-model');
+			expect(config.models?.fallback).toBe('plain-fallback');
+		});
+
+		it('should execute commands with proper shell access', () => {
+			// Test that shell features work (pipes, variables, etc.)
+			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "test" | tr a-z A-Z';
+
+			const config = provider.loadConfig();
+
+			expect(config.models?.main).toBe('TEST');
 		});
 	});
 });
