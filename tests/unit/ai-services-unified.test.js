@@ -277,9 +277,19 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	}))
 }));
 
+// Mock @tm/core/config - EnvironmentConfigProvider
+const mockResolveVariable = jest.fn();
+const mockEnvironmentConfigProvider = {
+	resolveVariable: mockResolveVariable
+};
+
+jest.unstable_mockModule('@tm/core/config', () => ({
+	EnvironmentConfigProvider: jest.fn(() => mockEnvironmentConfigProvider)
+}));
+
 // Mock utils logger, API key resolver, AND findProjectRoot
 const mockLog = jest.fn();
-const mockResolveEnvVariable = jest.fn();
+const mockResolveEnvVariable = jest.fn(); // Keep for backward compatibility in tests
 const mockFindProjectRoot = jest.fn();
 const mockIsSilentMode = jest.fn();
 const mockLogAiUsage = jest.fn();
@@ -359,7 +369,7 @@ describe('Unified AI Services', () => {
 			return { maxTokens: 100, temperature: 0.5 }; // Default
 		});
 		mockGetResponseLanguage.mockReturnValue('English');
-		mockResolveEnvVariable.mockImplementation((key) => {
+		mockResolveVariable.mockImplementation((key) => {
 			if (key === 'ANTHROPIC_API_KEY') return 'mock-anthropic-key';
 			if (key === 'PERPLEXITY_API_KEY') return 'mock-perplexity-key';
 			if (key === 'OPENAI_API_KEY') return 'mock-openai-key';
@@ -819,7 +829,7 @@ describe('Unified AI Services', () => {
 			});
 			mockGetResponseLanguage.mockReturnValue('English');
 			// No API key in env
-			mockResolveEnvVariable.mockReturnValue(null);
+			mockResolveVariable.mockReturnValue(null);
 			// Mock codex generateText response
 			mockCodexProvider.generateText.mockResolvedValueOnce({
 				text: 'ok',
@@ -855,8 +865,8 @@ describe('Unified AI Services', () => {
 				temperature: 1
 			});
 			mockGetResponseLanguage.mockReturnValue('English');
-			// Provide API key via env resolver
-			mockResolveEnvVariable.mockReturnValue('sk-test');
+			// Provide API key via env resolver (now using EnvironmentConfigProvider)
+			mockResolveVariable.mockReturnValue('sk-test');
 			// Mock codex generateText response
 			mockCodexProvider.generateText.mockResolvedValueOnce({
 				text: 'ok-with-key',
@@ -891,7 +901,7 @@ describe('Unified AI Services', () => {
 				temperature: 0.7
 			});
 			mockGetResponseLanguage.mockReturnValue('English');
-			mockResolveEnvVariable.mockReturnValue(null);
+			mockResolveVariable.mockReturnValue(null);
 
 			mockClaudeProvider.generateText.mockResolvedValueOnce({
 				text: 'ok-claude',

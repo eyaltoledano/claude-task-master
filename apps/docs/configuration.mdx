@@ -31,6 +31,73 @@ description: "Configure Task Master through environment variables in a .env file
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
 
+## Command-Based Configuration (!cmd: Prefix)
+
+<Info>
+Task Master supports retrieving configuration values from secure credential managers using the `!cmd:` prefix. This allows you to store sensitive API keys in secure storage like macOS Keychain, 1Password CLI, `pass`, or other credential managers instead of hardcoding them in your `.env` file.
+</Info>
+
+### How It Works
+
+When Task Master encounters an environment variable value starting with `!cmd:`, it executes the command following the prefix and uses the command's output as the configuration value.
+
+### Examples
+
+**macOS Keychain:**
+```bash
+ANTHROPIC_API_KEY="!cmd:security find-generic-password -w -s anthropic-key"
+OPENAI_API_KEY="!cmd:security find-generic-password -w -s openai-key"
+```
+
+**1Password CLI:**
+```bash
+ANTHROPIC_API_KEY="!cmd:op read op://Private/Anthropic/api-key"
+PERPLEXITY_API_KEY="!cmd:op read op://Private/Perplexity/api-key"
+```
+
+**pass (Unix password manager):**
+```bash
+ANTHROPIC_API_KEY="!cmd:pass show anthropic/api-key"
+```
+
+**AWS Secrets Manager:**
+```bash
+ANTHROPIC_API_KEY="!cmd:aws secretsmanager get-secret-value --secret-id anthropic-key --query SecretString --output text"
+```
+
+### Configuration Options
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TASKMASTER_CMD_TIMEOUT` | `5000` | Timeout for command execution in milliseconds (or seconds if ≤60) |
+
+**Examples:**
+```bash
+# 10 second timeout (value ≤60 interpreted as seconds)
+TASKMASTER_CMD_TIMEOUT=10
+
+# 5000 millisecond timeout (value >60 interpreted as milliseconds)
+TASKMASTER_CMD_TIMEOUT=5000
+```
+
+### Features
+
+- **Secure**: Commands and their output are never logged
+- **Backward Compatible**: Non-prefixed values continue to work as before
+- **Shell Features**: Supports pipes, variables, and other shell features
+- **Automatic Trimming**: Output is automatically trimmed of whitespace
+- **Error Handling**: Failed commands are logged (without revealing sensitive data)
+
+### Security Best Practices
+
+<Warning>
+While `!cmd:` provides secure storage integration, ensure your credential manager is properly secured:
+- Use encrypted credential stores
+- Set appropriate file permissions on configuration files
+- Never commit `.env` files containing `!cmd:` directives to version control
+- Rotate credentials regularly
+</Warning>
+
 ## TDD Workflow Configuration
 
 Additional options for autonomous TDD workflow:
@@ -43,7 +110,8 @@ Additional options for autonomous TDD workflow:
 
 ## Example .env File
 
-```
+### Standard Configuration
+```bash
 # Required
 ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
 
@@ -69,6 +137,24 @@ LOG_LEVEL=info
 # TDD Workflow
 TM_MAX_ATTEMPTS=3
 TM_AUTO_COMMIT=true
+```
+
+### With !cmd: Prefix (Secure Credential Storage)
+```bash
+# Required - Using macOS Keychain
+ANTHROPIC_API_KEY="!cmd:security find-generic-password -w -s anthropic-key"
+
+# Optional - Using 1Password CLI
+PERPLEXITY_API_KEY="!cmd:op read op://Private/Perplexity/api-key"
+OPENAI_API_KEY="!cmd:op read op://Private/OpenAI/api-key"
+
+# Optional - Claude Configuration (regular values work alongside !cmd:)
+MODEL=claude-3-7-sonnet-20250219
+MAX_TOKENS=4000
+TEMPERATURE=0.7
+
+# Command execution timeout (10 seconds)
+TASKMASTER_CMD_TIMEOUT=10
 ```
 
 ## Troubleshooting
