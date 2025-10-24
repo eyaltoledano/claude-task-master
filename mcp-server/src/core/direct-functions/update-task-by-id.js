@@ -131,14 +131,13 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				logWrapper.info('API storage detected - sending prompt to backend API');
 
 				// Use updateWithPrompt for AI-powered updates
-				await tmCore.tasks.updateWithPrompt(
-					taskId,
-					prompt,
-					tag,
-					{ useResearch }
-				);
+				await tmCore.tasks.updateWithPrompt(taskId, prompt, tag, {
+					useResearch
+				});
 
-				logWrapper.success(`Successfully sent update prompt for task ${taskId} to API backend`);
+				logWrapper.success(
+					`Successfully sent update prompt for task ${taskId} to API backend`
+				);
 				return {
 					success: true,
 					data: {
@@ -189,14 +188,12 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				// Save using tm-core (which will use file storage)
 				try {
 					logWrapper.info('Saving updated task via tm-core file storage');
-					await tmCore.tasks.update(
-						taskId,
-						coreResult.updatedTask,
-						tag
-					);
+					await tmCore.tasks.update(taskId, coreResult.updatedTask, tag);
 					logWrapper.info('Task saved successfully via tm-core');
 				} catch (storageError) {
-					logWrapper.error(`Failed to save via tm-core: ${storageError.message}`);
+					logWrapper.error(
+						`Failed to save via tm-core: ${storageError.message}`
+					);
 					logWrapper.warn('Falling back to legacy file save');
 				}
 

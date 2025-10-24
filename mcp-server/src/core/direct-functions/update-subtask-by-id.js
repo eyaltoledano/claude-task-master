@@ -123,22 +123,25 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		try {
 			// BRIDGE: Check storage type and use different paths
 			const storageType = tmCore.tasks.getStorageType();
-			logWrapper.info(`Using ${storageType} storage for subtask update operation`);
+			logWrapper.info(
+				`Using ${storageType} storage for subtask update operation`
+			);
 
 			if (storageType === 'api') {
 				// API STORAGE: In API storage, there's no parent/subtask hierarchy
 				// TAS-49.1 is just another task with a unique ID, send prompt to backend
-				logWrapper.info('API storage detected - sending prompt to backend API for subtask');
-
-				// Use updateWithPrompt for AI-powered updates
-				await tmCore.tasks.updateWithPrompt(
-					subtaskIdStr,
-					prompt,
-					tag,
-					{ useResearch }
+				logWrapper.info(
+					'API storage detected - sending prompt to backend API for subtask'
 				);
 
-				logWrapper.success(`Successfully sent update prompt for task ${subtaskIdStr} to API backend`);
+				// Use updateWithPrompt for AI-powered updates
+				await tmCore.tasks.updateWithPrompt(subtaskIdStr, prompt, tag, {
+					useResearch
+				});
+
+				logWrapper.success(
+					`Successfully sent update prompt for task ${subtaskIdStr} to API backend`
+				);
 				return {
 					success: true,
 					data: {
@@ -182,16 +185,22 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 
 				// Save parent task using tm-core
 				try {
-					logWrapper.info(`Loading parent task ${parentId} to save subtask update via tm-core`);
+					logWrapper.info(
+						`Loading parent task ${parentId} to save subtask update via tm-core`
+					);
 
 					const parentTask = await tmCore.tasks.get(parentId, tag);
 					if (parentTask && parentTask.task) {
 						logWrapper.info('Saving parent task via tm-core file storage');
 						await tmCore.tasks.update(parentId, parentTask.task, tag);
-						logWrapper.info('Parent task with updated subtask saved successfully via tm-core');
+						logWrapper.info(
+							'Parent task with updated subtask saved successfully via tm-core'
+						);
 					}
 				} catch (storageError) {
-					logWrapper.error(`Failed to save via tm-core: ${storageError.message}`);
+					logWrapper.error(
+						`Failed to save via tm-core: ${storageError.message}`
+					);
 					logWrapper.warn('Falling back to legacy file save');
 				}
 
