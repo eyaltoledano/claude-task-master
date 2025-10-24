@@ -5,7 +5,6 @@
 
 import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { parse as parseDotenv } from 'dotenv';
 import type { PartialConfiguration } from '../../interfaces/configuration.interface.js';
 import { getLogger } from '../../logger/index.js';
