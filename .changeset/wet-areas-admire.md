@@ -19,7 +19,15 @@ Features:
 - Backward compatible: non-prefixed values work unchanged
 - Full shell access: supports pipes, variables, and other shell features
 
-Implementation:
-- Added to @tm/core EnvironmentConfigProvider service
-- 41 comprehensive tests (26 existing + 15 new for !cmd:)
+Implementation (Phase 1 - tm-core):
+- Added command execution utilities to EnvironmentConfigProvider
+- Added resolveVariable() method for single variable resolution
+- 51 comprehensive tests (26 existing + 15 for !cmd: + 10 for resolveVariable)
 - Exported via @tm/core/config for use in CLI, MCP, and other consumers
+- Supports session.env and .env file resolution for MCP compatibility
+
+Implementation (Phase 2 - Consumer Migration):
+- Migrated scripts/modules/config-manager.js to use @tm/core
+- Migrated scripts/modules/ai-services-unified.js to use @tm/core
+- Deprecated old JavaScript implementation in scripts/modules/utils.js
+- All existing tests passing (1141 passed, 1 test needs mock adjustment)

@@ -6,6 +6,8 @@
 // Vercel AI SDK functions are NOT called directly anymore.
 // import { generateText, streamText, generateObject } from 'ai';
 
+import path from 'path';
+
 // --- Core Dependencies ---
 import {
 	MODEL_MAP,
@@ -31,9 +33,9 @@ import {
 import {
 	findProjectRoot,
 	getCurrentTag,
-	log,
-	resolveEnvVariable
+	log
 } from './utils.js';
+import { EnvironmentConfigProvider } from '@tm/core/config';
 
 // Import provider classes
 import {
@@ -56,6 +58,9 @@ import {
 
 // Import the provider registry
 import ProviderRegistry from '../../src/provider-registry/index.js';
+
+// Initialize environment config provider for !cmd: support
+const envProvider = new EnvironmentConfigProvider();
 
 // Create provider instances
 const PROVIDERS = {
@@ -330,17 +335,25 @@ function _getRoleConfiguration(role, projectRoot) {
 function _getVertexConfiguration(projectRoot, session) {
 	const projectId =
 		getVertexProjectId(projectRoot) ||
-		resolveEnvVariable('VERTEX_PROJECT_ID', session, projectRoot);
+		envProvider.resolveVariable(
+			'VERTEX_PROJECT_ID',
+			session?.env,
+			projectRoot ? path.join(projectRoot, '.env') : undefined
+		);
 
 	const location =
 		getVertexLocation(projectRoot) ||
-		resolveEnvVariable('VERTEX_LOCATION', session, projectRoot) ||
+		envProvider.resolveVariable(
+			'VERTEX_LOCATION',
+			session?.env,
+			projectRoot ? path.join(projectRoot, '.env') : undefined
+		) ||
 		'us-central1';
 
-	const credentialsPath = resolveEnvVariable(
+	const credentialsPath = envProvider.resolveVariable(
 		'GOOGLE_APPLICATION_CREDENTIALS',
-		session,
-		projectRoot
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
 	);
 
 	log(
@@ -380,7 +393,11 @@ function _resolveApiKey(providerName, session, projectRoot = null) {
 		return null;
 	}
 
-	const apiKey = resolveEnvVariable(envVarName, session, projectRoot);
+	const apiKey = envProvider.resolveVariable(
+		envVarName,
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
+	);
 
 	// Special handling for providers that can use alternative auth or no API key
 	if (!provider.isRequiredApiKey()) {

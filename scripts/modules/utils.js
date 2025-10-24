@@ -21,8 +21,11 @@ import {
 let silentMode = false;
 
 // --- Command-based API Key Resolution Utilities ---
+// NOTE: These functions are deprecated and will be removed in a future release.
+// Use EnvironmentConfigProvider from @tm/core/config instead.
 
 /**
+ * @deprecated Use EnvironmentConfigProvider from @tm/core/config
  * Parses the timeout configuration from environment variable
  * @returns {number} Timeout in milliseconds
  */
@@ -38,6 +41,7 @@ function parseTimeout() {
 }
 
 /**
+ * @deprecated Use EnvironmentConfigProvider from @tm/core/config
  * Executes a command to retrieve an API key
  * @param {string} command - The shell command to execute
  * @param {string} keyName - The environment variable key name (for logging)
@@ -70,6 +74,8 @@ function executeCommandForKey(command, keyName, opts = {}) {
 
 // --- Environment Variable Resolution Utility ---
 /**
+ * @deprecated Use EnvironmentConfigProvider.resolveVariable() from @tm/core/config instead
+ *
  * Resolves an environment variable's value.
  * Precedence:
  * 1. session.env (if session provided)
@@ -77,6 +83,19 @@ function executeCommandForKey(command, keyName, opts = {}) {
  * 3. .env file at projectRoot (if projectRoot provided)
  *
  * Supports command-based resolution with !cmd: prefix
+ *
+ * Migration:
+ * ```js
+ * // Old way:
+ * import { resolveEnvVariable } from './utils.js';
+ * const value = resolveEnvVariable('MY_VAR', session, projectRoot);
+ *
+ * // New way:
+ * import { EnvironmentConfigProvider } from '@tm/core/config';
+ * const provider = new EnvironmentConfigProvider();
+ * const value = provider.resolveVariable('MY_VAR', session?.env, projectRoot ? path.join(projectRoot, '.env') : undefined);
+ * ```
+ *
  * @param {string} key - The environment variable key.
  * @param {object|null} [session=null] - The MCP session object.
  * @param {string|null} [projectRoot=null] - The project root directory (for .env fallback).
