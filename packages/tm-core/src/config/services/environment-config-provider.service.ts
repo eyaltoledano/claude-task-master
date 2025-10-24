@@ -23,6 +23,18 @@ interface EnvMapping {
 
 /**
  * EnvironmentConfigProvider extracts configuration from environment variables
+ *
+ * Supports command-based resolution using the !cmd: prefix:
+ * - Values starting with !cmd: will execute the command and use its output
+ * - Commands timeout after 5 seconds (configurable via TASKMASTER_CMD_TIMEOUT)
+ * - Failed commands return null and log an error
+ * - Security: Commands and their output are never logged
+ *
+ * Example:
+ * ```bash
+ * export OPENAI_API_KEY="!cmd:security find-generic-password -w -s openai-key"
+ * ```
+ *
  * Single responsibility: Environment variable configuration extraction
  */
 export class EnvironmentConfigProvider {
@@ -145,8 +157,12 @@ export class EnvironmentConfigProvider {
 			// Skip runtime state variables
 			if (mapping.isRuntimeState) continue;
 
-			const value = process.env[mapping.env];
-			if (!value) continue;
+			const rawValue = process.env[mapping.env];
+			if (!rawValue) continue;
+
+			// Resolve value (handles !cmd: prefix)
+			const value = this.resolveValue(rawValue, mapping.env);
+			if (!value) continue; // Command failed or returned null
 
 			// Validate value if validator is provided
 			if (mapping.validate && !mapping.validate(value)) {
