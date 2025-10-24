@@ -61,12 +61,19 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should validate storage type values', () => {
+			// Mock console.warn to check validation
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 			process.env.TASKMASTER_STORAGE_TYPE = 'invalid';
 
 			const config = provider.loadConfig();
 
-			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalledWith(
+				'Invalid value for TASKMASTER_STORAGE_TYPE: invalid'
+			);
+
+			warnSpy.mockRestore();
 		});
 
 		it('should accept valid storage type values', () => {
@@ -249,12 +256,18 @@ describe('EnvironmentConfigProvider', () => {
 
 	describe('validation', () => {
 		it('should validate values when validator is provided', () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 			process.env.TASKMASTER_STORAGE_TYPE = 'database'; // Invalid
 
 			const config = provider.loadConfig();
 
-			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalledWith(
+				'Invalid value for TASKMASTER_STORAGE_TYPE: database'
+			);
+
+			warnSpy.mockRestore();
 		});
 
 		it('should accept values that pass validation', () => {
@@ -278,18 +291,20 @@ describe('EnvironmentConfigProvider', () => {
 			let config = customProvider.loadConfig();
 			expect(config.custom?.number).toBe('123');
 
-			// Test with invalid value
 			process.env.CUSTOM_NUMBER = 'not-a-number';
-			const customProvider2 = new EnvironmentConfigProvider([
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			customProvider = new EnvironmentConfigProvider([
 				{
 					env: 'CUSTOM_NUMBER',
 					path: ['custom', 'number'],
 					validate: (v) => !isNaN(Number(v))
 				}
 			]);
-			config = customProvider2.loadConfig();
-			// Invalid value should be rejected, resulting in empty config
+			config = customProvider.loadConfig();
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalled();
+
+			warnSpy.mockRestore();
 		});
 	});
 
