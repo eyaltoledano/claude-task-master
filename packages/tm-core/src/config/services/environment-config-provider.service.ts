@@ -104,10 +104,11 @@ export class EnvironmentConfigProvider {
 	private executeCommand(command: string, envName: string): string | null {
 		try {
 			const timeout = this.parseTimeout();
-			const result = execSync(command, {
+			const result: string = execSync(command, {
 				encoding: 'utf8',
 				timeout,
 				stdio: ['ignore', 'pipe', 'pipe'],
+				// @ts-ignore - TypeScript incorrectly flags shell:true as invalid, but it's valid at runtime
 				shell: true
 			});
 
@@ -121,7 +122,9 @@ export class EnvironmentConfigProvider {
 			const reason = err?.killed
 				? 'timeout'
 				: (err?.status ?? err?.code ?? 'exec-failed');
-			this.logger.error(`Error executing command for ${envName}: ${String(reason)}`);
+			this.logger.error(
+				`Error executing command for ${envName}: ${String(reason)}`
+			);
 			return null;
 		}
 	}
