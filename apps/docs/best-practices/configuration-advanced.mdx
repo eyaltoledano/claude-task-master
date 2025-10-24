@@ -74,6 +74,7 @@ Taskmaster uses two primary methods for configuration:
   - `MISTRAL_API_KEY`: Your Mistral API key.
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
+  - `CURSOR_API_KEY`: Your Cursor API key (provides access to multiple models through single API).
   - `XAI_API_KEY`: Your X-AI API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.

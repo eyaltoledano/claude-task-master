@@ -835,6 +835,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
+		cursor: 'CURSOR_API_KEY',
 		xai: 'XAI_API_KEY',
 		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google

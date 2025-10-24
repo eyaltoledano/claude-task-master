@@ -10,6 +10,7 @@ export { OpenAIProvider } from './openai.js';
 export { XAIProvider } from './xai.js';
 export { GroqProvider } from './groq.js';
 export { OpenRouterAIProvider } from './openrouter.js';
+export { CursorProvider } from './cursor.js';
 export { OllamaAIProvider } from './ollama.js';
 export { BedrockAIProvider } from './bedrock.js';
 export { AzureProvider } from './azure.js';

@@ -74,6 +74,17 @@ GROQ_API_KEY="your-groq-key-here"
 OPENROUTER_API_KEY="your-openrouter-key-here"
 ```
 
+### CURSOR_API_KEY
+- **Provider**: Cursor (Multiple model access)
+- **Required**: ✅ **Yes**
+- **Models**: Access to Claude, GPT-4, GPT-4o, and other models through single API
+- **Purpose**: Single API key to access multiple AI models via Cursor
+- **Get Key**: [Cursor Settings](https://cursor.sh/settings)
+
+```bash
+CURSOR_API_KEY="your-cursor-key-here"
+```
+
 ### AZURE_OPENAI_API_KEY
 - **Provider**: Azure OpenAI Service
 - **Required**: ✅ **Yes**
@@ -200,7 +211,8 @@ For Claude Code integration, configure keys in `.mcp.json`:
       "env": {
         "ANTHROPIC_API_KEY": "your-key-here",
         "PERPLEXITY_API_KEY": "your-key-here",
-        "OPENAI_API_KEY": "your-key-here"
+        "OPENAI_API_KEY": "your-key-here",
+        "CURSOR_API_KEY": "your-key-here"
       }
     }
   }
