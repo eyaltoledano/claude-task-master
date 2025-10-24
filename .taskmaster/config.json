@@ -1,16 +1,22 @@
 {
 	"models": {
 		"main": {
-			"provider": "openai",
-			"modelId": "gpt-5",
-			"maxTokens": 128000,
+			"provider": "claude-code",
+			"modelId": "sonnet",
+			"maxTokens": 64000,
 			"temperature": 0.2
 		},
 		"research": {
 			"provider": "perplexity",
-			"modelId": "sonar-pro",
+			"modelId": "sonar",
 			"maxTokens": 8700,
 			"temperature": 0.1
+		},
+		"fallback": {
+			"provider": "anthropic",
+			"modelId": "claude-3-7-sonnet-20250219",
+			"maxTokens": 120000,
+			"temperature": 0.2
 		}
 	},
 	"global": {
