@@ -27,7 +27,9 @@
 			],
 			"@tm/ai-sdk-provider-grok-cli/*": [
 				"./packages/ai-sdk-provider-grok-cli/src/*"
-			]
+			],
+			"@tm/bridge": ["./packages/tm-bridge/src/index.ts"],
+			"@tm/bridge/*": ["./packages/tm-bridge/src/*"]
 		}
 	},
 	"tsx": {

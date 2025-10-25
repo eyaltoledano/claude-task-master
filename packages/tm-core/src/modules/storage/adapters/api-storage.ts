@@ -23,6 +23,8 @@ import { TaskRepository } from '../../tasks/repositories/task-repository.interfa
 import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { ApiClient } from '../utils/api-client.js';
+import { getLogger } from '../../../common/logger/factory.js';
 
 /**
  * API storage configuration
@@ -48,6 +50,22 @@ type ContextWithBrief = NonNullable<
 > & { briefId: string };
 
 /**
+ * Response from the update task with prompt API endpoint
+ */
+interface UpdateTaskWithPromptResponse {
+	success: boolean;
+	task: {
+		id: string;
+		displayId: string | null;
+		title: string;
+		description: string | null;
+		status: string;
+		priority: string | null;
+	};
+	message: string;
+}
+
+/**
  * ApiStorage implementation using repository pattern
  * Provides flexibility to swap between different backend implementations
  */
@@ -58,6 +76,8 @@ export class ApiStorage implements IStorage {
 	private readonly maxRetries: number;
 	private initialized = false;
 	private tagsCache: Map<string, TaskTag> = new Map();
+	private apiClient?: ApiClient;
+	private readonly logger = getLogger('ApiStorage');
 
 	constructor(config: ApiStorageConfig) {
 		this.validateConfig(config);
@@ -502,6 +522,76 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Update task with AI-powered prompt
+	 * Sends prompt to backend for server-side AI processing
+	 */
+	async updateTaskWithPrompt(
+		taskId: string,
+		prompt: string,
+		tag?: string,
+		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
+	): Promise<void> {
+		await this.ensureInitialized();
+
+		const mode = options?.mode ?? 'append';
+
+		try {
+			// Use the API client - all auth, error handling, etc. is centralized
+			const apiClient = this.getApiClient();
+
+			const result = await apiClient.patch<UpdateTaskWithPromptResponse>(
+				`/ai/api/v1/tasks/${taskId}/prompt`,
+				{ prompt, mode }
+			);
+
+			if (!result.success) {
+				// API returned success: false
+				throw new Error(
+					result.message ||
+						`Update failed for task ${taskId}. The server did not provide details.`
+				);
+			}
+
+			// Log success with task details
+			this.logger.info(
+				`Successfully updated task ${result.task.displayId || result.task.id} using AI prompt (mode: ${mode})`
+			);
+			this.logger.info(`  Title: ${result.task.title}`);
+			this.logger.info(`  Status: ${result.task.status}`);
+			if (result.message) {
+				this.logger.info(`  ${result.message}`);
+			}
+		} catch (error) {
+			// If it's already a TaskMasterError, just add context and re-throw
+			if (error instanceof TaskMasterError) {
+				throw error.withContext({
+					operation: 'updateTaskWithPrompt',
+					taskId,
+					tag,
+					promptLength: prompt.length,
+					mode
+				});
+			}
+
+			// For other errors, wrap them
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			throw new TaskMasterError(
+				errorMessage,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'updateTaskWithPrompt',
+					taskId,
+					tag,
+					promptLength: prompt.length,
+					mode
+				},
+				error as Error
+			);
+		}
+	}
+
+	/**
 	 * Update task or subtask status by ID - for API storage
 	 */
 	async updateTaskStatus(
@@ -794,6 +884,35 @@ export class ApiStorage implements IStorage {
 		}
 
 		return context as ContextWithBrief;
+	}
+
+	/**
+	 * Get or create API client instance with auth
+	 */
+	private getApiClient(): ApiClient {
+		if (!this.apiClient) {
+			const apiEndpoint =
+				process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+
+			if (!apiEndpoint) {
+				throw new TaskMasterError(
+					'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+					ERROR_CODES.MISSING_CONFIGURATION,
+					{ operation: 'getApiClient' }
+				);
+			}
+
+			const context = this.ensureBriefSelected('getApiClient');
+			const authManager = AuthManager.getInstance();
+
+			this.apiClient = new ApiClient({
+				baseUrl: apiEndpoint,
+				authManager,
+				accountId: context.orgId
+			});
+		}
+
+		return this.apiClient;
 	}
 
 	/**

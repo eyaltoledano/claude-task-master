@@ -112,6 +112,38 @@ export class TasksDomain {
 	// ========== Task Status Management ==========
 
 	/**
+	 * Update task with new data (direct structural update)
+	 * @param taskId - Task ID (supports numeric, alphanumeric like TAS-49, and subtask IDs like 1.2)
+	 * @param updates - Partial task object with fields to update
+	 * @param tag - Optional tag context
+	 */
+	async update(
+		taskId: string | number,
+		updates: Partial<Task>,
+		tag?: string
+	): Promise<void> {
+		return this.taskService.updateTask(taskId, updates, tag);
+	}
+
+	/**
+	 * Update task using AI-powered prompt (natural language update)
+	 * @param taskId - Task ID (supports numeric, alphanumeric like TAS-49, and subtask IDs like 1.2)
+	 * @param prompt - Natural language prompt describing the update
+	 * @param tag - Optional tag context
+	 * @param options - Optional update options
+	 * @param options.useResearch - Use research AI for file storage updates
+	 * @param options.mode - Update mode for API storage: 'append', 'update', or 'rewrite'
+	 */
+	async updateWithPrompt(
+		taskId: string | number,
+		prompt: string,
+		tag?: string,
+		options?: { mode?: 'append' | 'update' | 'rewrite'; useResearch?: boolean }
+	): Promise<void> {
+		return this.taskService.updateTaskWithPrompt(taskId, prompt, tag, options);
+	}
+
+	/**
 	 * Update task status
 	 */
 	async updateStatus(taskId: string, status: TaskStatus, tag?: string) {

@@ -3,7 +3,7 @@
  * Responsible for loading configuration from various file sources
  */
 
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';

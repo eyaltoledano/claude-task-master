@@ -1080,12 +1080,19 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				// Parse the task ID and validate it's a number
-				const taskId = parseInt(options.id, 10);
-				if (Number.isNaN(taskId) || taskId <= 0) {
+				// Parse the task ID and validate it's a number or a string like ham-123 or tas-456
+				// Accept valid task IDs:
+				// - positive integers (e.g. 1,2,3)
+				// - strings like ham-123, ham-1, tas-456, etc
+				// Disallow decimals and invalid formats
+				const validId =
+					/^\d+$/.test(options.id) || // plain positive integer
+					/^[a-z]+-\d+$/i.test(options.id); // label-number format (e.g., ham-123)
+
+				if (!validId) {
 					console.error(
 						chalk.red(
-							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer.`
+							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer or in the form "ham-123".`
 						)
 					);
 					console.log(
@@ -1095,6 +1102,8 @@ function registerCommands(programInstance) {
 					);
 					process.exit(1);
 				}
+
+				const taskId = options.id;
 
 				if (!options.prompt) {
 					console.error(

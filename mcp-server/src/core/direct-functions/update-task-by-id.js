@@ -10,6 +10,7 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
+import { findTasksPath } from '../utils/path-utils.js';
 
 /**
  * Direct function wrapper for updateTaskById with error handling.
@@ -39,16 +40,6 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			`Updating task by ID via direct function. ID: ${id}, ProjectRoot: ${projectRoot}`
 		);
 
-		// Check if tasksJsonPath was provided
-		if (!tasksJsonPath) {
-			const errorMessage = 'tasksJsonPath is required but was not provided.';
-			logWrapper.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'MISSING_ARGUMENT', message: errorMessage }
-			};
-		}
-
 		// Check required parameters (id and prompt)
 		if (!id) {
 			const errorMessage =
@@ -56,7 +47,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_TASK_ID', message: errorMessage }
+				error: { code: 'INPUT_VALIDATION_ERROR', message: errorMessage }
 			};
 		}
 
@@ -66,34 +57,39 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
-				error: { code: 'MISSING_PROMPT', message: errorMessage }
+				error: { code: 'INPUT_VALIDATION_ERROR', message: errorMessage }
 			};
 		}
 
-		// Parse taskId - handle both string and number values
+		// Parse taskId - handle numeric, alphanumeric, and subtask IDs
 		let taskId;
 		if (typeof id === 'string') {
-			// Handle subtask IDs (e.g., "5.2")
-			if (id.includes('.')) {
-				taskId = id; // Keep as string for subtask IDs
-			} else {
-				// Parse as integer for main task IDs
-				taskId = parseInt(id, 10);
-				if (Number.isNaN(taskId)) {
-					const errorMessage = `Invalid task ID: ${id}. Task ID must be a positive integer or subtask ID (e.g., "5.2").`;
-					logWrapper.error(errorMessage);
-					return {
-						success: false,
-						error: { code: 'INVALID_TASK_ID', message: errorMessage }
-					};
-				}
-			}
-		} else {
+			// Keep ID as string - supports numeric (1, 2), alphanumeric (TAS-49, JIRA-123), and subtask IDs (1.2, TAS-49.1)
 			taskId = id;
+		} else if (typeof id === 'number') {
+			// Convert number to string for consistency
+			taskId = String(id);
+		} else {
+			const errorMessage = `Invalid task ID type: ${typeof id}. Task ID must be a string or number.`;
+			logWrapper.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'INPUT_VALIDATION_ERROR', message: errorMessage }
+			};
 		}
 
-		// Use the provided path
-		const tasksPath = tasksJsonPath;
+		// Resolve tasks.json path - use provided or find it
+		const tasksPath =
+			tasksJsonPath ||
+			findTasksPath({ projectRoot, file: args.file }, logWrapper);
+		if (!tasksPath) {
+			const errorMessage = 'tasks.json path could not be resolved.';
+			logWrapper.error(errorMessage);
+			return {
+				success: false,
+				error: { code: 'INPUT_VALIDATION_ERROR', message: errorMessage }
+			};
+		}
 
 		// Get research flag
 		const useResearch = research === true;
@@ -108,7 +104,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		}
 
 		try {
-			// Execute core updateTaskById function with proper parameters
+			// Call legacy script which handles both API and file storage via bridge
 			const coreResult = await updateTaskById(
 				tasksPath,
 				taskId,
@@ -128,7 +124,6 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 
 			// Check if the core function returned null or an object without success
 			if (!coreResult || coreResult.updatedTask === null) {
-				// Core function logs the reason, just return success with info
 				const message = `Task ${taskId} was not updated (likely already completed).`;
 				logWrapper.info(message);
 				return {
@@ -143,9 +138,8 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 				};
 			}
 
-			// Task was updated successfully
 			const successMessage = `Successfully updated task with ID ${taskId} based on the prompt`;
-			logWrapper.success(successMessage);
+			logWrapper.info(successMessage);
 			return {
 				success: true,
 				data: {
