@@ -10,7 +10,6 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { createTmCore } from '@tm/core';
 
 /**
  * Direct function wrapper for updateTaskById with error handling.
@@ -34,23 +33,6 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		args;
 
 	const logWrapper = createLogWrapper(log);
-
-	// BRIDGE: Initialize tm-core for storage factory
-	let tmCore;
-	try {
-		tmCore = await createTmCore({
-			projectPath: projectRoot || process.cwd()
-		});
-		logWrapper.info(
-			`TmCore initialized with storage type: ${tmCore.config.getStorageConfig().type}`
-		);
-	} catch (error) {
-		logWrapper.error(`Failed to initialize TmCore: ${error.message}`);
-		return {
-			success: false,
-			error: { code: 'TMCORE_INIT_ERROR', message: error.message }
-		};
-	}
 
 	try {
 		logWrapper.info(
@@ -121,98 +103,55 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		}
 
 		try {
-			// BRIDGE: Check storage type and use different paths
-			const storageType = tmCore.tasks.getStorageType();
-			logWrapper.info(`Using ${storageType} storage for update operation`);
+			// Call legacy script which handles both API and file storage via bridge
+			const coreResult = await updateTaskById(
+				tasksPath,
+				taskId,
+				prompt,
+				useResearch,
+				{
+					mcpLog: logWrapper,
+					session,
+					projectRoot,
+					tag,
+					commandName: 'update-task',
+					outputType: 'mcp'
+				},
+				'json',
+				append || false
+			);
 
-			if (storageType === 'api') {
-				// API STORAGE: Skip old AI logic, send prompt directly to backend
-				// The backend API will handle AI processing
-				logWrapper.info('API storage detected - sending prompt to backend API');
-
-				// Use updateWithPrompt for AI-powered updates
-				await tmCore.tasks.updateWithPrompt(taskId, prompt, tag, {
-					useResearch
-				});
-
-				logWrapper.success(
-					`Successfully sent update prompt for task ${taskId} to API backend`
-				);
+			// Check if the core function returned null or an object without success
+			if (!coreResult || coreResult.updatedTask === null) {
+				const message = `Task ${taskId} was not updated (likely already completed).`;
+				logWrapper.info(message);
 				return {
 					success: true,
 					data: {
-						message: `Successfully updated task with ID ${taskId} based on the prompt`,
+						message: message,
 						taskId: taskId,
-						tasksPath: tasksPath,
-						useResearch: useResearch,
-						updated: true
-					}
-				};
-			} else {
-				// FILE STORAGE: Use old AI logic with context gathering and fuzzy search
-				logWrapper.info('File storage detected - using legacy AI update logic');
-
-				const coreResult = await updateTaskById(
-					tasksPath,
-					taskId,
-					prompt,
-					useResearch,
-					{
-						mcpLog: logWrapper,
-						session,
-						projectRoot,
-						tag,
-						commandName: 'update-task',
-						outputType: 'mcp'
-					},
-					'json',
-					append || false
-				);
-
-				// Check if the core function returned null or an object without success
-				if (!coreResult || coreResult.updatedTask === null) {
-					const message = `Task ${taskId} was not updated (likely already completed).`;
-					logWrapper.info(message);
-					return {
-						success: true,
-						data: {
-							message: message,
-							taskId: taskId,
-							updated: false,
-							telemetryData: coreResult?.telemetryData,
-							tagInfo: coreResult?.tagInfo
-						}
-					};
-				}
-
-				// Save using tm-core (which will use file storage)
-				try {
-					logWrapper.info('Saving updated task via tm-core file storage');
-					await tmCore.tasks.update(taskId, coreResult.updatedTask, tag);
-					logWrapper.info('Task saved successfully via tm-core');
-				} catch (storageError) {
-					logWrapper.error(
-						`Failed to save via tm-core: ${storageError.message}`
-					);
-					logWrapper.warn('Falling back to legacy file save');
-				}
-
-				const successMessage = `Successfully updated task with ID ${taskId} based on the prompt`;
-				logWrapper.success(successMessage);
-				return {
-					success: true,
-					data: {
-						message: successMessage,
-						taskId: taskId,
-						tasksPath: tasksPath,
-						useResearch: useResearch,
-						updated: true,
-						updatedTask: coreResult.updatedTask,
-						telemetryData: coreResult.telemetryData,
-						tagInfo: coreResult.tagInfo
+						updated: false,
+						telemetryData: coreResult?.telemetryData,
+						tagInfo: coreResult?.tagInfo
 					}
 				};
 			}
+
+			const successMessage = `Successfully updated task with ID ${taskId} based on the prompt`;
+			logWrapper.success(successMessage);
+			return {
+				success: true,
+				data: {
+					message: successMessage,
+					taskId: taskId,
+					tasksPath: tasksPath,
+					useResearch: useResearch,
+					updated: true,
+					updatedTask: coreResult.updatedTask,
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
+				}
+			};
 		} catch (error) {
 			logWrapper.error(`Error updating task by ID: ${error.message}`);
 			return {

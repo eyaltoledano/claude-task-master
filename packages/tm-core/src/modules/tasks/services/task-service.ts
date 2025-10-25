@@ -594,8 +594,7 @@ export class TaskService {
 		} catch (error) {
 			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
 			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+				error instanceof TaskMasterError
 			) {
 				throw error;
 			}

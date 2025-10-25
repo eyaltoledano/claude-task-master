@@ -23,6 +23,7 @@ import { TaskRepository } from '../../tasks/repositories/task-repository.interfa
 import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { ApiClient } from '../utils/api-client.js';
 
 /**
  * API storage configuration
@@ -74,6 +75,7 @@ export class ApiStorage implements IStorage {
 	private readonly maxRetries: number;
 	private initialized = false;
 	private tagsCache: Map<string, TaskTag> = new Map();
+	private apiClient?: ApiClient;
 
 	constructor(config: ApiStorageConfig) {
 		this.validateConfig(config);
@@ -532,59 +534,20 @@ export class ApiStorage implements IStorage {
 		const mode = options?.mode ?? 'append';
 
 		try {
-			this.ensureBriefSelected('updateTaskWithPrompt');
+			// Use the API client - all auth, error handling, etc. is centralized
+			const apiClient = this.getApiClient();
 
-			// Get API endpoint
-			const apiEndpoint =
-				process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
-
-			if (!apiEndpoint) {
-				throw new Error(
-					'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.'
-				);
-			}
-
-			// Get auth token - refresh first to ensure we have a valid token
-			const authManager = AuthManager.getInstance();
-			const session = await authManager.supabaseClient.getSession();
-
-			// Refresh the token to get a fresh one
-			if (!session) {
-				throw new Error('Not authenticated');
-			}
-
-			// Get account/organization ID from context
-			const context = this.ensureBriefSelected('updateTaskWithPrompt');
-			const accountId = context.orgId;
-
-			// Make API request using the internal ID
-			const apiUrl = `${apiEndpoint}/ai/api/v1/tasks/${taskId}`;
-			const requestBody = JSON.stringify({
-				prompt,
-				mode
-			});
-
-			const response = await fetch(apiUrl, {
-				method: 'PATCH',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${session.access_token}`,
-					...(accountId ? { 'x-account-id': accountId } : {})
-				},
-				body: requestBody
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(
-					`API request failed: ${response.status} - ${errorText}`
-				);
-			}
-
-			const result = (await response.json()) as UpdateTaskWithPromptResponse;
+			const result = await apiClient.patch<UpdateTaskWithPromptResponse>(
+				`/ai/api/v1/tasks/${taskId}/prompt`,
+				{ prompt, mode }
+			);
 
 			if (!result.success) {
-				throw new Error(result.message || 'Failed to update task with prompt');
+				// API returned success: false
+				throw new Error(
+					result.message ||
+						`Update failed for task ${taskId}. The server did not provide details.`
+				);
 			}
 
 			// Log success with task details
@@ -597,8 +560,22 @@ export class ApiStorage implements IStorage {
 				console.log(`  ${result.message}`);
 			}
 		} catch (error) {
+			// If it's already a TaskMasterError, just add context and re-throw
+			if (error instanceof TaskMasterError) {
+				throw error.withContext({
+					operation: 'updateTaskWithPrompt',
+					taskId,
+					tag,
+					promptLength: prompt.length,
+					mode
+				});
+			}
+
+			// For other errors, wrap them
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			throw new TaskMasterError(
-				'Failed to update task with prompt via API',
+				errorMessage,
 				ERROR_CODES.STORAGE_ERROR,
 				{
 					operation: 'updateTaskWithPrompt',
@@ -905,6 +882,35 @@ export class ApiStorage implements IStorage {
 		}
 
 		return context as ContextWithBrief;
+	}
+
+	/**
+	 * Get or create API client instance with auth
+	 */
+	private getApiClient(): ApiClient {
+		if (!this.apiClient) {
+			const apiEndpoint =
+				process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+
+			if (!apiEndpoint) {
+				throw new TaskMasterError(
+					'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+					ERROR_CODES.MISSING_CONFIGURATION,
+					{ operation: 'getApiClient' }
+				);
+			}
+
+			const context = this.ensureBriefSelected('getApiClient');
+			const authManager = AuthManager.getInstance();
+
+			this.apiClient = new ApiClient({
+				baseUrl: apiEndpoint,
+				authManager,
+				accountId: context.orgId
+			});
+		}
+
+		return this.apiClient;
 	}
 
 	/**

@@ -10,7 +10,6 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { createTmCore } from '@tm/core';
 
 /**
  * Direct function wrapper for updateSubtaskById with error handling.
@@ -32,23 +31,6 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { tasksJsonPath, id, prompt, research, projectRoot, tag } = args;
 
 	const logWrapper = createLogWrapper(log);
-
-	// BRIDGE: Initialize tm-core for storage factory
-	let tmCore;
-	try {
-		tmCore = await createTmCore({
-			projectPath: projectRoot || process.cwd()
-		});
-		logWrapper.info(
-			`TmCore initialized with storage type: ${tmCore.config.getStorageConfig().type}`
-		);
-	} catch (error) {
-		logWrapper.error(`Failed to initialize TmCore: ${error.message}`);
-		return {
-			success: false,
-			error: { code: 'TMCORE_INIT_ERROR', message: error.message }
-		};
-	}
 
 	try {
 		logWrapper.info(
@@ -121,105 +103,48 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		}
 
 		try {
-			// BRIDGE: Check storage type and use different paths
-			const storageType = tmCore.tasks.getStorageType();
-			logWrapper.info(
-				`Using ${storageType} storage for subtask update operation`
+			// Call legacy script which handles both API and file storage via bridge
+			const coreResult = await updateSubtaskById(
+				tasksPath,
+				subtaskIdStr,
+				prompt,
+				useResearch,
+				{
+					mcpLog: logWrapper,
+					session,
+					projectRoot,
+					tag,
+					commandName: 'update-subtask',
+					outputType: 'mcp'
+				},
+				'json'
 			);
 
-			if (storageType === 'api') {
-				// API STORAGE: In API storage, there's no parent/subtask hierarchy
-				// TAS-49.1 is just another task with a unique ID, send prompt to backend
-				logWrapper.info(
-					'API storage detected - sending prompt to backend API for subtask'
-				);
-
-				// Use updateWithPrompt for AI-powered updates
-				await tmCore.tasks.updateWithPrompt(subtaskIdStr, prompt, tag, {
-					useResearch
-				});
-
-				logWrapper.success(
-					`Successfully sent update prompt for task ${subtaskIdStr} to API backend`
-				);
+			if (!coreResult || coreResult.updatedSubtask === null) {
+				const message = `Subtask ${id} or its parent task not found.`;
+				logWrapper.error(message);
 				return {
-					success: true,
-					data: {
-						message: `Successfully updated subtask with ID ${subtaskIdStr}`,
-						subtaskId: subtaskIdStr,
-						parentId: subtaskIdStr.split('.')[0],
-						tasksPath,
-						useResearch
-					}
-				};
-			} else {
-				// FILE STORAGE: Has parent/subtask hierarchy, use legacy AI logic
-				const parentId = subtaskIdStr.split('.')[0];
-				// FILE STORAGE: Use old AI logic with context gathering
-				logWrapper.info('File storage detected - using legacy AI update logic');
-
-				const coreResult = await updateSubtaskById(
-					tasksPath,
-					subtaskIdStr,
-					prompt,
-					useResearch,
-					{
-						mcpLog: logWrapper,
-						session,
-						projectRoot,
-						tag,
-						commandName: 'update-subtask',
-						outputType: 'mcp'
-					},
-					'json'
-				);
-
-				if (!coreResult || coreResult.updatedSubtask === null) {
-					const message = `Subtask ${id} or its parent task not found.`;
-					logWrapper.error(message);
-					return {
-						success: false,
-						error: { code: 'SUBTASK_NOT_FOUND', message: message }
-					};
-				}
-
-				// Save parent task using tm-core
-				try {
-					logWrapper.info(
-						`Loading parent task ${parentId} to save subtask update via tm-core`
-					);
-
-					const parentTask = await tmCore.tasks.get(parentId, tag);
-					if (parentTask && parentTask.task) {
-						logWrapper.info('Saving parent task via tm-core file storage');
-						await tmCore.tasks.update(parentId, parentTask.task, tag);
-						logWrapper.info(
-							'Parent task with updated subtask saved successfully via tm-core'
-						);
-					}
-				} catch (storageError) {
-					logWrapper.error(
-						`Failed to save via tm-core: ${storageError.message}`
-					);
-					logWrapper.warn('Falling back to legacy file save');
-				}
-
-				const successMessage = `Successfully updated subtask with ID ${subtaskIdStr}`;
-				logWrapper.success(successMessage);
-				return {
-					success: true,
-					data: {
-						message: `Successfully updated subtask with ID ${subtaskIdStr}`,
-						subtaskId: subtaskIdStr,
-						parentId: parentId,
-						subtask: coreResult.updatedSubtask,
-						tasksPath,
-						useResearch,
-						telemetryData: coreResult.telemetryData,
-						tagInfo: coreResult.tagInfo
-					}
+					success: false,
+					error: { code: 'SUBTASK_NOT_FOUND', message: message }
 				};
 			}
+
+			const parentId = subtaskIdStr.split('.')[0];
+			const successMessage = `Successfully updated subtask with ID ${subtaskIdStr}`;
+			logWrapper.success(successMessage);
+			return {
+				success: true,
+				data: {
+					message: `Successfully updated subtask with ID ${subtaskIdStr}`,
+					subtaskId: subtaskIdStr,
+					parentId: parentId,
+					subtask: coreResult.updatedSubtask,
+					tasksPath,
+					useResearch,
+					telemetryData: coreResult.telemetryData,
+					tagInfo: coreResult.tagInfo
+				}
+			};
 		} catch (error) {
 			logWrapper.error(`Error updating subtask by ID: ${error.message}`);
 			return {
