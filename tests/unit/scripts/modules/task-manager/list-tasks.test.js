@@ -47,6 +47,16 @@ jest.unstable_mockModule(
 	})
 );
 
+// Mock @tm/core to control task data in tests
+const mockTasksList = jest.fn();
+jest.unstable_mockModule('@tm/core', () => ({
+	createTmCore: jest.fn(async () => ({
+		tasks: {
+			list: mockTasksList
+		}
+	}))
+}));
+
 // Import the mocked modules
 const {
 	readJSON,
@@ -144,7 +154,12 @@ describe('listTasks', () => {
 		});
 
 		// Set up default mock return values
-		readJSON.mockReturnValue(JSON.parse(JSON.stringify(sampleTasks)));
+		const defaultSampleTasks = JSON.parse(JSON.stringify(sampleTasks));
+		readJSON.mockReturnValue(defaultSampleTasks);
+		mockTasksList.mockResolvedValue({
+			tasks: defaultSampleTasks.tasks,
+			storageType: 'file'
+		});
 		readComplexityReport.mockReturnValue(null);
 		validateAndFixDependencies.mockImplementation(() => {});
 		displayTaskList.mockImplementation(() => {});
@@ -161,12 +176,11 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json', {
+		const result = await listTasks(tasksPath, null, null, false, 'json', {
 			tag: 'master'
 		});
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		expect(result).toEqual(
 			expect.objectContaining({
 				tasks: expect.arrayContaining([
@@ -186,13 +200,18 @@ describe('listTasks', () => {
 		const statusFilter = 'pending';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
-
 		// Verify only pending tasks are returned
 		expect(result.tasks).toHaveLength(1);
 		expect(result.tasks[0].status).toBe('pending');
@@ -205,9 +224,16 @@ describe('listTasks', () => {
 		const statusFilter = 'done';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
 		// Verify only done tasks are returned
@@ -221,9 +247,16 @@ describe('listTasks', () => {
 		const statusFilter = 'review';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
 		// Verify only review tasks are returned
@@ -237,7 +270,7 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, true, 'json', {
+		const result = await listTasks(tasksPath, null, null, true, 'json', {
 			tag: 'master'
 		});
 
@@ -254,7 +287,7 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json', {
+		const result = await listTasks(tasksPath, null, null, false, 'json', {
 			tag: 'master'
 		});
 
@@ -274,9 +307,16 @@ describe('listTasks', () => {
 		const statusFilter = 'blocked'; // Status that doesn't exist in sample data
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
 		// Verify empty array is returned
@@ -286,14 +326,26 @@ describe('listTasks', () => {
 	test('should handle file read errors', async () => {
 		// Arrange
 		const tasksPath = 'tasks/tasks.json';
+		// Mock tm-core to throw an error, and readJSON to also throw
+		mockTasksList.mockReset();
+		mockTasksList.mockImplementation(() => {
+			return Promise.reject(new Error('File not found'));
+		});
+		readJSON.mockReset();
 		readJSON.mockImplementation(() => {
 			throw new Error('File not found');
 		});
 
 		// Act & Assert
-		expect(() => {
-			listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
-		}).toThrow('File not found');
+		// When outputFormat is 'json', listTasks throws a structured error object
+		await expect(
+			listTasks(tasksPath, null, null, false, 'json', { tag: 'master' })
+		).rejects.toEqual(
+			expect.objectContaining({
+				code: 'TASK_LIST_ERROR',
+				message: 'File not found'
+			})
+		);
 	});
 
 	test('should validate and fix dependencies before listing', async () => {
@@ -301,10 +353,9 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
+		await listTasks(tasksPath, null, null, false, 'json', { tag: 'master' });
 
 		// Assert
-		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Note: validateAndFixDependencies is not called by listTasks function
 		// This test just verifies the function runs without error
 	});
@@ -314,7 +365,7 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, 'pending', null, true, 'json', {
+		const result = await listTasks(tasksPath, 'pending', null, true, 'json', {
 			tag: 'master'
 		});
 
@@ -335,9 +386,16 @@ describe('listTasks', () => {
 		const statusFilter = 'in-progress';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -351,9 +409,16 @@ describe('listTasks', () => {
 		const statusFilter = 'cancelled';
 
 		// Act
-		const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-			tag: 'master'
-		});
+		const result = await listTasks(
+			tasksPath,
+			statusFilter,
+			null,
+			false,
+			'json',
+			{
+				tag: 'master'
+			}
+		);
 
 		// Assert
 		expect(result.tasks).toHaveLength(1);
@@ -366,7 +431,7 @@ describe('listTasks', () => {
 		const tasksPath = 'tasks/tasks.json';
 
 		// Act
-		const result = listTasks(tasksPath, null, null, false, 'json', {
+		const result = await listTasks(tasksPath, null, null, false, 'json', {
 			tag: 'master'
 		});
 
@@ -394,13 +459,18 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
-			expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
-
 			// Should return tasks with 'done' or 'pending' status
 			expect(result.tasks).toHaveLength(2);
 			expect(result.tasks.map((t) => t.status)).toEqual(
@@ -414,9 +484,16 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending,in-progress';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return tasks with 'done', 'pending', or 'in-progress' status
@@ -440,9 +517,16 @@ describe('listTasks', () => {
 			const statusFilter = 'done, pending , in-progress';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should trim spaces and work correctly
@@ -459,9 +543,16 @@ describe('listTasks', () => {
 			const statusFilter = 'done,,pending,';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should ignore empty values and work with valid ones
@@ -476,9 +567,16 @@ describe('listTasks', () => {
 			const statusFilter = 'DONE,Pending,IN-PROGRESS';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should match case-insensitively
@@ -495,9 +593,16 @@ describe('listTasks', () => {
 			const statusFilter = 'blocked,deferred';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return empty array as no tasks have these statuses
@@ -510,9 +615,16 @@ describe('listTasks', () => {
 			const statusFilter = 'pending,';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should work the same as single status filter
@@ -526,9 +638,16 @@ describe('listTasks', () => {
 			const statusFilter = 'done,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return the original filter string
@@ -541,9 +660,16 @@ describe('listTasks', () => {
 			const statusFilter = 'all';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return all tasks when filter is 'all'
@@ -557,9 +683,16 @@ describe('listTasks', () => {
 			const statusFilter = 'done,nonexistent,pending';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return only tasks with existing statuses
@@ -574,9 +707,16 @@ describe('listTasks', () => {
 			const statusFilter = 'review,cancelled';
 
 			// Act
-			const result = listTasks(tasksPath, statusFilter, null, false, 'json', {
-				tag: 'master'
-			});
+			const result = await listTasks(
+				tasksPath,
+				statusFilter,
+				null,
+				false,
+				'json',
+				{
+					tag: 'master'
+				}
+			);
 
 			// Assert
 			// Should return tasks with 'review' or 'cancelled' status
@@ -660,6 +800,11 @@ describe('listTasks', () => {
 		});
 
 		test('should handle empty task list in compact format', async () => {
+			// Mock tm-core to return empty task list
+			mockTasksList.mockResolvedValue({
+				tasks: [],
+				storageType: 'file'
+			});
 			readJSON.mockReturnValue({ tasks: [] });
 			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 			const tasksPath = 'tasks/tasks.json';
@@ -701,6 +846,11 @@ describe('listTasks', () => {
 				]
 			};
 
+			// Mock tm-core to return test data
+			mockTasksList.mockResolvedValue({
+				tasks: tasksWithDeps.tasks,
+				storageType: 'file'
+			});
 			readJSON.mockReturnValue(tasksWithDeps);
 			const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 			const tasksPath = 'tasks/tasks.json';

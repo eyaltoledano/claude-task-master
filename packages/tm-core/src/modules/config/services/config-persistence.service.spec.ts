@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import { ConfigPersistence } from './config-persistence.service.js';
+import type { PartialConfiguration } from '@tm/core/common/interfaces/configuration.interface.js';
 
 vi.mock('node:fs', () => ({
 	promises: {
@@ -32,9 +33,16 @@ describe('ConfigPersistence', () => {
 	});
 
 	describe('saveConfig', () => {
-		const mockConfig = {
-			models: { main: 'test-model' },
-			storage: { type: 'file' as const }
+		const mockConfig: PartialConfiguration = {
+			models: { main: 'test-model', fallback: 'test-fallback' },
+			storage: {
+				type: 'file' as const,
+				enableBackup: true,
+				maxBackups: 5,
+				enableCompression: true,
+				encoding: 'utf-8',
+				atomicOperations: true
+			}
 		};
 
 		it('should save configuration to file', async () => {

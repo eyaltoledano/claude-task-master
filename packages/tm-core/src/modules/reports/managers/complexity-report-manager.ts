@@ -3,7 +3,7 @@
  * Follows the same pattern as ConfigManager and AuthManager
  */
 
-import { promises as fs } from 'fs';
+import fs from 'node:fs/promises';
 import path from 'path';
 import type {
 	ComplexityReport,

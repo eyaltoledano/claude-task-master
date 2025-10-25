@@ -506,6 +506,125 @@ export class TaskService {
 	}
 
 	/**
+	 * Update a task with new data (direct structural update)
+	 * @param taskId - Task ID (supports numeric, alphanumeric, and subtask IDs)
+	 * @param updates - Partial task object with fields to update
+	 * @param tag - Optional tag context
+	 */
+	async updateTask(
+		taskId: string | number,
+		updates: Partial<Task>,
+		tag?: string
+	): Promise<void> {
+		// Ensure we have storage
+		if (!this.storage) {
+			throw new TaskMasterError(
+				'Storage not initialized',
+				ERROR_CODES.STORAGE_ERROR
+			);
+		}
+
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
+		// Use provided tag or get active tag
+		const activeTag = tag || this.getActiveTag();
+		const taskIdStr = String(taskId);
+
+		try {
+			// Direct update - no AI processing
+			await this.storage.updateTask(taskIdStr, updates, activeTag);
+		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
+			throw new TaskMasterError(
+				`Failed to update task ${taskId}`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'updateTask',
+					resource: 'task',
+					taskId: taskIdStr,
+					tag: activeTag
+				},
+				error as Error
+			);
+		}
+	}
+
+	/**
+	 * Update a task using AI-powered prompt (natural language update)
+	 * @param taskId - Task ID (supports numeric, alphanumeric, and subtask IDs)
+	 * @param prompt - Natural language prompt describing the update
+	 * @param tag - Optional tag context
+	 * @param options - Optional update options
+	 * @param options.useResearch - Use research AI for file storage updates
+	 * @param options.mode - Update mode for API storage: 'append', 'update', or 'rewrite'
+	 */
+	async updateTaskWithPrompt(
+		taskId: string | number,
+		prompt: string,
+		tag?: string,
+		options?: { mode?: 'append' | 'update' | 'rewrite'; useResearch?: boolean }
+	): Promise<void> {
+		// Ensure we have storage
+		if (!this.storage) {
+			throw new TaskMasterError(
+				'Storage not initialized',
+				ERROR_CODES.STORAGE_ERROR
+			);
+		}
+
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
+		// Use provided tag or get active tag
+		const activeTag = tag || this.getActiveTag();
+		const taskIdStr = String(taskId);
+
+		try {
+			// AI-powered update - send prompt to storage layer
+			// API storage: sends prompt to backend for server-side AI processing
+			// File storage: must use client-side AI logic before calling this
+			await this.storage.updateTaskWithPrompt(
+				taskIdStr,
+				prompt,
+				activeTag,
+				options
+			);
+		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError
+			) {
+				throw error;
+			}
+
+			throw new TaskMasterError(
+				`Failed to update task ${taskId} with prompt`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'updateTaskWithPrompt',
+					resource: 'task',
+					taskId: taskIdStr,
+					tag: activeTag,
+					promptLength: prompt.length
+				},
+				error as Error
+			);
+		}
+	}
+
+	/**
 	 * Update task status - delegates to storage layer which handles storage-specific logic
 	 */
 	async updateTaskStatus(

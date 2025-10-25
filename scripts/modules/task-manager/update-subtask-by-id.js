@@ -25,6 +25,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { tryUpdateViaRemote } from '@tm/bridge';
 
 /**
  * Update a subtask by appending additional timestamped information using the unified AI service.
@@ -91,6 +92,32 @@ async function updateSubtaskById(
 		if (!projectRoot) {
 			throw new Error('Could not determine project root directory');
 		}
+
+		// --- BRIDGE: Try remote update first (API storage) ---
+		// In API storage, subtask IDs like "1.2" or "TAS-49.1" are just regular task IDs
+		// So update-subtask and update-task work identically
+		const remoteResult = await tryUpdateViaRemote({
+			taskId: subtaskId,
+			prompt,
+			projectRoot,
+			tag,
+			appendMode: true, // Subtask updates are always append mode
+			useResearch,
+			isMCP,
+			outputFormat,
+			report
+		});
+
+		// If remote handled it, return the result
+		if (remoteResult) {
+			return {
+				updatedSubtask: { id: subtaskId },
+				telemetryData: remoteResult.telemetryData,
+				tagInfo: remoteResult.tagInfo
+			};
+		}
+		// Otherwise fall through to file-based logic below
+		// --- End BRIDGE ---
 
 		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks) {

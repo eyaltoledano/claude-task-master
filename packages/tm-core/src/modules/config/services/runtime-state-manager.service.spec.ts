@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { promises as fs } from 'node:fs';
+import fs from 'node:fs/promises';
 import { RuntimeStateManager } from './runtime-state-manager.service.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 
@@ -48,7 +48,7 @@ describe('RuntimeStateManager', () => {
 				'/test/project/.taskmaster/state.json',
 				'utf-8'
 			);
-			expect(state.activeTag).toBe('feature-branch');
+			expect(state.currentTag).toBe('feature-branch');
 			expect(state.metadata).toEqual({ test: 'data' });
 		});
 
@@ -60,7 +60,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe('env-tag');
+			expect(state.currentTag).toBe('env-tag');
 		});
 
 		it('should use default state when file does not exist', async () => {
@@ -70,7 +70,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
 		it('should use environment variable when file does not exist', async () => {
@@ -82,7 +82,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe('env-tag');
+			expect(state.currentTag).toBe('env-tag');
 		});
 
 		it('should handle file read errors gracefully', async () => {
@@ -90,7 +90,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
 		it('should handle invalid JSON gracefully', async () => {
@@ -101,7 +101,7 @@ describe('RuntimeStateManager', () => {
 
 			const state = await stateManager.loadState();
 
-			expect(state.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 			expect(warnSpy).toHaveBeenCalled();
 
 			warnSpy.mockRestore();
@@ -114,7 +114,7 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
 			// Set a specific state
-			await stateManager.setActiveTag('test-tag');
+			await stateManager.setCurrentTag('test-tag');
 
 			// Verify mkdir was called
 			expect(fs.mkdir).toHaveBeenCalledWith('/test/project/.taskmaster', {
@@ -160,7 +160,7 @@ describe('RuntimeStateManager', () => {
 
 	describe('getActiveTag', () => {
 		it('should return current active tag', () => {
-			const tag = stateManager.getActiveTag();
+			const tag = stateManager.getCurrentTag();
 			expect(tag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 
@@ -168,9 +168,9 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.mkdir).mockResolvedValue(undefined);
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-			await stateManager.setActiveTag('new-tag');
+			await stateManager.setCurrentTag('new-tag');
 
-			expect(stateManager.getActiveTag()).toBe('new-tag');
+			expect(stateManager.getCurrentTag()).toBe('new-tag');
 		});
 	});
 
@@ -179,9 +179,9 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.mkdir).mockResolvedValue(undefined);
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-			await stateManager.setActiveTag('feature-xyz');
+			await stateManager.setCurrentTag('feature-xyz');
 
-			expect(stateManager.getActiveTag()).toBe('feature-xyz');
+			expect(stateManager.getCurrentTag()).toBe('feature-xyz');
 			expect(fs.writeFile).toHaveBeenCalled();
 		});
 	});
@@ -193,7 +193,7 @@ describe('RuntimeStateManager', () => {
 
 			expect(state1).not.toBe(state2); // Different instances
 			expect(state1).toEqual(state2); // Same content
-			expect(state1.activeTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
+			expect(state1.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
 		});
 	});
 
@@ -244,7 +244,7 @@ describe('RuntimeStateManager', () => {
 			expect(fs.unlink).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/state.json'
 			);
-			expect(stateManager.getActiveTag()).toBe(
+			expect(stateManager.getCurrentTag()).toBe(
 				DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG
 			);
 			expect(stateManager.getState().metadata).toBeUndefined();
@@ -256,7 +256,7 @@ describe('RuntimeStateManager', () => {
 			vi.mocked(fs.unlink).mockRejectedValue(error);
 
 			await expect(stateManager.clearState()).resolves.not.toThrow();
-			expect(stateManager.getActiveTag()).toBe(
+			expect(stateManager.getCurrentTag()).toBe(
 				DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG
 			);
 		});
