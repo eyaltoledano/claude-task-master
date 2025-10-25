@@ -7,11 +7,11 @@
 // TODO: Revert to 'zod' when MCP spec issue is resolved (see PR #1323)
 import { z } from 'zod/v3';
 import {
-	handleApiResult,
-	withNormalizedProjectRoot,
-	createErrorResponse,
-	createAgentDelegationResponse,
-	checkProgressCapability
+    handleApiResult,
+    withNormalizedProjectRoot,
+    createErrorResponse,
+    handleAgentLLMDelegation,
+    checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -87,26 +87,18 @@ export function registerParsePRDTool(server) {
 						log,
 						{ session, reportProgress: progressCapability }
 					);
-					// Check if agent delegation is needed
-					if (result && result.needsAgentDelegation === true) {
-						log.info(
-							`parse_prd tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction?.interactionId || 'n/a'}`
-						);
-						return createAgentDelegationResponse(
-							result.pendingInteraction,
-							args.projectRoot,
-							log
-						);
-					} else {
-						// If no delegation, process the result as usual
-						return handleApiResult(
-							result,
-							log,
-							'Error parsing PRD',
-							undefined,
-							args.projectRoot
-						);
-					}
+					// Centralized delegation handling
+					const delegation = handleAgentLLMDelegation(result, log, 'parse_prd');
+					if (delegation.delegated) return delegation.response;
+
+					// If no delegation, process the result as usual
+					return handleApiResult(
+						result,
+						log,
+						'Error parsing PRD',
+						undefined,
+						args.projectRoot
+					);
 				} catch (error) {
 					log.error(`Error in parse_prd: ${error.message}`);
 					return createErrorResponse(`Failed to parse PRD: ${error.message}`);

@@ -1,6 +1,6 @@
 /**
  * tool-registry.js
- * Tool Registry Object Structure - Maps all 37 tool names to registration functions
+ * Tool Registry Object Structure - Maps tool names to registration functions
  */
 
 import { registerListTasksTool } from './get-tasks.js';
@@ -54,7 +54,7 @@ import {
 } from '@tm/mcp';
 
 /**
- * Comprehensive tool registry mapping all 45 tool names to their registration functions
+ * Comprehensive tool registry mapping tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -106,7 +106,7 @@ export const toolRegistry = {
 };
 
 /**
- * Core tools array containing the 8 essential tools for daily development
+ * Core tools array containing the essential tools for daily development
  * These represent the minimal set needed for basic task management operations
  */
 export const coreTools = [
@@ -121,7 +121,7 @@ export const coreTools = [
 ];
 
 /**
- * Standard tools array containing the 16 most commonly used tools
+ * Standard tools array containing the most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [

@@ -275,7 +275,7 @@ async function performResearch(
 			}
 		}
 
-		logFn.info(`performResearch: generateTextService call completed.`);
+		logFn.debug(`performResearch: generateTextService call completed.`);
 		logFn.debug(`performResearch: aiResult raw: ${JSON.stringify(aiResult)}`);
 		if (aiResult && aiResult.mainResult) {
 			logFn.debug(
@@ -443,9 +443,7 @@ async function performResearch(
 						logFn.info(
 							`performResearch: Attempting to save to subtask ${options.saveTo}.`
 						);
-						const { updateSubtaskById } = await import(
-							'./update-subtask-by-id.js'
-						);
+						const updateSubtaskById = (await import('./update-subtask-by-id.js')).default;
 						await updateSubtaskById(
 							tasksPath,
 							options.saveTo,
@@ -825,7 +823,10 @@ async function handleFollowUpQuestions(
 				// Create enhanced options for follow-up with full conversation context
 				// Ensure originalOptions.customContext is handled correctly
 				const followUpOptions = {
-					...originalOptions, // Spread all original options
+					...originalOptions,
+					// prevent autosave during follow-ups
+					saveTo: undefined,
+					saveToFile: false,
 					taskIds: [],
 					customContext:
 						conversationContext +
@@ -1006,7 +1007,9 @@ async function handleSaveToFile(
 		}
 
 		const firstQuery = conversationHistory[0]?.question || 'research-query';
-		const timestamp = new Date().toISOString().split('T')[0];
+		const now = new Date();
+        const datePart = now.toISOString().split('T')[0];
+        const timePart = `${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;
 
 		const querySlug = firstQuery
 			.toLowerCase()
@@ -1016,7 +1019,7 @@ async function handleSaveToFile(
 			.substring(0, 50)
 			.replace(/^-+|-+$/g, '');
 
-		const filename = `${timestamp}_${querySlug}.md`;
+		const filename = `${datePart}_${timePart}_${querySlug}.md`;
 		const filePath = path.join(researchDir, filename);
 
 		const fileContent = formatConversationForFile(

@@ -783,6 +783,28 @@ function createAgentDelegationResponse(
 }
 
 /**
+ * Helper to centralize agent delegation handling across tools.
+ * If delegation is signaled (result.needsAgentDelegation === true && result.pendingInteraction)
+ * this function will log the event and return an object { delegated: true, response } where
+ * response is a value created by createAgentDelegationResponse. Otherwise returns { delegated: false }.
+ *
+ * @param {Object} result - The result from a direct/core function
+ * @param {Object} log - Logger instance
+ * @param {string} toolName - Short tool name for logging (e.g., 'expand-task')
+ * @param {string} [customInstructions] - Optional extra instructions to include in the delegation response
+ * @returns {Object} - { delegated: boolean, response?: Object }
+ */
+function handleAgentLLMDelegation(result, log, toolName, customInstructions = '') {
+	if (result?.needsAgentDelegation === true && result.pendingInteraction) {
+		log.info(
+			`${toolName} tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+		);
+		return { delegated: true, response: createAgentDelegationResponse(result.pendingInteraction, customInstructions) };
+	}
+	return { delegated: false };
+}
+
+/**
  * Checks progress reporting capability and returns the validated function or undefined.
  *
  * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
@@ -869,5 +891,6 @@ export {
 	getRawProjectRootFromSession,
 	withNormalizedProjectRoot,
 	createAgentDelegationResponse,
+    handleAgentLLMDelegation,
 	checkProgressCapability
 };

@@ -145,11 +145,15 @@ class UpdateTaskSaver extends AgentLLMToolSaver {
 					: agentOutput;
 			const validation = UpdatedTaskSchema.safeParse(candidate);
 			if (!validation.success) {
-				return {
-					success: false,
-					error: `Agent output failed task schema validation: ${JSON.stringify(validation.error.format())}`
-				};
-			}
+                const details = (() => {
+                    try { return z.treeifyError(validation.error); }
+                    catch { return JSON.stringify(validation.error.issues ?? validation.error); }
+                })();
+                return {
+                    success: false,
+                    error: `Agent output failed task schema validation: ${details}`
+                };
+            }
 			parsedAgentTask = validation.data;
 		} else {
 			return { success: false, error: 'Invalid agentOutput format.' };

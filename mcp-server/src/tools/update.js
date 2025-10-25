@@ -10,7 +10,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot,
-	createAgentDelegationResponse
+	handleAgentLLMDelegation
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -42,7 +42,7 @@ export function registerUpdateTool(server) {
 				.string()
 				.optional()
 				.describe('Path to the tasks file relative to project root'),
-			projectRoot: z.string().describe('The directory of the project.'),
+			projectRoot: z.string().describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
@@ -83,18 +83,9 @@ export function registerUpdateTool(server) {
 					{ session }
 				);
 
-				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
-				if (
-					result &&
-					result.needsAgentDelegation === true &&
-					result.pendingInteraction
-				) {
-					log.info(
-						`update tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
-					);
-					return createAgentDelegationResponse(result.pendingInteraction);
-				}
-				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				// Centralized delegation handling
+				const delegation = handleAgentLLMDelegation(result, log, 'update');
+				if (delegation.delegated) return delegation.response;
 
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`

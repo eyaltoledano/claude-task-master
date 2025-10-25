@@ -8,9 +8,9 @@
 import { z } from 'zod/v3';
 import {
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot,
-	createAgentDelegationResponse
+ 	createErrorResponse,
+ 	withNormalizedProjectRoot,
+    handleAgentLLMDelegation
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
@@ -97,18 +97,9 @@ export function registerExpandTaskTool(server) {
 					{ session }
 				);
 
-				// === BEGIN AGENT_LLM_DELEGATION SIGNAL HANDLING ===
-				if (
-					result &&
-					result.needsAgentDelegation === true &&
-					result.pendingInteraction
-				) {
-					log.info(
-						`expand-task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
-					);
-					return createAgentDelegationResponse(result.pendingInteraction);
-				}
-				// === END AGENT_LLM_DELEGATION SIGNAL HANDLING ===
+				// Centralized delegation handling
+				const delegation = handleAgentLLMDelegation(result, log, 'expand-task');
+				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling (likely handleApiResult)
 				return handleApiResult(

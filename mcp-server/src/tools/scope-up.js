@@ -10,7 +10,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot,
-	createAgentDelegationResponse
+	handleAgentLLMDelegation
 } from './utils.js';
 import { scopeUpDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -91,15 +91,13 @@ export function registerScopeUpTool(server) {
 					{ session }
 				);
 
-				if (result && result.needsAgentDelegation) {
-					log.info(
-						`scope_up_task tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
-					);
-					return createAgentDelegationResponse(
-						result.pendingInteraction,
-						"Next Step: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
-					);
-				}
+				const delegation = handleAgentLLMDelegation(
+					result,
+					log,
+					'scope_up_task',
+					"Next Step: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
+				);
+				if (delegation.delegated) return delegation.response;
 
 				return handleApiResult(
 					result,

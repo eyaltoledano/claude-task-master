@@ -338,7 +338,10 @@ async function updateTaskById(
 				{
 					originalTaskId: taskId
 				},
-				appendMode ? 'generateText' : 'generateObject'
+				{
+					serviceType: appendMode ? 'generateText' : 'generateObject',
+					commandName: 'update-task'
+				}
 			);
 			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===

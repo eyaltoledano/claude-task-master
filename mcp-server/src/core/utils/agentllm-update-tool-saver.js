@@ -162,11 +162,14 @@ class UpdateToolSaver extends AgentLLMToolSaver {
 							const updatedVersionInAgentTask = finalSubtasks.find(
 								(st) => Number(st.id) === Number(compSub.id)
 							);
-							if (
-								!updatedVersionInAgentTask ||
-								JSON.stringify(updatedVersionInAgentTask) !==
-									JSON.stringify(compSub)
-							) {
+							const deepEqual = (a, b) => {
+								if (a === b) return true;
+								if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+								const ka = Object.keys(a), kb = Object.keys(b);
+								if (ka.length !== kb.length) return false;
+								return ka.every((k) => deepEqual(a[k], b[k]));
+							};
+                if (!updatedVersionInAgentTask || !deepEqual(updatedVersionInAgentTask, compSub)) {
 								logWrapper.warn(
 									`${this.toolName}: Restoring completed subtask ${originalTask.id}.${compSub.id} as agent modified/removed it.`
 								);

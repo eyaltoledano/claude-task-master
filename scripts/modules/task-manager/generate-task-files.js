@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log as cliLog, readJSON, isSilentMode } from '../utils.js';
+import { log as cliLog, readJSON, isSilentMode, slugifyTagForFilePath } from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -75,7 +75,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		dispatchLog(
 			'info',
 			options,
-			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${tag}'`
+			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${slugifyTagForFilePath(tag)}'`
 		);
 
 		// 3. Validate dependencies using the FULL, raw data structure to prevent data loss.
@@ -93,13 +93,13 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		dispatchLog(
 			'info',
 			options,
-			'Checking for orphaned task files to clean up...'
+			`Checking for orphaned task files to clean up for tag '${slugifyTagForFilePath(tag)}'...`
 		);
 		try {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const masterFilePattern = /^task_(\d+)\.txt$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${tag}\\.txt$`);
+			const taggedFilePattern = new RegExp(`^task_(\\d+)_${slugifyTagForFilePath(tag)}\\.txt$`);
 
 			const orphanedFiles = files.filter((file) => {
 				let match = null;
@@ -128,7 +128,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 				dispatchLog(
 					'info',
 					options,
-					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${tag}'`
+					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${slugifyTagForFilePath(tag)}'`
 				);
 				orphanedFiles.forEach((file) => {
 					const filePath = path.join(outputDir, file);
@@ -149,14 +149,14 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		dispatchLog(
 			'info',
 			options,
-			`Generating individual task files for tag '${tag}'...`
+			`Generating individual task files for tag '${slugifyTagForFilePath(tag)}'...`
 		);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
 				tag === 'master'
 					? `task_${task.id.toString().padStart(3, '0')}.txt`
-					: `task_${task.id.toString().padStart(3, '0')}_${tag}.txt`;
+					: `task_${task.id.toString().padStart(3, '0')}_${slugifyTagForFilePath(tag)}.txt`;
 
 			const taskPath = path.join(outputDir, taskFileName);
 
@@ -217,7 +217,7 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		dispatchLog(
 			'success',
 			options,
-			`All ${tasksForGeneration.length} tasks for tag '${tag}' have been generated into '${outputDir}'.`
+			`All ${tasksForGeneration.length} tasks for tag '${slugifyTagForFilePath(tag)}' have been generated into '${outputDir}'.`
 		);
 
 		if (isMcpMode) {
