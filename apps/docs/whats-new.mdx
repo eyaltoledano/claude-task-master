@@ -4,3 +4,20 @@ sidebarTitle: "What's New"
 ---
 
 An easy way to see the latest releases
+
+## Recent Updates
+
+### Remote Task Updates (API Storage Support)
+
+Task Master now supports remote task processing through API storage integration:
+
+- **Automatic Detection**: System automatically detects storage type and routes operations accordingly
+- **Remote AI Processing**: When using API storage, task updates are processed by remote Hamster AI services
+- **Seamless Interface**: CLI and MCP interfaces remain consistent regardless of storage backend
+- **Hybrid Capability**: Projects can use either file-based (local) or API-based (remote) storage
+
+**Key Features:**
+- Zero configuration required - automatic detection and routing
+- `update-task` and `update-subtask` commands work identically in both storage modes
+- Maintains backward compatibility with existing projects
+- Bridge architecture ensures smooth migration path from legacy code

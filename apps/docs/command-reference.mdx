@@ -64,6 +64,10 @@ description: "A comprehensive reference of all available Task Master commands"
     # Use research-backed updates with Perplexity AI
     task-master update-task --id=<id> --prompt="<prompt>" --research
     ```
+
+    **Storage Behavior:**
+    - **File Storage**: Processes updates locally using configured AI models
+    - **API Storage**: Delegates updates to remote Hamster AI services automatically
   </Accordion>
 
   <Accordion title="Update a Subtask">
@@ -79,6 +83,11 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
 
     Unlike the `update-task` command which replaces task information, the `update-subtask` command _appends_ new information to the existing subtask details, marking it with a timestamp. This is useful for iteratively enhancing subtasks while preserving the original content.
+
+    **Storage Behavior:**
+    - **File Storage**: Processes updates locally using configured AI models
+    - **API Storage**: Delegates updates to remote Hamster AI services automatically
+    - **Note**: In API storage, task and subtask updates are handled identically by the remote service
   </Accordion>
 
   <Accordion title="Generate Task Files">

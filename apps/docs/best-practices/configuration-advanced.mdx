@@ -317,3 +317,27 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    - Verify the deployment name matches your configuration exactly (case-sensitive)
    - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
    - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.
+
+## Storage Configuration
+
+Task Master supports two storage modes:
+
+### File-Based Storage (Default)
+- Tasks stored locally in `.taskmaster/tasks/tasks.json`
+- AI operations processed locally using configured models
+- Full offline capability
+- Default behavior for most installations
+
+### API-Based Storage (Remote)
+- Tasks stored on remote Hamster backend
+- AI operations delegated to remote services
+- Requires authentication with Hamster platform
+- Automatic detection and delegation when configured
+
+When API storage is detected, Task Master automatically:
+- Delegates `update-task` and `update-subtask` operations to remote AI services
+- Maintains backward compatibility with existing CLI/MCP interfaces
+- Provides seamless switching between storage modes
+
+**Configuration:**
+API storage is configured through the tm-core initialization process. No additional configuration files are needed - the system automatically detects the storage type at runtime and routes operations accordingly.
