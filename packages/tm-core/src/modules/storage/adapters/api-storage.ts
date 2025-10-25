@@ -24,6 +24,7 @@ import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { ApiClient } from '../utils/api-client.js';
+import { getLogger } from '../../../common/logger/factory.js';
 
 /**
  * API storage configuration
@@ -76,6 +77,7 @@ export class ApiStorage implements IStorage {
 	private initialized = false;
 	private tagsCache: Map<string, TaskTag> = new Map();
 	private apiClient?: ApiClient;
+	private readonly logger = getLogger('ApiStorage');
 
 	constructor(config: ApiStorageConfig) {
 		this.validateConfig(config);
@@ -551,13 +553,13 @@ export class ApiStorage implements IStorage {
 			}
 
 			// Log success with task details
-			console.log(
+			this.logger.info(
 				`Successfully updated task ${result.task.displayId || result.task.id} using AI prompt (mode: ${mode})`
 			);
-			console.log(`  Title: ${result.task.title}`);
-			console.log(`  Status: ${result.task.status}`);
+			this.logger.info(`  Title: ${result.task.title}`);
+			this.logger.info(`  Status: ${result.task.status}`);
 			if (result.message) {
-				console.log(`  ${result.message}`);
+				this.logger.info(`  ${result.message}`);
 			}
 		} catch (error) {
 			// If it's already a TaskMasterError, just add context and re-throw

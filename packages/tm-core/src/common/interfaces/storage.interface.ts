@@ -252,7 +252,7 @@ export abstract class BaseStorage implements IStorage {
 		taskId: string,
 		prompt: string,
 		tag?: string,
-		options?: { useResearch?: boolean }
+		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void>;
 	abstract updateTaskStatus(
 		taskId: string,

@@ -16,8 +16,6 @@ export interface UpdateBridgeParams {
 	tag?: string;
 	/** Whether to append or full update (default: false) */
 	appendMode?: boolean;
-	/** Whether to use research model (default: false) */
-	useResearch?: boolean;
 	/** Whether called from MCP context (default: false) */
 	isMCP?: boolean;
 	/** Output format (default: 'text') */
@@ -98,6 +96,11 @@ export async function tryUpdateViaRemote(
 
 	// Show CLI output if not MCP
 	if (!isMCP && outputFormat === 'text') {
+		const showDebug = process.env.TM_DEBUG === '1';
+		const promptPreview = showDebug
+			? `${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`
+			: '[hidden]';
+
 		console.log(
 			boxen(
 				chalk.blue.bold(`Updating Task via Hamster`) +
@@ -106,9 +109,7 @@ export async function tryUpdateViaRemote(
 					'\n' +
 					chalk.white(`Mode: ${mode}`) +
 					'\n' +
-					chalk.white(
-						`Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`
-					),
+					chalk.white(`Prompt: ${promptPreview}`),
 				{
 					padding: 1,
 					borderColor: 'blue',

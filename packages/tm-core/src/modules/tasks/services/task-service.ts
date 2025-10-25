@@ -524,6 +524,11 @@ export class TaskService {
 			);
 		}
 
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
 		// Use provided tag or get active tag
 		const activeTag = tag || this.getActiveTag();
 		const taskIdStr = String(taskId);
@@ -567,7 +572,7 @@ export class TaskService {
 		taskId: string | number,
 		prompt: string,
 		tag?: string,
-		options?: { mode?: 'append' | 'update' | 'rewrite' }
+		options?: { mode?: 'append' | 'update' | 'rewrite'; useResearch?: boolean }
 	): Promise<void> {
 		// Ensure we have storage
 		if (!this.storage) {
@@ -575,6 +580,11 @@ export class TaskService {
 				'Storage not initialized',
 				ERROR_CODES.STORAGE_ERROR
 			);
+		}
+
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
 		}
 
 		// Use provided tag or get active tag

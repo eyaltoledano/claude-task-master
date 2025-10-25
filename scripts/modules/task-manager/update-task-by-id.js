@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
@@ -39,7 +38,7 @@ import { tryUpdateViaRemote } from '@tm/bridge';
 /**
  * Update a task by ID with new information using the unified AI service.
  * @param {string} tasksPath - Path to the tasks.json file
- * @param {number} taskId - ID of the task to update
+ * @param {string|number} taskId - ID of the task to update (supports numeric, alphanumeric like HAM-123, and subtask IDs like 1.2)
  * @param {string} prompt - Prompt for generating updated task information
  * @param {boolean} [useResearch=false] - Whether to use the research AI role.
  * @param {Object} context - Context object containing session and mcpLog.
@@ -104,10 +103,6 @@ async function updateTaskById(
 			useResearch = false;
 		}
 
-		if (!fs.existsSync(tasksPath))
-			throw new Error(`Tasks file not found: ${tasksPath}`);
-		// --- End Input Validations ---
-
 		// --- BRIDGE: Try remote update first (API storage) ---
 		const remoteResult = await tryUpdateViaRemote({
 			taskId,
@@ -128,16 +123,27 @@ async function updateTaskById(
 		// Otherwise fall through to file-based logic below
 		// --- End BRIDGE ---
 
+		// For file storage, ensure the tasks file exists
+		if (!fs.existsSync(tasksPath))
+			throw new Error(`Tasks file not found: ${tasksPath}`);
+		// --- End Input Validations ---
+
 		// --- Task Loading and Status Check (Keep existing) ---
 		const data = readJSON(tasksPath, projectRoot, tag);
 		if (!data || !data.tasks)
 			throw new Error(`No valid tasks found in ${tasksPath}.`);
-		// Convert taskId to number for comparison if it's a numeric string
-		const numericTaskId = Number.isInteger(taskId)
-			? taskId
-			: parseInt(taskId, 10);
+		// File storage requires a strict numeric task ID
+		const idStr = String(taskId).trim();
+		if (!/^\d+$/.test(idStr)) {
+			throw new Error(
+				'For file storage, taskId must be a positive integer. ' +
+					'Use update-subtask-by-id for IDs like "1.2", or run in API storage for display IDs (e.g., "HAM-123").'
+			);
+		}
+		const numericTaskId = Number(idStr);
 		const taskIndex = data.tasks.findIndex((task) => task.id === numericTaskId);
-		if (taskIndex === -1) throw new Error(`Task with ID ${taskId} not found.`);
+		if (taskIndex === -1)
+			throw new Error(`Task with ID ${numericTaskId} not found.`);
 		const taskToUpdate = data.tasks[taskIndex];
 		if (taskToUpdate.status === 'done' || taskToUpdate.status === 'completed') {
 			report(

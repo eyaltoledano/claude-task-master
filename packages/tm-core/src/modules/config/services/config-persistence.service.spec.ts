@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import { ConfigPersistence } from './config-persistence.service.js';
-import { PartialConfiguration } from '@tm/core/common/interfaces/configuration.interface.js';
+import type { PartialConfiguration } from '@tm/core/common/interfaces/configuration.interface.js';
 
 vi.mock('node:fs', () => ({
 	promises: {

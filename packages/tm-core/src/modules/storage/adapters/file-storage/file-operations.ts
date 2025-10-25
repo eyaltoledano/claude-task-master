@@ -3,6 +3,7 @@
  */
 
 import fs from 'node:fs/promises';
+import { constants } from 'node:fs';
 import type { FileStorageData } from './format-handler.js';
 
 /**
@@ -84,7 +85,7 @@ export class FileOperations {
 	 */
 	async exists(filePath: string): Promise<boolean> {
 		try {
-			await fs.access(filePath, fs.constants.F_OK);
+			await fs.access(filePath, constants.F_OK);
 			return true;
 		} catch {
 			return false;

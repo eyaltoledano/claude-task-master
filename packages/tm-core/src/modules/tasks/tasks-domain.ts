@@ -138,7 +138,7 @@ export class TasksDomain {
 		taskId: string | number,
 		prompt: string,
 		tag?: string,
-		options?: { mode?: 'append' | 'update' | 'rewrite' }
+		options?: { mode?: 'append' | 'update' | 'rewrite'; useResearch?: boolean }
 	): Promise<void> {
 		return this.taskService.updateTaskWithPrompt(taskId, prompt, tag, options);
 	}

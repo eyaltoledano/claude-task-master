@@ -21,7 +21,7 @@ Delete this entire package when:
 
 ## Migration path
 
-```
+```text
 Current:   CLI → legacy scripts → @tm/bridge → @tm/core
           MCP → direct functions → legacy scripts → @tm/bridge → @tm/core
 
