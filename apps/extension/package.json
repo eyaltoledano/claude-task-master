@@ -237,7 +237,7 @@
 		"watch": "npm run watch:js & npm run watch:css",
 		"watch:js": "node ./esbuild.js --watch",
 		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
-		"check-types": "tsc --noEmit"
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",
@@ -275,7 +275,7 @@
 		"tailwindcss": "4.1.11",
 		"typescript": "^5.9.2",
 		"@tm/core": "*",
-		"task-master-ai": "0.30.0-rc.1"
+		"task-master-ai": "*"
 	},
 	"overrides": {
 		"glob@<8": "^10.4.5",

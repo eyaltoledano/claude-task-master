@@ -103,7 +103,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		}
 
 		try {
-			// Execute core updateSubtaskById function
+			// Call legacy script which handles both API and file storage via bridge
 			const coreResult = await updateSubtaskById(
 				tasksPath,
 				subtaskIdStr,
@@ -139,7 +139,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				};
 			}
 
-			// Subtask updated successfully
+			const parentId = subtaskIdStr.split('.')[0];
 			const successMessage = `Successfully updated subtask with ID ${subtaskIdStr}`;
 			logWrapper.success(successMessage);
 			return {
@@ -147,7 +147,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				data: {
 					message: `Successfully updated subtask with ID ${subtaskIdStr}`,
 					subtaskId: subtaskIdStr,
-					parentId: subtaskIdStr.split('.')[0],
+					parentId: parentId,
 					subtask: coreResult.updatedSubtask,
 					tasksPath,
 					useResearch,

@@ -18,6 +18,7 @@ import {
 	getComplexityWithColor,
 	createProgressBar
 } from '../ui.js';
+import { createTmCore } from '@tm/core';
 
 /**
  * List all tasks
@@ -31,7 +32,7 @@ import {
  * @param {string} context.tag - Tag for the task
  * @returns {Object} - Task list result for json format
  */
-function listTasks(
+async function listTasks(
 	tasksPath,
 	statusFilter,
 	reportPath = null,
@@ -41,8 +42,30 @@ function listTasks(
 ) {
 	const { projectRoot, tag } = context;
 	try {
-		// Extract projectRoot from context if provided
-		const data = readJSON(tasksPath, projectRoot, tag); // Pass projectRoot to readJSON
+		// BRIDGE: Initialize tm-core for unified task access
+		let data;
+		try {
+			const tmCore = await createTmCore({
+				projectPath: projectRoot || process.cwd()
+			});
+
+			// Load tasks via tm-core tasks domain (supports both file and API storage)
+			const result = await tmCore.tasks.list({ tag });
+			data = { tasks: result.tasks };
+
+			log(
+				'debug',
+				`Loaded ${result.tasks.length} tasks via tm-core (${result.storageType} storage)`
+			);
+		} catch (storageError) {
+			log(
+				'warn',
+				`TmCore failed, falling back to legacy readJSON: ${storageError.message}`
+			);
+			// Fallback to old readJSON if tm-core fails
+			data = readJSON(tasksPath, projectRoot, tag);
+		}
+
 		if (!data || !data.tasks) {
 			throw new Error(`No valid tasks found in ${tasksPath}`);
 		}

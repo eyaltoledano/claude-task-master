@@ -181,7 +181,7 @@ Workflows upload artifacts that you can download:
 
 - Check extension code compiles locally: `cd apps/extension && npm run build`
 - Verify tests pass locally: `npm run test`
-- Check for TypeScript errors: `npm run check-types`
+- Check for TypeScript errors: `npm run typecheck`
 
 #### Packaging Failures
 

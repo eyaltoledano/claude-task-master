@@ -10,9 +10,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { Session } from '@supabase/supabase-js';
-import { AuthManager } from '../../src/auth/auth-manager';
-import { CredentialStore } from '../../src/auth/credential-store';
-import type { AuthCredentials } from '../../src/auth/types';
+import { AuthManager } from '../../src/modules/auth/managers/auth-manager.js';
+import { CredentialStore } from '../../src/modules/auth/services/credential-store.js';
+import type { AuthCredentials } from '../../src/modules/auth/types.js';
 
 describe('AuthManager - Token Auto-Refresh Integration', () => {
 	let authManager: AuthManager;

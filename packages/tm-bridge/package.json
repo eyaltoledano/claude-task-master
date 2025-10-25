@@ -1,0 +1,31 @@
+{
+	"name": "@tm/bridge",
+	"private": true,
+	"description": "TEMPORARY: Bridge layer for legacy code migration. DELETE when legacy scripts are removed.",
+	"type": "module",
+	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"lint": "biome check --write",
+		"lint:check": "biome check",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@tm/core": "*",
+		"chalk": "5.6.2",
+		"boxen": "^8.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"files": ["src", "README.md"],
+	"keywords": ["temporary", "bridge", "migration"],
+	"author": "Task Master AI"
+}
