@@ -4,5 +4,5 @@
  */
 
 export { Logger, LogLevel } from './logger.js';
-export type { LoggerConfig } from './logger.js';
+export type { LoggerConfig, LogCallback, LogObject } from './logger.js';
 export { createLogger, getLogger, setGlobalLogger } from './factory.js';

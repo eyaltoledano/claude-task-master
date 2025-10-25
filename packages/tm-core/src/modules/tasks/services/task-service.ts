@@ -26,7 +26,7 @@ export interface TaskListResult {
 	total: number;
 	/** Number of tasks after filtering */
 	filtered: number;
-	/** The tag these tasks belong to (only present if explicitly provided) */
+	/** The tag/brief name for these tasks (brief name for API storage, tag for file storage) */
 	tag?: string;
 	/** Storage type being used */
 	storageType: StorageType;
@@ -153,12 +153,20 @@ export class TaskService {
 			// Convert back to plain objects
 			const tasks = filteredEntities.map((entity) => entity.toJSON());
 
+			// For API storage, use brief name. For file storage, use tag.
+			// This way consumers don't need to know about the difference.
+			const storageType = this.getStorageType();
+			const tagOrBrief =
+				storageType === 'api'
+					? this.storage.getCurrentBriefName() || tag
+					: tag;
+
 			return {
 				tasks,
 				total: allTasks.length,
 				filtered: filteredEntities.length,
-				tag: tag, // Return the actual tag being used (either explicitly provided or active tag)
-				storageType: this.getStorageType()
+				tag: tagOrBrief, // For API: brief name, For file: tag
+				storageType
 			};
 		} catch (error) {
 			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't log it as an internal error

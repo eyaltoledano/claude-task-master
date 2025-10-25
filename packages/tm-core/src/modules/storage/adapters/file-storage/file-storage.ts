@@ -56,6 +56,14 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Get the current brief name (not applicable for file storage)
+	 * @returns null (file storage doesn't use briefs)
+	 */
+	getCurrentBriefName(): null {
+		return null;
+	}
+
+	/**
 	 * Get statistics about the storage
 	 */
 	async getStats(): Promise<StorageStats> {

@@ -12,25 +12,52 @@ export enum LogLevel {
 	DEBUG = 4
 }
 
+/**
+ * Log object interface (e.g., MCP context.log)
+ */
+export interface LogObject {
+	info: (message: string) => void;
+	warn: (message: string) => void;
+	error: (message: string) => void;
+	debug: (message: string) => void;
+}
+
+/**
+ * Log callback can be either a function or a log object
+ */
+export type LogCallback =
+	| ((level: string, message: string) => void)
+	| LogObject;
+
 export interface LoggerConfig {
 	level?: LogLevel;
 	silent?: boolean;
 	prefix?: string;
 	timestamp?: boolean;
 	colors?: boolean;
-	// MCP mode silences all output
+	// MCP mode silences all output (unless logCallback is provided)
 	mcpMode?: boolean;
+	// Callback function or object for logging (useful for MCP integration)
+	logCallback?: LogCallback;
 }
 
 export class Logger {
-	private config: Required<LoggerConfig>;
-	private static readonly DEFAULT_CONFIG: Required<LoggerConfig> = {
+	private config: LoggerConfig & {
+		level: LogLevel;
+		silent: boolean;
+		prefix: string;
+		timestamp: boolean;
+		colors: boolean;
+		mcpMode: boolean;
+	};
+	private static readonly DEFAULT_CONFIG = {
 		level: LogLevel.SILENT,
 		silent: false,
 		prefix: '',
 		timestamp: false,
 		colors: true,
-		mcpMode: false
+		mcpMode: false,
+		logCallback: undefined as LogCallback | undefined
 	};
 
 	constructor(config: LoggerConfig = {}) {
@@ -80,8 +107,8 @@ export class Logger {
 			...envConfig
 		};
 
-		// MCP mode overrides everything to be silent
-		if (this.config.mcpMode) {
+		// MCP mode overrides to silent ONLY if no callback is provided
+		if (this.config.mcpMode && !this.config.logCallback) {
 			this.config.silent = true;
 		}
 	}
@@ -90,6 +117,12 @@ export class Logger {
 	 * Check if logging is enabled for a given level
 	 */
 	private shouldLog(level: LogLevel): boolean {
+		// If a callback is provided, route logs through it while still respecting the configured level
+		if (this.config.logCallback) {
+			return level <= this.config.level;
+		}
+
+		// Otherwise, respect silent/mcpMode flags
 		if (this.config.silent || this.config.mcpMode) {
 			return false;
 		}
@@ -158,11 +191,65 @@ export class Logger {
 	}
 
 	/**
+	 * Check if callback is a log object (has info/warn/error/debug methods)
+	 */
+	private isLogObject(callback: LogCallback): callback is LogObject {
+		return (
+			typeof callback === 'object' &&
+			callback !== null &&
+			'info' in callback &&
+			'warn' in callback &&
+			'error' in callback &&
+			'debug' in callback
+		);
+	}
+
+	/**
+	 * Output a log message either to console or callback
+	 */
+	private output(
+		level: LogLevel,
+		levelName: string,
+		message: string,
+		...args: any[]
+	): void {
+		const formatted = this.formatMessage(level, message, ...args);
+
+		// Use callback if available
+		if (this.config.logCallback) {
+			// If callback is a log object, call the appropriate method
+			if (this.isLogObject(this.config.logCallback)) {
+				const method = levelName.toLowerCase() as keyof LogObject;
+				if (method in this.config.logCallback) {
+					this.config.logCallback[method](formatted);
+				}
+			} else {
+				// Otherwise it's a function callback
+				this.config.logCallback(levelName.toLowerCase(), formatted);
+			}
+			return;
+		}
+
+		// Otherwise use console
+		switch (level) {
+			case LogLevel.ERROR:
+				console.error(formatted);
+				break;
+			case LogLevel.WARN:
+				console.warn(formatted);
+				break;
+			default:
+				console.log(formatted);
+				break;
+		}
+	}
+
+	/**
 	 * Log an error message
 	 */
 	error(message: string, ...args: any[]): void {
 		if (!this.shouldLog(LogLevel.ERROR)) return;
-		console.error(this.formatMessage(LogLevel.ERROR, message, ...args));
+		this.output(LogLevel.ERROR, 'ERROR', message, ...args);
 	}
 
 	/**
@@ -170,7 +257,7 @@ export class Logger {
 	 */
 	warn(message: string, ...args: any[]): void {
 		if (!this.shouldLog(LogLevel.WARN)) return;
-		console.warn(this.formatMessage(LogLevel.WARN, message, ...args));
+		this.output(LogLevel.WARN, 'WARN', message, ...args);
 	}
 
 	/**
@@ -178,7 +265,7 @@ export class Logger {
 	 */
 	info(message: string, ...args: any[]): void {
 		if (!this.shouldLog(LogLevel.INFO)) return;
-		console.log(this.formatMessage(LogLevel.INFO, message, ...args));
+		this.output(LogLevel.INFO, 'INFO', message, ...args);
 	}
 
 	/**
@@ -186,7 +273,7 @@ export class Logger {
 	 */
 	debug(message: string, ...args: any[]): void {
 		if (!this.shouldLog(LogLevel.DEBUG)) return;
-		console.log(this.formatMessage(LogLevel.DEBUG, message, ...args));
+		this.output(LogLevel.DEBUG, 'DEBUG', message, ...args);
 	}
 
 	/**
@@ -194,6 +281,22 @@ export class Logger {
 	 * Useful for CLI output that should appear as-is
 	 */
 	log(message: string, ...args: any[]): void {
+		// If callback is provided, use it for raw logs too
+		if (this.config.logCallback) {
+			const fullMessage =
+				args.length > 0 ? [message, ...args].join(' ') : message;
+
+			// If callback is a log object, use info method for raw logs
+			if (this.isLogObject(this.config.logCallback)) {
+				this.config.logCallback.info(fullMessage);
+			} else {
+				// Otherwise it's a function callback
+				this.config.logCallback('log', fullMessage);
+			}
+			return;
+		}
+
+		// Otherwise, respect silent/mcpMode
 		if (this.config.silent || this.config.mcpMode) return;
 
 		if (args.length > 0) {
@@ -212,8 +315,8 @@ export class Logger {
 			...config
 		};
 
-		// MCP mode always overrides to silent
-		if (this.config.mcpMode) {
+		// MCP mode overrides to silent ONLY if no callback is provided
+		if (this.config.mcpMode && !this.config.logCallback) {
 			this.config.silent = true;
 		}
 	}
@@ -221,7 +324,16 @@ export class Logger {
 	/**
 	 * Get current configuration
 	 */
-	getConfig(): Readonly<Required<LoggerConfig>> {
+	getConfig(): Readonly<
+		LoggerConfig & {
+			level: LogLevel;
+			silent: boolean;
+			prefix: string;
+			timestamp: boolean;
+			colors: boolean;
+			mcpMode: boolean;
+		}
+	> {
 		return { ...this.config };
 	}
 

@@ -187,6 +187,12 @@ export interface IStorage {
 	 * @returns The type of storage implementation ('file' or 'api')
 	 */
 	getStorageType(): 'file' | 'api';
+
+	/**
+	 * Get the current brief name (only applicable for API storage)
+	 * @returns The brief name if using API storage with a selected brief, null otherwise
+	 */
+	getCurrentBriefName(): string | null;
 }
 
 /**
@@ -271,7 +277,7 @@ export abstract class BaseStorage implements IStorage {
 	abstract close(): Promise<void>;
 	abstract getStats(): Promise<StorageStats>;
 	abstract getStorageType(): 'file' | 'api';
-
+	abstract getCurrentBriefName(): string | null;
 	/**
 	 * Utility method to generate backup filename
 	 * @param originalPath - Original file path
