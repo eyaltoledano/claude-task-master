@@ -156,7 +156,7 @@ export class ShowCommand extends Command {
 		const result = await this.tmCore.tasks.get(taskId);
 
 		// Get storage type
-		const storageType = this.tmCore.config.getStorageConfig().type;
+		const storageType = this.tmCore.tasks.getStorageType();
 
 		return {
 			task: result.task,
@@ -189,13 +189,13 @@ export class ShowCommand extends Command {
 			}
 		}
 
-		// Get storage type
-		const storageType = this.tmCore.config.getStorageConfig().type;
+		// Get storage type (resolved, not config value)
+		const storageType = this.tmCore.tasks.getStorageType();
 
 		return {
 			tasks,
 			notFound,
-			storageType: storageType as Exclude<StorageType, 'auto'>
+			storageType
 		};
 	}
 
