@@ -17,6 +17,11 @@ import {
 	TaskMasterError
 } from './common/errors/task-master-error.js';
 import type { IConfiguration } from './common/interfaces/configuration.interface.js';
+import {
+	createLogger,
+	type LoggerConfig,
+	type Logger
+} from './common/logger/index.js';
 
 /**
  * Options for creating TmCore instance
@@ -26,12 +31,14 @@ export interface TmCoreOptions {
 	projectPath: string;
 	/** Optional configuration overrides */
 	configuration?: Partial<IConfiguration>;
+	/** Optional logger configuration for MCP integration and debugging */
+	loggerConfig?: LoggerConfig;
 }
 
 /**
  * TmCore - Unified facade providing access to all Task Master domains
  *
- * @example
+ * @example Basic usage
  * ```typescript
  * const tmcore = await createTmCore({ projectPath: process.cwd() });
  *
@@ -43,11 +50,35 @@ export interface TmCoreOptions {
  * const modelConfig = tmcore.config.getModelConfig();
  * await tmcore.integration.exportTasks({ ... });
  * ```
+ *
+ * @example MCP integration with logging
+ * ```typescript
+ * import { LogLevel } from '@tm/core/logger';
+ *
+ * // In MCP tool execute function
+ * async function execute(args, log) {
+ *   const tmcore = await createTmCore({
+ *     projectPath: args.projectRoot,
+ *     loggerConfig: {
+ *       level: LogLevel.INFO,
+ *       mcpMode: true,
+ *       logCallback: log  // MCP log function
+ *     }
+ *   });
+ *
+ *   // All internal logging will now be sent to MCP
+ *   const tasks = await tmcore.tasks.list();
+ *
+ *   // You can also log custom messages
+ *   tmcore.logger.info('Operation completed');
+ * }
+ * ```
  */
 export class TmCore {
 	// Core infrastructure
 	private readonly _projectPath: string;
 	private _configManager!: ConfigManager;
+	private _logger!: Logger;
 
 	// Private writable properties
 	private _tasks!: TasksDomain;
@@ -75,6 +106,9 @@ export class TmCore {
 	}
 	get integration(): IntegrationDomain {
 		return this._integration;
+	}
+	get logger(): Logger {
+		return this._logger;
 	}
 
 	/**
@@ -124,6 +158,9 @@ export class TmCore {
 	 */
 	private async initialize(): Promise<void> {
 		try {
+			// Initialize logger first (before anything else that might log)
+			this._logger = createLogger(this._options.loggerConfig);
+
 			// Create config manager
 			this._configManager = await ConfigManager.create(this._projectPath);
 
@@ -142,7 +179,15 @@ export class TmCore {
 
 			// Initialize domains that need async setup
 			await this._tasks.initialize();
+
+			// Log successful initialization
+			this._logger.info('TmCore initialized successfully');
 		} catch (error) {
+			// Log error if logger is available
+			if (this._logger) {
+				this._logger.error('Failed to initialize TmCore:', error);
+			}
+
 			throw new TaskMasterError(
 				'Failed to initialize TmCore',
 				ERROR_CODES.INTERNAL_ERROR,

@@ -150,6 +150,16 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Get the current brief name
+	 * @returns The brief name if a brief is selected, null otherwise
+	 */
+	getCurrentBriefName(): string | null {
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+		return context?.briefName || null;
+	}
+
+	/**
 	 * Load tags into cache
 	 * In our API-based system, "tags" represent briefs
 	 */

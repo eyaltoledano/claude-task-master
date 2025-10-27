@@ -5,7 +5,6 @@
  */
 
 // Import direct function implementations
-import { listTasksDirect } from './direct-functions/list-tasks.js';
 import { getCacheStatsDirect } from './direct-functions/cache-stats.js';
 import { parsePRDDirect } from './direct-functions/parse-prd.js';
 import { updateTasksDirect } from './direct-functions/update-tasks.js';
@@ -13,7 +12,6 @@ import { updateTaskByIdDirect } from './direct-functions/update-task-by-id.js';
 import { updateSubtaskByIdDirect } from './direct-functions/update-subtask-by-id.js';
 import { generateTaskFilesDirect } from './direct-functions/generate-task-files.js';
 import { setTaskStatusDirect } from './direct-functions/set-task-status.js';
-import { showTaskDirect } from './direct-functions/show-task.js';
 import { nextTaskDirect } from './direct-functions/next-task.js';
 import { expandTaskDirect } from './direct-functions/expand-task.js';
 import { addTaskDirect } from './direct-functions/add-task.js';
@@ -47,7 +45,6 @@ export { findTasksPath } from './utils/path-utils.js';
 
 // Use Map for potential future enhancements like introspection or dynamic dispatch
 export const directFunctions = new Map([
-	['listTasksDirect', listTasksDirect],
 	['getCacheStatsDirect', getCacheStatsDirect],
 	['parsePRDDirect', parsePRDDirect],
 	['updateTasksDirect', updateTasksDirect],
@@ -55,7 +52,6 @@ export const directFunctions = new Map([
 	['updateSubtaskByIdDirect', updateSubtaskByIdDirect],
 	['generateTaskFilesDirect', generateTaskFilesDirect],
 	['setTaskStatusDirect', setTaskStatusDirect],
-	['showTaskDirect', showTaskDirect],
 	['nextTaskDirect', nextTaskDirect],
 	['expandTaskDirect', expandTaskDirect],
 	['addTaskDirect', addTaskDirect],
@@ -87,7 +83,6 @@ export const directFunctions = new Map([
 
 // Re-export all direct function implementations
 export {
-	listTasksDirect,
 	getCacheStatsDirect,
 	parsePRDDirect,
 	updateTasksDirect,
@@ -95,7 +90,6 @@ export {
 	updateSubtaskByIdDirect,
 	generateTaskFilesDirect,
 	setTaskStatusDirect,
-	showTaskDirect,
 	nextTaskDirect,
 	expandTaskDirect,
 	addTaskDirect,
