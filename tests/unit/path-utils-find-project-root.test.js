@@ -88,7 +88,7 @@ describe('findProjectRoot', () => {
 			mockExistsSync.mockRestore();
 		});
 
-		test('should find markers at current directory before checking parent', () => {
+		test('should prioritize .taskmaster in parent over other markers in current directory', () => {
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
 			mockExistsSync.mockImplementation((checkPath) => {
@@ -101,9 +101,9 @@ describe('findProjectRoot', () => {
 
 			const result = findProjectRoot('/project/subdir');
 
-			// Should find /project/subdir first because .git exists there,
-			// even though .taskmaster is earlier in the marker array
-			expect(result).toBe('/project/subdir');
+			// Should find /project (with .taskmaster) even though .git exists in /project/subdir
+			// This is the two-pass priority behavior: Task Master markers in parent > other markers in current
+			expect(result).toBe('/project');
 
 			mockExistsSync.mockRestore();
 		});
