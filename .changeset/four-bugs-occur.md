@@ -1,5 +1,5 @@
 ---
-"task-master-ai": minor
+"task-master-ai": patch
 ---
 
 remove file and complexity report parameter from get-tasks and get-task mcp tool
