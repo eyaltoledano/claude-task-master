@@ -9,7 +9,6 @@ import {
 	AuthConfig,
 	UserContext
 } from '../types.js';
-import { CredentialStore } from '../services/credential-store.js';
 import { ContextStore } from '../services/context-store.js';
 import { OAuthService } from '../services/oauth-service.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
@@ -20,6 +19,9 @@ import {
 	type RemoteTask
 } from '../services/organization.service.js';
 import { getLogger } from '../../../common/logger/index.js';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * Authentication manager class
@@ -27,15 +29,18 @@ import { getLogger } from '../../../common/logger/index.js';
 export class AuthManager {
 	private static instance: AuthManager | null = null;
 	private static readonly staticLogger = getLogger('AuthManager');
-	private credentialStore: CredentialStore;
 	private contextStore: ContextStore;
 	private oauthService: OAuthService;
 	public supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
 	private readonly logger = getLogger('AuthManager');
+	private readonly LEGACY_AUTH_FILE = path.join(
+		os.homedir(),
+		'.taskmaster',
+		'auth.json'
+	);
 
 	private constructor(config?: Partial<AuthConfig>) {
-		this.credentialStore = CredentialStore.getInstance(config);
 		this.contextStore = ContextStore.getInstance();
 		this.supabaseClient = new SupabaseAuthClient();
 		// Pass the supabase client to OAuthService so they share the same instance
@@ -50,6 +55,12 @@ export class AuthManager {
 		this.initializeSupabaseSession().catch(() => {
 			// Errors are already logged in initializeSupabaseSession
 		});
+
+		// Migrate legacy auth.json if it exists
+		// Fire-and-forget with catch handler
+		this.migrateLegacyAuth().catch(() => {
+			// Errors are already logged in migrateLegacyAuth
+		});
 	}
 
 	/**
@@ -61,6 +72,36 @@ export class AuthManager {
 		} catch (error) {
 			// Log but don't throw - session might not exist yet
 			this.logger.debug('No existing session to restore');
+		}
+	}
+
+	/**
+	 * Migrate legacy auth.json to Supabase session
+	 * Called once during AuthManager initialization
+	 */
+	private async migrateLegacyAuth(): Promise<void> {
+		if (!fs.existsSync(this.LEGACY_AUTH_FILE)) {
+			return;
+		}
+
+		try {
+			// If we have a valid Supabase session, delete legacy file
+			const hasSession = await this.hasValidSession();
+			if (hasSession) {
+				fs.unlinkSync(this.LEGACY_AUTH_FILE);
+				this.logger.info(
+					'Migrated to Supabase auth, removed legacy auth.json'
+				);
+				return;
+			}
+
+			// Otherwise, user needs to re-authenticate
+			this.logger.warn(
+				'Legacy auth.json found but no valid Supabase session.'
+			);
+			this.logger.warn('Please run: task-master auth login');
+		} catch (error) {
+			this.logger.debug('Error during legacy auth migration:', error);
 		}
 	}
 
@@ -84,18 +125,44 @@ export class AuthManager {
 	 */
 	static resetInstance(): void {
 		AuthManager.instance = null;
-		CredentialStore.resetInstance();
 		ContextStore.resetInstance();
 	}
 
 	/**
-	 * Get stored authentication credentials
-	 * Returns credentials as-is (even if expired). Refresh must be triggered explicitly
-	 * via refreshToken() or will occur automatically when using the Supabase client for API calls.
+	 * Get access token from current Supabase session
+	 * @returns Access token or null if not authenticated
 	 */
-	getCredentials(): AuthCredentials | null {
-		return this.credentialStore.getCredentials();
+	async getAccessToken(): Promise<string | null> {
+		const session = await this.supabaseClient.getSession();
+		return session?.access_token || null;
 	}
+
+	/**
+	 * Get authentication credentials from Supabase session
+	 * Modern replacement for legacy getCredentials()
+	 * @returns AuthCredentials object or null if not authenticated
+	 */
+	async getAuthCredentials(): Promise<AuthCredentials | null> {
+		const session = await this.supabaseClient.getSession();
+		if (!session) return null;
+
+		const user = session.user;
+		const context = this.contextStore.getUserContext();
+
+		return {
+			token: session.access_token,
+			refreshToken: session.refresh_token,
+			userId: user.id,
+			email: user.email,
+			expiresAt: session.expires_at
+				? new Date(session.expires_at * 1000).toISOString()
+				: undefined,
+			tokenType: 'standard',
+			savedAt: new Date().toISOString(),
+			selectedContext: context || undefined
+		};
+	}
+
 
 	/**
 	 * Start OAuth 2.0 Authorization Code Flow with browser handling
@@ -104,6 +171,69 @@ export class AuthManager {
 		options: OAuthFlowOptions = {}
 	): Promise<AuthCredentials> {
 		return this.oauthService.authenticate(options);
+	}
+
+	/**
+	 * Authenticate using a one-time token
+	 * This is useful for CLI authentication in SSH/remote environments
+	 * where browser-based auth is not practical
+	 */
+	async authenticateWithCode(token: string): Promise<AuthCredentials> {
+		try {
+			this.logger.info('Authenticating with one-time token...');
+
+			// Verify the token and get session from Supabase
+			const session = await this.supabaseClient.verifyOneTimeCode(token);
+
+			if (!session || !session.access_token) {
+				throw new AuthenticationError(
+					'Failed to obtain access token from token',
+					'NO_TOKEN'
+				);
+			}
+
+			// Get user information
+			const user = await this.supabaseClient.getUser();
+
+			if (!user) {
+				throw new AuthenticationError(
+					'Failed to get user information',
+					'INVALID_RESPONSE'
+				);
+			}
+
+			// Store user context
+			this.contextStore.saveContext({
+				userId: user.id,
+				email: user.email
+			});
+
+			// Build credentials response
+			const context = this.contextStore.getUserContext();
+			const credentials: AuthCredentials = {
+				token: session.access_token,
+				refreshToken: session.refresh_token,
+				userId: user.id,
+				email: user.email,
+				expiresAt: session.expires_at
+					? new Date(session.expires_at * 1000).toISOString()
+					: undefined,
+				tokenType: 'standard',
+				savedAt: new Date().toISOString(),
+				selectedContext: context || undefined
+			};
+
+			this.logger.info('Successfully authenticated with token');
+			return credentials;
+		} catch (error) {
+			if (error instanceof AuthenticationError) {
+				throw error;
+			}
+			throw new AuthenticationError(
+				`Token authentication failed: ${(error as Error).message}`,
+				'CODE_AUTH_FAILED'
+			);
+		}
 	}
 
 	/**
@@ -174,10 +304,20 @@ export class AuthManager {
 			this.logger.warn('Failed to sign out from Supabase:', error);
 		}
 
-		// Clear all auth data
-		this.credentialStore.clearCredentials(); // Legacy store
-		this.contextStore.clearContext(); // App context
+		// Clear app context
+		this.contextStore.clearContext();
 		// Session is cleared by supabaseClient.signOut()
+
+		// Clear legacy auth.json if it exists
+		try {
+			if (fs.existsSync(this.LEGACY_AUTH_FILE)) {
+				fs.unlinkSync(this.LEGACY_AUTH_FILE);
+				this.logger.debug('Cleared legacy auth.json');
+			}
+		} catch (error) {
+			// Ignore errors clearing legacy file
+			this.logger.debug('No legacy credentials to clear');
+		}
 	}
 
 	/**
@@ -217,8 +357,8 @@ export class AuthManager {
 	/**
 	 * Update the user context (org/brief selection)
 	 */
-	updateContext(context: Partial<UserContext>): void {
-		if (!this.hasValidSession()) {
+	async updateContext(context: Partial<UserContext>): Promise<void> {
+		if (!(await this.hasValidSession())) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
 
@@ -228,8 +368,8 @@ export class AuthManager {
 	/**
 	 * Clear the user context
 	 */
-	clearContext(): void {
-		if (!this.hasValidSession()) {
+	async clearContext(): Promise<void> {
+		if (!(await this.hasValidSession())) {
 			throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');
 		}
 

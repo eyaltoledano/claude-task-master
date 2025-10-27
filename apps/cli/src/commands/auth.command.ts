@@ -62,8 +62,22 @@ export class AuthCommand extends Command {
 	private addLoginCommand(): void {
 		this.command('login')
 			.description('Authenticate with tryhamster.com')
-			.action(async () => {
-				await this.executeLogin();
+			.argument(
+				'[token]',
+				'Authentication token (optional, for SSH/remote environments)'
+			)
+			.option('-y, --yes', 'Skip interactive prompts')
+			.addHelpText(
+				'after',
+				`
+Examples:
+  $ tm auth login         # Browser-based OAuth flow (interactive)
+  $ tm auth login <token> # Token-based authentication
+  $ tm auth login <token> -y # Non-interactive token auth (for scripts)
+`
+			)
+			.action(async (token?: string, options?: { yes?: boolean }) => {
+				await this.executeLogin(token, options?.yes);
 			});
 	}
 
@@ -103,9 +117,11 @@ export class AuthCommand extends Command {
 	/**
 	 * Execute login command
 	 */
-	private async executeLogin(): Promise<void> {
+	private async executeLogin(token?: string, yes?: boolean): Promise<void> {
 		try {
-			const result = await this.performInteractiveAuth();
+			const result = token
+				? await this.performTokenAuth(token, yes)
+				: await this.performInteractiveAuth(yes);
 			this.setLastResult(result);
 
 			if (!result.success) {
@@ -333,12 +349,12 @@ export class AuthCommand extends Command {
 	/**
 	 * Perform interactive authentication
 	 */
-	private async performInteractiveAuth(): Promise<AuthResult> {
+	private async performInteractiveAuth(yes?: boolean): Promise<AuthResult> {
 		ui.displayBanner('Task Master Authentication');
 		const isAuthenticated = await this.authManager.hasValidSession();
 
-		// Check if already authenticated
-		if (isAuthenticated) {
+		// Check if already authenticated (skip if --yes is used)
+		if (isAuthenticated && !yes) {
 			const { continueAuth } = await inquirer.prompt([
 				{
 					type: 'confirm',
@@ -350,7 +366,7 @@ export class AuthCommand extends Command {
 			]);
 
 			if (!continueAuth) {
-				const credentials = this.authManager.getCredentials();
+				const credentials = await this.authManager.getAuthCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -376,35 +392,43 @@ export class AuthCommand extends Command {
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
 
-			// Post-auth: Set up workspace context
-			console.log(); // Add spacing
-			try {
-				const contextCommand = new ContextCommand();
-				const contextResult = await contextCommand.setupContextInteractive();
-				if (contextResult.success) {
-					if (contextResult.orgSelected && contextResult.briefSelected) {
+			// Post-auth: Set up workspace context (skip if --yes flag is used)
+			if (!yes) {
+				console.log(); // Add spacing
+				try {
+					const contextCommand = new ContextCommand();
+					const contextResult = await contextCommand.setupContextInteractive();
+					if (contextResult.success) {
+						if (contextResult.orgSelected && contextResult.briefSelected) {
+							console.log(
+								chalk.green('✓ Workspace context configured successfully')
+							);
+						} else if (contextResult.orgSelected) {
+							console.log(chalk.green('✓ Organization selected'));
+						}
+					} else {
 						console.log(
-							chalk.green('✓ Workspace context configured successfully')
+							chalk.yellow('⚠ Context setup was skipped or encountered issues')
 						);
-					} else if (contextResult.orgSelected) {
-						console.log(chalk.green('✓ Organization selected'));
+						console.log(
+							chalk.gray('  You can set up context later with "tm context"')
+						);
 					}
-				} else {
-					console.log(
-						chalk.yellow('⚠ Context setup was skipped or encountered issues')
-					);
+				} catch (contextError) {
+					console.log(chalk.yellow('⚠ Context setup encountered an error'));
 					console.log(
 						chalk.gray('  You can set up context later with "tm context"')
 					);
+					if (process.env.DEBUG) {
+						console.error(chalk.gray((contextError as Error).message));
+					}
 				}
-			} catch (contextError) {
-				console.log(chalk.yellow('⚠ Context setup encountered an error'));
+			} else {
 				console.log(
-					chalk.gray('  You can set up context later with "tm context"')
+					chalk.gray(
+						'\n  Skipped interactive setup. Use "tm context" to configure later.'
+					)
 				);
-				if (process.env.DEBUG) {
-					console.error(chalk.gray((contextError as Error).message));
-				}
 			}
 
 			return {
@@ -478,6 +502,93 @@ export class AuthCommand extends Command {
 	}
 
 	/**
+	 * Authenticate with token
+	 */
+	private async authenticateWithToken(token: string): Promise<AuthCredentials> {
+		const spinner = ora('Verifying authentication token...').start();
+
+		try {
+			const credentials = await this.authManager.authenticateWithCode(token);
+			spinner.succeed('Successfully authenticated!');
+			return credentials;
+		} catch (error) {
+			spinner.fail('Authentication failed');
+			throw error;
+		}
+	}
+
+	/**
+	 * Perform token-based authentication flow
+	 */
+	private async performTokenAuth(token: string, yes?: boolean): Promise<AuthResult> {
+		ui.displayBanner('Task Master Authentication');
+
+		try {
+			// Authenticate with the token
+			const credentials = await this.authenticateWithToken(token);
+
+			ui.displaySuccess('Authentication successful!');
+			console.log(
+				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
+			);
+
+			// Post-auth: Set up workspace context (skip if --yes flag is used)
+			if (!yes) {
+				console.log(); // Add spacing
+				try {
+					const contextCommand = new ContextCommand();
+					const contextResult = await contextCommand.setupContextInteractive();
+					if (contextResult.success) {
+						if (contextResult.orgSelected && contextResult.briefSelected) {
+							console.log(
+								chalk.green('✓ Workspace context configured successfully')
+							);
+						} else if (contextResult.orgSelected) {
+							console.log(chalk.green('✓ Organization selected'));
+						}
+					} else {
+						console.log(
+							chalk.yellow('⚠ Context setup was skipped or encountered issues')
+						);
+						console.log(
+							chalk.gray('  You can set up context later with "tm context"')
+						);
+					}
+				} catch (contextError) {
+					console.log(chalk.yellow('⚠ Context setup encountered an error'));
+					console.log(
+						chalk.gray('  You can set up context later with "tm context"')
+					);
+					if (process.env.DEBUG) {
+						console.error(chalk.gray((contextError as Error).message));
+					}
+				}
+			} else {
+				console.log(
+					chalk.gray(
+						'\n  Skipped interactive setup. Use "tm context" to configure later.'
+					)
+				);
+			}
+
+			return {
+				success: true,
+				action: 'login',
+				credentials,
+				message: 'Authentication successful'
+			};
+		} catch (error) {
+			displayError(error, { skipExit: true });
+
+			return {
+				success: false,
+				action: 'login',
+				message: `Authentication failed: ${(error as Error).message}`
+			};
+		}
+	}
+
+	/**
 	 * Set the last result for programmatic access
 	 */
 	private setLastResult(result: AuthResult): void {
@@ -494,8 +605,8 @@ export class AuthCommand extends Command {
 	/**
 	 * Get current credentials (for programmatic usage)
 	 */
-	getCredentials(): AuthCredentials | null {
-		return this.authManager.getCredentials();
+	async getCredentials(): Promise<AuthCredentials | null> {
+		return this.authManager.getAuthCredentials();
 	}
 
 	/**

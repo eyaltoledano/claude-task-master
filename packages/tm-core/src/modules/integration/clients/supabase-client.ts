@@ -311,4 +311,50 @@ export class SupabaseAuthClient {
 			);
 		}
 	}
+
+	/**
+	 * Verify a one-time token and create a session
+	 * Used for CLI authentication with pre-generated tokens
+	 */
+	async verifyOneTimeCode(token: string): Promise<Session> {
+		const client = this.getClient();
+
+		try {
+			this.logger.info('Verifying authentication token...');
+
+			// Use Supabase's verifyOtp for token verification
+			// Using token_hash with magiclink type doesn't require email
+			const { data, error } = await client.auth.verifyOtp({
+				token_hash: token,
+				type: 'magiclink'
+			});
+
+			if (error) {
+				this.logger.error('Failed to verify token:', error);
+				throw new AuthenticationError(
+					`Failed to verify token: ${error.message}`,
+					'INVALID_CODE'
+				);
+			}
+
+			if (!data?.session) {
+				throw new AuthenticationError(
+					'No session returned from token verification',
+					'INVALID_RESPONSE'
+				);
+			}
+
+			this.logger.info('Successfully verified authentication token');
+			return data.session;
+		} catch (error) {
+			if (error instanceof AuthenticationError) {
+				throw error;
+			}
+
+			throw new AuthenticationError(
+				`Token verification failed: ${(error as Error).message}`,
+				'CODE_AUTH_FAILED'
+			);
+		}
+	}
 }

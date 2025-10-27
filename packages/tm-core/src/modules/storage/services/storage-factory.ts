@@ -77,13 +77,13 @@ export class StorageFactory {
 						);
 					}
 					// Use auth token from AuthManager
-					const credentials = authManager.getCredentials();
-					if (credentials) {
+					const accessToken = await authManager.getAccessToken();
+					if (accessToken) {
 						// Merge with existing storage config, ensuring required fields
 						const nextStorage: StorageSettings = {
 							...(config.storage as StorageSettings),
 							type: 'api',
-							apiAccessToken: credentials.token,
+							apiAccessToken: accessToken,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.TM_BASE_DOMAIN ||
@@ -105,16 +105,26 @@ export class StorageFactory {
 					return StorageFactory.createApiStorage(config);
 				}
 
-				// Then check if authenticated via AuthManager
+				// Then check if authenticated via Supabase
 				const hasSession = await authManager.hasValidSession();
 				if (hasSession) {
-					const credentials = authManager.getCredentials();
-					if (credentials) {
-						// Configure API storage with auth credentials
+					const accessToken = await authManager.getAccessToken();
+					const context = authManager.getContext();
+
+					// Validate we have the necessary context for API storage
+					if (!context?.briefId) {
+						logger.debug(
+							'📁 User authenticated but no brief selected, using file storage'
+						);
+						return StorageFactory.createFileStorage(projectPath, config);
+					}
+
+					if (accessToken) {
+						// Configure API storage with Supabase session token
 						const nextStorage: StorageSettings = {
 							...(config.storage as StorageSettings),
 							type: 'api',
-							apiAccessToken: credentials.token,
+							apiAccessToken: accessToken,
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.TM_BASE_DOMAIN ||

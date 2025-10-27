@@ -384,8 +384,8 @@ export class ExportService {
 			};
 
 			// Get auth token
-			const credentials = await this.authManager.getCredentials();
-			if (!credentials || !credentials.token) {
+			const accessToken = await this.authManager.getAccessToken();
+			if (!accessToken) {
 				throw new Error('Not authenticated');
 			}
 
@@ -394,7 +394,7 @@ export class ExportService {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${credentials.token}`
+					Authorization: `Bearer ${accessToken}`
 				},
 				body: JSON.stringify(requestBody)
 			});
