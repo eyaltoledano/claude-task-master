@@ -9,10 +9,7 @@
 		".": "./src/index.ts",
 		"./tools/autopilot": "./src/tools/autopilot/index.ts"
 	},
-	"files": [
-		"dist",
-		"README.md"
-	],
+	"files": ["dist", "README.md"],
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
@@ -50,9 +47,7 @@
 	"license": "MIT",
 	"typesVersions": {
 		"*": {
-			"*": [
-				"src/*"
-			]
+			"*": ["src/*"]
 		}
 	},
 	"version": null
