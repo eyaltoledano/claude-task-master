@@ -49,19 +49,27 @@ export function normalizeProjectRoot(projectRoot) {
  * Find the project root directory by looking for project markers
  * Traverses upwards from startDir until a project marker is found or filesystem root is reached
  * Limited to 50 parent directory levels to prevent excessive traversal
+ *
+ * Strategy: First searches ALL parent directories for .taskmaster (highest priority).
+ * If not found, then searches for other project markers starting from current directory.
+ * This ensures .taskmaster in parent directories takes precedence over other markers in subdirectories.
+ *
  * @param {string} startDir - Directory to start searching from (defaults to process.cwd())
  * @returns {string} - Project root path (falls back to current directory if no markers found)
  */
 export function findProjectRoot(startDir = process.cwd()) {
-	// Define project markers that indicate a project root
-	// Prioritize Task Master specific markers first
-	const projectMarkers = [
-		'.taskmaster', // Task Master directory (highest priority)
+	// Task Master specific markers (checked across all parent directories first)
+	const taskmasterMarkers = [
+		'.taskmaster', // Task Master directory (absolute highest priority)
 		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
 		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
 		LEGACY_CONFIG_FILE, // .taskmasterconfig (legacy)
 		LEGACY_TASKS_FILE, // tasks/tasks.json (legacy)
-		'tasks.json', // Root tasks.json (legacy)
+		'tasks.json' // Root tasks.json (legacy)
+	];
+
+	// Other project markers (only checked if no Task Master markers found)
+	const otherProjectMarkers = [
 		'.git', // Git repository
 		'.svn', // SVN repository
 		'package.json', // Node.js project
@@ -81,14 +89,47 @@ export function findProjectRoot(startDir = process.cwd()) {
 	const maxDepth = 50; // Reasonable limit to prevent infinite loops
 	let depth = 0;
 
-	// Traverse upwards looking for project markers
+	// FIRST PASS: Traverse ALL parent directories looking ONLY for Task Master markers
+	// This ensures that a .taskmaster in a parent directory takes precedence over
+	// other project markers (like .git, go.mod, etc.) in subdirectories
+	let searchDir = currentDir;
+	depth = 0;
+	while (searchDir !== rootDir && depth < maxDepth) {
+		for (const marker of taskmasterMarkers) {
+			const markerPath = path.join(searchDir, marker);
+			try {
+				if (fs.existsSync(markerPath)) {
+					// Found a Task Master marker - this is our project root
+					return searchDir;
+				}
+			} catch (error) {
+				// Ignore permission errors and continue searching
+				continue;
+			}
+		}
+
+		// Move up one directory level
+		const parentDir = path.dirname(searchDir);
+
+		// Safety check: if dirname returns the same path, we've hit the root
+		if (parentDir === searchDir) {
+			break;
+		}
+
+		searchDir = parentDir;
+		depth++;
+	}
+
+	// SECOND PASS: No Task Master markers found in any parent directory
+	// Now search for other project markers starting from the original directory
+	currentDir = path.resolve(startDir);
+	depth = 0;
 	while (currentDir !== rootDir && depth < maxDepth) {
-		// Check if current directory contains any project markers
-		for (const marker of projectMarkers) {
+		for (const marker of otherProjectMarkers) {
 			const markerPath = path.join(currentDir, marker);
 			try {
 				if (fs.existsSync(markerPath)) {
-					// Found a project marker - return this directory as project root
+					// Found another project marker - return this as project root
 					return currentDir;
 				}
 			} catch (error) {
