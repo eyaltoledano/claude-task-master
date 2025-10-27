@@ -108,6 +108,32 @@ describe('findProjectRoot', () => {
 			mockExistsSync.mockRestore();
 		});
 
+		test('should find parent .taskmaster even when subdirectory has git and go.mod (monorepo use case)', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Simulate monorepo structure:
+				// /monorepo/.taskmaster - parent Task Master tracking all work
+				// /monorepo/service-a/.git - Git repository for service A
+				// /monorepo/service-a/go.mod - Go project marker
+				if (normalized.includes('/monorepo/.taskmaster')) return true;
+				if (normalized.includes('/monorepo/service-a/.git')) return true;
+				if (normalized.includes('/monorepo/service-a/go.mod')) return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/monorepo/service-a');
+
+			// Should find /monorepo (with .taskmaster) NOT /monorepo/service-a (with .git and go.mod)
+			// This is the core fix: .taskmaster in parent > other markers in subdirectory
+			// OLD BEHAVIOR: Would return /monorepo/service-a (stopped at first marker found)
+			// NEW BEHAVIOR: Returns /monorepo (prioritizes .taskmaster in parent)
+			expect(result).toBe('/monorepo');
+
+			mockExistsSync.mockRestore();
+		});
+
 		test('should handle permission errors gracefully', () => {
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
