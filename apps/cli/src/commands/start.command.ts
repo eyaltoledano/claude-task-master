@@ -10,8 +10,8 @@ import boxen from 'boxen';
 import ora, { type Ora } from 'ora';
 import { spawn } from 'child_process';
 import {
-	createTaskMasterCore,
-	type TaskMasterCore,
+	createTmCore,
+	type TmCore,
 	type StartTaskResult as CoreStartTaskResult
 } from '@tm/core';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
@@ -43,7 +43,7 @@ export interface StartCommandResult extends CoreStartTaskResult {
  * This is a thin presentation layer over @tm/core's TaskExecutionService
  */
 export class StartCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: StartCommandResult;
 
 	constructor(name?: string) {
@@ -144,10 +144,10 @@ export class StartCommand extends Command {
 				await this.executeChildProcess(coreResult.command);
 			}
 
-			// Convert core result to CLI result with storage type
+			// Convert core result to CLI result with storage type (resolved, not config value)
 			const result: StartCommandResult = {
 				...coreResult,
-				storageType: this.tmCore?.getStorageType()
+				storageType: this.tmCore?.tasks.getStorageType()
 			};
 
 			// Store result for programmatic access
@@ -180,11 +180,11 @@ export class StartCommand extends Command {
 	}
 
 	/**
-	 * Initialize TaskMasterCore
+	 * Initialize TmCore
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
-			this.tmCore = await createTaskMasterCore({ projectPath: projectRoot });
+			this.tmCore = await createTmCore({ projectPath: projectRoot });
 		}
 	}
 
@@ -193,9 +193,9 @@ export class StartCommand extends Command {
 	 */
 	private async performGetNextTask(): Promise<string | null> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
-		return this.tmCore.getNextAvailableTask();
+		return this.tmCore.tasks.getNextAvailable();
 	}
 
 	/**
@@ -204,11 +204,10 @@ export class StartCommand extends Command {
 	private async showPreLaunchMessage(targetTaskId: string): Promise<void> {
 		if (!this.tmCore) return;
 
-		const { task, subtask, subtaskId } =
-			await this.tmCore.getTaskWithSubtask(targetTaskId);
+		const { task, isSubtask } = await this.tmCore.tasks.get(targetTaskId);
 		if (task) {
-			const workItemText = subtask
-				? `Subtask #${task.id}.${subtaskId} - ${subtask.title}`
+			const workItemText = isSubtask
+				? `Subtask #${targetTaskId} - ${task.title}`
 				: `Task #${task.id} - ${task.title}`;
 
 			console.log(
@@ -227,7 +226,7 @@ export class StartCommand extends Command {
 		options: StartCommandOptions
 	): Promise<CoreStartTaskResult> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		// Show spinner for status update if enabled
@@ -237,7 +236,7 @@ export class StartCommand extends Command {
 		}
 
 		// Get execution command from tm-core (instead of executing directly)
-		const result = await this.tmCore.startTask(targetTaskId, {
+		const result = await this.tmCore.tasks.start(targetTaskId, {
 			dryRun: options.dryRun,
 			force: options.force,
 			updateStatus: !options.noStatusUpdate
@@ -471,7 +470,6 @@ export class StartCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		if (this.tmCore) {
-			await this.tmCore.close();
 			this.tmCore = undefined;
 		}
 	}

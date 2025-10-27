@@ -6,16 +6,16 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import {
-	createTaskMasterCore,
+	createTmCore,
 	type Task,
 	type TaskStatus,
-	type TaskMasterCore,
+	type TmCore,
 	TASK_STATUSES,
 	OUTPUT_FORMATS,
 	STATUS_ICONS,
 	type OutputFormat
 } from '@tm/core';
-import type { StorageType } from '@tm/core/types';
+import type { StorageType } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
@@ -59,7 +59,7 @@ export interface ListTasksResult {
  * This is a thin presentation layer over @tm/core
  */
 export class ListTasksCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: ListTasksResult;
 
 	constructor(name?: string) {
@@ -144,11 +144,11 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
-	 * Initialize TaskMasterCore
+	 * Initialize TmCore
 	 */
 	private async initializeCore(projectRoot: string): Promise<void> {
 		if (!this.tmCore) {
-			this.tmCore = await createTaskMasterCore({ projectPath: projectRoot });
+			this.tmCore = await createTmCore({ projectPath: projectRoot });
 		}
 	}
 
@@ -159,7 +159,7 @@ export class ListTasksCommand extends Command {
 		options: ListCommandOptions
 	): Promise<ListTasksResult> {
 		if (!this.tmCore) {
-			throw new Error('TaskMasterCore not initialized');
+			throw new Error('TmCore not initialized');
 		}
 
 		// Build filter
@@ -173,7 +173,7 @@ export class ListTasksCommand extends Command {
 				: undefined;
 
 		// Call tm-core
-		const result = await this.tmCore.getTaskList({
+		const result = await this.tmCore.tasks.list({
 			tag: options.tag,
 			filter,
 			includeSubtasks: options.withSubtasks
@@ -459,7 +459,6 @@ export class ListTasksCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		if (this.tmCore) {
-			await this.tmCore.close();
 			this.tmCore = undefined;
 		}
 	}

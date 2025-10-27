@@ -237,7 +237,7 @@
 		"watch": "npm run watch:js & npm run watch:css",
 		"watch:js": "node ./esbuild.js --watch",
 		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
-		"check-types": "tsc --noEmit"
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@dnd-kit/core": "^6.3.1",

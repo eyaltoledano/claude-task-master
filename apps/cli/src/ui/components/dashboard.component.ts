@@ -5,7 +5,7 @@
 
 import chalk from 'chalk';
 import boxen from 'boxen';
-import type { Task, TaskPriority } from '@tm/core/types';
+import type { Task, TaskPriority } from '@tm/core';
 import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**

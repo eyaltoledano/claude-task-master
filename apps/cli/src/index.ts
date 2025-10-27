@@ -41,5 +41,5 @@ export type {
 	Task,
 	TaskStatus,
 	TaskPriority,
-	TaskMasterCore
+	TmCore
 } from '@tm/core';

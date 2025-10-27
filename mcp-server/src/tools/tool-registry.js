@@ -1,16 +1,14 @@
 /**
  * tool-registry.js
- * Tool Registry Object Structure - Maps all 36 tool names to registration functions
+ * Tool Registry - Maps tool names to registration functions
  */
 
-import { registerListTasksTool } from './get-tasks.js';
 import { registerSetTaskStatusTool } from './set-task-status.js';
 import { registerParsePRDTool } from './parse-prd.js';
 import { registerUpdateTool } from './update.js';
 import { registerUpdateTaskTool } from './update-task.js';
 import { registerUpdateSubtaskTool } from './update-subtask.js';
 import { registerGenerateTool } from './generate.js';
-import { registerShowTaskTool } from './get-task.js';
 import { registerNextTaskTool } from './next-task.js';
 import { registerExpandTaskTool } from './expand-task.js';
 import { registerAddTaskTool } from './add-task.js';
@@ -40,7 +38,7 @@ import { registerRulesTool } from './rules.js';
 import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
 
-// Import TypeScript autopilot tools from apps/mcp
+// Import TypeScript tools from apps/mcp
 import {
 	registerAutopilotStartTool,
 	registerAutopilotResumeTool,
@@ -49,7 +47,9 @@ import {
 	registerAutopilotCompleteTool,
 	registerAutopilotCommitTool,
 	registerAutopilotFinalizeTool,
-	registerAutopilotAbortTool
+	registerAutopilotAbortTool,
+	registerGetTasksTool,
+	registerGetTaskTool
 } from '@tm/mcp';
 
 /**
@@ -67,8 +67,8 @@ export const toolRegistry = {
 	expand_all: registerExpandAllTool,
 	scope_up_task: registerScopeUpTool,
 	scope_down_task: registerScopeDownTool,
-	get_tasks: registerListTasksTool,
-	get_task: registerShowTaskTool,
+	get_tasks: registerGetTasksTool,
+	get_task: registerGetTaskTool,
 	next_task: registerNextTaskTool,
 	complexity_report: registerComplexityReportTool,
 	set_task_status: registerSetTaskStatusTool,

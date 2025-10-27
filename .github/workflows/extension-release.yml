@@ -37,7 +37,7 @@ jobs:
 
       - name: Type Check Extension
         working-directory: apps/extension
-        run: npm run check-types
+        run: npm run typecheck
         env:
           FORCE_COLOR: 1
 

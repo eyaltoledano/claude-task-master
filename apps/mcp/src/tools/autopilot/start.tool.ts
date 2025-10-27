@@ -11,7 +11,7 @@ import {
 	withNormalizedProjectRoot
 } from '../../shared/utils.js';
 import type { MCPContext } from '../../shared/types.js';
-import { createTaskMasterCore } from '@tm/core';
+import { createTmCore } from '@tm/core';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
@@ -83,17 +83,16 @@ export function registerAutopilotStartTool(server: FastMCP) {
 					}
 
 					// Load task data and get current tag
-					const core = await createTaskMasterCore({
+					const core = await createTmCore({
 						projectPath: projectRoot
 					});
 
 					// Get current tag from ConfigManager
-					const currentTag = core.getActiveTag();
+					const currentTag = core.config.getActiveTag();
 
-					const taskResult = await core.getTaskWithSubtask(taskId);
+					const taskResult = await core.tasks.get(taskId);
 
 					if (!taskResult || !taskResult.task) {
-						await core.close();
 						return handleApiResult({
 							result: {
 								success: false,
@@ -108,7 +107,6 @@ export function registerAutopilotStartTool(server: FastMCP) {
 
 					// Validate task has subtasks
 					if (!task.subtasks || task.subtasks.length === 0) {
-						await core.close();
 						return handleApiResult({
 							result: {
 								success: false,

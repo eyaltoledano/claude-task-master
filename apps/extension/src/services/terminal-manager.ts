@@ -4,7 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import { createTaskMasterCore, type TaskMasterCore } from '@tm/core';
+import { createTmCore, type TmCore } from '@tm/core';
 import type { ExtensionLogger } from '../utils/logger';
 
 export interface TerminalExecutionOptions {
@@ -21,7 +21,7 @@ export interface TerminalExecutionResult {
 
 export class TerminalManager {
 	private terminals = new Map<string, vscode.Terminal>();
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 
 	constructor(
 		private context: vscode.ExtensionContext,
@@ -49,7 +49,7 @@ export class TerminalManager {
 			await this.initializeCore();
 
 			// Use tm-core to start the task (same as CLI)
-			const startResult = await this.tmCore!.startTask(taskId, {
+			const startResult = await this.tmCore!.tasks.start(taskId, {
 				dryRun: false,
 				force: false,
 				updateStatus: true
@@ -110,7 +110,7 @@ export class TerminalManager {
 			if (!workspaceRoot) {
 				throw new Error('No workspace folder found');
 			}
-			this.tmCore = await createTaskMasterCore({ projectPath: workspaceRoot });
+			this.tmCore = await createTmCore({ projectPath: workspaceRoot });
 		}
 	}
 
@@ -144,13 +144,9 @@ export class TerminalManager {
 		});
 		this.terminals.clear();
 
+		// Clear tm-core reference (no explicit cleanup needed)
 		if (this.tmCore) {
-			try {
-				await this.tmCore.close();
-				this.tmCore = undefined;
-			} catch (error) {
-				this.logger.error('Failed to close tm-core:', error);
-			}
+			this.tmCore = undefined;
 		}
 	}
 }

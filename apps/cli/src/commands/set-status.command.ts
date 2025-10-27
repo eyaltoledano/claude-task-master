@@ -6,12 +6,8 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import {
-	createTaskMasterCore,
-	type TaskMasterCore,
-	type TaskStatus
-} from '@tm/core';
-import type { StorageType } from '@tm/core/types';
+import { createTmCore, type TmCore, type TaskStatus } from '@tm/core';
+import type { StorageType } from '@tm/core';
 import { displayError } from '../utils/error-handler.js';
 
 /**
@@ -56,7 +52,7 @@ export interface SetStatusResult {
  * This is a thin presentation layer over @tm/core
  */
 export class SetStatusCommand extends Command {
-	private tmCore?: TaskMasterCore;
+	private tmCore?: TmCore;
 	private lastResult?: SetStatusResult;
 
 	constructor(name?: string) {
@@ -112,7 +108,7 @@ export class SetStatusCommand extends Command {
 			}
 
 			// Initialize TaskMaster core
-			this.tmCore = await createTaskMasterCore({
+			this.tmCore = await createTmCore({
 				projectPath: options.project || process.cwd()
 			});
 
@@ -128,7 +124,7 @@ export class SetStatusCommand extends Command {
 
 			for (const taskId of taskIds) {
 				try {
-					const result = await this.tmCore.updateTaskStatus(
+					const result = await this.tmCore.tasks.updateStatus(
 						taskId,
 						options.status
 					);
@@ -168,10 +164,7 @@ export class SetStatusCommand extends Command {
 			this.lastResult = {
 				success: true,
 				updatedTasks,
-				storageType: this.tmCore.getStorageType() as Exclude<
-					StorageType,
-					'auto'
-				>
+				storageType: this.tmCore.tasks.getStorageType()
 			};
 
 			// Display results
@@ -188,7 +181,6 @@ export class SetStatusCommand extends Command {
 		} finally {
 			// Clean up resources
 			if (this.tmCore) {
-				await this.tmCore.close();
 			}
 		}
 
