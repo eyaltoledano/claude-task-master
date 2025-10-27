@@ -10,7 +10,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot,
-	handleAgentLLMDelegation
+	createAgentDelegationResponse
 } from './utils.js';
 import { scopeDownDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -91,7 +91,7 @@ export function registerScopeDownTool(server) {
 					{ session }
 				);
 
-				const delegation = handleAgentLLMDelegation(
+				const delegation = createAgentDelegationResponse(
 					result,
 					log,
 					'scope_down_task',

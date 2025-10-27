@@ -10,7 +10,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot,
-	handleAgentLLMDelegation
+	createAgentDelegationResponse
 } from './utils.js';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -111,7 +111,7 @@ export function registerAddTaskTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = handleAgentLLMDelegation(result, log, 'add_task');
+				const delegation = createAgentDelegationResponse(result, log, 'add_task');
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating (e.g., manual task creation or direct AI success),

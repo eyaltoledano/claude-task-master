@@ -12,7 +12,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot,
-	handleAgentLLMDelegation
+	createAgentDelegationResponse
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -149,7 +149,7 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					{ session }
 				);
 
-				const delegation = handleAgentLLMDelegation(result, log, 'analyze_project_complexity');
+				const delegation = createAgentDelegationResponse(result, log, 'analyze_project_complexity');
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling

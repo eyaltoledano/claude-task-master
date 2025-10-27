@@ -1623,19 +1623,7 @@ function createLogger(context = {}) {
 			if (isMCP && typeof context.mcpLog.error === 'function') {
 				context.mcpLog.error(...args);
 			} else {
-				const message = args
-					.map((arg) => {
-						if (typeof arg === 'object') {
-							try {
-								return JSON.stringify(arg);
-							} catch (e) {
-								return String(arg);
-							}
-						}
-						return String(arg);
-					})
-					.join(' ');
-				throw new Error(message);
+				log('error', ...args);
 			}
 		},
 		info: (...args) => {

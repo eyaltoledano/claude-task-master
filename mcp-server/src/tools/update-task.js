@@ -10,7 +10,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot,
-	handleAgentLLMDelegation
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -91,7 +91,7 @@ export function registerUpdateTaskTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = handleAgentLLMDelegation(result, log, 'update_task');
+				const delegation = createAgentDelegationResponse(result, log, 'update_task');
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling

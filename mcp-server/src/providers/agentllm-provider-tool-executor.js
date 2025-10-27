@@ -137,8 +137,12 @@ async function _handlePostProcessing(
 		log.info(
 			`TaskMasterMCPServer [Interaction: ${interactionId}]: Post-processing for 'update_subtask'.`
 		);
+		const subtaskText =
+			typeof finalLLMOutput === 'string'
+				? finalLLMOutput
+				: JSON.stringify(finalLLMOutput, null, 2);
 		postProcessingResult = await agentllmUpdateSubtaskSave(
-			finalLLMOutput,
+			subtaskText,
 			subtaskId,
 			projectRoot,
 			log,

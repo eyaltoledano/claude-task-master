@@ -764,23 +764,6 @@ function withNormalizedProjectRoot(executeFn) {
  * @param {string} [customInstructions] - Optional custom instructions to append to the standard instructions.
  * @returns {Object} - The response object for agent delegation.
  */
-function createAgentDelegationResponse(
-	pendingInteraction,
-	customInstructions = ''
-) {
-	const payload = {
-		isAgentLLMPendingInteraction: true,
-		details: pendingInteraction,
-		uri: 'agent-llm://pending-interaction',
-		mimeType: 'application/json',
-		directive:
-			'Taskmaster requires an LLM call from the Assistant/Agent (you). You are returning the LLM respone. Details provided in the instructions.',
-		instructions:
-			"Assistant/Agent, you are the LLM being invoked. Do NOT make an API call. Instead, directly generate your response based on 'requestParameters.messages' and send it via 'agent_llm' tool, include 'agentLLMResponse', this 'interactionId' and 'projectRoot', exclude 'delegatedCallDetails' parameter." +
-			(customInstructions ? ` ${customInstructions}` : '')
-	};
-	return { ...createContentResponse(payload), isError: false };
-}
 
 /**
  * Helper to centralize agent delegation handling across tools.
@@ -794,12 +777,27 @@ function createAgentDelegationResponse(
  * @param {string} [customInstructions] - Optional extra instructions to include in the delegation response
  * @returns {Object} - { delegated: boolean, response?: Object }
  */
-function handleAgentLLMDelegation(result, log, toolName, customInstructions = '') {
+function createAgentDelegationResponse(result, log, toolName, customInstructions = '') {
 	if (result?.needsAgentDelegation === true && result.pendingInteraction) {
 		log.info(
 			`${toolName} tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
 		);
-		return { delegated: true, response: createAgentDelegationResponse(result.pendingInteraction, customInstructions) };
+
+		const payload = {
+			isAgentLLMPendingInteraction: true,
+			details: result.pendingInteraction,
+			uri: 'agent-llm://pending-interaction',
+			mimeType: 'application/json',
+			directive:
+				'Taskmaster requires an LLM call from the Assistant/Agent (you). You are returning the LLM respone. Details provided in the instructions.',
+			instructions:
+				"Assistant/Agent, you are the LLM being invoked. Generate your response based on 'requestParameters' and send it via 'agent_llm' tool, include 'agentLLMResponse', this 'interactionId' and 'projectRoot', exclude 'delegatedCallDetails' parameter." +
+				(customInstructions ? ` ${customInstructions}` : '')
+		};
+
+		const response = { ...createContentResponse(payload), isError: false };
+
+		return { delegated: true, response };
 	}
 	return { delegated: false };
 }
@@ -891,6 +889,5 @@ export {
 	getRawProjectRootFromSession,
 	withNormalizedProjectRoot,
 	createAgentDelegationResponse,
-    handleAgentLLMDelegation,
 	checkProgressCapability
 };

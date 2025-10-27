@@ -295,9 +295,12 @@ async function updateSubtaskById(
 				context,
 				role,
 				{
-					subtaskId: subtaskId,
-					originalUserPrompt: prompt,
-					serviceType: 'generateText'
+					subtaskId,
+					originalUserPrompt: prompt
+				},
+				{
+					serviceType: 'generateText',
+					commandName: 'update-subtask'
 				}
 			);
 			if (delegationResult) return delegationResult;

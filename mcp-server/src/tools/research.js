@@ -10,7 +10,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot,
-	handleAgentLLMDelegation
+	createAgentDelegationResponse
 } from './utils.js';
 import { researchDirect } from '../core/task-master-core.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -100,7 +100,7 @@ export function registerResearchTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = handleAgentLLMDelegation(result, log, 'research');
+				const delegation = createAgentDelegationResponse(result, log, 'research');
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling
