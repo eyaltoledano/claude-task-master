@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.30.0",
+    "docs": "0.0.7",
+    "extension": "0.25.6",
+    "@tm/claude-code-plugin": "0.0.2"
+  },
+  "changesets": [
+    "fix-warning-box-alignment"
+  ]
+}
