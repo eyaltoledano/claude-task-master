@@ -81,7 +81,9 @@ export type AuthErrorCode =
 	| 'PKCE_INIT_FAILED'
 	| 'PKCE_FAILED'
 	| 'CODE_EXCHANGE_FAILED'
-	| 'SESSION_SET_FAILED';
+	| 'SESSION_SET_FAILED'
+	| 'CODE_AUTH_FAILED'
+	| 'INVALID_CODE';
 
 /**
  * Authentication error class

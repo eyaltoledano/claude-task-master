@@ -62,8 +62,22 @@ export class AuthCommand extends Command {
 	private addLoginCommand(): void {
 		this.command('login')
 			.description('Authenticate with tryhamster.com')
-			.action(async () => {
-				await this.executeLogin();
+			.argument(
+				'[token]',
+				'Authentication token (optional, for SSH/remote environments)'
+			)
+			.option('-y, --yes', 'Skip interactive prompts')
+			.addHelpText(
+				'after',
+				`
+Examples:
+  $ tm auth login         # Browser-based OAuth flow (interactive)
+  $ tm auth login <token> # Token-based authentication
+  $ tm auth login <token> -y # Non-interactive token auth (for scripts)
+`
+			)
+			.action(async (token?: string, options?: { yes?: boolean }) => {
+				await this.executeLogin(token, options?.yes);
 			});
 	}
 
@@ -103,9 +117,11 @@ export class AuthCommand extends Command {
 	/**
 	 * Execute login command
 	 */
-	private async executeLogin(): Promise<void> {
+	private async executeLogin(token?: string, yes?: boolean): Promise<void> {
 		try {
-			const result = await this.performInteractiveAuth();
+			const result = token
+				? await this.performTokenAuth(token, yes)
+				: await this.performInteractiveAuth(yes);
 			this.setLastResult(result);
 
 			if (!result.success) {
@@ -143,7 +159,7 @@ export class AuthCommand extends Command {
 	 */
 	private async executeStatus(): Promise<void> {
 		try {
-			const result = this.displayStatus();
+			const result = await this.displayStatus();
 			this.setLastResult(result);
 		} catch (error: any) {
 			displayError(error);
@@ -169,21 +185,28 @@ export class AuthCommand extends Command {
 	/**
 	 * Display authentication status
 	 */
-	private displayStatus(): AuthResult {
-		const credentials = this.authManager.getCredentials();
-
+	private async displayStatus(): Promise<AuthResult> {
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
-		if (credentials) {
-			console.log(chalk.green('✓ Authenticated'));
-			console.log(chalk.gray(`  Email: ${credentials.email || 'N/A'}`));
-			console.log(chalk.gray(`  User ID: ${credentials.userId}`));
-			console.log(
-				chalk.gray(`  Token Type: ${credentials.tokenType || 'standard'}`)
-			);
+		// Check if user has valid session
+		const hasSession = await this.authManager.hasValidSession();
 
-			if (credentials.expiresAt) {
-				const expiresAt = new Date(credentials.expiresAt);
+		if (hasSession) {
+			// Get session from Supabase (has tokens and expiry)
+			const session = await this.authManager.getSession();
+
+			// Get user context (has email, userId, org/brief selection)
+			const context = this.authManager.getContext();
+			const contextStore = this.authManager.getStoredContext();
+
+			console.log(chalk.green('✓ Authenticated'));
+			console.log(chalk.gray(`  Email: ${contextStore?.email || 'N/A'}`));
+			console.log(chalk.gray(`  User ID: ${contextStore?.userId || 'N/A'}`));
+			console.log(chalk.gray(`  Token Type: standard`));
+
+			// Display expiration info
+			if (session?.expires_at) {
+				const expiresAt = new Date(session.expires_at * 1000);
 				const now = new Date();
 				const timeRemaining = expiresAt.getTime() - now.getTime();
 				const hoursRemaining = Math.floor(timeRemaining / (1000 * 60 * 60));
@@ -210,13 +233,32 @@ export class AuthCommand extends Command {
 						chalk.yellow(`  Expired at: ${expiresAt.toLocaleString()}`)
 					);
 				}
-			} else {
-				console.log(chalk.gray('  Expires: Never (API key)'));
 			}
 
-			console.log(
-				chalk.gray(`  Saved: ${new Date(credentials.savedAt).toLocaleString()}`)
-			);
+			// Display context if available
+			if (context) {
+				console.log(chalk.gray('\n  Context:'));
+				if (context.orgName) {
+					console.log(chalk.gray(`    Organization: ${context.orgName}`));
+				}
+				if (context.briefName) {
+					console.log(chalk.gray(`    Brief: ${context.briefName}`));
+				}
+			}
+
+			// Build credentials for backward compatibility
+			const credentials = {
+				token: session?.access_token || '',
+				refreshToken: session?.refresh_token,
+				userId: contextStore?.userId || '',
+				email: contextStore?.email,
+				expiresAt: session?.expires_at
+					? new Date(session.expires_at * 1000).toISOString()
+					: undefined,
+				tokenType: 'standard' as const,
+				savedAt: contextStore?.lastUpdated || new Date().toISOString(),
+				selectedContext: context || undefined
+			};
 
 			return {
 				success: true,
@@ -307,11 +349,12 @@ export class AuthCommand extends Command {
 	/**
 	 * Perform interactive authentication
 	 */
-	private async performInteractiveAuth(): Promise<AuthResult> {
+	private async performInteractiveAuth(yes?: boolean): Promise<AuthResult> {
 		ui.displayBanner('Task Master Authentication');
+		const isAuthenticated = await this.authManager.hasValidSession();
 
-		// Check if already authenticated
-		if (this.authManager.isAuthenticated()) {
+		// Check if already authenticated (skip if --yes is used)
+		if (isAuthenticated && !yes) {
 			const { continueAuth } = await inquirer.prompt([
 				{
 					type: 'confirm',
@@ -323,7 +366,7 @@ export class AuthCommand extends Command {
 			]);
 
 			if (!continueAuth) {
-				const credentials = this.authManager.getCredentials();
+				const credentials = await this.authManager.getAuthCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -349,35 +392,43 @@ export class AuthCommand extends Command {
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
 
-			// Post-auth: Set up workspace context
-			console.log(); // Add spacing
-			try {
-				const contextCommand = new ContextCommand();
-				const contextResult = await contextCommand.setupContextInteractive();
-				if (contextResult.success) {
-					if (contextResult.orgSelected && contextResult.briefSelected) {
+			// Post-auth: Set up workspace context (skip if --yes flag is used)
+			if (!yes) {
+				console.log(); // Add spacing
+				try {
+					const contextCommand = new ContextCommand();
+					const contextResult = await contextCommand.setupContextInteractive();
+					if (contextResult.success) {
+						if (contextResult.orgSelected && contextResult.briefSelected) {
+							console.log(
+								chalk.green('✓ Workspace context configured successfully')
+							);
+						} else if (contextResult.orgSelected) {
+							console.log(chalk.green('✓ Organization selected'));
+						}
+					} else {
 						console.log(
-							chalk.green('✓ Workspace context configured successfully')
+							chalk.yellow('⚠ Context setup was skipped or encountered issues')
 						);
-					} else if (contextResult.orgSelected) {
-						console.log(chalk.green('✓ Organization selected'));
+						console.log(
+							chalk.gray('  You can set up context later with "tm context"')
+						);
 					}
-				} else {
-					console.log(
-						chalk.yellow('⚠ Context setup was skipped or encountered issues')
-					);
+				} catch (contextError) {
+					console.log(chalk.yellow('⚠ Context setup encountered an error'));
 					console.log(
 						chalk.gray('  You can set up context later with "tm context"')
 					);
+					if (process.env.DEBUG) {
+						console.error(chalk.gray((contextError as Error).message));
+					}
 				}
-			} catch (contextError) {
-				console.log(chalk.yellow('⚠ Context setup encountered an error'));
+			} else {
 				console.log(
-					chalk.gray('  You can set up context later with "tm context"')
+					chalk.gray(
+						'\n  Skipped interactive setup. Use "tm context" to configure later.'
+					)
 				);
-				if (process.env.DEBUG) {
-					console.error(chalk.gray((contextError as Error).message));
-				}
 			}
 
 			return {
@@ -451,6 +502,96 @@ export class AuthCommand extends Command {
 	}
 
 	/**
+	 * Authenticate with token
+	 */
+	private async authenticateWithToken(token: string): Promise<AuthCredentials> {
+		const spinner = ora('Verifying authentication token...').start();
+
+		try {
+			const credentials = await this.authManager.authenticateWithCode(token);
+			spinner.succeed('Successfully authenticated!');
+			return credentials;
+		} catch (error) {
+			spinner.fail('Authentication failed');
+			throw error;
+		}
+	}
+
+	/**
+	 * Perform token-based authentication flow
+	 */
+	private async performTokenAuth(
+		token: string,
+		yes?: boolean
+	): Promise<AuthResult> {
+		ui.displayBanner('Task Master Authentication');
+
+		try {
+			// Authenticate with the token
+			const credentials = await this.authenticateWithToken(token);
+
+			ui.displaySuccess('Authentication successful!');
+			console.log(
+				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
+			);
+
+			// Post-auth: Set up workspace context (skip if --yes flag is used)
+			if (!yes) {
+				console.log(); // Add spacing
+				try {
+					const contextCommand = new ContextCommand();
+					const contextResult = await contextCommand.setupContextInteractive();
+					if (contextResult.success) {
+						if (contextResult.orgSelected && contextResult.briefSelected) {
+							console.log(
+								chalk.green('✓ Workspace context configured successfully')
+							);
+						} else if (contextResult.orgSelected) {
+							console.log(chalk.green('✓ Organization selected'));
+						}
+					} else {
+						console.log(
+							chalk.yellow('⚠ Context setup was skipped or encountered issues')
+						);
+						console.log(
+							chalk.gray('  You can set up context later with "tm context"')
+						);
+					}
+				} catch (contextError) {
+					console.log(chalk.yellow('⚠ Context setup encountered an error'));
+					console.log(
+						chalk.gray('  You can set up context later with "tm context"')
+					);
+					if (process.env.DEBUG) {
+						console.error(chalk.gray((contextError as Error).message));
+					}
+				}
+			} else {
+				console.log(
+					chalk.gray(
+						'\n  Skipped interactive setup. Use "tm context" to configure later.'
+					)
+				);
+			}
+
+			return {
+				success: true,
+				action: 'login',
+				credentials,
+				message: 'Authentication successful'
+			};
+		} catch (error) {
+			displayError(error, { skipExit: true });
+
+			return {
+				success: false,
+				action: 'login',
+				message: `Authentication failed: ${(error as Error).message}`
+			};
+		}
+	}
+
+	/**
 	 * Set the last result for programmatic access
 	 */
 	private setLastResult(result: AuthResult): void {
@@ -465,17 +606,10 @@ export class AuthCommand extends Command {
 	}
 
 	/**
-	 * Get current authentication status (for programmatic usage)
-	 */
-	isAuthenticated(): boolean {
-		return this.authManager.isAuthenticated();
-	}
-
-	/**
 	 * Get current credentials (for programmatic usage)
 	 */
-	getCredentials(): AuthCredentials | null {
-		return this.authManager.getCredentials();
+	async getCredentials(): Promise<AuthCredentials | null> {
+		return this.authManager.getAuthCredentials();
 	}
 
 	/**

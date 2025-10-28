@@ -99,8 +99,9 @@ export class ExportService {
 	 * Export tasks to a brief
 	 */
 	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
 		// Validate authentication
-		if (!this.authManager.isAuthenticated()) {
+		if (!isAuthenticated) {
 			throw new TaskMasterError(
 				'Authentication required for export',
 				ERROR_CODES.AUTHENTICATION_ERROR
@@ -383,8 +384,8 @@ export class ExportService {
 			};
 
 			// Get auth token
-			const credentials = await this.authManager.getCredentials();
-			if (!credentials || !credentials.token) {
+			const accessToken = await this.authManager.getAccessToken();
+			if (!accessToken) {
 				throw new Error('Not authenticated');
 			}
 
@@ -393,7 +394,7 @@ export class ExportService {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${credentials.token}`
+					Authorization: `Bearer ${accessToken}`
 				},
 				body: JSON.stringify(requestBody)
 			});

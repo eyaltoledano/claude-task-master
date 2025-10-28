@@ -71,7 +71,7 @@ export class TaskService {
 		const storageConfig = this.configManager.getStorageConfig();
 		const projectRoot = this.configManager.getProjectRoot();
 
-		this.storage = StorageFactory.createFromStorageConfig(
+		this.storage = await StorageFactory.createFromStorageConfig(
 			storageConfig,
 			projectRoot
 		);

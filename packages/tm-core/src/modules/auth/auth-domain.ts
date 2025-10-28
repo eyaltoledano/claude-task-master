@@ -44,17 +44,38 @@ export class AuthDomain {
 	// ========== Authentication ==========
 
 	/**
-	 * Check if user is authenticated
+	 * Check if valid Supabase session exists
 	 */
-	isAuthenticated(): boolean {
-		return this.authManager.isAuthenticated();
+	async hasValidSession(): Promise<boolean> {
+		return this.authManager.hasValidSession();
+	}
+
+	/**
+	 * Get the current Supabase session with full details
+	 */
+	async getSession() {
+		return this.authManager.getSession();
+	}
+
+	/**
+	 * Get stored user context (userId, email)
+	 */
+	getStoredContext() {
+		return this.authManager.getStoredContext();
 	}
 
 	/**
 	 * Get stored credentials
 	 */
-	getCredentials(): AuthCredentials | null {
-		return this.authManager.getCredentials();
+	async getCredentials(): Promise<AuthCredentials | null> {
+		return this.authManager.getAuthCredentials();
+	}
+
+	/**
+	 * Get access token from current session
+	 */
+	async getAccessToken(): Promise<string | null> {
+		return this.authManager.getAccessToken();
 	}
 
 	/**
@@ -64,6 +85,14 @@ export class AuthDomain {
 		options?: OAuthFlowOptions
 	): Promise<AuthCredentials> {
 		return this.authManager.authenticateWithOAuth(options);
+	}
+
+	/**
+	 * Authenticate using a one-time token
+	 * Useful for CLI authentication in SSH/remote environments
+	 */
+	async authenticateWithCode(token: string): Promise<AuthCredentials> {
+		return this.authManager.authenticateWithCode(token);
 	}
 
 	/**
@@ -99,14 +128,14 @@ export class AuthDomain {
 	/**
 	 * Update user context
 	 */
-	updateContext(context: Partial<UserContext>): void {
+	async updateContext(context: Partial<UserContext>): Promise<void> {
 		return this.authManager.updateContext(context);
 	}
 
 	/**
 	 * Clear user context
 	 */
-	clearContext(): void {
+	async clearContext(): Promise<void> {
 		return this.authManager.clearContext();
 	}
 
