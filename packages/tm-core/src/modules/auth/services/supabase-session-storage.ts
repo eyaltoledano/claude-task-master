@@ -1,206 +1,123 @@
 /**
- * Custom storage adapter for Supabase Auth sessions in CLI environment
- * Implements the SupportedStorage interface required by Supabase Auth
+ * Barebones storage adapter for Supabase Auth sessions
  *
- * This adapter bridges Supabase's session management with our existing
- * auth.json credential storage, maintaining backward compatibility
+ * This is a simple key-value store that lets Supabase manage sessions
+ * without interference. No parsing, no merging, no guessing - just storage.
+ *
+ * Supabase handles:
+ * - Session refresh and token rotation
+ * - Expiry checking
+ * - Token validation
+ *
+ * We handle:
+ * - Simple get/set/remove/clear operations
+ * - Persistence to ~/.taskmaster/session.json
  */
 
 import type { SupportedStorage } from '@supabase/supabase-js';
-import { CredentialStore } from './credential-store.js';
-import type { AuthCredentials } from '../types.js';
+import fs from 'fs';
+import path from 'path';
 import { getLogger } from '../../../common/logger/index.js';
 
-const STORAGE_KEY = 'sb-taskmaster-auth-token';
+const DEFAULT_SESSION_FILE = path.join(
+	process.env.HOME || process.env.USERPROFILE || '~',
+	'.taskmaster',
+	'session.json'
+);
 
 export class SupabaseSessionStorage implements SupportedStorage {
-	private store: CredentialStore;
+	private storage: Map<string, string> = new Map();
+	private persistPath: string;
 	private logger = getLogger('SupabaseSessionStorage');
 
-	constructor(store: CredentialStore) {
-		this.store = store;
+	constructor(persistPath: string = DEFAULT_SESSION_FILE) {
+		this.persistPath = persistPath;
+		this.load();
 	}
 
 	/**
-	 * Build a Supabase session object from our credentials
+	 * Load session data from disk on initialization
 	 */
-	private buildSessionFromCredentials(credentials: AuthCredentials): any {
-		// Create a session object that Supabase expects
-		const session = {
-			access_token: credentials.token,
-			refresh_token: credentials.refreshToken || '',
-			// Don't default to arbitrary values - let Supabase handle refresh
-			...(credentials.expiresAt && {
-				expires_at: Math.floor(new Date(credentials.expiresAt).getTime() / 1000)
-			}),
-			token_type: 'bearer',
-			user: {
-				id: credentials.userId,
-				email: credentials.email || ''
-			}
-		};
-		return session;
-	}
-
-	/**
-	 * Parse a Supabase session back to our credentials
-	 */
-	private parseSessionToCredentials(
-		sessionData: any
-	): Partial<AuthCredentials> {
+	private load(): void {
 		try {
-			// Handle both string and object formats (Supabase may pass either)
-			const session =
-				typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData;
-
-			return {
-				token: session.access_token,
-				refreshToken: session.refresh_token,
-				userId: session.user?.id,
-				email: session.user?.email,
-				expiresAt: session.expires_at
-					? new Date(session.expires_at * 1000).toISOString()
-					: undefined
-			};
+			if (fs.existsSync(this.persistPath)) {
+				const data = JSON.parse(fs.readFileSync(this.persistPath, 'utf8'));
+				Object.entries(data).forEach(([k, v]) =>
+					this.storage.set(k, v as string)
+				);
+				this.logger.debug('Loaded session from disk', {
+					keys: Array.from(this.storage.keys())
+				});
+			}
 		} catch (error) {
-			this.logger.error('Error parsing session:', error);
-			return {};
+			this.logger.error('Failed to load session:', error);
+			// Don't throw - allow starting with fresh session
 		}
 	}
 
 	/**
-	 * Get item from storage - Supabase will request the session with a specific key
+	 * Persist session data to disk immediately
+	 */
+	private persist(): void {
+		try {
+			// Ensure directory exists
+			const dir = path.dirname(this.persistPath);
+			if (!fs.existsSync(dir)) {
+				fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+			}
+
+			// Write atomically with temp file
+			const data = Object.fromEntries(this.storage);
+			const tempFile = `${this.persistPath}.tmp`;
+			fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), {
+				mode: 0o600
+			});
+			fs.renameSync(tempFile, this.persistPath);
+
+			this.logger.debug('Persisted session to disk');
+		} catch (error) {
+			this.logger.error('Failed to persist session:', error);
+			// Don't throw - session is still in memory
+		}
+	}
+
+	/**
+	 * Get item from storage
+	 * Supabase will call this to retrieve session data
 	 */
 	getItem(key: string): string | null {
-		// Supabase uses a specific key pattern for sessions
-		if (key === STORAGE_KEY || key.includes('auth-token')) {
-			try {
-				// Get credentials and let Supabase handle expiry/refresh internally
-				const credentials = this.store.getCredentials();
-
-				// Only return a session if we have BOTH access token AND refresh token
-				// Supabase will handle refresh if session is expired
-				if (!credentials?.token || !credentials?.refreshToken) {
-					this.logger.debug('No valid credentials found');
-					return null;
-				}
-
-				const session = this.buildSessionFromCredentials(credentials);
-				return JSON.stringify(session);
-			} catch (error) {
-				this.logger.error('Error getting session:', error);
-			}
-		}
-		// Return null if no valid session exists - Supabase expects this
-		return null;
+		const value = this.storage.get(key) ?? null;
+		this.logger.debug('getItem called', { key, hasValue: !!value });
+		return value;
 	}
 
 	/**
-	 * Set item in storage - Supabase will store the session with a specific key
-	 * CRITICAL: This is called during refresh token rotation - must be atomic
+	 * Set item in storage
+	 * Supabase will call this to store/update session data
+	 * CRITICAL: This is called during token refresh - must persist immediately
 	 */
 	setItem(key: string, value: string): void {
-		// Only handle Supabase session keys
-		if (key === STORAGE_KEY || key.includes('auth-token')) {
-			try {
-				this.logger.info('Supabase called setItem - storing refreshed session');
-
-				// Parse the session and update our credentials
-				const sessionUpdates = this.parseSessionToCredentials(value);
-				const existingCredentials = this.store.getCredentials({
-					allowExpired: true
-				});
-
-				// CRITICAL: Only save if we have both tokens - prevents partial session states
-				// Refresh token rotation means we MUST persist the new refresh token immediately
-				if (!sessionUpdates.token || !sessionUpdates.refreshToken) {
-					this.logger.warn(
-						'Received incomplete session update - skipping save to prevent token rotation issues',
-						{
-							hasToken: !!sessionUpdates.token,
-							hasRefreshToken: !!sessionUpdates.refreshToken
-						}
-					);
-					return;
-				}
-
-				// Log the refresh token rotation for debugging
-				const isRotation =
-					existingCredentials?.refreshToken !== sessionUpdates.refreshToken;
-				if (isRotation) {
-					this.logger.debug(
-						'Refresh token rotated - storing new refresh token atomically'
-					);
-				}
-
-				// Build updated credentials - ATOMIC update of both tokens
-				const userId = sessionUpdates.userId ?? existingCredentials?.userId;
-
-				// Runtime assertion: userId is required for AuthCredentials
-				if (!userId) {
-					this.logger.error(
-						'Cannot save credentials: userId is missing from both session update and existing credentials'
-					);
-					throw new Error('Invalid session state: userId is required');
-				}
-
-				const updatedCredentials: AuthCredentials = {
-					...(existingCredentials ?? {}),
-					token: sessionUpdates.token,
-					refreshToken: sessionUpdates.refreshToken,
-					expiresAt: sessionUpdates.expiresAt,
-					userId,
-					email: sessionUpdates.email ?? existingCredentials?.email,
-					savedAt: new Date().toISOString(),
-					selectedContext: existingCredentials?.selectedContext
-				} as AuthCredentials;
-
-				// Save synchronously to ensure atomicity during refresh
-				this.store.saveCredentials(updatedCredentials);
-
-				this.logger.info(
-					'Successfully saved refreshed credentials from Supabase',
-					{
-						tokenRotated: isRotation,
-						expiresAt: updatedCredentials.expiresAt
-					}
-				);
-			} catch (error) {
-				this.logger.error('Error setting session:', error);
-			}
-		}
+		this.logger.debug('setItem called', { key });
+		this.storage.set(key, value);
+		this.persist(); // Immediately persist on every write
 	}
 
 	/**
-	 * Remove item from storage - Called when signing out
+	 * Remove item from storage
+	 * Supabase will call this during sign out
 	 */
 	removeItem(key: string): void {
-		if (key === STORAGE_KEY || key.includes('auth-token')) {
-			// Don't actually remove credentials, just clear the tokens
-			// This preserves other data like selectedContext
-			try {
-				const credentials = this.store.getCredentials({ allowExpired: true });
-				if (credentials) {
-					// Keep context but clear auth tokens
-					const clearedCredentials: AuthCredentials = {
-						...credentials,
-						token: '',
-						refreshToken: undefined,
-						expiresAt: undefined
-					} as AuthCredentials;
-					this.store.saveCredentials(clearedCredentials);
-				}
-			} catch (error) {
-				this.logger.error('Error removing session:', error);
-			}
-		}
+		this.logger.debug('removeItem called', { key });
+		this.storage.delete(key);
+		this.persist();
 	}
 
 	/**
 	 * Clear all session data
 	 */
 	clear(): void {
-		// Clear auth tokens but preserve context
-		this.removeItem(STORAGE_KEY);
+		this.logger.debug('clear called');
+		this.storage.clear();
+		this.persist();
 	}
 }

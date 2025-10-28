@@ -113,7 +113,7 @@ export class ContextCommand extends Command {
 	 */
 	private async executeShow(): Promise<void> {
 		try {
-			const result = this.displayContext();
+			const result = await this.displayContext();
 			this.setLastResult(result);
 		} catch (error: any) {
 			displayError(error);
@@ -123,9 +123,10 @@ export class ContextCommand extends Command {
 	/**
 	 * Display current context
 	 */
-	private displayContext(): ContextResult {
+	private async displayContext(): Promise<ContextResult> {
 		// Check authentication first
-		if (!this.authManager.isAuthenticated()) {
+		const hasSession = await this.authManager.hasValidSession();
+		if (!hasSession) {
 			console.log(chalk.yellow('✗ Not authenticated'));
 			console.log(chalk.gray('\n  Run "tm auth login" to authenticate first'));
 
@@ -200,7 +201,8 @@ export class ContextCommand extends Command {
 	private async executeSelectOrg(): Promise<void> {
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
@@ -250,7 +252,7 @@ export class ContextCommand extends Command {
 			]);
 
 			// Update context
-			this.authManager.updateContext({
+			await this.authManager.updateContext({
 				orgId: selectedOrg.id,
 				orgName: selectedOrg.name,
 				orgSlug: selectedOrg.slug,
@@ -279,7 +281,8 @@ export class ContextCommand extends Command {
 	private async executeSelectBrief(): Promise<void> {
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
@@ -371,7 +374,7 @@ export class ContextCommand extends Command {
 				const briefName =
 					selectedBrief.document?.title ||
 					`Brief ${selectedBrief.id.slice(0, 8)}`;
-				this.authManager.updateContext({
+				await this.authManager.updateContext({
 					briefId: selectedBrief.id,
 					briefName: briefName
 				});
@@ -386,7 +389,7 @@ export class ContextCommand extends Command {
 				};
 			} else {
 				// Clear brief selection
-				this.authManager.updateContext({
+				await this.authManager.updateContext({
 					briefId: undefined,
 					briefName: undefined
 				});
@@ -412,7 +415,8 @@ export class ContextCommand extends Command {
 	private async executeClear(): Promise<void> {
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
@@ -458,7 +462,8 @@ export class ContextCommand extends Command {
 	private async executeSet(options: any): Promise<void> {
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
@@ -481,7 +486,8 @@ export class ContextCommand extends Command {
 		let spinner: Ora | undefined;
 		try {
 			// Check authentication
-			if (!this.authManager.isAuthenticated()) {
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
@@ -520,7 +526,7 @@ export class ContextCommand extends Command {
 			// Update context: set org and brief
 			const briefName =
 				brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
-			this.authManager.updateContext({
+			await this.authManager.updateContext({
 				orgId: brief.accountId,
 				orgName,
 				orgSlug,
@@ -642,7 +648,7 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			this.authManager.updateContext(context);
+			await this.authManager.updateContext(context);
 			ui.displaySuccess('Context updated');
 
 			// Display what was set

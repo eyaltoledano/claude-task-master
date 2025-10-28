@@ -11,17 +11,14 @@ import {
 import { AuthenticationError } from '../../auth/types.js';
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
-import { CredentialStore } from '../../auth/services/credential-store.js';
 
 export class SupabaseAuthClient {
 	private client: SupabaseJSClient | null = null;
 	private sessionStorage: SupabaseSessionStorage;
 	private logger = getLogger('SupabaseAuthClient');
-	private credentialStore: CredentialStore;
 
 	constructor() {
-		this.credentialStore = CredentialStore.getInstance();
-		this.sessionStorage = new SupabaseSessionStorage(this.credentialStore);
+		this.sessionStorage = new SupabaseSessionStorage();
 	}
 
 	/**
@@ -311,6 +308,52 @@ export class SupabaseAuthClient {
 			throw new AuthenticationError(
 				`Failed to set session: ${(error as Error).message}`,
 				'SESSION_SET_FAILED'
+			);
+		}
+	}
+
+	/**
+	 * Verify a one-time token and create a session
+	 * Used for CLI authentication with pre-generated tokens
+	 */
+	async verifyOneTimeCode(token: string): Promise<Session> {
+		const client = this.getClient();
+
+		try {
+			this.logger.info('Verifying authentication token...');
+
+			// Use Supabase's verifyOtp for token verification
+			// Using token_hash with magiclink type doesn't require email
+			const { data, error } = await client.auth.verifyOtp({
+				token_hash: token,
+				type: 'magiclink'
+			});
+
+			if (error) {
+				this.logger.error('Failed to verify token:', error);
+				throw new AuthenticationError(
+					`Failed to verify token: ${error.message}`,
+					'INVALID_CODE'
+				);
+			}
+
+			if (!data?.session) {
+				throw new AuthenticationError(
+					'No session returned from token verification',
+					'INVALID_RESPONSE'
+				);
+			}
+
+			this.logger.info('Successfully verified authentication token');
+			return data.session;
+		} catch (error) {
+			if (error instanceof AuthenticationError) {
+				throw error;
+			}
+
+			throw new AuthenticationError(
+				`Token verification failed: ${(error as Error).message}`,
+				'CODE_AUTH_FAILED'
 			);
 		}
 	}
