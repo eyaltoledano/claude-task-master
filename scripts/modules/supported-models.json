@@ -892,6 +892,52 @@
 			"reason": "Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use."
 		}
 	],
+	"glm": [
+		{
+			"id": "glm-4-plus",
+			"swe_score": 0.65,
+			"cost_per_1m_tokens": {
+				"input": 0.5,
+				"output": 2.0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768,
+			"supported": true
+		},
+		{
+			"id": "glm-4-air",
+			"swe_score": 0.6,
+			"cost_per_1m_tokens": {
+				"input": 0.1,
+				"output": 0.3
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 8192,
+			"supported": true
+		},
+		{
+			"id": "glm-4-flash",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": {
+				"input": 0.05,
+				"output": 0.15
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 4096,
+			"supported": true
+		},
+		{
+			"id": "glm-4-long",
+			"swe_score": 0.6,
+			"cost_per_1m_tokens": {
+				"input": 0.5,
+				"output": 2.0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		}
+	],
 	"ollama": [
 		{
 			"id": "gpt-oss:latest",

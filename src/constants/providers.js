@@ -8,6 +8,7 @@ export const VALIDATED_PROVIDERS = [
 	'anthropic',
 	'openai',
 	'google',
+	'glm',
 	'perplexity',
 	'xai',
 	'groq',
