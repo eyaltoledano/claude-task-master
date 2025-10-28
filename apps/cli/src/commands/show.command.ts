@@ -31,6 +31,7 @@ export interface ShowTaskResult {
 	task: Task | null;
 	found: boolean;
 	storageType: Exclude<StorageType, 'auto'>;
+	originalTaskId?: string; // The original task ID requested (for subtasks like "104.1")
 }
 
 /**
@@ -161,7 +162,8 @@ export class ShowCommand extends Command {
 		return {
 			task: result.task,
 			found: result.task !== null,
-			storageType: storageType as Exclude<StorageType, 'auto'>
+			storageType: storageType as Exclude<StorageType, 'auto'>,
+			originalTaskId: result.isSubtask ? taskId : undefined
 		};
 	}
 
@@ -262,9 +264,11 @@ export class ShowCommand extends Command {
 		console.log(); // Add spacing
 
 		// Use the global task details display function
+		// Pass the original requested ID if it's a subtask
 		displayTaskDetails(result.task, {
 			statusFilter: options.status,
-			showSuggestedActions: true
+			showSuggestedActions: true,
+			originalTaskId: result.originalTaskId
 		});
 	}
 

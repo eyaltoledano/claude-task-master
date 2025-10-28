@@ -9,7 +9,7 @@ import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
 
-import type { Task, TaskStatus } from '../../common/types/index.js';
+import type { Subtask, Task, TaskStatus } from '../../common/types/index.js';
 import type {
 	TaskListResult,
 	GetTaskListOptions
@@ -63,7 +63,7 @@ export class TasksDomain {
 	async get(
 		taskId: string,
 		tag?: string
-	): Promise<{ task: Task | null; isSubtask: boolean }> {
+	): Promise<{ task: Task | null; isSubtask: false } | { task: Subtask | null; isSubtask: true }> {
 		// Parse ID - check for dot notation (subtask)
 		const parts = taskId.split('.');
 		const parentId = parts[0];
@@ -75,13 +75,17 @@ export class TasksDomain {
 			return { task: null, isSubtask: false };
 		}
 
-		// Handle subtask notation (1.2, HAM-123.2)
+		// Handle subtask notation (1.2)
 		if (subtaskIdPart && task.subtasks) {
 			const subtask = task.subtasks.find(
 				(st) => String(st.id) === subtaskIdPart
 			);
-			// Return parent task with isSubtask flag
-			return { task, isSubtask: !!subtask };
+			if (subtask) {
+				// Return the actual subtask, not the parent
+				return { task: { ...subtask, id: String(subtask.id)}, isSubtask: true };
+			}
+			// Subtask ID provided but not found
+			return { task: null, isSubtask: true };
 		}
 
 		// It's a regular task
