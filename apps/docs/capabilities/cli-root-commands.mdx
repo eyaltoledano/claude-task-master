@@ -206,4 +206,26 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Authentication">
+    ```bash
+    # Login with browser OAuth flow (interactive)
+    task-master auth login
+
+    # Login with authentication token (for SSH/remote environments)  
+    task-master auth login <token>
+
+    # Non-interactive token authentication (for scripts)
+    task-master auth login <token> -y
+
+    # Check authentication status
+    task-master auth status
+
+    # Refresh authentication token
+    task-master auth refresh
+
+    # Logout and clear credentials
+    task-master auth logout
+    ```
+  </Accordion>
 </AccordionGroup>

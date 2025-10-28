@@ -206,6 +206,30 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
   </Accordion>
 
+  <Accordion title="Authentication">
+    ```bash
+    # Login with browser OAuth flow (interactive)
+    task-master auth login
+
+    # Login with authentication token (for SSH/remote environments)  
+    task-master auth login <token>
+
+    # Non-interactive token authentication (for scripts)
+    task-master auth login <token> -y
+
+    # Check authentication status
+    task-master auth status
+
+    # Refresh authentication token
+    task-master auth refresh
+
+    # Logout and clear credentials
+    task-master auth logout
+    ```
+
+    Authentication enables cloud features including remote task storage and team collaboration. The browser OAuth flow is recommended for interactive use, while token authentication is useful for SSH/remote environments and automation scripts.
+  </Accordion>
+
   <Accordion title="TDD Workflow (Autopilot)">
     ```bash
     # Start autonomous TDD workflow for a task
