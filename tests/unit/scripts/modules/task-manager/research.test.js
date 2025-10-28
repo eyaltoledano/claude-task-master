@@ -5,6 +5,18 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
+	getTasksForTag: jest.fn((data, tag) => {
+		const tagName = tag || 'master';
+		if (data && data[tagName] && Array.isArray(data[tagName].tasks)) {
+			return data[tagName].tasks;
+		}
+		// Handle legacy format for master tag
+		if (tagName === 'master' && data && Array.isArray(data.tasks)) {
+			return data.tasks;
+		}
+		return [];
+	}),
+	setTasksForTag: jest.fn(),
 	flattenTasksWithSubtasks: jest.fn(() => []),
 	isEmpty: jest.fn(() => false),
 	createLogger: jest.fn(() => ({
@@ -158,11 +170,27 @@ describe('performResearch tag-aware functionality', () => {
 
 		// Set up default mocks
 		utils.findProjectRoot.mockReturnValue('/test/project/root');
-		utils.readJSON.mockResolvedValue({
-			tasks: [
-				{ id: 1, title: 'Task 1', description: 'Description 1' },
-				{ id: 2, title: 'Task 2', description: 'Description 2' }
-			]
+		utils.readJSON.mockImplementation(async (path, root, tag) => {
+			const tagName = tag || 'master';
+			const testData = {
+				master: {
+					tasks: [{ id: 1, title: 'Master Task 1' }]
+				},
+				'feature-branch': {
+					tasks: [{ id: 2, title: 'Feature Task 2' }]
+				},
+				development: {
+					tasks: [
+						{ id: 1, title: 'Dev Task 1' },
+						{ id: 2, title: 'Dev Task 2' }
+					]
+				},
+				'integration-test': {
+					tasks: [{ id: 5, title: 'Integration Test Task' }]
+				}
+				// Add other tags as needed for tests
+			};
+			return Promise.resolve(testData);
 		});
 		utils.flattenTasksWithSubtasks.mockReturnValue([
 			{ id: 1, title: 'Task 1', description: 'Description 1' },

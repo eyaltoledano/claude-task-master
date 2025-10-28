@@ -1,8 +1,5 @@
 import { jest } from '@jest/globals'; // Ensure jest is imported for unstable_mockModule
-import {
-	createErrorResponse as actualCreateErrorResponse,
-	withNormalizedProjectRoot as actualWithNormalizedProjectRoot
-} from '../../../../../mcp-server/src/tools/utils.js';
+
 
 // Mock uuid to return a fixed value for predictable interactionId testing
 // Changed to unstable_mockModule and used jest.fn()

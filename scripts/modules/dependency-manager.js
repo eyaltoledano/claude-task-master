@@ -254,7 +254,7 @@ async function removeDependency(tasksPath, taskId, dependencyId, context = {}) {
 	const data = readJSON(tasksPath, context.projectRoot, context.tag);
 	const tag = context.tag || 'master';
 	const tasks = getTasksForTag(data, tag);
-	if (!data || !tasks) {
+	if (!data || !Array.isArray(tasks)) {
 		log('error', 'No valid tasks found.');
 		process.exit(1);
 	}

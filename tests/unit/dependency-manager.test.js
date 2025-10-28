@@ -1082,7 +1082,7 @@ describe('Dependency Manager Module', () => {
 				TEST_TASKS_PATH,
 				expect.anything(),
 				'/test',
-				undefined
+				'master'
 			);
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
@@ -1123,7 +1123,7 @@ describe('Dependency Manager Module', () => {
 				TEST_TASKS_PATH,
 				expect.anything(),
 				'/test',
-				undefined
+				'master'
 			);
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
