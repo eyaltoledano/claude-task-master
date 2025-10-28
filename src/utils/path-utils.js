@@ -59,17 +59,19 @@ export function normalizeProjectRoot(projectRoot) {
  */
 export function findProjectRoot(startDir = process.cwd()) {
 	// Task Master specific markers (checked across all parent directories first)
+	// ONLY truly Task Master-specific markers that uniquely identify a Task Master project
 	const taskmasterMarkers = [
 		'.taskmaster', // Task Master directory (absolute highest priority)
 		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
 		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
-		LEGACY_CONFIG_FILE, // .taskmasterconfig (legacy)
-		LEGACY_TASKS_FILE, // tasks/tasks.json (legacy)
-		'tasks.json' // Root tasks.json (legacy)
+		LEGACY_CONFIG_FILE // .taskmasterconfig (legacy but still Task Master-specific)
 	];
 
 	// Other project markers (only checked if no Task Master markers found)
+	// Includes generic task files that could belong to any task runner/build system
 	const otherProjectMarkers = [
+		LEGACY_TASKS_FILE, // tasks/tasks.json (NOT Task Master-specific)
+		'tasks.json', // Generic tasks file (NOT Task Master-specific)
 		'.git', // Git repository
 		'.svn', // SVN repository
 		'package.json', // Node.js project
