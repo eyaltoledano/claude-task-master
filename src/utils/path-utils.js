@@ -58,10 +58,10 @@ export function normalizeProjectRoot(projectRoot) {
  * @returns {string} - Project root path (falls back to current directory if no markers found)
  */
 export function findProjectRoot(startDir = process.cwd()) {
-	// Task Master specific markers (checked across all parent directories first)
+	// Task Master specific markers (absolute highest priority - checked across all parent directories first)
 	// ONLY truly Task Master-specific markers that uniquely identify a Task Master project
 	const taskmasterMarkers = [
-		'.taskmaster', // Task Master directory (absolute highest priority)
+		'.taskmaster', // Task Master directory
 		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
 		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
 		LEGACY_CONFIG_FILE // .taskmasterconfig (legacy but still Task Master-specific)
