@@ -21,7 +21,7 @@ async function _handlePostProcessing(
 	const projectRoot = originalToolArgs?.projectRoot || session?.roots?.[0]?.uri;
 	const tag =
 		llmRequestForAgent?.requestParameters?.tagInfo?.currentTag ||
-		getCurrentTag(projectRoot);
+		(projectRoot ? getCurrentTag(projectRoot) : 'master');
 
 	let postProcessingResult = { success: true };
 	let mainResultMessage = finalLLMOutput; // Default to returning the raw output

@@ -1613,15 +1613,24 @@ function createLogger(context = {}) {
 
 	return {
 		debug: (...args) => {
-			if (isMCP && typeof context.mcpLog.debug === 'function') {
+			if (isMCP) {
+				if (typeof context.mcpLog.debug === 'function') {
 				context.mcpLog.debug(...args);
-			} else if (!isMCP) {
+				} else {
+				context.mcpLog.info(...args);
+				}
+			} else {
 				log('debug', ...args);
 			}
 		},
 		error: (...args) => {
-			if (isMCP && typeof context.mcpLog.error === 'function') {
+			if (isMCP) {
+				if (typeof context.mcpLog.error === 'function') {
 				context.mcpLog.error(...args);
+				} else {
+				// Fallback to info in MCP mode to keep output JSON-valid
+				context.mcpLog.info(...args);
+				}
 			} else {
 				log('error', ...args);
 			}

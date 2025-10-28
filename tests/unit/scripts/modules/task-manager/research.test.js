@@ -6,7 +6,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
 	flattenTasksWithSubtasks: jest.fn(() => []),
-	isEmpty: jest.fn(() => false)
+	isEmpty: jest.fn(() => false),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 // Mock UI-affecting external libs to minimal no-op implementations

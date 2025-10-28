@@ -83,7 +83,7 @@ describe('agent_llm MCP Tool', () => {
 
 	test('Taskmaster-to-Agent flow: should generate interactionId if not provided', async () => {
 		const args = {
-			llmRequestForAgent: {
+			delegatedCallDetails: {
 				originalCommand: 'testCmd',
 				role: 'main',
 				serviceType: 'generateText',
@@ -113,7 +113,7 @@ describe('agent_llm MCP Tool', () => {
 	test('Taskmaster-to-Agent flow: should use provided interactionId', async () => {
 		const args = {
 			interactionId: 'provided-id-123',
-			llmRequestForAgent: {
+			delegatedCallDetails: {
 				originalCommand: 'testCmdWithId',
 				role: 'research',
 				serviceType: 'generateObject',
@@ -134,7 +134,7 @@ describe('agent_llm MCP Tool', () => {
 
 	test('Taskmaster-to-Agent flow (streamText)', async () => {
 		const args = {
-			llmRequestForAgent: {
+			delegatedCallDetails: {
 				originalCommand: 'testStream',
 				role: 'main',
 				serviceType: 'streamText',

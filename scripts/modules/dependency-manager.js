@@ -65,6 +65,9 @@ async function addDependency(tasksPath, taskId, dependencyId, context = {}) {
 		process.exit(1);
 	}
 
+	const tag = context.tag || 'master';
+	const tasks = getTasksForTag(data, tag);
+
 	// Format the task and dependency IDs correctly
 	const formattedTaskId =
 		typeof taskId === 'string' && taskId.includes('.')
@@ -1187,17 +1190,27 @@ function validateAndFixDependencies(
 
 	// Validate root tasksData structure
 	if (!tasksData || typeof tasksData !== 'object') {
-		logger.error('Invalid tasks data: root object is missing or invalid');
-		return false;
+	  throw new Error('Invalid tasks data: root object is missing or invalid');
+	}
+
+	// Check if the tag exists in the data structure
+	if (!tasksData[effectiveTag]) {
+	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
 	}
 
 	// Use getTasksForTag to safely obtain the tagged data, validate that the returned value exists and is an object
 	const effectiveTasksData = getTasksForTag(tasksData, effectiveTag);
 	if (!effectiveTasksData || !Array.isArray(effectiveTasksData)) {
-		logger.error(
-			`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`
-		);
-		return false;
+	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
+	}
+
+	// Additional validation for the tasks array content
+	if (tasksData[effectiveTag].tasks === null || tasksData[effectiveTag].tasks === undefined) {
+	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
+	}
+
+	if (!Array.isArray(tasksData[effectiveTag].tasks)) {
+	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
 	}
 
 	// Create a task data object with the validated tasks array

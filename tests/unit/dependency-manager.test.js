@@ -42,7 +42,14 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	disableSilentMode: jest.fn(),
 	getTaskManager: jest.fn(async () => ({})),
 	getTagAwareFilePath: jest.fn((basePath, _tag, projectRoot = '.') => basePath),
-	readComplexityReport: jest.fn(() => null)
+	readComplexityReport: jest.fn(() => null),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+		success: jest.fn(),
+		warn: jest.fn()
+	}))
 }));
 
 jest.mock('path');
@@ -774,17 +781,17 @@ describe('Dependency Manager Module', () => {
 
 		test('should handle invalid input', () => {
 			expect(() => validateAndFixDependencies(null)).toThrowError(
-				'Invalid tasks data'
+				'Invalid tasks data: root object is missing or invalid'
 			);
 			expect(() => validateAndFixDependencies({})).toThrowError(
-				'Invalid tasks data'
+				'Invalid tasks data: tag \'master\' is missing or has invalid structure'
 			);
 			expect(() =>
 				validateAndFixDependencies({ master: { tasks: null } })
-			).toThrowError('Invalid tasks data');
+			).toThrowError('Invalid tasks data: tag \'master\' is missing or has invalid structure');
 			expect(() =>
 				validateAndFixDependencies({ master: { tasks: 'not an array' } })
-			).toThrowError('Invalid tasks data');
+			).toThrowError('Invalid tasks data: tag \'master\' is missing or has invalid structure');
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
@@ -998,7 +1005,26 @@ describe('Dependency Manager Module', () => {
 				getTagAwareFilePath: jest.fn(
 					(basePath, _tag, projectRoot = '.') => basePath
 				),
-				readComplexityReport: jest.fn(() => null)
+				readComplexityReport: jest.fn(() => null),
+				createLogger: jest.fn(() => ({
+					debug: jest.fn(),
+					error: jest.fn(),
+					info: jest.fn(),
+					success: jest.fn(),
+					warn: jest.fn()
+				})),
+				getTasksForTag: jest.fn((data, tag) => {
+					// Handle the test data structure where tasks are at data.tasks
+					if (data.tasks && Array.isArray(data.tasks)) {
+						return data.tasks;
+					}
+					// Fallback to tagged structure
+					return data[tag]?.tasks || [];
+				}),
+				setTasksForTag: jest.fn((data, tag, tasks) => {
+					if (!data[tag]) data[tag] = {};
+					data[tag].tasks = tasks;
+				})
 			}));
 
 			// Also mock transitive imports to keep dependency surface minimal
@@ -1011,9 +1037,10 @@ describe('Dependency Manager Module', () => {
 			);
 			// Set up test data that matches the issue report
 			// Clone fixture data before each test to prevent mutation issues
-			mockReadJSON.mockImplementation(() =>
-				structuredClone(crossLevelDependencyTasks)
-			);
+			mockReadJSON.mockImplementation(() => ({
+				tasks: structuredClone(crossLevelDependencyTasks.tasks),
+				tag: 'master'
+			}));
 
 			// Configure mockTaskExists to properly validate cross-level dependencies
 			mockTaskExists.mockImplementation((tasks, taskId) => {
