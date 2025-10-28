@@ -520,7 +520,10 @@ Examples:
 	/**
 	 * Perform token-based authentication flow
 	 */
-	private async performTokenAuth(token: string, yes?: boolean): Promise<AuthResult> {
+	private async performTokenAuth(
+		token: string,
+		yes?: boolean
+	): Promise<AuthResult> {
 		ui.displayBanner('Task Master Authentication');
 
 		try {

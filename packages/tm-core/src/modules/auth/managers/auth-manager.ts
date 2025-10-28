@@ -89,16 +89,12 @@ export class AuthManager {
 			const hasSession = await this.hasValidSession();
 			if (hasSession) {
 				fs.unlinkSync(this.LEGACY_AUTH_FILE);
-				this.logger.info(
-					'Migrated to Supabase auth, removed legacy auth.json'
-				);
+				this.logger.info('Migrated to Supabase auth, removed legacy auth.json');
 				return;
 			}
 
 			// Otherwise, user needs to re-authenticate
-			this.logger.warn(
-				'Legacy auth.json found but no valid Supabase session.'
-			);
+			this.logger.warn('Legacy auth.json found but no valid Supabase session.');
 			this.logger.warn('Please run: task-master auth login');
 		} catch (error) {
 			this.logger.debug('Error during legacy auth migration:', error);
@@ -162,7 +158,6 @@ export class AuthManager {
 			selectedContext: context || undefined
 		};
 	}
-
 
 	/**
 	 * Start OAuth 2.0 Authorization Code Flow with browser handling
