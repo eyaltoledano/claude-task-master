@@ -225,7 +225,8 @@ describe('findProjectRoot', () => {
 				const normalized = path.normalize(checkPath);
 				// Parent has .taskmaster, subdirectory has generic tasks/tasks.json
 				if (normalized.includes('/project/.taskmaster')) return true;
-				if (normalized.includes('/project/subdir/tasks/tasks.json')) return true;
+				if (normalized.includes('/project/subdir/tasks/tasks.json'))
+					return true;
 				return false;
 			});
 
