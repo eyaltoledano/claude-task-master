@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.30.2
+
+### Patch Changes
+
+- [#1340](https://github.com/eyaltoledano/claude-task-master/pull/1340) [`d63a40c`](https://github.com/eyaltoledano/claude-task-master/commit/d63a40c6ddc1ed2fe418206a19acd3e9dc27fd99) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve session persistence reliability
+
 ## 0.30.1
 
 ### Patch Changes
