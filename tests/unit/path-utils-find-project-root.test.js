@@ -197,6 +197,46 @@ describe('findProjectRoot', () => {
 				mockExistsSync.mockRestore();
 			});
 		});
+
+		test('should not treat generic tasks.json as Task Master marker (Cursor bugfix)', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Parent has .taskmaster, subdirectory has generic tasks.json
+				if (normalized.includes('/project/.taskmaster')) return true;
+				if (normalized.includes('/project/subdir/tasks.json')) return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/project/subdir');
+
+			// Should find parent .taskmaster, NOT stop at subdir's tasks.json
+			// This proves tasks.json is correctly in second pass, not first pass
+			expect(result).toBe('/project');
+
+			mockExistsSync.mockRestore();
+		});
+
+		test('should not treat generic tasks/tasks.json as Task Master marker', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Parent has .taskmaster, subdirectory has generic tasks/tasks.json
+				if (normalized.includes('/project/.taskmaster')) return true;
+				if (normalized.includes('/project/subdir/tasks/tasks.json')) return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/project/subdir');
+
+			// Should find parent .taskmaster, NOT stop at subdir's tasks/tasks.json
+			// This proves LEGACY_TASKS_FILE is correctly in second pass, not first pass
+			expect(result).toBe('/project');
+
+			mockExistsSync.mockRestore();
+		});
 	});
 
 	describe('Edge Cases', () => {
