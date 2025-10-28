@@ -96,7 +96,7 @@ export function findProjectRoot(startDir = process.cwd()) {
 	// other project markers (like .git, go.mod, etc.) in subdirectories
 	let searchDir = currentDir;
 	depth = 0;
-	while (searchDir !== rootDir && depth < maxDepth) {
+	while (depth < maxDepth) {
 		for (const marker of taskmasterMarkers) {
 			const markerPath = path.join(searchDir, marker);
 			try {
@@ -108,6 +108,11 @@ export function findProjectRoot(startDir = process.cwd()) {
 				// Ignore permission errors and continue searching
 				continue;
 			}
+		}
+
+		// If we're at root, stop after checking it
+		if (searchDir === rootDir) {
+			break;
 		}
 
 		// Move up one directory level
@@ -126,7 +131,7 @@ export function findProjectRoot(startDir = process.cwd()) {
 	// Now search for other project markers starting from the original directory
 	currentDir = path.resolve(startDir);
 	depth = 0;
-	while (currentDir !== rootDir && depth < maxDepth) {
+	while (depth < maxDepth) {
 		for (const marker of otherProjectMarkers) {
 			const markerPath = path.join(currentDir, marker);
 			try {
@@ -138,6 +143,11 @@ export function findProjectRoot(startDir = process.cwd()) {
 				// Ignore permission errors and continue searching
 				continue;
 			}
+		}
+
+		// If we're at root, stop after checking it
+		if (currentDir === rootDir) {
+			break;
 		}
 
 		// Move up one directory level
