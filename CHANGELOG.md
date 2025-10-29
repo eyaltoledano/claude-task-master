@@ -1,5 +1,20 @@
 # task-master-ai
 
+## 0.30.2
+
+### Patch Changes
+
+- [#1340](https://github.com/eyaltoledano/claude-task-master/pull/1340) [`d63a40c`](https://github.com/eyaltoledano/claude-task-master/commit/d63a40c6ddc1ed2fe418206a19acd3e9dc27fd99) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve session persistence reliability
+
+## 0.30.1
+
+### Patch Changes
+
+- [#1305](https://github.com/eyaltoledano/claude-task-master/pull/1305) [`a98d96e`](https://github.com/eyaltoledano/claude-task-master/commit/a98d96ef0414833b948672f86da4acc11f700ebb) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Fix warning message box width to match dashboard box width for consistent UI alignment
+
+- [#1346](https://github.com/eyaltoledano/claude-task-master/pull/1346) [`25addf9`](https://github.com/eyaltoledano/claude-task-master/commit/25addf919f58b439dbc2f6ccf5be822b48280fa3) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - remove file and complexity report parameter from get-tasks and get-task mcp tool
+  - In an effort to reduce complexity and context bloat for ai coding agents, we simplified the parameters of these tools
+
 ## 0.30.1-rc.0
 
 ### Patch Changes
