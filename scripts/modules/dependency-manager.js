@@ -741,13 +741,13 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 		const data = readJSON(tasksPath, context.projectRoot, context.tag);
 		const tag = context.tag || 'master';
 		const tasks = getTasksForTag(data, tag);
-		if (!data || !tasks) {
+		if (!data || !Array.isArray(tasks)) {
 			log('error', 'No valid tasks found in tasks.json');
 			process.exit(1);
 		}
 
-		// Create a deep copy of the original data for comparison
-		const originalData = JSON.parse(JSON.stringify(data));
+		// Create a deep copy of the original tasks for comparison
+		const originalTasks = JSON.parse(JSON.stringify(tasks));
 
 		// Track fixes for reporting
 		const stats = {
@@ -760,7 +760,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 		};
 
 		// First phase: Remove duplicate dependencies in tasks
-		data.tasks.forEach((task) => {
+		tasks.forEach((task) => {
 			if (task.dependencies && Array.isArray(task.dependencies)) {
 				const uniqueDeps = new Set();
 				const originalLength = task.dependencies.length;
@@ -813,9 +813,9 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 		});
 
 		// Create validity maps for tasks and subtasks
-		const validTaskIds = new Set(data.tasks.map((t) => t.id));
+		const validTaskIds = new Set(tasks.map((t) => t.id));
 		const validSubtaskIds = new Set();
-		data.tasks.forEach((task) => {
+		tasks.forEach((task) => {
 			if (task.subtasks && Array.isArray(task.subtasks)) {
 				task.subtasks.forEach((subtask) => {
 					validSubtaskIds.add(`${task.id}.${subtask.id}`);
@@ -824,7 +824,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 		});
 
 		// Second phase: Remove invalid task dependencies (non-existent tasks)
-		data.tasks.forEach((task) => {
+		tasks.forEach((task) => {
 			if (task.dependencies && Array.isArray(task.dependencies)) {
 				const originalLength = task.dependencies.length;
 				task.dependencies = task.dependencies.filter((depId) => {
@@ -958,7 +958,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 
 		// Build the dependency map for subtasks
 		const subtaskDependencyMap = new Map();
-		data.tasks.forEach((task) => {
+		tasks.forEach((task) => {
 			if (task.subtasks && Array.isArray(task.subtasks)) {
 				task.subtasks.forEach((subtask) => {
 					const subtaskId = `${task.id}.${subtask.id}`;
@@ -997,7 +997,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 				const [taskId, subtaskNum] = subtaskId
 					.split('.')
 					.map((part) => Number(part));
-				const task = data.tasks.find((t) => t.id === taskId);
+				const task = tasks.find((t) => t.id === taskId);
 
 				if (task && task.subtasks) {
 					const subtask = task.subtasks.find((st) => st.id === subtaskNum);
@@ -1049,13 +1049,12 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 			}
 		}
 
-		// Check if any changes were made by comparing with original data
-		const dataChanged = JSON.stringify(data) !== JSON.stringify(originalData);
+		// Check if any changes were made by comparing with original tasks
+		const dataChanged = JSON.stringify(tasks) !== JSON.stringify(originalTasks);
 
 		if (dataChanged) {
 			// Save the changes using setTasksForTag for tag-aware writes
-			const tag = context.tag || 'master';
-			setTasksForTag(data, tag, data.tasks);
+			setTasksForTag(data, tag, tasks);
 			writeJSON(tasksPath, data, context.projectRoot, tag);
 			log('success', 'Fixed dependency issues in tasks.json');
 
@@ -1103,7 +1102,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 				console.log(
 					boxen(
 						chalk.green(`All Dependencies Are Valid\n\n`) +
-							`${chalk.cyan('Tasks checked:')} ${data.tasks.length}\n` +
+							`${chalk.cyan('Tasks checked:')} ${tasks.length}\n` +
 							`${chalk.cyan('Total dependencies verified:')} ${countAllDependencies(tasks)}`,
 						{
 							padding: 1,
