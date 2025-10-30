@@ -102,18 +102,23 @@ export class WorkflowStateManager {
 	 * Uses a mutex to prevent concurrent saves from corrupting the file
 	 */
 	async save(state: WorkflowState): Promise<void> {
-		// Wait for any pending save operation to complete
-		if (this.savePromise) {
-			await this.savePromise;
-		}
+		// Chain this save after any pending operation atomically
+		const previousSave = this.savePromise;
+		const currentSave = (async () => {
+			if (previousSave) {
+				await previousSave;
+			}
+			await this.performSave(state);
+		})();
 
-		// Create new save operation
-		this.savePromise = this.performSave(state);
-
+		this.savePromise = currentSave;
 		try {
-			await this.savePromise;
+			await currentSave;
 		} finally {
-			this.savePromise = null;
+			// Only clear if we're still the active save
+			if (this.savePromise === currentSave) {
+				this.savePromise = null;
+			}
 		}
 	}
 
@@ -121,6 +126,10 @@ export class WorkflowStateManager {
 	 * Internal method that performs the actual save operation
 	 */
 	private async performSave(state: WorkflowState): Promise<void> {
+		// Use unique temp path to avoid conflicts
+		const timestamp = Date.now();
+		const tempPath = `${this.statePath}.${timestamp}.tmp`;
+
 		try {
 			// Ensure session directory exists
 			await fs.mkdir(this.sessionDir, { recursive: true });
@@ -137,14 +146,17 @@ export class WorkflowStateManager {
 			}
 
 			// Write state atomically with newline at end
-			// Use unique temp path to avoid conflicts
-			const timestamp = Date.now();
-			const tempPath = `${this.statePath}.${timestamp}.tmp`;
 			await fs.writeFile(tempPath, jsonContent + '\n', 'utf-8');
 			await fs.rename(tempPath, this.statePath);
 
 			this.logger.debug(`Saved workflow state (${jsonContent.length} bytes)`);
 		} catch (error: any) {
+			// Clean up temp file if it exists
+			try {
+				await fs.unlink(tempPath);
+			} catch {
+				// Ignore cleanup errors
+			}
 			throw new Error(`Failed to save workflow state: ${error.message}`);
 		}
 	}
