@@ -27,12 +27,14 @@ export const prdSingleTaskSchema = z.object({
 // Define the Zod schema for the ENTIRE expected AI response object
 export const prdResponseSchema = z.object({
 	tasks: z.array(prdSingleTaskSchema),
-	metadata: z.object({
-		projectName: z.string(),
-		totalTasks: z.number(),
-		sourceFile: z.string(),
-		generatedAt: z.string()
-	})
+	metadata: z
+		.object({
+			projectName: z.string(),
+			totalTasks: z.number(),
+			sourceFile: z.string(),
+			generatedAt: z.string()
+		})
+		.nullable()
 });
 
 // ============================================================================
