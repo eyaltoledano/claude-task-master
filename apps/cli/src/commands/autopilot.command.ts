@@ -45,7 +45,7 @@ export interface PreflightResult {
 export interface AutopilotCommandResult {
 	success: boolean;
 	taskId: string;
-	task?: Task;
+	task?: Task | Subtask;
 	error?: string;
 	message?: string;
 }
@@ -115,10 +115,10 @@ export class AutopilotCommand extends Command {
 
 			spinner.succeed(`Task ${taskId} loaded`);
 
-			// Display task information
-			this.displayTaskInfo(task, options.dryRun || false);
+			// Display task information using the original dotted ID when present
+			this.displayTaskInfo(taskId, task, options.dryRun || false);
 
-			// Execute autopilot logic (placeholder for now)
+			// Execute autopilot logic (still treats subtasks explicitly)
 			const result = await this.performAutopilot(taskId, task, options);
 
 			// Store result for programmatic access
@@ -170,7 +170,7 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Load task from tm-core
 	 */
-	private async loadTask(taskId: string): Promise<Task | null> {
+	private async loadTask(taskId: string): Promise<Task | Subtask | null> {
 		if (!this.tmCore) {
 			throw new Error('TmCore not initialized');
 		}
@@ -186,14 +186,14 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Display task information before execution
 	 */
-	private displayTaskInfo(task: Task, isDryRun: boolean): void {
+	private displayTaskInfo(taskId: string, task: Task | Subtask, isDryRun: boolean): void {
 		const prefix = isDryRun ? '[DRY RUN] ' : '';
 		console.log();
 		console.log(
 			boxen(
 				chalk.cyan.bold(`${prefix}Autopilot Task Execution`) +
 					'\n\n' +
-					chalk.white(`Task ID: ${task.id}`) +
+					chalk.white(`Task ID: ${taskId}`) +
 					'\n' +
 					chalk.white(`Title: ${task.title}`) +
 					'\n' +
@@ -212,10 +212,11 @@ export class AutopilotCommand extends Command {
 
 	/**
 	 * Perform autopilot execution using PreflightChecker and TaskLoader
+	 * Note: task should always be a Task (not Subtask) due to guard in executeCommand
 	 */
 	private async performAutopilot(
 		taskId: string,
-		task: Task,
+		task: Task | Subtask,
 		options: AutopilotCommandOptions
 	): Promise<AutopilotCommandResult> {
 		// Run preflight checks
@@ -279,7 +280,7 @@ export class AutopilotCommand extends Command {
 	 */
 	private async validateTaskStructure(
 		taskId: string,
-		task: Task
+		task: Task | Subtask
 	): Promise<AutopilotCommandResult & { orderedSubtasks?: Subtask[] }> {
 		if (!this.tmCore) {
 			return {
@@ -321,7 +322,7 @@ export class AutopilotCommand extends Command {
 	 * Display execution plan with subtasks and TDD workflow
 	 */
 	private displayExecutionPlan(
-		task: Task,
+		task: Task | Subtask,
 		orderedSubtasks: Subtask[],
 		options: AutopilotCommandOptions
 	): void {

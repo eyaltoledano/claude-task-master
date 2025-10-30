@@ -8,7 +8,7 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import { marked, MarkedExtension } from 'marked';
 import { markedTerminal } from 'marked-terminal';
-import type { Task } from '@tm/core';
+import type { Subtask, Task } from '@tm/core';
 import {
 	getStatusWithColor,
 	getPriorityWithColor,
@@ -75,7 +75,7 @@ export function displayTaskHeader(
  * Display task properties in a table format
  */
 export function displayTaskProperties(
-	task: Task,
+	task: Task | Subtask,
 	originalTaskId?: string
 ): void {
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
@@ -278,7 +278,7 @@ export function displaySuggestedActions(taskId: string | number): void {
  * Display complete task details - used by both show and start commands
  */
 export function displayTaskDetails(
-	task: Task,
+	task: Task | Subtask,
 	options?: {
 		statusFilter?: string;
 		showSuggestedActions?: boolean;

@@ -58,12 +58,16 @@ export class TasksDomain {
 	 * - Simple task IDs (e.g., "1", "HAM-123")
 	 * - Subtask IDs with dot notation (e.g., "1.2", "HAM-123.2")
 	 *
-	 * @returns Task and whether the ID represents a subtask
+	 * @returns Discriminated union indicating task/subtask with proper typing
 	 */
 	async get(
 		taskId: string,
 		tag?: string
-	): Promise<{ task: Task | null; isSubtask: false } | { task: Subtask | null; isSubtask: true }> {
+	): Promise<
+		| { task: Task; isSubtask: false }
+		| { task: Subtask; isSubtask: true }
+		| { task: null; isSubtask: boolean }
+	> {
 		// Parse ID - check for dot notation (subtask)
 		const parts = taskId.split('.');
 		const parentId = parts[0];
@@ -81,8 +85,8 @@ export class TasksDomain {
 				(st) => String(st.id) === subtaskIdPart
 			);
 			if (subtask) {
-				// Return the actual subtask, not the parent
-				return { task: { ...subtask, id: String(subtask.id)}, isSubtask: true };
+				// Return the actual subtask with properly typed result
+				return { task: subtask, isSubtask: true };
 			}
 			// Subtask ID provided but not found
 			return { task: null, isSubtask: true };

@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
-import type { Task, TaskStatus, TaskPriority } from '@tm/core';
+import type { Task, TaskStatus, TaskPriority, Subtask } from '@tm/core';
 
 /**
  * Get colored status display with ASCII icons (matches scripts/modules/ui.js style)
@@ -294,7 +294,7 @@ export function formatDependenciesWithStatus(
  * Create a task table for display
  */
 export function createTaskTable(
-	tasks: Task[],
+	tasks: (Task | Subtask)[],
 	options?: {
 		showSubtasks?: boolean;
 		showComplexity?: boolean;
