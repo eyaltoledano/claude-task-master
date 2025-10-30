@@ -206,30 +206,4 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
   </Accordion>
 
-  <Accordion title="TDD Workflow (Autopilot)">
-    ```bash
-    # Start autonomous TDD workflow for a task
-    task-master autopilot start <taskId>
-
-    # Get next action with context
-    task-master autopilot next
-
-    # Complete phase with test results
-    task-master autopilot complete --results '{"total":N,"passed":N,"failed":N}'
-
-    # Commit changes
-    task-master autopilot commit
-
-    # Check workflow status
-    task-master autopilot status
-
-    # Resume interrupted workflow
-    task-master autopilot resume
-
-    # Abort workflow
-    task-master autopilot abort
-    ```
-
-    The TDD workflow enforces RED → GREEN → COMMIT cycles for each subtask. See [AI Agent Integration](/tdd-workflow/ai-agent-integration) for details.
-  </Accordion>
 </AccordionGroup>
