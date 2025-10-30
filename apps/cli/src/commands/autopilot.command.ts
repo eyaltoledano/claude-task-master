@@ -186,7 +186,11 @@ export class AutopilotCommand extends Command {
 	/**
 	 * Display task information before execution
 	 */
-	private displayTaskInfo(taskId: string, task: Task | Subtask, isDryRun: boolean): void {
+	private displayTaskInfo(
+		taskId: string,
+		task: Task | Subtask,
+		isDryRun: boolean
+	): void {
 		const prefix = isDryRun ? '[DRY RUN] ' : '';
 		console.log();
 		console.log(
