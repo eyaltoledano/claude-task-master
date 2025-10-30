@@ -23,7 +23,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => []),
 	isSilentMode: jest.fn(() => true),
 	resolveTag: jest.fn(() => 'master'),
-	getTasksForTag: jest.fn(() => []),
+	getTasksForTag: jest.fn((data) => data.tasks || []),
 	setTasksForTag: jest.fn(),
 	enableSilentMode: jest.fn(),
 	disableSilentMode: jest.fn(),
