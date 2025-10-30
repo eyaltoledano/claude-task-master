@@ -45,14 +45,27 @@ export async function handleApiResult<T>(options: {
 	log?: any;
 	errorPrefix?: string;
 	projectRoot?: string;
+	tag?: string; // Optional tag/brief to use instead of reading from state.json
 }): Promise<ContentResult> {
-	const { result, log, errorPrefix = 'API error', projectRoot } = options;
+	const {
+		result,
+		log,
+		errorPrefix = 'API error',
+		projectRoot,
+		tag: providedTag
+	} = options;
 
 	// Get version info for every response
 	const versionInfo = getVersionInfo();
 
-	// Get current tag if project root is provided
-	const currentTag = projectRoot ? getCurrentTag(projectRoot) : null;
+	// Use provided tag if available, otherwise get from state.json
+	// Note: For API storage, tm-core returns the brief name as the tag
+	const currentTag =
+		providedTag !== undefined
+			? providedTag
+			: projectRoot
+				? getCurrentTag(projectRoot)
+				: null;
 
 	if (!result.success) {
 		const errorMsg = result.error?.message || `Unknown ${errorPrefix}`;

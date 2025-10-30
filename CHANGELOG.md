@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.30.1-rc.0
+
+### Patch Changes
+
+- [#1305](https://github.com/eyaltoledano/claude-task-master/pull/1305) [`a98d96e`](https://github.com/eyaltoledano/claude-task-master/commit/a98d96ef0414833b948672f86da4acc11f700ebb) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Fix warning message box width to match dashboard box width for consistent UI alignment
+
 ## 0.30.0
 
 ### Minor Changes

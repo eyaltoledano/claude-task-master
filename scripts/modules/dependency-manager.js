@@ -1189,28 +1189,28 @@ function validateAndFixDependencies(
 
 	// Validate root tasksData structure
 	if (!tasksData || typeof tasksData !== 'object') {
-	  throw new Error('Invalid tasks data: root object is missing or invalid');
+	  const msg = 'Invalid tasks data: root object is missing or invalid';
+	  logger.error(msg);
+	  // Throw to match unit test expectations
+	  throw new Error(msg);
 	}
 
-	// Check if the tag exists in the data structure
-	if (!tasksData[effectiveTag]) {
-	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
+	// If tasksData does not contain tagged structure for the effectiveTag
+	// and also doesn't have a legacy root-level `tasks` array, treat as invalid
+	const hasTaggedForEffective =
+		Object.prototype.hasOwnProperty.call(tasksData, effectiveTag) &&
+		tasksData[effectiveTag] &&
+		Array.isArray(tasksData[effectiveTag].tasks);
+	const hasLegacyTasksArray = Array.isArray(tasksData.tasks);
+	if (!hasTaggedForEffective && !hasLegacyTasksArray) {
+	  const msg = `Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`;
+	  logger.error(msg);
+	  throw new Error(msg);
 	}
 
-	// Use getTasksForTag to safely obtain the tagged data, validate that the returned value exists and is an object
+	// Use getTasksForTag to safely obtain the tagged data (it will return [] for missing tag)
+	// but we've already validated presence/legacy format above.
 	const effectiveTasksData = getTasksForTag(tasksData, effectiveTag);
-	if (!effectiveTasksData || !Array.isArray(effectiveTasksData)) {
-	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
-	}
-
-	// Additional validation for the tasks array content
-	if (tasksData[effectiveTag].tasks === null || tasksData[effectiveTag].tasks === undefined) {
-	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
-	}
-
-	if (!Array.isArray(tasksData[effectiveTag].tasks)) {
-	  throw new Error(`Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`);
-	}
 
 	// Create a task data object with the validated tasks array
 	const tasksDataObject = { tasks: effectiveTasksData };

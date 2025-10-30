@@ -4,7 +4,7 @@
 
 export { AuthDomain, type StorageDisplayInfo } from './auth-domain.js';
 export { AuthManager } from './managers/auth-manager.js';
-export { CredentialStore } from './services/credential-store.js';
+export { ContextStore, type StoredContext } from './services/context-store.js';
 export { OAuthService } from './services/oauth-service.js';
 export { SupabaseSessionStorage } from './services/supabase-session-storage.js';
 export type {

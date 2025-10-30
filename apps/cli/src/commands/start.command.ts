@@ -144,10 +144,10 @@ export class StartCommand extends Command {
 				await this.executeChildProcess(coreResult.command);
 			}
 
-			// Convert core result to CLI result with storage type
+			// Convert core result to CLI result with storage type (resolved, not config value)
 			const result: StartCommandResult = {
 				...coreResult,
-				storageType: this.tmCore?.config.getStorageConfig().type
+				storageType: this.tmCore?.tasks.getStorageType()
 			};
 
 			// Store result for programmatic access

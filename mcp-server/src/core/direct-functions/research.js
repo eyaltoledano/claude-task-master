@@ -7,7 +7,8 @@ import path from 'path';
 import { performResearch } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
@@ -45,12 +46,22 @@ export async function researchDirect(args, log, context = {}) {
 	} = args;
 	const { session } = context; // Destructure session from context
 
+	// Normalize saveTo once to avoid NaN/format issues later. If the
+	// cleaned value is an empty string, use undefined.
+	const normalizedSaveTo = saveTo
+		? String(saveTo)
+			.replace(/[^0-9\.]/g, '')
+			.replace(/^\./, '')
+			.replace(/\.+/g, '.')
+			.trim() || undefined
+		: undefined;
+
 	// Enable silent mode to prevent console logs from interfering with JSON response
+	const wasSilentInitially = isSilentMode(); // Capture initial state
 	enableSilentMode();
 
 	// Create logger wrapper using the utility
 	const mcpLog = createLogWrapper(log);
-	const wasSilentInitially = enableSilentMode(); // Capture initial state
 
 	try {
 		// Check required parameters
@@ -113,14 +124,8 @@ export async function researchDirect(args, log, context = {}) {
 			includeProjectTree,
 			detailLevel,
 			projectRoot,
-			// Normalize save target so callers can pass values like "task 2" or "Task 2.1"
-			saveTo: saveTo
-				? String(saveTo)
-						.replace(/[^0-9\.]/g, '')
-						.replace(/^\./, '')
-						.replace(/\.+/g, '.')
-						.trim()
-				: undefined,
+			// Use the previously normalized save target (cleaned once)
+			saveTo: normalizedSaveTo,
 			tag,
 			saveToFile
 		};
@@ -153,10 +158,10 @@ export async function researchDirect(args, log, context = {}) {
 		// === END AGENT_LLM DELEGATION PROPAGATION ===
 
 		// Auto-save to task/subtask if requested (ONLY IF NOT DELEGATING and result is not null)
-		if (saveTo && result && result.result != null) {
+		if (normalizedSaveTo && result && result.result != null) {
 			// Check result.result for null explicitly
 			try {
-				const isSubtask = saveTo.includes('.');
+				const isSubtask = normalizedSaveTo.includes('.');
 
 				// Format research content for saving
 				const researchContent = `## Research Query: ${query.trim()}
@@ -183,7 +188,7 @@ ${result.result}`;
 					);
 					await updateSubtaskById(
 						tasksPath,
-						saveTo,
+						normalizedSaveTo,
 						researchContent,
 						false, // useResearch = false for simple append
 						{
@@ -197,7 +202,7 @@ ${result.result}`;
 						'json'
 					);
 
-					log.info(`Research saved to subtask ${saveTo}`);
+					log.info(`Research saved to subtask ${normalizedSaveTo}`);
 				} else {
 					// Save to task
 					const updateTaskById = (
@@ -206,7 +211,7 @@ ${result.result}`;
 						)
 					).default;
 
-					const taskIdNum = parseInt(saveTo, 10);
+					const taskIdNum = parseInt(normalizedSaveTo, 10);
 					const tasksPath = path.join(
 						projectRoot,
 						'.taskmaster',
@@ -230,7 +235,7 @@ ${result.result}`;
 						true // appendMode = true
 					);
 
-					log.info(`Research saved to task ${saveTo}`);
+					log.info(`Research saved to task ${normalizedSaveTo}`);
 				}
 			} catch (saveError) {
 				log.warn(`Error saving research to task/subtask: ${saveError.message}`);

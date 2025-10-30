@@ -235,7 +235,8 @@ async function updateTasks(
 					fromId: fromId,
 					tasksToUpdate: tasksToUpdate,
 					originalUserPrompt: prompt
-				}
+				},
+				{ commandName: 'update-tasks' }
 			);
 			if (delegationResult) return delegationResult;
 			// === END AGENT_LLM_DELEGATION HANDLING ===

@@ -127,10 +127,8 @@ export class NextCommand extends Command {
 		const task = await this.tmCore.tasks.getNext(options.tag);
 
 		// Get storage type and active tag
-		const storageType = this.tmCore.config.getStorageConfig().type;
-		if (storageType === 'auto') {
-			throw new Error('Storage type must be resolved before use');
-		}
+		const storageType = this.tmCore.tasks.getStorageType();
+
 		const activeTag = options.tag || this.tmCore.config.getActiveTag();
 
 		return {

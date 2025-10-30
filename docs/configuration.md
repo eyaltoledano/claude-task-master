@@ -4,30 +4,7 @@ Taskmaster uses two primary methods for configuration:
 
 1.  **`.taskmaster/config.json` File (Recommended - New Structure)**
 
-    - This JSON file stores most configuration settings, including A5. **Usage Requirements**:
-   8. **Troubleshooting**:
-   - "MCP provider requires session context" → Ensure running in MCP environment
-   - See the [MCP Provider Guide](./mcp-provider-guide.md) for detailed troubleshootingust be running in an MCP context (session must be available)
-   - Session must provide `clientCapabilities.sampling` capability
-
-6. **Best Practices**:
-   - Always configure a non-MCP fallback provider
-   - Use `mcp` for main/research roles when in MCP environments
-   - Test sampling capability before production use
-
-7. **Setup Commands**:
-   ```bash
-   # Set MCP provider for main role
-   task-master models set-main --provider mcp --model claude-3-5-sonnet-20241022
-   
-   # Set MCP provider for research role  
-   task-master models set-research --provider mcp --model claude-3-opus-20240229
-   
-   # Verify configuration
-   task-master models list
-   ```
-
-8. **Troubleshooting**:lections, parameters, logging levels, and project defaults.
+    - This JSON file stores most configuration settings, including AI model selections, parameters, logging levels, and project defaults.
     - **Location:** This file is created in the `.taskmaster/` directory when you run the `task-master models --setup` interactive setup or initialize a new project with `task-master init`.
     - **Migration:** Existing projects with `.taskmasterconfig` in the root will continue to work, but should be migrated to the new structure using `task-master migrate`.
     - **Management:** Use the `task-master models --setup` command (or `models` MCP tool) to interactively create and manage this file. You can also set specific models directly using `task-master models --set-<role>=<model_id>`, adding `--ollama` or `--openrouter` flags for custom models. Manual editing is possible but not recommended unless you understand the structure.
@@ -93,7 +70,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 
 #### Configuration Options
 
-- **`all`** (default): Loads all 37 available tools (~21,000 tokens)
+- **`all`** (default): Loads all 36 available tools (~21,000 tokens)
   - Best for: Users who need the complete feature set
   - Use when: Working with complex projects requiring all Task Master features
   - Backward compatibility: This is the default to maintain compatibility with existing installations
@@ -103,7 +80,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - Tools included: All core tools plus project initialization, complexity analysis, task generation, and more
   - Use when: You need a balanced set of features with reduced token usage
 
-- **`core`** (or `lean`): Loads 8 essential tools (~5,000 tokens, 70% reduction)
+- **`core`** (or `lean`): Loads 7 essential tools (~5,000 tokens, 70% reduction)
   - Best for: Daily development with minimal token overhead
   - Tools included: `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
   - Use when: Working in large contexts where token usage is critical

@@ -164,10 +164,7 @@ export class SetStatusCommand extends Command {
 			this.lastResult = {
 				success: true,
 				updatedTasks,
-				storageType: this.tmCore.config.getStorageConfig().type as Exclude<
-					StorageType,
-					'auto'
-				>
+				storageType: this.tmCore.tasks.getStorageType()
 			};
 
 			// Display results
