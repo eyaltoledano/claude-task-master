@@ -124,8 +124,6 @@ export class OpenAICompatibleProvider extends BaseAIProvider {
 				clientConfig.supportsStructuredOutputs = this.supportsStructuredOutputs;
 			}
 
-			console.log('clientConfig', JSON.stringify(clientConfig, null, 2));
-
 			return createOpenAICompatible(clientConfig);
 		} catch (error) {
 			this.handleError('client initialization', error);

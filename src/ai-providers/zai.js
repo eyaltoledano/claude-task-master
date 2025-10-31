@@ -2,8 +2,6 @@
  * zai.js
  * AI provider implementation for Z.ai (GLM) models.
  * Uses the OpenAI-compatible API endpoint.
- *
- * Z.ai API endpoint: https://openai.z.ai/v1
  */
 
 import { OpenAICompatibleProvider } from './openai-compatible.js';

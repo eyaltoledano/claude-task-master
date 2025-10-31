@@ -282,5 +282,5 @@ export async function runInteractiveSetup(
 		);
 	}
 
-	return true;
+	return setupSuccess;
 }
