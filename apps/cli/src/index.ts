@@ -36,6 +36,8 @@ export {
 	compareVersions
 } from './utils/auto-update.js';
 
+export { runInteractiveSetup } from './commands/models/index.js';
+
 // Re-export commonly used types from tm-core
 export type {
 	Task,

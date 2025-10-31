@@ -23,7 +23,7 @@ import {
 } from '../config-manager.js';
 import { findConfigPath } from '../../../src/utils/path-utils.js';
 import { log } from '../utils.js';
-import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+import { CUSTOM_PROVIDERS } from '@tm/core';
 
 // Constants
 const CONFIG_MISSING_ERROR =
@@ -365,7 +365,7 @@ async function getAvailableModelsList(options = {}) {
  * @returns {Object} RESTful response with result of update operation
  */
 async function setModel(role, modelId, options = {}) {
-	const { mcpLog, projectRoot, providerHint } = options;
+	const { mcpLog, projectRoot, providerHint, baseURL } = options;
 
 	const report = (level, ...args) => {
 		if (mcpLog && typeof mcpLog[level] === 'function') {
@@ -555,6 +555,21 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Codex CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.LMSTUDIO) {
+					// LM Studio provider - set without validation since it's a local server
+					determinedProvider = CUSTOM_PROVIDERS.LMSTUDIO;
+					warningMessage = `Warning: Custom LM Studio model '${modelId}' set. Please ensure LM Studio server is running at http://localhost:1234/v1 and has loaded this model. Taskmaster cannot guarantee compatibility.`;
+					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE) {
+					// OpenAI-compatible provider - set without validation, requires baseURL
+					determinedProvider = CUSTOM_PROVIDERS.OPENAI_COMPATIBLE;
+					if (!baseURL) {
+						throw new Error(
+							`Base URL is required for OpenAI-compatible providers. Please provide a baseURL.`
+						);
+					}
+					warningMessage = `Warning: Custom OpenAI-compatible model '${modelId}' set with base URL '${baseURL}'. Taskmaster cannot guarantee compatibility. Ensure your API endpoint follows the OpenAI API specification.`;
+					report('warn', warningMessage);
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -575,7 +590,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --gemini-cli, or --codex-cli.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --lmstudio, --openai-compatible, --gemini-cli, or --codex-cli.`
 					}
 				};
 			}
@@ -601,6 +616,11 @@ async function setModel(role, modelId, options = {}) {
 			provider: determinedProvider,
 			modelId: modelId
 		};
+
+		// If baseURL is provided (for openai-compatible providers), save it
+		if (baseURL) {
+			currentConfig.models[role].baseURL = baseURL;
+		}
 
 		// If model data is available, update maxTokens from supported-models.json
 		if (modelData && modelData.max_tokens) {

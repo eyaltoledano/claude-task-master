@@ -892,49 +892,49 @@
 			"reason": "Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use."
 		}
 	],
-	"glm": [
+	"zai": [
 		{
-			"id": "glm-4-plus",
+			"id": "glm-4.6",
+			"swe_score": 0.68,
+			"cost_per_1m_tokens": {
+				"input": 0.6,
+				"output": 2.2
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
+		{
+			"id": "glm-4.5",
 			"swe_score": 0.65,
 			"cost_per_1m_tokens": {
-				"input": 0.5,
-				"output": 2.0
+				"input": 0.6,
+				"output": 2.2
 			},
 			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 32768,
+			"max_tokens": 131072,
 			"supported": true
 		},
 		{
-			"id": "glm-4-air",
-			"swe_score": 0.6,
+			"id": "glm-4.5-air",
+			"swe_score": 0.62,
 			"cost_per_1m_tokens": {
-				"input": 0.1,
-				"output": 0.3
+				"input": 0.2,
+				"output": 1.1
 			},
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 8192,
+			"max_tokens": 131072,
 			"supported": true
 		},
 		{
-			"id": "glm-4-flash",
-			"swe_score": 0.55,
+			"id": "glm-4.5v",
+			"swe_score": 0.63,
 			"cost_per_1m_tokens": {
-				"input": 0.05,
-				"output": 0.15
+				"input": 0.6,
+				"output": 1.8
 			},
 			"allowed_roles": ["main", "fallback"],
-			"max_tokens": 4096,
-			"supported": true
-		},
-		{
-			"id": "glm-4-long",
-			"swe_score": 0.6,
-			"cost_per_1m_tokens": {
-				"input": 0.5,
-				"output": 2.0
-			},
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 128000,
+			"max_tokens": 64000,
 			"supported": true
 		}
 	],
@@ -1170,6 +1170,20 @@
 			"allowed_roles": ["research"],
 			"max_tokens": 65536,
 			"supported": true
+		}
+	],
+	"openai-compatible": [
+		{
+			"id": "custom-model",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 4096,
+			"supported": true,
+			"description": "Placeholder for custom OpenAI-compatible models. User must provide model ID and base URL."
 		}
 	]
 }
