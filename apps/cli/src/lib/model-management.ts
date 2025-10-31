@@ -4,9 +4,9 @@
  * Will remove once we move models.js and config-manager to new structure
  */
 
-// @ts-expect-error - JavaScript module without types
+// @ts-ignore - JavaScript module without types
 import * as modelsJs from '../../../../scripts/modules/task-manager/models.js';
-// @ts-expect-error - JavaScript module without types
+// @ts-ignore - JavaScript module without types
 import * as configManagerJs from '../../../../scripts/modules/config-manager.js';
 
 // ========== Types ==========
@@ -19,8 +19,8 @@ export interface ModelCost {
 export interface ModelData {
 	id: string;
 	provider?: string;
-	swe_score?: number;
-	cost_per_1m_tokens?: ModelCost;
+	swe_score?: number | null;
+	cost_per_1m_tokens?: ModelCost | null;
 	allowed_roles?: string[];
 	max_tokens?: number;
 	supported?: boolean;
@@ -29,6 +29,7 @@ export interface ModelData {
 export interface ModelConfiguration {
 	provider: string;
 	modelId: string;
+	baseURL?: string;
 	sweScore: number | null;
 	cost: ModelCost | null;
 	keyStatus: {
@@ -108,7 +109,9 @@ export interface SetModelOptions {
 export async function getModelConfiguration(
 	options: SetModelOptions
 ): Promise<ModelConfigurationResponse> {
-	return modelsJs.getModelConfiguration(options);
+	return modelsJs.getModelConfiguration(
+		options as any
+	) as Promise<ModelConfigurationResponse>;
 }
 
 /**
@@ -117,7 +120,9 @@ export async function getModelConfiguration(
 export async function getAvailableModelsList(
 	options: SetModelOptions
 ): Promise<AvailableModelsResponse> {
-	return modelsJs.getAvailableModelsList(options);
+	return modelsJs.getAvailableModelsList(
+		options as any
+	) as Promise<AvailableModelsResponse>;
 }
 
 /**
@@ -128,7 +133,11 @@ export async function setModel(
 	modelId: string,
 	options: SetModelOptions
 ): Promise<SetModelResponse> {
-	return modelsJs.setModel(role, modelId, options);
+	return modelsJs.setModel(
+		role,
+		modelId,
+		options as any
+	) as Promise<SetModelResponse>;
 }
 
 /**
@@ -149,5 +158,5 @@ export function writeConfig(config: any, projectRoot: string): boolean {
  * Get available models from config manager
  */
 export function getAvailableModels(): ModelData[] {
-	return configManagerJs.getAvailableModels();
+	return configManagerJs.getAvailableModels() as ModelData[];
 }

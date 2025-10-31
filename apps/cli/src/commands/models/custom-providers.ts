@@ -79,7 +79,6 @@ export const customProviderConfigs: Record<
 						'Warning: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Will fallback to system configuration (ex: aws config files or ec2 instance profiles).'
 					)
 				);
-				return false;
 			}
 			return true;
 		}

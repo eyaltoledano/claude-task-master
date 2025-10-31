@@ -179,10 +179,13 @@ async function getModelConfiguration(options = {}) {
 		// Get current settings - these should use the config from the found path automatically
 		const mainProvider = getMainProvider(projectRoot);
 		const mainModelId = getMainModelId(projectRoot);
+		const mainBaseURL = getBaseUrlForRole('main', projectRoot);
 		const researchProvider = getResearchProvider(projectRoot);
 		const researchModelId = getResearchModelId(projectRoot);
+		const researchBaseURL = getBaseUrlForRole('research', projectRoot);
 		const fallbackProvider = getFallbackProvider(projectRoot);
 		const fallbackModelId = getFallbackModelId(projectRoot);
+		const fallbackBaseURL = getBaseUrlForRole('fallback', projectRoot);
 
 		// Check API keys
 		const mainCliKeyOk = isApiKeySet(mainProvider, session, projectRoot);
@@ -220,6 +223,7 @@ async function getModelConfiguration(options = {}) {
 					main: {
 						provider: mainProvider,
 						modelId: mainModelId,
+						baseURL: mainBaseURL,
 						sweScore: mainModelData?.swe_score || null,
 						cost: mainModelData?.cost_per_1m_tokens || null,
 						keyStatus: {
@@ -230,6 +234,7 @@ async function getModelConfiguration(options = {}) {
 					research: {
 						provider: researchProvider,
 						modelId: researchModelId,
+						baseURL: researchBaseURL,
 						sweScore: researchModelData?.swe_score || null,
 						cost: researchModelData?.cost_per_1m_tokens || null,
 						keyStatus: {
@@ -241,6 +246,7 @@ async function getModelConfiguration(options = {}) {
 						? {
 								provider: fallbackProvider,
 								modelId: fallbackModelId,
+								baseURL: fallbackBaseURL,
 								sweScore: fallbackModelData?.swe_score || null,
 								cost: fallbackModelData?.cost_per_1m_tokens || null,
 								keyStatus: {
@@ -558,7 +564,8 @@ async function setModel(role, modelId, options = {}) {
 				} else if (providerHint === CUSTOM_PROVIDERS.LMSTUDIO) {
 					// LM Studio provider - set without validation since it's a local server
 					determinedProvider = CUSTOM_PROVIDERS.LMSTUDIO;
-					warningMessage = `Warning: Custom LM Studio model '${modelId}' set. Please ensure LM Studio server is running at http://localhost:1234/v1 and has loaded this model. Taskmaster cannot guarantee compatibility.`;
+					const lmStudioBaseURL = baseURL || 'http://localhost:1234/v1';
+					warningMessage = `Warning: Custom LM Studio model '${modelId}' set with base URL '${lmStudioBaseURL}'. Please ensure LM Studio server is running and has loaded this model. Taskmaster cannot guarantee compatibility.`;
 					report('warn', warningMessage);
 				} else if (providerHint === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE) {
 					// OpenAI-compatible provider - set without validation, requires baseURL
@@ -617,9 +624,17 @@ async function setModel(role, modelId, options = {}) {
 			modelId: modelId
 		};
 
-		// If baseURL is provided (for openai-compatible providers), save it
-		if (baseURL) {
+		// Handle baseURL for providers that support it
+		if (
+			baseURL &&
+			(determinedProvider === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE ||
+				determinedProvider === CUSTOM_PROVIDERS.LMSTUDIO ||
+				determinedProvider === CUSTOM_PROVIDERS.OLLAMA)
+		) {
 			currentConfig.models[role].baseURL = baseURL;
+		} else {
+			// Remove baseURL when switching to a provider that doesn't need it
+			delete currentConfig.models[role].baseURL;
 		}
 
 		// If model data is available, update maxTokens from supported-models.json

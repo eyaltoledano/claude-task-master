@@ -50,6 +50,7 @@ export interface ModelInfo {
 export interface CurrentModel {
 	modelId?: string;
 	provider?: string;
+	baseURL?: string;
 }
 
 /**

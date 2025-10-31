@@ -36,9 +36,16 @@ function isCustomProviderId(value: unknown): value is CustomProviderId {
 async function handleSetModel(
 	role: ModelRole,
 	selectedValue: string | { id: string; provider: string } | null,
-	currentModelId: string | undefined,
+	currentModel: {
+		modelId?: string | null;
+		provider?: string | null;
+		baseURL?: string | null;
+	} | null,
 	projectRoot: string
 ): Promise<{ success: boolean; modified: boolean }> {
+	const currentModelId = currentModel?.modelId ?? null;
+	const currentProvider = currentModel?.provider ?? null;
+	const currentBaseURL = currentModel?.baseURL ?? null;
 	// Handle cancellation
 	if (selectedValue === '__CANCEL__') {
 		console.log(
@@ -95,7 +102,11 @@ async function handleSetModel(
 	}
 
 	// Check if there's actually a change to make
-	if (modelIdToSet === currentModelId) {
+	if (
+		modelIdToSet === currentModelId &&
+		(providerHint ?? null) === currentProvider &&
+		(baseURL ?? null) === currentBaseURL
+	) {
 		return { success: true, modified: false };
 	}
 
@@ -176,21 +187,24 @@ export async function runInteractiveSetup(
 					main: currentConfigResult.data.activeModels.main
 						? {
 								modelId: currentConfigResult.data.activeModels.main.modelId,
-								provider: currentConfigResult.data.activeModels.main.provider
+								provider: currentConfigResult.data.activeModels.main.provider,
+								baseURL: currentConfigResult.data.activeModels.main.baseURL
 							}
 						: null,
 					research: currentConfigResult.data.activeModels.research
 						? {
 								modelId: currentConfigResult.data.activeModels.research.modelId,
 								provider:
-									currentConfigResult.data.activeModels.research.provider
+									currentConfigResult.data.activeModels.research.provider,
+								baseURL: currentConfigResult.data.activeModels.research.baseURL
 							}
 						: null,
 					fallback: currentConfigResult.data.activeModels.fallback
 						? {
 								modelId: currentConfigResult.data.activeModels.fallback.modelId,
 								provider:
-									currentConfigResult.data.activeModels.fallback.provider
+									currentConfigResult.data.activeModels.fallback.provider,
+								baseURL: currentConfigResult.data.activeModels.fallback.baseURL
 							}
 						: null
 				}
@@ -245,7 +259,7 @@ export async function runInteractiveSetup(
 	const mainResult = await handleSetModel(
 		'main',
 		mainModel,
-		currentModels.main?.modelId,
+		currentModels.main,
 		projectRoot
 	);
 	if (!mainResult.success) setupSuccess = false;
@@ -254,7 +268,7 @@ export async function runInteractiveSetup(
 	const researchResult = await handleSetModel(
 		'research',
 		researchModel,
-		currentModels.research?.modelId,
+		currentModels.research,
 		projectRoot
 	);
 	if (!researchResult.success) setupSuccess = false;
@@ -263,7 +277,7 @@ export async function runInteractiveSetup(
 	const fallbackResult = await handleSetModel(
 		'fallback',
 		fallbackModel,
-		currentModels.fallback?.modelId,
+		currentModels.fallback,
 		projectRoot
 	);
 	if (!fallbackResult.success) setupSuccess = false;
