@@ -23,7 +23,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isEmpty: jest.fn(() => false),
 	resolveEnvVariable: jest.fn(),
 	findTaskById: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master')
+	getCurrentTag: jest.fn(() => 'master'),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({

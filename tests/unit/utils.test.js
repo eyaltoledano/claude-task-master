@@ -21,28 +21,7 @@ jest.mock('fs', () => ({
 	mkdirSync: jest.fn()
 }));
 
-jest.mock('path', () => ({
-	join: jest.fn((...paths) => paths.join('/')),
-	dirname: jest.fn((filePath) => filePath.split('/').slice(0, -1).join('/')),
-	resolve: jest.fn((...paths) => paths.join('/')),
-	basename: jest.fn((filePath) => filePath.split('/').pop()),
-	parse: jest.fn((filePath) => {
-		const parts = filePath.split('/');
-		const fileName = parts[parts.length - 1];
-		const extIndex = fileName.lastIndexOf('.');
-		return {
-			dir: parts.length > 1 ? parts.slice(0, -1).join('/') : '',
-			name: extIndex > 0 ? fileName.substring(0, extIndex) : fileName,
-			ext: extIndex > 0 ? fileName.substring(extIndex) : '',
-			base: fileName
-		};
-	}),
-	format: jest.fn((pathObj) => {
-		const dir = pathObj.dir || '';
-		const base = pathObj.base || `${pathObj.name || ''}${pathObj.ext || ''}`;
-		return dir ? `${dir}/${base}` : base;
-	})
-}));
+// Tests will now use the actual 'path' module.
 
 jest.mock('chalk', () => ({
 	red: jest.fn((text) => text),
@@ -137,8 +116,7 @@ describe('Utils Module', () => {
 	beforeEach(() => {
 		// Clear all mocks before each test
 		jest.clearAllMocks();
-		// Restore the original path.join mock
-		jest.spyOn(path, 'join').mockImplementation((...paths) => paths.join('/'));
+		// No need to re-mock path.join here.
 	});
 
 	describe('truncate function', () => {
@@ -394,36 +372,74 @@ describe('Utils Module', () => {
 	});
 
 	describe('readComplexityReport function', () => {
+		let pathJoinSpy;
+
+		afterEach(() => {
+			// Ensure spies created within this describe block are restored after each test
+			if (pathJoinSpy) {
+				pathJoinSpy.mockRestore();
+				pathJoinSpy = null;
+			}
+			// fs spies are typically restored by the top-level afterEach's jest.restoreAllMocks(),
+			// but being explicit if issues persist is an option.
+		});
+
 		test('should read and parse a valid complexity report', () => {
 			const testReport = {
 				meta: { generatedAt: new Date().toISOString() },
 				complexityAnalysis: [{ taskId: 1, complexityScore: 7 }]
 			};
 
-			jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-			jest
+			// Mock fs.existsSync specifically for this test's logic if needed,
+			// otherwise rely on clearAllMocks from beforeEach and top-level fs mock.
+			// For this test, we need path.join to return a specific value for the report path.
+			pathJoinSpy = jest
+				.spyOn(path, 'join')
+				.mockReturnValue('/path/to/report.json');
+			// We also need fs.existsSync to return true for this path, and fs.readFileSync to return content.
+			// The top-level fs.existsSync mock defaults to false. So we need to override it here.
+			const fsExistsSyncSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockImplementation((p) => p === '/path/to/report.json');
+			const fsReadFileSyncSpy = jest
 				.spyOn(fs, 'readFileSync')
 				.mockReturnValue(JSON.stringify(testReport));
-			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
 
 			const result = readComplexityReport();
 
-			expect(fs.existsSync).toHaveBeenCalled();
-			expect(fs.readFileSync).toHaveBeenCalledWith(
+			expect(fsExistsSyncSpy).toHaveBeenCalledWith('/path/to/report.json');
+			expect(fsReadFileSyncSpy).toHaveBeenCalledWith(
 				'/path/to/report.json',
 				'utf8'
 			);
 			expect(result).toEqual(testReport);
+
+			fsExistsSyncSpy.mockRestore();
+			fsReadFileSyncSpy.mockRestore();
+			// pathJoinSpy is restored in afterEach
 		});
 
 		test('should handle missing report file', () => {
-			jest.spyOn(fs, 'existsSync').mockReturnValue(false);
-			jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
+			// path.join will be called to determine potential paths.
+			// Let's say it first checks a new path, then a legacy path.
+			// We need fs.existsSync to return false for these.
+			pathJoinSpy = jest
+				.spyOn(path, 'join')
+				.mockReturnValueOnce('/new/path/report.json') // For newPath check
+				.mockReturnValueOnce('/legacy/path/report.json'); // For legacyPath check
+
+			const fsExistsSyncSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockReturnValue(false);
+			const fsReadFileSyncSpy = jest.spyOn(fs, 'readFileSync'); // Just to check it's not called
 
 			const result = readComplexityReport();
 
 			expect(result).toBeNull();
-			expect(fs.readFileSync).not.toHaveBeenCalled();
+			expect(fsReadFileSyncSpy).not.toHaveBeenCalled();
+
+			fsExistsSyncSpy.mockRestore();
+			// pathJoinSpy is restored in afterEach
 		});
 
 		test('should handle custom report path', () => {
@@ -714,34 +730,55 @@ test('slugifyTagForFilePath should create filesystem-safe tag names', () => {
 	expect(slugifyTagForFilePath(undefined)).toBe('unknown-tag');
 });
 
+// NOTE: Assuming a rogue jest.spyOn(path, 'join').mockReturnValue('/path/to/report.json');
+// was found and removed from somewhere above this test or in a setup that affected it.
+// The [DIAGNOSTIC] test is also removed as it served its purpose.
+
 test('getTagAwareFilePath should use slugified tags in file paths', () => {
-	const basePath = '.taskmaster/reports/complexity-report.json';
-	const projectRoot = '/test/project';
+	const relativeBasePath = path.join(
+		'.taskmaster',
+		'reports',
+		'complexity-report.json'
+	); // Use path.join for basePath components
+	const projectRootAbs = path.resolve('/test/project'); // Make projectRoot an OS-valid absolute path for consistency in test
 
 	// Master tag should not be slugified
-	expect(getTagAwareFilePath(basePath, 'master', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report.json'
-	);
+	let result = getTagAwareFilePath(relativeBasePath, 'master', projectRootAbs);
+	let expected = path.join(projectRootAbs, relativeBasePath);
+	expect(result).toBe(expected);
 
 	// Null/undefined tags should use base path
-	expect(getTagAwareFilePath(basePath, null, projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report.json'
-	);
+	result = getTagAwareFilePath(relativeBasePath, null, projectRootAbs);
+	expect(result).toBe(expected); // Same expected path as 'master'
 
 	// Regular tag should be slugified
-	expect(getTagAwareFilePath(basePath, 'feature-branch', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-branch.json'
+	const parsedBasePath = path.parse(relativeBasePath);
+	let slug = slugifyTagForFilePath('feature-branch');
+	let expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
+	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
+	result = getTagAwareFilePath(
+		relativeBasePath,
+		'feature-branch',
+		projectRootAbs
 	);
+	expect(result).toBe(expected);
 
-	// Tag with special characters should be slugified
-	expect(getTagAwareFilePath(basePath, 'feature/user-auth', projectRoot)).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-user-auth.json'
+	// Tag with special characters should be slugified (feature/user-auth)
+	slug = slugifyTagForFilePath('feature/user-auth');
+	expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
+	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
+	result = getTagAwareFilePath(
+		relativeBasePath,
+		'feature/user-auth',
+		projectRootAbs
 	);
+	expect(result).toBe(expected);
 
 	// Tag with spaces and special characters
-	expect(
-		getTagAwareFilePath(basePath, 'Feature Branch @Test', projectRoot)
-	).toBe(
-		'/test/project/.taskmaster/reports/complexity-report_feature-branch-test.json'
-	);
+	const specialTag = 'Feature Branch @Test';
+	slug = slugifyTagForFilePath(specialTag);
+	expectedFileName = `${parsedBasePath.name}_${slug}${parsedBasePath.ext}`;
+	expected = path.join(projectRootAbs, parsedBasePath.dir, expectedFileName);
+	result = getTagAwareFilePath(relativeBasePath, specialTag, projectRootAbs);
+	expect(result).toBe(expected);
 });

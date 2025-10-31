@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateTasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -41,12 +42,7 @@ export function registerUpdateTool(server) {
 				.string()
 				.optional()
 				.describe('Path to the tasks file relative to project root'),
-			projectRoot: z
-				.string()
-				.optional()
-				.describe(
-					'The directory of the project. (Optional, usually from session)'
-				),
+			projectRoot: z.string().describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
@@ -86,6 +82,10 @@ export function registerUpdateTool(server) {
 					log,
 					{ session }
 				);
+
+				// Centralized delegation handling
+				const delegation = createAgentDelegationResponse(result, log, 'update');
+				if (delegation.delegated) return delegation.response;
 
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`

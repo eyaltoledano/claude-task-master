@@ -11,7 +11,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	getCurrentTag: jest.fn(() => 'master'),
 	readComplexityReport: jest.fn(),
 	findTaskInComplexityReport: jest.fn(),
-	findProjectRoot: jest.fn()
+	findProjectRoot: jest.fn(),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 jest.unstable_mockModule(

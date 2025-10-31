@@ -50,7 +50,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 		switch (lowerCaseConfig) {
 			case 'all':
 				toolsToRegister = Object.keys(toolRegistry);
-				logger.info('Loading all available tools');
+				logger.debug('Loading all available tools');
 				break;
 			case 'core':
 			case 'lean':
@@ -145,7 +145,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 				break;
 		}
 
-		logger.info(
+		logger.debug(
 			`Registering ${toolsToRegister.length} MCP tools (mode: ${enabledTools})`
 		);
 
@@ -171,7 +171,7 @@ export function registerTaskMasterTools(server, toolMode = 'all') {
 			}
 		});
 
-		logger.info(
+		logger.debug(
 			`Successfully registered ${registeredTools.length}/${toolsToRegister.length} tools`
 		);
 		if (failedTools.length > 0) {

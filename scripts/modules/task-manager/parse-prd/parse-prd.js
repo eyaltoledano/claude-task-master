@@ -72,7 +72,30 @@ async function parsePRDCore(config, serviceHandler, isStreaming) {
 			config.numTasks
 		);
 
-		// Process tasks
+		// If the service handler indicates we need agent delegation, or provided a pendingInteraction,
+		// return early. The handler will have included a pendingInteraction payload that the MCP server
+		// should forward to an agent; we must not attempt to process parsedTasks here.
+		if (
+			serviceResult &&
+			(serviceResult.needsAgentDelegation || serviceResult.pendingInteraction)
+		) {
+			// Pass through the serviceResult so upstream code (caller) can handle the delegation
+			return {
+				success: true,
+				needsAgentDelegation: true,
+				pendingInteraction: serviceResult.pendingInteraction,
+				message: serviceResult.message || 'Delegation required',
+				telemetryData: null
+			};
+		}
+
+		// Process tasks - ensure parsedTasks exists and is an array
+		if (!serviceResult || !Array.isArray(serviceResult.parsedTasks)) {
+			throw new Error(
+				'AI service returned no parsedTasks and did not request delegation.'
+			);
+		}
+
 		const defaultPriority = getDefaultPriority(config.projectRoot) || 'medium';
 		const processedNewTasks = processTasks(
 			serviceResult.parsedTasks,

@@ -120,6 +120,16 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				'json'
 			);
 
+			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
+			if (coreResult && coreResult.needsAgentDelegation === true) {
+				logWrapper.debug(
+					'updateSubtaskByIdDirect: Propagating agent_llm_delegation signal from core updateSubtaskById.'
+				);
+				// The 'finally' block for disableSilentMode will still execute correctly.
+				return coreResult; // Propagate the signal object directly
+			}
+			// === END AGENT_LLM_DELEGATION PROPAGATION ===
+
 			if (!coreResult || coreResult.updatedSubtask === null) {
 				const message = `Subtask ${id} or its parent task not found.`;
 				logWrapper.error(message);

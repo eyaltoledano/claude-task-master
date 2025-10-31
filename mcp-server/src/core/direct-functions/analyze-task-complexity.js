@@ -111,6 +111,9 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 			// --- Call Core Function (Pass context separately) ---
 			// Pass coreOptions as the first argument
 			// Pass context object { session, mcpLog } as the second argument
+			// --- Call Core Function (Pass context separately) ---
+			// Pass coreOptions as the first argument
+			// Pass context object { session, mcpLog } as the second argument
 			coreResult = await analyzeTaskComplexity(coreOptions, {
 				session,
 				mcpLog: logWrapper,
@@ -119,15 +122,25 @@ export async function analyzeTaskComplexityDirect(args, log, context = {}) {
 				projectRoot,
 				tag
 			});
-			report = coreResult.report;
+
+			if (coreResult && coreResult.needsAgentDelegation === true) {
+				logWrapper.debug(
+					'analyzeTaskComplexityDirect: Propagating agent_llm_delegation signal.'
+				);
+				// The finally block will handle disabling silent mode.
+				return coreResult;
+			}
+
+			// If not delegating, coreResult is { report, telemetryData }
+			// The rest of the existing logic for processing this direct result follows...
+			report = coreResult.report; // This line might be adjusted if coreResult structure changes for success
+			// For now, assume 'report' is still the primary data part of coreResult on success
 		} catch (error) {
-			log.error(
+			logWrapper.error(
+				// Use logWrapper
 				`Error in analyzeTaskComplexity core function: ${error.message}`
 			);
-			// Restore logging if we changed it
-			if (!wasSilent && isSilentMode()) {
-				disableSilentMode();
-			}
+			// The finally block handles disabling silent mode.
 			return {
 				success: false,
 				error: {

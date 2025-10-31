@@ -22,7 +22,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	findTaskById: jest.fn(),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	getCurrentTag: jest.fn(() => 'master'),
-	promptYesNo: jest.fn()
+	promptYesNo: jest.fn(),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 jest.unstable_mockModule(

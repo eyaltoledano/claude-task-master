@@ -8,8 +8,9 @@
 import { z } from 'zod/v3';
 import {
 	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
+ 	createErrorResponse,
+ 	withNormalizedProjectRoot,
+    createAgentDelegationResponse
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
@@ -96,6 +97,11 @@ export function registerExpandTaskTool(server) {
 					{ session }
 				);
 
+				// Centralized delegation handling
+				const delegation = createAgentDelegationResponse(result, log, 'expand-task');
+				if (delegation.delegated) return delegation.response;
+
+				// If not delegating, proceed with existing result handling (likely handleApiResult)
 				return handleApiResult(
 					result,
 					log,

@@ -24,7 +24,7 @@ import boxen from 'boxen';
  * @param {string} [context.tag] - Tag for the task
  * @param {string} [context.complexityReportPath] - Path to the complexity report file
  * @param {string} [outputFormat='text'] - Output format ('text' or 'json'). MCP calls should use 'json'.
- * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>}>} - Result summary.
+ * @returns {Promise<{success: boolean, expandedCount: number, failedCount: number, delegationSignaledCount: number, skippedCount: number, tasksToExpand: number, telemetryData: Array<Object>, delegatedTaskIds: string[], message?: string}>} - Result summary.
  */
 async function expandAllTasks(
 	tasksPath,
@@ -73,7 +73,9 @@ async function expandAllTasks(
 	let expandedCount = 0;
 	let failedCount = 0;
 	let tasksToExpandCount = 0;
+	let delegationSignaledCount = 0;
 	const allTelemetryData = []; // Still collect individual data first
+	const delegatedTaskIds = []; // Initialize array for delegated task IDs
 
 	if (!isMCPCall && outputFormat === 'text') {
 		loadingIndicator = startLoadingIndicator(
@@ -141,27 +143,70 @@ async function expandAllTasks(
 					}, // Pass the whole context object with projectRoot and resolved tag
 					force
 				);
-				expandedCount++;
+				// expandedCount++; // Moved into new logic
 
 				// Collect individual telemetry data
-				if (result && result.telemetryData) {
-					allTelemetryData.push(result.telemetryData);
-				}
+				// if (result && result.telemetryData) { // Moved into new logic
+				// 	allTelemetryData.push(result.telemetryData);
+				// }
 
-				if (taskIndicator) {
-					stopLoadingIndicator(taskIndicator, `Task ${task.id} expanded.`);
+				if (result && result.needsAgentDelegation === true) {
+					delegationSignaledCount++;
+					delegatedTaskIds.push(task.id); // REVERTED and ADDED: Collect task ID for delegation
+					if (taskIndicator) {
+						stopLoadingIndicator(
+							taskIndicator,
+							`Task ${task.id} signaled for agent delegation.`
+						);
+					}
+					const idInfo =
+						result && result.interactionId
+							? ` (interactionId: ${result.interactionId})`
+							: '';
+					logger.info(
+						`Agent delegation signaled for task ${task.id}${idInfo}. Local expansion skipped.`
+					);
+					// Do not attempt to use result.telemetryData or result.task here
+				} else if (result && result.task && result.task.id === task.id) {
+					// Check for a valid task object with matching ID
+					expandedCount++;
+					if (result.telemetryData) {
+						// Ensure telemetryData exists before pushing
+						allTelemetryData.push(result.telemetryData);
+					}
+					if (taskIndicator) {
+						stopLoadingIndicator(
+							taskIndicator,
+							`Task ${task.id} expanded locally.`
+						);
+					}
+					logger.info(`Successfully expanded task ${task.id} locally.`);
+				} else {
+					failedCount++;
+					if (taskIndicator) {
+						stopLoadingIndicator(
+							taskIndicator,
+							`Expansion failed or returned unexpected data for task ${task.id}.`,
+							false
+						);
+					}
+					// Log the actual result for better debugging if it's unexpected
+					logger.error(
+						`Expansion failed or returned unexpected data for task ${task.id}. Result: ${result ? JSON.stringify(result) : 'undefined'}`
+					);
 				}
-				logger.info(`Successfully expanded task ${task.id}.`);
 			} catch (error) {
 				failedCount++;
 				if (taskIndicator) {
 					stopLoadingIndicator(
 						taskIndicator,
-						`Failed to expand task ${task.id}.`,
+						`Failed to expand task ${task.id}.`, // This outer catch is for errors *from* expandTask itself
 						false
 					);
 				}
-				logger.error(`Failed to expand task ${task.id}: ${error.message}`);
+				if (getDebugFlag(session)) {
+					console.error(error);
+				}
 				// Continue to the next task
 			}
 		}
@@ -181,9 +226,10 @@ async function expandAllTasks(
 			const summaryContent =
 				`${chalk.white.bold('Expansion Summary:')}\n\n` +
 				`${chalk.cyan('-')} Attempted: ${chalk.bold(tasksToExpandCount)}\n` +
-				`${chalk.green('-')} Expanded:  ${chalk.bold(expandedCount)}\n` +
+				`${chalk.green('-')} Expanded Locally: ${chalk.bold(expandedCount)}\n` +
+				`${chalk.blue('-')} Delegations Signaled: ${chalk.bold(delegationSignaledCount)}\n` +
 				// Skipped count is always 0 now due to pre-filtering
-				`${chalk.gray('-')} Skipped:   ${chalk.bold(0)}\n` +
+				`${chalk.gray('-')} Skipped (Not eligible): ${chalk.bold(0)}\n` +
 				`${chalk.red('-')} Failed:    ${chalk.bold(failedCount)}`;
 
 			console.log(
@@ -202,12 +248,19 @@ async function expandAllTasks(
 
 		// Return summary including the AGGREGATED telemetry data
 		return {
-			success: true,
+			success: true, // Overall operation succeeded, even if some tasks failed
 			expandedCount,
 			failedCount,
+			delegationSignaledCount, // Added
 			skippedCount: 0,
 			tasksToExpand: tasksToExpandCount,
-			telemetryData: aggregatedTelemetryData
+			telemetryData: aggregatedTelemetryData,
+			delegatedTaskIds: delegatedTaskIds, // Add collected delegated task IDs
+			...(delegatedTaskIds.length > 0 && {
+				message:
+					"directive: The 'expand_all' tool has returned a list of eligible 'delegatedTaskIds' for expansion, you have to expand tasks one by one using 'expand_task' tool."
+			})
+			// The 'message' in expandAllTasksDirect will use these counts.
 		};
 	} catch (error) {
 		if (loadingIndicator)

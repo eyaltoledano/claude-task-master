@@ -5,6 +5,7 @@
 
 import path from 'path';
 import fs from 'fs';
+// Add these if not already present, adjust paths as necessary
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import {
 	enableSilentMode,
@@ -12,7 +13,10 @@ import {
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
+import {
+	getDefaultNumTasks,
+	getDebugFlag
+} from '../../../../scripts/modules/config-manager.js';
 import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
 
@@ -20,13 +24,6 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * Direct function wrapper for parsing PRD documents and generating tasks.
  *
  * @param {Object} args - Command arguments containing projectRoot, input, output, numTasks options.
- * @param {string} args.input - Path to the input PRD file.
- * @param {string} args.output - Path to the output directory.
- * @param {string} args.numTasks - Number of tasks to generate.
- * @param {boolean} args.force - Whether to force parsing.
- * @param {boolean} args.append - Whether to append to the output file.
- * @param {boolean} args.research - Whether to use research mode.
- * @param {string} args.tag - Tag context for organizing tasks into separate task lists.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
@@ -41,8 +38,7 @@ export async function parsePRDDirect(args, log, context = {}) {
 		force,
 		append,
 		research,
-		projectRoot,
-		tag
+		projectRoot
 	} = args;
 
 	// Create the standard logger wrapper
@@ -160,7 +156,6 @@ export async function parsePRDDirect(args, log, context = {}) {
 				session,
 				mcpLog: logWrapper,
 				projectRoot,
-				tag,
 				force,
 				append,
 				research,
@@ -171,8 +166,36 @@ export async function parsePRDDirect(args, log, context = {}) {
 			'json'
 		);
 
-		// Adjust check for the new return structure
-		if (result && result.success) {
+		if (getDebugFlag()) {
+			logWrapper.debug(
+				`parsePRDDirect: Result analysis - type: ${typeof result}, keys: [${Object.keys(
+					result || {}
+				).join(', ')}], needsAgentDelegation: ${
+					result?.needsAgentDelegation
+				}, success: ${result?.success}`
+			);
+		}
+
+		// === NEW MODIFICATION START ===
+		// The block for handling resumed agent data has been removed from here,
+		// as this responsibility is now in mcp-server/src/index.js.
+
+		// Existing logic follows, adjusted from 'else if' to 'if' where appropriate.
+
+		logWrapper.info(
+			'parsePRDDirect: Evaluating condition for needsAgentDelegation...'
+		);
+		if (result && result.needsAgentDelegation === true) {
+			logWrapper.debug(
+				'parsePRDDirect: Condition for needsAgentDelegation MET. Propagating agent_llm_delegation signal.'
+			); // Combined/moved log
+			return result;
+		}
+		// IMPORTANT: Only whitespace or comments are allowed between the above '}' and the 'else if' below.
+		else if (result && result.success === true) {
+			logWrapper.info(
+				'parsePRDDirect: Evaluating condition for direct success... Condition MET.'
+			); // Log moved inside
 			const successMsg = `Successfully parsed PRD and generated tasks in ${result.tasksPath}`;
 			logWrapper.success(successMsg);
 			return {
@@ -184,18 +207,24 @@ export async function parsePRDDirect(args, log, context = {}) {
 					tagInfo: result.tagInfo
 				}
 			};
-		} else {
-			// Handle case where core function didn't return expected success structure
+		}
+		// IMPORTANT: Only whitespace or comments are allowed between the above '}' and the 'else' below.
+		else {
+			logWrapper.info(
+				'parsePRDDirect: None of the primary conditions met, evaluating final else (error) block... Condition MET.'
+			); // Log moved inside
+			const errorMsgDetail =
+				result?.message ||
+				'Core function failed to parse PRD or returned unexpected result.';
+			// The log line below was updated in a previous subtask report, ensure it's the more detailed one.
 			logWrapper.error(
-				'Core parsePRD function did not return a successful structure.'
+				`Core parsePRD function did not return a successful structure (not agent delegation, not direct success). Details: ${errorMsgDetail}`
 			);
 			return {
 				success: false,
 				error: {
 					code: 'CORE_FUNCTION_ERROR',
-					message:
-						result?.message ||
-						'Core function failed to parse PRD or returned unexpected result.'
+					message: errorMsgDetail
 				}
 			};
 		}

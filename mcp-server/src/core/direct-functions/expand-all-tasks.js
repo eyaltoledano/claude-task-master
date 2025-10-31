@@ -84,18 +84,31 @@ export async function expandAllTasksDirect(args, log, context = {}) {
 			'json'
 		);
 
-		// Core function now returns a summary object including the *aggregated* telemetryData
+		// Core function now returns a summary object including the *aggregated* telemetryData and pendingInteractions
+		const messageParts = [
+			`Expanded: ${result.expandedCount}`,
+			`Failed: ${result.failedCount}`,
+			`Skipped: ${result.skippedCount}`
+		];
+		if (result.delegationSignaledCount > 0) {
+			messageParts.push(
+				`Delegations Signaled: ${result.delegationSignaledCount}`
+			);
+		}
+		const message = `Expand all operation completed. ${messageParts.join(', ')}.`;
+
 		return {
 			success: true,
 			data: {
-				message: `Expand all operation completed. Expanded: ${result.expandedCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}`,
+				message: result.message || message,
 				details: {
 					expandedCount: result.expandedCount,
 					failedCount: result.failedCount,
 					skippedCount: result.skippedCount,
 					tasksToExpand: result.tasksToExpand
 				},
-				telemetryData: result.telemetryData // Pass the aggregated object
+				telemetryData: result.telemetryData, // Pass the aggregated object
+				delegatedTaskIds: result.delegatedTaskIds || [] // REVERTED and ADDED: Add delegatedTaskIds
 			}
 		};
 	} catch (error) {

@@ -25,6 +25,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import generateTaskFiles from './generate-task-files.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 import { tryUpdateViaRemote } from '@tm/bridge';
 
 /**
@@ -288,6 +289,23 @@ async function updateSubtaskById(
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				role,
+				{
+					subtaskId,
+					originalUserPrompt: prompt
+				},
+				{
+					serviceType: 'generateText',
+					commandName: 'update-subtask'
+				}
+			);
+			if (delegationResult) return delegationResult;
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (
 				aiServiceResponse &&
 				aiServiceResponse.mainResult &&
@@ -318,7 +336,9 @@ async function updateSubtaskById(
 		if (generatedContentString && generatedContentString.trim()) {
 			// Check if the string is not empty
 			const timestamp = new Date().toISOString();
-			const formattedBlock = `<info added on ${timestamp}>\n${generatedContentString.trim()}\n</info added on ${timestamp}>`;
+			const formattedBlock = `<info added on ${timestamp}>
+${generatedContentString.trim()}
+</info added on ${timestamp}>`;
 			newlyAddedSnippet = formattedBlock; // <--- ADD THIS LINE: Store for display
 
 			subtask.details =
@@ -389,7 +409,11 @@ async function updateSubtaskById(
 						chalk.white.bold('Newly Added Snippet:') +
 						'\n' +
 						chalk.white(newlyAddedSnippet),
-					{ padding: 1, borderColor: 'green', borderStyle: 'round' }
+					{
+						padding: 1,
+						borderColor: 'green',
+						borderStyle: 'round'
+					}
 				)
 			);
 		}

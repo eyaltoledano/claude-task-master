@@ -212,32 +212,52 @@ export async function expandTaskDirect(args, log, context = {}) {
 				forceFlag
 			);
 
-			// Restore normal logging
-			if (!wasSilent && isSilentMode()) disableSilentMode();
+			// === BEGIN AGENT_LLM_DELEGATION PROPAGATION ===
+			if (coreResult && coreResult.needsAgentDelegation === true) {
+				log.debug(
+					'expandTaskDirect: Propagating agent_llm_delegation signal from core expandTask.'
+				);
+				if (!wasSilent && isSilentMode()) disableSilentMode(); // Ensure silent mode is handled
+				return coreResult;
+			}
+			// === END AGENT_LLM_DELEGATION PROPAGATION ===
 
-			// Read the updated data
-			const updatedData = readJSON(tasksPath, projectRoot);
-			const updatedTask = updatedData.tasks.find((t) => t.id === taskId);
+			// If not delegating, coreResult is { task (updated parent), telemetryData }
+			if (!wasSilent && isSilentMode()) disableSilentMode(); // Ensure silent mode is handled
 
-			// Calculate how many subtasks were added
-			const subtasksAdded = updatedTask.subtasks
-				? updatedTask.subtasks.length - subtasksCountBefore
-				: 0;
+			if (coreResult && coreResult.task) {
+				// Indicates successful non-delegated expansion
+				const subtasksAdded = coreResult.task.subtasks
+					? coreResult.task.subtasks.length - subtasksCountBefore
+					: 0 - subtasksCountBefore; // If subtasks became undefined (unlikely)
 
-			// Return the result, including telemetryData
-			log.info(
-				`Successfully expanded task ${taskId} with ${subtasksAdded} new subtasks`
-			);
-			return {
-				success: true,
-				data: {
-					task: coreResult.task,
-					subtasksAdded,
-					hasExistingSubtasks,
-					telemetryData: coreResult.telemetryData,
-					tagInfo: coreResult.tagInfo
-				}
-			};
+				log.info(
+					`Successfully expanded task ${taskId} with ${subtasksAdded} new subtasks (direct execution).`
+				);
+				return {
+					success: true,
+					data: {
+						task: coreResult.task, // The updated task from the core function
+						subtasksAdded,
+						hasExistingSubtasks, // This was determined before calling core expandTask
+						telemetryData: coreResult.telemetryData,
+						tagInfo: coreResult.tagInfo
+					}
+				};
+			} else {
+				// Handle unexpected coreResult structure for non-delegation
+				log.error(
+					`expandTaskDirect: Core expandTask function returned an unexpected result for non-delegated execution: ${JSON.stringify(coreResult)}`
+				);
+				return {
+					success: false,
+					error: {
+						code: 'CORE_FUNCTION_UNEXPECTED_RESULT',
+						message:
+							'Core expandTask function returned an unexpected result after execution.'
+					}
+				};
+			}
 		} catch (error) {
 			// Make sure to restore normal logging even if there's an error
 			if (!wasSilent && isSilentMode()) disableSilentMode();

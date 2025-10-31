@@ -23,7 +23,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => []),
 	isSilentMode: jest.fn(() => true),
 	resolveTag: jest.fn(() => 'master'),
-	getTasksForTag: jest.fn(() => []),
+	getTasksForTag: jest.fn((data) => data.tasks || []),
 	setTasksForTag: jest.fn(),
 	enableSilentMode: jest.fn(),
 	disableSilentMode: jest.fn(),
@@ -34,7 +34,15 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 			return Object.keys(value).length === 0;
 		return false; // Not an array or object
 	}),
-	resolveEnvVariable: jest.fn()
+	resolveEnvVariable: jest.fn(),
+	slugifyTagForFilePath: jest.fn((tag) => tag ? tag.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'master'),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+		success: jest.fn(),
+		warn: jest.fn()
+	}))
 }));
 
 // Mock ui.js

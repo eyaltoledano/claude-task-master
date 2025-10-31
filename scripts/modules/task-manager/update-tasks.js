@@ -27,6 +27,7 @@ import { getModelConfiguration } from './models.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks, findProjectRoot } from '../utils.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Update tasks based on new context using the unified AI service.
@@ -225,6 +226,21 @@ async function updateTasks(
 				outputType: isMCP ? 'mcp' : 'cli'
 			});
 
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				serviceRole,
+				{
+					fromId: fromId,
+					tasksToUpdate: tasksToUpdate,
+					originalUserPrompt: prompt
+				},
+				{ commandName: 'update-tasks' }
+			);
+			if (delegationResult) return delegationResult;
+			// === END AGENT_LLM_DELEGATION HANDLING ===
+
 			if (loadingIndicator)
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
@@ -339,4 +355,4 @@ async function updateTasks(
 	}
 }
 
-export default updateTasks;
+export { updateTasks as default };

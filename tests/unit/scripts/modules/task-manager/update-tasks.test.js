@@ -21,7 +21,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	getCurrentTag: jest.fn(() => 'master'),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
-	findProjectRoot: jest.fn(() => '/mock/project/root')
+	findProjectRoot: jest.fn(() => '/mock/project/root'),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 jest.unstable_mockModule(

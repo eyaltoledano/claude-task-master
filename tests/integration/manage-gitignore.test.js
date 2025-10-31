@@ -6,6 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { jest } from '@jest/globals'; // Re-adding this import
 import manageGitignoreFile from '../../src/utils/manage-gitignore.js';
 
 describe('manage-gitignore.js Integration Tests', () => {
@@ -23,6 +24,7 @@ describe('manage-gitignore.js Integration Tests', () => {
 		if (fs.existsSync(tempDir)) {
 			fs.rmSync(tempDir, { recursive: true, force: true });
 		}
+		jest.restoreAllMocks(); // Restore all mocks after each test
 	});
 
 	describe('New File Creation', () => {
@@ -383,13 +385,22 @@ tasks/ `;
 	});
 
 	describe('Error Handling', () => {
-		test('should handle permission errors gracefully', () => {
-			// Create a directory where we would create the file, then remove write permissions
-			const readOnlyDir = path.join(tempDir, 'readonly');
-			fs.mkdirSync(readOnlyDir);
-			fs.chmodSync(readOnlyDir, 0o444); // Read-only
+		// Note: fs.chmod doesn't reliably cause errors on all systems/setups (e.g., if running as root or on Windows)
+		// So, we mock the fs methods to simulate errors directly for these tests.
 
-			const readOnlyGitignorePath = path.join(readOnlyDir, '.gitignore');
+		test('should handle permission errors gracefully', () => {
+			const writeSpy = jest
+				.spyOn(fs, 'writeFileSync')
+				.mockImplementation((filePath, data) => {
+					if (filePath.endsWith('.gitignore')) {
+						throw new Error('Simulated EACCES error for writeFileSync');
+					}
+				});
+
+			const gitignorePathInErrorTest = path.join(
+				tempDir,
+				'test-error.gitignore'
+			);
 			const templateContent = `# Test
 test.txt
 
@@ -402,27 +413,39 @@ tasks/ `;
 
 			expect(() => {
 				manageGitignoreFile(
-					readOnlyGitignorePath,
+					gitignorePathInErrorTest,
 					templateContent,
 					false,
 					mockLog
 				);
-			}).toThrow();
+			}).toThrow('Simulated EACCES error for writeFileSync');
 
 			// Verify error was logged
 			expect(logs).toContainEqual({
 				level: 'error',
-				message: expect.stringContaining('Failed to create')
+				message: expect.stringContaining(
+					`Failed to create ${gitignorePathInErrorTest}: Simulated EACCES error for writeFileSync`
+				)
 			});
-
-			// Restore permissions for cleanup
-			fs.chmodSync(readOnlyDir, 0o755);
+			writeSpy.mockRestore(); // Restore only this spy
 		});
 
 		test('should handle read errors on existing files', () => {
-			// Create a file then remove read permissions
+			// First, create a file normally that we will then pretend we can't read.
 			fs.writeFileSync(testGitignorePath, 'existing content');
-			fs.chmodSync(testGitignorePath, 0o000); // No permissions
+
+			const readSpy = jest
+				.spyOn(fs, 'readFileSync')
+				.mockImplementation((filePath, options) => {
+					if (filePath === testGitignorePath) {
+						throw new Error('Simulated EACCES error for readFileSync');
+					}
+					// For other reads (if any during test setup/teardown), use original behavior
+					// This part might not be strictly necessary if no other reads happen but good practice.
+					// However, jest.spyOn by default calls the original if not further mocked.
+					// So, this explicit call to original is redundant if that's the only goal.
+					// The main point is throwing for testGitignorePath.
+				});
 
 			const templateContent = `# Test
 test.txt
@@ -436,16 +459,16 @@ tasks/ `;
 
 			expect(() => {
 				manageGitignoreFile(testGitignorePath, templateContent, false, mockLog);
-			}).toThrow();
+			}).toThrow('Simulated EACCES error for readFileSync');
 
 			// Verify error was logged
 			expect(logs).toContainEqual({
 				level: 'error',
-				message: expect.stringContaining('Failed to merge content')
+				message: expect.stringContaining(
+					`Failed to merge content with ${testGitignorePath}: Simulated EACCES error for readFileSync`
+				)
 			});
-
-			// Restore permissions for cleanup
-			fs.chmodSync(testGitignorePath, 0o644);
+			readSpy.mockRestore(); // Restore only this spy
 		});
 	});
 

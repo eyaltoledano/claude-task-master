@@ -178,6 +178,7 @@ const mockClaudeProvider = {
 
 // Mock the provider classes to return our mock instances
 jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
+	__esModule: true, // Added for ES Modules
 	AnthropicAIProvider: jest.fn(() => mockAnthropicProvider),
 	PerplexityAIProvider: jest.fn(() => mockPerplexityProvider),
 	GoogleAIProvider: jest.fn(() => ({
@@ -237,6 +238,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
 		getRequiredApiKeyName: jest.fn(() => 'GEMINI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
+	AgentLLMProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AGENTLLM_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
 	CodexCliProvider: jest.fn(() => mockCodexProvider),
