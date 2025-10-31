@@ -3,4 +3,82 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+# Latest Features & Updates
+
+## New AI Provider Support
+
+### Z.ai (GLM) Integration 
+Native support for Chinese GLM models with massive context windows.
+
+**Key highlights:**
+- **GLM-4.6**: 200K+ token context window for analyzing entire codebases
+- **GLM-4.5**: Previous generation with excellent coding performance  
+- **GLM-4.5-air**: Cost-effective variant for budget-conscious projects
+- **GLM-4.5v**: Vision-enabled model for multimodal tasks
+
+**Setup:**
+```bash
+# Get API key from https://z.ai/manage-apikey/apikey-list
+ZAI_API_KEY="your-zai-key-here"
+
+# Configure GLM models
+task-master models --set-main glm-4.6
+```
+
+### LM Studio Integration
+Run Task Master completely offline with local models at zero API cost.
+
+**Benefits:**
+- Complete privacy - no data leaves your machine
+- Zero ongoing API costs after initial setup
+- Works without internet connection
+- Full control over model parameters
+
+**Setup:**
+1. Install [LM Studio](https://lmstudio.ai/)
+2. Download a model (Llama 3.2, Mistral, Qwen, etc.)
+3. Start the Local Server
+4. Configure Task Master:
+   ```bash
+   task-master models --set-main llama-3.2-3b --lmstudio
+   ```
+
+### OpenAI-Compatible Provider Support
+Connect to any service implementing the OpenAI API specification.
+
+**Use cases:**
+- Self-hosted inference servers (vLLM, TGI)
+- Specialized AI providers  
+- Custom corporate endpoints
+- Local development servers
+
+**Setup:**
+```bash
+# Configure custom provider
+task-master models --set-main your-model-id --openai-compatible --baseURL http://localhost:8000/v1
+
+# Set API key if required
+OPENAI_COMPATIBLE_API_KEY="your-custom-provider-key"
+```
+
+## Enhanced Configuration
+
+### Streamlined Model Setup
+New interactive setup process makes configuring multiple AI providers effortless:
+
+```bash
+# Interactive configuration wizard
+task-master models --setup
+```
+
+### Improved Documentation
+- New [AI Providers guide](/configuration/ai-providers) with detailed setup instructions
+- Updated [API Keys configuration](/getting-started/api-keys) with all supported providers
+- Enhanced [Configuration reference](/configuration) with environment variable details
+
+---
+
+For complete documentation on these new features, see:
+- [AI Providers Configuration](/configuration/ai-providers)
+- [API Keys Setup](/getting-started/api-keys)
+- [Configuration Guide](/configuration)

@@ -38,6 +38,13 @@
 						]
 					},
 					{
+						"group": "Configuration",
+						"pages": [
+							"configuration",
+							"configuration/ai-providers"
+						]
+					},
+					{
 						"group": "Best Practices",
 						"pages": [
 							"best-practices/index",

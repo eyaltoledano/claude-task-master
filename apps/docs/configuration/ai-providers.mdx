@@ -1,0 +1,244 @@
+# AI Providers
+
+Task Master supports a wide range of AI providers to give you flexibility in choosing the right models for your workflow. This page covers the major provider categories and how to configure them.
+
+## Cloud Providers
+
+### Anthropic Claude
+The recommended primary provider with state-of-the-art coding capabilities.
+
+```bash
+# Configure Claude models
+task-master models --set-main claude-3-5-sonnet-20241022
+```
+
+**Available models:** Claude 3.5 Sonnet, Claude 3 Haiku, Claude 3 Opus, Claude 4 series
+
+### Z.ai (GLM Models) 
+Native support for Chinese GLM models with massive context windows.
+
+```bash
+# Set your API key
+ZAI_API_KEY="your-key-from-z.ai"
+
+# Configure GLM models  
+task-master models --set-main glm-4.6
+```
+
+**Key features:**
+- **GLM-4.6**: 200K+ context window, excellent for large codebases
+- **GLM-4.5**: Previous generation, highly capable
+- **GLM-4.5-air**: Faster, cost-effective variant
+- **GLM-4.5v**: Vision-enabled model
+
+**Get your API key:** [Z.ai API Keys](https://z.ai/manage-apikey/apikey-list)
+
+### OpenAI
+Industry-standard models including the latest GPT and O1 series.
+
+```bash
+# Configure OpenAI models
+task-master models --set-main gpt-4o
+task-master models --set-main o1  # For complex reasoning tasks
+```
+
+### Google Gemini
+High-performance models with large context windows.
+
+```bash
+# Configure Gemini models
+task-master models --set-main gemini-2.5-pro-preview-05-06
+```
+
+### xAI (Grok)
+Advanced reasoning models from xAI.
+
+```bash
+# Configure Grok models  
+task-master models --set-main grok-4
+```
+
+## Local & Self-Hosted Providers
+
+### LM Studio Integration
+Run models completely offline with zero API costs.
+
+**Setup:**
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Download a model (e.g., Llama 3.2, Mistral, Qwen)
+3. Start the Local Server in LM Studio
+4. Configure Task Master:
+
+```bash
+# Configure LM Studio models
+task-master models --set-main llama-3.2-3b --lmstudio
+
+# Optional: Set API key if your LM Studio requires it
+LMSTUDIO_API_KEY="your-key-if-needed"
+```
+
+**Benefits:**
+- Complete privacy - no data leaves your machine
+- Zero ongoing API costs
+- Works without internet connection
+- Full control over model selection and parameters
+
+### Ollama
+Another popular option for local model deployment.
+
+```bash
+# Configure Ollama models (requires Ollama running locally)
+task-master models --set-main llama3.3:latest
+```
+
+### Custom OpenAI-Compatible Providers
+Connect to any service implementing the OpenAI API specification.
+
+**Examples:**
+
+```bash
+# Local inference server
+task-master models --set-main llama-3-70b --openai-compatible --baseURL http://localhost:8000/v1
+
+# Specialized provider
+task-master models --set-main custom-model-id --openai-compatible --baseURL https://api.provider.com/v1
+
+# Self-hosted solution
+task-master models --set-main my-model --openai-compatible --baseURL https://my-inference-server.com/api/v1
+```
+
+**Set API key (if required):**
+```bash
+OPENAI_COMPATIBLE_API_KEY="your-custom-provider-key"
+```
+
+**Use cases:**
+- Self-hosted models (vLLM, TGI, etc.)
+- Specialized AI providers
+- Custom inference servers
+- Corporate/enterprise AI endpoints
+
+## CLI-Integrated Providers
+
+### Claude Code CLI
+Uses your existing Claude Code authentication.
+
+```bash
+# No API key needed - uses Claude Code's OAuth tokens
+task-master models --set-main sonnet
+```
+
+### Gemini CLI  
+Integrates with Google's Gemini CLI tool.
+
+```bash
+# Uses Gemini CLI's authentication
+task-master models --set-main gemini-2.5-pro
+```
+
+### Grok CLI
+Integrates with xAI's Grok CLI.
+
+```bash  
+# Uses Grok CLI's configuration
+task-master models --set-main grok-4-latest
+```
+
+## Multi-Provider Platforms
+
+### OpenRouter
+Access multiple models through a single API.
+
+```bash
+# Configure OpenRouter models
+task-master models --set-main google/gemini-2.5-flash-preview-05-20
+```
+
+### Groq
+High-speed inference for supported models.
+
+```bash
+# Configure Groq models
+task-master models --set-main llama-3.3-70b-versatile  
+```
+
+## Enterprise Providers
+
+### Azure OpenAI
+Enterprise-grade OpenAI models via Microsoft Azure.
+
+```bash
+# Requires both API key and endpoint
+AZURE_OPENAI_API_KEY="your-azure-key"
+AZURE_OPENAI_ENDPOINT="your-azure-endpoint"
+
+task-master models --set-main gpt-4o
+```
+
+### AWS Bedrock
+Access models through AWS's managed service.
+
+```bash
+# Uses AWS credential chain (no API key needed)
+task-master models --set-main us.anthropic.claude-3-5-sonnet-20241022-v2:0
+```
+
+## Provider Selection Guide
+
+### For Maximum Performance
+- **Primary**: Claude 3.5 Sonnet or Claude 4 series
+- **Large Context**: GLM-4.6 (200K+ tokens)
+- **Reasoning**: OpenAI O1 series
+
+### For Cost Optimization  
+- **Local**: LM Studio (zero API cost)
+- **Budget**: GPT-4o-mini, Haiku models
+- **Free Tier**: Ollama with open models
+
+### For Privacy/Security
+- **Local Only**: LM Studio, Ollama
+- **Enterprise**: Azure OpenAI, AWS Bedrock
+- **Self-hosted**: Custom OpenAI-compatible endpoints
+
+### For Research Features
+- **Recommended**: Perplexity models (sonar series)
+- **Alternative**: GPT-4o with search preview
+
+## Configuration Tips
+
+### Interactive Setup
+The easiest way to configure providers:
+
+```bash
+task-master models --setup
+```
+
+This will guide you through selecting models for different roles (main, research, fallback).
+
+### Multiple Providers
+You can use different providers for different roles:
+
+```bash
+# High-performance main model
+task-master models --set-main claude-3-5-sonnet-20241022
+
+# Research with web access  
+task-master models --set-research sonar-pro
+
+# Cost-effective fallback
+task-master models --set-fallback gpt-4o-mini
+```
+
+### Environment Variables
+All providers support environment variable configuration:
+
+```bash
+# In your .env file
+ANTHROPIC_API_KEY="sk-ant-..."
+ZAI_API_KEY="your-zai-key"
+OPENAI_API_KEY="sk-proj-..."
+LMSTUDIO_API_KEY="optional-key"
+OPENAI_COMPATIBLE_API_KEY="custom-provider-key"
+```
+
+For more detailed API key setup, see the [API Keys Configuration](/getting-started/api-keys) guide.

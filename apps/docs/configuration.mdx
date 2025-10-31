@@ -1,21 +1,52 @@
 ---
 title: "Configuration"
-description: "Configure Task Master through environment variables in a .env file"
+description: "Configure Task Master through environment variables and model settings"
 ---
 
 ## Required Configuration
 
 <Note>
-  Task Master requires an Anthropic API key to function. Add this to your `.env` file:
+  Task Master requires at least one AI provider API key to function. The recommended setup includes:
 
   ```bash
-  ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
+  ANTHROPIC_API_KEY=sk-ant-api03-your-api-key    # Primary provider
+  PERPLEXITY_API_KEY=pplx-your-key-here          # Research features  
   ```
 
-  You can obtain an API key from the [Anthropic Console](https://console.anthropic.com/).
+  You can obtain API keys from:
+  - [Anthropic Console](https://console.anthropic.com/)
+  - [Perplexity API](https://www.perplexity.ai/settings/api)
 </Note>
 
-## Optional Configuration
+## AI Provider Configuration
+
+Task Master supports many AI providers. See the [AI Providers guide](/configuration/ai-providers) for detailed setup instructions for:
+
+- **Cloud providers**: Anthropic Claude, OpenAI, Google Gemini, Z.ai (GLM), xAI Grok
+- **Local providers**: LM Studio, Ollama  
+- **Custom providers**: OpenAI-compatible endpoints
+- **Enterprise**: Azure OpenAI, AWS Bedrock
+
+### Model Configuration Commands
+
+```bash
+# Interactive setup (recommended for first time)
+task-master models --setup
+
+# Set specific models
+task-master models --set-main claude-3-5-sonnet-20241022
+task-master models --set-research perplexity-sonar-pro  
+task-master models --set-fallback gpt-4o-mini
+
+# Configure new providers
+task-master models --set-main glm-4.6                     # Z.ai GLM models
+task-master models --set-main llama-3.2-3b --lmstudio    # LM Studio
+task-master models --set-main custom-model --openai-compatible --baseURL http://localhost:8000/v1
+```
+
+## Environment Variables
+
+### Core Configuration
 
 | Variable | Default Value | Description | Example |
 | --- | --- | --- | --- |
@@ -24,14 +55,21 @@ description: "Configure Task Master through environment variables in a .env file
 | `TEMPERATURE` | `"0.7"` | Temperature for model responses | `TEMPERATURE=0.5` |
 | `DEBUG` | `"false"` | Enable debug logging | `DEBUG=true` |
 | `LOG_LEVEL` | `"info"` | Console output level | `LOG_LEVEL=debug` |
-| `DEFAULT_SUBTASKS` | `"3"` | Default subtask count | `DEFAULT_SUBTASKS=5` |
-| `DEFAULT_PRIORITY` | `"medium"` | Default priority | `DEFAULT_PRIORITY=high` |
-| `PROJECT_NAME` | `"MCP SaaS MVP"` | Project name in metadata | `PROJECT_NAME=My Awesome Project` |
-| `PROJECT_VERSION` | `"1.0.0"` | Version in metadata | `PROJECT_VERSION=2.1.0` |
-| `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
-| `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
 
-## TDD Workflow Configuration
+### Task Management
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `DEFAULT_SUBTASKS` | `"3"` | Default subtask count | 
+| `DEFAULT_PRIORITY` | `"medium"` | Default priority |
+| `PROJECT_NAME` | `"MCP SaaS MVP"` | Project name in metadata |
+| `PROJECT_VERSION` | `"1.0.0"` | Version in metadata |
+
+### AI Provider Keys
+
+See [API Keys Configuration](/getting-started/api-keys) for the complete list of supported providers and their API key requirements.
+
+### TDD Workflow Configuration
 
 Additional options for autonomous TDD workflow:
 
@@ -41,26 +79,30 @@ Additional options for autonomous TDD workflow:
 | `TM_AUTO_COMMIT` | `true` | Auto-commit after GREEN phase |
 | `TM_PROJECT_ROOT` | Current dir | Default project root |
 
-## Example .env File
+## Configuration Methods
 
-```
-# Required
+### Method 1: Environment File (.env)
+Create a `.env` file in your project root:
+
+```bash
+# Required - at least one AI provider
 ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
+PERPLEXITY_API_KEY=pplx-your-api-key
 
-# Optional - Claude Configuration
-MODEL=claude-3-7-sonnet-20250219
+# Optional - Additional providers
+ZAI_API_KEY=your-zai-key-here
+LMSTUDIO_API_KEY=your-lmstudio-key-here  
+OPENAI_COMPATIBLE_API_KEY=your-custom-key-here
+
+# Optional - Model configuration  
 MAX_TOKENS=4000
 TEMPERATURE=0.7
 
-# Optional - Perplexity API for Research
-PERPLEXITY_API_KEY=pplx-your-api-key
-PERPLEXITY_MODEL=sonar-medium-online
-
-# Optional - Project Info
+# Optional - Project info
 PROJECT_NAME=My Project
 PROJECT_VERSION=1.0.0
 
-# Optional - Application Configuration
+# Optional - Application settings
 DEFAULT_SUBTASKS=3
 DEFAULT_PRIORITY=medium
 DEBUG=false
@@ -71,7 +113,44 @@ TM_MAX_ATTEMPTS=3
 TM_AUTO_COMMIT=true
 ```
 
+### Method 2: System Environment Variables
+```bash
+export ANTHROPIC_API_KEY="your-key-here"
+export PERPLEXITY_API_KEY="your-key-here"
+# ... other keys
+```
+
+### Method 3: MCP Server Configuration
+For Claude Code integration, configure keys in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "ANTHROPIC_API_KEY": "your-key-here",
+        "PERPLEXITY_API_KEY": "your-key-here",
+        "ZAI_API_KEY": "your-zai-key-here",
+        "LMSTUDIO_API_KEY": "your-lmstudio-key-here"
+      }
+    }
+  }
+}
+```
+
 ## Troubleshooting
+
+### Configuration Issues
+
+```bash
+# Check current model configuration
+task-master models
+
+# Test API keys are working
+task-master add-task --prompt="test task" --model=claude-3-5-sonnet-20241022
+```
 
 ### If `task-master init` doesn't respond:
 
@@ -89,6 +168,12 @@ cd claude-task-master
 node scripts/init.js
 ```
 
+### Common Issues
+- **Invalid API key format**: Check the expected format for each provider
+- **Insufficient permissions**: Ensure keys have necessary API access
+- **Rate limits**: Some providers have usage limits
+- **Regional restrictions**: Some models may not be available in all regions
+
 <Note>
-For advanced configuration options and detailed customization, see our [Advanced Configuration Guide] page.
+For advanced configuration options and detailed AI provider setup, see the [AI Providers Configuration](/configuration/ai-providers) guide.
 </Note>
