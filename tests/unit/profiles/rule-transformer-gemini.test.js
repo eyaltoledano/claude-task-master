@@ -16,7 +16,7 @@ describe('Rule Transformer - Gemini Profile', () => {
 		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json');
 		expect(geminiProfile.includeDefaultRules).toBe(false);
 		expect(geminiProfile.fileMap).toEqual({
-			'AGENTS.md': 'AGENTS.md',
+			'AGENT.md': 'AGENTS.md',
 			'GEMINI.md': 'GEMINI.md'
 		});
 	});
@@ -42,7 +42,7 @@ describe('Rule Transformer - Gemini Profile', () => {
 	test('should have correct file mapping', () => {
 		const geminiProfile = getRulesProfile('gemini');
 		expect(geminiProfile.fileMap).toEqual({
-			'AGENTS.md': 'AGENTS.md',
+			'AGENT.md': 'AGENTS.md',
 			'GEMINI.md': 'GEMINI.md'
 		});
 	});
