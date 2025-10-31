@@ -20,7 +20,8 @@ import {
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification,
-	displayError
+	displayError,
+	runInteractiveSetup
 } from '@tm/cli';
 
 import {
@@ -68,16 +69,12 @@ import {
 import {
 	isApiKeySet,
 	getDebugFlag,
-	getConfig,
-	writeConfig,
 	ConfigurationError,
 	isConfigFilePresent,
-	getAvailableModels,
-	getBaseUrlForRole,
 	getDefaultNumTasks
 } from './config-manager.js';
 
-import { CUSTOM_PROVIDERS } from '../../src/constants/providers.js';
+import { CUSTOM_PROVIDERS } from '@tm/core';
 
 import {
 	COMPLEXITY_REPORT_FILE,
@@ -90,7 +87,6 @@ import { initTaskMaster } from '../../src/task-master.js';
 import {
 	displayBanner,
 	displayHelp,
-	displayNextTask,
 	displayComplexityReport,
 	getStatusWithColor,
 	confirmTaskOverwrite,
@@ -143,641 +139,6 @@ import {
 	generateProfileRemovalSummary,
 	categorizeRemovalResults
 } from '../../src/utils/profiles.js';
-
-/**
- * Runs the interactive setup process for model configuration.
- * @param {string|null} projectRoot - The resolved project root directory.
- */
-async function runInteractiveSetup(projectRoot) {
-	if (!projectRoot) {
-		console.error(
-			chalk.red(
-				'Error: Could not determine project root for interactive setup.'
-			)
-		);
-		process.exit(1);
-	}
-
-	const currentConfigResult = await getModelConfiguration({ projectRoot });
-	const currentModels = currentConfigResult.success
-		? currentConfigResult.data.activeModels
-		: { main: null, research: null, fallback: null };
-	// Handle potential config load failure gracefully for the setup flow
-	if (
-		!currentConfigResult.success &&
-		currentConfigResult.error?.code !== 'CONFIG_MISSING'
-	) {
-		console.warn(
-			chalk.yellow(
-				`Warning: Could not load current model configuration: ${currentConfigResult.error?.message || 'Unknown error'}. Proceeding with defaults.`
-			)
-		);
-	}
-
-	// Helper function to fetch OpenRouter models (duplicated for CLI context)
-	function fetchOpenRouterModelsCLI() {
-		return new Promise((resolve) => {
-			const options = {
-				hostname: 'openrouter.ai',
-				path: '/api/v1/models',
-				method: 'GET',
-				headers: {
-					Accept: 'application/json'
-				}
-			};
-
-			const req = https.request(options, (res) => {
-				let data = '';
-				res.on('data', (chunk) => {
-					data += chunk;
-				});
-				res.on('end', () => {
-					if (res.statusCode === 200) {
-						try {
-							const parsedData = JSON.parse(data);
-							resolve(parsedData.data || []); // Return the array of models
-						} catch (e) {
-							console.error('Error parsing OpenRouter response:', e);
-							resolve(null); // Indicate failure
-						}
-					} else {
-						console.error(
-							`OpenRouter API request failed with status code: ${res.statusCode}`
-						);
-						resolve(null); // Indicate failure
-					}
-				});
-			});
-
-			req.on('error', (e) => {
-				console.error('Error fetching OpenRouter models:', e);
-				resolve(null); // Indicate failure
-			});
-			req.end();
-		});
-	}
-
-	// Helper function to fetch Ollama models (duplicated for CLI context)
-	function fetchOllamaModelsCLI(baseURL = 'http://localhost:11434/api') {
-		return new Promise((resolve) => {
-			try {
-				// Parse the base URL to extract hostname, port, and base path
-				const url = new URL(baseURL);
-				const isHttps = url.protocol === 'https:';
-				const port = url.port || (isHttps ? 443 : 80);
-				const basePath = url.pathname.endsWith('/')
-					? url.pathname.slice(0, -1)
-					: url.pathname;
-
-				const options = {
-					hostname: url.hostname,
-					port: parseInt(port, 10),
-					path: `${basePath}/tags`,
-					method: 'GET',
-					headers: {
-						Accept: 'application/json'
-					}
-				};
-
-				const requestLib = isHttps ? https : http;
-				const req = requestLib.request(options, (res) => {
-					let data = '';
-					res.on('data', (chunk) => {
-						data += chunk;
-					});
-					res.on('end', () => {
-						if (res.statusCode === 200) {
-							try {
-								const parsedData = JSON.parse(data);
-								resolve(parsedData.models || []); // Return the array of models
-							} catch (e) {
-								console.error('Error parsing Ollama response:', e);
-								resolve(null); // Indicate failure
-							}
-						} else {
-							console.error(
-								`Ollama API request failed with status code: ${res.statusCode}`
-							);
-							resolve(null); // Indicate failure
-						}
-					});
-				});
-
-				req.on('error', (e) => {
-					console.error('Error fetching Ollama models:', e);
-					resolve(null); // Indicate failure
-				});
-				req.end();
-			} catch (e) {
-				console.error('Error parsing Ollama base URL:', e);
-				resolve(null); // Indicate failure
-			}
-		});
-	}
-
-	// Helper to get choices and default index for a role
-	const getPromptData = (role, allowNone = false) => {
-		const currentModel = currentModels[role]; // Use the fetched data
-		const allModelsRaw = getAvailableModels(); // Get all available models
-
-		// Manually group models by provider
-		const modelsByProvider = allModelsRaw.reduce((acc, model) => {
-			if (!acc[model.provider]) {
-				acc[model.provider] = [];
-			}
-			acc[model.provider].push(model);
-			return acc;
-		}, {});
-
-		const cancelOption = { name: '⏹ Cancel Model Setup', value: '__CANCEL__' }; // Symbol updated
-		const noChangeOption = currentModel?.modelId
-			? {
-					name: `✔ No change to current ${role} model (${currentModel.modelId})`, // Symbol updated
-					value: '__NO_CHANGE__'
-				}
-			: null;
-
-		// Define custom provider options
-		const customProviderOptions = [
-			{ name: '* Custom OpenRouter model', value: '__CUSTOM_OPENROUTER__' },
-			{ name: '* Custom Ollama model', value: '__CUSTOM_OLLAMA__' },
-			{ name: '* Custom Bedrock model', value: '__CUSTOM_BEDROCK__' },
-			{ name: '* Custom Azure model', value: '__CUSTOM_AZURE__' },
-			{ name: '* Custom Vertex model', value: '__CUSTOM_VERTEX__' }
-		];
-
-		let choices = [];
-		let defaultIndex = 0; // Default to 'Cancel'
-
-		// Filter and format models allowed for this role using the manually grouped data
-		const roleChoices = Object.entries(modelsByProvider)
-			.map(([provider, models]) => {
-				const providerModels = models
-					.filter((m) => m.allowed_roles.includes(role))
-					.map((m) => ({
-						name: `${provider} / ${m.id} ${
-							m.cost_per_1m_tokens
-								? chalk.gray(
-										`($${m.cost_per_1m_tokens.input.toFixed(2)} input | $${m.cost_per_1m_tokens.output.toFixed(2)} output)`
-									)
-								: ''
-						}`,
-						value: { id: m.id, provider },
-						short: `${provider}/${m.id}`
-					}));
-				if (providerModels.length > 0) {
-					return [...providerModels];
-				}
-				return null;
-			})
-			.filter(Boolean)
-			.flat();
-
-		// Find the index of the currently selected model for setting the default
-		let currentChoiceIndex = -1;
-		if (currentModel?.modelId && currentModel?.provider) {
-			currentChoiceIndex = roleChoices.findIndex(
-				(choice) =>
-					typeof choice.value === 'object' &&
-					choice.value.id === currentModel.modelId &&
-					choice.value.provider === currentModel.provider
-			);
-		}
-
-		// Construct final choices list with custom options moved to bottom
-		const systemOptions = [];
-		if (noChangeOption) {
-			systemOptions.push(noChangeOption);
-		}
-		systemOptions.push(cancelOption);
-
-		const systemLength = systemOptions.length;
-
-		if (allowNone) {
-			choices = [
-				...systemOptions,
-				new inquirer.Separator('\n── Standard Models ──'),
-				{ name: '⚪ None (disable)', value: null },
-				...roleChoices,
-				new inquirer.Separator('\n── Custom Providers ──'),
-				...customProviderOptions
-			];
-			// Adjust default index: System + Sep1 + None (+2)
-			const noneOptionIndex = systemLength + 1;
-			defaultIndex =
-				currentChoiceIndex !== -1
-					? currentChoiceIndex + systemLength + 2 // Offset by system options and separators
-					: noneOptionIndex; // Default to 'None' if no current model matched
-		} else {
-			choices = [
-				...systemOptions,
-				new inquirer.Separator('\n── Standard Models ──'),
-				...roleChoices,
-				new inquirer.Separator('\n── Custom Providers ──'),
-				...customProviderOptions
-			];
-			// Adjust default index: System + Sep (+1)
-			defaultIndex =
-				currentChoiceIndex !== -1
-					? currentChoiceIndex + systemLength + 1 // Offset by system options and separator
-					: noChangeOption
-						? 1
-						: 0; // Default to 'No Change' if present, else 'Cancel'
-		}
-
-		// Ensure defaultIndex is valid within the final choices array length
-		if (defaultIndex < 0 || defaultIndex >= choices.length) {
-			// If default calculation failed or pointed outside bounds, reset intelligently
-			defaultIndex = 0; // Default to 'Cancel'
-			console.warn(
-				`Warning: Could not determine default model for role '${role}'. Defaulting to 'Cancel'.`
-			); // Add warning
-		}
-
-		return { choices, default: defaultIndex };
-	};
-
-	// --- Generate choices using the helper ---
-	const mainPromptData = getPromptData('main');
-	const researchPromptData = getPromptData('research');
-	const fallbackPromptData = getPromptData('fallback', true); // Allow 'None' for fallback
-
-	// Display helpful intro message
-	console.log(chalk.cyan('\n🎯 Interactive Model Setup'));
-	console.log(chalk.gray('━'.repeat(50)));
-	console.log(chalk.yellow('💡 Navigation tips:'));
-	console.log(chalk.gray('   • Type to search and filter options'));
-	console.log(chalk.gray('   • Use ↑↓ arrow keys to navigate results'));
-	console.log(
-		chalk.gray(
-			'   • Standard models are listed first, custom providers at bottom'
-		)
-	);
-	console.log(chalk.gray('   • Press Enter to select\n'));
-
-	// Helper function to create search source for models
-	const createSearchSource = (choices, defaultValue) => {
-		return (searchTerm = '') => {
-			const filteredChoices = choices.filter((choice) => {
-				if (choice.type === 'separator') return true; // Always show separators
-				const searchText = choice.name || '';
-				return searchText.toLowerCase().includes(searchTerm.toLowerCase());
-			});
-			return Promise.resolve(filteredChoices);
-		};
-	};
-
-	const answers = {};
-
-	// Main model selection
-	answers.mainModel = await search({
-		message: 'Select the main model for generation/updates:',
-		source: createSearchSource(mainPromptData.choices, mainPromptData.default),
-		pageSize: 15
-	});
-
-	if (answers.mainModel !== '__CANCEL__') {
-		// Research model selection
-		answers.researchModel = await search({
-			message: 'Select the research model:',
-			source: createSearchSource(
-				researchPromptData.choices,
-				researchPromptData.default
-			),
-			pageSize: 15
-		});
-
-		if (answers.researchModel !== '__CANCEL__') {
-			// Fallback model selection
-			answers.fallbackModel = await search({
-				message: 'Select the fallback model (optional):',
-				source: createSearchSource(
-					fallbackPromptData.choices,
-					fallbackPromptData.default
-				),
-				pageSize: 15
-			});
-		}
-	}
-
-	let setupSuccess = true;
-	let setupConfigModified = false;
-	const coreOptionsSetup = { projectRoot }; // Pass root for setup actions
-
-	// Helper to handle setting a model (including custom)
-	async function handleSetModel(role, selectedValue, currentModelId) {
-		if (selectedValue === '__CANCEL__') {
-			console.log(
-				chalk.yellow(`\nSetup canceled during ${role} model selection.`)
-			);
-			setupSuccess = false; // Also mark success as false on cancel
-			return false; // Indicate cancellation
-		}
-
-		// Handle the new 'No Change' option
-		if (selectedValue === '__NO_CHANGE__') {
-			console.log(chalk.gray(`No change selected for ${role} model.`));
-			return true; // Indicate success, continue setup
-		}
-
-		let modelIdToSet = null;
-		let providerHint = null;
-		let isCustomSelection = false;
-
-		if (selectedValue === '__CUSTOM_OPENROUTER__') {
-			isCustomSelection = true;
-			const { customId } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'customId',
-					message: `Enter the custom OpenRouter Model ID for the ${role} role:`
-				}
-			]);
-			if (!customId) {
-				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
-				return true; // Continue setup, but don't set this role
-			}
-			modelIdToSet = customId;
-			providerHint = CUSTOM_PROVIDERS.OPENROUTER;
-			// Validate against live OpenRouter list
-			const openRouterModels = await fetchOpenRouterModelsCLI();
-			if (
-				!openRouterModels ||
-				!openRouterModels.some((m) => m.id === modelIdToSet)
-			) {
-				console.error(
-					chalk.red(
-						`Error: Model ID "${modelIdToSet}" not found in the live OpenRouter model list. Please check the ID.`
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			}
-		} else if (selectedValue === '__CUSTOM_OLLAMA__') {
-			isCustomSelection = true;
-			const { customId } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'customId',
-					message: `Enter the custom Ollama Model ID for the ${role} role:`
-				}
-			]);
-			if (!customId) {
-				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
-				return true; // Continue setup, but don't set this role
-			}
-			modelIdToSet = customId;
-			providerHint = CUSTOM_PROVIDERS.OLLAMA;
-			// Get the Ollama base URL from config for this role
-			const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
-			// Validate against live Ollama list
-			const ollamaModels = await fetchOllamaModelsCLI(ollamaBaseURL);
-			if (ollamaModels === null) {
-				console.error(
-					chalk.red(
-						`Error: Unable to connect to Ollama server at ${ollamaBaseURL}. Please ensure Ollama is running and try again.`
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			} else if (!ollamaModels.some((m) => m.model === modelIdToSet)) {
-				console.error(
-					chalk.red(
-						`Error: Model ID "${modelIdToSet}" not found in the Ollama instance. Please verify the model is pulled and available.`
-					)
-				);
-				console.log(
-					chalk.yellow(
-						`You can check available models with: curl ${ollamaBaseURL}/tags`
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			}
-		} else if (selectedValue === '__CUSTOM_BEDROCK__') {
-			isCustomSelection = true;
-			const { customId } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'customId',
-					message: `Enter the custom Bedrock Model ID for the ${role} role (e.g., anthropic.claude-3-sonnet-20240229-v1:0):`
-				}
-			]);
-			if (!customId) {
-				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
-				return true; // Continue setup, but don't set this role
-			}
-			modelIdToSet = customId;
-			providerHint = CUSTOM_PROVIDERS.BEDROCK;
-
-			// Check if AWS environment variables exist
-			if (
-				!process.env.AWS_ACCESS_KEY_ID ||
-				!process.env.AWS_SECRET_ACCESS_KEY
-			) {
-				console.warn(
-					chalk.yellow(
-						'Warning: AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY environment variables are missing. Will fallback to system configuration. (ex: aws config files or ec2 instance profiles)'
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			}
-
-			console.log(
-				chalk.blue(
-					`Custom Bedrock model "${modelIdToSet}" will be used. No validation performed.`
-				)
-			);
-		} else if (selectedValue === '__CUSTOM_AZURE__') {
-			isCustomSelection = true;
-			const { customId } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'customId',
-					message: `Enter the custom Azure OpenAI Model ID for the ${role} role (e.g., gpt-4o):`
-				}
-			]);
-			if (!customId) {
-				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
-				return true; // Continue setup, but don't set this role
-			}
-			modelIdToSet = customId;
-			providerHint = CUSTOM_PROVIDERS.AZURE;
-
-			// Check if Azure environment variables exist
-			if (
-				!process.env.AZURE_OPENAI_API_KEY ||
-				!process.env.AZURE_OPENAI_ENDPOINT
-			) {
-				console.error(
-					chalk.red(
-						'Error: AZURE_OPENAI_API_KEY and/or AZURE_OPENAI_ENDPOINT environment variables are missing. Please set them before using custom Azure models.'
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			}
-
-			console.log(
-				chalk.blue(
-					`Custom Azure OpenAI model "${modelIdToSet}" will be used. No validation performed.`
-				)
-			);
-		} else if (selectedValue === '__CUSTOM_VERTEX__') {
-			isCustomSelection = true;
-			const { customId } = await inquirer.prompt([
-				{
-					type: 'input',
-					name: 'customId',
-					message: `Enter the custom Vertex AI Model ID for the ${role} role (e.g., gemini-1.5-pro-002):`
-				}
-			]);
-			if (!customId) {
-				console.log(chalk.yellow('No custom ID entered. Skipping role.'));
-				return true; // Continue setup, but don't set this role
-			}
-			modelIdToSet = customId;
-			providerHint = CUSTOM_PROVIDERS.VERTEX;
-
-			// Check if Google/Vertex environment variables exist
-			if (
-				!process.env.GOOGLE_API_KEY &&
-				!process.env.GOOGLE_APPLICATION_CREDENTIALS
-			) {
-				console.error(
-					chalk.red(
-						'Error: Either GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS environment variable is required. Please set one before using custom Vertex models.'
-					)
-				);
-				setupSuccess = false;
-				return true; // Continue setup, but mark as failed
-			}
-
-			console.log(
-				chalk.blue(
-					`Custom Vertex AI model "${modelIdToSet}" will be used. No validation performed.`
-				)
-			);
-		} else if (
-			selectedValue &&
-			typeof selectedValue === 'object' &&
-			selectedValue.id
-		) {
-			// Standard model selected from list
-			modelIdToSet = selectedValue.id;
-			providerHint = selectedValue.provider; // Provider is known
-		} else if (selectedValue === null && role === 'fallback') {
-			// Handle disabling fallback
-			modelIdToSet = null;
-			providerHint = null;
-		} else if (selectedValue) {
-			console.error(
-				chalk.red(
-					`Internal Error: Unexpected selection value for ${role}: ${JSON.stringify(selectedValue)}`
-				)
-			);
-			setupSuccess = false;
-			return true;
-		}
-
-		// Only proceed if there's a change to be made
-		if (modelIdToSet !== currentModelId) {
-			if (modelIdToSet) {
-				// Set a specific model (standard or custom)
-				const result = await setModel(role, modelIdToSet, {
-					...coreOptionsSetup,
-					providerHint // Pass the hint
-				});
-				if (result.success) {
-					console.log(
-						chalk.blue(
-							`Set ${role} model: ${result.data.provider} / ${result.data.modelId}`
-						)
-					);
-					if (result.data.warning) {
-						// Display warning if returned by setModel
-						console.log(chalk.yellow(result.data.warning));
-					}
-					setupConfigModified = true;
-				} else {
-					console.error(
-						chalk.red(
-							`Error setting ${role} model: ${result.error?.message || 'Unknown'}`
-						)
-					);
-					setupSuccess = false;
-				}
-			} else if (role === 'fallback') {
-				// Disable fallback model
-				const currentCfg = getConfig(projectRoot);
-				if (currentCfg?.models?.fallback?.modelId) {
-					// Check if it was actually set before clearing
-					currentCfg.models.fallback = {
-						...currentCfg.models.fallback,
-						provider: undefined,
-						modelId: undefined
-					};
-					if (writeConfig(currentCfg, projectRoot)) {
-						console.log(chalk.blue('Fallback model disabled.'));
-						setupConfigModified = true;
-					} else {
-						console.error(
-							chalk.red('Failed to disable fallback model in config file.')
-						);
-						setupSuccess = false;
-					}
-				} else {
-					console.log(chalk.blue('Fallback model was already disabled.'));
-				}
-			}
-		}
-		return true; // Indicate setup should continue
-	}
-
-	// Process answers using the handler
-	if (
-		!(await handleSetModel(
-			'main',
-			answers.mainModel,
-			currentModels.main?.modelId // <--- Now 'currentModels' is defined
-		))
-	) {
-		return false; // Explicitly return false if cancelled
-	}
-	if (
-		!(await handleSetModel(
-			'research',
-			answers.researchModel,
-			currentModels.research?.modelId // <--- Now 'currentModels' is defined
-		))
-	) {
-		return false; // Explicitly return false if cancelled
-	}
-	if (
-		!(await handleSetModel(
-			'fallback',
-			answers.fallbackModel,
-			currentModels.fallback?.modelId // <--- Now 'currentModels' is defined
-		))
-	) {
-		return false; // Explicitly return false if cancelled
-	}
-
-	if (setupSuccess && setupConfigModified) {
-		console.log(chalk.green.bold('\nModel setup complete!'));
-	} else if (setupSuccess && !setupConfigModified) {
-		console.log(chalk.yellow('\nNo changes made to model configuration.'));
-	} else if (!setupSuccess) {
-		console.error(
-			chalk.red(
-				'\nErrors occurred during model selection. Please review and try again.'
-			)
-		);
-	}
-	return true; // Indicate setup flow completed (not cancelled)
-	// Let the main command flow continue to display results
-}
 
 /**
  * Configure and register CLI commands
@@ -3512,6 +2873,18 @@ ${result.result}
 			'--codex-cli',
 			'Allow setting a Codex CLI model ID (use with --set-*)'
 		)
+		.option(
+			'--lmstudio',
+			'Allow setting a custom LM Studio model ID (use with --set-*)'
+		)
+		.option(
+			'--openai-compatible',
+			'Allow setting a custom OpenAI-compatible model ID (use with --set-*)'
+		)
+		.option(
+			'--baseURL <url>',
+			'Custom base URL for openai-compatible, lmstudio, or ollama providers (e.g., http://localhost:8000/v1)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -3528,6 +2901,9 @@ Examples:
   $ task-master models --set-main claude-3-5-sonnet@20241022 --vertex # Set custom Vertex AI model for main role
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
   $ task-master models --set-main gpt-5-codex --codex-cli     # Set Codex CLI model for main role
+  $ task-master models --set-main qwen3-vl-4b --lmstudio      # Set LM Studio model for main role (defaults to http://localhost:1234/v1)
+  $ task-master models --set-main qwen3-vl-4b --lmstudio --baseURL http://localhost:8000/v1 # Set LM Studio model with custom base URL
+  $ task-master models --set-main my-model --openai-compatible --baseURL http://localhost:8000/v1 # Set custom OpenAI-compatible model with custom endpoint
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -3545,12 +2921,14 @@ Examples:
 				options.bedrock,
 				options.claudeCode,
 				options.geminiCli,
-				options.codexCli
+				options.codexCli,
+				options.lmstudio,
+				options.openaiCompatible
 			].filter(Boolean).length;
 			if (providerFlags > 1) {
 				console.error(
 					chalk.red(
-						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --codex-cli) simultaneously.'
+						'Error: Cannot use multiple provider flags (--openrouter, --ollama, --bedrock, --claude-code, --gemini-cli, --codex-cli, --lmstudio, --openai-compatible) simultaneously.'
 					)
 				);
 				process.exit(1);
@@ -3598,7 +2976,12 @@ Examples:
 											? 'gemini-cli'
 											: options.codexCli
 												? 'codex-cli'
-												: undefined
+												: options.lmstudio
+													? 'lmstudio'
+													: options.openaiCompatible
+														? 'openai-compatible'
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3626,7 +3009,12 @@ Examples:
 											? 'gemini-cli'
 											: options.codexCli
 												? 'codex-cli'
-												: undefined
+												: options.lmstudio
+													? 'lmstudio'
+													: options.openaiCompatible
+														? 'openai-compatible'
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3656,7 +3044,12 @@ Examples:
 											? 'gemini-cli'
 											: options.codexCli
 												? 'codex-cli'
-												: undefined
+												: options.lmstudio
+													? 'lmstudio'
+													: options.openaiCompatible
+														? 'openai-compatible'
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));

@@ -13,7 +13,7 @@ import {
 	disableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { CUSTOM_PROVIDERS_ARRAY } from '../../../../src/constants/providers.js';
+import { CUSTOM_PROVIDERS_ARRAY } from '@tm/core';
 
 // Define supported roles for model setting
 const MODEL_ROLES = ['main', 'research', 'fallback'];
@@ -42,7 +42,8 @@ async function handleModelSetting(args, context) {
 
 			return await setModel(role, args[roleKey], {
 				...context,
-				providerHint
+				providerHint,
+				...(args.baseURL && { baseURL: args.baseURL })
 			});
 		}
 	}
@@ -80,7 +81,7 @@ export async function modelsDirect(args, log, context = {}) {
 			error: {
 				code: 'INVALID_ARGS',
 				message:
-					'Cannot use multiple custom provider flags simultaneously. Choose only one: openrouter, ollama, bedrock, azure, or vertex.'
+					'Cannot use multiple custom provider flags simultaneously. Choose only one: openrouter, ollama, bedrock, azure, vertex, or openai-compatible.'
 			}
 		};
 	}

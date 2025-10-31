@@ -24,9 +24,7 @@ import {
 	getResponseLanguage,
 	getUserId,
 	getVertexLocation,
-	getVertexProjectId,
-	isApiKeySet,
-	providersWithoutApiKeys
+	getVertexProjectId
 } from './config-manager.js';
 import {
 	findProjectRoot,
@@ -46,12 +44,15 @@ import {
 	GoogleAIProvider,
 	GrokCliProvider,
 	GroqProvider,
+	LMStudioProvider,
 	OllamaAIProvider,
+	OpenAICompatibleProvider,
 	OpenAIProvider,
 	OpenRouterAIProvider,
 	PerplexityAIProvider,
 	VertexAIProvider,
-	XAIProvider
+	XAIProvider,
+	ZAIProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -62,11 +63,19 @@ const PROVIDERS = {
 	anthropic: new AnthropicAIProvider(),
 	perplexity: new PerplexityAIProvider(),
 	google: new GoogleAIProvider(),
+	zai: new ZAIProvider(),
+	lmstudio: new LMStudioProvider(),
 	openai: new OpenAIProvider(),
 	xai: new XAIProvider(),
 	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
+	'openai-compatible': new OpenAICompatibleProvider({
+		name: 'OpenAI Compatible',
+		apiKeyEnvVar: 'OPENAI_COMPATIBLE_API_KEY',
+		requiresApiKey: true
+		// baseURL will be set per-role from config
+	}),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
@@ -577,22 +586,6 @@ async function _unifiedServiceRunner(serviceType, params) {
 					lastError ||
 					new Error(`Unsupported provider configured: ${providerName}`);
 				continue;
-			}
-
-			// Check API key if needed
-			if (!providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
-				if (!isApiKeySet(providerName, session, effectiveProjectRoot)) {
-					log(
-						'warn',
-						`Skipping role '${currentRole}' (Provider: ${providerName}): API key not set or invalid.`
-					);
-					lastError =
-						lastError ||
-						new Error(
-							`API key for provider '${providerName}' (role: ${currentRole}) is not set.`
-						);
-					continue; // Skip to the next role in the sequence
-				}
 			}
 
 			// Get base URL if configured (optional for most providers)
