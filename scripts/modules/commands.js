@@ -2881,6 +2881,10 @@ ${result.result}
 			'--openai-compatible',
 			'Allow setting a custom OpenAI-compatible model ID (use with --set-*)'
 		)
+		.option(
+			'--baseURL <url>',
+			'Custom base URL for openai-compatible provider (e.g., http://localhost:8000/v1)'
+		)
 		.addHelpText(
 			'after',
 			`
@@ -2898,7 +2902,7 @@ Examples:
   $ task-master models --set-main gemini-2.5-pro --gemini-cli # Set Gemini CLI model for main role
   $ task-master models --set-main gpt-5-codex --codex-cli     # Set Codex CLI model for main role
   $ task-master models --set-main qwen3-vl-4b --lmstudio      # Set LM Studio model for main role
-  $ task-master models --set-main my-model --openai-compatible # Set custom OpenAI-compatible model for main role
+  $ task-master models --set-main my-model --openai-compatible --baseURL http://localhost:8000/v1 # Set custom OpenAI-compatible model with custom endpoint
   $ task-master models --setup                            # Run interactive setup`
 		)
 		.action(async (options) => {
@@ -2975,7 +2979,8 @@ Examples:
 													? 'lmstudio'
 													: options.openaiCompatible
 														? 'openai-compatible'
-														: undefined
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3007,7 +3012,8 @@ Examples:
 													? 'lmstudio'
 													: options.openaiCompatible
 														? 'openai-compatible'
-														: undefined
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
@@ -3041,7 +3047,8 @@ Examples:
 													? 'lmstudio'
 													: options.openaiCompatible
 														? 'openai-compatible'
-														: undefined
+														: undefined,
+						baseURL: options.baseURL
 					});
 					if (result.success) {
 						console.log(chalk.green(`✅ ${result.data.message}`));
