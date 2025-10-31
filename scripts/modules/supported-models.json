@@ -1171,19 +1171,5 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
-	],
-	"openai-compatible": [
-		{
-			"id": "custom-model",
-			"swe_score": 0,
-			"cost_per_1m_tokens": {
-				"input": 0,
-				"output": 0
-			},
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 4096,
-			"supported": true,
-			"description": "Placeholder for custom OpenAI-compatible models. User must provide model ID and base URL."
-		}
 	]
 }

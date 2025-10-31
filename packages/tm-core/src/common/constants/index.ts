@@ -79,4 +79,4 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
 /**
  * Provider constants - AI model providers
  */
-export * from '../../constants/providers.js';
+export * from './providers.js';
