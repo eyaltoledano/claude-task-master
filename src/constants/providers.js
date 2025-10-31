@@ -11,7 +11,11 @@ export const VALIDATED_PROVIDERS = [
 	'perplexity',
 	'xai',
 	'groq',
-	'mistral'
+	'mistral',
+	'azure',
+	'openrouter',
+	'bedrock',
+	'ollama'
 ];
 
 // Custom providers object for easy named access
