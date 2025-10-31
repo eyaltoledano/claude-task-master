@@ -66,7 +66,11 @@ async function handleSetModel(
 
 	// Handle custom providers
 	if (isCustomProviderId(selectedValue)) {
-		const result = await handleCustomProvider(selectedValue, role);
+		const result = await handleCustomProvider(
+			selectedValue,
+			role,
+			currentModel
+		);
 		if (!result.success) {
 			return { success: false, modified: false };
 		}

@@ -42,12 +42,13 @@ export const customProviderConfigs: Record<
 		id: '__CUSTOM_OLLAMA__',
 		name: '* Custom Ollama model',
 		provider: CUSTOM_PROVIDERS.OLLAMA,
+		requiresBaseURL: true,
+		defaultBaseURL: 'http://localhost:11434/api',
 		promptMessage: (role) =>
 			`Enter the custom Ollama Model ID for the ${role} role:`,
-		validate: async (modelId) => {
-			const baseURL =
-				process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api';
-			const isValid = await validateOllamaModel(modelId, baseURL);
+		validate: async (modelId, baseURL) => {
+			const urlToCheck = baseURL || 'http://localhost:11434/api';
+			const isValid = await validateOllamaModel(modelId, urlToCheck);
 			if (!isValid) {
 				console.error(
 					chalk.red(
@@ -56,7 +57,7 @@ export const customProviderConfigs: Record<
 				);
 				console.log(
 					chalk.yellow(
-						`You can check available models with: curl ${baseURL}/tags`
+						`You can check available models with: curl ${urlToCheck}/tags`
 					)
 				);
 			}
@@ -129,12 +130,14 @@ export const customProviderConfigs: Record<
 		id: '__CUSTOM_LMSTUDIO__',
 		name: '* Custom LMStudio model',
 		provider: CUSTOM_PROVIDERS.LMSTUDIO,
+		requiresBaseURL: true,
+		defaultBaseURL: 'http://localhost:1234/v1',
 		promptMessage: (role) =>
 			`Enter the custom LM Studio Model ID for the ${role} role:`,
 		checkEnvVars: () => {
 			console.log(
 				chalk.blue(
-					'Note: LM Studio runs locally. Make sure the LM Studio server is running at http://localhost:1234/v1'
+					'Note: LM Studio runs locally. Make sure the LM Studio server is running.'
 				)
 			);
 			return true;
@@ -163,7 +166,12 @@ export const customProviderConfigs: Record<
  */
 export async function handleCustomProvider(
 	providerId: CustomProviderId,
-	role: ModelRole
+	role: ModelRole,
+	currentModel: {
+		modelId?: string | null;
+		provider?: string | null;
+		baseURL?: string | null;
+	} | null = null
 ): Promise<{
 	modelId: string | null;
 	provider: string | null;
@@ -190,14 +198,25 @@ export async function handleCustomProvider(
 	// Prompt for baseURL if required
 	let baseURL: string | null = null;
 	if (config.requiresBaseURL) {
+		// Determine the appropriate default baseURL
+		let defaultBaseURL: string;
+		if (currentModel?.provider === config.provider && currentModel?.baseURL) {
+			// Already using this provider - preserve existing baseURL
+			defaultBaseURL = currentModel.baseURL;
+		} else {
+			// Switching providers or no existing baseURL - use fallback default
+			defaultBaseURL = config.defaultBaseURL || '';
+		}
+
 		const baseURLAnswer = await inquirer.prompt([
 			{
 				type: 'input',
 				name: 'baseURL',
-				message: `Enter the base URL for the ${role} role (e.g., https://api.example.com/v1):`,
+				message: `Enter the base URL for the ${role} role:`,
+				default: defaultBaseURL,
 				validate: (input: string) => {
 					if (!input || input.trim() === '') {
-						return 'Base URL is required for OpenAI-compatible providers';
+						return `Base URL is required for ${config.provider} providers`;
 					}
 					try {
 						new URL(input);
@@ -227,7 +246,7 @@ export async function handleCustomProvider(
 
 	// Validate if validation function exists
 	if (config.validate) {
-		const isValid = await config.validate(customId);
+		const isValid = await config.validate(customId, baseURL || undefined);
 		if (!isValid) {
 			return { modelId: null, provider: null, success: false };
 		}

@@ -115,10 +115,11 @@ export interface CustomProviderConfig {
 	name: string;
 	provider: string;
 	promptMessage: (role: ModelRole) => string;
-	validate?: (modelId: string) => Promise<boolean>;
+	validate?: (modelId: string, baseURL?: string) => Promise<boolean>;
 	checkEnvVars?: () => boolean;
 	fetchModels?: () => Promise<FetchResult<unknown[]>>;
 	requiresBaseURL?: boolean;
+	defaultBaseURL?: string;
 }
 
 /**
