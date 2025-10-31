@@ -9,6 +9,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { Writer } from 'steno';
 import type { WorkflowState } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
 
@@ -28,6 +29,8 @@ export class WorkflowStateManager {
 	private readonly sessionDir: string;
 	private maxBackups: number;
 	private readonly logger = getLogger('WorkflowStateManager');
+	private writer: Writer | null = null;
+	private writerInitPromise: Promise<void> | null = null;
 
 	constructor(projectRoot: string, maxBackups = 5) {
 		this.projectRoot = path.resolve(projectRoot);
@@ -70,6 +73,31 @@ export class WorkflowStateManager {
 	}
 
 	/**
+	 * Ensure the steno Writer is initialized
+	 * This ensures the session directory exists before creating the writer
+	 */
+	private async ensureWriter(): Promise<void> {
+		if (this.writer) {
+			return;
+		}
+
+		// If another call is already initializing, wait for it
+		if (this.writerInitPromise) {
+			await this.writerInitPromise;
+			return;
+		}
+
+		this.writerInitPromise = (async () => {
+			// Ensure session directory exists before creating writer
+			await fs.mkdir(this.sessionDir, { recursive: true });
+			this.writer = new Writer(this.statePath);
+		})();
+
+		await this.writerInitPromise;
+		this.writerInitPromise = null;
+	}
+
+	/**
 	 * Check if workflow state exists
 	 */
 	async exists(): Promise<boolean> {
@@ -98,11 +126,12 @@ export class WorkflowStateManager {
 
 	/**
 	 * Save workflow state to disk
+	 * Uses steno for atomic writes and automatic queueing of concurrent saves
 	 */
 	async save(state: WorkflowState): Promise<void> {
 		try {
-			// Ensure session directory exists
-			await fs.mkdir(this.sessionDir, { recursive: true });
+			// Ensure writer is initialized (creates directory if needed)
+			await this.ensureWriter();
 
 			// Serialize and validate JSON
 			const jsonContent = JSON.stringify(state, null, 2);
@@ -115,10 +144,8 @@ export class WorkflowStateManager {
 				throw new Error('Failed to generate valid JSON from workflow state');
 			}
 
-			// Write state atomically with newline at end
-			const tempPath = `${this.statePath}.tmp`;
-			await fs.writeFile(tempPath, jsonContent + '\n', 'utf-8');
-			await fs.rename(tempPath, this.statePath);
+			// Write using steno (handles queuing and atomic writes automatically)
+			await this.writer!.write(jsonContent + '\n');
 
 			this.logger.debug(`Saved workflow state (${jsonContent.length} bytes)`);
 		} catch (error: any) {

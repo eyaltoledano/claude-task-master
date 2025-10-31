@@ -98,7 +98,7 @@ export class WorkflowOrchestrator {
 	/**
 	 * Transition to next state based on event
 	 */
-	transition(event: WorkflowEvent): void {
+	async transition(event: WorkflowEvent): Promise<void> {
 		// Check if workflow is aborted
 		if (this.aborted && event.type !== 'ABORT') {
 			throw new Error('Workflow has been aborted');
@@ -107,26 +107,26 @@ export class WorkflowOrchestrator {
 		// Handle special events that work across all phases
 		if (event.type === 'ERROR') {
 			this.handleError(event.error);
-			void this.triggerAutoPersist();
+			await this.triggerAutoPersist();
 			return;
 		}
 
 		if (event.type === 'ABORT') {
 			this.aborted = true;
-			void this.triggerAutoPersist();
+			await this.triggerAutoPersist();
 			return;
 		}
 
 		if (event.type === 'RETRY') {
 			this.handleRetry();
-			void this.triggerAutoPersist();
+			await this.triggerAutoPersist();
 			return;
 		}
 
 		// Handle TDD phase transitions within SUBTASK_LOOP
 		if (this.currentPhase === 'SUBTASK_LOOP') {
-			this.handleTDDPhaseTransition(event);
-			void this.triggerAutoPersist();
+			await this.handleTDDPhaseTransition(event);
+			await this.triggerAutoPersist();
 			return;
 		}
 
@@ -143,13 +143,13 @@ export class WorkflowOrchestrator {
 
 		// Execute transition
 		this.executeTransition(validTransition, event);
-		void this.triggerAutoPersist();
+		await this.triggerAutoPersist();
 	}
 
 	/**
 	 * Handle TDD phase transitions (RED -> GREEN -> COMMIT)
 	 */
-	private handleTDDPhaseTransition(event: WorkflowEvent): void {
+	private async handleTDDPhaseTransition(event: WorkflowEvent): Promise<void> {
 		const currentTDD = this.context.currentTDDPhase || 'RED';
 
 		switch (event.type) {
@@ -201,7 +201,7 @@ export class WorkflowOrchestrator {
 						this.emit('subtask:started');
 					} else {
 						// All subtasks complete, transition to FINALIZE
-						this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
+						await this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 					}
 					break;
 				}
@@ -272,7 +272,7 @@ export class WorkflowOrchestrator {
 					this.emit('subtask:started');
 				} else {
 					// All subtasks complete, transition to FINALIZE
-					this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
+					await this.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 				}
 				break;
 

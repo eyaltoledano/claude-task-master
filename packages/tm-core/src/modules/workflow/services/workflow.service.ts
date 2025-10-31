@@ -168,7 +168,7 @@ export class WorkflowService {
 		this.activityLogger.start();
 
 		// Transition through PREFLIGHT and BRANCH_SETUP phases
-		this.orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
+		await this.orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
 
 		// Create git branch with descriptive name
 		const branchName = this.generateBranchName(taskId, taskTitle, tag);
@@ -181,7 +181,7 @@ export class WorkflowService {
 		}
 
 		// Transition to SUBTASK_LOOP with RED phase
-		this.orchestrator.transition({
+		await this.orchestrator.transition({
 			type: 'BRANCH_CREATED',
 			branchName
 		});
@@ -363,13 +363,13 @@ export class WorkflowService {
 		// Transition based on current phase
 		switch (tddPhase) {
 			case 'RED':
-				this.orchestrator.transition({
+				await this.orchestrator.transition({
 					type: 'RED_PHASE_COMPLETE',
 					testResults
 				});
 				break;
 			case 'GREEN':
-				this.orchestrator.transition({
+				await this.orchestrator.transition({
 					type: 'GREEN_PHASE_COMPLETE',
 					testResults
 				});
@@ -402,17 +402,17 @@ export class WorkflowService {
 		}
 
 		// Transition COMMIT phase complete
-		this.orchestrator.transition({
+		await this.orchestrator.transition({
 			type: 'COMMIT_COMPLETE'
 		});
 
 		// Check if should advance to next subtask
 		const progress = this.orchestrator.getProgress();
 		if (progress.current < progress.total) {
-			this.orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
+			await this.orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
 		} else {
 			// All subtasks complete
-			this.orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
+			await this.orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 		}
 
 		return this.getStatus();
@@ -448,7 +448,7 @@ export class WorkflowService {
 		}
 
 		// Transition to COMPLETE
-		this.orchestrator.transition({ type: 'FINALIZE_COMPLETE' });
+		await this.orchestrator.transition({ type: 'FINALIZE_COMPLETE' });
 
 		return this.getStatus();
 	}
@@ -458,7 +458,7 @@ export class WorkflowService {
 	 */
 	async abortWorkflow(): Promise<void> {
 		if (this.orchestrator) {
-			this.orchestrator.transition({ type: 'ABORT' });
+			await this.orchestrator.transition({ type: 'ABORT' });
 		}
 
 		// Delete state file
