@@ -225,18 +225,18 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run build",
-		"build": "npm run build:js && npm run build:css",
+		"vscode:prepublish": "pnpm run build",
+		"build": "pnpm run build:js && pnpm run build:css",
 		"build:js": "node ./esbuild.js --production",
-		"build:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
-		"dev": "npm run watch",
-		"package": "npm exec node ./package.mjs",
+		"build:css": "pnpm exec @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
+		"dev": "pnpm run watch",
+		"package": "pnpm exec node ./package.mjs",
 		"package:direct": "node ./package.mjs",
 		"debug:env": "node ./debug-env.mjs",
 		"compile": "node ./esbuild.js",
-		"watch": "npm run watch:js & npm run watch:css",
+		"watch": "pnpm run watch:js & pnpm run watch:css",
 		"watch:js": "node ./esbuild.js --watch",
-		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
+		"watch:css": "pnpm exec @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
@@ -274,7 +274,7 @@
 		"tailwind-merge": "^3.3.1",
 		"tailwindcss": "4.1.11",
 		"typescript": "^5.9.2",
-		"@tm/core": "*",
+		"@tm/core": "workspace:*",
 		"task-master-ai": "0.31.0-rc.0"
 	},
 	"overrides": {
