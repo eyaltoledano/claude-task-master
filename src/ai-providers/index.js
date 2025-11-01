@@ -20,4 +20,5 @@ export { GrokCliProvider } from './grok-cli.js';
 export { CodexCliProvider } from './codex-cli.js';
 export { OpenAICompatibleProvider } from './openai-compatible.js';
 export { ZAIProvider } from './zai.js';
+export { ZAICodingProvider } from './zai-coding.js';
 export { LMStudioProvider } from './lmstudio.js';

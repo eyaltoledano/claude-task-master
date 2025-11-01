@@ -836,6 +836,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
+		zai: 'ZAI_API_KEY',
+		'zai-coding': 'ZAI_API_KEY',
 		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
@@ -921,6 +923,11 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'xai':
 				apiKeyToCheck = mcpEnv.XAI_API_KEY;
 				placeholderValue = 'YOUR_XAI_API_KEY_HERE';
+				break;
+			case 'zai':
+			case 'zai-coding':
+				apiKeyToCheck = mcpEnv.ZAI_API_KEY;
+				placeholderValue = 'YOUR_ZAI_API_KEY_HERE';
 				break;
 			case 'groq':
 				apiKeyToCheck = mcpEnv.GROQ_API_KEY;

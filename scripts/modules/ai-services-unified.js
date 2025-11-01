@@ -52,7 +52,8 @@ import {
 	PerplexityAIProvider,
 	VertexAIProvider,
 	XAIProvider,
-	ZAIProvider
+	ZAIProvider,
+	ZAICodingProvider
 } from '../../src/ai-providers/index.js';
 
 // Import the provider registry
@@ -64,6 +65,7 @@ const PROVIDERS = {
 	perplexity: new PerplexityAIProvider(),
 	google: new GoogleAIProvider(),
 	zai: new ZAIProvider(),
+	'zai-coding': new ZAICodingProvider(),
 	lmstudio: new LMStudioProvider(),
 	openai: new OpenAIProvider(),
 	xai: new XAIProvider(),

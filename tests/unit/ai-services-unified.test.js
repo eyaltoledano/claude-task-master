@@ -261,6 +261,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'ZAI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => true)
 	})),
+	ZAICodingProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'ZAI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
+	})),
 	LMStudioProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
