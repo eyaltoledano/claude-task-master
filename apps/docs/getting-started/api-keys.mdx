@@ -95,6 +95,17 @@ AZURE_OPENAI_API_KEY="your-azure-key-here"
 XAI_API_KEY="your-xai-key-here"
 ```
 
+### ZAI_API_KEY
+- **Provider**: Z.ai (GLM) models
+- **Required**: ✅ **Yes**
+- **Models**: GLM-4.6, GLM-4.5
+- **Note**: Supports both standard and coding plan endpoints
+- **Get Key**: [Z.ai Platform](https://api.z.ai/)
+
+```bash
+ZAI_API_KEY="your-zai-key-here"
+```
+
 ## Optional API Keys
 
 > **Note**: These API keys are optional - providers will work without them or use alternative authentication methods.
@@ -200,7 +211,8 @@ For Claude Code integration, configure keys in `.mcp.json`:
       "env": {
         "ANTHROPIC_API_KEY": "your-key-here",
         "PERPLEXITY_API_KEY": "your-key-here",
-        "OPENAI_API_KEY": "your-key-here"
+        "OPENAI_API_KEY": "your-key-here",
+        "ZAI_API_KEY": "your-key-here"
       }
     }
   }
@@ -234,6 +246,26 @@ task-master models --set-main claude-3-5-sonnet-20241022
 task-master models --set-research perplexity-llama-3.1-sonar-large-128k-online
 task-master models --set-fallback gpt-4o-mini
 ```
+
+### Z.ai Provider Options
+
+Z.ai offers two separate provider endpoints that use the same API key but serve different subscription tiers:
+
+#### zai (Standard Endpoint)
+- **Endpoint**: `https://api.z.ai/api/paas/v4/`
+- **Models**: `glm-4.6`, `glm-4.5`  
+- **Usage**: Standard Z.ai API access
+
+#### zai-coding (Coding Plan Endpoint) 
+- **Endpoint**: `https://api.z.ai/api/coding/paas/v4/`
+- **Models**: `glm-4.6`, `glm-4.5` (same model IDs)
+- **Usage**: Dedicated coding plan subscription endpoint
+
+When running `task-master models --setup`, you'll see both providers listed separately:
+- `zai / glm-4.6` - Standard endpoint
+- `zai-coding / glm-4.6` - Coding Plan endpoint
+
+Choose the provider that matches your Z.ai subscription plan.
 
 ## Security Best Practices
 
