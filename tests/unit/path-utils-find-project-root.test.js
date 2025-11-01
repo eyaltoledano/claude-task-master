@@ -88,7 +88,7 @@ describe('findProjectRoot', () => {
 			mockExistsSync.mockRestore();
 		});
 
-		test('should find markers at current directory before checking parent', () => {
+		test('should prioritize .taskmaster in parent over other markers in current directory', () => {
 			const mockExistsSync = jest.spyOn(fs, 'existsSync');
 
 			mockExistsSync.mockImplementation((checkPath) => {
@@ -101,9 +101,35 @@ describe('findProjectRoot', () => {
 
 			const result = findProjectRoot('/project/subdir');
 
-			// Should find /project/subdir first because .git exists there,
-			// even though .taskmaster is earlier in the marker array
-			expect(result).toBe('/project/subdir');
+			// Should find /project (with .taskmaster) even though .git exists in /project/subdir
+			// This is the two-pass priority behavior: Task Master markers in parent > other markers in current
+			expect(result).toBe('/project');
+
+			mockExistsSync.mockRestore();
+		});
+
+		test('should find parent .taskmaster even when subdirectory has git and go.mod (monorepo use case)', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Simulate monorepo structure:
+				// /monorepo/.taskmaster - parent Task Master tracking all work
+				// /monorepo/service-a/.git - Git repository for service A
+				// /monorepo/service-a/go.mod - Go project marker
+				if (normalized.includes('/monorepo/.taskmaster')) return true;
+				if (normalized.includes('/monorepo/service-a/.git')) return true;
+				if (normalized.includes('/monorepo/service-a/go.mod')) return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/monorepo/service-a');
+
+			// Should find /monorepo (with .taskmaster) NOT /monorepo/service-a (with .git and go.mod)
+			// This is the core fix: .taskmaster in parent > other markers in subdirectory
+			// OLD BEHAVIOR: Would return /monorepo/service-a (stopped at first marker found)
+			// NEW BEHAVIOR: Returns /monorepo (prioritizes .taskmaster in parent)
+			expect(result).toBe('/monorepo');
 
 			mockExistsSync.mockRestore();
 		});
@@ -170,6 +196,47 @@ describe('findProjectRoot', () => {
 
 				mockExistsSync.mockRestore();
 			});
+		});
+
+		test('should not treat generic tasks.json as Task Master marker (Cursor bugfix)', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Parent has .taskmaster, subdirectory has generic tasks.json
+				if (normalized.includes('/project/.taskmaster')) return true;
+				if (normalized.includes('/project/subdir/tasks.json')) return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/project/subdir');
+
+			// Should find parent .taskmaster, NOT stop at subdir's tasks.json
+			// This proves tasks.json is correctly in second pass, not first pass
+			expect(result).toBe('/project');
+
+			mockExistsSync.mockRestore();
+		});
+
+		test('should not treat generic tasks/tasks.json as Task Master marker', () => {
+			const mockExistsSync = jest.spyOn(fs, 'existsSync');
+
+			mockExistsSync.mockImplementation((checkPath) => {
+				const normalized = path.normalize(checkPath);
+				// Parent has .taskmaster, subdirectory has generic tasks/tasks.json
+				if (normalized.includes('/project/.taskmaster')) return true;
+				if (normalized.includes('/project/subdir/tasks/tasks.json'))
+					return true;
+				return false;
+			});
+
+			const result = findProjectRoot('/project/subdir');
+
+			// Should find parent .taskmaster, NOT stop at subdir's tasks/tasks.json
+			// This proves LEGACY_TASKS_FILE is correctly in second pass, not first pass
+			expect(result).toBe('/project');
+
+			mockExistsSync.mockRestore();
 		});
 	});
 
