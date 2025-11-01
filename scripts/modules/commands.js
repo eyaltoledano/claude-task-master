@@ -8,10 +8,7 @@ import path from 'path';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';
-import https from 'https';
-import http from 'http';
 import inquirer from 'inquirer';
-import search from '@inquirer/search';
 
 import { log, readJSON } from './utils.js';
 // Import command registry and utilities from @tm/cli
@@ -20,6 +17,7 @@ import {
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification,
+	restartWithNewVersion,
 	displayError,
 	runInteractiveSetup
 } from '@tm/cli';
@@ -4447,18 +4445,10 @@ async function runCLI(argv = process.argv) {
 			process.exit(0);
 		}
 
-		// Start the update check in the background - don't await yet
+		// Check for updates BEFORE executing the command
 		const currentVersion = getTaskMasterVersion();
-		const updateCheckPromise = checkForUpdate(currentVersion);
+		const updateInfo = await checkForUpdate(currentVersion);
 
-		// Setup and parse
-		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
-		// This means the ConfigurationError might be thrown here if configuration file is missing.
-		const programInstance = setupCLI();
-		await programInstance.parseAsync(argv);
-
-		// After command execution, check if an update is available
-		const updateInfo = await updateCheckPromise;
 		if (updateInfo.needsUpdate) {
 			// Display the upgrade notification first
 			displayUpgradeNotification(
@@ -4467,13 +4457,21 @@ async function runCLI(argv = process.argv) {
 				updateInfo.highlights
 			);
 
-			// Then automatically perform the update
+			// Automatically perform the update
 			const updateSuccess = await performAutoUpdate(updateInfo.latestVersion);
 			if (updateSuccess) {
-				// Exit gracefully after successful update
-				process.exit(0);
+				// Restart with the new version - this will execute the user's command
+				restartWithNewVersion(argv);
+				return; // Never reached, but for clarity
 			}
+			// If update fails, continue with current version
 		}
+
+		// Setup and parse
+		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
+		// This means the ConfigurationError might be thrown here if configuration file is missing.
+		const programInstance = setupCLI();
+		await programInstance.parseAsync(argv);
 
 		// Check if migration has occurred and show FYI notice once
 		try {
