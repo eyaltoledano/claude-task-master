@@ -32,7 +32,8 @@ export {
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification,
-	compareVersions
+	compareVersions,
+	restartWithNewVersion
 } from './utils/auto-update.js';
 
 export { runInteractiveSetup } from './commands/models/index.js';

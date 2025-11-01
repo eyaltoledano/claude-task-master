@@ -7,6 +7,7 @@ import https from 'https';
 import chalk from 'chalk';
 import ora from 'ora';
 import boxen from 'boxen';
+import process from 'process';
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -345,9 +346,6 @@ export async function performAutoUpdate(
 						`Successfully updated to version ${chalk.bold(latestVersion)}`
 					)
 				);
-				console.log(
-					chalk.dim('Please restart your command to use the new version.')
-				);
 				resolve(true);
 			} else {
 				spinner.fail(chalk.red('Auto-update failed'));
@@ -373,5 +371,35 @@ export async function performAutoUpdate(
 			);
 			resolve(false);
 		});
+	});
+}
+
+/**
+ * Restart the CLI with the newly installed version
+ * @param argv - Original command-line arguments (process.argv)
+ */
+export function restartWithNewVersion(argv: string[]): void {
+	const args = argv.slice(2); // Remove 'node' and script path
+
+	console.log(chalk.dim('Restarting with updated version...\n'));
+
+	// Spawn the updated task-master command
+	const child = spawn('task-master', args, {
+		stdio: 'inherit', // Inherit stdin/stdout/stderr so it looks seamless
+		detached: false,
+		shell: process.platform === 'win32' // Windows compatibility
+	});
+
+	child.on('exit', (code) => {
+		process.exit(code || 0);
+	});
+
+	child.on('error', (error) => {
+		console.error(
+			chalk.red('Failed to restart with new version:'),
+			error.message
+		);
+		console.log(chalk.yellow('Please run your command again manually.'));
+		process.exit(1);
 	});
 }
