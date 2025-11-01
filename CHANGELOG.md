@@ -1,5 +1,95 @@
 # task-master-ai
 
+## 0.31.0
+
+### Minor Changes
+
+- [#1360](https://github.com/eyaltoledano/claude-task-master/pull/1360) [`819d5e1`](https://github.com/eyaltoledano/claude-task-master/commit/819d5e1bc5fb81be4b25f1823988a8e20abe8440) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for custom OpenAI-compatible providers, allowing you to connect Task Master to any service that implements the OpenAI API specification
+
+  **How to use:**
+
+  Configure your custom provider with the `models` command:
+
+  ```bash
+  task-master models --set-main <your-model-id> --openai-compatible --baseURL <your-api-endpoint>
+  ```
+
+  Example:
+
+  ```bash
+  task-master models --set-main llama-3-70b --openai-compatible --baseURL http://localhost:8000/v1
+  # Or for an interactive view
+  task-master models --setup
+  ```
+
+  Set your API key (if required by your provider) in mcp.json, your .env file or in your env exports:
+
+  ```bash
+  OPENAI_COMPATIBLE_API_KEY="your-key-here"
+  ```
+
+  This gives you the flexibility to use virtually any LLM service with Task Master, whether it's self-hosted, a specialized provider, or a custom inference server.
+
+- [#1360](https://github.com/eyaltoledano/claude-task-master/pull/1360) [`819d5e1`](https://github.com/eyaltoledano/claude-task-master/commit/819d5e1bc5fb81be4b25f1823988a8e20abe8440) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add native support for Z.ai (GLM models), giving you access to high-performance Chinese models including glm-4.6 with massive 200K+ token context windows at competitive pricing
+
+  **How to use:**
+  1. Get your Z.ai API key from <https://z.ai/manage-apikey/apikey-list>
+  2. Set your API key in .env, mcp.json or in env exports:
+
+     ```bash
+     ZAI_API_KEY="your-key-here"
+     ```
+
+  3. Configure Task Master to use GLM models:
+
+     ```bash
+     task-master models --set-main glm-4.6
+     # Or for an interactive view
+     task-master models --setup
+     ```
+
+  **Available models:**
+  - `glm-4.6` - Latest model with 200K+ context, excellent for complex projects
+  - `glm-4.5` - Previous generation, still highly capable
+  - Additional GLM variants for different use cases: `glm-4.5-air`, `glm-4.5v`
+
+  GLM models offer strong performance on software engineering tasks, with particularly good results on code generation and technical reasoning. The large context window makes them ideal for analyzing entire codebases or working with extensive documentation.
+
+- [#1360](https://github.com/eyaltoledano/claude-task-master/pull/1360) [`819d5e1`](https://github.com/eyaltoledano/claude-task-master/commit/819d5e1bc5fb81be4b25f1823988a8e20abe8440) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add LM Studio integration, enabling you to run Task Master completely offline with local models at zero API cost.
+
+  **How to use:**
+  1. Download and install [LM Studio](https://lmstudio.ai/)
+  2. Launch LM Studio and download a model (e.g., Llama 3.2, Mistral, Qwen)
+  3. Optional: Add api key to mcp.json or .env (LMSTUDIO_API_KEY)
+  4. Go to the "Local Server" tab and click "Start Server"
+  5. Configure Task Master:
+
+     ```bash
+     task-master models --set-main <model-name> --lmstudio
+     ```
+
+     Example:
+
+     ```bash
+     task-master models --set-main llama-3.2-3b --lmstudio
+     ```
+
+### Patch Changes
+
+- [#1362](https://github.com/eyaltoledano/claude-task-master/pull/1362) [`3e70edf`](https://github.com/eyaltoledano/claude-task-master/commit/3e70edfa3a1f47bd8a6d2d2a30c20c72f5758b9b) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve parse PRD schema for better llm model compatiblity
+  - Fixes #1353
+
+- [#1358](https://github.com/eyaltoledano/claude-task-master/pull/1358) [`0c639bd`](https://github.com/eyaltoledano/claude-task-master/commit/0c639bd1db9d2d9b4c2c22ac60b0d875ba75f80e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix subtask ID display to show full compound notation
+
+  When displaying a subtask via `tm show 104.1`, the header and properties table showed only the subtask's local ID (e.g., "1") instead of the full compound ID (e.g., "104.1"). The CLI now preserves and displays the original requested task ID throughout the display chain, ensuring subtasks are clearly identified with their parent context. Also improved TypeScript typing by using discriminated unions for Task/Subtask returns from `tasks.get()`, eliminating unsafe type coercions.
+
+- [#1339](https://github.com/eyaltoledano/claude-task-master/pull/1339) [`3b09b5d`](https://github.com/eyaltoledano/claude-task-master/commit/3b09b5da2a929f260d275f056d35bb6ded54ca6d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fixed MCP server sometimes crashing when getting into the commit step of autopilot
+  - autopilot now persists state consistently through the whole flow
+
+- [#1326](https://github.com/eyaltoledano/claude-task-master/pull/1326) [`9d5812b`](https://github.com/eyaltoledano/claude-task-master/commit/9d5812ba6725cfadebb8db8f4aa732cf3cdb3a36) Thanks [@SharifMrCreed](https://github.com/SharifMrCreed)! - Improve gemini cli integration
+
+  When initializing Task Master with the `gemini` profile, you now get properly configured context files tailored specifically for Gemini CLI, including MCP configuration and Gemini-specific features like file references, session management, and headless mode.
+
 ## 0.31.0-rc.0
 
 ### Minor Changes
