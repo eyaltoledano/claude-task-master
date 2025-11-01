@@ -67,17 +67,21 @@ export function buildPromptChoices(
 		.flatMap(([provider, models]) => {
 			return models
 				.filter((m) => m.allowed_roles && m.allowed_roles.includes(role))
-				.map((m) => ({
-					name: `${provider} / ${m.id} ${
-						m.cost_per_1m_tokens
-							? chalk.gray(
-									`($${m.cost_per_1m_tokens.input.toFixed(2)} input | $${m.cost_per_1m_tokens.output.toFixed(2)} output)`
-								)
-							: ''
-					}`,
-					value: { id: m.id, provider },
-					short: `${provider}/${m.id}`
-				}));
+				.map((m) => {
+					// Use model name if available, otherwise fall back to model ID
+					const displayName = m.name || m.id;
+					return {
+						name: `${provider} / ${displayName} ${
+							m.cost_per_1m_tokens
+								? chalk.gray(
+										`($${m.cost_per_1m_tokens.input.toFixed(2)} input | $${m.cost_per_1m_tokens.output.toFixed(2)} output)`
+									)
+								: ''
+						}`,
+						value: { id: m.id, provider },
+						short: `${provider}/${displayName}`
+					};
+				});
 		})
 		.filter((choice) => choice !== null);
 
