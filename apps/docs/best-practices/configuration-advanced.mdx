@@ -86,6 +86,28 @@ Taskmaster uses two primary methods for configuration:
 - **Optional Auto-Update Control:**
   - `TASKMASTER_SKIP_AUTO_UPDATE`: Set to '1' to disable automatic updates. Also automatically disabled in CI environments (when `CI` environment variable is set).
 
+## Auto-Update Behavior
+
+Task Master includes an intelligent auto-update system that ensures you're always running the latest version:
+
+- **Automatic Detection**: Checks for newer versions before executing commands
+- **Seamless Updates**: When an update is available, Task Master automatically downloads and installs the latest version
+- **Automatic Restart**: After updating, the CLI automatically restarts with your original command using the new version
+- **No Manual Intervention**: No need to manually restart or re-run commands after updates
+- **Graceful Fallback**: If auto-update fails, you'll see manual installation instructions
+
+### Update Process Example:
+
+```bash
+$ task-master list
+# Task Master detects a new version (e.g., 1.2.0 → 1.2.1)
+# Shows update notification with highlights
+# Automatically installs the new version  
+# Restarts and runs 'task-master list' with the updated version
+```
+
+This ensures you always benefit from the latest bug fixes and features without interrupting your workflow.
+
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
 ## Tagged Task Lists Configuration (v0.17+)
