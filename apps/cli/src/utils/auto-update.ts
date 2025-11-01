@@ -390,8 +390,12 @@ export function restartWithNewVersion(argv: string[]): void {
 		shell: process.platform === 'win32' // Windows compatibility
 	});
 
-	child.on('exit', (code) => {
-		process.exit(code || 0);
+	child.on('exit', (code, signal) => {
+		if (signal) {
+			process.kill(process.pid, signal);
+			return;
+		}
+		process.exit(code ?? 0);
 	});
 
 	child.on('error', (error) => {
