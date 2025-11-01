@@ -170,3 +170,25 @@ task-master init --rules cursor,windsurf,vscode
 
 This will prompt you for project details and set up a new project with the necessary files and structure.
 </Accordion>
+
+## Auto-Updates
+
+Task Master automatically checks for updates when you run CLI commands. When a newer version is available:
+
+- The update happens **before your command runs** 
+- Your command automatically executes with the new version
+- No manual restart required
+
+### Controlling Auto-Updates
+
+You can disable auto-updates by setting an environment variable:
+
+```bash
+# Disable auto-updates
+export TASKMASTER_SKIP_AUTO_UPDATE=1
+
+# Run your command
+task-master list
+```
+
+Auto-updates are automatically disabled in CI environments and during testing.
