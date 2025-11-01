@@ -1,5 +1,21 @@
 # task-master-ai
 
+## 0.31.1
+
+### Patch Changes
+
+- [#1370](https://github.com/eyaltoledano/claude-task-master/pull/1370) [`9c3b273`](https://github.com/eyaltoledano/claude-task-master/commit/9c3b2737dd224e788b197f41df644ea0a6f4cfe2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for ZAI (GLM) Coding Plan subscription endpoint as a separate provider. Users can now select between two ZAI providers:
+  - **zai**: Standard ZAI endpoint (`https://api.z.ai/api/paas/v4/`)
+  - **zai-coding**: Coding Plan endpoint (`https://api.z.ai/api/coding/paas/v4/`)
+
+  Both providers use the same model IDs (glm-4.6, glm-4.5) but route to different API endpoints based on your subscription. When running `tm models --setup`, you'll see both providers listed separately:
+  - `zai / glm-4.6` - Standard endpoint
+  - `zai-coding / glm-4.6` - Coding Plan endpoint
+
+- [#1371](https://github.com/eyaltoledano/claude-task-master/pull/1371) [`abf46b8`](https://github.com/eyaltoledano/claude-task-master/commit/abf46b8087c2f32466a71d057415bab315e35567) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improved auto-update experience:
+  - updates now happen before your CLI command runs and automatically restart to execute your command with the new version.
+  - No more manual restarts needed!
+
 ## 0.31.0
 
 ### Minor Changes
