@@ -8,7 +8,7 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 import { marked, MarkedExtension } from 'marked';
 import { markedTerminal } from 'marked-terminal';
-import type { Task } from '@tm/core';
+import type { Subtask, Task } from '@tm/core';
 import {
 	getStatusWithColor,
 	getPriorityWithColor,
@@ -74,7 +74,10 @@ export function displayTaskHeader(
 /**
  * Display task properties in a table format
  */
-export function displayTaskProperties(task: Task): void {
+export function displayTaskProperties(
+	task: Task | Subtask,
+	originalTaskId?: string
+): void {
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
 	// Create table for task properties - simple 2-column layout
 	const table = new Table({
@@ -95,6 +98,9 @@ export function displayTaskProperties(task: Task): void {
 			? task.dependencies.map((d) => String(d)).join(', ')
 			: 'None';
 
+	// Use originalTaskId if provided (for subtasks like "104.1")
+	const displayId = originalTaskId || String(task.id);
+
 	// Build the left column (labels) and right column (values)
 	const labels = [
 		chalk.cyan('ID:'),
@@ -107,7 +113,7 @@ export function displayTaskProperties(task: Task): void {
 	].join('\n');
 
 	const values = [
-		String(task.id),
+		displayId,
 		task.title,
 		getStatusWithColor(task.status),
 		getPriorityWithColor(task.priority),
@@ -272,19 +278,21 @@ export function displaySuggestedActions(taskId: string | number): void {
  * Display complete task details - used by both show and start commands
  */
 export function displayTaskDetails(
-	task: Task,
+	task: Task | Subtask,
 	options?: {
 		statusFilter?: string;
 		showSuggestedActions?: boolean;
 		customHeader?: string;
 		headerColor?: string;
+		originalTaskId?: string;
 	}
 ): void {
 	const {
 		statusFilter,
 		showSuggestedActions = false,
 		customHeader,
-		headerColor = 'blue'
+		headerColor = 'blue',
+		originalTaskId
 	} = options || {};
 
 	// Display header - either custom or default
@@ -298,11 +306,13 @@ export function displayTaskDetails(
 			})
 		);
 	} else {
-		displayTaskHeader(task.id, task.title);
+		// Use originalTaskId if provided (for subtasks like "104.1")
+		const displayId = originalTaskId || task.id;
+		displayTaskHeader(displayId, task.title);
 	}
 
 	// Display task properties in table format
-	displayTaskProperties(task);
+	displayTaskProperties(task, originalTaskId);
 
 	// Display implementation details if available
 	if (task.details) {
@@ -335,6 +345,7 @@ export function displayTaskDetails(
 	// Display suggested actions if requested
 	if (showSuggestedActions) {
 		console.log(); // Empty line for spacing
-		displaySuggestedActions(task.id);
+		const actionTaskId = originalTaskId || task.id;
+		displaySuggestedActions(actionTaskId);
 	}
 }

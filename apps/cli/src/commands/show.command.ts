@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import boxen from 'boxen';
 import { createTmCore, type Task, type TmCore } from '@tm/core';
-import type { StorageType } from '@tm/core';
+import type { StorageType, Subtask } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
@@ -28,16 +28,17 @@ export interface ShowCommandOptions {
  * Result type from show command
  */
 export interface ShowTaskResult {
-	task: Task | null;
+	task: Task | Subtask | null;
 	found: boolean;
 	storageType: Exclude<StorageType, 'auto'>;
+	originalTaskId?: string; // The original task ID requested (for subtasks like "104.1")
 }
 
 /**
  * Result type for multiple tasks
  */
 export interface ShowMultipleTasksResult {
-	tasks: Task[];
+	tasks: (Task | Subtask)[];
 	notFound: string[];
 	storageType: Exclude<StorageType, 'auto'>;
 }
@@ -161,7 +162,8 @@ export class ShowCommand extends Command {
 		return {
 			task: result.task,
 			found: result.task !== null,
-			storageType: storageType as Exclude<StorageType, 'auto'>
+			storageType: storageType as Exclude<StorageType, 'auto'>,
+			originalTaskId: result.isSubtask ? taskId : undefined
 		};
 	}
 
@@ -176,7 +178,7 @@ export class ShowCommand extends Command {
 			throw new Error('TmCore not initialized');
 		}
 
-		const tasks: Task[] = [];
+		const tasks: (Task | Subtask)[] = [];
 		const notFound: string[] = [];
 
 		// Get each task individually
@@ -262,9 +264,11 @@ export class ShowCommand extends Command {
 		console.log(); // Add spacing
 
 		// Use the global task details display function
+		// Pass the original requested ID if it's a subtask
 		displayTaskDetails(result.task, {
 			statusFilter: options.status,
-			showSuggestedActions: true
+			showSuggestedActions: true,
+			originalTaskId: result.originalTaskId
 		});
 	}
 

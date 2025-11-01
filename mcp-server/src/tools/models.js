@@ -71,6 +71,18 @@ export function registerModelsTool(server) {
 				.optional()
 				.describe(
 					'Indicates the set model ID is a custom Google Vertex AI model.'
+				),
+			'openai-compatible': z
+				.boolean()
+				.optional()
+				.describe(
+					'Indicates the set model ID is a custom OpenAI-compatible model. Requires baseURL parameter.'
+				),
+			baseURL: z
+				.string()
+				.optional()
+				.describe(
+					'Custom base URL for openai-compatible provider (e.g., https://api.example.com/v1)'
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {

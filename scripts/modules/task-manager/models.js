@@ -23,7 +23,7 @@ import {
 } from '../config-manager.js';
 import { findConfigPath } from '../../../src/utils/path-utils.js';
 import { log } from '../utils.js';
-import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+import { CUSTOM_PROVIDERS } from '@tm/core';
 
 // Constants
 const CONFIG_MISSING_ERROR =
@@ -179,10 +179,13 @@ async function getModelConfiguration(options = {}) {
 		// Get current settings - these should use the config from the found path automatically
 		const mainProvider = getMainProvider(projectRoot);
 		const mainModelId = getMainModelId(projectRoot);
+		const mainBaseURL = getBaseUrlForRole('main', projectRoot);
 		const researchProvider = getResearchProvider(projectRoot);
 		const researchModelId = getResearchModelId(projectRoot);
+		const researchBaseURL = getBaseUrlForRole('research', projectRoot);
 		const fallbackProvider = getFallbackProvider(projectRoot);
 		const fallbackModelId = getFallbackModelId(projectRoot);
+		const fallbackBaseURL = getBaseUrlForRole('fallback', projectRoot);
 
 		// Check API keys
 		const mainCliKeyOk = isApiKeySet(mainProvider, session, projectRoot);
@@ -220,6 +223,7 @@ async function getModelConfiguration(options = {}) {
 					main: {
 						provider: mainProvider,
 						modelId: mainModelId,
+						baseURL: mainBaseURL,
 						sweScore: mainModelData?.swe_score || null,
 						cost: mainModelData?.cost_per_1m_tokens || null,
 						keyStatus: {
@@ -230,6 +234,7 @@ async function getModelConfiguration(options = {}) {
 					research: {
 						provider: researchProvider,
 						modelId: researchModelId,
+						baseURL: researchBaseURL,
 						sweScore: researchModelData?.swe_score || null,
 						cost: researchModelData?.cost_per_1m_tokens || null,
 						keyStatus: {
@@ -241,6 +246,7 @@ async function getModelConfiguration(options = {}) {
 						? {
 								provider: fallbackProvider,
 								modelId: fallbackModelId,
+								baseURL: fallbackBaseURL,
 								sweScore: fallbackModelData?.swe_score || null,
 								cost: fallbackModelData?.cost_per_1m_tokens || null,
 								keyStatus: {
@@ -365,7 +371,8 @@ async function getAvailableModelsList(options = {}) {
  * @returns {Object} RESTful response with result of update operation
  */
 async function setModel(role, modelId, options = {}) {
-	const { mcpLog, projectRoot, providerHint } = options;
+	const { mcpLog, projectRoot, providerHint, baseURL } = options;
+	let computedBaseURL = baseURL; // Track the computed baseURL separately
 
 	const report = (level, ...args) => {
 		if (mcpLog && typeof mcpLog[level] === 'function') {
@@ -468,8 +475,25 @@ async function setModel(role, modelId, options = {}) {
 					// Check Ollama ONLY because hint was ollama
 					report('info', `Checking Ollama for ${modelId} (as hinted)...`);
 
-					// Get the Ollama base URL from config
-					const ollamaBaseURL = getBaseUrlForRole(role, projectRoot);
+					// Get current provider for this role to check if we should preserve baseURL
+					let currentProvider;
+					if (role === 'main') {
+						currentProvider = getMainProvider(projectRoot);
+					} else if (role === 'research') {
+						currentProvider = getResearchProvider(projectRoot);
+					} else if (role === 'fallback') {
+						currentProvider = getFallbackProvider(projectRoot);
+					}
+
+					// Only preserve baseURL if we're already using OLLAMA
+					const existingBaseURL =
+						currentProvider === CUSTOM_PROVIDERS.OLLAMA
+							? getBaseUrlForRole(role, projectRoot)
+							: null;
+
+					// Get the Ollama base URL - use provided, existing, or default
+					const ollamaBaseURL =
+						baseURL || existingBaseURL || 'http://localhost:11434/api';
 					const ollamaModels = await fetchOllamaModels(ollamaBaseURL);
 
 					if (ollamaModels === null) {
@@ -481,6 +505,8 @@ async function setModel(role, modelId, options = {}) {
 						determinedProvider = CUSTOM_PROVIDERS.OLLAMA;
 						warningMessage = `Warning: Custom Ollama model '${modelId}' set. Ensure your Ollama server is running and has pulled this model. Taskmaster cannot guarantee compatibility.`;
 						report('warn', warningMessage);
+						// Store the computed baseURL so it gets saved in config
+						computedBaseURL = ollamaBaseURL;
 					} else {
 						// Server is running but model not found
 						const tagsUrl = `${ollamaBaseURL}/tags`;
@@ -555,6 +581,62 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Codex CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.LMSTUDIO) {
+					// LM Studio provider - set without validation since it's a local server
+					determinedProvider = CUSTOM_PROVIDERS.LMSTUDIO;
+
+					// Get current provider for this role to check if we should preserve baseURL
+					let currentProvider;
+					if (role === 'main') {
+						currentProvider = getMainProvider(projectRoot);
+					} else if (role === 'research') {
+						currentProvider = getResearchProvider(projectRoot);
+					} else if (role === 'fallback') {
+						currentProvider = getFallbackProvider(projectRoot);
+					}
+
+					// Only preserve baseURL if we're already using LMSTUDIO
+					const existingBaseURL =
+						currentProvider === CUSTOM_PROVIDERS.LMSTUDIO
+							? getBaseUrlForRole(role, projectRoot)
+							: null;
+
+					const lmStudioBaseURL =
+						baseURL || existingBaseURL || 'http://localhost:1234/v1';
+					warningMessage = `Warning: Custom LM Studio model '${modelId}' set with base URL '${lmStudioBaseURL}'. Please ensure LM Studio server is running and has loaded this model. Taskmaster cannot guarantee compatibility.`;
+					report('warn', warningMessage);
+					// Store the computed baseURL so it gets saved in config
+					computedBaseURL = lmStudioBaseURL;
+				} else if (providerHint === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE) {
+					// OpenAI-compatible provider - set without validation, requires baseURL
+					determinedProvider = CUSTOM_PROVIDERS.OPENAI_COMPATIBLE;
+
+					// Get current provider for this role to check if we should preserve baseURL
+					let currentProvider;
+					if (role === 'main') {
+						currentProvider = getMainProvider(projectRoot);
+					} else if (role === 'research') {
+						currentProvider = getResearchProvider(projectRoot);
+					} else if (role === 'fallback') {
+						currentProvider = getFallbackProvider(projectRoot);
+					}
+
+					// Only preserve baseURL if we're already using OPENAI_COMPATIBLE
+					const existingBaseURL =
+						currentProvider === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE
+							? getBaseUrlForRole(role, projectRoot)
+							: null;
+
+					const resolvedBaseURL = baseURL || existingBaseURL;
+					if (!resolvedBaseURL) {
+						throw new Error(
+							`Base URL is required for OpenAI-compatible providers. Please provide a baseURL.`
+						);
+					}
+					warningMessage = `Warning: Custom OpenAI-compatible model '${modelId}' set with base URL '${resolvedBaseURL}'. Taskmaster cannot guarantee compatibility. Ensure your API endpoint follows the OpenAI API specification.`;
+					report('warn', warningMessage);
+					// Store the computed baseURL so it gets saved in config
+					computedBaseURL = resolvedBaseURL;
 				} else {
 					// Invalid provider hint - should not happen with our constants
 					throw new Error(`Invalid provider hint received: ${providerHint}`);
@@ -575,7 +657,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --gemini-cli, or --codex-cli.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --lmstudio, --openai-compatible, --gemini-cli, or --codex-cli.`
 					}
 				};
 			}
@@ -601,6 +683,19 @@ async function setModel(role, modelId, options = {}) {
 			provider: determinedProvider,
 			modelId: modelId
 		};
+
+		// Handle baseURL for providers that support it
+		if (
+			computedBaseURL &&
+			(determinedProvider === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE ||
+				determinedProvider === CUSTOM_PROVIDERS.LMSTUDIO ||
+				determinedProvider === CUSTOM_PROVIDERS.OLLAMA)
+		) {
+			currentConfig.models[role].baseURL = computedBaseURL;
+		} else {
+			// Remove baseURL when switching to a provider that doesn't need it
+			delete currentConfig.models[role].baseURL;
+		}
 
 		// If model data is available, update maxTokens from supported-models.json
 		if (modelData && modelData.max_tokens) {

@@ -33,6 +33,7 @@
 		"@supabase/supabase-js": "^2.57.4",
 		"fs-extra": "^11.3.2",
 		"simple-git": "^3.28.0",
+		"steno": "^4.0.2",
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {

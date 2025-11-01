@@ -11,7 +11,7 @@ import {
 	withNormalizedProjectRoot
 } from '../../shared/utils.js';
 import type { MCPContext } from '../../shared/types.js';
-import { createTmCore, type Task } from '@tm/core';
+import { createTmCore, Subtask, type Task } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const GetTaskSchema = z.object({
@@ -66,7 +66,7 @@ export function registerGetTaskTool(server: FastMCP) {
 						taskIds.map((taskId) => tmCore.tasks.get(taskId, tag))
 					);
 
-					const tasks: Task[] = [];
+					const tasks: (Task | Subtask)[] = [];
 					for (const result of results) {
 						if (!result.task) continue;
 

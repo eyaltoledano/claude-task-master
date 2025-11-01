@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.30.2",
+	"version": "0.31.0-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -9,11 +9,7 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": [
-		"apps/*",
-		"packages/*",
-		"."
-	],
+	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
@@ -64,6 +60,7 @@
 		"@ai-sdk/groq": "^2.0.21",
 		"@ai-sdk/mistral": "^2.0.16",
 		"@ai-sdk/openai": "^2.0.34",
+		"@ai-sdk/openai-compatible": "^1.0.25",
 		"@ai-sdk/perplexity": "^2.0.10",
 		"@ai-sdk/provider": "^2.0.0",
 		"@ai-sdk/provider-utils": "^3.0.10",
@@ -106,6 +103,7 @@
 		"open": "^10.2.0",
 		"ora": "^8.2.0",
 		"simple-git": "^3.28.0",
+		"steno": "^4.0.2",
 		"uuid": "^11.1.0",
 		"zod": "^4.1.11"
 	},

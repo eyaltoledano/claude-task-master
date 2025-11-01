@@ -75,3 +75,8 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
 	review: 'cyan',
 	completed: 'green'
 } as const;
+
+/**
+ * Provider constants - AI model providers
+ */
+export * from './providers.js';

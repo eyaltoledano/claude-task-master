@@ -1,4 +1,4 @@
-# Available Models as of October 18, 2025
+# Available Models as of October 31, 2025
 
 ## Main Models
 
@@ -77,6 +77,10 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
+| zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
+| zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
+| zai         | glm-4.5v                                       | 0.63      | 0.6        | 1.8         |
 | ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
@@ -130,6 +134,8 @@
 | perplexity  | sonar-deep-research                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning-pro                          | 0.211     | 2          | 8           |
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
+| zai         | glm-4.6                                      | 0.68      | 0.6        | 2.2         |
+| zai         | glm-4.5                                      | 0.65      | 0.6        | 2.2         |
 | bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0 | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0 | 0.49      | 3          | 15          |
@@ -202,6 +208,10 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
+| zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
+| zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
+| zai         | glm-4.5v                                       | 0.63      | 0.6        | 1.8         |
 | ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |

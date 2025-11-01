@@ -13,7 +13,7 @@ import {
 	CUSTOM_PROVIDERS,
 	CUSTOM_PROVIDERS_ARRAY,
 	VALIDATED_PROVIDERS
-} from '../../src/constants/providers.js';
+} from '@tm/core';
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 import MODEL_MAP from './supported-models.json' with { type: 'json' };

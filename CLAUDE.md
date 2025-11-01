@@ -1,6 +1,7 @@
 # Claude Code Instructions
 
 ## Task Master AI Instructions
+
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
 
@@ -14,10 +15,12 @@
 - **Test extension**: Always use `.ts` for TypeScript tests, never `.js`
 
 ### Synchronous Tests
+
 - **NEVER use async/await in test functions** unless testing actual asynchronous operations
 - Use synchronous top-level imports instead of dynamic `await import()`
 - Test bodies should be synchronous whenever possible
 - Example:
+
   ```typescript
   // ✅ CORRECT - Synchronous imports with .ts extension
   import { MyClass } from '../src/my-class.js';
@@ -32,6 +35,57 @@
     expect(new MyClass().property).toBe(value);
   });
   ```
+
+### When to Write Tests
+
+**ALWAYS write tests for:**
+
+- **Bug fixes**: Add a regression test that would have caught the bug
+- **Business logic**: Complex calculations, validations, transformations
+- **Edge cases**: Boundary conditions, error handling, null/undefined cases
+- **Public APIs**: Methods other code depends on
+- **Integration points**: Database, file system, external APIs
+
+**SKIP tests for:**
+
+- Simple getters/setters: `getX() { return this.x; }`
+- Trivial pass-through functions with no logic
+- Pure configuration objects
+- Code that just delegates to another tested function
+
+**Examples:**
+
+```javascript
+// ✅ WRITE A TEST - Bug fix with regression prevention
+it('should use correct baseURL from defaultBaseURL config', () => {
+  const provider = new ZAIProvider();
+  expect(provider.defaultBaseURL).toBe('https://api.z.ai/api/paas/v4/');
+});
+
+// ✅ WRITE A TEST - Business logic with edge cases
+it('should parse subtask IDs correctly', () => {
+  expect(parseTaskId('1.2.3')).toEqual({ taskId: 1, subtaskId: 2, subSubtaskId: 3 });
+  expect(parseTaskId('invalid')).toBeNull();
+});
+
+// ❌ SKIP TEST - Trivial getter
+class Task {
+  get id() { return this._id; } // No test needed
+}
+
+// ❌ SKIP TEST - Pure delegation
+function getTasks() {
+  return taskManager.getTasks(); // Already tested in taskManager
+}
+```
+
+**Bug Fix Workflow:**
+
+1. Encounter a bug
+2. Write a failing test that reproduces it
+3. Fix the bug
+4. Verify test now passes
+5. Commit both fix and test together
 
 ## Architecture Guidelines
 
@@ -70,6 +124,7 @@
 - ❌ Duplicating logic across CLI and MCP → Implement once in tm-core
 
 **Correct approach:**
+
 - ✅ Add method to TasksDomain: `tasks.get(taskId)` (automatically handles task and subtask IDs)
 - ✅ CLI calls: `await tmCore.tasks.get(taskId)` (supports "1", "1.2", "HAM-123", "HAM-123.2")
 - ✅ MCP calls: `await tmCore.tasks.get(taskId)` (same intelligent ID parsing)
@@ -78,7 +133,7 @@
 ## Documentation Guidelines
 
 - **Documentation location**: Write docs in `apps/docs/` (Mintlify site source), not `docs/`
-- **Documentation URL**: Reference docs at https://docs.task-master.dev, not local file paths
+- **Documentation URL**: Reference docs at <https://docs.task-master.dev>, not local file paths
 
 ## Changeset Guidelines
 

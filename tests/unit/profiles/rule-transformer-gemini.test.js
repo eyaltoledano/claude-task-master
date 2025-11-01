@@ -16,7 +16,8 @@ describe('Rule Transformer - Gemini Profile', () => {
 		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json');
 		expect(geminiProfile.includeDefaultRules).toBe(false);
 		expect(geminiProfile.fileMap).toEqual({
-			'AGENTS.md': 'GEMINI.md'
+			'AGENT.md': 'AGENTS.md',
+			'GEMINI.md': 'GEMINI.md'
 		});
 	});
 
@@ -41,15 +42,17 @@ describe('Rule Transformer - Gemini Profile', () => {
 	test('should have correct file mapping', () => {
 		const geminiProfile = getRulesProfile('gemini');
 		expect(geminiProfile.fileMap).toEqual({
-			'AGENTS.md': 'GEMINI.md'
+			'AGENT.md': 'AGENTS.md',
+			'GEMINI.md': 'GEMINI.md'
 		});
 	});
 
-	test('should place GEMINI.md in root directory', () => {
+	test('should place AGENTS.md and GEMINI.md in root directory', () => {
 		const geminiProfile = getRulesProfile('gemini');
 		// rulesDir determines where fileMap files go
 		expect(geminiProfile.rulesDir).toBe('.');
-		// This means AGENTS.md -> GEMINI.md will be placed in the root
+		// This means both AGENTS.md and GEMINI.md will be placed in the root
+		// Both files are auto-loaded by Gemini CLI
 	});
 
 	test('should place settings.json in .gemini directory', () => {
