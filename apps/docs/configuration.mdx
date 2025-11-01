@@ -6,13 +6,15 @@ description: "Configure Task Master through environment variables in a .env file
 ## Required Configuration
 
 <Note>
-  Task Master requires an Anthropic API key to function. Add this to your `.env` file:
+  Task Master requires at least one AI provider API key to function. Anthropic Claude is recommended:
 
   ```bash
   ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
   ```
 
   You can obtain an API key from the [Anthropic Console](https://console.anthropic.com/).
+  
+  For other providers, see the [API Keys guide](/getting-started/api-keys).
 </Note>
 
 ## Optional Configuration
@@ -30,6 +32,9 @@ description: "Configure Task Master through environment variables in a .env file
 | `PROJECT_VERSION` | `"1.0.0"` | Version in metadata | `PROJECT_VERSION=2.1.0` |
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
+| `ZAI_API_KEY` | - | Z.ai GLM models (200K+ context) | `ZAI_API_KEY=your-zai-key` |
+| `OPENAI_COMPATIBLE_API_KEY` | - | Custom OpenAI-compatible providers | `OPENAI_COMPATIBLE_API_KEY=custom-key` |
+| `LMSTUDIO_API_KEY` | - | LM Studio local models (optional) | `LMSTUDIO_API_KEY=lms-key` |
 
 ## TDD Workflow Configuration
 
@@ -44,8 +49,14 @@ Additional options for autonomous TDD workflow:
 ## Example .env File
 
 ```
-# Required
+# Required (choose at least one)
 ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
+
+# Alternative AI Providers
+ZAI_API_KEY=your-zai-key-here                    # Z.ai GLM models with 200K+ context  
+OPENAI_COMPATIBLE_API_KEY=your-custom-key        # Custom OpenAI-compatible providers
+LMSTUDIO_API_KEY=your-lmstudio-key              # LM Studio local models (optional)
+OPENAI_API_KEY=sk-proj-your-openai-key          # OpenAI GPT models
 
 # Optional - Claude Configuration
 MODEL=claude-3-7-sonnet-20250219

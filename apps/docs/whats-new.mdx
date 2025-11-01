@@ -3,4 +3,70 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## Version 0.31.0 🚀
+
+### Major New Features
+
+#### Z.ai (GLM Models) Support
+Native support for Z.ai's powerful GLM models, featuring massive 200K+ context windows perfect for complex projects.
+
+- **New models**: GLM-4.6, GLM-4.5, GLM-4.5-air, GLM-4.5v
+- **Massive context**: 200K+ tokens for analyzing entire codebases
+- **Competitive pricing**: High performance at great value
+- **Get started**: [Z.ai API Keys](https://z.ai/manage-apikey/apikey-list)
+
+```bash
+task-master models --set-main glm-4.6
+```
+
+#### Custom OpenAI-Compatible Providers
+Connect Task Master to any service implementing the OpenAI API specification - self-hosted, specialized providers, or custom inference servers.
+
+- **Universal compatibility**: Works with any OpenAI API-compatible service
+- **Flexible deployment**: Self-hosted, cloud, or edge inference
+- **Cost control**: Use your preferred pricing model
+
+```bash
+task-master models --set-main llama-3-70b --openai-compatible --baseURL http://localhost:8000/v1
+```
+
+#### LM Studio Integration (Offline Support)
+Run Task Master completely offline with local models at zero API cost after setup.
+
+- **Zero ongoing costs**: No API fees after initial setup
+- **Complete privacy**: All processing stays local
+- **Offline capable**: Work without internet connection
+- **Easy setup**: Download [LM Studio](https://lmstudio.ai/) and go
+
+```bash
+task-master models --set-main llama-3.2-3b --lmstudio
+```
+
+#### Enhanced Gemini CLI Integration
+Improved integration with Google's Gemini CLI, with properly configured context files and MCP configuration.
+
+### Bug Fixes & Improvements
+
+- **Fixed subtask ID display**: Subtasks now show full compound notation (e.g., "104.1" instead of just "1")
+- **Improved MCP stability**: Fixed autopilot crashes during commit operations
+- **Better PRD parsing**: Enhanced schema compatibility across different LLM models
+- **TypeScript improvements**: Better type safety with discriminated unions for Task/Subtask operations
+
+### API Key Updates
+
+New environment variables for the latest providers:
+
+```bash
+# Z.ai GLM models
+ZAI_API_KEY="your-zai-key-here"
+
+# Custom OpenAI-compatible providers  
+OPENAI_COMPATIBLE_API_KEY="your-custom-provider-key"
+
+# LM Studio (optional for local usage)
+LMSTUDIO_API_KEY="your-lmstudio-key-here"
+```
+
+---
+
+An easy way to see the latest releases and updates
