@@ -5,8 +5,6 @@ import {
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
 import os from 'os'; // Import os module for home directory check
-import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
-import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transformer.js';
 
 /**
  * Direct function wrapper for initializing a project.
