@@ -19,30 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            */*/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          cache: "pnpm"
 
       - name: Install Dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         timeout-minutes: 2
 
       - name: Check pre-release mode
         run: node ./.github/scripts/check-pre-release-mode.mjs "main"
 
       - name: Build packages
-        run: npm run turbo:build
+        run: pnpm run turbo:build
         env:
           NODE_ENV: production
           FORCE_COLOR: 1

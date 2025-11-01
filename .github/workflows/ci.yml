@@ -29,17 +29,19 @@ jobs:
         with:
           fetch-depth: 2
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
+        run: pnpm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
       - name: Format Check
-        run: npm run format-check
+        run: pnpm run format-check
         env:
           FORCE_COLOR: 1
 
@@ -52,17 +54,19 @@ jobs:
         with:
           fetch-depth: 2
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
+        run: pnpm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
       - name: Typecheck
-        run: npm run turbo:typecheck
+        run: pnpm run turbo:typecheck
         env:
           FORCE_COLOR: 1
 
@@ -75,17 +79,19 @@ jobs:
         with:
           fetch-depth: 2
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
+        run: pnpm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
       - name: Build
-        run: npm run turbo:build
+        run: pnpm run turbo:build
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
@@ -110,13 +116,15 @@ jobs:
         with:
           fetch-depth: 2
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
+        run: pnpm install --frozen-lockfile --prefer-offline
         timeout-minutes: 5
 
       - name: Download build artifacts
@@ -127,7 +135,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
+          pnpm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
         env:
           NODE_ENV: test
           CI: true

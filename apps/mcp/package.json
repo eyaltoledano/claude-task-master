@@ -22,7 +22,7 @@
 		"test:ci": "vitest run --coverage --reporter=dot"
 	},
 	"dependencies": {
-		"@tm/core": "*",
+		"@tm/core": "workspace:*",
 		"zod": "^4.1.11",
 		"fastmcp": "^3.19.2"
 	},
