@@ -922,7 +922,7 @@
 				"input": 0.2,
 				"output": 1.1
 			},
-			"allowed_roles": ["main", "fallback"],
+			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 131072,
 			"supported": true
 		}

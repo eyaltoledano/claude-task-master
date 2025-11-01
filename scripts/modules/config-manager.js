@@ -924,6 +924,11 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.XAI_API_KEY;
 				placeholderValue = 'YOUR_XAI_API_KEY_HERE';
 				break;
+			case 'zai':
+			case 'zai-coding':
+				apiKeyToCheck = mcpEnv.ZAI_API_KEY;
+				placeholderValue = 'YOUR_ZAI_API_KEY_HERE';
+				break;
 			case 'groq':
 				apiKeyToCheck = mcpEnv.GROQ_API_KEY;
 				placeholderValue = 'YOUR_GROQ_API_KEY_HERE';
