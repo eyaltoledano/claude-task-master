@@ -36,6 +36,7 @@ export const CONTROL_VALUES = {
  */
 export interface ModelInfo {
 	id: string;
+	name?: string;
 	provider: string;
 	cost_per_1m_tokens?: {
 		input: number;

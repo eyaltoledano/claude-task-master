@@ -82,7 +82,7 @@ export function registerModelsTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'Custom base URL for openai-compatible provider (e.g., https://api.example.com/v1)'
+					'Custom base URL for providers that support it (e.g., https://api.example.com/v1).'
 				)
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
