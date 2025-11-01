@@ -9,6 +9,7 @@ export const VALIDATED_PROVIDERS = [
 	'openai',
 	'google',
 	'zai',
+	'zai-coding',
 	'perplexity',
 	'xai',
 	'groq',

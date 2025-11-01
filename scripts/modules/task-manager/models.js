@@ -429,19 +429,30 @@ async function setModel(role, modelId, options = {}) {
 		let determinedProvider = null; // Initialize provider
 		let warningMessage = null;
 
-		// Find the model data in internal list initially to see if it exists at all
-		let modelData = availableModels.find((m) => m.id === modelId);
+		// Find the model data in internal list
+		// If we have a provider hint, search for exact provider+model match
+		// Otherwise, just search by model ID (will get first match)
+		let modelData;
+		if (providerHint) {
+			// Search for model with specific provider
+			modelData = availableModels.find(
+				(m) => m.id === modelId && m.provider === providerHint
+			);
+		} else {
+			// Search by ID only
+			modelData = availableModels.find((m) => m.id === modelId);
+		}
 
 		// --- Revised Logic: Prioritize providerHint --- //
 
 		if (providerHint) {
-			// Hint provided (--ollama or --openrouter flag used)
+			// Hint provided (from interactive setup or flag)
 			if (modelData && modelData.provider === providerHint) {
-				// Found internally AND provider matches the hint
+				// Found internally with matching provider
 				determinedProvider = providerHint;
 				report(
 					'info',
-					`Model ${modelId} found internally with matching provider hint ${determinedProvider}.`
+					`Model ${modelId} found internally with provider ${determinedProvider}.`
 				);
 			} else {
 				// Either not found internally, OR found but under a DIFFERENT provider than hinted.
