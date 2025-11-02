@@ -12,7 +12,6 @@ export { ContextCommand } from './commands/context.command.js';
 export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
 export { ExportCommand } from './commands/export.command.js';
-export { AutopilotCommand } from './commands/autopilot.command.js';
 
 // Command Registry
 export {
@@ -33,8 +32,11 @@ export {
 	checkForUpdate,
 	performAutoUpdate,
 	displayUpgradeNotification,
-	compareVersions
+	compareVersions,
+	restartWithNewVersion
 } from './utils/auto-update.js';
+
+export { runInteractiveSetup } from './commands/models/index.js';
 
 // Re-export commonly used types from tm-core
 export type {

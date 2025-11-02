@@ -3,16 +3,8 @@
  */
 
 import { Command } from 'commander';
-import { WorkflowOrchestrator } from '@tm/core';
-import {
-	AutopilotBaseOptions,
-	hasWorkflowState,
-	loadWorkflowState,
-	createGitAdapter,
-	createCommitMessageGenerator,
-	OutputFormatter,
-	saveWorkflowState
-} from './shared.js';
+import { WorkflowService, GitAdapter, CommitMessageGenerator } from '@tm/core';
+import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 type CommitOptions = AutopilotBaseOptions;
 
@@ -43,47 +35,41 @@ export class CommitCommand extends Command {
 		const formatter = new OutputFormatter(mergedOptions.json || false);
 
 		try {
-			// Check for workflow state
-			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
-			if (!hasState) {
+			const projectRoot = mergedOptions.projectRoot!;
+
+			// Create workflow service (manages WorkflowStateManager internally)
+			const workflowService = new WorkflowService(projectRoot);
+
+			// Check if workflow exists
+			if (!(await workflowService.hasWorkflow())) {
 				formatter.error('No active workflow', {
 					suggestion: 'Start a workflow with: autopilot start <taskId>'
 				});
 				process.exit(1);
 			}
 
-			// Load state
-			const state = await loadWorkflowState(mergedOptions.projectRoot!);
-			if (!state) {
-				formatter.error('Failed to load workflow state');
-				process.exit(1);
-			}
-
-			const orchestrator = new WorkflowOrchestrator(state.context);
-			orchestrator.restoreState(state);
-			orchestrator.enableAutoPersist(async (newState) => {
-				await saveWorkflowState(mergedOptions.projectRoot!, newState);
-			});
+			// Resume workflow (loads state with single WorkflowStateManager instance)
+			await workflowService.resumeWorkflow();
+			const status = workflowService.getStatus();
+			const workflowContext = workflowService.getContext();
 
 			// Verify in COMMIT phase
-			const tddPhase = orchestrator.getCurrentTDDPhase();
-			if (tddPhase !== 'COMMIT') {
+			if (status.tddPhase !== 'COMMIT') {
 				formatter.error('Not in COMMIT phase', {
-					currentPhase: tddPhase || orchestrator.getCurrentPhase(),
+					currentPhase: status.tddPhase || status.phase,
 					suggestion: 'Complete RED and GREEN phases first'
 				});
 				process.exit(1);
 			}
 
-			// Get current subtask
-			const currentSubtask = orchestrator.getCurrentSubtask();
-			if (!currentSubtask) {
+			// Verify there's an active subtask
+			if (!status.currentSubtask) {
 				formatter.error('No current subtask');
 				process.exit(1);
 			}
 
 			// Initialize git adapter
-			const gitAdapter = createGitAdapter(mergedOptions.projectRoot!);
+			const gitAdapter = new GitAdapter(projectRoot);
 			await gitAdapter.ensureGitRepository();
 
 			// Check for staged changes
@@ -95,20 +81,20 @@ export class CommitCommand extends Command {
 			}
 
 			// Get changed files for scope detection
-			const status = await gitAdapter.getStatus();
-			const changedFiles = [...status.staged, ...status.modified];
+			const gitStatus = await gitAdapter.getStatus();
+			const changedFiles = [...gitStatus.staged, ...gitStatus.modified];
 
 			// Generate commit message
-			const messageGenerator = createCommitMessageGenerator();
-			const testResults = state.context.lastTestResults;
+			const messageGenerator = new CommitMessageGenerator();
+			const testResults = workflowContext.lastTestResults;
 
 			const commitMessage = messageGenerator.generateMessage({
 				type: 'feat',
-				description: currentSubtask.title,
+				description: status.currentSubtask.title,
 				changedFiles,
-				taskId: state.context.taskId,
-				phase: 'TDD',
-				tag: (state.context.metadata.tag as string) || undefined,
+				taskId: status.taskId,
+				phase: status.tddPhase,
+				tag: (workflowContext.metadata.tag as string) || undefined,
 				testsPassing: testResults?.passed,
 				testsFailing: testResults?.failed,
 				coveragePercent: undefined // Could be added if available
@@ -117,8 +103,8 @@ export class CommitCommand extends Command {
 			// Create commit with metadata
 			await gitAdapter.createCommit(commitMessage, {
 				metadata: {
-					taskId: state.context.taskId,
-					subtaskId: currentSubtask.id,
+					taskId: status.taskId,
+					subtaskId: status.currentSubtask.id,
 					phase: 'COMMIT',
 					tddCycle: 'complete'
 				}
@@ -127,36 +113,24 @@ export class CommitCommand extends Command {
 			// Get commit info
 			const lastCommit = await gitAdapter.getLastCommit();
 
-			// Complete COMMIT phase (this marks subtask as completed)
-			orchestrator.transition({ type: 'COMMIT_COMPLETE' });
+			// Complete COMMIT phase and advance workflow
+			// This handles all transitions internally with a single WorkflowStateManager
+			const newStatus = await workflowService.commit();
 
-			// Check if should advance to next subtask
-			const progress = orchestrator.getProgress();
-			if (progress.current < progress.total) {
-				orchestrator.transition({ type: 'SUBTASK_COMPLETE' });
-			} else {
-				// All subtasks complete
-				orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
-			}
+			const isComplete = newStatus.phase === 'COMPLETE';
 
 			// Output success
 			formatter.success('Commit created', {
 				commitHash: lastCommit.hash.substring(0, 7),
 				message: commitMessage.split('\n')[0], // First line only
 				subtask: {
-					id: currentSubtask.id,
-					title: currentSubtask.title,
-					status: currentSubtask.status
+					id: status.currentSubtask.id,
+					title: status.currentSubtask.title
 				},
-				progress: {
-					completed: progress.completed,
-					total: progress.total,
-					percentage: progress.percentage
-				},
-				nextAction:
-					progress.completed < progress.total
-						? 'Start next subtask with RED phase'
-						: 'All subtasks complete. Run: autopilot status'
+				progress: newStatus.progress,
+				nextAction: isComplete
+					? 'All subtasks complete. Run: autopilot status'
+					: 'Start next subtask with RED phase'
 			});
 		} catch (error) {
 			formatter.error((error as Error).message);

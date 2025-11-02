@@ -20,11 +20,7 @@ import {
 	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import {
-	COMPLEXITY_REPORT_FILE,
-	LEGACY_TASKS_FILE
-} from '../../../src/constants/paths.js';
-import { CUSTOM_PROVIDERS } from '../../../src/constants/providers.js';
+import { LEGACY_TASKS_FILE } from '../../../src/constants/paths.js';
 import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';

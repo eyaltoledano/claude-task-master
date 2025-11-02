@@ -95,7 +95,7 @@ export function registerScopeDownTool(server) {
 					result,
 					log,
 					'scope_down_task',
-					"Next Step: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
+					"Your Next Action: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
 				);
 				if (delegation.delegated) return delegation.response;
 
