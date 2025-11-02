@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateTaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -89,7 +90,11 @@ export function registerUpdateTaskTool(server) {
 					{ session }
 				);
 
-				// 4. Handle Result
+				// Centralized delegation handling
+				const delegation = createAgentDelegationResponse(result, log, 'update_task');
+				if (delegation.delegated) return delegation.response;
+
+				// If not delegating, proceed with existing result handling
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);

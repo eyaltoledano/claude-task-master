@@ -2,10 +2,37 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log, readJSON } from '../utils.js';
+import { log as cliLog, readJSON, isSilentMode, slugifyTagForFilePath } from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
+
+function dispatchLog(level, options, ...args) {
+	const message = args
+		.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg))
+		.join(' ');
+	if (options && options.mcpLog) {
+		const mcpLogger = options.mcpLog;
+		if (typeof mcpLogger[level] === 'function') {
+			mcpLogger[level](message);
+		} else if (level === 'success' && typeof mcpLogger.info === 'function') {
+			// Map 'success' to 'info' if mcpLog.success doesn't exist but info does
+			mcpLogger.info(message);
+		} else if (typeof mcpLogger.info === 'function') {
+			// Default to info if specific level method not found on mcpLogger
+			mcpLogger.info(`[${level.toUpperCase()}] ${message}`);
+		} else {
+			// Fallback if mcpLogger is very basic or unrecognised
+			cliLog('info', `[MCP FALLBACK - ${level.toUpperCase()}] ${message}`);
+		}
+	} else {
+		// Log to CLI unless global silent mode is enabled, or an explicit per-call silent flag is set
+		if (!isSilentMode() && !(options && options.silentMode)) {
+			cliLog(level, ...args);
+		}
+		// Otherwise stay silent to avoid breaking JSON output
+	}
+}
 
 /**
  * Generate individual task files from tasks.json
@@ -45,9 +72,10 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.mkdirSync(outputDir, { recursive: true });
 		}
 
-		log(
+		dispatchLog(
 			'info',
-			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${tag}'`
+			options,
+			`Preparing to regenerate ${tasksForGeneration.length} task files for tag '${slugifyTagForFilePath(tag)}'`
 		);
 
 		// 3. Validate dependencies using the FULL, raw data structure to prevent data loss.
@@ -62,12 +90,16 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 		const validTaskIds = allTasksInTag.map((task) => task.id);
 
 		// Cleanup orphaned task files
-		log('info', 'Checking for orphaned task files to clean up...');
+		dispatchLog(
+			'info',
+			options,
+			`Checking for orphaned task files to clean up for tag '${slugifyTagForFilePath(tag)}'...`
+		);
 		try {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const masterFilePattern = /^task_(\d+)\.txt$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${tag}\\.txt$`);
+			const taggedFilePattern = new RegExp(`^task_(\\d+)_${slugifyTagForFilePath(tag)}\\.txt$`);
 
 			const orphanedFiles = files.filter((file) => {
 				let match = null;
@@ -93,29 +125,38 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			});
 
 			if (orphanedFiles.length > 0) {
-				log(
+				dispatchLog(
 					'info',
-					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${tag}'`
+					options,
+					`Found ${orphanedFiles.length} orphaned task files to remove for tag '${slugifyTagForFilePath(tag)}'`
 				);
 				orphanedFiles.forEach((file) => {
 					const filePath = path.join(outputDir, file);
 					fs.unlinkSync(filePath);
 				});
 			} else {
-				log('info', 'No orphaned task files found.');
+				dispatchLog('info', options, 'No orphaned task files found.');
 			}
 		} catch (err) {
-			log('warn', `Error cleaning up orphaned task files: ${err.message}`);
+			dispatchLog(
+				'warn',
+				options,
+				`Error cleaning up orphaned task files: ${err.message}`
+			);
 		}
 
 		// Generate task files for the target tag
-		log('info', `Generating individual task files for tag '${tag}'...`);
+		dispatchLog(
+			'info',
+			options,
+			`Generating individual task files for tag '${slugifyTagForFilePath(tag)}'...`
+		);
 		tasksForGeneration.forEach((task) => {
 			// Tag-aware file naming: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const taskFileName =
 				tag === 'master'
 					? `task_${task.id.toString().padStart(3, '0')}.txt`
-					: `task_${task.id.toString().padStart(3, '0')}_${tag}.txt`;
+					: `task_${task.id.toString().padStart(3, '0')}_${slugifyTagForFilePath(tag)}.txt`;
 
 			const taskPath = path.join(outputDir, taskFileName);
 
@@ -173,9 +214,10 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			fs.writeFileSync(taskPath, content);
 		});
 
-		log(
+		dispatchLog(
 			'success',
-			`All ${tasksForGeneration.length} tasks for tag '${tag}' have been generated into '${outputDir}'.`
+			options,
+			`All ${tasksForGeneration.length} tasks for tag '${slugifyTagForFilePath(tag)}' have been generated into '${outputDir}'.`
 		);
 
 		if (isMcpMode) {
@@ -186,7 +228,11 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			};
 		}
 	} catch (error) {
-		log('error', `Error generating task files: ${error.message}`);
+		dispatchLog(
+			'error',
+			options,
+			`Error generating task files: ${error.message}`
+		);
 		if (!options?.mcpLog) {
 			console.error(chalk.red(`Error generating task files: ${error.message}`));
 			if (getDebugFlag()) {

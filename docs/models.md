@@ -1,4 +1,4 @@
-# Available Models as of October 31, 2025
+# Available Models as of November 1, 2025
 
 ## Main Models
 
@@ -80,7 +80,9 @@
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
-| zai         | glm-4.5v                                       | 0.63      | 0.6        | 1.8         |
+| zai-coding  | glm-4.6                                        | 0.68      | 0          | 0           |
+| zai-coding  | glm-4.5                                        | 0.65      | 0          | 0           |
+| zai-coding  | glm-4.5-air                                    | 0.62      | 0          | 0           |
 | ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |
@@ -136,6 +138,10 @@
 | perplexity  | sonar-reasoning                              | 0.211     | 1          | 5           |
 | zai         | glm-4.6                                      | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                      | 0.65      | 0.6        | 2.2         |
+| zai         | glm-4.5-air                                  | 0.62      | 0.2        | 1.1         |
+| zai-coding  | glm-4.6                                      | 0.68      | 0          | 0           |
+| zai-coding  | glm-4.5                                      | 0.65      | 0          | 0           |
+| zai-coding  | glm-4.5-air                                  | 0.62      | 0          | 0           |
 | bedrock     | us.anthropic.claude-3-opus-20240229-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20240620-v1:0 | 0.49      | 3          | 15          |
 | bedrock     | us.anthropic.claude-3-5-sonnet-20241022-v2:0 | 0.49      | 3          | 15          |
@@ -211,7 +217,9 @@
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
-| zai         | glm-4.5v                                       | 0.63      | 0.6        | 1.8         |
+| zai-coding  | glm-4.6                                        | 0.68      | 0          | 0           |
+| zai-coding  | glm-4.5                                        | 0.65      | 0          | 0           |
+| zai-coding  | glm-4.5-air                                    | 0.62      | 0          | 0           |
 | ollama      | gpt-oss:latest                                 | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:20b                                    | 0.607     | 0          | 0           |
 | ollama      | gpt-oss:120b                                   | 0.624     | 0          | 0           |

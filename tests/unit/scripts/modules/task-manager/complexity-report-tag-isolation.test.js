@@ -93,7 +93,14 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => []),
 	CONFIG: {
 		defaultSubtasks: 3
-	}
+	},
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 jest.unstable_mockModule(

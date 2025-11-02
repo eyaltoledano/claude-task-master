@@ -57,7 +57,8 @@ export function createProfile(editorConfig) {
 		'rules/cursor_rules.mdc': `${name.toLowerCase()}_rules${targetExtension}`,
 		'rules/dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
 		'rules/self_improve.mdc': `self_improve${targetExtension}`,
-		'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`
+		'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`,
+		'rules/agentllm.mdc': `${taskmasterPrefix}agentllm${targetExtension}`
 	};
 
 	// Build final fileMap - merge defaults with custom entries when includeDefaultRules is true
@@ -198,11 +199,16 @@ export function createProfile(editorConfig) {
 					`${baseName}${targetExtension}`;
 				// Update the link text to match the new filename (strip directory path for display)
 				const newLinkText = path.basename(newFileName);
-				// For Cursor, keep the mdc: protocol; for others, use standard relative paths
+
+				// Construct the full path using OS-specific separators first
+				const fullPathOsSpecific = path.join(rulesDir, newFileName);
+				// For all Markdown links, convert to forward slashes for web/Markdown compatibility
+				const linkPath = fullPathOsSpecific.replace(/\\/g, '/');
+
 				if (name.toLowerCase() === 'cursor') {
-					return `[${newLinkText}](mdc:${rulesDir}/${newFileName})`;
+					return `[${newLinkText}](mdc:${linkPath})`;
 				} else {
-					return `[${newLinkText}](${rulesDir}/${newFileName})`;
+					return `[${newLinkText}](${linkPath})`;
 				}
 			}
 		}
