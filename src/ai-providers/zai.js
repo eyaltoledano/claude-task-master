@@ -15,7 +15,18 @@ export class ZAIProvider extends OpenAICompatibleProvider {
 			name: 'Z.ai',
 			apiKeyEnvVar: 'ZAI_API_KEY',
 			requiresApiKey: true,
-			defaultBaseURL: 'https://api.z.ai/api/paas/v4/'
+			defaultBaseURL: 'https://api.z.ai/api/paas/v4/',
+			supportsStructuredOutputs: true
 		});
+	}
+
+	/**
+	 * Override token parameter preparation for ZAI
+	 * ZAI API doesn't support max_tokens parameter
+	 * @returns {object} Empty object for ZAI (doesn't support maxOutputTokens)
+	 */
+	prepareTokenParam() {
+		// ZAI API rejects max_tokens parameter with error code 1210
+		return {};
 	}
 }

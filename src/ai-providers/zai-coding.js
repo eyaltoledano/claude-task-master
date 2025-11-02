@@ -15,7 +15,18 @@ export class ZAICodingProvider extends OpenAICompatibleProvider {
 			name: 'Z.ai (Coding Plan)',
 			apiKeyEnvVar: 'ZAI_API_KEY',
 			requiresApiKey: true,
-			defaultBaseURL: 'https://api.z.ai/api/coding/paas/v4/'
+			defaultBaseURL: 'https://api.z.ai/api/coding/paas/v4/',
+			supportsStructuredOutputs: true
 		});
+	}
+
+	/**
+	 * Override token parameter preparation for ZAI Coding
+	 * ZAI Coding API doesn't support max_tokens parameter
+	 * @returns {object} Empty object for ZAI (doesn't support maxOutputTokens)
+	 */
+	prepareTokenParam() {
+		// ZAI Coding API also rejects max_tokens parameter with error code 1210
+		return {};
 	}
 }
