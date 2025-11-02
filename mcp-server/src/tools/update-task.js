@@ -91,7 +91,11 @@ export function registerUpdateTaskTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = createAgentDelegationResponse(result, log, 'update_task');
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'update_task'
+				);
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling

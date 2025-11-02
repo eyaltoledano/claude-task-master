@@ -784,14 +784,18 @@ describe('Dependency Manager Module', () => {
 				'Invalid tasks data: root object is missing or invalid'
 			);
 			expect(() => validateAndFixDependencies({})).toThrowError(
-				'Invalid tasks data: tag \'master\' is missing or has invalid structure'
+				"Invalid tasks data: tag 'master' is missing or has invalid structure"
 			);
 			expect(() =>
 				validateAndFixDependencies({ master: { tasks: null } })
-			).toThrowError('Invalid tasks data: tag \'master\' is missing or has invalid structure');
+			).toThrowError(
+				"Invalid tasks data: tag 'master' is missing or has invalid structure"
+			);
 			expect(() =>
 				validateAndFixDependencies({ master: { tasks: 'not an array' } })
-			).toThrowError('Invalid tasks data: tag \'master\' is missing or has invalid structure');
+			).toThrowError(
+				"Invalid tasks data: tag 'master' is missing or has invalid structure"
+			);
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(

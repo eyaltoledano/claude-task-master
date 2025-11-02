@@ -79,7 +79,11 @@ export function registerUpdateSubtaskTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = createAgentDelegationResponse(result, log, 'update_subtask');
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'update_subtask'
+				);
 				if (delegation.delegated) return delegation.response;
 
 				if (result.success) {

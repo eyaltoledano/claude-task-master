@@ -100,7 +100,11 @@ export function registerResearchTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = createAgentDelegationResponse(result, log, 'research');
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'research'
+				);
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling

@@ -777,7 +777,12 @@ function withNormalizedProjectRoot(executeFn) {
  * @param {string} [customInstructions] - Optional extra instructions to include in the delegation response
  * @returns {Object} - { delegated: boolean, response?: Object }
  */
-function createAgentDelegationResponse(result, log, toolName, customInstructions = '') {
+function createAgentDelegationResponse(
+	result,
+	log,
+	toolName,
+	customInstructions = ''
+) {
 	if (result?.needsAgentDelegation === true && result.pendingInteraction) {
 		log.info(
 			`${toolName} tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`

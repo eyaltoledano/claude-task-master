@@ -35,7 +35,9 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		return false; // Not an array or object
 	}),
 	resolveEnvVariable: jest.fn(),
-	slugifyTagForFilePath: jest.fn((tag) => tag ? tag.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'master'),
+	slugifyTagForFilePath: jest.fn((tag) =>
+		tag ? tag.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'master'
+	),
 	createLogger: jest.fn(() => ({
 		debug: jest.fn(),
 		error: jest.fn(),

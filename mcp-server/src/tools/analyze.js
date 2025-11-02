@@ -149,7 +149,11 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					{ session }
 				);
 
-				const delegation = createAgentDelegationResponse(result, log, 'analyze_project_complexity');
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'analyze_project_complexity'
+				);
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating, proceed with existing result handling

@@ -111,7 +111,11 @@ export function registerAddTaskTool(server) {
 				);
 
 				// Centralized delegation handling
-				const delegation = createAgentDelegationResponse(result, log, 'add_task');
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'add_task'
+				);
 				if (delegation.delegated) return delegation.response;
 
 				// If not delegating (e.g., manual task creation or direct AI success),

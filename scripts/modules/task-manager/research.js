@@ -443,7 +443,9 @@ async function performResearch(
 						logFn.info(
 							`performResearch: Attempting to save to subtask ${options.saveTo}.`
 						);
-						const updateSubtaskById = (await import('./update-subtask-by-id.js')).default;
+						const updateSubtaskById = (
+							await import('./update-subtask-by-id.js')
+						).default;
 						await updateSubtaskById(
 							tasksPath,
 							options.saveTo,
@@ -1008,8 +1010,8 @@ async function handleSaveToFile(
 
 		const firstQuery = conversationHistory[0]?.question || 'research-query';
 		const now = new Date();
-        const datePart = now.toISOString().split('T')[0];
-        const timePart = `${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;
+		const datePart = now.toISOString().split('T')[0];
+		const timePart = `${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
 
 		const querySlug = firstQuery
 			.toLowerCase()

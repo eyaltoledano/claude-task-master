@@ -7,11 +7,11 @@
 // TODO: Revert to 'zod' when MCP spec issue is resolved (see PR #1323)
 import { z } from 'zod/v3';
 import {
-    handleApiResult,
-    withNormalizedProjectRoot,
-    createErrorResponse,
-    createAgentDelegationResponse,
-    checkProgressCapability
+	handleApiResult,
+	withNormalizedProjectRoot,
+	createErrorResponse,
+	createAgentDelegationResponse,
+	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
@@ -88,7 +88,11 @@ export function registerParsePRDTool(server) {
 						{ session, reportProgress: progressCapability }
 					);
 					// Centralized delegation handling
-					const delegation = createAgentDelegationResponse(result, log, 'parse_prd');
+					const delegation = createAgentDelegationResponse(
+						result,
+						log,
+						'parse_prd'
+					);
 					if (delegation.delegated) return delegation.response;
 
 					// If no delegation, process the result as usual

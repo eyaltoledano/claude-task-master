@@ -1,6 +1,5 @@
 import { jest } from '@jest/globals'; // Ensure jest is imported for unstable_mockModule
 
-
 // Mock uuid to return a fixed value for predictable interactionId testing
 // Changed to unstable_mockModule and used jest.fn()
 jest.unstable_mockModule('uuid', () => ({

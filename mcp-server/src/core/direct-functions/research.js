@@ -50,10 +50,10 @@ export async function researchDirect(args, log, context = {}) {
 	// cleaned value is an empty string, use undefined.
 	const normalizedSaveTo = saveTo
 		? String(saveTo)
-			.replace(/[^0-9\.]/g, '')
-			.replace(/^\./, '')
-			.replace(/\.+/g, '.')
-			.trim() || undefined
+				.replace(/[^0-9\.]/g, '')
+				.replace(/^\./, '')
+				.replace(/\.+/g, '.')
+				.trim() || undefined
 		: undefined;
 
 	// Enable silent mode to prevent console logs from interfering with JSON response

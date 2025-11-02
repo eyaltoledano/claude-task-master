@@ -588,8 +588,11 @@ export function AgentLLMProviderToolExecutor(
 				try {
 					if (agentLLMStatus === 'llm_response_error' || error) {
 						let errorMessage = 'Agent LLM call failed';
-						if (error) errorMessage = error instanceof Error ? error.message : String(error);
-						else if (typeof finalLLMOutput === 'string') errorMessage = finalLLMOutput;
+						if (error)
+							errorMessage =
+								error instanceof Error ? error.message : String(error);
+						else if (typeof finalLLMOutput === 'string')
+							errorMessage = finalLLMOutput;
 						throw new Error(errorMessage);
 					}
 

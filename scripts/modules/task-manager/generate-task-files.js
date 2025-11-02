@@ -2,7 +2,12 @@ import path from 'path';
 import fs from 'fs';
 import chalk from 'chalk';
 
-import { log as cliLog, readJSON, isSilentMode, slugifyTagForFilePath } from '../utils.js';
+import {
+	log as cliLog,
+	readJSON,
+	isSilentMode,
+	slugifyTagForFilePath
+} from '../utils.js';
 import { formatDependenciesWithStatus } from '../ui.js';
 import { validateAndFixDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -99,7 +104,9 @@ function generateTaskFiles(tasksPath, outputDir, options = {}) {
 			const files = fs.readdirSync(outputDir);
 			// Tag-aware file patterns: master -> task_001.txt, other tags -> task_001_tagname.txt
 			const masterFilePattern = /^task_(\d+)\.txt$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${slugifyTagForFilePath(tag)}\\.txt$`);
+			const taggedFilePattern = new RegExp(
+				`^task_(\\d+)_${slugifyTagForFilePath(tag)}\\.txt$`
+			);
 
 			const orphanedFiles = files.filter((file) => {
 				let match = null;
