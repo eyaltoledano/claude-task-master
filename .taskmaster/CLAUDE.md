@@ -92,6 +92,7 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
         "OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
         "GOOGLE_API_KEY": "GOOGLE_API_KEY_HERE",
         "XAI_API_KEY": "XAI_API_KEY_HERE",
+        "ZAI_API_KEY": "ZAI_API_KEY_HERE",
         "OPENROUTER_API_KEY": "OPENROUTER_API_KEY_HERE",
         "MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
@@ -236,6 +237,7 @@ At least **one** of these API keys must be configured:
 - `MISTRAL_API_KEY` (Mistral models)
 - `OPENROUTER_API_KEY` (Multiple models)
 - `XAI_API_KEY` (Grok models)
+- `ZAI_API_KEY` (Z.ai GLM models)
 
 An API key is required for any provider used across any of the 3 roles defined in the `models` command.
 
