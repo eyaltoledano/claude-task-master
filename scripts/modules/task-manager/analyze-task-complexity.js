@@ -426,7 +426,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 			}
 
 			// With generateObject, we get structured data directly
-			complexityAnalysis = aiServiceResponse.mainResult.complexityAnalysis;
+			complexityAnalysis = aiServiceResponse.mainResult?.complexityAnalysis;
 			reportLog(
 				`Received ${complexityAnalysis.length} complexity analyses from AI.`,
 				'info'

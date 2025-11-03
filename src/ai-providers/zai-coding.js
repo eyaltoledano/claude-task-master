@@ -4,18 +4,17 @@
  * Uses the exclusive coding API endpoint with OpenAI-compatible API.
  */
 
-import { OpenAICompatibleProvider } from './openai-compatible.js';
+import { ZAIProvider } from './zai.js';
 
 /**
  * Z.ai Coding Plan provider supporting GLM models through the dedicated coding endpoint.
+ * Extends ZAIProvider with only a different base URL.
  */
-export class ZAICodingProvider extends OpenAICompatibleProvider {
+export class ZAICodingProvider extends ZAIProvider {
 	constructor() {
-		super({
-			name: 'Z.ai (Coding Plan)',
-			apiKeyEnvVar: 'ZAI_API_KEY',
-			requiresApiKey: true,
-			defaultBaseURL: 'https://api.z.ai/api/coding/paas/v4/'
-		});
+		super();
+		// Override only the name and base URL
+		this.name = 'Z.ai (Coding Plan)';
+		this.defaultBaseURL = 'https://api.z.ai/api/coding/paas/v4/';
 	}
 }

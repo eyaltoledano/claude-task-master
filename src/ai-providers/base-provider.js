@@ -357,8 +357,10 @@ export class BaseAIProvider {
 						object: parsed,
 						usage: {
 							// Extract usage information from the error if available
-							inputTokens: error.usage?.promptTokens || 0,
-							outputTokens: error.usage?.completionTokens || 0,
+							inputTokens:
+								error.usage?.promptTokens || error.usage?.inputTokens || 0,
+							outputTokens:
+								error.usage?.completionTokens || error.usage?.outputTokens || 0,
 							totalTokens: error.usage?.totalTokens || 0
 						}
 					};
