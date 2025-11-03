@@ -32,6 +32,7 @@ describe('agent_llm MCP Tool', () => {
 	let mockLog;
 	let mockSession;
 	let utilsModule; // To hold the dynamically imported utils
+	let agentLLMParameters; // Zod schema exported by the tool (used for direct schema tests)
 
 	beforeAll(async () => {
 		// Dynamically import modules after mocks are set up
@@ -39,6 +40,7 @@ describe('agent_llm MCP Tool', () => {
 			'../../../../../mcp-server/src/tools/agent-llm.js'
 		);
 		registerAgentLLMTool = agentLLMModule.registerAgentLLMTool;
+		agentLLMParameters = agentLLMModule.agentLLMParameters;
 		utilsModule = await import('../../../../../mcp-server/src/tools/utils.js');
 		// Note: If tests need to access uuidV4 directly, it should also be dynamically imported here:
 		// const uuid = await import('uuid');
@@ -276,7 +278,7 @@ describe('agent_llm MCP Tool', () => {
 	});
 
 	describe('Agent-to-Taskmaster flow (schema validation)', () => {
-		test('Error: Agent response missing status', async () => {
+		test('Schema rejects agentLLMResponse missing status', () => {
 			const args = {
 				agentLLMResponse: {
 					data: 'output'
@@ -284,31 +286,38 @@ describe('agent_llm MCP Tool', () => {
 				interactionId: 'existing-uuid-no-status',
 				projectRoot: '/test/root'
 			};
-			const executeSpy = jest.spyOn({ execute }, 'execute');
-			try {
-				await execute(args, { log: mockLog, session: mockSession });
-			} catch (e) {
-				//
+
+			// Use safeParse so we can inspect validation result without throwing
+			const parsed = agentLLMParameters.safeParse(args);
+			expect(parsed.success).toBe(false);
+			if (!parsed.success) {
+				// Ensure the failure is due to the missing 'status' field under agentLLMResponse
+				const hasStatusIssue = parsed.error.issues.some(
+					(issue) => issue.path.join('.') === 'agentLLMResponse.status'
+				);
+				expect(hasStatusIssue).toBe(true);
 			}
-			expect(executeSpy).not.toHaveBeenCalled();
 		});
 
-		test('Error: Agent response has invalid status', async () => {
+		test('Schema rejects agentLLMResponse with invalid status', () => {
 			const args = {
 				agentLLMResponse: {
-					status: 'pending', // Invalid status
+					status: 'pending', // Invalid status (not in enum)
 					data: 'output'
 				},
 				interactionId: 'existing-uuid-invalid-status',
 				projectRoot: '/test/root'
 			};
-			const executeSpy = jest.spyOn({ execute }, 'execute');
-			try {
-				await execute(args, { log: mockLog, session: mockSession });
-			} catch (e) {
-				//
+
+			const parsed = agentLLMParameters.safeParse(args);
+			expect(parsed.success).toBe(false);
+			if (!parsed.success) {
+				// Expect the issue to point to the status field
+				const hasStatusEnumIssue = parsed.error.issues.some(
+					(issue) => issue.path.join('.') === 'agentLLMResponse.status'
+				);
+				expect(hasStatusEnumIssue).toBe(true);
 			}
-			expect(executeSpy).not.toHaveBeenCalled();
 		});
 	});
 });

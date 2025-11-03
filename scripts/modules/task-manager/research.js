@@ -237,7 +237,7 @@ async function performResearch(
 
 		// Only log detailed info in debug mode or MCP
 		if (outputFormat !== 'text') {
-			logFn.info(
+			logFn.debug(
 				`Calling AI service with research role, context size: ${tokenBreakdown.total} tokens (${gatheredContext.length} characters)`
 			);
 		}
@@ -314,7 +314,7 @@ async function performResearch(
 		const telemetryData = aiResult.telemetryData; // Should be null if agent_llm, populated otherwise
 		const tagInfo = aiResult.tagInfo; // Should always be populated
 
-		logFn.info(
+		logFn.debug(
 			`performResearch: researchResult (from agent or direct LLM): ${typeof researchResult === 'string' ? researchResult.substring(0, 100) + '...' : JSON.stringify(researchResult)}`
 		);
 		logFn.debug(

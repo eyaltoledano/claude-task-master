@@ -1035,8 +1035,7 @@ describe('Dependency Manager Module', () => {
 			// Set up test data that matches the issue report
 			// Clone fixture data before each test to prevent mutation issues
 			mockReadJSON.mockImplementation(() => ({
-				tasks: structuredClone(crossLevelDependencyTasks.tasks),
-				tag: 'master'
+				tasks: structuredClone(crossLevelDependencyTasks.tasks)
 			}));
 
 			// Configure mockTaskExists to properly validate cross-level dependencies
