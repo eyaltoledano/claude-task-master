@@ -2,12 +2,16 @@
  * src/ai-providers/claude-code.js
  *
  * Claude Code provider implementation using the ai-sdk-provider-claude-code package.
- * This provider uses the local Claude Code CLI with OAuth token authentication.
+ * This provider uses the local Claude Agent SDK (via Claude Code CLI) with OAuth token authentication.
  *
  * Authentication:
  * - Uses CLAUDE_CODE_OAUTH_TOKEN managed by Claude Code CLI
  * - Token is set up via: claude setup-token
  * - No manual API key configuration required
+ *
+ * Version: 2.0.3+
+ * - Migrated to @anthropic-ai/claude-agent-sdk
+ * - System prompt and filesystem settings must be explicitly enabled
  */
 
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
@@ -105,7 +109,14 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				getClaudeCodeSettingsForCommand(params.commandName) || {};
 
 			return createClaudeCode({
-				defaultSettings: settings
+				defaultSettings: settings,
+				// Restore previous default behavior from pre-2.0 versions
+				systemPrompt: {
+					type: 'preset',
+					preset: 'claude_code'
+				},
+				// Enable loading of CLAUDE.md and settings.json files
+				settingSources: ['user', 'project', 'local']
 			});
 		} catch (error) {
 			// Provide more helpful error message
