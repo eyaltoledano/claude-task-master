@@ -705,11 +705,8 @@ describe('Dependency Manager Module', () => {
 			// 2. Invalid dependency removed
 			expect(tasksData.master.tasks[0].dependencies).not.toContain(99);
 			// 3. Dependencies have been deduplicated
-			if (tasksData.master.tasks[0].subtasks[0].dependencies.length > 0) {
-				expect(tasksData.master.tasks[0].subtasks[0].dependencies).toEqual(
-					expect.arrayContaining([])
-				);
-			}
+			const dedupedDeps = tasksData.master.tasks[0].subtasks[0].dependencies;
+			expect(dedupedDeps).toHaveLength(1);
 			// 4. Invalid subtask dependency removed
 			expect(tasksData.master.tasks[1].subtasks[0].dependencies).toEqual([]);
 

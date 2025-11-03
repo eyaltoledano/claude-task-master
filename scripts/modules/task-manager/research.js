@@ -148,16 +148,14 @@ async function performResearch(
 				if (outputFormat === 'text' && finalTaskIds.length > 0) {
 					// Sort task IDs numerically for better display
 					const sortedTaskIds = finalTaskIds
-						.map((id) => parseInt(id))
-						.sort((a, b) => a - b)
-						.map((id) => id.toString());
+						.map((id) => id.toString())
+						.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
 					// Show different messages based on whether tasks were explicitly provided
 					if (taskIds.length > 0) {
 						const sortedProvidedIds = taskIds
-							.map((id) => parseInt(id))
-							.sort((a, b) => a - b)
-							.map((id) => id.toString());
+							.map((id) => id.toString())
+							.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
 						console.log(
 							chalk.gray('Provided tasks: ') +
@@ -166,9 +164,8 @@ async function performResearch(
 
 						if (uniqueAutoDiscovered.length > 0) {
 							const sortedAutoIds = uniqueAutoDiscovered
-								.map((id) => parseInt(id))
-								.sort((a, b) => a - b)
-								.map((id) => id.toString());
+								.map((id) => id.toString())
+								.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
 							console.log(
 								chalk.gray('+ Auto-discovered related tasks: ') +
