@@ -780,22 +780,15 @@ describe('Dependency Manager Module', () => {
 		});
 
 		test('should handle invalid input', () => {
-			expect(() => validateAndFixDependencies(null)).toThrowError(
-				'Invalid tasks data: root object is missing or invalid'
+			// Function now logs errors and returns false for invalid input rather than throwing
+			expect(validateAndFixDependencies(null)).toBe(false);
+			expect(validateAndFixDependencies({})).toBe(false);
+			expect(validateAndFixDependencies({ master: { tasks: null } })).toBe(
+				false
 			);
-			expect(() => validateAndFixDependencies({})).toThrowError(
-				"Invalid tasks data: tag 'master' is missing or has invalid structure"
-			);
-			expect(() =>
-				validateAndFixDependencies({ master: { tasks: null } })
-			).toThrowError(
-				"Invalid tasks data: tag 'master' is missing or has invalid structure"
-			);
-			expect(() =>
+			expect(
 				validateAndFixDependencies({ master: { tasks: 'not an array' } })
-			).toThrowError(
-				"Invalid tasks data: tag 'master' is missing or has invalid structure"
-			);
+			).toBe(false);
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(

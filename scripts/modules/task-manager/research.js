@@ -893,8 +893,8 @@ async function handleSaveToTask(
 						return 'Please enter a task ID.';
 					}
 					const trimmedInput = input.trim();
-					if (!/^\d+(\.\d+)*$/.test(trimmedInput)) {
-						return 'Invalid format. Use "15" for a task or "15.1", "15.1.1" etc. for subtasks.';
+					if (!/^\d+(?:\.\d+)?$/.test(trimmedInput)) {
+						return 'Invalid format. Use "15" for a task or "15.1" for single-level subtasks.';
 					}
 					return true;
 				}

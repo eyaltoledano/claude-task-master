@@ -70,7 +70,7 @@ export async function researchDirect(args, log, context = {}) {
 			return {
 				success: false,
 				error: {
-					code: 'MISSING_PARAMETER',
+					code: 'INPUT_VALIDATION_ERROR',
 					message:
 						'The query parameter is required and must be a non-empty string'
 				}
@@ -101,7 +101,7 @@ export async function researchDirect(args, log, context = {}) {
 			return {
 				success: false,
 				error: {
-					code: 'INVALID_PARAMETER',
+					code: 'INPUT_VALIDATION_ERROR',
 					message: `Detail level must be one of: ${validDetailLevels.join(', ')}`
 				}
 			};
@@ -253,7 +253,7 @@ ${result.result}`;
 			return {
 				success: false,
 				error: {
-					code: 'INVALID_CORE_RESPONSE',
+					code: 'CORE_FUNCTION_ERROR',
 					message: 'Core research function returned invalid data.'
 				}
 			};
@@ -282,7 +282,12 @@ ${result.result}`;
 		return {
 			success: false,
 			error: {
-				code: error.code || 'RESEARCH_ERROR',
+				code:
+					error.code === 'INPUT_VALIDATION_ERROR' ||
+					error.code === 'FILE_NOT_FOUND_ERROR' ||
+					error.code === 'CORE_FUNCTION_ERROR'
+						? error.code
+						: 'UNEXPECTED_ERROR',
 				message: error.message
 			}
 		};

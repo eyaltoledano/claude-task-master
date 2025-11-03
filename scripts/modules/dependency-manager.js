@@ -1191,8 +1191,7 @@ function validateAndFixDependencies(
 	if (!tasksData || typeof tasksData !== 'object') {
 		const msg = 'Invalid tasks data: root object is missing or invalid';
 		logger.error(msg);
-		// Throw to match unit test expectations
-		throw new Error(msg);
+		return false;
 	}
 
 	// If tasksData does not contain tagged structure for the effectiveTag
@@ -1205,7 +1204,7 @@ function validateAndFixDependencies(
 	if (!hasTaggedForEffective && !hasLegacyTasksArray) {
 		const msg = `Invalid tasks data: tag '${effectiveTag}' is missing or has invalid structure`;
 		logger.error(msg);
-		throw new Error(msg);
+		return false;
 	}
 
 	// Use getTasksForTag to safely obtain the tagged data (it will return [] for missing tag)

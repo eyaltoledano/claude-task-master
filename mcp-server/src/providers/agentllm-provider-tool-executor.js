@@ -334,8 +334,8 @@ async function _handlePostProcessing(
 		mainResult: mainResultMessage,
 		telemetryData: null,
 		tagInfo: llmRequestForAgent?.requestParameters?.tagInfo || {
-			currentTag: 'master',
-			availableTags: ['master']
+			currentTag: tag,
+			availableTags: [tag]
 		}
 	};
 }

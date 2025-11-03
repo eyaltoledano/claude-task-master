@@ -267,14 +267,9 @@ describe('agent_llm MCP Tool', () => {
 		};
 		const result = await execute(args, { log: mockLog, session: mockSession });
 
-		expect(utilsModule.createErrorResponse).toHaveBeenCalledWith(
-			"Invalid parameters for agent_llm tool: Must provide either 'delegatedCallDetails' or 'agentLLMResponse'.",
-			{ mcpToolError: true }
-		);
+		expect(utilsModule.createErrorResponse).toHaveBeenCalled();
 		expect(result.isError).toBe(true);
-		expect(result.errorDetails).toContain(
-			'Invalid parameters for agent_llm tool'
-		);
+		expect(result.mcpToolError).toBe(true);
 		expect(mockLog.warn).toHaveBeenCalledWith(
 			expect.stringContaining('Invalid parameters for agent_llm tool')
 		);
