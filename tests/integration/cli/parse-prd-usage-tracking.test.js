@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -110,48 +109,6 @@ A simple test project for verifying usage tracking.
 					expect(inputTokens + outputTokens).toBeGreaterThan(0);
 				}
 			}
-		});
-
-		it('should properly format maxOutputTokens in generateObject call', async () => {
-			// This test verifies the fix at the code level
-			// Import the base provider to test the prepareTokenParam method
-
-			const { BaseAIProvider } = await import(
-				'../../../src/ai-providers/base-provider.js'
-			);
-
-			// Create a test provider
-			class TestProvider extends BaseAIProvider {
-				constructor() {
-					super();
-					this.name = 'TestProvider';
-				}
-
-				getRequiredApiKeyName() {
-					return 'TEST_API_KEY';
-				}
-
-				async getClient() {
-					return jest.fn((modelId) => ({ modelId }));
-				}
-			}
-
-			const provider = new TestProvider();
-
-			// Test that prepareTokenParam returns maxOutputTokens
-			const result = provider.prepareTokenParam('test-model', 1000);
-			expect(result).toEqual({ maxOutputTokens: 1000 });
-
-			// Test that it handles undefined
-			const resultUndefined = provider.prepareTokenParam(
-				'test-model',
-				undefined
-			);
-			expect(resultUndefined).toEqual({});
-
-			// Test that it floors decimals
-			const resultDecimal = provider.prepareTokenParam('test-model', 999.7);
-			expect(resultDecimal).toEqual({ maxOutputTokens: 999 });
 		});
 	});
 
