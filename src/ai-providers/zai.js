@@ -37,17 +37,18 @@ export class ZAIProvider extends OpenAICompatibleProvider {
 	 */
 	findArrayPropertyInSchema(schema) {
 		try {
+			// Get the def object from Zod v4 API
+			const def = schema._zod.def;
+
 			// Check if schema is a ZodObject
-			// Note: def is internal Zod API but necessary for schema introspection
-			// Different Zod versions use different field names (type vs typeName)
-			const isObject = schema?.def?.type === 'object';
+			const isObject = def?.type === 'object' || def?.typeName === 'ZodObject';
 
 			if (!isObject) {
 				return null;
 			}
 
 			// Get the shape - it can be a function, property, or getter
-			let shape = schema._def.shape;
+			let shape = def.shape;
 			if (typeof shape === 'function') {
 				shape = shape();
 			}
@@ -58,10 +59,12 @@ export class ZAIProvider extends OpenAICompatibleProvider {
 
 			// Find the first property that is an array
 			for (const [key, value] of Object.entries(shape)) {
+				// Get the def object for the property using Zod v4 API
+				const valueDef = value._zod.def;
+
 				// Check if the property is a ZodArray
-				// Handle both type and typeName for different Zod versions
 				const isArray =
-					value?._def?.type === 'array' || value?._def?.typeName === 'ZodArray';
+					valueDef?.type === 'array' || valueDef?.typeName === 'ZodArray';
 
 				if (isArray) {
 					return key;
