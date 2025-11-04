@@ -12,38 +12,38 @@ const mockLogger = {
 	error: vi.fn()
 };
 
-vi.mock('../../../common/logger/index.js', () => ({
+vi.mock('../logger/index.js', () => ({
 	getLogger: () => mockLogger
 }));
 
-// Mock ContextStore instead of the deprecated CredentialStore
-const ContextStoreSpy = vi.fn();
-vi.mock('../services/context-store.js', () => {
+// Spy on CredentialStore constructor to verify config propagation
+const CredentialStoreSpy = vi.fn();
+vi.mock('./credential-store.js', () => {
 	return {
-		ContextStore: class {
+		CredentialStore: class {
 			static getInstance(config?: any) {
 				return new (this as any)(config);
 			}
 			static resetInstance() {
 				// Mock reset instance method
 			}
-			constructor(config?: any) {
-				ContextStoreSpy(config);
+			constructor(config: any) {
+				CredentialStoreSpy(config);
 			}
-			getContext() {
+			getCredentials(_options?: any) {
 				return null;
 			}
-			saveContext() {}
-			clearContext() {}
-			getUserContext() {
-				return null;
+			saveCredentials() {}
+			clearCredentials() {}
+			hasCredentials() {
+				return false;
 			}
 		}
 	};
 });
 
 // Mock OAuthService to avoid side effects
-vi.mock('../services/oauth-service.js', () => {
+vi.mock('./oauth-service.js', () => {
 	return {
 		OAuthService: class {
 			constructor() {}
@@ -58,16 +58,10 @@ vi.mock('../services/oauth-service.js', () => {
 });
 
 // Mock SupabaseAuthClient to avoid side effects
-vi.mock('../../integration/clients/supabase-client.js', () => {
+vi.mock('../clients/supabase-client.js', () => {
 	return {
 		SupabaseAuthClient: class {
 			constructor() {}
-			initialize() {
-				return Promise.resolve();
-			}
-			getSession() {
-				return Promise.resolve(null);
-			}
 			refreshSession() {
 				return Promise.resolve({});
 			}
@@ -86,7 +80,7 @@ describe('AuthManager Singleton', () => {
 		// Reset singleton before each test
 		AuthManager.resetInstance();
 		vi.clearAllMocks();
-		ContextStoreSpy.mockClear();
+		CredentialStoreSpy.mockClear();
 	});
 
 	it('should return the same instance on multiple calls', () => {
@@ -106,12 +100,14 @@ describe('AuthManager Singleton', () => {
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
 
-		// Assert that ContextStore was constructed (it doesn't take config parameter)
-		expect(ContextStoreSpy).toHaveBeenCalledTimes(1);
+		// Assert that CredentialStore was constructed with the provided config
+		expect(CredentialStoreSpy).toHaveBeenCalledTimes(1);
+		expect(CredentialStoreSpy).toHaveBeenCalledWith(config);
 
-		// Verify the instance is properly initialized
-		const credentials = await instance.getAuthCredentials();
-		expect(credentials).toBeNull(); // No session exists yet
+		// Verify the config is passed to internal components through observable behavior
+		// getCredentials would look in the configured file path
+		const credentials = await instance.getCredentials();
+		expect(credentials).toBeNull(); // File doesn't exist, but config was propagated correctly
 	});
 
 	it('should warn when config is provided after initialization', () => {
