@@ -397,6 +397,26 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Expand task into subtasks with AI-powered generation
+	 * For file storage, this should NOT be called - client must handle AI processing first
+	 */
+	async expandTaskWithPrompt(
+		_taskId: string,
+		_tag?: string,
+		_options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<void> {
+		throw new Error(
+			'File storage does not support expandTaskWithPrompt. ' +
+				'Client-side AI logic must process the expansion before calling updateTask().'
+		);
+	}
+
+	/**
 	 * Update task or subtask status by ID - handles file storage logic with parent/subtask relationships
 	 */
 	async updateTaskStatus(

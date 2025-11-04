@@ -4,11 +4,9 @@ import boxen from 'boxen';
 import Table from 'cli-table3';
 
 import {
-	log as consoleLog,
 	readJSON,
 	writeJSON,
 	truncate,
-	isSilentMode,
 	flattenTasksWithSubtasks,
 	findProjectRoot
 } from '../utils.js';
@@ -26,14 +24,15 @@ import {
 } from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import {
-	getDebugFlag,
 	isApiKeySet,
-	hasCodebaseAnalysis
+	hasCodebaseAnalysis,
+	getDebugFlag
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { tryUpdateViaRemote } from '@tm/bridge';
+import { createBridgeLogger } from '../bridge-utils.js';
 
 /**
  * Update a task by ID with new information using the unified AI service.
@@ -60,18 +59,7 @@ async function updateTaskById(
 	appendMode = false
 ) {
 	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
-	const logFn = mcpLog || consoleLog;
-	const isMCP = !!mcpLog;
-
-	// Use report helper for logging
-	const report = (level, ...args) => {
-		if (isMCP) {
-			if (typeof logFn[level] === 'function') logFn[level](...args);
-			else logFn.info(...args);
-		} else if (!isSilentMode()) {
-			logFn(level, ...args);
-		}
-	};
+	const { report, isMCP } = createBridgeLogger(mcpLog, session);
 
 	try {
 		report('info', `Updating single task ${taskId} with prompt: "${prompt}"`);
@@ -294,7 +282,7 @@ async function updateTaskById(
 		let systemPrompt;
 		let userPrompt;
 		try {
-			const promptResult = await promptManager.loadPrompt(
+			const promptResult = promptManager.loadPrompt(
 				'update-task',
 				promptParams,
 				variantKey
@@ -571,10 +559,8 @@ async function updateTaskById(
 			// ... helpful hints ...
 			if (getDebugFlag(session)) console.error(error);
 			process.exit(1);
-		} else {
-			throw error; // Re-throw for MCP
 		}
-		return null; // Indicate failure in CLI case if process doesn't exit
+		throw error; // Re-throw for MCP
 		// --- End General Error Handling ---
 	}
 }

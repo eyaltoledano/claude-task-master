@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
+import ora from 'ora';
 import { createTmCore, type TmCore } from '@tm/core';
 
 /**
@@ -120,18 +121,10 @@ export async function tryUpdateViaRemote(
 		);
 	}
 
-	let loadingIndicator: NodeJS.Timeout | null = null;
-	if (!isMCP && outputFormat === 'text') {
-		// Simple loading indicator simulation (replace with actual startLoadingIndicator if available)
-		const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-		let frameIndex = 0;
-		loadingIndicator = setInterval(() => {
-			process.stdout.write(
-				`\r${frames[frameIndex]} Updating task on Hamster...`
-			);
-			frameIndex = (frameIndex + 1) % frames.length;
-		}, 80);
-	}
+	const spinner =
+		!isMCP && outputFormat === 'text'
+			? ora({ text: 'Updating task on Hamster...', color: 'cyan' }).start()
+			: null;
 
 	try {
 		// Call the API storage method which handles the remote update
@@ -139,9 +132,8 @@ export async function tryUpdateViaRemote(
 			mode
 		});
 
-		if (loadingIndicator) {
-			clearInterval(loadingIndicator);
-			process.stdout.write('\r✓ Task updated successfully.\n');
+		if (spinner) {
+			spinner.succeed('Task updated successfully');
 		}
 
 		if (outputFormat === 'text') {
@@ -172,9 +164,8 @@ export async function tryUpdateViaRemote(
 			tagInfo: null
 		};
 	} catch (updateError) {
-		if (loadingIndicator) {
-			clearInterval(loadingIndicator);
-			process.stdout.write('\r✗ Update failed.\n');
+		if (spinner) {
+			spinner.fail('Update failed');
 		}
 
 		// tm-core already formatted the error properly, just re-throw
