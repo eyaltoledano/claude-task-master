@@ -10,11 +10,11 @@ import * as childProcess from 'node:child_process';
 vi.mock('node:child_process', () => ({
 	execSync: vi.fn()
 }));
+const mockExecSync = vi.mocked(childProcess.execSync);
 
 describe('EnvironmentConfigProvider', () => {
 	let provider: EnvironmentConfigProvider;
 	const originalEnv = { ...process.env };
-	const mockExecSync = vi.mocked(childProcess.execSync);
 
 	beforeEach(() => {
 		// Clear all TASKMASTER_ env vars
@@ -23,22 +23,12 @@ describe('EnvironmentConfigProvider', () => {
 				delete process.env[key];
 			}
 		});
-		// Clear test environment variables
-		Object.keys(process.env).forEach((key) => {
-			if (key.startsWith('TEST_')) {
-				delete process.env[key];
-			}
-		});
 		provider = new EnvironmentConfigProvider();
-		// Reset all mocks before each test
-		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
 		// Restore original environment
 		process.env = { ...originalEnv };
-		// Clear all mocks after each test
-		vi.clearAllMocks();
 	});
 
 	describe('loadConfig', () => {
@@ -78,12 +68,19 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should validate storage type values', () => {
+			// Mock console.warn to check validation
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 			process.env.TASKMASTER_STORAGE_TYPE = 'invalid';
 
 			const config = provider.loadConfig();
 
-			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalledWith(
+				'Invalid value for TASKMASTER_STORAGE_TYPE: invalid'
+			);
+
+			warnSpy.mockRestore();
 		});
 
 		it('should accept valid storage type values', () => {
@@ -266,12 +263,18 @@ describe('EnvironmentConfigProvider', () => {
 
 	describe('validation', () => {
 		it('should validate values when validator is provided', () => {
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
 			process.env.TASKMASTER_STORAGE_TYPE = 'database'; // Invalid
 
 			const config = provider.loadConfig();
 
-			// Invalid value should be rejected, resulting in empty config
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalledWith(
+				'Invalid value for TASKMASTER_STORAGE_TYPE: database'
+			);
+
+			warnSpy.mockRestore();
 		});
 
 		it('should accept values that pass validation', () => {
@@ -283,7 +286,7 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should work with custom validators', () => {
-			const customProvider = new EnvironmentConfigProvider([
+			let customProvider = new EnvironmentConfigProvider([
 				{
 					env: 'CUSTOM_NUMBER',
 					path: ['custom', 'number'],
@@ -295,18 +298,20 @@ describe('EnvironmentConfigProvider', () => {
 			let config = customProvider.loadConfig();
 			expect(config.custom?.number).toBe('123');
 
-			// Test with invalid value
 			process.env.CUSTOM_NUMBER = 'not-a-number';
-			const customProvider2 = new EnvironmentConfigProvider([
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			customProvider = new EnvironmentConfigProvider([
 				{
 					env: 'CUSTOM_NUMBER',
 					path: ['custom', 'number'],
 					validate: (v) => !isNaN(Number(v))
 				}
 			]);
-			config = customProvider2.loadConfig();
-			// Invalid value should be rejected, resulting in empty config
+			config = customProvider.loadConfig();
 			expect(config).toEqual({});
+			expect(warnSpy).toHaveBeenCalled();
+
+			warnSpy.mockRestore();
 		});
 	});
 

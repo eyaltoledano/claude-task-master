@@ -7,13 +7,11 @@ import fs from 'node:fs/promises';
 import { ConfigLoader } from './config-loader.service.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 
-vi.mock('node:fs/promises', () => ({
-	default: {
+vi.mock('node:fs', () => ({
+	promises: {
 		readFile: vi.fn(),
 		access: vi.fn()
-	},
-	readFile: vi.fn(),
-	access: vi.fn()
+	}
 }));
 
 describe('ConfigLoader', () => {
