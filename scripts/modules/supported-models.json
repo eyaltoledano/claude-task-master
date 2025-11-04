@@ -378,7 +378,7 @@
 			"supported": true
 		},
 		{
-			"id": "gemini-2.5-flash-preview-04-17",
+			"id": "gemini-2.5-flash-preview-05-20",
 			"swe_score": 0.604,
 			"cost_per_1m_tokens": null,
 			"allowed_roles": ["main", "fallback"],
@@ -1194,6 +1194,23 @@
 			"allowed_roles": ["research"],
 			"max_tokens": 65536,
 			"supported": true
+		}
+	],
+	"agentllm": [
+		{
+			"id": "agent-delegated-model",
+			"name": "Agent-Managed Model",
+			"swe_score": 0,
+			"description": "LLM calls are delegated to MCP Client. The specific model used is configured within the client.",
+			"type": "text",
+			"context_window": null,
+			"cost_per_1m_tokens": { "input": 0, "output": 0 },
+			"allowed_roles": ["main", "research", "fallback"],
+			"max_tokens": null,
+			"supported": true,
+			"supports_tools": true,
+			"supports_image_input": true,
+			"notes": "Context window, actual costs, and specific capabilities are determined by the agent's configuration."
 		}
 	]
 }

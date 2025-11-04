@@ -82,7 +82,14 @@ jest.unstable_mockModule('../../scripts/modules/utils.js', () => ({
 	performCompleteTagMigration: jest.fn(),
 	resolveCurrentTag: jest.fn(() => 'master'),
 	getDefaultTag: jest.fn(() => 'master'),
-	performMigrationIfNeeded: jest.fn()
+	performMigrationIfNeeded: jest.fn(),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+		success: jest.fn()
+	}))
 }));
 
 // Mock prompt manager

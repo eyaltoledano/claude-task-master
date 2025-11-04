@@ -46,7 +46,10 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	),
 	findProjectRoot: jest.fn(() => '/mock/project/root'),
 	resolveEnvVariable: jest.fn((varName) => `mock_${varName}`),
-	ensureTagMetadata: jest.fn()
+	ensureTagMetadata: jest.fn(),
+	slugifyTagForFilePath: jest.fn((tag) =>
+		tag ? tag.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() : 'master'
+	)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({

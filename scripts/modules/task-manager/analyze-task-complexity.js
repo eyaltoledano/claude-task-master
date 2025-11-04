@@ -25,6 +25,7 @@ import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
 import { flattenTasksWithSubtasks } from '../utils.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Analyzes task complexity and generates expansion recommendations
@@ -414,6 +415,23 @@ async function analyzeTaskComplexity(options, context = {}) {
 				commandName: 'analyze-complexity',
 				outputType: mcpLog ? 'mcp' : 'cli'
 			});
+
+			// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+			const delegationResult = handleAgentLLMDelegation(
+				aiServiceResponse,
+				context,
+				role,
+				{
+					objectName: 'complexityAnalysis',
+					schemaKey: 'analyze-complexity'
+				},
+				{ serviceType: 'generateObject' }
+			);
+
+			if (delegationResult) {
+				return delegationResult;
+			}
+			// === END AGENT_LLM_DELEGATION HANDLING ===
 
 			if (loadingIndicator) {
 				stopLoadingIndicator(loadingIndicator);

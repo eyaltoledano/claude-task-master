@@ -6,6 +6,7 @@ import ora from 'ora';
 import { generateObjectService } from '../../ai-services-unified.js';
 import { LoggingConfig, prdResponseSchema } from './parse-prd-config.js';
 import { estimateTokens } from './parse-prd-helpers.js';
+import { handleAgentLLMDelegation } from '../llm-delegation.js';
 
 /**
  * Handle non-streaming AI service call
@@ -42,6 +43,17 @@ export async function handleNonStreamingService(config, prompts) {
 			commandName: 'parse-prd',
 			outputType: config.isMCP ? 'mcp' : 'cli'
 		});
+
+		// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+		const delegationResult = handleAgentLLMDelegation(
+			aiServiceResponse,
+			{ commandName: 'parse-prd' },
+			config.research ? 'research' : 'main',
+			{},
+			{ config, returnErrorAsSuccess: true }
+		);
+		if (delegationResult) return delegationResult;
+		// === END AGENT_LLM_DELEGATION HANDLING ===
 
 		// Extract generated data
 		let generatedData = null;

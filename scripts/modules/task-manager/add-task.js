@@ -35,6 +35,7 @@ import {
 	isValidTaskPriority,
 	normalizeTaskPriority
 } from '../../../src/constants/task-priority.js';
+import { handleAgentLLMDelegation } from './llm-delegation.js';
 
 /**
  * Get all tasks from all tags
@@ -133,9 +134,38 @@ async function addTask(
 
 	// Create custom reporter that checks for MCP log
 	const report = (message, level = 'info') => {
+		// message is already a pre-formatted string
 		if (mcpLog) {
-			mcpLog[level](message);
+			switch (level) {
+				case 'info':
+					if (mcpLog.info) mcpLog.info(message);
+					break;
+				case 'warn':
+					if (mcpLog.warn) mcpLog.warn(message);
+					break;
+				case 'error':
+					if (mcpLog.error) mcpLog.error(message);
+					break;
+				case 'debug':
+					if (mcpLog.debug) {
+						mcpLog.debug(message);
+					} else if (mcpLog.info) {
+						mcpLog.info(message);
+					}
+					break;
+				case 'success':
+					if (mcpLog.success) {
+						mcpLog.success(message);
+					} else if (mcpLog.info) {
+						mcpLog.info(message);
+					}
+					break;
+				default:
+					if (mcpLog.info) mcpLog.info(`[${level.toUpperCase()}] ${message}`);
+					break;
+			}
 		} else if (outputFormat === 'text') {
+			// Fallback to consoleLog (from utils.js) for CLI mode
 			consoleLog(level, message);
 		}
 	};
@@ -439,6 +469,21 @@ async function addTask(
 					outputType: outputType || (isMCP ? 'mcp' : 'cli') // Use passed outputType or derive
 				});
 				report('DEBUG: generateObjectService returned successfully.', 'debug');
+
+				// === BEGIN AGENT_LLM_DELEGATION HANDLING ===
+				const delegationResult = handleAgentLLMDelegation(
+					aiServiceResponse,
+					context,
+					serviceRole,
+					{
+						newTaskId: newTaskId,
+						userDependencies: numericDependencies,
+						userPriority: effectivePriority,
+						tagInfo: { currentTag: targetTag }
+					}
+				);
+				if (delegationResult) return delegationResult;
+				// === END AGENT_LLM_DELEGATION HANDLING ===
 
 				if (!aiServiceResponse || !aiServiceResponse.mainResult) {
 					throw new Error(

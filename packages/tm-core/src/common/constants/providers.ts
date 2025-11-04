@@ -30,6 +30,7 @@ export const CUSTOM_PROVIDERS = {
 	CLAUDE_CODE: 'claude-code',
 	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli',
+	AGENTLLM: 'agentllm',
 	GROK_CLI: 'grok-cli',
 	CODEX_CLI: 'codex-cli'
 } as const;

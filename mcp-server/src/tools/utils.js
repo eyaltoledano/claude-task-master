@@ -759,6 +759,55 @@ function withNormalizedProjectRoot(executeFn) {
 }
 
 /**
+ * Creates a standardized response for signaling agent delegation.
+ * @param {Object} pendingInteraction - The pending interaction object.
+ * @param {string} [customInstructions] - Optional custom instructions to append to the standard instructions.
+ * @returns {Object} - The response object for agent delegation.
+ */
+
+/**
+ * Helper to centralize agent delegation handling across tools.
+ * If delegation is signaled (result.needsAgentDelegation === true && result.pendingInteraction)
+ * this function will log the event and return an object { delegated: true, response } where
+ * response is a value created by createAgentDelegationResponse. Otherwise returns { delegated: false }.
+ *
+ * @param {Object} result - The result from a direct/core function
+ * @param {Object} log - Logger instance
+ * @param {string} toolName - Short tool name for logging (e.g., 'expand-task')
+ * @param {string} [customInstructions] - Optional extra instructions to include in the delegation response
+ * @returns {Object} - { delegated: boolean, response?: Object }
+ */
+function createAgentDelegationResponse(
+	result,
+	log,
+	toolName,
+	customInstructions = ''
+) {
+	if (result?.needsAgentDelegation === true && result.pendingInteraction) {
+		log.info(
+			`${toolName} tool: Agent delegation signaled. Interaction ID: ${result.pendingInteraction.interactionId}`
+		);
+
+		const payload = {
+			isAgentLLMPendingInteraction: true,
+			details: result.pendingInteraction,
+			uri: 'agent-llm://pending-interaction',
+			mimeType: 'application/json',
+			directive:
+				'Taskmaster requires an LLM call from the Assistant/Agent (you). You are returning the LLM respone. Details provided in the instructions.',
+			instructions:
+				"Assistant/Agent, you are the LLM being invoked. Generate your response based on 'requestParameters' and send it via 'agent_llm' tool, include 'agentLLMResponse', this 'interactionId' and 'projectRoot', exclude 'delegatedCallDetails' parameter." +
+				(customInstructions ? ` ${customInstructions}` : '')
+		};
+
+		const response = { ...createContentResponse(payload), isError: false };
+
+		return { delegated: true, response };
+	}
+	return { delegated: false };
+}
+
+/**
  * Checks progress reporting capability and returns the validated function or undefined.
  *
  * STANDARD PATTERN for AI-powered, long-running operations (parse-prd, expand-task, expand-all, analyze):
@@ -844,5 +893,6 @@ export {
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
 	withNormalizedProjectRoot,
+	createAgentDelegationResponse,
 	checkProgressCapability
 };

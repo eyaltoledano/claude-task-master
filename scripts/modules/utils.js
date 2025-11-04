@@ -729,8 +729,33 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 				);
 			}
 
-			// Re-read the full file to get the complete tagged structure
-			const rawFullData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+			// Robustly re-read the full file to get the complete tagged structure.
+			// This is critical for merge operations (like parse_prd when mcp client decides to set flag force:true)
+			// which need to read the existing file to add/overwrite a tag.
+			// This logic prevents crashes if the file doesn't exist or is empty/corrupt.
+			let rawFullData = {};
+			if (fs.existsSync(filepath)) {
+				try {
+					const fileContent = fs.readFileSync(filepath, 'utf8');
+					if (fileContent.trim().length > 0) {
+						// Check if file is not empty
+						rawFullData = JSON.parse(fileContent);
+					}
+				} catch (readError) {
+					if (isDebug) {
+						console.log(
+							`writeJSON: Error reading or parsing existing file ${filepath}: ${readError.message}. Defaulting to empty object.`
+						);
+					}
+					// rawFullData remains {}
+				}
+			} else {
+				if (isDebug) {
+					console.log(
+						`writeJSON: File ${filepath} does not exist. Defaulting to empty object.`
+					);
+				}
+			}
 
 			// Merge the updated data into the full structure
 			finalData = {
@@ -1577,6 +1602,71 @@ function stripAnsiCodes(text) {
 	return text.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+/**
+ * Creates a logger instance that can either use an MCP logger or fall back to CLI logging.
+ * @param {object} [context={}] - The context object, which may contain an mcpLog property.
+ * @param {object} [context.mcpLog] - An optional MCP logger instance.
+ * @returns {object} A logger object with debug, error, info, and success methods.
+ */
+function createLogger(context = {}) {
+	const isMCP = context.mcpLog && typeof context.mcpLog.info === 'function';
+
+	return {
+		debug: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.debug === 'function') {
+					context.mcpLog.debug(...args);
+				} else {
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('debug', ...args);
+			}
+		},
+		error: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.error === 'function') {
+					context.mcpLog.error(...args);
+				} else {
+					// Fallback to info in MCP mode to keep output JSON-valid
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('error', ...args);
+			}
+		},
+		info: (...args) => {
+			if (isMCP) {
+				context.mcpLog.info(...args);
+			} else {
+				log('info', ...args);
+			}
+		},
+		success: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.success === 'function') {
+					context.mcpLog.success(...args);
+				} else {
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('success', ...args);
+			}
+		},
+		warn: (...args) => {
+			if (isMCP) {
+				if (typeof context.mcpLog.warn === 'function') {
+					context.mcpLog.warn(...args);
+				} else {
+					context.mcpLog.info(...args);
+				}
+			} else {
+				log('warn', ...args);
+			}
+		}
+	};
+}
+
 // Export all utility functions and configuration
 export {
 	LOG_LEVELS,
@@ -1616,5 +1706,6 @@ export {
 	flattenTasksWithSubtasks,
 	ensureTagMetadata,
 	stripAnsiCodes,
-	normalizeTaskIds
+	normalizeTaskIds,
+	createLogger
 };

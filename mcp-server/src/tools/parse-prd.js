@@ -10,6 +10,7 @@ import {
 	handleApiResult,
 	withNormalizedProjectRoot,
 	createErrorResponse,
+	createAgentDelegationResponse,
 	checkProgressCapability
 } from './utils.js';
 import { parsePRDDirect } from '../core/task-master-core.js';
@@ -86,6 +87,15 @@ export function registerParsePRDTool(server) {
 						log,
 						{ session, reportProgress: progressCapability }
 					);
+					// Centralized delegation handling
+					const delegation = createAgentDelegationResponse(
+						result,
+						log,
+						'parse_prd'
+					);
+					if (delegation.delegated) return delegation.response;
+
+					// If no delegation, process the result as usual
 					return handleApiResult(
 						result,
 						log,

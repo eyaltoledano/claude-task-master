@@ -1,4 +1,4 @@
-# Available Models as of November 1, 2025
+# Available Models as of November 2, 2025
 
 ## Main Models
 
@@ -36,7 +36,7 @@
 | openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
-| google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
+| google      | gemini-2.5-flash-preview-05-20                 | 0.604     | —          | —           |
 | google      | gemini-2.0-flash                               | 0.518     | 0.15       | 0.6         |
 | google      | gemini-2.0-flash-lite                          | —         | —          | —           |
 | xai         | grok-3                                         | —         | 3          | 15          |
@@ -104,6 +104,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | —         | 0          | 0           |
 
 ## Research Models
 
@@ -149,6 +150,7 @@
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0   | 0.727     | 3          | 15          |
 | bedrock     | us.deepseek.r1-v1:0                          | —         | 1.35       | 5.4         |
+| agentllm    | agent-delegated-model                        | —         | 0          | 0           |
 
 ## Fallback Models
 
@@ -178,7 +180,7 @@
 | openai      | gpt-5                                          | 0.749     | 5          | 20          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
-| google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
+| google      | gemini-2.5-flash-preview-05-20                 | 0.604     | —          | —           |
 | google      | gemini-2.0-flash                               | 0.518     | 0.15       | 0.6         |
 | google      | gemini-2.0-flash-lite                          | —         | —          | —           |
 | xai         | grok-3                                         | —         | 3          | 15          |
@@ -241,6 +243,7 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| agentllm    | agent-delegated-model                          | —         | 0          | 0           |
 
 ## Unsupported Models
 

@@ -10,6 +10,7 @@ import {
 } from './tools/index.js';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { MCPProvider } from './providers/mcp-provider.js';
+import { AgentLLMProviderToolExecutor } from './providers/agentllm-provider-tool-executor.js';
 import packageJson from '../../package.json' with { type: 'json' };
 
 dotenv.config();
@@ -30,6 +31,8 @@ class TaskMasterMCPServer {
 
 		this.server = new FastMCP(this.options);
 		this.initialized = false;
+		this.pendingAgentLLMInteractions = new Map(); // For managing paused states
+		this.registeredTools = new Map(); // Internal tool registry
 
 		this.init = this.init.bind(this);
 		this.start = this.start.bind(this);
@@ -44,20 +47,53 @@ class TaskMasterMCPServer {
 	async init() {
 		if (this.initialized) return;
 
+		// Normalize tool mode from environment and register tools.
+		// We provide a custom registrar object that presents an `addTool` API
+		// so the existing `registerTaskMasterTools` function can call it just
+		// like it would call FastMCP's server.addTool. This lets us wrap each
+		// tool's `execute` with `AgentLLMProviderToolExecutor` and populate our
+		// internal `registeredTools` map for use by provider executors.
 		const normalizedToolMode = getToolsConfiguration();
 
-		this.logger.info('Task Master MCP Server starting...');
-		this.logger.info(`Tool mode configuration: ${normalizedToolMode}`);
+		const customToolRegistrar = {
+			addTool: ({ name, description, parameters, execute }) => {
+				const wrappedExecute = AgentLLMProviderToolExecutor(
+					name,
+					execute,
+					this
+				);
+
+				// Register with the real FastMCP server
+				this.server.addTool({
+					name,
+					description,
+					parameters,
+					execute: wrappedExecute
+				});
+
+				// Keep a copy for internal lookups (e.g., provider executors)
+				this.registeredTools.set(name, {
+					name,
+					description,
+					parameters,
+					execute: wrappedExecute
+				});
+
+				this.logger.debug(
+					`TaskMasterMCPServer: Tool '${name}' registered internally and with FastMCP.`
+				);
+			}
+		};
 
 		const registrationResult = registerTaskMasterTools(
-			this.server,
+			customToolRegistrar,
 			normalizedToolMode
 		);
 
-		this.logger.info(
+		this.logger.debug(
 			`Normalized tool mode: ${registrationResult.normalizedMode}`
 		);
-		this.logger.info(
+		this.logger.debug(
 			`Registered ${registrationResult.registeredTools.length} tools successfully`
 		);
 

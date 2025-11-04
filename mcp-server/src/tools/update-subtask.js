@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { updateSubtaskByIdDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -76,6 +77,14 @@ export function registerUpdateSubtaskTool(server) {
 					log,
 					{ session }
 				);
+
+				// Centralized delegation handling
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'update_subtask'
+				);
+				if (delegation.delegated) return delegation.response;
 
 				if (result.success) {
 					log.info(`Successfully updated subtask with ID ${args.id}`);

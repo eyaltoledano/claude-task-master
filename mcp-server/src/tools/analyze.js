@@ -11,7 +11,8 @@ import fs from 'fs'; // Import fs for directory check/creation
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -148,7 +149,14 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					{ session }
 				);
 
-				// 4. Handle Result
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'analyze_project_complexity'
+				);
+				if (delegation.delegated) return delegation.response;
+
+				// If not delegating, proceed with existing result handling
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);

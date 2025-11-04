@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	createAgentDelegationResponse
 } from './utils.js';
 import { scopeDownDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
@@ -89,6 +90,14 @@ export function registerScopeDownTool(server) {
 					log,
 					{ session }
 				);
+
+				const delegation = createAgentDelegationResponse(
+					result,
+					log,
+					'scope_down_task',
+					"Your Next Action: After you have scoped the task reanalyze the project complexity with 'analyze_project_complexity' tool including this task ID in 'ids' parameter."
+				);
+				if (delegation.delegated) return delegation.response;
 
 				return handleApiResult(
 					result,

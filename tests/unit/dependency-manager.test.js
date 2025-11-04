@@ -42,7 +42,24 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	disableSilentMode: jest.fn(),
 	getTaskManager: jest.fn(async () => ({})),
 	getTagAwareFilePath: jest.fn((basePath, _tag, projectRoot = '.') => basePath),
-	readComplexityReport: jest.fn(() => null)
+	readComplexityReport: jest.fn(() => null),
+	createLogger: jest.fn(() => ({
+		debug: jest.fn(),
+		error: jest.fn(),
+		info: jest.fn(),
+		success: jest.fn(),
+		warn: jest.fn()
+	})),
+	getTasksForTag: jest.fn((data, tag) => {
+		if (data.tasks && Array.isArray(data.tasks)) {
+			return data.tasks;
+		}
+		return data[tag]?.tasks || [];
+	}),
+	setTasksForTag: jest.fn((data, tag, tasks) => {
+		if (!data[tag]) data[tag] = {};
+		data[tag].tasks = tasks;
+	})
 }));
 
 jest.mock('path');
@@ -641,23 +658,26 @@ describe('Dependency Manager Module', () => {
 	describe('validateAndFixDependencies function', () => {
 		test('should fix multiple dependency issues and return true if changes made', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [1, 1, 99], // Self-dependency and duplicate and invalid dependency
-						subtasks: [
-							{ id: 1, dependencies: [2, 2] }, // Duplicate dependencies
-							{ id: 2, dependencies: [1] }
-						]
-					},
-					{
-						id: 2,
-						dependencies: [1],
-						subtasks: [
-							{ id: 1, dependencies: [99] } // Invalid dependency
-						]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [1, 1, 99], // Self-dependency and duplicate and invalid dependency
+							subtasks: [
+								{ id: 1, dependencies: [2, 2] }, // Duplicate dependencies
+								{ id: 2, dependencies: [1] },
+								{ id: 3, dependencies: [] } // Independent subtask to preserve deduped deps
+							]
+						},
+						{
+							id: 2,
+							dependencies: [1],
+							subtasks: [
+								{ id: 1, dependencies: [99] } // Invalid dependency
+							]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists for validating dependencies
@@ -692,17 +712,14 @@ describe('Dependency Manager Module', () => {
 
 			// Check specific changes
 			// 1. Self-dependency removed
-			expect(tasksData.tasks[0].dependencies).not.toContain(1);
+			expect(tasksData.master.tasks[0].dependencies).not.toContain(1);
 			// 2. Invalid dependency removed
-			expect(tasksData.tasks[0].dependencies).not.toContain(99);
+			expect(tasksData.master.tasks[0].dependencies).not.toContain(99);
 			// 3. Dependencies have been deduplicated
-			if (tasksData.tasks[0].subtasks[0].dependencies.length > 0) {
-				expect(tasksData.tasks[0].subtasks[0].dependencies).toEqual(
-					expect.arrayContaining([])
-				);
-			}
+			const subtaskDeps = tasksData.master.tasks[0].subtasks[0].dependencies;
+			expect(subtaskDeps).toEqual([2]);
 			// 4. Invalid subtask dependency removed
-			expect(tasksData.tasks[1].subtasks[0].dependencies).toEqual([]);
+			expect(tasksData.master.tasks[1].subtasks[0].dependencies).toEqual([]);
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
@@ -715,20 +732,22 @@ describe('Dependency Manager Module', () => {
 
 		test('should return false if no changes needed', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [],
-						subtasks: [
-							{ id: 1, dependencies: [] }, // Already has an independent subtask
-							{ id: 2, dependencies: ['1.1'] }
-						]
-					},
-					{
-						id: 2,
-						dependencies: [1]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [],
+							subtasks: [
+								{ id: 1, dependencies: [] }, // Already has an independent subtask
+								{ id: 2, dependencies: ['1.1'] }
+							]
+						},
+						{
+							id: 2,
+							dependencies: [1]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists to validate all dependencies as valid
@@ -769,10 +788,15 @@ describe('Dependency Manager Module', () => {
 		});
 
 		test('should handle invalid input', () => {
+			// Function now logs errors and returns false for invalid input rather than throwing
 			expect(validateAndFixDependencies(null)).toBe(false);
 			expect(validateAndFixDependencies({})).toBe(false);
-			expect(validateAndFixDependencies({ tasks: null })).toBe(false);
-			expect(validateAndFixDependencies({ tasks: 'not an array' })).toBe(false);
+			expect(validateAndFixDependencies({ master: { tasks: null } })).toBe(
+				false
+			);
+			expect(
+				validateAndFixDependencies({ master: { tasks: 'not an array' } })
+			).toBe(false);
 
 			// IMPORTANT: Verify no calls to writeJSON with actual tasks.json
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
@@ -785,15 +809,17 @@ describe('Dependency Manager Module', () => {
 
 		test('should save changes when tasksPath is provided', () => {
 			const tasksData = {
-				tasks: [
-					{
-						id: 1,
-						dependencies: [1, 1], // Self-dependency and duplicate
-						subtasks: [
-							{ id: 1, dependencies: [99] } // Invalid dependency
-						]
-					}
-				]
+				master: {
+					tasks: [
+						{
+							id: 1,
+							dependencies: [1, 1], // Self-dependency and duplicate
+							subtasks: [
+								{ id: 1, dependencies: [99] } // Invalid dependency
+							]
+						}
+					]
+				}
 			};
 
 			// Mock taskExists for this specific test
@@ -984,7 +1010,26 @@ describe('Dependency Manager Module', () => {
 				getTagAwareFilePath: jest.fn(
 					(basePath, _tag, projectRoot = '.') => basePath
 				),
-				readComplexityReport: jest.fn(() => null)
+				readComplexityReport: jest.fn(() => null),
+				createLogger: jest.fn(() => ({
+					debug: jest.fn(),
+					error: jest.fn(),
+					info: jest.fn(),
+					success: jest.fn(),
+					warn: jest.fn()
+				})),
+				getTasksForTag: jest.fn((data, tag) => {
+					// Handle the test data structure where tasks are at data.tasks
+					if (data.tasks && Array.isArray(data.tasks)) {
+						return data.tasks;
+					}
+					// Fallback to tagged structure
+					return data[tag]?.tasks || [];
+				}),
+				setTasksForTag: jest.fn((data, tag, tasks) => {
+					if (!data[tag]) data[tag] = {};
+					data[tag].tasks = tasks;
+				})
 			}));
 
 			// Also mock transitive imports to keep dependency surface minimal
@@ -997,9 +1042,9 @@ describe('Dependency Manager Module', () => {
 			);
 			// Set up test data that matches the issue report
 			// Clone fixture data before each test to prevent mutation issues
-			mockReadJSON.mockImplementation(() =>
-				structuredClone(crossLevelDependencyTasks)
-			);
+			mockReadJSON.mockImplementation(() => ({
+				tasks: structuredClone(crossLevelDependencyTasks.tasks)
+			}));
 
 			// Configure mockTaskExists to properly validate cross-level dependencies
 			mockTaskExists.mockImplementation((tasks, taskId) => {
@@ -1041,7 +1086,7 @@ describe('Dependency Manager Module', () => {
 				TEST_TASKS_PATH,
 				expect.anything(),
 				'/test',
-				undefined
+				'master'
 			);
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
@@ -1082,7 +1127,7 @@ describe('Dependency Manager Module', () => {
 				TEST_TASKS_PATH,
 				expect.anything(),
 				'/test',
-				undefined
+				'master'
 			);
 			expect(mockWriteJSON).not.toHaveBeenCalledWith(
 				'tasks/tasks.json',
