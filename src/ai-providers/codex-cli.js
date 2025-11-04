@@ -10,6 +10,7 @@ import { createCodexCli } from 'ai-sdk-provider-codex-cli';
 import { BaseAIProvider } from './base-provider.js';
 import { execSync } from 'child_process';
 import { log } from '../../scripts/modules/utils.js';
+import { getSuggestedInstallCommand } from '../utils/package-manager-utils.js';
 import {
 	getCodexCliSettingsForCommand,
 	getSupportedModelsForProvider
@@ -70,9 +71,10 @@ export class CodexCliProvider extends BaseAIProvider {
 				this._codexCliAvailable = true;
 			} catch (error) {
 				this._codexCliAvailable = false;
+				const installCommand = getSuggestedInstallCommand('@openai/codex', true);
 				log(
 					'warn',
-					'Codex CLI not detected. Install with: npm i -g @openai/codex or enable fallback with allowNpx.'
+					`Codex CLI not detected. Install with: ${installCommand} or enable fallback with allowNpx.`
 				);
 			} finally {
 				this._codexCliChecked = true;

@@ -127,7 +127,7 @@ export function createInstallationError({
 	return new APICallError({
 		message:
 			message ||
-			'Grok CLI is not installed or not found in PATH. Please install with: npm install -g @vibe-kit/grok-cli',
+			'Grok CLI is not installed or not found in PATH. Please install with: npm install -g @vibe-kit/grok-cli (or pnpm add -g @vibe-kit/grok-cli)',
 		isRetryable: false,
 		url: 'grok-cli://installation',
 		requestBodyValues: undefined

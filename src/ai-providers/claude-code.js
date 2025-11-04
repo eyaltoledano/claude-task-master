@@ -12,6 +12,7 @@
 
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 import { BaseAIProvider } from './base-provider.js';
+import { getSuggestedInstallCommand } from '../utils/package-manager-utils.js';
 import {
 	getClaudeCodeSettingsForCommand,
 	getSupportedModelsForProvider
@@ -82,9 +83,10 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				_claudeCliAvailable = true;
 			} catch (error) {
 				_claudeCliAvailable = false;
+				const installCommand = getSuggestedInstallCommand('@anthropic-ai/claude-code', true);
 				log(
 					'warn',
-					'Claude Code CLI not detected. Install it with: npm install -g @anthropic-ai/claude-code'
+					`Claude Code CLI not detected. Install it with: ${installCommand}`
 				);
 			} finally {
 				_claudeCliChecked = true;

@@ -34,6 +34,7 @@ import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
 import { assetExists, readAsset } from '../src/utils/asset-resolver.js';
 
 import { execSync } from 'child_process';
+import { getPackageManagerExecutor } from '../src/utils/package-manager-utils.js';
 import {
 	EXAMPLE_PRD_FILE,
 	TASKMASTER_CONFIG_FILE,
@@ -723,8 +724,8 @@ function createProjectStructure(
 			'Running interactive rules setup. Please select which rule profiles to include.'
 		);
 		try {
-			// Correct command confirmed by you.
-			execSync('npx task-master rules --setup', {
+			const packageManagerExecutor = getPackageManagerExecutor(targetDir);
+			execSync(`${packageManagerExecutor} task-master rules --setup`, {
 				stdio: 'inherit',
 				cwd: targetDir
 			});
@@ -761,7 +762,8 @@ function createProjectStructure(
 			'Running interactive response language setup. Please input your preferred language.'
 		);
 		try {
-			execSync('npx task-master lang --setup', {
+			const packageManagerExecutor = getPackageManagerExecutor(targetDir);
+			execSync(`${packageManagerExecutor} task-master lang --setup`, {
 				stdio: 'inherit',
 				cwd: targetDir
 			});
@@ -799,7 +801,8 @@ function createProjectStructure(
 			'Running interactive model setup. Please select your preferred AI models.'
 		);
 		try {
-			execSync('npx task-master models --setup', {
+			const packageManagerExecutor = getPackageManagerExecutor(targetDir);
+			execSync(`${packageManagerExecutor} task-master models --setup`, {
 				stdio: 'inherit',
 				cwd: targetDir
 			});
