@@ -12,6 +12,7 @@ import {
 	OutputFormatter
 } from './shared.js';
 import inquirer from 'inquirer';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 interface AbortOptions extends AutopilotBaseOptions {
 	force?: boolean;
@@ -37,8 +38,9 @@ export class AbortCommand extends Command {
 		const mergedOptions: AbortOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

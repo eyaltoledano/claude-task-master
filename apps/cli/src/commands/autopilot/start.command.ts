@@ -13,6 +13,7 @@ import {
 	validateTaskId,
 	parseSubtasks
 } from './shared.js';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 interface StartOptions extends AutopilotBaseOptions {
 	force?: boolean;
@@ -41,8 +42,9 @@ export class StartCommand extends Command {
 		const mergedOptions: StartOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

@@ -4,6 +4,7 @@
 
 import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
 	hasWorkflowState,
@@ -33,8 +34,9 @@ export class NextCommand extends Command {
 		const mergedOptions: NextOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

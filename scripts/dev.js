@@ -9,8 +9,14 @@
  */
 
 import dotenv from 'dotenv';
+import { findProjectRoot } from '@tm/core';
 
-// Load .env BEFORE any other imports to ensure env vars are available
+// Change to project root so dotenv can find .env from the correct location
+// This allows running commands from subdirectories like apps/, packages/, etc.
+const projectRoot = findProjectRoot();
+process.chdir(projectRoot);
+
+// Load .env - dotenv will now look in the project root
 dotenv.config();
 
 // Add at the very beginning of the file
