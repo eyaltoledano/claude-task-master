@@ -27,14 +27,19 @@ export const prdSingleTaskSchema = z.object({
 // Define the Zod schema for the ENTIRE expected AI response object
 export const prdResponseSchema = z.object({
 	tasks: z.array(prdSingleTaskSchema),
+	// Use union for better structured outputs compatibility
+	// Models understand "either return this object OR null" more reliably
 	metadata: z
-		.object({
-			projectName: z.string(),
-			totalTasks: z.number(),
-			sourceFile: z.string(),
-			generatedAt: z.string()
-		})
-		.nullable()
+		.union([
+			z.object({
+				projectName: z.string(),
+				totalTasks: z.number(),
+				sourceFile: z.string(),
+				generatedAt: z.string()
+			}),
+			z.null()
+		])
+		.default(null)
 });
 
 // ============================================================================
