@@ -286,7 +286,7 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should work with custom validators', () => {
-			let customProvider = new EnvironmentConfigProvider([
+			const customProvider = new EnvironmentConfigProvider([
 				{
 					env: 'CUSTOM_NUMBER',
 					path: ['custom', 'number'],
@@ -300,13 +300,6 @@ describe('EnvironmentConfigProvider', () => {
 
 			process.env.CUSTOM_NUMBER = 'not-a-number';
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-			customProvider = new EnvironmentConfigProvider([
-				{
-					env: 'CUSTOM_NUMBER',
-					path: ['custom', 'number'],
-					validate: (v) => !isNaN(Number(v))
-				}
-			]);
 			config = customProvider.loadConfig();
 			expect(config).toEqual({});
 			expect(warnSpy).toHaveBeenCalled();
