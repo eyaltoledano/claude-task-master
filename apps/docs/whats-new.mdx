@@ -3,4 +3,31 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## Version 0.31.1
+
+### ZAI Coding Plan Support
+Task Master now supports ZAI (GLM) models with two separate providers based on your subscription:
+
+- **zai**: Standard ZAI endpoint (`https://api.z.ai/api/paas/v4/`)
+- **zai-coding**: Coding Plan endpoint (`https://api.z.ai/api/coding/paas/v4/`)
+
+Both providers use the same model IDs (glm-4.6, glm-4.5) but route to different API endpoints. When running `task-master models --setup`, you'll see both providers listed separately, allowing you to choose the appropriate one for your subscription.
+
+### Improved Auto-Update Experience
+Updates now happen automatically before your CLI commands run and automatically restart to execute your command with the new version. No more manual restarts needed!
+
+## Version 0.31.0
+
+### Custom OpenAI-Compatible Providers
+Connect Task Master to any service that implements the OpenAI API specification:
+
+```bash
+task-master models --set-main llama-3-70b --openai-compatible --baseURL http://localhost:8000/v1
+```
+
+### Native Z.ai (GLM) Support
+Access high-performance Chinese models including GLM-4.6 with massive 200K+ token context windows at competitive pricing.
+
+---
+
+For complete release history, see the [CHANGELOG](https://github.com/eyaltoledano/claude-task-master/blob/main/CHANGELOG.md).

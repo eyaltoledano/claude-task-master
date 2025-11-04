@@ -95,6 +95,17 @@ AZURE_OPENAI_API_KEY="your-azure-key-here"
 XAI_API_KEY="your-xai-key-here"
 ```
 
+### ZAI_API_KEY
+- **Provider**: Z.ai (GLM) models
+- **Required**: ✅ **Yes**
+- **Models**: GLM-4.6, GLM-4.5 (200K+ token context)
+- **Get Key**: [Z.ai Console](https://api.z.ai/)
+- **Note**: Supports both standard and coding plan endpoints
+
+```bash
+ZAI_API_KEY="your-zai-key-here"
+```
+
 ## Optional API Keys
 
 > **Note**: These API keys are optional - providers will work without them or use alternative authentication methods.
@@ -200,7 +211,8 @@ For Claude Code integration, configure keys in `.mcp.json`:
       "env": {
         "ANTHROPIC_API_KEY": "your-key-here",
         "PERPLEXITY_API_KEY": "your-key-here",
-        "OPENAI_API_KEY": "your-key-here"
+        "OPENAI_API_KEY": "your-key-here",
+        "ZAI_API_KEY": "your-zai-key-here"
       }
     }
   }
