@@ -7,8 +7,20 @@ import fs from 'node:fs/promises';
 import { ConfigPersistence } from './config-persistence.service.js';
 import type { PartialConfiguration } from '@tm/core/common/interfaces/configuration.interface.js';
 
-vi.mock('node:fs', () => ({
-	promises: {
+// Mock the logger
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn()
+};
+
+vi.mock('../../../common/logger/index.js', () => ({
+	getLogger: vi.fn(() => mockLogger)
+}));
+
+vi.mock('node:fs/promises', () => ({
+	default: {
 		readFile: vi.fn(),
 		writeFile: vi.fn(),
 		mkdir: vi.fn(),
@@ -16,7 +28,14 @@ vi.mock('node:fs', () => ({
 		access: vi.fn(),
 		readdir: vi.fn(),
 		rename: vi.fn()
-	}
+	},
+	readFile: vi.fn(),
+	writeFile: vi.fn(),
+	mkdir: vi.fn(),
+	unlink: vi.fn(),
+	access: vi.fn(),
+	readdir: vi.fn(),
+	rename: vi.fn()
 }));
 
 describe('ConfigPersistence', () => {
@@ -26,6 +45,10 @@ describe('ConfigPersistence', () => {
 	beforeEach(() => {
 		persistence = new ConfigPersistence(testProjectRoot);
 		vi.clearAllMocks();
+		mockLogger.info.mockClear();
+		mockLogger.warn.mockClear();
+		mockLogger.error.mockClear();
+		mockLogger.debug.mockClear();
 	});
 
 	afterEach(() => {
@@ -48,6 +71,7 @@ describe('ConfigPersistence', () => {
 		it('should save configuration to file', async () => {
 			vi.mocked(fs.mkdir).mockResolvedValue(undefined);
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
+			vi.mocked(fs.rename).mockResolvedValue(undefined);
 
 			await persistence.saveConfig(mockConfig);
 
@@ -55,10 +79,16 @@ describe('ConfigPersistence', () => {
 				recursive: true
 			});
 
+			// By default, atomic write is enabled, so it writes to .tmp first
 			expect(fs.writeFile).toHaveBeenCalledWith(
-				'/test/project/.taskmaster/config.json',
+				'/test/project/.taskmaster/config.json.tmp',
 				JSON.stringify(mockConfig, null, 2),
 				'utf-8'
+			);
+
+			expect(fs.rename).toHaveBeenCalledWith(
+				'/test/project/.taskmaster/config.json.tmp',
+				'/test/project/.taskmaster/config.json'
 			);
 		});
 
@@ -217,13 +247,19 @@ describe('ConfigPersistence', () => {
 				'config-2024-01-01T10-00-00-000Z.json',
 				'README.md',
 				'.DS_Store',
-				'config.json',
-				'config-backup.json' // Wrong format
+				'config.json', // Doesn't start with 'config-'
+				'config-backup.json', // Starts with 'config-' and ends with '.json'
+				'config-temp.txt' // Doesn't end with '.json'
 			] as any);
 
 			const backups = await persistence.getBackups();
 
-			expect(backups).toEqual(['config-2024-01-01T10-00-00-000Z.json']);
+			// Files are sorted in reverse order (newest first)
+			// 'config-backup.json' comes before 'config-2024-01-01T10-00-00-000Z.json' alphabetically
+			expect(backups).toEqual([
+				'config-backup.json',
+				'config-2024-01-01T10-00-00-000Z.json'
+			]);
 		});
 	});
 
@@ -302,23 +338,30 @@ describe('ConfigPersistence', () => {
 			vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 			vi.mocked(fs.access).mockResolvedValue(undefined);
 			vi.mocked(fs.readFile).mockResolvedValue('{"old": "config"}');
-			vi.mocked(fs.readdir).mockResolvedValue(['config-old.json'] as any);
+			vi.mocked(fs.rename).mockResolvedValue(undefined);
+			// Need more than 5 files to trigger cleanup (maxBackups defaults to 5)
+			vi.mocked(fs.readdir).mockResolvedValue([
+				'config-2024-01-01T10-00-00-000Z.json',
+				'config-2024-01-02T10-00-00-000Z.json',
+				'config-2024-01-03T10-00-00-000Z.json',
+				'config-2024-01-04T10-00-00-000Z.json',
+				'config-2024-01-05T10-00-00-000Z.json',
+				'config-2024-01-06T10-00-00-000Z.json' // This will be deleted (6th file)
+			] as any);
 			vi.mocked(fs.unlink).mockRejectedValue(new Error('Permission denied'));
 
-			// Mock console.warn to verify it's called
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			// Clear mock calls before the test
+			mockLogger.warn.mockClear();
 
 			// Should not throw even if cleanup fails
 			await expect(
 				persistence.saveConfig({}, { createBackup: true })
 			).resolves.not.toThrow();
 
-			expect(warnSpy).toHaveBeenCalledWith(
+			expect(mockLogger.warn).toHaveBeenCalledWith(
 				'Failed to clean old backups:',
 				expect.any(Error)
 			);
-
-			warnSpy.mockRestore();
 		});
 	});
 });

@@ -7,13 +7,29 @@ import fs from 'node:fs/promises';
 import { RuntimeStateManager } from './runtime-state-manager.service.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 
-vi.mock('node:fs', () => ({
-	promises: {
+// Mock the logger
+const mockLogger = {
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn()
+};
+
+vi.mock('../../../common/logger/index.js', () => ({
+	getLogger: vi.fn(() => mockLogger)
+}));
+
+vi.mock('node:fs/promises', () => ({
+	default: {
 		readFile: vi.fn(),
 		writeFile: vi.fn(),
 		mkdir: vi.fn(),
 		unlink: vi.fn()
-	}
+	},
+	readFile: vi.fn(),
+	writeFile: vi.fn(),
+	mkdir: vi.fn(),
+	unlink: vi.fn()
 }));
 
 describe('RuntimeStateManager', () => {
@@ -96,15 +112,13 @@ describe('RuntimeStateManager', () => {
 		it('should handle invalid JSON gracefully', async () => {
 			vi.mocked(fs.readFile).mockResolvedValue('invalid json');
 
-			// Mock console.warn to avoid noise in tests
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			// Clear mock calls before the test
+			mockLogger.warn.mockClear();
 
 			const state = await stateManager.loadState();
 
 			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
-			expect(warnSpy).toHaveBeenCalled();
-
-			warnSpy.mockRestore();
+			expect(mockLogger.warn).toHaveBeenCalled();
 		});
 	});
 
@@ -124,7 +138,7 @@ describe('RuntimeStateManager', () => {
 			// Verify writeFile was called with correct data
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/state.json',
-				expect.stringContaining('"activeTag":"test-tag"'),
+				expect.stringContaining('"currentTag": "test-tag"'),
 				'utf-8'
 			);
 

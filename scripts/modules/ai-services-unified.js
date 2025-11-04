@@ -33,7 +33,7 @@ import {
 	getCurrentTag,
 	log
 } from './utils.js';
-import { EnvironmentConfigProvider } from '@tm/core/config';
+import { EnvironmentConfigProvider } from '@tm/core';
 
 // Import provider classes
 import {

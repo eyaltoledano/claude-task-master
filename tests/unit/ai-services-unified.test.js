@@ -277,13 +277,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 	}))
 }));
 
-// Mock @tm/core/config - EnvironmentConfigProvider
+// Mock @tm/core - EnvironmentConfigProvider
 const mockResolveVariable = jest.fn();
 const mockEnvironmentConfigProvider = {
 	resolveVariable: mockResolveVariable
 };
 
-jest.unstable_mockModule('@tm/core/config', () => ({
+jest.unstable_mockModule('@tm/core', () => ({
 	EnvironmentConfigProvider: jest.fn(() => mockEnvironmentConfigProvider)
 }));
 

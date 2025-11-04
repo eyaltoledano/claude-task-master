@@ -8,12 +8,12 @@ import type {
 	AIResponse,
 	ProviderInfo,
 	ProviderUsageStats
-} from '../../src/interfaces/ai-provider.interface';
+} from '../../src/modules/ai/interfaces/ai-provider.interface';
 import {
 	BaseProvider,
 	type BaseProviderConfig,
 	type CompletionResult
-} from '../../src/providers/ai/base-provider';
+} from '../../src/modules/ai/providers/base-provider';
 
 /**
  * Configuration for MockProvider behavior

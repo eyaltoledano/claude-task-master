@@ -250,8 +250,8 @@ export class EnvironmentConfigProvider {
 	 * Resolve a single environment variable value
 	 * Precedence:
 	 * 1. envObject (if provided, e.g., session.env from MCP)
-	 * 2. process.env
-	 * 3. .env file at envFilePath (if provided)
+	 * 2. .env file at envFilePath (if provided)
+	 * 3. process.env
 	 *
 	 * Supports command-based resolution with !cmd: prefix
 	 *
@@ -271,11 +271,7 @@ export class EnvironmentConfigProvider {
 		if (envObject?.[key]) {
 			rawValue = envObject[key];
 		}
-		// 2. Check process.env
-		else if (process.env[key]) {
-			rawValue = process.env[key];
-		}
-		// 3. Read .env file if path provided
+		// 2. Read .env file if path provided
 		else if (envFilePath) {
 			try {
 				if (existsSync(envFilePath)) {
@@ -288,6 +284,10 @@ export class EnvironmentConfigProvider {
 			} catch (error: any) {
 				this.logger.warn(`Could not read or parse ${envFilePath}: ${error.message}`);
 			}
+		}
+		// 3. Check process.env as fallback
+		if (!rawValue && process.env[key]) {
+			rawValue = process.env[key];
 		}
 
 		// If no value found anywhere, return undefined

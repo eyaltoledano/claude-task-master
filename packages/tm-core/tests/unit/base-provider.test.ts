@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
 	ERROR_CODES,
 	TaskMasterError
-} from '../../src/errors/task-master-error';
+} from '../../src/common/errors/task-master-error';
 import { MockProvider } from '../mocks/mock-provider';
 
 describe('BaseProvider', () => {

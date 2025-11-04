@@ -4,10 +4,17 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnvironmentConfigProvider } from './environment-config-provider.service.js';
+import * as childProcess from 'node:child_process';
+
+// Mock the child_process module
+vi.mock('node:child_process', () => ({
+	execSync: vi.fn()
+}));
 
 describe('EnvironmentConfigProvider', () => {
 	let provider: EnvironmentConfigProvider;
 	const originalEnv = { ...process.env };
+	const mockExecSync = vi.mocked(childProcess.execSync);
 
 	beforeEach(() => {
 		// Clear all TASKMASTER_ env vars
@@ -16,12 +23,22 @@ describe('EnvironmentConfigProvider', () => {
 				delete process.env[key];
 			}
 		});
+		// Clear test environment variables
+		Object.keys(process.env).forEach((key) => {
+			if (key.startsWith('TEST_')) {
+				delete process.env[key];
+			}
+		});
 		provider = new EnvironmentConfigProvider();
+		// Reset all mocks before each test
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
 		// Restore original environment
 		process.env = { ...originalEnv };
+		// Clear all mocks after each test
+		vi.clearAllMocks();
 	});
 
 	describe('loadConfig', () => {
@@ -328,35 +345,43 @@ describe('EnvironmentConfigProvider', () => {
 
 	describe('!cmd: prefix support', () => {
 		it('should execute command and use its output', () => {
+			mockExecSync.mockReturnValue('test-model' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo test-model';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo test-model', expect.any(Object));
 			expect(config.models?.main).toBe('test-model');
 		});
 
 		it('should trim command output', () => {
+			mockExecSync.mockReturnValue('  spaces  ' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "  spaces  "';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "  spaces  "', expect.any(Object));
 			expect(config.models?.main).toBe('spaces');
 		});
 
 		it('should handle empty command output', () => {
+			mockExecSync.mockReturnValue('' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo ""';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo ""', expect.any(Object));
 			// Empty output should be rejected
 			expect(config).toEqual({});
 		});
 
 		it('should handle whitespace-only command output', () => {
+			mockExecSync.mockReturnValue('   ' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "   "';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "   "', expect.any(Object));
 			// Whitespace-only output should be rejected
 			expect(config).toEqual({});
 		});
@@ -366,7 +391,8 @@ describe('EnvironmentConfigProvider', () => {
 
 			const config = provider.loadConfig();
 
-			// Empty command should be rejected
+			// Empty command should be rejected without calling execSync
+			expect(mockExecSync).not.toHaveBeenCalled();
 			expect(config).toEqual({});
 		});
 
@@ -375,7 +401,8 @@ describe('EnvironmentConfigProvider', () => {
 
 			const config = provider.loadConfig();
 
-			// Whitespace-only command should be rejected
+			// Whitespace-only command should be rejected without calling execSync
+			expect(mockExecSync).not.toHaveBeenCalled();
 			expect(config).toEqual({});
 		});
 
@@ -384,33 +411,50 @@ describe('EnvironmentConfigProvider', () => {
 
 			const config = provider.loadConfig();
 
+			// Non-prefixed value should not trigger execSync
+			expect(mockExecSync).not.toHaveBeenCalled();
 			expect(config.models?.main).toBe('plain-value');
 		});
 
 		it('should handle command with special characters', () => {
+			mockExecSync.mockReturnValue('hello world' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "hello world"';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "hello world"', expect.any(Object));
 			expect(config.models?.main).toBe('hello world');
 		});
 
 		it('should handle command failure gracefully', () => {
+			mockExecSync.mockImplementation(() => {
+				throw new Error('Command failed');
+			});
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:exit 1';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('exit 1', expect.any(Object));
 			// Failed command should result in empty config
 			expect(config).toEqual({});
 		});
 
 		it('should handle command timeout', () => {
+			// Simulate timeout error
+			mockExecSync.mockImplementation(() => {
+				const error: any = new Error('Timeout');
+				error.killed = true;
+				throw error;
+			});
 			// Set very short timeout
-			process.env.TASKMASTER_CMD_TIMEOUT = '1'; // 1ms
+			process.env.TASKMASTER_CMD_TIMEOUT = '1'; // 1 second (values <=60 are treated as seconds)
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:sleep 1';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('sleep 1', expect.objectContaining({
+				timeout: 1000  // 1 second converted to milliseconds
+			}));
 			// Timed out command should result in empty config
 			expect(config).toEqual({});
 
@@ -418,11 +462,15 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should parse TASKMASTER_CMD_TIMEOUT as seconds when <=60', () => {
+			mockExecSync.mockReturnValue('timeout-test' as any);
 			process.env.TASKMASTER_CMD_TIMEOUT = '5';
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo timeout-test';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo timeout-test', expect.objectContaining({
+				timeout: 5000  // 5 seconds converted to milliseconds
+			}));
 			// Should execute successfully (5 seconds is plenty)
 			expect(config.models?.main).toBe('timeout-test');
 
@@ -430,11 +478,15 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should parse TASKMASTER_CMD_TIMEOUT as milliseconds when >60', () => {
+			mockExecSync.mockReturnValue('timeout-test' as any);
 			process.env.TASKMASTER_CMD_TIMEOUT = '5000';
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo timeout-test';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo timeout-test', expect.objectContaining({
+				timeout: 5000  // Already in milliseconds
+			}));
 			// Should execute successfully (5000ms = 5 seconds)
 			expect(config.models?.main).toBe('timeout-test');
 
@@ -442,11 +494,15 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should use default timeout when TASKMASTER_CMD_TIMEOUT is invalid', () => {
+			mockExecSync.mockReturnValue('default-timeout' as any);
 			process.env.TASKMASTER_CMD_TIMEOUT = 'invalid';
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo default-timeout';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo default-timeout', expect.objectContaining({
+				timeout: 5000  // Default timeout
+			}));
 			// Should execute successfully with default timeout
 			expect(config.models?.main).toBe('default-timeout');
 
@@ -454,23 +510,33 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should work with multiple env vars using !cmd:', () => {
+			mockExecSync
+				.mockReturnValueOnce('main-model' as any)
+				.mockReturnValueOnce('research-model' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo main-model';
 			process.env.TASKMASTER_MODEL_RESEARCH = '!cmd:echo research-model';
 			process.env.TASKMASTER_MODEL_FALLBACK = 'plain-fallback';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledTimes(2);
+			expect(mockExecSync).toHaveBeenNthCalledWith(1, 'echo main-model', expect.any(Object));
+			expect(mockExecSync).toHaveBeenNthCalledWith(2, 'echo research-model', expect.any(Object));
 			expect(config.models?.main).toBe('main-model');
 			expect(config.models?.research).toBe('research-model');
 			expect(config.models?.fallback).toBe('plain-fallback');
 		});
 
 		it('should execute commands with proper shell access', () => {
-			// Test that shell features work (pipes, variables, etc.)
+			// Simulate the piped command output
+			mockExecSync.mockReturnValue('TEST' as any);
 			process.env.TASKMASTER_MODEL_MAIN = '!cmd:echo "test" | tr a-z A-Z';
 
 			const config = provider.loadConfig();
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "test" | tr a-z A-Z', expect.objectContaining({
+				shell: true
+			}));
 			expect(config.models?.main).toBe('TEST');
 		});
 	});
@@ -498,18 +564,22 @@ describe('EnvironmentConfigProvider', () => {
 		});
 
 		it('should resolve !cmd: prefix from envObject', () => {
+			mockExecSync.mockReturnValue('test-from-cmd' as any);
 			const envObject = { TEST_VAR: '!cmd:echo test-from-cmd' };
 
 			const result = provider.resolveVariable('TEST_VAR', envObject);
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo test-from-cmd', expect.any(Object));
 			expect(result).toBe('test-from-cmd');
 		});
 
 		it('should resolve !cmd: prefix from process.env', () => {
+			mockExecSync.mockReturnValue('cmd-value' as any);
 			process.env.TEST_VAR = '!cmd:echo cmd-value';
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo cmd-value', expect.any(Object));
 			expect(result).toBe('cmd-value');
 
 			delete process.env.TEST_VAR;
@@ -518,24 +588,31 @@ describe('EnvironmentConfigProvider', () => {
 		it('should return undefined when variable not found', () => {
 			const result = provider.resolveVariable('NONEXISTENT_VAR');
 
+			expect(mockExecSync).not.toHaveBeenCalled();
 			expect(result).toBeUndefined();
 		});
 
 		it('should return null when !cmd: command fails', () => {
+			mockExecSync.mockImplementation(() => {
+				throw new Error('Command failed with exit code 1');
+			});
 			process.env.TEST_VAR = '!cmd:exit 1';
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			expect(mockExecSync).toHaveBeenCalledWith('exit 1', expect.any(Object));
 			expect(result).toBeNull();
 
 			delete process.env.TEST_VAR;
 		});
 
 		it('should return null when !cmd: command returns empty output', () => {
+			mockExecSync.mockReturnValue('' as any);
 			process.env.TEST_VAR = '!cmd:echo ""';
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo ""', expect.any(Object));
 			expect(result).toBeNull();
 
 			delete process.env.TEST_VAR;
@@ -546,26 +623,34 @@ describe('EnvironmentConfigProvider', () => {
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			// Should not call execSync for empty command
+			expect(mockExecSync).not.toHaveBeenCalled();
 			expect(result).toBeNull();
 
 			delete process.env.TEST_VAR;
 		});
 
 		it('should trim command output', () => {
+			mockExecSync.mockReturnValue('  spaced  ' as any);
 			process.env.TEST_VAR = '!cmd:echo "  spaced  "';
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "  spaced  "', expect.any(Object));
 			expect(result).toBe('spaced');
 
 			delete process.env.TEST_VAR;
 		});
 
 		it('should work with shell features (pipes)', () => {
+			mockExecSync.mockReturnValue('HELLO' as any);
 			process.env.TEST_VAR = '!cmd:echo "hello" | tr a-z A-Z';
 
 			const result = provider.resolveVariable('TEST_VAR');
 
+			expect(mockExecSync).toHaveBeenCalledWith('echo "hello" | tr a-z A-Z', expect.objectContaining({
+				shell: true
+			}));
 			expect(result).toBe('HELLO');
 
 			delete process.env.TEST_VAR;

@@ -17,7 +17,7 @@ import {
 import { findConfigPath } from '../../src/utils/path-utils.js';
 import { findProjectRoot, isEmpty, log } from './utils.js';
 import MODEL_MAP from './supported-models.json' with { type: 'json' };
-import { EnvironmentConfigProvider } from '@tm/core/config';
+import { EnvironmentConfigProvider } from '@tm/core';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
