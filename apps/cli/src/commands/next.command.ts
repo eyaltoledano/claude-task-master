@@ -50,7 +50,10 @@ export class NextCommand extends Command {
 			.option('-t, --tag <tag>', 'Filter by tag')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory (auto-detected if not provided)')
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(async (options: NextCommandOptions) => {
 				await this.executeCommand(options);
 			});

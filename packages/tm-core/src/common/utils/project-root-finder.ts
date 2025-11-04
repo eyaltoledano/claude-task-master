@@ -129,7 +129,9 @@ export function findProjectRoot(startDir: string = process.cwd()): string {
  * normalizeProjectRoot('/project/.taskmaster/tasks'); // Returns '/project'
  * ```
  */
-export function normalizeProjectRoot(projectRoot: string | null | undefined): string {
+export function normalizeProjectRoot(
+	projectRoot: string | null | undefined
+): string {
 	if (!projectRoot) return projectRoot || '';
 
 	// Ensure it's a string

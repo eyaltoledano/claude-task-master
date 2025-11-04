@@ -65,7 +65,10 @@ export class ShowCommand extends Command {
 			.option('-s, --status <status>', 'Filter subtasks by status')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory (auto-detected if not provided)')
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(
 				async (taskId: string | undefined, options: ShowCommandOptions) => {
 					await this.executeCommand(taskId, options);
