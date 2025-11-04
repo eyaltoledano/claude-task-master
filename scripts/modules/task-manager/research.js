@@ -165,7 +165,9 @@ async function performResearch(
 						if (uniqueAutoDiscovered.length > 0) {
 							const sortedAutoIds = uniqueAutoDiscovered
 								.map((id) => id.toString())
-								.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+								.sort((a, b) =>
+									a.localeCompare(b, undefined, { numeric: true })
+								);
 
 							console.log(
 								chalk.gray('+ Auto-discovered related tasks: ') +

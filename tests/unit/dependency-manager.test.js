@@ -49,7 +49,17 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 		info: jest.fn(),
 		success: jest.fn(),
 		warn: jest.fn()
-	}))
+	})),
+	getTasksForTag: jest.fn((data, tag) => {
+		if (data.tasks && Array.isArray(data.tasks)) {
+			return data.tasks;
+		}
+		return data[tag]?.tasks || [];
+	}),
+	setTasksForTag: jest.fn((data, tag, tasks) => {
+		if (!data[tag]) data[tag] = {};
+		data[tag].tasks = tasks;
+	})
 }));
 
 jest.mock('path');
@@ -655,7 +665,8 @@ describe('Dependency Manager Module', () => {
 							dependencies: [1, 1, 99], // Self-dependency and duplicate and invalid dependency
 							subtasks: [
 								{ id: 1, dependencies: [2, 2] }, // Duplicate dependencies
-								{ id: 2, dependencies: [1] }
+								{ id: 2, dependencies: [1] },
+								{ id: 3, dependencies: [] } // Independent subtask to preserve deduped deps
 							]
 						},
 						{
@@ -705,8 +716,8 @@ describe('Dependency Manager Module', () => {
 			// 2. Invalid dependency removed
 			expect(tasksData.master.tasks[0].dependencies).not.toContain(99);
 			// 3. Dependencies have been deduplicated
-			const dedupedDeps = tasksData.master.tasks[0].subtasks[0].dependencies;
-			expect(dedupedDeps).toHaveLength(1);
+			const subtaskDeps = tasksData.master.tasks[0].subtasks[0].dependencies;
+			expect(subtaskDeps).toEqual([2]);
 			// 4. Invalid subtask dependency removed
 			expect(tasksData.master.tasks[1].subtasks[0].dependencies).toEqual([]);
 
