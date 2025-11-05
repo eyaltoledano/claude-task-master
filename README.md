@@ -87,6 +87,7 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
+- Snowflake API Key (Programmatic Access Token or OAuth token)
 - Claude Code (no API key required - requires Claude Code CLI)
 - Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
 
@@ -129,6 +130,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "SNOWFLAKE_API_KEY": "YOUR_SNOWFLAKE_API_KEY_HERE",
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       }
     }
@@ -159,6 +161,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "SNOWFLAKE_API_KEY": "YOUR_SNOWFLAKE_API_KEY_HERE"
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       },
       "type": "stdio"

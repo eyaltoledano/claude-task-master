@@ -673,6 +673,11 @@ function getBedrockBaseURL(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).bedrockBaseURL;
 }
 
+function getSnowflakeBaseURL(explicitRoot = null) {
+	// Directly return value from config
+	const configValue = getGlobalConfig(explicitRoot).snowflakeBaseURL;
+}
+
 /**
  * Gets the Google Cloud project ID for Vertex AI from configuration
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
@@ -841,7 +846,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
+		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+		snowflake: 'SNOWFLAKE_API_KEY' // Snowflake Cortex uses Programmatic Access Token or OAuth token
 		// Add other providers as needed
 	};
 
@@ -955,11 +961,15 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
 				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
 				break;
+			case 'snowflake':
+				apiKeyToCheck = mcpEnv.SNOWFLAKE_API_KEY; // Snowflake Cortex uses Programmatic Access Token
+				placeholderValue = 'YOUR_SNOWFLAKE_API_KEY_HERE';
+				break;
 			default:
 				return false; // Unknown provider
 		}
 
-		return !!apiKeyToCheck && !/KEY_HERE$/.test(apiKeyToCheck);
+		return !!apiKeyToCheck && !/(KEY|PAT)_HERE$/.test(apiKeyToCheck);
 	} catch (error) {
 		console.error(
 			chalk.red(`Error reading or parsing .cursor/mcp.json: ${error.message}`)
@@ -1185,6 +1195,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getSnowflakeBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,
 	isCodebaseAnalysisEnabled,
