@@ -10,7 +10,9 @@
  * Reference: https://docs.snowflake.com/en/user-guide/snowflake-cortex/open_ai_sdk
  */
 import { OpenAICompatibleProvider } from './openai-compatible.js';
-import { jsonSchema } from 'ai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { log } from '../../scripts/modules/utils.js';
+import MODEL_MAP from '../../scripts/modules/supported-models.json' with { type: 'json' };
 
 export class SnowflakeProvider extends OpenAICompatibleProvider {
   /**
@@ -31,12 +33,16 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
       name: 'Snowflake Cortex',
       apiKeyEnvVar: 'SNOWFLAKE_API_KEY',
       requiresApiKey: true,
+      // This tells the AI SDK client that the API supports structured outputs
+      // However, only OpenAI and Claude models actually support it
+      // We validate the specific model in generateObject/streamObject methods
       supportsStructuredOutputs: true
     });
 
     const { clientFactory } = options;
 
     this.clientFactory = clientFactory;
+    this.modelMap = MODEL_MAP; // For max_tokens lookup in request transformer
   }
 
   validateAuth(params) {
@@ -51,16 +57,8 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     throw new Error(`${this.name} API error during ${operation}: ${errorMessage}`);
   }
 
-  getClient(params) {
-    if (this.clientFactory) {
-      const baseURL = this.getBaseURL(params);
-      return this.clientFactory({ ...params, baseURL });
-    }
-    return super.getClient(params);
-  }
-
   /**
-   * Override getBaseURL to normalize Snowflake Cortex URLs
+   * Normalize Snowflake Cortex URLs to include required API path
    * @param {object} params - Client parameters
    * @returns {string|undefined} The normalized base URL
    */
@@ -117,6 +115,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
     // Normalize objects
     if (cleaned.type === 'object') {
+      // CRITICAL: Snowflake requires additionalProperties: false in EVERY object node
       cleaned.additionalProperties = false;
       
       if (cleaned.properties) {
@@ -125,11 +124,15 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
           cleanedProps[key] = this._removeUnsupportedFeatures(value);
         }
         cleaned.properties = cleanedProps;
-      }
-
-      // Ensure required array only contains keys that exist in properties
-      if (cleaned.required && cleaned.properties) {
-        cleaned.required = cleaned.required.filter(key => key in cleaned.properties);
+        
+        // Snowflake requires 'required' array with ALL property names for OpenAI models
+        // Set it for all models to avoid issues
+        if (!cleaned.required || cleaned.required.length === 0) {
+          cleaned.required = Object.keys(cleanedProps);
+        } else {
+          // Ensure required array only contains keys that exist in properties
+          cleaned.required = cleaned.required.filter(key => key in cleanedProps);
+        }
       }
     }
 
@@ -156,44 +159,164 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   }
 
   /**
-   * Normalizes parameters for Snowflake API calls
-   * Strips cortex/ prefix and handles temperature for Snowflake compatibility
-   * @param {object} params - Original parameters
-   * @returns {object} Normalized parameters
+   * Override getClient to add request transformer and optional debug logging
+   * @override
+   */
+  getClient(params) {
+    const debugMode = process.env.TASKMASTER_DEBUG === 'true' || process.env.SNOWFLAKE_DEBUG === 'true';
+    
+    try {
+      const { apiKey } = params;
+
+      if (this.requiresApiKey && !apiKey) {
+        throw new Error(`${this.name} API key is required.`);
+      }
+
+      const baseURL = this.getBaseURL(params);
+
+      // Capture methods and data for use in fetch wrapper
+      const removeUnsupportedFeatures = this._removeUnsupportedFeatures.bind(this);
+      const modelMap = this.modelMap;
+
+      // Create fetch wrapper that transforms requests for Snowflake compatibility
+      const fetchWrapper = async (url, options) => {
+        // Only transform POST requests to chat completions endpoint
+        if (options?.method === 'POST' && url.includes('/chat/completions') && options?.body) {
+          try {
+            const body = JSON.parse(options.body);
+            let modified = false;
+
+            // 1. Inject max_completion_tokens based on model from supported-models.json
+            // The body.model already contains the normalized model ID (e.g., "claude-haiku-4-5")
+            const modelId = `cortex/${body.model}`;
+            const snowflakeModels = modelMap?.snowflake || [];
+            const modelInfo = snowflakeModels.find(m => m.id === modelId);
+            const modelMaxTokens = modelInfo?.max_tokens || 64000; // Default to 64K if not found
+            
+            // Always set max_completion_tokens to the model's maximum capability
+            if (!body.max_completion_tokens) {
+              body.max_completion_tokens = modelMaxTokens;
+              modified = true;
+            } else if (body.max_completion_tokens > modelMaxTokens) {
+              // Cap at model's maximum
+              body.max_completion_tokens = modelMaxTokens;
+              modified = true;
+            }
+            
+            // Remove max_tokens if present (Snowflake uses max_completion_tokens)
+            if (body.max_tokens) {
+              delete body.max_tokens;
+              modified = true;
+            }
+
+            // 2. Transform response_format for OpenAI/Claude structured outputs
+            // Only clean schema if model supports structured outputs (OpenAI or Claude)
+            const modelSupportsStructuredOutputs = body.model?.includes('openai') || body.model?.includes('claude');
+            
+            if (modelSupportsStructuredOutputs && body.response_format && typeof body.response_format === 'object') {
+              // Remove Snowflake-unsupported features from JSON schema
+              if (body.response_format.type === 'json_schema' && body.response_format.json_schema?.schema) {
+                body.response_format.json_schema.schema = removeUnsupportedFeatures(
+                  body.response_format.json_schema.schema
+                );
+                modified = true;
+              }
+            }
+
+            // Debug logging if enabled
+            if (debugMode) {
+              console.error('\n[SNOWFLAKE DEBUG] ====== ACTUAL HTTP REQUEST TO SNOWFLAKE ======');
+              console.error('[SNOWFLAKE DEBUG] URL:', url);
+              console.error('[SNOWFLAKE DEBUG] Method:', options.method);
+              console.error('[SNOWFLAKE DEBUG] Headers:', JSON.stringify(options.headers, null, 2));
+              if (modified) {
+                console.error('[SNOWFLAKE DEBUG] Request Body (TRANSFORMED):');
+              } else {
+                console.error('[SNOWFLAKE DEBUG] Request Body:');
+              }
+              console.error(JSON.stringify(body, null, 2));
+              console.error('[SNOWFLAKE DEBUG] ==============================================\n');
+            }
+
+            // Update the request body
+            if (modified) {
+              options = {
+                ...options,
+                body: JSON.stringify(body)
+              };
+            }
+          } catch (e) {
+            // If we can't parse/transform, log and continue with original request
+            if (debugMode) {
+              console.error('[SNOWFLAKE DEBUG] Failed to transform request:', e.message);
+            }
+          }
+        }
+        
+        // Call the actual fetch
+        return fetch(url, options);
+      };
+
+      const clientConfig = {
+        name: this.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        fetch: fetchWrapper
+      };
+
+      if (this.requiresApiKey && apiKey) {
+        clientConfig.apiKey = apiKey;
+      }
+
+      if (baseURL) {
+        clientConfig.baseURL = baseURL;
+      }
+
+      // Tell the AI SDK that the API supports structured outputs
+      // Individual model support is validated in generateObject/streamObject
+      if (this.supportsStructuredOutputs !== undefined) {
+        clientConfig.supportsStructuredOutputs = this.supportsStructuredOutputs;
+      }
+
+      return createOpenAICompatible(clientConfig);
+    } catch (error) {
+      this.handleError('client initialization', error);
+    }
+  }
+
+  /**
+   * Normalize parameters: strip cortex/ prefix and handle temperature
+   * @private
    */
   _normalizeParams(params) {
-    const normalized = {
-      ...params,
-      modelId: this.normalizeModelId(params.modelId)
-    };
+    const normalized = { ...params, modelId: this.normalizeModelId(params.modelId) };
     
-    // Snowflake Cortex: OpenAI models don't support temperature parameter at all
-    // Claude models support it, so we set it to 0 for structured outputs for determinism
-    const isOpenAI = normalized.modelId?.includes('openai');
-    if (isOpenAI) {
+    // OpenAI models and structured outputs don't support temperature parameter
+    if (normalized.modelId?.includes('openai') || params.objectName) {
       delete normalized.temperature;
-    } else if (params.objectName) {
-      // For Claude structured outputs, use temperature 0 for deterministic responses
-      normalized.temperature = 0;
-    }
-
-    // Always optimize prompts for structured output (Snowflake best practice)
-    if (params.objectName && normalized.systemPrompt) {
-      normalized.systemPrompt = `${normalized.systemPrompt}\n\nRespond in JSON.`;
     }
     
     return normalized;
   }
 
   /**
-   * Prepares token parameter for OpenAI-compatible API
-   * @param {string} modelId - Model identifier (unused but required by interface)
-   * @param {number} maxTokens - Maximum tokens to generate
-   * @returns {object} Token parameter object
+   * Check if model supports native structured outputs (OpenAI or Claude only)
+   * @private
    */
-  prepareTokenParam(modelId, maxTokens) {
-    if (maxTokens === undefined) return {};
-    return { maxTokens: Math.floor(Number(maxTokens)) };
+  _modelSupportsStructuredOutputs(modelId) {
+    const normalized = this.normalizeModelId(modelId);
+    return normalized?.includes('openai') || normalized?.includes('claude');
+  }
+
+  /**
+   * Warn if model doesn't support structured outputs
+   * @private
+   */
+  _warnIfUnsupportedStructuredOutputs(modelId) {
+    if (!this._modelSupportsStructuredOutputs(modelId)) {
+      log('warn', 
+        `Model '${modelId}' does not support native structured outputs. ` +
+        `Attempting JSON mode fallback. For best results, use OpenAI or Claude models.`
+      );
+    }
   }
 
   async generateText(params) {
@@ -204,39 +327,15 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     return await super.streamText(this._normalizeParams(params));
   }
 
-  /**
-   * Transforms the schema to be Snowflake-compatible
-   * Converts Zod schema to JSON Schema and removes unsupported features
-   * @private
-   */
-  _applySnowflakeSchema(params) {
-    if (!params.schema) return;
-    
-    // Check if params.schema is a Zod schema (has toJSONSchema method)
-    if (typeof params.schema.toJSONSchema !== 'function') {
-      // Schema is not a Zod schema, skip transformation
-      return;
-    }
-    
-    // Convert Zod schema to JSON Schema (Draft 7)
-    const jsonSchemaObj = params.schema.toJSONSchema({ target: 'draft-7' });
-    
-    // Remove Snowflake-unsupported features
-    const cleanedSchema = this._removeUnsupportedFeatures(jsonSchemaObj);
-    
-    // Wrap cleaned schema back with AI SDK helper
-    params.schema = jsonSchema(cleanedSchema);
-  }
-
   async generateObject(params) {
-    const normalizedParams = this._normalizeParams(params);
-    this._applySnowflakeSchema(normalizedParams);
-    return await super.generateObject(normalizedParams);
+    const normalized = this._normalizeParams(params);
+    this._warnIfUnsupportedStructuredOutputs(normalized.modelId);
+    return await super.generateObject(normalized);
   }
 
   async streamObject(params) {
-    const normalizedParams = this._normalizeParams(params);
-    this._applySnowflakeSchema(normalizedParams);
-    return await super.streamObject(normalizedParams);
+    const normalized = this._normalizeParams(params);
+    this._warnIfUnsupportedStructuredOutputs(normalized.modelId);
+    return await super.streamObject(normalized);
   }
 }
