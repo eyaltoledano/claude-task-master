@@ -263,6 +263,88 @@ describe('Snowflake Provider - Unit Tests', () => {
 			expect(provider.getRequiredApiKeyName()).toBe('SNOWFLAKE_API_KEY');
 		});
 	});
+
+	describe('Model Support Detection', () => {
+		test('should detect that Llama models do not support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs('cortex/llama-3.3-70b');
+			expect(supports).toBe(false);
+		});
+
+		test('should detect that Mistral models do not support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs('cortex/mistral-large-2');
+			expect(supports).toBe(false);
+		});
+
+		test('should detect that DeepSeek models do not support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs('cortex/deepseek-v3');
+			expect(supports).toBe(false);
+		});
+
+		test('should detect that Claude models support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs('cortex/claude-haiku-4-5');
+			expect(supports).toBe(true);
+		});
+
+		test('should detect that OpenAI models support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs('cortex/openai-gpt-5');
+			expect(supports).toBe(true);
+		});
+
+		test('should handle model IDs without cortex prefix', () => {
+			expect(provider._modelSupportsStructuredOutputs('claude-sonnet-4-5')).toBe(true);
+			expect(provider._modelSupportsStructuredOutputs('openai-gpt-5')).toBe(true);
+			expect(provider._modelSupportsStructuredOutputs('llama-3.3-70b')).toBe(false);
+		});
+	});
+
+	describe('Warning for Unsupported Models', () => {
+		let consoleLogSpy;
+
+		beforeEach(() => {
+			// Mock console.log to capture warning messages (utils.js log uses console.log)
+			consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+		});
+
+		afterEach(() => {
+			consoleLogSpy.mockRestore();
+		});
+
+		test('should log warning for Llama models', () => {
+			provider._warnIfUnsupportedStructuredOutputs('llama-3.3-70b');
+			
+			expect(consoleLogSpy).toHaveBeenCalledWith(
+				expect.stringMatching(/\[WARN\].*llama-3\.3-70b.*does not support native structured outputs/)
+			);
+		});
+
+		test('should log warning for Mistral models', () => {
+			provider._warnIfUnsupportedStructuredOutputs('mistral-large-2');
+			
+			expect(consoleLogSpy).toHaveBeenCalledWith(
+				expect.stringMatching(/\[WARN\].*mistral-large-2.*does not support native structured outputs/)
+			);
+		});
+
+		test('should NOT log warning for Claude models', () => {
+			provider._warnIfUnsupportedStructuredOutputs('claude-haiku-4-5');
+			
+			expect(consoleLogSpy).not.toHaveBeenCalled();
+		});
+
+		test('should NOT log warning for OpenAI models', () => {
+			provider._warnIfUnsupportedStructuredOutputs('openai-gpt-5');
+			
+			expect(consoleLogSpy).not.toHaveBeenCalled();
+		});
+
+		test('should suggest using OpenAI or Claude models in warning', () => {
+			provider._warnIfUnsupportedStructuredOutputs('deepseek-v3');
+			
+			expect(consoleLogSpy).toHaveBeenCalledWith(
+				expect.stringContaining('For best results, use OpenAI or Claude models')
+			);
+		});
+	});
 });
 
 // ============================================================================
@@ -916,91 +998,6 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			expect(result.text.length).toBeGreaterThan(0);
 			expect(result.usage).toBeDefined();
 		}, 30000);
-
-		describe('Model Support Detection', () => {
-			test('should detect that Llama models do not support structured outputs', () => {
-				const supports = integrationProvider._modelSupportsStructuredOutputs('cortex/llama-3.3-70b');
-				expect(supports).toBe(false);
-			});
-
-			test('should detect that Mistral models do not support structured outputs', () => {
-				const supports = integrationProvider._modelSupportsStructuredOutputs('cortex/mistral-large-2');
-				expect(supports).toBe(false);
-			});
-
-			test('should detect that DeepSeek models do not support structured outputs', () => {
-				const supports = integrationProvider._modelSupportsStructuredOutputs('cortex/deepseek-v3');
-				expect(supports).toBe(false);
-			});
-
-			test('should detect that Claude models support structured outputs', () => {
-				const supports = integrationProvider._modelSupportsStructuredOutputs('cortex/claude-haiku-4-5');
-				expect(supports).toBe(true);
-			});
-
-			test('should detect that OpenAI models support structured outputs', () => {
-				const supports = integrationProvider._modelSupportsStructuredOutputs('cortex/openai-gpt-5');
-				expect(supports).toBe(true);
-			});
-
-			test('should handle model IDs without cortex prefix', () => {
-				expect(integrationProvider._modelSupportsStructuredOutputs('claude-sonnet-4-5')).toBe(true);
-				expect(integrationProvider._modelSupportsStructuredOutputs('openai-gpt-5')).toBe(true);
-				expect(integrationProvider._modelSupportsStructuredOutputs('llama-3.3-70b')).toBe(false);
-			});
-		});
-
-		describe('Warning for Unsupported Models', () => {
-			let consoleWarnSpy;
-
-			beforeEach(() => {
-				// Mock console.warn to capture warning messages
-				consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-			});
-
-			afterEach(() => {
-				consoleWarnSpy.mockRestore();
-			});
-
-			test('should log warning for Llama models', () => {
-				integrationProvider._warnIfUnsupportedStructuredOutputs('llama-3.3-70b');
-				
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
-					expect.stringContaining('llama-3.3-70b'),
-					expect.stringContaining('does not support native structured outputs')
-				);
-			});
-
-			test('should log warning for Mistral models', () => {
-				integrationProvider._warnIfUnsupportedStructuredOutputs('mistral-large-2');
-				
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
-					expect.stringContaining('mistral-large-2'),
-					expect.stringContaining('does not support native structured outputs')
-				);
-			});
-
-			test('should NOT log warning for Claude models', () => {
-				integrationProvider._warnIfUnsupportedStructuredOutputs('claude-haiku-4-5');
-				
-				expect(consoleWarnSpy).not.toHaveBeenCalled();
-			});
-
-			test('should NOT log warning for OpenAI models', () => {
-				integrationProvider._warnIfUnsupportedStructuredOutputs('openai-gpt-5');
-				
-				expect(consoleWarnSpy).not.toHaveBeenCalled();
-			});
-
-			test('should suggest using OpenAI or Claude models in warning', () => {
-				integrationProvider._warnIfUnsupportedStructuredOutputs('deepseek-v3');
-				
-				expect(consoleWarnSpy).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.stringContaining('For best results, use OpenAI or Claude models')
-				);
-			});
-		});
 	});
 });
 });
