@@ -675,7 +675,7 @@ function getBedrockBaseURL(explicitRoot = null) {
 
 function getSnowflakeBaseURL(explicitRoot = null) {
 	// Directly return value from config
-	const configValue = getGlobalConfig(explicitRoot).snowflakeBaseURL;
+	return getGlobalConfig(explicitRoot).snowflakeBaseURL;
 }
 
 /**
@@ -884,11 +884,17 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 		);
 		return false; // Cannot check without root
 	}
-	const mcpConfigPath = path.join(rootDir, '.cursor', 'mcp.json');
-
-	if (!fs.existsSync(mcpConfigPath)) {
-		// console.warn(chalk.yellow('Warning: .cursor/mcp.json not found.'));
-		return false; // File doesn't exist
+	
+	// Check both project-level and user-level mcp.json
+	const projectMcpPath = path.join(rootDir, '.cursor', 'mcp.json');
+	const userMcpPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.cursor', 'mcp.json');
+	
+	// Try project-level first, then user-level
+	const mcpConfigPath = fs.existsSync(projectMcpPath) ? projectMcpPath : 
+	                      (fs.existsSync(userMcpPath) ? userMcpPath : null);
+	
+	if (!mcpConfigPath) {
+		return false; // Neither file exists
 	}
 
 	try {
