@@ -12,171 +12,51 @@
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { jsonSchema } from 'ai';
 
-/**
- * Snowflake-compatible JSON Schemas for Task Master operations
- * 
- * These schemas mirror the Zod schemas in src/schemas/ but avoid patterns that Snowflake rejects:
- * - anyOf with null values (use optional properties instead)
- * - default keyword (omit entirely)
- * - Unsupported constraint keywords (minLength, maxLength, format, etc.)
- * 
- * For OpenAI models on Snowflake, these are also required:
- * - additionalProperties: false
- * - required field must contain all properties
- * 
- * When updating these schemas, compare with:
- * - src/schemas/add-task.js (AddTaskResponseSchema) → newTaskData
- * - src/schemas/expand-task.js (ExpandTaskResponseSchema) → subtasks
- * - src/schemas/update-tasks.js (UpdateTasksResponseSchema) → tasks
- * - src/schemas/update-task.js (UpdateTaskResponseSchema) → task
- * - src/schemas/analyze-complexity.js (ComplexityAnalysisResponseSchema) → complexityAnalysis
- * - src/schemas/parse-prd.js (ParsePRDResponseSchema) → tasks_data
- * 
- * @see https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
- */
-
-/**
- * Schema builder helper that enforces Snowflake requirements
- * Automatically adds additionalProperties: false and generates required array
- * 
- * @param {Object} properties - Property definitions
- * @param {string[]} [requiredFields] - Optional explicit required fields (defaults to all keys)
- * @returns {Object} Complete JSON schema
- */
-const buildSchema = (properties, requiredFields = null) => ({
-  type: 'object',
-  properties,
-  required: requiredFields || Object.keys(properties),
-  additionalProperties: false
-});
-
-/**
- * Wrapper builder for single-property schemas (common pattern)
- */
-const buildWrapperSchema = (propertyName, itemSchema) => 
-  buildSchema({ [propertyName]: { type: 'array', items: itemSchema } });
-
-// Base property definitions (reusable across schemas)
-const SUBTASK_PROPERTIES = {
-  id: { type: 'integer', description: 'Subtask ID (positive integer)' },
-  title: { type: 'string', description: 'Subtask title' },
-  description: { type: 'string', description: 'Subtask description' },
-  dependencies: { type: 'array', items: { type: 'integer' }, description: 'Array of dependency IDs' },
-  details: { type: 'string', description: 'Implementation details for the subtask' },
-  status: { type: 'string', description: 'Status of the subtask' },
-  testStrategy: { type: 'string', description: 'Testing approach for the subtask' }
-};
-
-const TASK_PROPERTIES = {
-  id: { type: 'integer', description: 'Task ID' },
-  title: { type: 'string', description: 'Task title' },
-  description: { type: 'string', description: 'Task description' },
-  status: { type: 'string', description: 'Task status' },
-  dependencies: { type: 'array', items: { oneOf: [{ type: 'integer' }, { type: 'string' }] }, description: 'Task dependencies' },
-  priority: { type: 'string', description: 'Task priority' },
-  details: { type: 'string', description: 'Implementation details' },
-  testStrategy: { type: 'string', description: 'Testing strategy' }
-};
-
-const COMPLEXITY_ITEM_PROPERTIES = {
-  taskId: { type: 'integer', description: 'Task ID' },
-  taskTitle: { type: 'string', description: 'Task title' },
-  complexityScore: { type: 'number', description: 'Complexity score from 1-10' },
-  recommendedSubtasks: { type: 'integer', description: 'Recommended number of subtasks' },
-  expansionPrompt: { type: 'string', description: 'Suggested prompt for task expansion' },
-  reasoning: { type: 'string', description: 'Reasoning for the complexity assessment' }
-};
-
-// Reusable component schemas
-const SUBTASK_ITEM_SCHEMA = buildSchema(SUBTASK_PROPERTIES);
-
-const SUBTASK_ITEM_SCHEMA_WITH_STRING_DEPS = buildSchema({
-  ...SUBTASK_PROPERTIES,
-  dependencies: { type: 'array', items: { type: 'string' } }
-});
-
-const FULL_TASK_SCHEMA = buildSchema({
-  ...TASK_PROPERTIES,
-  subtasks: { type: 'array', items: SUBTASK_ITEM_SCHEMA }
-}, ['id', 'title', 'description', 'status', 'dependencies']); // Only these are required
-
-// Simplified task schema without nested subtasks and integer-only dependencies (for Snowflake compatibility)
-const SIMPLE_TASK_SCHEMA = buildSchema({
-  id: { type: 'integer', description: 'Task ID' },
-  title: { type: 'string', description: 'Task title' },
-  description: { type: 'string', description: 'Task description' },
-  status: { type: 'string', description: 'Task status' },
-  dependencies: { type: 'array', items: { type: 'integer' }, description: 'Task dependencies' },
-  priority: { type: 'string', description: 'Task priority' },
-  details: { type: 'string', description: 'Implementation details' },
-  testStrategy: { type: 'string', description: 'Testing strategy' }
-}, ['id', 'title', 'description', 'status', 'dependencies']);
-
-// Main operation schemas (matches src/schemas/)
-const NEW_TASK_DATA_SCHEMA = buildSchema({
-  title: { type: 'string', description: 'Clear, concise title for the task' },
-  description: { type: 'string', description: 'A one or two sentence description of the task' },
-  details: { type: 'string', description: 'In-depth implementation details, considerations, and guidance' },
-  testStrategy: { type: 'string', description: 'Detailed approach for verifying task completion' },
-  dependencies: { type: 'array', items: { type: 'number' }, description: 'Array of task IDs that this task depends on' }
-});
-
-const SUBTASKS_SCHEMA = buildWrapperSchema('subtasks', SUBTASK_ITEM_SCHEMA);
-const TASKS_SCHEMA = buildWrapperSchema('tasks', SIMPLE_TASK_SCHEMA); // Use simple schema without nested subtasks
-const TASK_SCHEMA = buildSchema({ task: FULL_TASK_SCHEMA });
-
-const COMPLEXITY_ANALYSIS_SCHEMA = buildWrapperSchema(
-  'complexityAnalysis',
-  buildSchema(COMPLEXITY_ITEM_PROPERTIES)
-);
-
-const TASKS_DATA_SCHEMA = buildWrapperSchema(
-  'tasks',
-  buildSchema(
-    {
-      id: { type: 'integer' },
-      title: { type: 'string' },
-      description: { type: 'string' },
-      details: { type: 'string' },
-      testStrategy: { type: 'string' },
-      priority: { type: 'string' },
-      dependencies: { type: 'array', items: { type: 'integer' } },
-      status: { type: 'string' }
-    },
-    ['id', 'title', 'description'] // Only these required
-  )
-);
-
-const UPDATED_TASK_SCHEMA = buildSchema({
-  title: { type: 'string', description: 'Updated task title' },
-  description: { type: 'string', description: 'Updated description' },
-  details: { type: 'string', description: 'Updated implementation details' },
-  testStrategy: { type: 'string', description: 'Updated testing approach' },
-  priority: { type: 'string', description: 'Task priority level' }
-});
-
-const SUBTASK_REGENERATION_SCHEMA = buildWrapperSchema('subtasks', SUBTASK_ITEM_SCHEMA_WITH_STRING_DEPS);
-
-// Schema lookup map
-const SNOWFLAKE_SCHEMA_MAP = {
-  newTaskData: NEW_TASK_DATA_SCHEMA,
-  subtasks: SUBTASKS_SCHEMA,
-  tasks: TASKS_SCHEMA,
-  task: TASK_SCHEMA,
-  complexityAnalysis: COMPLEXITY_ANALYSIS_SCHEMA,
-  tasks_data: TASKS_DATA_SCHEMA,
-  updated_task: UPDATED_TASK_SCHEMA,
-  subtask_regeneration: SUBTASK_REGENERATION_SCHEMA
-};
-
 export class SnowflakeProvider extends OpenAICompatibleProvider {
-  constructor() {
+  /**
+   * Snowflake-unsupported JSON Schema constraint keywords
+   * @see https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
+   */
+  static UNSUPPORTED_KEYWORDS = [
+    'default', '$schema', // General
+    'multipleOf', // Integer
+    'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', // Number
+    'minLength', 'maxLength', 'format', // String
+    'uniqueItems', 'contains', 'minContains', 'maxContains', 'minItems', 'maxItems', // Array
+    'patternProperties', 'minProperties', 'maxProperties', 'propertyNames' // Object
+  ];
+
+  constructor(options = {}) {
     super({
       name: 'Snowflake Cortex',
       apiKeyEnvVar: 'SNOWFLAKE_API_KEY',
       requiresApiKey: true,
-      supportsStructuredOutputs: true  // Enabled with schema transformation for compatibility
+      supportsStructuredOutputs: true
     });
+
+    const { clientFactory } = options;
+
+    this.clientFactory = clientFactory;
+  }
+
+  validateAuth(params) {
+    super.validateAuth(params);
+    if (typeof params.apiKey !== 'string' || params.apiKey.trim().length === 0) {
+      throw new Error('Snowflake Cortex API key is required');
+    }
+  }
+
+  handleError(operation, error) {
+    const errorMessage = error?.message || 'Unknown error occurred';
+    throw new Error(`${this.name} API error during ${operation}: ${errorMessage}`);
+  }
+
+  getClient(params) {
+    if (this.clientFactory) {
+      const baseURL = this.getBaseURL(params);
+      return this.clientFactory({ ...params, baseURL });
+    }
+    return super.getClient(params);
   }
 
   /**
@@ -204,12 +84,66 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   }
 
   /**
-   * Gets Snowflake-compatible JSON Schema for the given object type
-   * @param {string} objectName - Name of the object being generated
-   * @returns {object|null} JSON Schema object or null if no custom schema available
+   * Recursively removes Snowflake-unsupported features from JSON Schema
+   * @private
+   * @param {object} schema - JSON Schema object
+   * @returns {object} Cleaned schema
    */
-  _createSnowflakeCompatibleSchema(objectName) {
-    return SNOWFLAKE_SCHEMA_MAP[objectName] || null;
+  _removeUnsupportedFeatures(schema) {
+    if (!schema || typeof schema !== 'object') {
+      return schema;
+    }
+
+    const cleaned = { ...schema };
+
+    // Remove Snowflake-unsupported keywords
+    SnowflakeProvider.UNSUPPORTED_KEYWORDS.forEach(keyword => {
+      delete cleaned[keyword];
+    });
+
+    // Handle anyOf with null (convert to optional)
+    if (cleaned.anyOf) {
+      const nonNullTypes = cleaned.anyOf.filter(item => 
+        !(item.type === 'null' || (Array.isArray(item.type) && item.type.includes('null')))
+      );
+      if (nonNullTypes.length === 1) {
+        // Single non-null type - flatten it
+        Object.assign(cleaned, nonNullTypes[0]);
+        delete cleaned.anyOf;
+      } else if (nonNullTypes.length > 1) {
+        cleaned.anyOf = nonNullTypes.map(item => this._removeUnsupportedFeatures(item));
+      }
+    }
+
+    // Normalize objects
+    if (cleaned.type === 'object') {
+      cleaned.additionalProperties = false;
+      
+      if (cleaned.properties) {
+        const cleanedProps = {};
+        for (const [key, value] of Object.entries(cleaned.properties)) {
+          cleanedProps[key] = this._removeUnsupportedFeatures(value);
+        }
+        cleaned.properties = cleanedProps;
+      }
+
+      // Ensure required array only contains keys that exist in properties
+      if (cleaned.required && cleaned.properties) {
+        cleaned.required = cleaned.required.filter(key => key in cleaned.properties);
+      }
+    }
+
+    // Handle arrays
+    if (cleaned.type === 'array' && cleaned.items) {
+      cleaned.items = this._removeUnsupportedFeatures(cleaned.items);
+    }
+
+    // Handle oneOf
+    if (cleaned.oneOf) {
+      cleaned.oneOf = cleaned.oneOf.map(item => this._removeUnsupportedFeatures(item));
+    }
+
+    return cleaned;
   }
 
   /**
@@ -270,27 +204,39 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     return await super.streamText(this._normalizeParams(params));
   }
 
+  /**
+   * Transforms the schema to be Snowflake-compatible
+   * Converts Zod schema to JSON Schema and removes unsupported features
+   * @private
+   */
+  _applySnowflakeSchema(params) {
+    if (!params.schema) return;
+    
+    // Check if params.schema is a Zod schema (has toJSONSchema method)
+    if (typeof params.schema.toJSONSchema !== 'function') {
+      // Schema is not a Zod schema, skip transformation
+      return;
+    }
+    
+    // Convert Zod schema to JSON Schema (Draft 7)
+    const jsonSchemaObj = params.schema.toJSONSchema({ target: 'draft-7' });
+    
+    // Remove Snowflake-unsupported features
+    const cleanedSchema = this._removeUnsupportedFeatures(jsonSchemaObj);
+    
+    // Wrap cleaned schema back with AI SDK helper
+    params.schema = jsonSchema(cleanedSchema);
+  }
+
   async generateObject(params) {
     const normalizedParams = this._normalizeParams(params);
-
-    // Use custom Snowflake-compatible schema if available
-    const customSchema = this._createSnowflakeCompatibleSchema(params.objectName);
-    if (customSchema) {
-      normalizedParams.schema = jsonSchema(customSchema);
-    }
-
+    this._applySnowflakeSchema(normalizedParams);
     return await super.generateObject(normalizedParams);
   }
 
   async streamObject(params) {
     const normalizedParams = this._normalizeParams(params);
-
-    // Use custom Snowflake-compatible schema if available
-    const customSchema = this._createSnowflakeCompatibleSchema(params.objectName);
-    if (customSchema) {
-      normalizedParams.schema = jsonSchema(customSchema);
-    }
-
+    this._applySnowflakeSchema(normalizedParams);
     return await super.streamObject(normalizedParams);
   }
 }
