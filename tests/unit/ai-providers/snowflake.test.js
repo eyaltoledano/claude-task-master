@@ -789,13 +789,13 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			return false;
 		};
 
-		describe('Claude Models - Text+JSON Fallback', () => {
+		describe('Claude Models - Native Structured Outputs', () => {
 			const claudeModels = [
 				'cortex/claude-haiku-4-5',
 				'cortex/claude-sonnet-4-5'
 			];
 
-			test.each(claudeModels)('should generate object using text fallback for %s', async (modelId) => {
+			test.each(claudeModels)('should generate object with native structured outputs for %s', async (modelId) => {
 				if (skipIfNoKey()) return;
 
 				const params = {
