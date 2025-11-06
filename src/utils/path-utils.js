@@ -139,9 +139,14 @@ export function findPRDPath(explicitPath = null, args = null, log = null) {
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		// This ensures relative paths are resolved from where the user invoked the command
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit PRD path: ${resolvedPath}`);
@@ -211,9 +216,13 @@ export function findComplexityReportPath(
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit complexity report path: ${resolvedPath}`);
@@ -292,9 +301,13 @@ export function resolveTasksOutputPath(
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		logger.info?.(`Using explicit output path: ${resolvedPath}`);
 		return resolvedPath;
@@ -338,9 +351,13 @@ export function resolveComplexityReportOutputPath(
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		logger.info?.(
 			`Using explicit complexity report output path: ${resolvedPath}`
@@ -387,9 +404,13 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit config path: ${resolvedPath}`);
