@@ -32,7 +32,7 @@ jest.mock('chalk', () => ({
 	blue: jest.fn((text) => text),
 	green: jest.fn((text) => text),
 	yellow: jest.fn((text) => text),
-	white: jest.fn((text) => ({
+	white: jest.fn(() => ({
 		bold: jest.fn((text) => text)
 	})),
 	reset: jest.fn((text) => text),
@@ -70,13 +70,13 @@ const realSupportedModelsPath = path.resolve(
 	'../../scripts/modules/supported-models.json'
 );
 let REAL_SUPPORTED_MODELS_CONTENT;
-let REAL_SUPPORTED_MODELS_DATA;
+let _REAL_SUPPORTED_MODELS_DATA;
 try {
 	REAL_SUPPORTED_MODELS_CONTENT = fs.readFileSync(
 		realSupportedModelsPath,
 		'utf-8'
 	);
-	REAL_SUPPORTED_MODELS_DATA = JSON.parse(REAL_SUPPORTED_MODELS_CONTENT);
+	_REAL_SUPPORTED_MODELS_DATA = JSON.parse(REAL_SUPPORTED_MODELS_CONTENT);
 } catch (err) {
 	console.error(
 		'FATAL TEST SETUP ERROR: Could not read or parse real supported-models.json',
@@ -146,6 +146,7 @@ const DEFAULT_CONFIG = {
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
 		enableCodebaseAnalysis: true,
+		enableProxy: false,
 		responseLanguage: 'English'
 	},
 	claudeCode: {},

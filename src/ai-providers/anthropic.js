@@ -52,7 +52,8 @@ export class AnthropicAIProvider extends BaseAIProvider {
 				...(baseURL && { baseURL }),
 				headers: {
 					'anthropic-beta': 'output-128k-2025-02-19'
-				}
+				},
+				fetch: this.createProxyFetch()
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

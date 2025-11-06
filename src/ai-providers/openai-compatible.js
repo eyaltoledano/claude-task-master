@@ -106,7 +106,9 @@ export class OpenAICompatibleProvider extends BaseAIProvider {
 
 			const clientConfig = {
 				// Provider name for SDK (required, used for logging/debugging)
-				name: this.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+				name: this.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+				// Add proxy support
+				fetch: this.createProxyFetch()
 			};
 
 			// Only include apiKey if provider requires it

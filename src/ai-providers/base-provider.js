@@ -8,7 +8,9 @@ import {
 	NoObjectGeneratedError
 } from 'ai';
 import { jsonrepair } from 'jsonrepair';
-import { log } from '../../scripts/modules/utils.js';
+import { log, findProjectRoot } from '../../scripts/modules/utils.js';
+import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
+import { EnvHttpProxyAgent } from 'undici';
 
 /**
  * Base class for all AI providers
@@ -21,6 +23,9 @@ export class BaseAIProvider {
 
 		// Each provider must set their name
 		this.name = this.constructor.name;
+
+		// Cache proxy agent to avoid creating multiple instances
+		this._proxyAgent = null;
 
 		/**
 		 * Whether this provider needs explicit schema in JSON mode
@@ -46,6 +51,37 @@ export class BaseAIProvider {
 		if (!params.apiKey) {
 			throw new Error(`${this.name} API key is required`);
 		}
+	}
+
+	/**
+	 * Creates a custom fetch function with proxy support.
+	 * Only enables proxy when TASKMASTER_ENABLE_PROXY environment variable is set to 'true'
+	 * or enableProxy is set to true in config.json.
+	 * Automatically reads http_proxy/https_proxy environment variables when enabled.
+	 * @returns {Function} Custom fetch function with proxy support, or undefined if proxy is disabled
+	 */
+	createProxyFetch() {
+		// Cache project root to avoid repeated lookups
+		if (!this._projectRoot) {
+			this._projectRoot = findProjectRoot();
+		}
+		const projectRoot = this._projectRoot;
+
+		if (!isProxyEnabled(null, projectRoot)) {
+			// Return undefined to use default fetch without proxy
+			return undefined;
+		}
+
+		// Proxy is enabled, create and return proxy fetch
+		if (!this._proxyAgent) {
+			this._proxyAgent = new EnvHttpProxyAgent();
+		}
+		return (url, options = {}) => {
+			return fetch(url, {
+				...options,
+				dispatcher: this._proxyAgent
+			});
+		};
 	}
 
 	/**

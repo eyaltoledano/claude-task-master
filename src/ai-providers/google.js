@@ -38,7 +38,8 @@ export class GoogleAIProvider extends BaseAIProvider {
 
 			return createGoogleGenerativeAI({
 				apiKey,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				fetch: this.createProxyFetch()
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);
