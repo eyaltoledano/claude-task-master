@@ -10,7 +10,13 @@ jest.unstable_mockModule('@ai-sdk/openai-compatible', () => ({
 // Mock utils
 jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
-	resolveEnvVariable: jest.fn((key) => process.env[key])
+	resolveEnvVariable: jest.fn((key) => process.env[key]),
+	findProjectRoot: jest.fn(() => process.cwd()),
+	isEmpty: jest.fn(() => false)
+}));
+
+jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
+	isProxyEnabled: jest.fn(() => false)
 }));
 
 // Import after mocking
