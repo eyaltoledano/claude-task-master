@@ -15,6 +15,7 @@ import { StorageFactory } from '../../storage/services/storage-factory.js';
 import { TaskEntity } from '../entities/task.entity.js';
 import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/factory.js';
+import type { ExpandTaskResult } from '../../integration/services/task-expansion.service.js';
 
 /**
  * Result returned by getTaskList
@@ -626,6 +627,76 @@ export class TaskService {
 					taskId: taskIdStr,
 					tag: activeTag,
 					promptLength: prompt.length
+				},
+				error as Error
+			);
+		}
+	}
+
+	/**
+	 * Expand a task into subtasks using AI-powered generation
+	 * @param taskId - Task ID to expand (supports numeric and alphanumeric IDs)
+	 * @param tag - Optional tag context
+	 * @param options - Optional expansion options
+	 * @param options.numSubtasks - Number of subtasks to generate
+	 * @param options.useResearch - Use research AI for generation
+	 * @param options.additionalContext - Additional context for generation
+	 * @param options.force - Force regeneration even if subtasks exist
+	 * @returns ExpandTaskResult when using API storage, void for file storage
+	 */
+	async expandTaskWithPrompt(
+		taskId: string | number,
+		tag?: string,
+		options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<ExpandTaskResult | void> {
+		// Ensure we have storage
+		if (!this.storage) {
+			throw new TaskMasterError(
+				'Storage not initialized',
+				ERROR_CODES.STORAGE_ERROR
+			);
+		}
+
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
+		// Use provided tag or get active tag
+		const activeTag = tag || this.getActiveTag();
+		const taskIdStr = String(taskId);
+
+		try {
+			// AI-powered expansion - send to storage layer
+			// API storage: sends request to backend for server-side AI processing
+			// File storage: must use client-side AI logic before calling this
+			return await this.storage.expandTaskWithPrompt(
+				taskIdStr,
+				activeTag,
+				options
+			);
+		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError
+			) {
+				throw error;
+			}
+
+			throw new TaskMasterError(
+				`Failed to expand task ${taskId}`,
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'expandTaskWithPrompt',
+					resource: 'task',
+					taskId: taskIdStr,
+					tag: activeTag,
+					numSubtasks: options?.numSubtasks
 				},
 				error as Error
 			);

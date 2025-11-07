@@ -1,13 +1,6 @@
 import fs from 'fs';
-import path from 'path';
 
-import {
-	getTagAwareFilePath,
-	isSilentMode,
-	log,
-	readJSON,
-	writeJSON
-} from '../utils.js';
+import { readJSON, writeJSON } from '../utils.js';
 
 import {
 	displayAiUsageSummary,
@@ -20,13 +13,15 @@ import { generateObjectService } from '../ai-services-unified.js';
 
 import {
 	getDefaultSubtasks,
-	getDebugFlag,
-	hasCodebaseAnalysis
+	hasCodebaseAnalysis,
+	getDebugFlag
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { tryExpandViaRemote } from '@tm/bridge';
+import { createBridgeLogger } from '../bridge-utils.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).
@@ -68,20 +63,35 @@ async function expandTask(
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
 	const projectRoot = contextProjectRoot || findProjectRoot(tasksPath);
 
-	// Use mcpLog if available, otherwise use the default console log wrapper
-	const logger = mcpLog || {
-		info: (msg) => !isSilentMode() && log('info', msg),
-		warn: (msg) => !isSilentMode() && log('warn', msg),
-		error: (msg) => !isSilentMode() && log('error', msg),
-		debug: (msg) =>
-			!isSilentMode() && getDebugFlag(session) && log('debug', msg) // Use getDebugFlag
-	};
+	// Create unified logger and report function
+	const { logger, report, isMCP } = createBridgeLogger(mcpLog, session);
 
-	if (mcpLog) {
+	if (isMCP) {
 		logger.info(`expandTask called with context: session=${!!session}`);
 	}
 
 	try {
+		// --- BRIDGE: Try remote expansion first (API storage) ---
+		const remoteResult = await tryExpandViaRemote({
+			taskId,
+			numSubtasks,
+			useResearch,
+			additionalContext,
+			force,
+			projectRoot,
+			tag,
+			isMCP,
+			outputFormat,
+			report
+		});
+
+		// If remote handled it, return the result
+		if (remoteResult) {
+			return remoteResult;
+		}
+		// Otherwise fall through to file-based logic below
+		// --- End BRIDGE ---
+
 		// --- Task Loading/Filtering (Unchanged) ---
 		logger.info(`Reading tasks from ${tasksPath}`);
 		const data = readJSON(tasksPath, projectRoot, tag);
@@ -275,7 +285,7 @@ async function expandTask(
 		}
 
 		const { systemPrompt, userPrompt: promptContent } =
-			await promptManager.loadPrompt('expand-task', promptParams, variantKey);
+			promptManager.loadPrompt('expand-task', promptParams, variantKey);
 
 		// Debug logging to identify the issue
 		logger.debug(`Selected variant: ${variantKey}`);

@@ -14,3 +14,9 @@ export {
 	type UpdateBridgeParams,
 	type RemoteUpdateResult
 } from './update-bridge.js';
+
+export {
+	tryExpandViaRemote,
+	type ExpandBridgeParams,
+	type RemoteExpandResult
+} from './expand-bridge.js';
