@@ -29,6 +29,7 @@ import {
 	ExpandTaskResult,
 	TaskExpansionService
 } from '../../integration/services/task-expansion.service.js';
+import { TaskRetrievalService } from '../../integration/services/task-retrieval.service.js';
 
 /**
  * API storage configuration
@@ -82,6 +83,7 @@ export class ApiStorage implements IStorage {
 	private tagsCache: Map<string, TaskTag> = new Map();
 	private apiClient?: ApiClient;
 	private expansionService?: TaskExpansionService;
+	private retrievalService?: TaskRetrievalService;
 	private readonly logger = getLogger('ApiStorage');
 
 	constructor(config: ApiStorageConfig) {
@@ -267,17 +269,14 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
-	 * Load a single task by ID
+	 * Load a single task by ID (supports UUID or display ID like HAM-123)
 	 */
 	async loadTask(taskId: string, tag?: string): Promise<Task | null> {
 		await this.ensureInitialized();
 
 		try {
-			this.ensureBriefSelected('loadTask');
-
-			return await this.retryOperation(() =>
-				this.repository.getTask(this.projectId, taskId)
-			);
+			const retrievalService = this.getRetrievalService();
+			return retrievalService.getTask(taskId);
 		} catch (error) {
 			this.wrapError(error, 'Failed to load task from API', {
 				operation: 'loadTask',
@@ -967,6 +966,25 @@ export class ApiStorage implements IStorage {
 		}
 
 		return this.expansionService;
+	}
+
+	/**
+	 * Get or create TaskRetrievalService instance
+	 */
+	private getRetrievalService(): TaskRetrievalService {
+		if (!this.retrievalService) {
+			const apiClient = this.getApiClient();
+			const authManager = AuthManager.getInstance();
+
+			this.retrievalService = new TaskRetrievalService(
+				this.repository,
+				this.projectId,
+				apiClient,
+				authManager
+			);
+		}
+
+		return this.retrievalService;
 	}
 
 	/**
