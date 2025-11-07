@@ -99,7 +99,15 @@ export class TaskExpansionService {
 			const task = await this.repository.getTask(this.projectId, taskId);
 
 			if (!task) {
-				throw new Error(`Task ${taskId} not found`);
+				throw new TaskMasterError(
+					`Task ${taskId} not found`,
+					ERROR_CODES.VALIDATION_ERROR,
+					{
+						operation: 'expandTask',
+						taskId,
+						userMessage: `Task ${taskId} isn't available in the current project.`
+					}
+				);
 			}
 
 			// Get brief information for enriched context
