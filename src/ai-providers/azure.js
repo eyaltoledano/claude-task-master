@@ -43,7 +43,7 @@ export class AzureProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Azure OpenAI API key
 	 * @param {string} params.baseURL - Azure OpenAI endpoint URL (from .taskmasterconfig global.azureBaseURL or models.[role].baseURL)
 	 * @returns {Function} Azure OpenAI client function
-	 * @throws {Error} If required parameters are missing or initialization fails
+	 * @throws {Error} If client initialization fails
 	 */
 	getClient(params) {
 		try {

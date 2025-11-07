@@ -26,7 +26,7 @@ export class GoogleAIProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Google API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} Google AI client function
-	 * @throws {Error} If API key is missing or initialization fails
+	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
