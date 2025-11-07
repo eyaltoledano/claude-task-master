@@ -20,3 +20,10 @@ export {
 	type ExpandBridgeParams,
 	type RemoteExpandResult
 } from './expand-bridge.js';
+
+export {
+	tryListTagsViaRemote,
+	type TagsBridgeParams,
+	type RemoteTagsResult,
+	type TagInfo
+} from './tags-bridge.js';

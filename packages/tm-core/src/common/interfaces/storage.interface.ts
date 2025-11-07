@@ -216,6 +216,53 @@ export interface IStorage {
 	 * @returns The brief name if using API storage with a selected brief, null otherwise
 	 */
 	getCurrentBriefName(): string | null;
+
+	/**
+	 * Get all tags with detailed statistics including task counts
+	 * @returns Promise that resolves to tags with statistics
+	 */
+	getTagsWithStats(): Promise<TagsWithStatsResult>;
+}
+
+/**
+ * Tag information with detailed statistics
+ */
+export interface TagInfo {
+	/** Tag/Brief name */
+	name: string;
+	/** Whether this is the current/active tag */
+	isCurrent: boolean;
+	/** Total number of tasks in this tag */
+	taskCount: number;
+	/** Number of completed tasks */
+	completedTasks: number;
+	/** Breakdown of tasks by status */
+	statusBreakdown: Record<string, number>;
+	/** Subtask counts if available */
+	subtaskCounts?: {
+		totalSubtasks: number;
+		subtasksByStatus: Record<string, number>;
+	};
+	/** Tag creation date */
+	created?: string;
+	/** Tag description */
+	description?: string;
+	/** Brief/Tag status (for API storage briefs) */
+	status?: string;
+	/** Brief ID/UUID (for API storage) */
+	briefId?: string;
+}
+
+/**
+ * Result returned by getTagsWithStats
+ */
+export interface TagsWithStatsResult {
+	/** List of tags with statistics */
+	tags: TagInfo[];
+	/** Current active tag name */
+	currentTag: string | null;
+	/** Total number of tags */
+	totalTags: number;
 }
 
 /**
@@ -311,6 +358,7 @@ export abstract class BaseStorage implements IStorage {
 	abstract getStats(): Promise<StorageStats>;
 	abstract getStorageType(): 'file' | 'api';
 	abstract getCurrentBriefName(): string | null;
+	abstract getTagsWithStats(): Promise<TagsWithStatsResult>;
 	/**
 	 * Utility method to generate backup filename
 	 * @param originalPath - Original file path

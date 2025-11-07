@@ -274,4 +274,13 @@ export class TasksDomain {
 	getStorageType(): 'file' | 'api' {
 		return this.taskService.getStorageType();
 	}
+
+	/**
+	 * Get all tags with detailed statistics including task counts
+	 * For API storage, returns briefs with task counts
+	 * For file storage, returns tags from tasks.json with counts
+	 */
+	async getTagsWithStats() {
+		return this.taskService.getTagsWithStats();
+	}
 }

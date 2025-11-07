@@ -36,6 +36,12 @@ export type * from './common/types/index.js';
 // Common interfaces
 export type * from './common/interfaces/index.js';
 
+// Storage interfaces - TagInfo and TagsWithStatsResult
+export type {
+	TagInfo,
+	TagsWithStatsResult
+} from './common/interfaces/storage.interface.js';
+
 // Constants
 export * from './common/constants/index.js';
 

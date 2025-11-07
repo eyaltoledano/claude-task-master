@@ -676,6 +676,117 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Get all tags with detailed statistics including task counts
+	 * For file storage, reads tags from tasks.json and calculates statistics
+	 */
+	async getTagsWithStats(): Promise<{
+		tags: Array<{
+			name: string;
+			isCurrent: boolean;
+			taskCount: number;
+			completedTasks: number;
+			statusBreakdown: Record<string, number>;
+			subtaskCounts?: {
+				totalSubtasks: number;
+				subtasksByStatus: Record<string, number>;
+			};
+			created?: string;
+			description?: string;
+		}>;
+		currentTag: string | null;
+		totalTags: number;
+	}> {
+		const availableTags = await this.getAllTags();
+
+		// Get active tag from state.json
+		const activeTag = await this.getActiveTagFromState();
+
+		const tagsWithStats = await Promise.all(
+			availableTags.map(async (tagName) => {
+				try {
+					// Load tasks for this tag
+					const tasks = await this.loadTasks(tagName);
+
+					// Calculate statistics
+					const statusBreakdown: Record<string, number> = {};
+					let completedTasks = 0;
+
+					const subtaskCounts = {
+						totalSubtasks: 0,
+						subtasksByStatus: {} as Record<string, number>
+					};
+
+					tasks.forEach((task) => {
+						// Count task status
+						const status = task.status || 'pending';
+						statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+
+						if (status === 'done') {
+							completedTasks++;
+						}
+
+						// Count subtasks
+						if (task.subtasks && task.subtasks.length > 0) {
+							subtaskCounts.totalSubtasks += task.subtasks.length;
+
+							task.subtasks.forEach((subtask) => {
+								const subStatus = subtask.status || 'pending';
+								subtaskCounts.subtasksByStatus[subStatus] =
+									(subtaskCounts.subtasksByStatus[subStatus] || 0) + 1;
+							});
+						}
+					});
+
+					// Load metadata to get created date and description
+					const metadata = await this.loadMetadata(tagName);
+
+					return {
+						name: tagName,
+						isCurrent: tagName === activeTag,
+						taskCount: tasks.length,
+						completedTasks,
+						statusBreakdown,
+						subtaskCounts:
+							subtaskCounts.totalSubtasks > 0 ? subtaskCounts : undefined,
+						created: (metadata as any)?.created,
+						description: metadata?.description
+					};
+				} catch (error) {
+					// If we can't load tasks for a tag, return it with 0 tasks
+					return {
+						name: tagName,
+						isCurrent: tagName === activeTag,
+						taskCount: 0,
+						completedTasks: 0,
+						statusBreakdown: {}
+					};
+				}
+			})
+		);
+
+		return {
+			tags: tagsWithStats,
+			currentTag: activeTag,
+			totalTags: tagsWithStats.length
+		};
+	}
+
+	/**
+	 * Get the active tag from state.json
+	 * @returns The active tag name or 'master' as default
+	 */
+	private async getActiveTagFromState(): Promise<string> {
+		try {
+			const statePath = this.pathResolver.getBasePath() + '/state.json';
+			const stateData = await this.fileOps.readJson(statePath);
+			return stateData?.currentTag || 'master';
+		} catch (error) {
+			// If state.json doesn't exist or can't be read, default to 'master'
+			return 'master';
+		}
+	}
+
+	/**
 	 * Enrich tasks with complexity data from the complexity report
 	 * Private helper method called by loadTasks()
 	 */

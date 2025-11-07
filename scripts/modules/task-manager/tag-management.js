@@ -18,6 +18,7 @@ import {
 } from '../utils.js';
 import { displayBanner, getStatusWithColor } from '../ui.js';
 import findNextTask from './find-next-task.js';
+import { tryListTagsViaRemote } from '@tm/bridge';
 
 /**
  * Create a new tag context
@@ -530,6 +531,34 @@ async function tags(
 
 	try {
 		logFn.info('Listing available tags');
+
+		// Try API storage first via bridge
+		const bridgeResult = await tryListTagsViaRemote({
+			projectRoot,
+			showMetadata,
+			isMCP: !!mcpLog,
+			outputFormat,
+			report: (level, ...args) => {
+				if (logFn[level]) {
+					logFn[level](...args);
+				} else {
+					logFn.info(...args);
+				}
+			}
+		});
+
+		// If bridge handled it (API storage), return the result
+		if (bridgeResult) {
+			logFn.success(`Found ${bridgeResult.totalTags} tags via API storage`);
+			return {
+				tags: bridgeResult.tags,
+				currentTag: bridgeResult.currentTag,
+				totalTags: bridgeResult.totalTags
+			};
+		}
+
+		// Fall through to file storage logic
+		logFn.info('Using file storage for tags');
 
 		// Read current tasks data
 		const data = readJSON(tasksPath, projectRoot);
