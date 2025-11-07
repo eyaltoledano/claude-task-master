@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import Table from 'cli-table3';
 import { createTmCore, type TmCore } from '@tm/core';
+import { ui } from '@tm/cli';
 
 /**
  * Tag information with task statistics
@@ -176,7 +177,7 @@ export async function tryListTagsViaRemote(
 						: `  ${tag.name} ${chalk.gray(`(${tag.briefId})`)}`;
 					row.push(tagDisplay);
 
-					row.push(chalk.gray(tag.status));
+					row.push(ui.getBriefStatusWithColor(tag.status, true));
 
 					// Task counts
 					row.push(chalk.white(tag.taskCount.toString()));
