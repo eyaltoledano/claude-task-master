@@ -4,6 +4,7 @@
  */
 
 import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
+import type { ExpandTaskResult } from '../../modules/integration/services/task-expansion.service.js';
 
 /**
  * Options for loading tasks from storage
@@ -91,6 +92,28 @@ export interface IStorage {
 		tag?: string,
 		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void>;
+
+	/**
+	 * Expand task into subtasks using AI-powered generation
+	 * @param taskId - ID of the task to expand
+	 * @param tag - Optional tag context for the task
+	 * @param options - Optional expansion options
+	 * @param options.numSubtasks - Number of subtasks to generate
+	 * @param options.useResearch - Whether to use research capabilities
+	 * @param options.additionalContext - Additional context for generation
+	 * @param options.force - Force regeneration even if subtasks exist
+	 * @returns ExpandTaskResult for API storage, void for file storage
+	 */
+	expandTaskWithPrompt(
+		taskId: string,
+		tag?: string,
+		options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<ExpandTaskResult | void>;
 
 	/**
 	 * Update task or subtask status by ID
@@ -260,6 +283,16 @@ export abstract class BaseStorage implements IStorage {
 		tag?: string,
 		options?: { useResearch?: boolean; mode?: 'append' | 'update' | 'rewrite' }
 	): Promise<void>;
+	abstract expandTaskWithPrompt(
+		taskId: string,
+		tag?: string,
+		options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<ExpandTaskResult | void>;
 	abstract updateTaskStatus(
 		taskId: string,
 		newStatus: TaskStatus,

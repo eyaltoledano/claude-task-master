@@ -423,7 +423,7 @@ export class ExportService {
 			);
 		} else {
 			// Direct Supabase approach is no longer supported
-			// The extractTasks method has been removed from SupabaseTaskRepository
+			// The extractTasks method has been removed from SupabaseRepository
 			// as we now exclusively use the API endpoint for exports
 			throw new Error(
 				'Export API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable to enable task export.'

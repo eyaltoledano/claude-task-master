@@ -20,11 +20,15 @@ import {
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
-import { SupabaseTaskRepository } from '../../tasks/repositories/supabase/index.js';
+import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { ApiClient } from '../utils/api-client.js';
 import { getLogger } from '../../../common/logger/factory.js';
+import {
+	ExpandTaskResult,
+	TaskExpansionService
+} from '../../integration/services/task-expansion.service.js';
 
 /**
  * API storage configuration
@@ -77,6 +81,7 @@ export class ApiStorage implements IStorage {
 	private initialized = false;
 	private tagsCache: Map<string, TaskTag> = new Map();
 	private apiClient?: ApiClient;
+	private expansionService?: TaskExpansionService;
 	private readonly logger = getLogger('ApiStorage');
 
 	constructor(config: ApiStorageConfig) {
@@ -86,9 +91,9 @@ export class ApiStorage implements IStorage {
 		if (config.repository) {
 			this.repository = config.repository;
 		} else if (config.supabaseClient) {
-			// TODO: SupabaseTaskRepository doesn't implement all TaskRepository methods yet
+			// TODO: SupabaseRepository doesn't implement all TaskRepository methods yet
 			// Cast for now until full implementation is complete
-			this.repository = new SupabaseTaskRepository(
+			this.repository = new SupabaseRepository(
 				config.supabaseClient
 			) as unknown as TaskRepository;
 		} else {
@@ -602,6 +607,26 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Expand task into subtasks with AI-powered generation
+	 * Sends task to backend for server-side AI processing
+	 */
+	async expandTaskWithPrompt(
+		taskId: string,
+		_tag?: string,
+		options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<ExpandTaskResult> {
+		await this.ensureInitialized();
+
+		const expansionService = this.getExpansionService();
+		return await expansionService.expandTask(taskId, options);
+	}
+
+	/**
 	 * Update task or subtask status by ID - for API storage
 	 */
 	async updateTaskStatus(
@@ -923,6 +948,25 @@ export class ApiStorage implements IStorage {
 		}
 
 		return this.apiClient;
+	}
+
+	/**
+	 * Get or create TaskExpansionService instance
+	 */
+	private getExpansionService(): TaskExpansionService {
+		if (!this.expansionService) {
+			const apiClient = this.getApiClient();
+			const authManager = AuthManager.getInstance();
+
+			this.expansionService = new TaskExpansionService(
+				this.repository,
+				this.projectId,
+				apiClient,
+				authManager
+			);
+		}
+
+		return this.expansionService;
 	}
 
 	/**

@@ -22,6 +22,7 @@ import type {
 	PreflightResult
 } from './services/preflight-checker.service.js';
 import type { TaskValidationResult } from './services/task-loader.service.js';
+import type { ExpandTaskResult } from '../integration/services/task-expansion.service.js';
 
 /**
  * Tasks Domain - Unified API for all task operations
@@ -149,6 +150,23 @@ export class TasksDomain {
 		options?: { mode?: 'append' | 'update' | 'rewrite'; useResearch?: boolean }
 	): Promise<void> {
 		return this.taskService.updateTaskWithPrompt(taskId, prompt, tag, options);
+	}
+
+	/**
+	 * Expand task into subtasks using AI
+	 * @returns ExpandTaskResult when using API storage, void for file storage
+	 */
+	async expand(
+		taskId: string | number,
+		tag?: string,
+		options?: {
+			numSubtasks?: number;
+			useResearch?: boolean;
+			additionalContext?: string;
+			force?: boolean;
+		}
+	): Promise<ExpandTaskResult | void> {
+		return this.taskService.expandTaskWithPrompt(taskId, tag, options);
 	}
 
 	/**
