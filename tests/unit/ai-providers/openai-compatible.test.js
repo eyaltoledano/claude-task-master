@@ -175,16 +175,16 @@ describe('OpenAICompatibleProvider', () => {
 			expect(client).toBeDefined();
 		});
 
-		it('should throw error when API key is required but missing', () => {
+		it('should create client even when API key is required but missing (validation deferred to SDK)', () => {
 			const provider = new OpenAICompatibleProvider({
 				name: 'Test Provider',
 				apiKeyEnvVar: 'TEST_API_KEY',
 				requiresApiKey: true
 			});
 
-			expect(() => {
-				provider.getClient({});
-			}).toThrow('Test Provider API key is required.');
+			// getClient() no longer validates API key - validation is deferred to SDK initialization
+			const client = provider.getClient({});
+			expect(typeof client).toBe('function');
 		});
 	});
 });
