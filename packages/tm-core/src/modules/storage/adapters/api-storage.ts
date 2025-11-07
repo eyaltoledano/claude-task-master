@@ -48,13 +48,6 @@ export interface ApiStorageConfig {
 }
 
 /**
- * Auth context with a guaranteed briefId
- */
-type ContextWithBrief = NonNullable<
-	ReturnType<typeof AuthManager.prototype.getContext>
-> & { briefId: string };
-
-/**
  * Response from the update task with prompt API endpoint
  */
 interface UpdateTaskWithPromptResponse {
@@ -205,7 +198,8 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			const context = this.ensureBriefSelected('loadTasks');
+			const context =
+				AuthManager.getInstance().ensureBriefSelected('loadTasks');
 
 			// Load tasks from the current brief context with filters pushed to repository
 			const tasks = await this.retryOperation(() =>
@@ -276,7 +270,7 @@ export class ApiStorage implements IStorage {
 
 		try {
 			const retrievalService = this.getRetrievalService();
-			return retrievalService.getTask(taskId);
+			return await this.retryOperation(() => retrievalService.getTask(taskId));
 		} catch (error) {
 			this.wrapError(error, 'Failed to load task from API', {
 				operation: 'loadTask',
@@ -636,7 +630,7 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			this.ensureBriefSelected('updateTaskStatus');
+			AuthManager.getInstance().ensureBriefSelected('updateTaskStatus');
 
 			const existingTask = await this.retryOperation(() =>
 				this.repository.getTask(this.projectId, taskId)
@@ -898,29 +892,6 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
-	 * Ensure a brief is selected in the current context
-	 * @returns The current auth context with a valid briefId
-	 */
-	private ensureBriefSelected(operation: string): ContextWithBrief {
-		const authManager = AuthManager.getInstance();
-		const context = authManager.getContext();
-
-		if (!context?.briefId) {
-			throw new TaskMasterError(
-				'No brief selected',
-				ERROR_CODES.NO_BRIEF_SELECTED,
-				{
-					operation,
-					userMessage:
-						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-				}
-			);
-		}
-
-		return context as ContextWithBrief;
-	}
-
-	/**
 	 * Get or create API client instance with auth
 	 */
 	private getApiClient(): ApiClient {
@@ -936,7 +907,8 @@ export class ApiStorage implements IStorage {
 				);
 			}
 
-			const context = this.ensureBriefSelected('getApiClient');
+			const context =
+				AuthManager.getInstance().ensureBriefSelected('getApiClient');
 			const authManager = AuthManager.getInstance();
 
 			this.apiClient = new ApiClient({

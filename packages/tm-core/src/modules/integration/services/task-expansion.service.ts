@@ -54,13 +54,6 @@ export interface ExpandTaskOptions {
 }
 
 /**
- * Auth context with a guaranteed briefId
- */
-type ContextWithBrief = NonNullable<
-	ReturnType<typeof AuthManager.prototype.getContext>
-> & { briefId: string };
-
-/**
  * TaskExpansionService handles AI-powered task expansion
  */
 export class TaskExpansionService {
@@ -93,7 +86,7 @@ export class TaskExpansionService {
 	): Promise<ExpandTaskResult> {
 		try {
 			// Get brief context from AuthManager
-			const context = this.ensureBriefSelected('expandTask');
+			const context = this.authManager.ensureBriefSelected('expandTask');
 
 			// Get the task being expanded to extract existing subtasks
 			const task = await this.repository.getTask(this.projectId, taskId);
@@ -101,7 +94,7 @@ export class TaskExpansionService {
 			if (!task) {
 				throw new TaskMasterError(
 					`Task ${taskId} not found`,
-					ERROR_CODES.VALIDATION_ERROR,
+					ERROR_CODES.TASK_NOT_FOUND,
 					{
 						operation: 'expandTask',
 						taskId,
@@ -229,27 +222,5 @@ export class TaskExpansionService {
 				error as Error
 			);
 		}
-	}
-
-	/**
-	 * Ensure a brief is selected in the current context
-	 * @returns The current auth context with a valid briefId
-	 */
-	private ensureBriefSelected(operation: string): ContextWithBrief {
-		const context = this.authManager.getContext();
-
-		if (!context?.briefId) {
-			throw new TaskMasterError(
-				'No brief selected',
-				ERROR_CODES.NO_BRIEF_SELECTED,
-				{
-					operation,
-					userMessage:
-						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-				}
-			);
-		}
-
-		return context as ContextWithBrief;
 	}
 }

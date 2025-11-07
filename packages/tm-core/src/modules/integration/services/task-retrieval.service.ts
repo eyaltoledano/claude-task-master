@@ -29,13 +29,6 @@ interface GetTaskResponse {
 }
 
 /**
- * Auth context with a guaranteed briefId
- */
-type ContextWithBrief = NonNullable<
-	ReturnType<typeof AuthManager.prototype.getContext>
-> & { briefId: string };
-
-/**
  * TaskRetrievalService handles fetching tasks with enriched document content
  * Uses repository for task structure and API endpoint for document content
  */
@@ -65,14 +58,14 @@ export class TaskRetrievalService {
 	 */
 	async getTask(taskId: string): Promise<Task | null> {
 		try {
-			this.ensureBriefSelected('getTask');
+			this.authManager.ensureBriefSelected('getTask');
 
 			const task = await this.repository.getTask(this.projectId, taskId);
 
 			if (!task) {
 				throw new TaskMasterError(
 					`Task ${taskId} not found`,
-					ERROR_CODES.VALIDATION_ERROR,
+					ERROR_CODES.TASK_NOT_FOUND,
 					{
 						operation: 'getTask',
 						taskId,
@@ -126,27 +119,5 @@ export class TaskRetrievalService {
 				error as Error
 			);
 		}
-	}
-
-	/**
-	 * Ensure a brief is selected in the current context
-	 * @returns The current auth context with a valid briefId
-	 */
-	private ensureBriefSelected(operation: string): ContextWithBrief {
-		const context = this.authManager.getContext();
-
-		if (!context?.briefId) {
-			throw new TaskMasterError(
-				'No brief selected',
-				ERROR_CODES.NO_BRIEF_SELECTED,
-				{
-					operation,
-					userMessage:
-						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
-				}
-			);
-		}
-
-		return context as ContextWithBrief;
 	}
 }
