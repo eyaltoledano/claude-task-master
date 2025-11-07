@@ -38,7 +38,8 @@ export class PerplexityAIProvider extends BaseAIProvider {
 
 			return createPerplexity({
 				apiKey,
-				baseURL: baseURL || 'https://api.perplexity.ai'
+				baseURL: baseURL || 'https://api.perplexity.ai',
+				fetch: this.createProxyFetch()
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

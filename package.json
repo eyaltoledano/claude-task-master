@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.31.1",
+	"version": "0.31.2",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -104,6 +104,7 @@
 		"ora": "^8.2.0",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
+		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
 		"zod": "^4.1.11"
 	},

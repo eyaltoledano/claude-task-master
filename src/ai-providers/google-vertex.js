@@ -109,7 +109,8 @@ export class VertexAIProvider extends BaseAIProvider {
 				...authOptions,
 				projectId,
 				location,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				fetch: this.createProxyFetch()
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

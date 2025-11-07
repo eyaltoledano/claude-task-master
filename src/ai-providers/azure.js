@@ -51,7 +51,8 @@ export class AzureProvider extends BaseAIProvider {
 
 			return createAzure({
 				apiKey,
-				baseURL
+				baseURL,
+				fetch: this.createProxyFetch()
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

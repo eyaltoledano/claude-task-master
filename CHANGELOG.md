@@ -1,5 +1,15 @@
 # task-master-ai
 
+## 0.31.2
+
+### Patch Changes
+
+- [#1377](https://github.com/eyaltoledano/claude-task-master/pull/1377) [`3c22875`](https://github.com/eyaltoledano/claude-task-master/commit/3c22875efeb5d21754d447a9559817bc5327a234) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix parse-prd schema to accept responses from models that omit optional fields (like Z.ai/GLM). Changed `metadata` field to use union pattern with `.default(null)` for better structured outputs compatibility.
+
+- [#1377](https://github.com/eyaltoledano/claude-task-master/pull/1377) [`3c22875`](https://github.com/eyaltoledano/claude-task-master/commit/3c22875efeb5d21754d447a9559817bc5327a234) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix ai response not showing price after its json was repaired
+
+- [#1377](https://github.com/eyaltoledano/claude-task-master/pull/1377) [`3c22875`](https://github.com/eyaltoledano/claude-task-master/commit/3c22875efeb5d21754d447a9559817bc5327a234) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enable structured outputs for Z.ai providers. Added `supportsStructuredOutputs: true` to use `json_schema` mode for more reliable JSON generation in operations like parse-prd.
+
 ## 0.31.1
 
 ### Patch Changes
