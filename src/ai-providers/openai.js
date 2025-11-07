@@ -31,15 +31,12 @@ export class OpenAIProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('OpenAI API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createOpenAI({
 				apiKey,
 				...(baseURL && { baseURL }),
-				fetch: this.createProxyFetch()
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

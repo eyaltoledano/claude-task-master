@@ -31,15 +31,12 @@ export class GoogleAIProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('Google API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createGoogleGenerativeAI({
 				apiKey,
 				...(baseURL && { baseURL }),
-				fetch: this.createProxyFetch()
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

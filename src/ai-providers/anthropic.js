@@ -42,10 +42,7 @@ export class AnthropicAIProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('Anthropic API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createAnthropic({
 				apiKey,
@@ -53,7 +50,7 @@ export class AnthropicAIProvider extends BaseAIProvider {
 				headers: {
 					'anthropic-beta': 'output-128k-2025-02-19'
 				},
-				fetch: this.createProxyFetch()
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);
