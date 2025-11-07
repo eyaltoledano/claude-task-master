@@ -612,7 +612,7 @@ export class ApiStorage implements IStorage {
 	 */
 	async expandTaskWithPrompt(
 		taskId: string,
-		tag?: string,
+		_tag?: string,
 		options?: {
 			numSubtasks?: number;
 			useResearch?: boolean;

@@ -3,6 +3,7 @@
  * Core service for expanding tasks into subtasks using AI
  */
 
+import { z } from 'zod';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -134,8 +135,39 @@ export class TaskExpansionService {
 				queryParams.set('force', options.force.toString());
 			}
 
-			// Use databaseId (UUID) for API calls, fallback to task.id if not available
-			const taskUuid = task.databaseId || taskId;
+			// Validate that task has a database UUID (required for API calls)
+			if (!task.databaseId) {
+				throw new TaskMasterError(
+					`Task ${taskId} is missing a database ID. Task expansion requires tasks to be synced with the remote database.`,
+					ERROR_CODES.VALIDATION_ERROR,
+					{
+						operation: 'expandTask',
+						taskId,
+						userMessage:
+							'This task has not been synced with the remote database. Please ensure the task is saved remotely before attempting expansion.'
+					}
+				);
+			}
+
+			// Validate UUID format using Zod
+			const uuidSchema = z.uuid();
+			const validation = uuidSchema.safeParse(task.databaseId);
+			if (!validation.success) {
+				throw new TaskMasterError(
+					`Task ${taskId} has an invalid database ID format: ${task.databaseId}`,
+					ERROR_CODES.VALIDATION_ERROR,
+					{
+						operation: 'expandTask',
+						taskId,
+						databaseId: task.databaseId,
+						userMessage:
+							'The task database ID is not in valid UUID format. This may indicate data corruption.'
+					}
+				);
+			}
+
+			// Use validated databaseId (UUID) for API calls
+			const taskUuid = task.databaseId;
 
 			const url = `/ai/api/v1/tasks/${taskUuid}/subtasks/generate${
 				queryParams.toString() ? `?${queryParams.toString()}` : ''
