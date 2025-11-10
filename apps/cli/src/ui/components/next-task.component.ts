@@ -39,7 +39,9 @@ export function displayRecommendedNextTask(
 					borderStyle: 'round',
 					borderColor: 'yellow',
 					title: '⚠ NO TASKS AVAILABLE ⚠',
-					titleAlignment: 'center'
+					titleAlignment: 'center',
+					width: getBoxWidth(0.97),
+					fullscreen: false
 				}
 			)
 		);

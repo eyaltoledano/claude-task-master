@@ -12,6 +12,7 @@ import type { StorageType } from '@tm/core';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { getBoxWidth } from '../utils/ui.js';
 
 /**
  * Options interface for the next command
@@ -189,7 +190,9 @@ export class NextCommand extends Command {
 						borderStyle: 'round',
 						borderColor: 'yellow',
 						title: '⚠ NO TASKS AVAILABLE ⚠',
-						titleAlignment: 'center'
+						titleAlignment: 'center',
+						width: getBoxWidth(0.97),
+						fullscreen: false
 					}
 				)
 			);
