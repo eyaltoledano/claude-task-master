@@ -38,6 +38,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.total).toBe(15);
 			expect(stats.done).toBe(14);
 			expect(stats.cancelled).toBe(1);
+			expect(stats.completedCount).toBe(15); // done + cancelled
 			// BUG: Current code shows 93% (14/15), should be 100% (15/15)
 			expect(stats.completionPercentage).toBe(100);
 		});
@@ -78,6 +79,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.total).toBe(4);
 			expect(stats.done).toBe(1);
 			expect(stats.cancelled).toBe(1);
+			expect(stats.completedCount).toBe(3); // done + completed + cancelled
 			// 3 complete out of 4 total = 75%
 			expect(stats.completionPercentage).toBe(75);
 		});
@@ -105,6 +107,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Assert
 			expect(stats.total).toBe(2);
 			expect(stats.cancelled).toBe(2);
+			expect(stats.completedCount).toBe(2); // All cancelled = all complete
 			// BUG: Current code shows 0%, should be 100%
 			expect(stats.completionPercentage).toBe(100);
 		});
@@ -159,6 +162,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.total).toBe(4);
 			expect(stats.done).toBe(3);
 			expect(stats.cancelled).toBe(1);
+			expect(stats.completedCount).toBe(4); // done + cancelled
 			// BUG: Current code shows 75% (3/4), should be 100% (4/4)
 			expect(stats.completionPercentage).toBe(100);
 		});
@@ -184,6 +188,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 
 			// Assert
 			expect(stats.total).toBe(3);
+			expect(stats.completedCount).toBe(2); // done + completed
 			// 2 complete (done + completed) out of 3 = 67%
 			expect(stats.completionPercentage).toBe(67);
 		});

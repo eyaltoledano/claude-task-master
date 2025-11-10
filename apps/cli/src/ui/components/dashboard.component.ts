@@ -38,6 +38,8 @@ export interface TaskStatistics {
 	cancelled: number;
 	review?: number;
 	completionPercentage: number;
+	/** Count of all terminal complete tasks (done + completed + cancelled) */
+	completedCount: number;
 }
 
 /**
@@ -187,7 +189,8 @@ export function calculateTaskStatistics(tasks: Task[]): TaskStatistics {
 		deferred: 0,
 		cancelled: 0,
 		review: 0,
-		completionPercentage: 0
+		completionPercentage: 0,
+		completedCount: 0
 	};
 
 	tasks.forEach((task) => {
@@ -216,10 +219,12 @@ export function calculateTaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
-	// Count terminal complete tasks for percentage calculation
-	const completedCount = tasks.filter((t) => isTaskComplete(t.status)).length;
+	// Count terminal complete tasks for percentage calculation and display
+	stats.completedCount = tasks.filter((t) => isTaskComplete(t.status)).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((completedCount / stats.total) * 100) : 0;
+		stats.total > 0
+			? Math.round((stats.completedCount / stats.total) * 100)
+			: 0;
 
 	return stats;
 }
@@ -237,7 +242,8 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		deferred: 0,
 		cancelled: 0,
 		review: 0,
-		completionPercentage: 0
+		completionPercentage: 0,
+		completedCount: 0
 	};
 
 	const allSubtasks: Array<{ status: string }> = [];
@@ -273,12 +279,14 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
-	// Count terminal complete subtasks for percentage calculation
-	const completedCount = allSubtasks.filter((st) =>
+	// Count terminal complete subtasks for percentage calculation and display
+	stats.completedCount = allSubtasks.filter((st) =>
 		isTaskComplete(st.status as TaskStatus)
 	).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((completedCount / stats.total) * 100) : 0;
+		stats.total > 0
+			? Math.round((stats.completedCount / stats.total) * 100)
+			: 0;
 
 	return stats;
 }
@@ -451,8 +459,8 @@ export function displayProjectDashboard(
 		subtaskStatusBreakdown
 	);
 
-	const taskPercentage = `${taskStats.completionPercentage}% ${taskStats.done}/${taskStats.total}`;
-	const subtaskPercentage = `${subtaskStats.completionPercentage}% ${subtaskStats.done}/${subtaskStats.total}`;
+	const taskPercentage = `${taskStats.completionPercentage}% ${taskStats.completedCount}/${taskStats.total}`;
+	const subtaskPercentage = `${subtaskStats.completionPercentage}% ${subtaskStats.completedCount}/${subtaskStats.total}`;
 
 	const content =
 		chalk.white.bold('Project Dashboard') +
