@@ -248,7 +248,9 @@ export class ShowCommand extends Command {
 					padding: { top: 0, bottom: 0, left: 1, right: 1 },
 					borderColor: 'yellow',
 					borderStyle: 'round',
-					margin: { top: 1 }
+					margin: { top: 1 },
+					width: ui.getBoxWidth(0.97),
+					fullscreen: false
 				})
 			);
 			return;

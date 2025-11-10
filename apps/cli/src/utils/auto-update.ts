@@ -8,6 +8,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import boxen from 'boxen';
 import process from 'process';
+import { getBoxWidth } from './ui.js';
 
 export interface UpdateInfo {
 	currentVersion: string;
@@ -276,7 +277,9 @@ export function displayUpgradeNotification(
 		padding: 1,
 		margin: { top: 1, bottom: 1 },
 		borderColor: 'yellow',
-		borderStyle: 'round'
+		borderStyle: 'round',
+		width: getBoxWidth(0.97),
+		fullscreen: false
 	});
 
 	console.log(message);

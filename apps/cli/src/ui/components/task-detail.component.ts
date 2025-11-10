@@ -12,7 +12,8 @@ import type { Subtask, Task } from '@tm/core';
 import {
 	getStatusWithColor,
 	getPriorityWithColor,
-	getComplexityWithColor
+	getComplexityWithColor,
+	getBoxWidth
 } from '../../utils/ui.js';
 
 // Configure marked to use terminal renderer with subtle colors
@@ -66,7 +67,9 @@ export function displayTaskHeader(
 		boxen(chalk.white.bold(`Task: #${taskId} - ${title}`), {
 			padding: { top: 0, bottom: 0, left: 1, right: 1 },
 			borderColor: 'blue',
-			borderStyle: 'round'
+			borderStyle: 'round',
+			width: getBoxWidth(0.97),
+			fullscreen: false
 		})
 	);
 }
@@ -207,7 +210,9 @@ export function displaySubtasks(
 			padding: { top: 0, bottom: 0, left: 1, right: 1 },
 			borderColor: 'magenta',
 			borderStyle: 'round',
-			margin: { top: 1, bottom: 0 }
+			margin: { top: 1, bottom: 0 },
+			width: getBoxWidth(0.97),
+			fullscreen: false
 		})
 	);
 
@@ -268,7 +273,8 @@ export function displaySuggestedActions(taskId: string | number): void {
 				margin: { top: 1 },
 				borderStyle: 'round',
 				borderColor: 'green',
-				width: process.stdout.columns * 0.95 || 100
+				width: getBoxWidth(0.97),
+				fullscreen: false
 			}
 		)
 	);
@@ -302,7 +308,9 @@ export function displayTaskDetails(
 				padding: { top: 0, bottom: 0, left: 1, right: 1 },
 				borderColor: headerColor,
 				borderStyle: 'round',
-				margin: { top: 1 }
+				margin: { top: 1 },
+				width: getBoxWidth(0.97),
+				fullscreen: false
 			})
 		);
 	} else {

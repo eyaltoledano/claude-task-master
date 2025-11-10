@@ -343,7 +343,9 @@ export class StartCommand extends Command {
 					padding: { top: 0, bottom: 0, left: 1, right: 1 },
 					borderColor: 'yellow',
 					borderStyle: 'round',
-					margin: { top: 1 }
+					margin: { top: 1 },
+					width: ui.getBoxWidth(0.97),
+					fullscreen: false
 				})
 			);
 			return;
@@ -377,7 +379,8 @@ export class StartCommand extends Command {
 							padding: 1,
 							borderStyle: 'round',
 							borderColor: 'cyan',
-							width: process.stdout.columns * 0.95 || 100
+							width: ui.getBoxWidth(0.97),
+							fullscreen: false
 						}
 					)
 				);
@@ -392,7 +395,9 @@ export class StartCommand extends Command {
 					{
 						padding: { top: 0, bottom: 0, left: 1, right: 1 },
 						borderColor: 'yellow',
-						borderStyle: 'round'
+						borderStyle: 'round',
+						width: ui.getBoxWidth(0.97),
+						fullscreen: false
 					}
 				)
 			);
@@ -425,8 +430,9 @@ export class StartCommand extends Command {
 							padding: 1,
 							borderStyle: 'round',
 							borderColor: 'green',
-							width: process.stdout.columns * 0.95 || 100,
-							margin: { top: 1 }
+							width: ui.getBoxWidth(0.97),
+							margin: { top: 1 },
+							fullscreen: false
 						}
 					)
 				);
@@ -441,7 +447,9 @@ export class StartCommand extends Command {
 						{
 							padding: { top: 0, bottom: 0, left: 1, right: 1 },
 							borderColor: 'red',
-							borderStyle: 'round'
+							borderStyle: 'round',
+							width: ui.getBoxWidth(0.97),
+							fullscreen: false
 						}
 					)
 				);

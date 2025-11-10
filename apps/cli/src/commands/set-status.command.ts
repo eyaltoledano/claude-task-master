@@ -9,6 +9,7 @@ import boxen from 'boxen';
 import { createTmCore, type TmCore, type TaskStatus } from '@tm/core';
 import type { StorageType } from '@tm/core';
 import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Valid task status values for validation
@@ -230,7 +231,9 @@ export class SetStatusCommand extends Command {
 						padding: 1,
 						borderColor: 'green',
 						borderStyle: 'round',
-						margin: { top: 1 }
+						margin: { top: 1 },
+						width: ui.getBoxWidth(0.97),
+						fullscreen: false
 					}
 				)
 			);
@@ -252,7 +255,9 @@ export class SetStatusCommand extends Command {
 						padding: 1,
 						borderColor: 'green',
 						borderStyle: 'round',
-						margin: { top: 1 }
+						margin: { top: 1 },
+						width: ui.getBoxWidth(0.97),
+						fullscreen: false
 					}
 				)
 			);
