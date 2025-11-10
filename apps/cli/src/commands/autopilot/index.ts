@@ -12,7 +12,6 @@ import { CompleteCommand } from './complete.command.js';
 import { CommitCommand } from './commit.command.js';
 import { StatusCommand } from './status.command.js';
 import { AbortCommand } from './abort.command.js';
-import { getProjectRoot } from '../../utils/project-root.js';
 
 /**
  * Shared command options for all autopilot commands
@@ -38,8 +37,7 @@ export class AutopilotCommand extends Command {
 			.option('-v, --verbose', 'Enable verbose output')
 			.option(
 				'-p, --project-root <path>',
-				'Project root directory',
-				getProjectRoot()
+				'Project root directory (auto-detected if not specified)'
 			);
 
 		// Register subcommands
