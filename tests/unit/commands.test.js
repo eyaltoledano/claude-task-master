@@ -331,9 +331,10 @@ describe('Update check functionality', () => {
 		const output = consoleLogSpy.mock.calls[0][0];
 		expect(output).toContain('Update Available!');
 		expect(output).not.toContain("What's New:");
-		expect(output).toContain(
-			'Auto-updating to the latest version with new features and bug fixes'
-		);
+		// Text may be word-wrapped by boxen, so check for key phrases separately
+		expect(output).toContain('Auto-updating');
+		expect(output).toContain('latest version');
+		expect(output).toContain('new features');
 	});
 
 	test('parseChangelogHighlights validates version format to prevent ReDoS', () => {
