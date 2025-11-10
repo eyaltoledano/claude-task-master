@@ -36,7 +36,16 @@ export class AbortCommand extends Command {
 		// Inherit parent options
 		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
 
-		const formatter = new OutputFormatter(options.json || parentOpts?.json || false);
+		// Initialize mergedOptions with defaults (projectRoot will be set in try block)
+		let mergedOptions: AbortOptions = {
+			...parentOpts,
+			...options,
+			projectRoot: '' // Will be set in try block
+		};
+
+		const formatter = new OutputFormatter(
+			options.json || parentOpts?.json || false
+		);
 
 		try {
 			// Resolve project root inside try block to catch any errors
@@ -44,9 +53,9 @@ export class AbortCommand extends Command {
 				options.projectRoot || parentOpts?.projectRoot
 			);
 
-			const mergedOptions: AbortOptions = {
-				...parentOpts,
-				...options,
+			// Update mergedOptions with resolved project root
+			mergedOptions = {
+				...mergedOptions,
 				projectRoot
 			};
 			// Check for workflow state
