@@ -295,7 +295,9 @@ export function calculateDependencyStatistics(
 	);
 
 	const tasksWithNoDeps = tasks.filter(
-		(t) => !isTaskComplete(t.status) && (!t.dependencies || t.dependencies.length === 0)
+		(t) =>
+			!isTaskComplete(t.status) &&
+			(!t.dependencies || t.dependencies.length === 0)
 	).length;
 
 	const tasksWithAllDepsSatisfied = tasks.filter(
