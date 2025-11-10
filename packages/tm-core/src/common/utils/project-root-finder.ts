@@ -110,9 +110,9 @@ export function findProjectRoot(startDir: string = process.cwd()): string {
 		depth++;
 	}
 
-	// Fallback to the starting directory if no project root found
-	// This ensures the function always returns a valid path
-	return startDir;
+	// Fallback to current working directory if no project root found
+	// This ensures the function always returns a valid, existing path
+	return process.cwd();
 }
 
 /**
