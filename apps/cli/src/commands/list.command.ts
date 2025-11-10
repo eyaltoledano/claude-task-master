@@ -17,24 +17,8 @@ import type { StorageType } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { displayError } from '../utils/error-handler.js';
+import { isTaskComplete } from '../utils/task-status.js';
 import * as ui from '../utils/ui.js';
-
-/**
- * Terminal complete statuses - tasks that are finished and satisfy dependencies
- * Aligns with task-loader.service.ts which defines: ['done', 'completed', 'cancelled']
- */
-const TERMINAL_COMPLETE_STATUSES: ReadonlyArray<TaskStatus> = [
-	'done',
-	'completed',
-	'cancelled'
-] as const;
-
-/**
- * Check if a task is in a terminal complete state
- */
-function isTaskComplete(status: TaskStatus): boolean {
-	return TERMINAL_COMPLETE_STATUSES.includes(status);
-}
 import {
 	type NextTaskInfo,
 	calculateDependencyStatistics,
