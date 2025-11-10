@@ -137,4 +137,5 @@ function getTasks() {
 
 ## Changeset Guidelines
 
-- When creating changesets, remember that it's user-facing, meaning we don't have to get into the specifics of the code, but rather mention what the end-user is getting or fixing from this changeset.
+- **Every PR requires a changeset** - Run `npx changeset` after making your changes and commit the generated file
+- When creating changesets, remember that it's user-facing, meaning we don't have to get into the specifics of the code, but rather mention what the end-user is getting or fixing from this changeset
