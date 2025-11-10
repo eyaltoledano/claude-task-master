@@ -18,7 +18,7 @@ import {
 } from '../utils.js';
 import { displayBanner, getStatusWithColor } from '../ui.js';
 import findNextTask from './find-next-task.js';
-import { tryListTagsViaRemote } from '@tm/bridge';
+import { tryListTagsViaRemote, tryUseTagViaRemote } from '@tm/bridge';
 
 /**
  * Create a new tag context
@@ -763,6 +763,32 @@ async function useTag(
 		}
 
 		logFn.info(`Switching to tag: ${tagName}`);
+
+		// Try API storage first via bridge
+		const bridgeResult = await tryUseTagViaRemote({
+			tagName,
+			projectRoot,
+			isMCP: !!mcpLog,
+			outputFormat,
+			report: (level, ...args) => {
+				if (logFn[level]) {
+					logFn[level](...args);
+				} else {
+					logFn.info(...args);
+				}
+			}
+		});
+
+		// If bridge handled it (API storage), return the result
+		if (bridgeResult) {
+			logFn.success(
+				`Successfully switched to tag "${tagName}" via API storage`
+			);
+			return bridgeResult;
+		}
+
+		// Fall through to file storage logic
+		logFn.info('Using file storage for tag switch');
 
 		// Read current tasks data to verify tag exists
 		const data = readJSON(tasksPath, projectRoot);

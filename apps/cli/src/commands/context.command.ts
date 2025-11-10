@@ -155,7 +155,7 @@ export class ContextCommand extends Command {
 			if (context.briefName || context.briefId) {
 				console.log(chalk.green('\n✓ Brief'));
 				if (context.briefName && context.briefId) {
-					const shortId = context.briefId.slice(0, 8);
+					const shortId = context.briefId.slice(-8);
 					console.log(
 						chalk.white(`  ${context.briefName} `) + chalk.gray(`(${shortId})`)
 					);
@@ -347,21 +347,28 @@ export class ContextCommand extends Command {
 
 							const title = brief.document?.title || '';
 							const shortId = brief.id.slice(0, 8);
+							const lastChars = brief.id.slice(-8);
 
-							// Search by title first, then by UUID
+							// Search by title, full UUID, first 8 chars, or last 8 chars
 							return (
 								title.toLowerCase().includes(searchTerm) ||
 								brief.id.toLowerCase().includes(searchTerm) ||
-								shortId.toLowerCase().includes(searchTerm)
+								shortId.toLowerCase().includes(searchTerm) ||
+								lastChars.toLowerCase().includes(searchTerm)
 							);
 						})
 						.map((brief) => {
 							const title =
-								brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
-							const shortId = brief.id.slice(0, 8);
+								brief.document?.title || `Brief ${brief.id.slice(-8)}`;
+							const shortId = brief.id.slice(-8);
+							const description = brief.document?.description || '';
+
 							return {
 								name: `${title} ${chalk.gray(`(${shortId})`)}`,
-								value: brief
+								value: brief,
+								description: description
+									? chalk.gray(description.slice(0, 80))
+									: undefined
 							};
 						});
 

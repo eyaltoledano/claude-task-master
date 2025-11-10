@@ -16,9 +16,9 @@ import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js
 import {
 	OrganizationService,
 	type Organization,
-	type Brief,
 	type RemoteTask
 } from '../services/organization.service.js';
+import type { Brief } from '../../briefs/types.js';
 import {
 	ERROR_CODES,
 	TaskMasterError

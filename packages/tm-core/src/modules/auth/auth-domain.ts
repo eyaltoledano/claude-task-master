@@ -12,9 +12,9 @@ import type {
 } from './types.js';
 import type {
 	Organization,
-	Brief,
 	RemoteTask
 } from './services/organization.service.js';
+import type { Brief } from '../briefs/types.js';
 import type { StorageType } from '../../common/types/index.js';
 
 /**

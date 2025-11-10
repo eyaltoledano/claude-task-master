@@ -171,10 +171,11 @@ export async function tryListTagsViaRemote(
 				tagsResult.tags.forEach((tag) => {
 					const row = [];
 
-					// Tag name with current indicator
+					// Tag name with current indicator and short ID (last 8 chars)
+					const shortId = tag.briefId ? tag.briefId.slice(-8) : 'unknown';
 					const tagDisplay = tag.isCurrent
-						? `${chalk.green('●')} ${chalk.green.bold(tag.name)} ${chalk.gray(`(current - ${tag.briefId})`)}`
-						: `  ${tag.name} ${chalk.gray(`(${tag.briefId})`)}`;
+						? `${chalk.green('●')} ${chalk.green.bold(tag.name)} ${chalk.gray(`(current - ${shortId})`)}`
+						: `  ${tag.name} ${chalk.gray(`(${shortId})`)}`;
 					row.push(tagDisplay);
 
 					row.push(ui.getBriefStatusWithColor(tag.status, true));

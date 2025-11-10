@@ -23,6 +23,7 @@ import { TaskRepository } from '../../tasks/repositories/task-repository.interfa
 import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { BriefsDomain } from '../../briefs/briefs-domain.js';
 import { ApiClient } from '../utils/api-client.js';
 import { getLogger } from '../../../common/logger/factory.js';
 import {
@@ -162,6 +163,7 @@ export class ApiStorage implements IStorage {
 	/**
 	 * Get all briefs (tags) with detailed statistics including task counts
 	 * In API storage, tags are called "briefs"
+	 * Delegates to BriefsDomain for brief statistics calculation
 	 */
 	async getTagsWithStats(): Promise<{
 		tags: Array<{
@@ -184,114 +186,13 @@ export class ApiStorage implements IStorage {
 	}> {
 		await this.ensureInitialized();
 
-		const authManager = AuthManager.getInstance();
-		const context = authManager.getContext();
-
-		// Get current user's organization
-		if (!context?.orgId) {
-			throw new TaskMasterError(
-				'No organization context available',
-				ERROR_CODES.MISSING_CONFIGURATION,
-				{
-					operation: 'getTagsWithStats',
-					userMessage:
-						'No organization selected. Please authenticate first using: tm auth login'
-				}
-			);
-		}
-
 		try {
-			// Get all briefs for the organization using auth domain
-			const authDomain = authManager as any;
-			const organizationService = await authDomain.getOrganizationService?.();
-			if (!organizationService) {
-				throw new Error('Organization service not available');
-			}
-
-			const briefs = await organizationService.getBriefs(context.orgId);
-
-			// For each brief, get task counts by querying tasks
-			const tagsWithStats = await Promise.all(
-				briefs.map(async (brief: any) => {
-					try {
-						// Get all tasks for this brief
-						const tasks = await this.repository.getTasks(brief.id, {});
-
-						// Calculate statistics
-						const statusBreakdown: Record<string, number> = {};
-						let completedTasks = 0;
-
-						const subtaskCounts = {
-							totalSubtasks: 0,
-							subtasksByStatus: {} as Record<string, number>
-						};
-
-						tasks.forEach((task) => {
-							// Count task status
-							const status = task.status || 'pending';
-							statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
-
-							if (status === 'done') {
-								completedTasks++;
-							}
-
-							// Count subtasks
-							if (task.subtasks && task.subtasks.length > 0) {
-								subtaskCounts.totalSubtasks += task.subtasks.length;
-
-								task.subtasks.forEach((subtask) => {
-									const subStatus = subtask.status || 'pending';
-									subtaskCounts.subtasksByStatus[subStatus] =
-										(subtaskCounts.subtasksByStatus[subStatus] || 0) + 1;
-								});
-							}
-						});
-
-						return {
-							name:
-								brief.document?.title ||
-								brief.document?.document_name ||
-								brief.id,
-							isCurrent: context.briefId === brief.id,
-							taskCount: tasks.length,
-							completedTasks,
-							statusBreakdown,
-							subtaskCounts:
-								subtaskCounts.totalSubtasks > 0 ? subtaskCounts : undefined,
-							created: brief.createdAt,
-							description: brief.document?.description,
-							status: brief.status,
-							briefId: brief.id
-						};
-					} catch (error) {
-						// If we can't get tasks for a brief, return it with 0 tasks
-						this.logger.warn(
-							`Failed to get tasks for brief ${brief.id}:`,
-							error
-						);
-						return {
-							name:
-								brief.document?.title ||
-								brief.document?.document_name ||
-								brief.id,
-							isCurrent: context.briefId === brief.id,
-							taskCount: 0,
-							completedTasks: 0,
-							statusBreakdown: {},
-							created: brief.createdAt,
-							description: brief.document?.description,
-							status: brief.status,
-							briefId: brief.id
-						};
-					}
-				})
+			// Delegate to BriefsDomain which owns brief operations
+			const briefsDomain = new BriefsDomain();
+			return await briefsDomain.getBriefsWithStats(
+				this.repository,
+				this.projectId
 			);
-
-			return {
-				tags: tagsWithStats,
-				currentTag: context.briefName || null,
-				totalTags: tagsWithStats.length
-			};
 		} catch (error) {
 			throw new TaskMasterError(
 				'Failed to get tags with stats from API',

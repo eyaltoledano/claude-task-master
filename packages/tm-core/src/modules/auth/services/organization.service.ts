@@ -10,6 +10,7 @@ import {
 	ERROR_CODES
 } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
+import type { Brief } from '../../briefs/types.js';
 
 /**
  * Organization data structure
@@ -18,24 +19,6 @@ export interface Organization {
 	id: string;
 	name: string;
 	slug: string;
-}
-
-/**
- * Brief data structure
- */
-export interface Brief {
-	id: string;
-	accountId: string;
-	documentId: string;
-	status: string;
-	createdAt: string;
-	updatedAt: string;
-	document?: {
-		id: string;
-		title: string;
-		document_name: string;
-		description?: string;
-	};
 }
 
 /**

@@ -4,6 +4,8 @@
  */
 
 import type { ConfigManager } from '../config/managers/config-manager.js';
+import type { AuthDomain } from '../auth/auth-domain.js';
+import { BriefsDomain } from '../briefs/briefs-domain.js';
 import { TaskService } from './services/task-service.js';
 import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
@@ -32,12 +34,14 @@ export class TasksDomain {
 	private executionService: TaskExecutionService;
 	private loaderService: TaskLoaderService;
 	private preflightChecker: PreflightChecker;
+	private briefsDomain: BriefsDomain;
 
-	constructor(configManager: ConfigManager) {
+	constructor(configManager: ConfigManager, authDomain?: AuthDomain) {
 		this.taskService = new TaskService(configManager);
 		this.executionService = new TaskExecutionService(this.taskService);
 		this.loaderService = new TaskLoaderService(this.taskService);
 		this.preflightChecker = new PreflightChecker(configManager.getProjectRoot());
+		this.briefsDomain = new BriefsDomain();
 	}
 
 	async initialize(): Promise<void> {
@@ -181,6 +185,21 @@ export class TasksDomain {
 	 */
 	async setActiveTag(tag: string): Promise<void> {
 		return this.taskService.setActiveTag(tag);
+	}
+
+	/**
+	 * Switch to a different tag/brief context
+	 * For file storage: updates active tag in state
+	 * For API storage: looks up brief by name and updates auth context
+	 */
+	async switchTag(tagName: string): Promise<void> {
+		const storageType = this.taskService.getStorageType();
+
+		if (storageType === 'file') {
+			await this.setActiveTag(tagName);
+		} else {
+			await this.briefsDomain.switchBrief(tagName);
+		}
 	}
 
 	// ========== Task Execution ==========

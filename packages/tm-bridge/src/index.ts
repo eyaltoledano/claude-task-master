@@ -27,3 +27,9 @@ export {
 	type RemoteTagsResult,
 	type TagInfo
 } from './tags-bridge.js';
+
+export {
+	tryUseTagViaRemote,
+	type UseTagBridgeParams,
+	type RemoteUseTagResult
+} from './use-tag-bridge.js';
