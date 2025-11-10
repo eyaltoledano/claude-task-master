@@ -88,19 +88,8 @@ function createProgressBar(
 		charsUsed += completedChars;
 	}
 
-	// 2. Gray filled blocks for cancelled (won't be done)
-	if (statusBreakdown.cancelled && charsUsed < width) {
-		const cancelledChars = Math.round(
-			(statusBreakdown.cancelled / 100) * width
-		);
-		const actualChars = Math.min(cancelledChars, width - charsUsed);
-		if (actualChars > 0) {
-			bar += chalk.gray('█').repeat(actualChars);
-			charsUsed += actualChars;
-		}
-	}
-
-	// 3. Gray filled blocks for deferred (won't be done now)
+	// 2. Gray filled blocks for deferred (won't be done now)
+	// Note: Cancelled is included in completionPercentage (green section) as terminal complete
 	if (statusBreakdown.deferred && charsUsed < width) {
 		const deferredChars = Math.round((statusBreakdown.deferred / 100) * width);
 		const actualChars = Math.min(deferredChars, width - charsUsed);
@@ -110,7 +99,7 @@ function createProgressBar(
 		}
 	}
 
-	// 4. Blue filled blocks for in-progress (actively working)
+	// 3. Blue filled blocks for in-progress (actively working)
 	if (statusBreakdown['in-progress'] && charsUsed < width) {
 		const inProgressChars = Math.round(
 			(statusBreakdown['in-progress'] / 100) * width
@@ -122,7 +111,7 @@ function createProgressBar(
 		}
 	}
 
-	// 5. Magenta empty blocks for review (almost done)
+	// 4. Magenta empty blocks for review (almost done)
 	if (statusBreakdown.review && charsUsed < width) {
 		const reviewChars = Math.round((statusBreakdown.review / 100) * width);
 		const actualChars = Math.min(reviewChars, width - charsUsed);
@@ -132,7 +121,7 @@ function createProgressBar(
 		}
 	}
 
-	// 6. Yellow empty blocks for pending (ready to start)
+	// 5. Yellow empty blocks for pending (ready to start)
 	if (statusBreakdown.pending && charsUsed < width) {
 		const pendingChars = Math.round((statusBreakdown.pending / 100) * width);
 		const actualChars = Math.min(pendingChars, width - charsUsed);
@@ -142,7 +131,7 @@ function createProgressBar(
 		}
 	}
 
-	// 7. Red empty blocks for blocked (can't start yet)
+	// 6. Red empty blocks for blocked (can't start yet)
 	if (statusBreakdown.blocked && charsUsed < width) {
 		const blockedChars = Math.round((statusBreakdown.blocked / 100) * width);
 		const actualChars = Math.min(blockedChars, width - charsUsed);
@@ -397,7 +386,7 @@ function formatStatusLine(
 
 	// Order: Done, Cancelled, Deferred, In Progress, Review, Pending, Blocked
 	if (isSubtask) {
-		parts.push(`Completed: ${chalk.green(`${stats.done}/${stats.total}`)}`);
+		parts.push(`Completed: ${chalk.green(`${stats.completedCount}/${stats.total}`)}`);
 	} else {
 		parts.push(`Done: ${chalk.green(stats.done)}`);
 	}
