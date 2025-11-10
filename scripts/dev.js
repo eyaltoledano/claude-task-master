@@ -10,18 +10,18 @@
 
 import dotenv from 'dotenv';
 import { findProjectRoot } from '@tm/core';
+import { join } from 'node:path';
 
-// Store the original working directory before changing it
+// Store the original working directory
 // This is needed for commands that take relative paths as arguments
 const originalCwd = process.cwd();
 
-// Change to project root so dotenv can find .env from the correct location
-// This allows running commands from subdirectories like apps/, packages/, etc.
+// Find project root for .env loading
+// We don't change the working directory to avoid breaking relative path logic
 const projectRoot = findProjectRoot();
-process.chdir(projectRoot);
 
-// Load .env - dotenv will now look in the project root
-dotenv.config();
+// Load .env from project root without changing cwd
+dotenv.config({ path: join(projectRoot, '.env') });
 
 // Make original cwd available to commands that need it
 process.env.TASKMASTER_ORIGINAL_CWD = originalCwd;

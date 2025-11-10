@@ -35,17 +35,20 @@ export class AbortCommand extends Command {
 	private async execute(options: AbortOptions): Promise<void> {
 		// Inherit parent options
 		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
-		const mergedOptions: AbortOptions = {
-			...parentOpts,
-			...options,
-			projectRoot: getProjectRoot(
-				options.projectRoot || parentOpts?.projectRoot
-			)
-		};
 
-		const formatter = new OutputFormatter(mergedOptions.json || false);
+		const formatter = new OutputFormatter(options.json || parentOpts?.json || false);
 
 		try {
+			// Resolve project root inside try block to catch any errors
+			const projectRoot = getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			);
+
+			const mergedOptions: AbortOptions = {
+				...parentOpts,
+				...options,
+				projectRoot
+			};
 			// Check for workflow state
 			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
 			if (!hasState) {

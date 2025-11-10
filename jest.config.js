@@ -43,6 +43,7 @@ export default {
 	moduleDirectories: ['node_modules', '<rootDir>'],
 
 	// Configure test coverage thresholds
+	// Note: ts-jest reports coverage against .ts files, not .js
 	coverageThreshold: {
 		global: {
 			branches: 80,
@@ -51,13 +52,13 @@ export default {
 			statements: 80
 		},
 		// Critical code requires higher coverage
-		'./src/utils/**/*.js': {
+		'./src/utils/**/*.ts': {
 			branches: 70,
 			functions: 90,
 			lines: 90,
 			statements: 90
 		},
-		'./src/middleware/**/*.js': {
+		'./src/middleware/**/*.ts': {
 			branches: 70,
 			functions: 85,
 			lines: 85,
