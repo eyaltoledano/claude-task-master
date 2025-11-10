@@ -386,7 +386,9 @@ function formatStatusLine(
 
 	// Order: Done, Cancelled, Deferred, In Progress, Review, Pending, Blocked
 	if (isSubtask) {
-		parts.push(`Completed: ${chalk.green(`${stats.completedCount}/${stats.total}`)}`);
+		parts.push(
+			`Completed: ${chalk.green(`${stats.completedCount}/${stats.total}`)}`
+		);
 	} else {
 		parts.push(`Done: ${chalk.green(stats.done)}`);
 	}
