@@ -143,6 +143,99 @@ The Claude Code settings can be specified globally in the `claudeCode` section o
 - **allowedTools/disallowedTools**: Enable read-only analysis modes or restrict access to sensitive operations
 - **mcpServers**: Future extensibility for custom tool integrations
 
+## Claude Code Configuration Behavior
+
+### Understanding .claude Configuration Files
+
+Task Master's interaction with Claude Code's `.claude` configuration files depends on how you configure your `.taskmaster/config.json`:
+
+**When you configure `claudeCode.mcpServers` in `.taskmaster/config.json`:**
+- Task Master passes the explicit MCP configuration to the Claude Code SDK
+- The SDK spawns the Claude Code CLI with the `--mcp-config` flag
+- **Your `.claude/settings.json` and `.mcp.json` files are NOT used** (unless you also set `cwd` to point to a directory containing these files)
+
+**When you DON'T configure `claudeCode.mcpServers` in `.taskmaster/config.json`:**
+- Task Master does not pass any MCP configuration to the Claude Code SDK
+- The SDK spawns the Claude Code CLI without the `--mcp-config` flag
+- **The CLI uses its default configuration discovery:**
+  - Global: `~/.claude/settings.json` and `~/.claude/.config.json`
+  - Project: `./.claude/settings.json` and `./.mcp.json` (in the working directory)
+  - Local: `./.claude/settings.local.json`
+
+### Configuration Precedence
+
+When Task Master spawns Claude Code:
+
+1. **Explicit Task Master configuration takes precedence**: Settings in `.taskmaster/config.json` → `claudeCode` section
+2. **Claude Code CLI defaults apply otherwise**: The CLI's own configuration discovery (`.claude/`, `~/.claude/`)
+
+### Practical Examples
+
+**Example 1: Using Claude Code's default configuration**
+```json
+// .taskmaster/config.json
+{
+  "models": {
+    "main": {
+      "provider": "claude-code",
+      "modelId": "sonnet"
+    }
+  }
+  // No claudeCode.mcpServers configured
+}
+```
+Result: Claude Code CLI will use `~/.claude/settings.json` and `./.mcp.json`
+
+**Example 2: Overriding with Task Master configuration**
+```json
+// .taskmaster/config.json
+{
+  "models": {
+    "main": {
+      "provider": "claude-code",
+      "modelId": "sonnet"
+    }
+  },
+  "claudeCode": {
+    "mcpServers": {
+      "custom-server": {
+        "command": "npx",
+        "args": ["-y", "my-mcp-server"]
+      }
+    }
+  }
+}
+```
+Result: Only the MCP servers defined in `claudeCode.mcpServers` are used; `.claude/settings.json` and `.mcp.json` are ignored for MCP configuration
+
+**Example 3: Hybrid approach with working directory**
+```json
+// .taskmaster/config.json
+{
+  "models": {
+    "main": {
+      "provider": "claude-code",
+      "modelId": "sonnet"
+    }
+  },
+  "claudeCode": {
+    "cwd": "/path/to/project",
+    // No mcpServers - let CLI discover configuration
+  }
+}
+```
+Result: Claude Code CLI uses `.claude/settings.json` and `.mcp.json` from `/path/to/project`, plus global `~/.claude/settings.json`
+
+### Recommendations
+
+**For consistent, project-specific behavior:**
+- Configure `claudeCode.mcpServers` explicitly in `.taskmaster/config.json`
+- This ensures deterministic behavior regardless of global Claude Code settings
+
+**For using your existing Claude Code setup:**
+- Don't configure `claudeCode.mcpServers` in `.taskmaster/config.json`
+- Task Master will respect your existing `.claude/settings.json` and `.mcp.json` files
+
 ## Notes
 
 - The Claude Code provider doesn't track usage costs (shown as 0 in telemetry)
