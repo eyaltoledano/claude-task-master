@@ -3,10 +3,10 @@
  * Provides formatting, display, and visual components for the command line interface
  */
 
-import chalk from 'chalk';
+import type { Subtask, Task, TaskPriority, TaskStatus } from '@tm/core';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
-import type { Task, TaskStatus, TaskPriority, Subtask } from '@tm/core';
 
 /**
  * Get colored status display with ASCII icons (matches scripts/modules/ui.js style)

@@ -3,13 +3,13 @@
  * Bug fix: Cancelled tasks should be treated as complete
  */
 
-import { describe, it, expect } from 'vitest';
 import type { Task } from '@tm/core';
+import { describe, expect, it } from 'vitest';
 import {
-	calculateTaskStatistics,
-	calculateSubtaskStatistics,
+	type TaskStatistics,
 	calculateDependencyStatistics,
-	type TaskStatistics
+	calculateSubtaskStatistics,
+	calculateTaskStatistics
 } from '../../../src/ui/components/dashboard.component.js';
 
 describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
@@ -45,7 +45,12 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as complete in percentage calculation', () => {
 			// Arrange: Mix of done, completed, cancelled
 			const tasks: Task[] = [
-				{ id: 1, title: 'Done Task', status: 'done' as const, dependencies: [] },
+				{
+					id: 1,
+					title: 'Done Task',
+					status: 'done' as const,
+					dependencies: []
+				},
 				{
 					id: 2,
 					title: 'Completed Task',

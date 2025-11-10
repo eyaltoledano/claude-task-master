@@ -2,13 +2,13 @@
  * @fileoverview Resume Command - Restore and resume TDD workflow
  */
 
-import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
+import { Command } from 'commander';
 import {
 	AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
 
 type ResumeOptions = AutopilotBaseOptions;

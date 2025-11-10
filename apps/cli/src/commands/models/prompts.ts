@@ -2,17 +2,17 @@
  * @fileoverview Interactive prompt logic for model selection
  */
 
-import chalk from 'chalk';
 import search, { Separator } from '@inquirer/search';
+import chalk from 'chalk';
 import { getAvailableModels } from '../../lib/model-management.js';
-import type {
-	ModelRole,
-	ModelInfo,
-	CurrentModels,
-	PromptData,
-	ModelChoice
-} from './types.js';
 import { getCustomProviderOptions } from './custom-providers.js';
+import type {
+	CurrentModels,
+	ModelChoice,
+	ModelInfo,
+	ModelRole,
+	PromptData
+} from './types.js';
 
 /**
  * Build prompt choices for a specific role

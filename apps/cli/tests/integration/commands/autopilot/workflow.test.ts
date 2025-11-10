@@ -2,8 +2,8 @@
  * @fileoverview Integration tests for autopilot workflow commands
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { WorkflowState } from '@tm/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Track file system state in memory - must be in vi.hoisted() for mock access
 const {

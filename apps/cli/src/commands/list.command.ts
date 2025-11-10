@@ -3,21 +3,21 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
 import {
-	createTmCore,
+	OUTPUT_FORMATS,
+	type OutputFormat,
+	STATUS_ICONS,
+	TASK_STATUSES,
 	type Task,
 	type TaskStatus,
 	type TmCore,
-	TASK_STATUSES,
-	OUTPUT_FORMATS,
-	STATUS_ICONS,
-	type OutputFormat
+	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
-import * as ui from '../utils/ui.js';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Terminal complete statuses - tasks that are finished and satisfy dependencies
@@ -35,18 +35,18 @@ const TERMINAL_COMPLETE_STATUSES: ReadonlyArray<TaskStatus> = [
 function isTaskComplete(status: TaskStatus): boolean {
 	return TERMINAL_COMPLETE_STATUSES.includes(status);
 }
-import { displayCommandHeader } from '../utils/display-helpers.js';
 import {
-	displayDashboards,
-	calculateTaskStatistics,
-	calculateSubtaskStatistics,
+	type NextTaskInfo,
 	calculateDependencyStatistics,
-	getPriorityBreakdown,
+	calculateSubtaskStatistics,
+	calculateTaskStatistics,
+	displayDashboards,
 	displayRecommendedNextTask,
-	getTaskDescription,
 	displaySuggestedNextSteps,
-	type NextTaskInfo
+	getPriorityBreakdown,
+	getTaskDescription
 } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
 
 /**
  * Options interface for the list command
