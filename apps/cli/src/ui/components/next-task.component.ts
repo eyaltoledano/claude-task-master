@@ -38,7 +38,7 @@ export function displayRecommendedNextTask(
 					padding: 1,
 					borderStyle: 'round',
 					borderColor: 'yellow',
-					title: '⚠ NO TASKS AVAILABLE ⚠',
+					title: 'NO TASKS AVAILABLE',
 					titleAlignment: 'center',
 					width: getBoxWidth(0.97),
 					fullscreen: false
@@ -113,7 +113,7 @@ export function displayRecommendedNextTask(
 			margin: { top: 1, bottom: 1 },
 			borderStyle: 'round',
 			borderColor: '#FFA500', // Orange color
-			title: chalk.hex('#FFA500')('⚡ RECOMMENDED NEXT TASK ⚡'),
+			title: chalk.hex('#FFA500')('RECOMMENDED NEXT TASK'),
 			titleAlignment: 'center',
 			width: getBoxWidth(0.97),
 			fullscreen: false
