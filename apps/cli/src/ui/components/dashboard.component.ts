@@ -5,8 +5,25 @@
 
 import chalk from 'chalk';
 import boxen from 'boxen';
-import type { Task, TaskPriority } from '@tm/core';
+import type { Task, TaskPriority, TaskStatus } from '@tm/core';
 import { getComplexityWithColor } from '../../utils/ui.js';
+
+/**
+ * Terminal complete statuses - tasks that are finished and satisfy dependencies
+ * Aligns with task-loader.service.ts which defines: ['done', 'completed', 'cancelled']
+ */
+const TERMINAL_COMPLETE_STATUSES: ReadonlyArray<TaskStatus> = [
+	'done',
+	'completed',
+	'cancelled'
+] as const;
+
+/**
+ * Check if a task is in a terminal complete state
+ */
+function isTaskComplete(status: TaskStatus): boolean {
+	return TERMINAL_COMPLETE_STATUSES.includes(status);
+}
 
 /**
  * Statistics for task collection
@@ -199,8 +216,10 @@ export function calculateTaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
+	// Count terminal complete tasks for percentage calculation
+	const completedCount = tasks.filter((t) => isTaskComplete(t.status)).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+		stats.total > 0 ? Math.round((completedCount / stats.total) * 100) : 0;
 
 	return stats;
 }
@@ -221,10 +240,12 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		completionPercentage: 0
 	};
 
+	const allSubtasks: Array<{ status: string }> = [];
 	tasks.forEach((task) => {
 		if (task.subtasks && task.subtasks.length > 0) {
 			task.subtasks.forEach((subtask) => {
 				stats.total++;
+				allSubtasks.push(subtask);
 				switch (subtask.status) {
 					case 'done':
 						stats.done++;
@@ -252,8 +273,12 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
+	// Count terminal complete subtasks for percentage calculation
+	const completedCount = allSubtasks.filter((st) =>
+		isTaskComplete(st.status as TaskStatus)
+	).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+		stats.total > 0 ? Math.round((completedCount / stats.total) * 100) : 0;
 
 	return stats;
 }
@@ -264,18 +289,18 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 export function calculateDependencyStatistics(
 	tasks: Task[]
 ): DependencyStatistics {
+	// Get all terminal complete task IDs - these satisfy dependencies
 	const completedTaskIds = new Set(
-		tasks.filter((t) => t.status === 'done').map((t) => t.id)
+		tasks.filter((t) => isTaskComplete(t.status)).map((t) => t.id)
 	);
 
 	const tasksWithNoDeps = tasks.filter(
-		(t) =>
-			t.status !== 'done' && (!t.dependencies || t.dependencies.length === 0)
+		(t) => !isTaskComplete(t.status) && (!t.dependencies || t.dependencies.length === 0)
 	).length;
 
 	const tasksWithAllDepsSatisfied = tasks.filter(
 		(t) =>
-			t.status !== 'done' &&
+			!isTaskComplete(t.status) &&
 			t.dependencies &&
 			t.dependencies.length > 0 &&
 			t.dependencies.every((depId) => completedTaskIds.has(depId))
@@ -283,7 +308,7 @@ export function calculateDependencyStatistics(
 
 	const tasksBlockedByDeps = tasks.filter(
 		(t) =>
-			t.status !== 'done' &&
+			!isTaskComplete(t.status) &&
 			t.dependencies &&
 			t.dependencies.length > 0 &&
 			!t.dependencies.every((depId) => completedTaskIds.has(depId))

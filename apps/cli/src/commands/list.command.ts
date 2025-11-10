@@ -18,6 +18,23 @@ import {
 import type { StorageType } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
+
+/**
+ * Terminal complete statuses - tasks that are finished and satisfy dependencies
+ * Aligns with task-loader.service.ts which defines: ['done', 'completed', 'cancelled']
+ */
+const TERMINAL_COMPLETE_STATUSES: ReadonlyArray<TaskStatus> = [
+	'done',
+	'completed',
+	'cancelled'
+] as const;
+
+/**
+ * Check if a task is in a terminal complete state
+ */
+function isTaskComplete(status: TaskStatus): boolean {
+	return TERMINAL_COMPLETE_STATUSES.includes(status);
+}
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import {
 	displayDashboards,
@@ -340,12 +357,12 @@ export class ListTasksCommand extends Command {
 		// Build set of completed task IDs (including subtasks)
 		const completedIds = new Set<string>();
 		tasks.forEach((t) => {
-			if (t.status === 'done' || t.status === 'completed') {
+			if (isTaskComplete(t.status)) {
 				completedIds.add(String(t.id));
 			}
 			if (t.subtasks) {
 				t.subtasks.forEach((st) => {
-					if (st.status === 'done' || st.status === 'completed') {
+					if (isTaskComplete(st.status as TaskStatus)) {
 						completedIds.add(`${t.id}.${st.id}`);
 					}
 				});
