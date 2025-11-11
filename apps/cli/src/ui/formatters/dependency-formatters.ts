@@ -3,8 +3,8 @@
  * Provides formatted dependency displays with status indicators
  */
 
-import chalk from 'chalk';
 import type { Task } from '@tm/core';
+import chalk from 'chalk';
 
 /**
  * Format dependencies with their status

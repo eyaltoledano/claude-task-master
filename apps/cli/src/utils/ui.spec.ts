@@ -9,7 +9,7 @@
  * - ui/formatters/status-formatters.spec.ts
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { getBoxWidth, getBriefStatusWithColor } from './ui.js';
 
 describe('CLI UI Utilities (Backward Compatibility)', () => {

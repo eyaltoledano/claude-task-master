@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'fs-extra';
-import path from 'path';
 import os from 'os';
+import path from 'path';
+import fs from 'fs-extra';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+	filterActivityLog,
 	logActivity,
-	readActivityLog,
-	filterActivityLog
+	readActivityLog
 } from '../../../src/storage/activity-logger.js';
 
 describe('Activity Logger', () => {

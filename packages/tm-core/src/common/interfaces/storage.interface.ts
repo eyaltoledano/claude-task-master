@@ -3,8 +3,8 @@
  * This file defines the contract for all storage implementations
  */
 
-import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 import type { ExpandTaskResult } from '../../modules/integration/services/task-expansion.service.js';
+import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 
 /**
  * Options for loading tasks from storage

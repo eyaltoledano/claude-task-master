@@ -3,13 +3,13 @@
  * Public API for brief-related operations
  */
 
-import { BriefService, type TagWithStats } from './services/brief-service.js';
-import { AuthManager } from '../auth/managers/auth-manager.js';
-import type { TaskRepository } from '../tasks/repositories/task-repository.interface.js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../common/errors/task-master-error.js';
+import { AuthManager } from '../auth/managers/auth-manager.js';
+import type { TaskRepository } from '../tasks/repositories/task-repository.interface.js';
+import { BriefService, type TagWithStats } from './services/brief-service.js';
 
 /**
  * Briefs Domain - Unified API for brief operations

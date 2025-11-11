@@ -1,17 +1,17 @@
+import type { TestResultValidator } from '../services/test-result-validator.js';
 import type {
-	WorkflowPhase,
+	StateTransition,
+	SubtaskInfo,
 	TDDPhase,
 	WorkflowContext,
+	WorkflowError,
 	WorkflowEvent,
-	WorkflowState,
-	StateTransition,
-	WorkflowEventType,
 	WorkflowEventData,
 	WorkflowEventListener,
-	SubtaskInfo,
-	WorkflowError
+	WorkflowEventType,
+	WorkflowPhase,
+	WorkflowState
 } from '../types.js';
-import type { TestResultValidator } from '../services/test-result-validator.js';
 
 /**
  * Lightweight state machine for TDD workflow orchestration

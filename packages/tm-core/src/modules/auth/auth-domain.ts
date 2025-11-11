@@ -4,18 +4,18 @@
  */
 
 import path from 'node:path';
+import type { StorageType } from '../../common/types/index.js';
+import type { Brief } from '../briefs/types.js';
 import { AuthManager } from './managers/auth-manager.js';
+import type {
+	Organization,
+	RemoteTask
+} from './services/organization.service.js';
 import type {
 	AuthCredentials,
 	OAuthFlowOptions,
 	UserContext
 } from './types.js';
-import type {
-	Organization,
-	RemoteTask
-} from './services/organization.service.js';
-import type { Brief } from '../briefs/types.js';
-import type { StorageType } from '../../common/types/index.js';
 
 /**
  * Display information for storage context

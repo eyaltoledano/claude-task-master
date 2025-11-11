@@ -5,16 +5,16 @@
 
 import { Command } from 'commander';
 
+import { AuthCommand } from './commands/auth.command.js';
+import { AutopilotCommand } from './commands/autopilot/index.js';
+import { ContextCommand } from './commands/context.command.js';
+import { ExportCommand } from './commands/export.command.js';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
-import { ShowCommand } from './commands/show.command.js';
 import { NextCommand } from './commands/next.command.js';
-import { AuthCommand } from './commands/auth.command.js';
-import { ContextCommand } from './commands/context.command.js';
-import { StartCommand } from './commands/start.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
-import { ExportCommand } from './commands/export.command.js';
-import { AutopilotCommand } from './commands/autopilot/index.js';
+import { ShowCommand } from './commands/show.command.js';
+import { StartCommand } from './commands/start.command.js';
 
 /**
  * Command metadata for registration

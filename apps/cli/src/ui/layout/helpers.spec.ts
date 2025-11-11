@@ -3,7 +3,7 @@
  * Tests for apps/cli/src/utils/layout/helpers.ts
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { getBoxWidth } from './helpers.js';
 

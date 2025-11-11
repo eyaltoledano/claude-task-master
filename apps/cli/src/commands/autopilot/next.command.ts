@@ -2,14 +2,13 @@
  * @fileoverview Next Command - Get next action in TDD workflow
  */
 
-import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
 import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
 
 type NextOptions = AutopilotBaseOptions;

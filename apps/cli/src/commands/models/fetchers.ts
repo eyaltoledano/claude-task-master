@@ -2,9 +2,9 @@
  * @fileoverview Model fetching utilities for OpenRouter, Ollama, and other providers
  */
 
-import https from 'https';
 import http from 'http';
-import type { FetchResult, OpenRouterModel, OllamaModel } from './types.js';
+import https from 'https';
+import type { FetchResult, OllamaModel, OpenRouterModel } from './types.js';
 
 /**
  * Fetch available models from OpenRouter API

@@ -8,10 +8,10 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
+import { getLogger } from '../../../common/logger/factory.js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { ApiClient } from '../../storage/utils/api-client.js';
-import { getLogger } from '../../../common/logger/factory.js';
+import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 
 /**
  * Response from the expand task API endpoint (202 Accepted)

@@ -8,11 +8,11 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
-import { ApiClient } from '../../storage/utils/api-client.js';
 import { getLogger } from '../../../common/logger/factory.js';
 import type { Task } from '../../../common/types/index.js';
+import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { ApiClient } from '../../storage/utils/api-client.js';
+import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 
 /**
  * Response from the get task API endpoint

@@ -5,13 +5,13 @@
  */
 
 import { Command } from 'commander';
-import { StartCommand } from './start.command.js';
-import { ResumeCommand } from './resume.command.js';
-import { NextCommand } from './next.command.js';
-import { CompleteCommand } from './complete.command.js';
-import { CommitCommand } from './commit.command.js';
-import { StatusCommand } from './status.command.js';
 import { AbortCommand } from './abort.command.js';
+import { CommitCommand } from './commit.command.js';
+import { CompleteCommand } from './complete.command.js';
+import { NextCommand } from './next.command.js';
+import { ResumeCommand } from './resume.command.js';
+import { StartCommand } from './start.command.js';
+import { StatusCommand } from './status.command.js';
 
 /**
  * Shared command options for all autopilot commands

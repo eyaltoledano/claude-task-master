@@ -3,12 +3,12 @@
  * Provides table creation and formatting for tasks
  */
 
+import type { Subtask, Task } from '@tm/core';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import type { Task, Subtask } from '@tm/core';
-import { getStatusWithColor } from '../formatters/status-formatters.js';
-import { getPriorityWithColor } from '../formatters/priority-formatters.js';
 import { getComplexityWithColor } from '../formatters/complexity-formatters.js';
+import { getPriorityWithColor } from '../formatters/priority-formatters.js';
+import { getStatusWithColor } from '../formatters/status-formatters.js';
 import { getBoxWidth, truncate } from '../layout/helpers.js';
 
 /**

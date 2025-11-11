@@ -5,9 +5,9 @@
  * @module git-adapter
  */
 
-import { simpleGit, type SimpleGit, type StatusResult } from 'simple-git';
-import fs from 'fs-extra';
 import path from 'path';
+import fs from 'fs-extra';
+import { type SimpleGit, type StatusResult, simpleGit } from 'simple-git';
 
 /**
  * GitAdapter class for safe git operations

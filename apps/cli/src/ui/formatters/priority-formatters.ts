@@ -3,8 +3,8 @@
  * Provides colored priority displays for tasks
  */
 
-import chalk from 'chalk';
 import type { TaskPriority } from '@tm/core';
+import chalk from 'chalk';
 
 /**
  * Get colored priority display

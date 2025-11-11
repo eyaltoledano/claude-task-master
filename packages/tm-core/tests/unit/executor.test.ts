@@ -2,10 +2,10 @@
  * Tests for executor functionality
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	ExecutorFactory,
 	ClaudeExecutor,
+	ExecutorFactory,
 	type ExecutorOptions
 } from '../../src/executors/index.js';
 

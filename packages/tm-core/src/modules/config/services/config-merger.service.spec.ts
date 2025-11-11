@@ -2,8 +2,8 @@
  * @fileoverview Unit tests for ConfigMerger service
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ConfigMerger, CONFIG_PRECEDENCE } from './config-merger.service.js';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { CONFIG_PRECEDENCE, ConfigMerger } from './config-merger.service.js';
 
 describe('ConfigMerger', () => {
 	let merger: ConfigMerger;

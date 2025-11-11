@@ -2,8 +2,8 @@
  * @fileoverview Commit Command - Create commit with enhanced message generation
  */
 
+import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
 import { Command } from 'commander';
-import { WorkflowService, GitAdapter, CommitMessageGenerator } from '@tm/core';
 import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 import { getProjectRoot } from '../../utils/project-root.js';
 

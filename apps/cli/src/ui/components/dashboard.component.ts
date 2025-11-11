@@ -3,9 +3,9 @@
  * Displays project statistics and dependency information
  */
 
-import chalk from 'chalk';
-import boxen from 'boxen';
 import type { Task, TaskPriority } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
 import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**

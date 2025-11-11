@@ -4,19 +4,19 @@
  * This is a thin presentation layer over @tm/core's TaskExecutionService
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import ora, { type Ora } from 'ora';
 import { spawn } from 'child_process';
 import {
-	createTmCore,
+	type StartTaskResult as CoreStartTaskResult,
 	type TmCore,
-	type StartTaskResult as CoreStartTaskResult
+	createTmCore
 } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import ora, { type Ora } from 'ora';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
-import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**

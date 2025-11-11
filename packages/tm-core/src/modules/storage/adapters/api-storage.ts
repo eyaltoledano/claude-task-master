@@ -3,34 +3,34 @@
  * This provides storage via repository abstraction for flexibility
  */
 
-import type {
-	IStorage,
-	StorageStats,
-	UpdateStatusResult,
-	LoadTasksOptions
-} from '../../../common/interfaces/storage.interface.js';
-import type {
-	Task,
-	TaskMetadata,
-	TaskTag,
-	TaskStatus
-} from '../../../common/types/index.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
-import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
-import { SupabaseClient } from '@supabase/supabase-js';
+import type {
+	IStorage,
+	LoadTasksOptions,
+	StorageStats,
+	UpdateStatusResult
+} from '../../../common/interfaces/storage.interface.js';
+import { getLogger } from '../../../common/logger/factory.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskStatus,
+	TaskTag
+} from '../../../common/types/index.js';
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { BriefsDomain } from '../../briefs/briefs-domain.js';
-import { ApiClient } from '../utils/api-client.js';
-import { getLogger } from '../../../common/logger/factory.js';
 import {
 	ExpandTaskResult,
 	TaskExpansionService
 } from '../../integration/services/task-expansion.service.js';
 import { TaskRetrievalService } from '../../integration/services/task-retrieval.service.js';
+import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
+import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
+import { ApiClient } from '../utils/api-client.js';
 
 /**
  * API storage configuration

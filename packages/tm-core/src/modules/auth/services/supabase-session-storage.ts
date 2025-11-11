@@ -14,9 +14,9 @@
  * - Persistence to ~/.taskmaster/session.json
  */
 
-import type { SupportedStorage } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
+import type { SupportedStorage } from '@supabase/supabase-js';
 import { getLogger } from '../../../common/logger/index.js';
 
 const DEFAULT_SESSION_FILE = path.join(

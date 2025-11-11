@@ -4,9 +4,9 @@
  */
 
 import type {
-	TaskStatus,
+	TaskComplexity,
 	TaskPriority,
-	TaskComplexity
+	TaskStatus
 } from '../types/index.js';
 
 /**

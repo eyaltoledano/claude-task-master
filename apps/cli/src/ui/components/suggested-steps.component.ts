@@ -3,8 +3,8 @@
  * Displays helpful command suggestions at the end of the list
  */
 
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import { getBoxWidth } from '../../utils/ui.js';
 
 /**

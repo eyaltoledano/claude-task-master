@@ -2,14 +2,15 @@
  * @fileoverview Complete Command - Complete current TDD phase with validation
  */
 
+import { TestResult, WorkflowOrchestrator } from '@tm/core';
 import { Command } from 'commander';
 import { WorkflowOrchestrator, TestResult } from '@tm/core';
 import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
 
 interface CompleteOptions extends AutopilotBaseOptions {

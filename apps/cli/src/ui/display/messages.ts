@@ -3,8 +3,8 @@
  * Provides formatted message boxes for errors, success, warnings, info, and banners
  */
 
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import { getBoxWidth } from '../layout/helpers.js';
 
 /**

@@ -2,21 +2,21 @@
  * @fileoverview Storage factory for creating appropriate storage implementations
  */
 
-import type { IStorage } from '../../../common/interfaces/storage.interface.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 import type {
 	IConfiguration,
 	RuntimeStorageConfig,
 	StorageSettings
 } from '../../../common/interfaces/configuration.interface.js';
-import { FileStorage } from '../adapters/file-storage/index.js';
-import { ApiStorage } from '../adapters/api-storage.js';
-import {
-	ERROR_CODES,
-	TaskMasterError
-} from '../../../common/errors/task-master-error.js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
+import type { IStorage } from '../../../common/interfaces/storage.interface.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
+import { ApiStorage } from '../adapters/api-storage.js';
+import { FileStorage } from '../adapters/file-storage/index.js';
 
 /**
  * Factory for creating storage implementations based on configuration
