@@ -829,6 +829,45 @@ function checkProgressCapability(reportProgress, log) {
 	return reportProgress;
 }
 
+/**
+ * Checks if the user is currently using API storage (Hamster)
+ * @param {Object} log - Logger instance
+ * @returns {Promise<{isApiStorage: boolean, briefId?: string, briefName?: string}>}
+ */
+async function checkApiStorage(log) {
+	try {
+		// Dynamically import AuthManager to avoid circular dependencies
+		const { AuthManager } = await import(
+			'../../../packages/tm-core/src/modules/auth/managers/auth-manager.js'
+		);
+
+		const authManager = AuthManager.getInstance();
+
+		// Check if user has a valid session
+		const hasSession = await authManager.hasValidSession();
+		if (!hasSession) {
+			return { isApiStorage: false };
+		}
+
+		// Check if a brief is selected (required for API storage)
+		const context = authManager.getContext();
+		if (!context?.briefId) {
+			return { isApiStorage: false };
+		}
+
+		// User is authenticated and has a brief selected = API storage
+		return {
+			isApiStorage: true,
+			briefId: context.briefId,
+			briefName: context.briefName
+		};
+	} catch (error) {
+		// If there's an error checking auth, assume file storage
+		log.debug(`Error checking API storage status: ${error.message}`);
+		return { isApiStorage: false };
+	}
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,
@@ -844,5 +883,6 @@ export {
 	normalizeProjectRoot,
 	getRawProjectRootFromSession,
 	withNormalizedProjectRoot,
-	checkProgressCapability
+	checkProgressCapability,
+	checkApiStorage
 };

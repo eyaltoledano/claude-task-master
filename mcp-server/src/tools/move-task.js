@@ -9,7 +9,8 @@ import { z } from 'zod/v3';
 import {
 	handleApiResult,
 	createErrorResponse,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	checkApiStorage
 } from './utils.js';
 import {
 	moveTaskDirect,
@@ -58,6 +59,19 @@ export function registerMoveTaskTool(server) {
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
+				// Check if user is using API storage (Hamster)
+				const apiStorageCheck = await checkApiStorage(log);
+				if (apiStorageCheck.isApiStorage) {
+					const briefName = apiStorageCheck.briefName || 'Hamster';
+					log.warn(
+						`Move operations are not supported while using API storage (logged into ${briefName})`
+					);
+					return createErrorResponse(
+						`Move operations are not supported while using API storage.\n\nYou are currently logged into ${briefName} (brief: ${apiStorageCheck.briefId}).\n\nThe move command requires local file storage. Please log out or switch to file storage to use this feature.\n\nRun 'tm auth logout' to switch to file storage.`,
+						'API_STORAGE_NOT_SUPPORTED'
+					);
+				}
+
 				// Check if this is a cross-tag move
 				const isCrossTagMove =
 					args.fromTag && args.toTag && args.fromTag !== args.toTag;
