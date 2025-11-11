@@ -3,18 +3,21 @@
  * Provides brief-specific commands that only work with API storage
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import type { TmCore } from '@tm/core';
-import { createTmCore } from '@tm/core';
-import * as ui from '../utils/ui.js';
 import {
-	tryListTagsViaRemote,
-	tryAddTagViaRemote,
-	tryUseTagViaRemote,
+	type LogLevel,
 	type TagInfo,
-	type LogLevel
+	tryAddTagViaRemote,
+	tryListTagsViaRemote
 } from '@tm/bridge';
+import type { TmCore } from '@tm/core';
+import { AuthManager, createTmCore } from '@tm/core';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import {
+	selectBriefFromInput,
+	selectBriefInteractive
+} from '../utils/brief-selection.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Result type from briefs command
@@ -33,45 +36,53 @@ export interface BriefsResult {
  */
 export class BriefsCommand extends Command {
 	private tmCore?: TmCore;
+	private authManager: AuthManager;
 	private lastResult?: BriefsResult;
 
 	constructor(name?: string) {
 		super(name || 'briefs');
 
+		// Initialize auth manager
+		this.authManager = AuthManager.getInstance();
+
 		// Configure the command
 		this.description('Manage briefs (API storage only)');
+		this.alias('brief');
 
 		// Add subcommands
 		this.addListCommand();
 		this.addSelectCommand();
 		this.addCreateCommand();
 
-		// Default action: list briefs
-		this.action(async () => {
+		// Accept optional positional argument for brief URL/ID
+		this.argument('[briefOrUrl]', 'Brief ID or Hamster brief URL');
+
+		// Default action: if argument provided, select brief; else list briefs
+		this.action(async (briefOrUrl?: string) => {
+			if (briefOrUrl && briefOrUrl.trim().length > 0) {
+				await this.executeSelectFromUrl(briefOrUrl.trim());
+				return;
+			}
 			await this.executeList();
 		});
 	}
 
 	/**
-	 * Check if using API storage
+	 * Check if user is authenticated (required for briefs)
 	 */
-	private async checkApiStorage(): Promise<boolean> {
-		await this.initTmCore();
-		const storageType = this.tmCore!.tasks.getStorageType();
+	private async checkAuthentication(): Promise<boolean> {
+		const hasSession = await this.authManager.hasValidSession();
 
-		if (storageType !== 'api') {
-			console.log(
-				chalk.yellow('\n⚠ Briefs command requires API storage\n')
-			);
+		if (!hasSession) {
+			console.log(chalk.yellow('\n⚠ Not logged in to Hamster\n'));
 			console.log(
 				chalk.white(
-					'The "briefs" command is only available when using API storage (tryhamster.com).'
+					'The "briefs" command requires you to be logged in to your Hamster account.'
 				)
 			);
-			console.log(chalk.gray('\nYou are currently using file-based storage.'));
-			console.log(
-				chalk.gray('\nUse "tm tags" instead for file-based tag management.')
-			);
+			console.log(chalk.cyan('\n  → Run: tm auth login'));
+			console.log(chalk.gray('\nWorking locally instead?'));
+			console.log(chalk.gray('  → Use "tm tags" for local tag management.'));
 			return false;
 		}
 
@@ -106,21 +117,28 @@ Note: This command only works with API storage (tryhamster.com).
 	 */
 	private addSelectCommand(): void {
 		this.command('select')
-			.description('Interactively select a brief to work with')
-			.argument('[name]', 'Brief name or ID (optional, interactive if omitted)')
+			.description('Select a brief to work with')
+			.argument(
+				'[briefOrUrl]',
+				'Brief ID or Hamster URL (optional, interactive if omitted)'
+			)
 			.addHelpText(
 				'after',
 				`
 Examples:
-  $ tm briefs select              # Interactive selection
-  $ tm briefs select my-brief     # Select by name
-  $ tm briefs select abc12345     # Select by ID (last 8 chars)
+  $ tm brief select                                    # Interactive selection
+  $ tm brief select abc12345                           # Select by ID
+  $ tm brief select https://app.tryhamster.com/...     # Select by URL
 
-Note: This is an alias for "tm context brief" when using API storage.
+Shortcuts:
+  $ tm brief <brief-url>                               # Same as "select"
+  $ tm brief                                           # List all briefs
+
+Note: Works exactly like "tm context brief" - reuses the same interactive interface.
 `
 			)
-			.action(async (name) => {
-				await this.executeSelect(name);
+			.action(async (briefOrUrl) => {
+				await this.executeSelect(briefOrUrl);
 			});
 	}
 
@@ -164,8 +182,8 @@ Note: Briefs must be created through the Hamster Studio web interface.
 		showMetadata?: boolean;
 	}): Promise<void> {
 		try {
-			// Check if using API storage
-			if (!(await this.checkApiStorage())) {
+			// Check authentication
+			if (!(await this.checkAuthentication())) {
 				process.exit(1);
 			}
 
@@ -193,9 +211,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				message: remoteResult.message
 			});
 		} catch (error) {
-			ui.displayError(
-				`Failed to list briefs: ${(error as Error).message}`
-			);
+			ui.displayError(`Failed to list briefs: ${(error as Error).message}`);
 			this.setLastResult({
 				success: false,
 				action: 'list',
@@ -206,54 +222,94 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	}
 
 	/**
-	 * Execute select brief (switch to brief)
+	 * Execute select brief interactively or by name/ID
 	 */
-	private async executeSelect(name?: string): Promise<void> {
+	private async executeSelect(nameOrId?: string): Promise<void> {
 		try {
-			// Check if using API storage
-			if (!(await this.checkApiStorage())) {
+			// Check authentication
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
+				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
 
-			if (!name) {
-				// Interactive selection - use tm context brief
-				ui.displayInfo(
-					'For interactive brief selection, use: tm context brief'
+			// If name/ID provided, treat it as URL/ID selection
+			if (nameOrId && nameOrId.trim().length > 0) {
+				await this.executeSelectFromUrl(nameOrId.trim());
+				return;
+			}
+
+			// Check if org is selected for interactive selection
+			const context = this.authManager.getContext();
+			if (!context?.orgId) {
+				ui.displayErrorBox(
+					'No organization selected. Run "tm context org" first.'
 				);
-				this.setLastResult({
-					success: false,
-					action: 'select',
-					message: 'Name required. Use "tm context brief" for interactive selection.'
-				});
 				process.exit(1);
 			}
 
-			// Use the bridge to switch briefs
-			const remoteResult = await tryUseTagViaRemote({
-				tagName: name,
-				projectRoot: process.cwd(),
-				report: (level: LogLevel, ...args: unknown[]) => {
-					const message = args[0] as string;
-					if (level === 'error') ui.displayError(message);
-					else if (level === 'warn') ui.displayWarning(message);
-					else if (level === 'info') ui.displayInfo(message);
-				}
-			});
-
-			if (!remoteResult) {
-				throw new Error('Failed to switch brief');
-			}
+			// Use shared utility for interactive selection
+			const result = await selectBriefInteractive(
+				this.authManager,
+				context.orgId
+			);
 
 			this.setLastResult({
-				success: remoteResult.success,
+				success: result.success,
 				action: 'select',
-				currentBrief: remoteResult.currentTag,
-				message: remoteResult.message
+				currentBrief: result.briefId,
+				message: result.message
 			});
+
+			if (!result.success) {
+				process.exit(1);
+			}
 		} catch (error) {
-			ui.displayError(
-				`Failed to select brief: ${(error as Error).message}`
+			ui.displayErrorBox(`Failed to select brief: ${(error as Error).message}`);
+			this.setLastResult({
+				success: false,
+				action: 'select',
+				message: (error as Error).message
+			});
+			process.exit(1);
+		}
+	}
+
+	/**
+	 * Execute select brief from any input (URL, ID, or name)
+	 * All parsing logic is in tm-core
+	 */
+	private async executeSelectFromUrl(input: string): Promise<void> {
+		try {
+			// Check authentication
+			const hasSession = await this.authManager.hasValidSession();
+			if (!hasSession) {
+				ui.displayError('Not authenticated. Run "tm auth login" first.');
+				process.exit(1);
+			}
+
+			// Initialize tmCore to access business logic
+			await this.initTmCore();
+
+			// Use shared utility - tm-core handles ALL parsing
+			const result = await selectBriefFromInput(
+				this.authManager,
+				input,
+				this.tmCore
 			);
+
+			this.setLastResult({
+				success: result.success,
+				action: 'select',
+				currentBrief: result.briefId,
+				message: result.message
+			});
+
+			if (!result.success) {
+				process.exit(1);
+			}
+		} catch (error) {
+			ui.displayErrorBox(`Failed to select brief: ${(error as Error).message}`);
 			this.setLastResult({
 				success: false,
 				action: 'select',
@@ -268,8 +324,8 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private async executeCreate(name?: string): Promise<void> {
 		try {
-			// Check if using API storage
-			if (!(await this.checkApiStorage())) {
+			// Check authentication
+			if (!(await this.checkAuthentication())) {
 				process.exit(1);
 			}
 
@@ -295,9 +351,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				message: remoteResult.message
 			});
 		} catch (error) {
-			ui.displayError(
-				`Failed to create brief: ${(error as Error).message}`
-			);
+			ui.displayErrorBox(`Failed to create brief: ${(error as Error).message}`);
 			this.setLastResult({
 				success: false,
 				action: 'create',

@@ -198,6 +198,25 @@ export class TasksDomain {
 	}
 
 	/**
+	 * Resolve a brief by ID, name, or partial match without switching
+	 * Returns the full brief object
+	 *
+	 * Supports:
+	 * - Full UUID
+	 * - Last 8 characters of UUID
+	 * - Brief name (exact or partial match)
+	 *
+	 * Only works with API storage (briefs).
+	 *
+	 * @param briefIdOrName - Brief identifier
+	 * @param orgId - Optional organization ID
+	 * @returns The resolved brief object
+	 */
+	async resolveBrief(briefIdOrName: string, orgId?: string): Promise<any> {
+		return this.briefsDomain.resolveBrief(briefIdOrName, orgId);
+	}
+
+	/**
 	 * Switch to a different tag/brief context
 	 * For file storage: updates active tag in state
 	 * For API storage: looks up brief by name and updates auth context

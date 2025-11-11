@@ -6,12 +6,14 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import search from '@inquirer/search';
-import ora, { Ora } from 'ora';
-import { AuthManager, type UserContext } from '@tm/core';
+import ora from 'ora';
+import { AuthManager, createTmCore, type UserContext, type TmCore } from '@tm/core';
 import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
+import {
+	selectBriefInteractive,
+	selectBriefFromInput
+} from '../utils/brief-selection.js';
 
 /**
  * Result type from context command
@@ -29,6 +31,7 @@ export interface ContextResult {
  */
 export class ContextCommand extends Command {
 	private authManager: AuthManager;
+	private tmCore?: TmCore;
 	private lastResult?: ContextResult;
 
 	constructor(name?: string) {
@@ -117,7 +120,8 @@ export class ContextCommand extends Command {
 			const result = await this.displayContext();
 			this.setLastResult(result);
 		} catch (error: any) {
-			displayError(error);
+			ui.displayError(`Failed to show context: ${(error as Error).message}`);
+			process.exit(1);
 		}
 	}
 
@@ -235,7 +239,8 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			displayError(error);
+			ui.displayError(`Failed to select organization: ${(error as Error).message}`);
+			process.exit(1);
 		}
 	}
 
@@ -317,209 +322,28 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			const result = await this.selectBrief(context.orgId);
-			this.setLastResult(result);
+			// Use shared utility for interactive selection
+			const result = await selectBriefInteractive(
+				this.authManager,
+				context.orgId
+			);
+
+			this.setLastResult({
+				success: result.success,
+				action: 'select-brief',
+				context: this.authManager.getContext() || undefined,
+				message: result.message
+			});
 
 			if (!result.success) {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			displayError(error);
+			ui.displayError(`Failed to select brief: ${(error as Error).message}`);
+			process.exit(1);
 		}
 	}
 
-	/**
-	 * Select a brief within the current organization
-	 */
-	private async selectBrief(orgId: string): Promise<ContextResult> {
-		const spinner = ora('Fetching briefs...').start();
-
-		try {
-			// Fetch briefs from API
-			const briefs = await this.authManager.getBriefs(orgId);
-			spinner.stop();
-
-			if (briefs.length === 0) {
-				ui.displayWarning('No briefs available in this organization');
-				return {
-					success: false,
-					action: 'select-brief',
-					message: 'No briefs available'
-				};
-			}
-
-			// Prompt for selection with search
-			const selectedBrief = await search<(typeof briefs)[0] | null>({
-				message: 'Search for a brief:',
-				source: async (input) => {
-					const searchTerm = input?.toLowerCase() || '';
-
-					// Static option for no brief
-					const noBriefOption = {
-						name: '(No brief - organization level)',
-						value: null as any,
-						description: 'Clear brief selection'
-					};
-
-					// Filter briefs based on search term
-					const filteredBriefs = briefs.filter((brief) => {
-						if (!searchTerm) return true;
-
-						const title = brief.document?.title || '';
-						const shortId = brief.id.slice(0, 8);
-						const lastChars = brief.id.slice(-8);
-
-						// Search by title, full UUID, first 8 chars, or last 8 chars
-						return (
-							title.toLowerCase().includes(searchTerm) ||
-							brief.id.toLowerCase().includes(searchTerm) ||
-							shortId.toLowerCase().includes(searchTerm) ||
-							lastChars.toLowerCase().includes(searchTerm)
-						);
-					});
-
-					// Group briefs by status
-					const briefsByStatus = filteredBriefs.reduce(
-						(acc, brief) => {
-							const status = brief.status || 'unknown';
-							if (!acc[status]) {
-								acc[status] = [];
-							}
-							acc[status].push(brief);
-							return acc;
-						},
-						{} as Record<string, typeof briefs>
-					);
-
-					// Define status order (most active first)
-					const statusOrder = [
-						'delivering',
-						'aligned',
-						'refining',
-						'draft',
-						'delivered',
-						'done',
-						'archived'
-					];
-
-					// Build grouped options
-					const groupedOptions: any[] = [];
-
-					for (const status of statusOrder) {
-						const statusBriefs = briefsByStatus[status];
-						if (!statusBriefs || statusBriefs.length === 0) continue;
-
-						// Add status header as separator
-						const statusHeader = getBriefStatusWithColor(status);
-						groupedOptions.push({
-							type: 'separator',
-							separator: `\n${statusHeader}`
-						});
-
-						// Add briefs under this status
-						statusBriefs.forEach((brief) => {
-							const title =
-								brief.document?.title || `Brief ${brief.id.slice(-8)}`;
-							const shortId = brief.id.slice(-8);
-							const description = brief.document?.description || '';
-							const taskCountDisplay =
-								brief.taskCount !== undefined && brief.taskCount > 0
-									? chalk.gray(
-											` (${brief.taskCount} ${brief.taskCount === 1 ? 'task' : 'tasks'})`
-										)
-									: '';
-
-							groupedOptions.push({
-								name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
-								value: brief,
-								description: description
-									? chalk.gray(`  ${description.slice(0, 80)}`)
-									: undefined
-							});
-						});
-					}
-
-					// Handle any briefs with statuses not in our order
-					const unorderedStatuses = Object.keys(briefsByStatus).filter(
-						(s) => !statusOrder.includes(s)
-					);
-					for (const status of unorderedStatuses) {
-						const statusBriefs = briefsByStatus[status];
-						if (!statusBriefs || statusBriefs.length === 0) continue;
-
-						const statusHeader = getBriefStatusWithColor(status);
-						groupedOptions.push({
-							type: 'separator',
-							separator: `\n${statusHeader}`
-						});
-
-						statusBriefs.forEach((brief) => {
-							const title =
-								brief.document?.title || `Brief ${brief.id.slice(-8)}`;
-							const shortId = brief.id.slice(-8);
-							const description = brief.document?.description || '';
-							const taskCountDisplay =
-								brief.taskCount !== undefined && brief.taskCount > 0
-									? chalk.gray(
-											` (${brief.taskCount} ${brief.taskCount === 1 ? 'task' : 'tasks'})`
-										)
-									: '';
-
-							groupedOptions.push({
-								name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
-								value: brief,
-								description: description
-									? chalk.gray(`  ${description.slice(0, 80)}`)
-									: undefined
-							});
-						});
-					}
-
-					return [noBriefOption, ...groupedOptions];
-				}
-			});
-
-			if (selectedBrief) {
-				// Update context with brief
-				const briefName =
-					selectedBrief.document?.title ||
-					`Brief ${selectedBrief.id.slice(0, 8)}`;
-				await this.authManager.updateContext({
-					briefId: selectedBrief.id,
-					briefName: briefName,
-					briefStatus: selectedBrief.status,
-					briefUpdatedAt: selectedBrief.updatedAt
-				});
-
-				ui.displaySuccess(`Selected brief: ${briefName}`);
-
-				return {
-					success: true,
-					action: 'select-brief',
-					context: this.authManager.getContext() || undefined,
-					message: `Selected brief: ${selectedBrief.document?.title}`
-				};
-			} else {
-				// Clear brief selection
-				await this.authManager.updateContext({
-					briefId: undefined,
-					briefName: undefined
-				});
-
-				ui.displaySuccess('Cleared brief selection (organization level)');
-
-				return {
-					success: true,
-					action: 'select-brief',
-					context: this.authManager.getContext() || undefined,
-					message: 'Cleared brief selection'
-				};
-			}
-		} catch (error) {
-			spinner.fail('Failed to fetch briefs');
-			throw error;
-		}
-	}
 
 	/**
 	 * Execute clear context
@@ -540,7 +364,8 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			displayError(error);
+			ui.displayError(`Failed to clear context: ${(error as Error).message}`);
+			process.exit(1);
 		}
 	}
 
@@ -587,15 +412,27 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			displayError(error);
+			ui.displayError(`Failed to set context: ${(error as Error).message}`);
+			process.exit(1);
+		}
+	}
+
+	/**
+	 * Initialize TmCore if not already initialized
+	 */
+	private async initTmCore(): Promise<void> {
+		if (!this.tmCore) {
+			this.tmCore = await createTmCore({
+				projectPath: process.cwd()
+			});
 		}
 	}
 
 	/**
 	 * Execute setting context from a brief ID or Hamster URL
+	 * All parsing logic is in tm-core
 	 */
-	private async executeSetFromBriefInput(briefOrUrl: string): Promise<void> {
-		let spinner: Ora | undefined;
+	private async executeSetFromBriefInput(input: string): Promise<void> {
 		try {
 			// Check authentication
 			const hasSession = await this.authManager.hasValidSession();
@@ -604,134 +441,32 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			spinner = ora('Resolving brief...');
-			spinner.start();
+			// Initialize tmCore to access business logic
+			await this.initTmCore();
 
-			// Extract brief ID
-			const briefId = this.extractBriefId(briefOrUrl);
-			if (!briefId) {
-				spinner.fail('Could not extract a brief ID from the provided input');
-				ui.displayError(
-					`Provide a valid brief ID or a Hamster brief URL, e.g. https://${process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN}/home/hamster/briefs/<id>`
-				);
-				process.exit(1);
-			}
-
-			// Fetch brief and resolve its organization
-			const brief = await this.authManager.getBrief(briefId);
-			if (!brief) {
-				spinner.fail('Brief not found or you do not have access');
-				process.exit(1);
-			}
-
-			// Fetch org to get a friendly name and slug (optional)
-			let orgName: string | undefined;
-			let orgSlug: string | undefined;
-			try {
-				const org = await this.authManager.getOrganization(brief.accountId);
-				orgName = org?.name;
-				orgSlug = org?.slug;
-			} catch {
-				// Non-fatal if org lookup fails
-			}
-
-			// Update context: set org and brief
-			const briefName =
-				brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
-			await this.authManager.updateContext({
-				orgId: brief.accountId,
-				orgName,
-				orgSlug,
-				briefId: brief.id,
-				briefName,
-				briefStatus: brief.status,
-				briefUpdatedAt: brief.updatedAt
-			});
-
-			spinner.succeed('Context set from brief');
-			console.log(
-				chalk.gray(
-					`  Organization: ${orgName || brief.accountId}\n  Brief: ${briefName}`
-				)
+			// Use shared utility - tm-core handles ALL parsing
+			const result = await selectBriefFromInput(
+				this.authManager,
+				input,
+				this.tmCore
 			);
 
 			this.setLastResult({
-				success: true,
+				success: result.success,
 				action: 'set',
 				context: this.authManager.getContext() || undefined,
-				message: 'Context set from brief'
+				message: result.message
 			});
+
+			if (!result.success) {
+				process.exit(1);
+			}
 		} catch (error: any) {
-			try {
-				if (spinner?.isSpinning) spinner.stop();
-			} catch {}
-			displayError(error);
+			ui.displayError(`Failed to set context from brief: ${(error as Error).message}`);
+			process.exit(1);
 		}
 	}
 
-	/**
-	 * Extract a brief ID from raw input (ID or Hamster URL)
-	 */
-	private extractBriefId(input: string): string | null {
-		const raw = input?.trim() ?? '';
-		if (!raw) return null;
-
-		const parseUrl = (s: string): URL | null => {
-			try {
-				return new URL(s);
-			} catch {}
-			try {
-				return new URL(`https://${s}`);
-			} catch {}
-			return null;
-		};
-
-		const fromParts = (path: string): string | null => {
-			const parts = path.split('/').filter(Boolean);
-			const briefsIdx = parts.lastIndexOf('briefs');
-			const candidate =
-				briefsIdx >= 0 && parts.length > briefsIdx + 1
-					? parts[briefsIdx + 1]
-					: parts[parts.length - 1];
-			return candidate?.trim() || null;
-		};
-
-		// 1) URL (absolute or scheme‑less)
-		const url = parseUrl(raw);
-		if (url) {
-			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
-			const candidate = (qId || fromParts(url.pathname)) ?? null;
-			if (candidate) {
-				// Light sanity check; let API be the final validator
-				if (this.isLikelyId(candidate) || candidate.length >= 8)
-					return candidate;
-			}
-		}
-
-		// 2) Looks like a path without scheme
-		if (raw.includes('/')) {
-			const candidate = fromParts(raw);
-			if (candidate && (this.isLikelyId(candidate) || candidate.length >= 8)) {
-				return candidate;
-			}
-		}
-
-		// 3) Fallback: raw token
-		return raw;
-	}
-
-	/**
-	 * Heuristic to check if a string looks like a brief ID (UUID-like)
-	 */
-	private isLikelyId(value: string): boolean {
-		const uuidRegex =
-			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i; // ULID
-		const slugRegex = /^[A-Za-z0-9_-]{16,}$/; // general token
-		return (
-			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
-		);
-	}
 
 	/**
 	 * Set context directly from options
@@ -845,8 +580,11 @@ export class ContextCommand extends Command {
 				return { success: false, orgSelected: false, briefSelected: false };
 			}
 
-			// Select brief
-			const briefResult = await this.selectBrief(orgResult.context.orgId);
+			// Select brief using shared utility
+			const briefResult = await selectBriefInteractive(
+				this.authManager,
+				orgResult.context.orgId
+			);
 			return {
 				success: true,
 				orgSelected: true,
