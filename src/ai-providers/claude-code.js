@@ -9,9 +9,6 @@
  * - Token is set up via: claude setup-token
  * - No manual API key configuration required
  *
- * Version: 2.0.3+
- * - Migrated to @anthropic-ai/claude-agent-sdk
- * - System prompt and filesystem settings must be explicitly enabled
  */
 
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
