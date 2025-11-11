@@ -1,8 +1,9 @@
-import chalk from 'chalk';
-import boxen from 'boxen';
-import Table from 'cli-table3';
-import { createTmCore, type TmCore } from '@tm/core';
 import { ui } from '@tm/cli';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import type { BaseBridgeParams } from './bridge-types.js';
+import { checkStorageType } from './bridge-utils.js';
 
 /**
  * Tag information with task statistics
@@ -36,17 +37,9 @@ export interface TagInfo {
 /**
  * Parameters for the tags bridge function
  */
-export interface TagsBridgeParams {
-	/** Project root directory */
-	projectRoot: string;
+export interface TagsBridgeParams extends BaseBridgeParams {
 	/** Whether to show metadata (default: false) */
 	showMetadata?: boolean;
-	/** Whether called from MCP context (default: false) */
-	isMCP?: boolean;
-	/** Output format (default: 'text') */
-	outputFormat?: 'text' | 'json';
-	/** Logging function */
-	report: (level: string, ...args: unknown[]) => void;
 }
 
 /**
@@ -75,57 +68,30 @@ export async function tryListTagsViaRemote(
 ): Promise<RemoteTagsResult | null> {
 	const { projectRoot, isMCP = false, outputFormat = 'text', report } = params;
 
-	let tmCore: TmCore;
+	// Check storage type using shared utility
+	const { isApiStorage, tmCore } = await checkStorageType(
+		projectRoot,
+		report,
+		'falling back to file-based tags'
+	);
 
-	try {
-		tmCore = await createTmCore({
-			projectPath: projectRoot || process.cwd()
-		});
-	} catch (tmCoreError) {
-		const errorMessage =
-			tmCoreError instanceof Error ? tmCoreError.message : String(tmCoreError);
-		report(
-			'warn',
-			`TmCore check failed, falling back to file-based tags: ${errorMessage}`
-		);
-		// Return null to signal fall-through to file storage logic
-		return null;
-	}
-
-	// Check if we're using API storage (use resolved storage type, not config)
-	const storageType = tmCore.tasks.getStorageType();
-
-	if (storageType !== 'api') {
+	if (!isApiStorage || !tmCore) {
 		// Not API storage - signal caller to fall through to file-based logic
-		report('info', `Using file storage - processing tags locally`);
 		return null;
-	}
-
-	// API STORAGE PATH: Get briefs with stats from remote
-	report('info', `Fetching tags (briefs) from Hamster`);
-
-	// Show CLI output if not MCP
-	if (!isMCP && outputFormat === 'text') {
-		console.log(
-			boxen(chalk.blue.bold(`Fetching Tags from Hamster`), {
-				padding: 1,
-				borderColor: 'blue',
-				borderStyle: 'round',
-				margin: { top: 1, bottom: 1 }
-			})
-		);
 	}
 
 	try {
 		// Get tags with statistics from tm-core
-		// This will be implemented in the next step
+		// Tags are already sorted by status and updatedAt from brief-service
 		const tagsResult = await tmCore.tasks.getTagsWithStats();
 
-		// Sort tags: current tag first, then alphabetically
+		// Sort tags: current tag first, then preserve status/updatedAt ordering from service
 		tagsResult.tags.sort((a, b) => {
+			// Always keep current tag at the top
 			if (a.isCurrent) return -1;
 			if (b.isCurrent) return 1;
-			return a.name.localeCompare(b.name);
+			// For non-current tags, preserve the status/updatedAt ordering already applied
+			return 0;
 		});
 
 		if (outputFormat === 'text' && !isMCP) {
@@ -140,10 +106,11 @@ export async function tryListTagsViaRemote(
 					})
 				);
 			} else {
-				// Create table headers
+				// Create table headers (with temporary Updated column)
 				const headers = [
 					chalk.cyan.bold('Tag Name'),
 					chalk.cyan.bold('Status'),
+					chalk.cyan.bold('Updated'),
 					chalk.cyan.bold('Tasks'),
 					chalk.cyan.bold('Completed')
 				];
@@ -155,8 +122,8 @@ export async function tryListTagsViaRemote(
 				);
 				const usableWidth = Math.floor(terminalWidth * 0.95);
 
-				// Column order: Tag Name, Status (UUID), Tasks, Completed
-				const widths = [0.4, 0.38, 0.1, 0.12];
+				// Column order: Tag Name, Status, Updated, Tasks, Completed
+				const widths = [0.35, 0.25, 0.2, 0.1, 0.1];
 				const colWidths = widths.map((w, i) =>
 					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 8)
 				);
@@ -179,6 +146,18 @@ export async function tryListTagsViaRemote(
 					row.push(tagDisplay);
 
 					row.push(ui.getBriefStatusWithColor(tag.status, true));
+
+					// Updated date (temporary for validation)
+					const updatedDate = tag.updatedAt
+						? new Date(tag.updatedAt).toLocaleDateString('en-US', {
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric',
+								hour: '2-digit',
+								minute: '2-digit'
+							})
+						: chalk.gray('N/A');
+					row.push(chalk.gray(updatedDate));
 
 					// Task counts
 					row.push(chalk.white(tag.taskCount.toString()));

@@ -501,6 +501,14 @@ export class TaskService {
 	}
 
 	/**
+	 * Get the storage instance
+	 * Internal use only - used by other services in the tasks module
+	 */
+	getStorage(): IStorage {
+		return this.storage;
+	}
+
+	/**
 	 * Get current active tag
 	 */
 	getActiveTag(): string {

@@ -3,7 +3,7 @@
  * This provides storage via repository abstraction for flexibility
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -24,12 +24,12 @@ import type {
 import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { BriefsDomain } from '../../briefs/briefs-domain.js';
 import {
-	ExpandTaskResult,
+	type ExpandTaskResult,
 	TaskExpansionService
 } from '../../integration/services/task-expansion.service.js';
 import { TaskRetrievalService } from '../../integration/services/task-retrieval.service.js';
 import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
-import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
+import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 import { ApiClient } from '../utils/api-client.js';
 
 /**
@@ -729,6 +729,21 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Create a new tag (brief)
+	 * Not supported with API storage - users must create briefs via web interface
+	 */
+	async createTag(
+		tagName: string,
+		_options?: { copyFrom?: string; description?: string }
+	): Promise<void> {
+		throw new TaskMasterError(
+			'Tag creation is not supported with API storage. Please create briefs through Hamster Studio.',
+			ERROR_CODES.NOT_IMPLEMENTED,
+			{ storageType: 'api', operation: 'createTag', tagName }
+		);
+	}
+
+	/**
 	 * Delete all tasks for a tag
 	 */
 	async deleteTag(tag: string): Promise<void> {
@@ -1008,7 +1023,7 @@ export class ApiStorage implements IStorage {
 	 */
 	private async retryOperation<T>(
 		operation: () => Promise<T>,
-		attempt: number = 1
+		attempt = 1
 	): Promise<T> {
 		try {
 			return await operation();

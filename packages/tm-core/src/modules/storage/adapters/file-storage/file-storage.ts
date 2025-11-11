@@ -584,6 +584,82 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Create a new tag in the tasks.json file
+	 */
+	async createTag(
+		tagName: string,
+		options?: { copyFrom?: string; description?: string }
+	): Promise<void> {
+		const filePath = this.pathResolver.getTasksPath();
+
+		try {
+			const existingData = await this.fileOps.readJson(filePath);
+			const format = this.formatHandler.detectFormat(existingData);
+
+			if (format === 'legacy') {
+				// Legacy format - add new tag key
+				if (tagName in existingData) {
+					throw new Error(`Tag ${tagName} already exists`);
+				}
+
+				// Get tasks to copy if specified
+				let tasksToCopy = [];
+				if (options?.copyFrom) {
+					if (options.copyFrom in existingData && existingData[options.copyFrom].tasks) {
+						tasksToCopy = JSON.parse(JSON.stringify(existingData[options.copyFrom].tasks));
+					}
+				}
+
+				// Create new tag structure
+				existingData[tagName] = {
+					tasks: tasksToCopy,
+					metadata: {
+						created: new Date().toISOString(),
+						updated: new Date().toISOString(),
+						description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`,
+						tags: [tagName]
+					}
+				};
+
+				await this.fileOps.writeJson(filePath, existingData);
+			} else {
+				// Standard format - need to convert to legacy format first
+				const masterTasks = existingData.tasks || [];
+				const masterMetadata = existingData.metadata || {};
+
+				// Get tasks to copy (from master in this case)
+				let tasksToCopy = [];
+				if (options?.copyFrom === 'master' || !options?.copyFrom) {
+					tasksToCopy = JSON.parse(JSON.stringify(masterTasks));
+				}
+
+				const newData = {
+					master: {
+						tasks: masterTasks,
+						metadata: { ...masterMetadata, tags: ['master'] }
+					},
+					[tagName]: {
+						tasks: tasksToCopy,
+						metadata: {
+							created: new Date().toISOString(),
+							updated: new Date().toISOString(),
+							description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`,
+							tags: [tagName]
+						}
+					}
+				};
+
+				await this.fileOps.writeJson(filePath, newData);
+			}
+		} catch (error: any) {
+			if (error.code === 'ENOENT') {
+				throw new Error('Tasks file not found - initialize project first');
+			}
+			throw error;
+		}
+	}
+
+	/**
 	 * Delete a tag from the single tasks.json file
 	 */
 	async deleteTag(tag: string): Promise<void> {

@@ -165,6 +165,19 @@ export interface IStorage {
 	getAllTags(): Promise<string[]>;
 
 	/**
+	 * Create a new tag
+	 * @param tagName - Name of the tag to create
+	 * @param options - Creation options
+	 * @param options.copyFrom - Tag to copy tasks from (optional)
+	 * @param options.description - Tag description (optional)
+	 * @returns Promise that resolves when creation is complete
+	 */
+	createTag(
+		tagName: string,
+		options?: { copyFrom?: string; description?: string }
+	): Promise<void>;
+
+	/**
 	 * Delete all tasks and metadata for a specific tag
 	 * @param tag - Tag to delete
 	 * @returns Promise that resolves when deletion is complete
@@ -245,6 +258,10 @@ export interface TagInfo {
 	};
 	/** Tag creation date */
 	created?: string;
+
+	/** Tag last modified date */
+	updatedAt?: string;
+
 	/** Tag description */
 	description?: string;
 	/** Brief/Tag status (for API storage briefs) */
@@ -350,6 +367,10 @@ export abstract class BaseStorage implements IStorage {
 	abstract loadMetadata(tag?: string): Promise<TaskMetadata | null>;
 	abstract saveMetadata(metadata: TaskMetadata, tag?: string): Promise<void>;
 	abstract getAllTags(): Promise<string[]>;
+	abstract createTag(
+		tagName: string,
+		options?: { copyFrom?: string; description?: string }
+	): Promise<void>;
 	abstract deleteTag(tag: string): Promise<void>;
 	abstract renameTag(oldTag: string, newTag: string): Promise<void>;
 	abstract copyTag(sourceTag: string, targetTag: string): Promise<void>;

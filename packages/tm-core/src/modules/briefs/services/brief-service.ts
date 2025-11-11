@@ -3,11 +3,11 @@
  * Handles brief lookup, matching, and statistics
  */
 
-import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
+import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
 import type { Brief } from '../types.js';
 
 /**
@@ -27,6 +27,7 @@ export interface TagWithStats {
 	description?: string;
 	status?: string;
 	briefId?: string;
+	updatedAt?: string;
 }
 
 /**
@@ -137,7 +138,8 @@ export class BriefService {
 						created: brief.createdAt,
 						description: brief.document?.description,
 						status: brief.status,
-						briefId: brief.id
+						briefId: brief.id,
+						updatedAt: brief.updatedAt
 					};
 				} catch (error) {
 					// If we can't get tasks for a brief, return it with 0 tasks
@@ -154,11 +156,42 @@ export class BriefService {
 						created: brief.createdAt,
 						description: brief.document?.description,
 						status: brief.status,
-						briefId: brief.id
+						briefId: brief.id,
+						updatedAt: brief.updatedAt
 					};
 				}
 			})
 		);
+
+		// Define priority order for brief statuses
+		const statusPriority: Record<string, number> = {
+			delivering: 1,
+			aligned: 2,
+			refining: 3,
+			draft: 4,
+			delivered: 5,
+			done: 6,
+			archived: 7
+		};
+
+		// Sort tags: first by status priority, then by updatedAt (most recent first) within each status
+		const sortedTags = tagsWithStats.sort((a, b) => {
+			// Get status priorities (default to 999 for unknown statuses)
+			const statusA = (a.status || '').toLowerCase();
+			const statusB = (b.status || '').toLowerCase();
+			const priorityA = statusPriority[statusA] ?? 999;
+			const priorityB = statusPriority[statusB] ?? 999;
+
+			// Sort by status priority first
+			if (priorityA !== priorityB) {
+				return priorityA - priorityB;
+			}
+
+			// Within same status, sort by updatedAt (most recent first)
+			const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+			const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+			return dateB - dateA; // Descending order (most recent first)
+		});
 
 		// Find current brief name
 		const currentBrief = briefs.find((b) => b.id === currentBriefId);
@@ -169,9 +202,9 @@ export class BriefService {
 			: null;
 
 		return {
-			tags: tagsWithStats,
+			tags: sortedTags,
 			currentTag,
-			totalTags: tagsWithStats.length
+			totalTags: sortedTags.length
 		};
 	}
 

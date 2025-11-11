@@ -1,12 +1,13 @@
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import ora from 'ora';
-import { createTmCore, type TmCore } from '@tm/core';
+import type { BaseBridgeParams } from './bridge-types.js';
+import { checkStorageType } from './bridge-utils.js';
 
 /**
  * Parameters for the expand bridge function
  */
-export interface ExpandBridgeParams {
+export interface ExpandBridgeParams extends BaseBridgeParams {
 	/** Task ID (can be numeric "1" or alphanumeric "TAS-49") */
 	taskId: string | number;
 	/** Number of subtasks to generate (optional) */
@@ -17,16 +18,6 @@ export interface ExpandBridgeParams {
 	additionalContext?: string;
 	/** Force regeneration even if subtasks exist */
 	force?: boolean;
-	/** Project root directory */
-	projectRoot: string;
-	/** Optional tag for task organization */
-	tag?: string;
-	/** Whether called from MCP context (default: false) */
-	isMCP?: boolean;
-	/** Output format (default: 'text') */
-	outputFormat?: 'text' | 'json';
-	/** Logging function */
-	report: (level: string, ...args: unknown[]) => void;
 }
 
 /**
@@ -63,32 +54,15 @@ export async function tryExpandViaRemote(
 		report
 	} = params;
 
-	let tmCore: TmCore;
+	// Check storage type using shared utility
+	const { isApiStorage, tmCore } = await checkStorageType(
+		projectRoot,
+		report,
+		'falling back to file-based expansion'
+	);
 
-	try {
-		tmCore = await createTmCore({
-			projectPath: projectRoot || process.cwd()
-		});
-	} catch (tmCoreError) {
-		const errorMessage =
-			tmCoreError instanceof Error ? tmCoreError.message : String(tmCoreError);
-		report(
-			'warn',
-			`TmCore check failed, falling back to file-based expansion: ${errorMessage}`
-		);
-		// Return null to signal fall-through to file storage logic
-		return null;
-	}
-
-	// Check if we're using API storage (use resolved storage type, not config)
-	const storageType = tmCore.tasks.getStorageType();
-
-	if (storageType !== 'api') {
+	if (!isApiStorage || !tmCore) {
 		// Not API storage - signal caller to fall through to file-based logic
-		report(
-			'debug',
-			`Using file storage - processing expansion locally for task ${taskId}`
-		);
 		return null;
 	}
 

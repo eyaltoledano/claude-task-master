@@ -18,7 +18,11 @@ import {
 } from '../utils.js';
 import { displayBanner, getStatusWithColor } from '../ui.js';
 import findNextTask from './find-next-task.js';
-import { tryListTagsViaRemote, tryUseTagViaRemote } from '@tm/bridge';
+import {
+	tryListTagsViaRemote,
+	tryUseTagViaRemote,
+	tryAddTagViaRemote
+} from '@tm/bridge';
 
 /**
  * Create a new tag context
@@ -53,6 +57,25 @@ async function createTag(
 		success: (...args) => log('success', ...args)
 	};
 
+	// Check if API storage should handle this via remote
+	const remoteResult = await tryAddTagViaRemote({
+		tagName,
+		projectRoot: projectRoot || findProjectRoot(),
+		isMCP: !!mcpLog,
+		outputFormat,
+		report: (level, ...args) => logFn[level](...args)
+	});
+
+	// If remote handled it, return the result
+	if (remoteResult) {
+		if (outputFormat === 'json') {
+			return remoteResult;
+		}
+		// For text output, the bridge already displayed the message
+		return remoteResult;
+	}
+
+	// Otherwise, continue with file-based logic below
 	try {
 		// Validate tag name
 		if (!tagName || typeof tagName !== 'string') {

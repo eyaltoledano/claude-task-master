@@ -3,10 +3,11 @@
  * Provides a single location for registering all CLI commands
  */
 
-import { Command } from 'commander';
+import type { Command } from 'commander';
 
 import { AuthCommand } from './commands/auth.command.js';
 import { AutopilotCommand } from './commands/autopilot/index.js';
+import { BriefsCommand } from './commands/briefs.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand } from './commands/export.command.js';
 // Import all commands
@@ -15,6 +16,7 @@ import { NextCommand } from './commands/next.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
 import { ShowCommand } from './commands/show.command.js';
 import { StartCommand } from './commands/start.command.js';
+import { TagsCommand } from './commands/tags.command.js';
 
 /**
  * Command metadata for registration
@@ -91,6 +93,18 @@ export class CommandRegistry {
 			description: 'Manage workspace context (organization/brief)',
 			commandClass: ContextCommand as any,
 			category: 'auth'
+		},
+		{
+			name: 'tags',
+			description: 'Manage tags for task organization',
+			commandClass: TagsCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'briefs',
+			description: 'Manage briefs (Hamster only)',
+			commandClass: BriefsCommand as any,
+			category: 'task'
 		}
 	];
 

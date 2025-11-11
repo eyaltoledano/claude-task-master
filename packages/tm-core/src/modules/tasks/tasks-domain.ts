@@ -10,6 +10,12 @@ import { TaskService } from './services/task-service.js';
 import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
+import { TagService } from './services/tag.service.js';
+import type {
+	CreateTagOptions,
+	DeleteTagOptions,
+	CopyTagOptions
+} from './services/tag.service.js';
 
 import type { Subtask, Task, TaskStatus } from '../../common/types/index.js';
 import type {
@@ -35,8 +41,9 @@ export class TasksDomain {
 	private loaderService: TaskLoaderService;
 	private preflightChecker: PreflightChecker;
 	private briefsDomain: BriefsDomain;
+	private tagService!: TagService;
 
-	constructor(configManager: ConfigManager, authDomain?: AuthDomain) {
+	constructor(configManager: ConfigManager, _authDomain?: AuthDomain) {
 		this.taskService = new TaskService(configManager);
 		this.executionService = new TaskExecutionService(this.taskService);
 		this.loaderService = new TaskLoaderService(this.taskService);
@@ -46,6 +53,9 @@ export class TasksDomain {
 
 	async initialize(): Promise<void> {
 		await this.taskService.initialize();
+
+		// TagService needs storage - get it from TaskService AFTER initialization
+		this.tagService = new TagService(this.taskService.getStorage());
 	}
 
 	// ========== Task Retrieval ==========
@@ -285,13 +295,44 @@ export class TasksDomain {
 		return this.preflightChecker.detectDefaultBranch();
 	}
 
-	// ========== Storage Information ==========
+	// ========== Tag Management ==========
 
 	/**
-	 * Get the resolved storage type (actual type being used at runtime)
+	 * Create a new tag
+	 * For file storage: creates tag locally with optional task copying
+	 * For API storage: throws error (client should redirect to web UI)
 	 */
-	getStorageType(): 'file' | 'api' {
-		return this.taskService.getStorageType();
+	async createTag(name: string, options?: CreateTagOptions) {
+		return this.tagService.createTag(name, options);
+	}
+
+	/**
+	 * Delete an existing tag
+	 * Cannot delete master tag
+	 * For file storage: deletes tag locally
+	 * For API storage: throws error (client should redirect to web UI)
+	 */
+	async deleteTag(name: string, options?: DeleteTagOptions) {
+		return this.tagService.deleteTag(name, options);
+	}
+
+	/**
+	 * Rename an existing tag
+	 * Cannot rename master tag
+	 * For file storage: renames tag locally
+	 * For API storage: throws error (client should redirect to web UI)
+	 */
+	async renameTag(oldName: string, newName: string) {
+		return this.tagService.renameTag(oldName, newName);
+	}
+
+	/**
+	 * Copy an existing tag to create a new tag with the same tasks
+	 * For file storage: copies tag locally
+	 * For API storage: throws error (client should show alternative)
+	 */
+	async copyTag(source: string, target: string, options?: CopyTagOptions) {
+		return this.tagService.copyTag(source, target, options);
 	}
 
 	/**
@@ -300,6 +341,15 @@ export class TasksDomain {
 	 * For file storage, returns tags from tasks.json with counts
 	 */
 	async getTagsWithStats() {
-		return this.taskService.getTagsWithStats();
+		return this.tagService.getTagsWithStats();
+	}
+
+	// ========== Storage Information ==========
+
+	/**
+	 * Get the resolved storage type (actual type being used at runtime)
+	 */
+	getStorageType(): 'file' | 'api' {
+		return this.taskService.getStorageType();
 	}
 }

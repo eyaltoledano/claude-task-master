@@ -9,7 +9,10 @@ export * from './components/index.js';
 // Status formatters
 export {
 	getStatusWithColor,
-	getBriefStatusWithColor
+	getBriefStatusWithColor,
+	getBriefStatusIcon,
+	getBriefStatusColor,
+	capitalizeStatus
 } from './formatters/status-formatters.js';
 
 // Priority formatters

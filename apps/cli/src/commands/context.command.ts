@@ -11,6 +11,7 @@ import ora, { Ora } from 'ora';
 import { AuthManager, type UserContext } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
+import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
 
 /**
  * Result type from context command
@@ -163,6 +164,26 @@ export class ContextCommand extends Command {
 					console.log(chalk.white(`  ${context.briefName}`));
 				} else if (context.briefId) {
 					console.log(chalk.gray(`  ID: ${context.briefId}`));
+				}
+
+				// Show brief status if available
+				if (context.briefStatus) {
+					const statusDisplay = getBriefStatusWithColor(context.briefStatus);
+					console.log(chalk.gray(`  Status: `) + statusDisplay);
+				}
+
+				// Show brief updated date if available
+				if (context.briefUpdatedAt) {
+					const updatedDate = new Date(
+						context.briefUpdatedAt
+					).toLocaleDateString('en-US', {
+						month: 'short',
+						day: 'numeric',
+						year: 'numeric',
+						hour: '2-digit',
+						minute: '2-digit'
+					});
+					console.log(chalk.gray(`  Updated: ${updatedDate}`));
 				}
 			}
 
@@ -340,39 +361,121 @@ export class ContextCommand extends Command {
 						description: 'Clear brief selection'
 					};
 
-					// Filter and map brief options
-					const briefOptions = briefs
-						.filter((brief) => {
-							if (!searchTerm) return true;
+					// Filter briefs based on search term
+					const filteredBriefs = briefs.filter((brief) => {
+						if (!searchTerm) return true;
 
-							const title = brief.document?.title || '';
-							const shortId = brief.id.slice(0, 8);
-							const lastChars = brief.id.slice(-8);
+						const title = brief.document?.title || '';
+						const shortId = brief.id.slice(0, 8);
+						const lastChars = brief.id.slice(-8);
 
-							// Search by title, full UUID, first 8 chars, or last 8 chars
-							return (
-								title.toLowerCase().includes(searchTerm) ||
-								brief.id.toLowerCase().includes(searchTerm) ||
-								shortId.toLowerCase().includes(searchTerm) ||
-								lastChars.toLowerCase().includes(searchTerm)
-							);
-						})
-						.map((brief) => {
+						// Search by title, full UUID, first 8 chars, or last 8 chars
+						return (
+							title.toLowerCase().includes(searchTerm) ||
+							brief.id.toLowerCase().includes(searchTerm) ||
+							shortId.toLowerCase().includes(searchTerm) ||
+							lastChars.toLowerCase().includes(searchTerm)
+						);
+					});
+
+					// Group briefs by status
+					const briefsByStatus = filteredBriefs.reduce(
+						(acc, brief) => {
+							const status = brief.status || 'unknown';
+							if (!acc[status]) {
+								acc[status] = [];
+							}
+							acc[status].push(brief);
+							return acc;
+						},
+						{} as Record<string, typeof briefs>
+					);
+
+					// Define status order (most active first)
+					const statusOrder = [
+						'delivering',
+						'aligned',
+						'refining',
+						'draft',
+						'delivered',
+						'done',
+						'archived'
+					];
+
+					// Build grouped options
+					const groupedOptions: any[] = [];
+
+					for (const status of statusOrder) {
+						const statusBriefs = briefsByStatus[status];
+						if (!statusBriefs || statusBriefs.length === 0) continue;
+
+						// Add status header as separator
+						const statusHeader = getBriefStatusWithColor(status);
+						groupedOptions.push({
+							type: 'separator',
+							separator: `\n${statusHeader}`
+						});
+
+						// Add briefs under this status
+						statusBriefs.forEach((brief) => {
 							const title =
 								brief.document?.title || `Brief ${brief.id.slice(-8)}`;
 							const shortId = brief.id.slice(-8);
 							const description = brief.document?.description || '';
+							const taskCountDisplay =
+								brief.taskCount !== undefined && brief.taskCount > 0
+									? chalk.gray(
+											` (${brief.taskCount} ${brief.taskCount === 1 ? 'task' : 'tasks'})`
+										)
+									: '';
 
-							return {
-								name: `${title} ${chalk.gray(`(${shortId})`)}`,
+							groupedOptions.push({
+								name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
 								value: brief,
 								description: description
-									? chalk.gray(description.slice(0, 80))
+									? chalk.gray(`  ${description.slice(0, 80)}`)
 									: undefined
-							};
+							});
+						});
+					}
+
+					// Handle any briefs with statuses not in our order
+					const unorderedStatuses = Object.keys(briefsByStatus).filter(
+						(s) => !statusOrder.includes(s)
+					);
+					for (const status of unorderedStatuses) {
+						const statusBriefs = briefsByStatus[status];
+						if (!statusBriefs || statusBriefs.length === 0) continue;
+
+						const statusHeader = getBriefStatusWithColor(status);
+						groupedOptions.push({
+							type: 'separator',
+							separator: `\n${statusHeader}`
 						});
 
-					return [noBriefOption, ...briefOptions];
+						statusBriefs.forEach((brief) => {
+							const title =
+								brief.document?.title || `Brief ${brief.id.slice(-8)}`;
+							const shortId = brief.id.slice(-8);
+							const description = brief.document?.description || '';
+							const taskCountDisplay =
+								brief.taskCount !== undefined && brief.taskCount > 0
+									? chalk.gray(
+											` (${brief.taskCount} ${brief.taskCount === 1 ? 'task' : 'tasks'})`
+										)
+									: '';
+
+							groupedOptions.push({
+								name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
+								value: brief,
+								description: description
+									? chalk.gray(`  ${description.slice(0, 80)}`)
+									: undefined
+							});
+						});
+					}
+
+					return [noBriefOption, ...groupedOptions];
 				}
 			});
 
@@ -383,7 +486,9 @@ export class ContextCommand extends Command {
 					`Brief ${selectedBrief.id.slice(0, 8)}`;
 				await this.authManager.updateContext({
 					briefId: selectedBrief.id,
-					briefName: briefName
+					briefName: briefName,
+					briefStatus: selectedBrief.status,
+					briefUpdatedAt: selectedBrief.updatedAt
 				});
 
 				ui.displaySuccess(`Selected brief: ${briefName}`);
@@ -538,7 +643,9 @@ export class ContextCommand extends Command {
 				orgName,
 				orgSlug,
 				briefId: brief.id,
-				briefName
+				briefName,
+				briefStatus: brief.status,
+				briefUpdatedAt: brief.updatedAt
 			});
 
 			spinner.succeed('Context set from brief');

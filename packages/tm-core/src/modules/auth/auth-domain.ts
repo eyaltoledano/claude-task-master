@@ -211,6 +211,21 @@ export class AuthDomain {
 	}
 
 	/**
+	 * Get the URL for creating a new brief in the web UI
+	 * Returns null if not using API storage or if org slug is not available
+	 */
+	getBriefCreationUrl(): string | null {
+		const context = this.getContext();
+		const baseUrl = this.getWebAppUrl();
+
+		if (!baseUrl || !context?.orgSlug) {
+			return null;
+		}
+
+		return `${baseUrl}/home/${context.orgSlug}/briefs/create`;
+	}
+
+	/**
 	 * Get web app base URL from environment configuration
 	 * @private
 	 */

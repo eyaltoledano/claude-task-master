@@ -13,6 +13,7 @@ export interface Brief {
 	status: string;
 	createdAt: string;
 	updatedAt: string;
+	taskCount?: number;
 	document?: {
 		id: string;
 		title: string;
