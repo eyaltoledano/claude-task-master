@@ -317,3 +317,43 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
    - Verify the deployment name matches your configuration exactly (case-sensitive)
    - Ensure the model deployment is in a "Succeeded" state in Azure OpenAI Studio
    - Ensure youre not getting rate limited by `maxTokens` maintain appropriate Tokens per Minute Rate Limit (TPM) in your deployment.
+
+### Claude Code CLI Integration (v0.31.2+)
+
+The Claude Code provider automatically respects your Claude Code configuration settings, enabling seamless integration with your existing Claude Code setup.
+
+**Automatic Configuration Loading:**
+The Claude Code provider loads settings from multiple sources in order of precedence:
+
+1. **Global config** (`~/.claude/` directory) - Your personal preferences across all projects
+2. **Project config** (`.claude/` directory) - Project-specific settings like `CLAUDE.md` instructions
+3. **Local config** - Workspace-specific overrides
+
+**What's Automatically Applied:**
+- ✅ `CLAUDE.md` files are loaded and applied (both global and project-specific)
+- ✅ Custom Claude Code settings from `settings.json` files are respected  
+- ✅ Project-specific instructions work as expected
+- ✅ System prompt presets are properly configured
+
+**Configuration Example:**
+```json
+// In .taskmaster/config.json
+{
+  "models": {
+    "main": {
+      "provider": "claude-code",
+      "modelId": "claude-3-5-sonnet-20241022",
+      "maxTokens": 8000,
+      "temperature": 0.7
+    }
+  }
+}
+```
+
+**Authentication:**
+Claude Code uses OAuth tokens managed by the Claude Code CLI - no manual API key configuration required. If you have the Claude Code CLI installed and authenticated, Task Master will automatically connect.
+
+**Troubleshooting:**
+- **CLI not found**: Install with `npm install -g @anthropic-ai/claude-code`
+- **Authentication issues**: Run `claude setup-token` to authenticate
+- **Settings not applied**: Ensure your `.claude/` directory structure matches Claude Code's expected format

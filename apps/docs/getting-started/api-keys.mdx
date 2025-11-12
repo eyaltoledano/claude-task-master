@@ -117,9 +117,19 @@ AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
 - **Required**: ❌ **No** (uses OAuth tokens)
 - **Purpose**: Integration with local Claude Code CLI
 - **Authentication**: Uses OAuth tokens, no API key needed
+- **Configuration**: Automatically loads your Claude Code settings
+
+**Claude Code Configuration Integration** (v0.31.2+):
+The Claude Code provider now automatically loads your Claude Code configuration files:
+
+- **Global config** (`~/.claude/`) - Personal preferences across all projects
+- **Project config** (`.claude/` directory) - Project-specific settings like CLAUDE.md instructions  
+- **Local config** - Workspace-specific overrides
+
+This means your `CLAUDE.md` files, custom instructions, and Claude Code settings are automatically applied when using Claude Code as an AI provider.
 
 ```bash
-# Not typically needed
+# Optional - only needed for specific setups
 CLAUDE_CODE_API_KEY="not-usually-required"
 ```
 
