@@ -9,6 +9,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { AuthManager, createTmCore, type UserContext, type TmCore } from '@tm/core';
 import * as ui from '../utils/ui.js';
+import { checkAuthentication } from '../utils/auth-helpers.js';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
 import {
 	selectBriefInteractive,
@@ -130,11 +131,11 @@ export class ContextCommand extends Command {
 	 */
 	private async displayContext(): Promise<ContextResult> {
 		// Check authentication first
-		const hasSession = await this.authManager.hasValidSession();
-		if (!hasSession) {
-			console.log(chalk.yellow('✗ Not authenticated'));
-			console.log(chalk.gray('\n  Run "tm auth login" to authenticate first'));
+		const isAuthenticated = await checkAuthentication(this.authManager, {
+			message: 'The "context" command requires you to be logged in to your Hamster account.'
+		});
 
+		if (!isAuthenticated) {
 			return {
 				success: false,
 				action: 'show',
@@ -226,9 +227,7 @@ export class ContextCommand extends Command {
 	private async executeSelectOrg(): Promise<void> {
 		try {
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
+			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
@@ -307,9 +306,7 @@ export class ContextCommand extends Command {
 	private async executeSelectBrief(): Promise<void> {
 		try {
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
+			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
@@ -351,9 +348,7 @@ export class ContextCommand extends Command {
 	private async executeClear(): Promise<void> {
 		try {
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
+			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
@@ -399,9 +394,7 @@ export class ContextCommand extends Command {
 	private async executeSet(options: any): Promise<void> {
 		try {
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
+			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
@@ -435,9 +428,7 @@ export class ContextCommand extends Command {
 	private async executeSetFromBriefInput(input: string): Promise<void> {
 		try {
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
+			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 

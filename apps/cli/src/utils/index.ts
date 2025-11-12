@@ -6,6 +6,12 @@
  * For backward compatibility, use src/utils/ui.ts which re-exports from src/ui/
  */
 
+// Authentication helpers
+export {
+	checkAuthentication,
+	type CheckAuthOptions
+} from './auth-helpers.js';
+
 // Error handling utilities
 export { displayError, isDebugMode } from './error-handler.js';
 

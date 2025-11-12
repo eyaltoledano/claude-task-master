@@ -130,6 +130,16 @@ function getTasks() {
 - ✅ MCP calls: `await tmCore.tasks.get(taskId)` (same intelligent ID parsing)
 - ✅ Single source of truth in tm-core
 
+## Code Quality & Reusability Guidelines
+
+Apply standard software engineering principles:
+
+- **DRY (Don't Repeat Yourself)**: Extract patterns that appear 2+ times into reusable components or utilities
+- **YAGNI (You Aren't Gonna Need It)**: Don't over-engineer. Create abstractions when duplication appears, not before
+- **Maintainable**: Single source of truth. Change once, update everywhere
+- **Readable**: Clear naming, proper structure, export from index files
+- **Flexible**: Accept configuration options with sensible defaults
+
 ## Documentation Guidelines
 
 - **Documentation location**: Write docs in `apps/docs/` (Mintlify site source), not `docs/`

@@ -1,5 +1,4 @@
-import boxen from 'boxen';
-import chalk from 'chalk';
+import { ui } from '@tm/cli';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
 
@@ -72,36 +71,22 @@ export async function tryAddTagViaRemote(
 	// Show CLI output if not MCP
 	if (!isMCP && outputFormat === 'text') {
 		console.log(
-			boxen(
-				chalk.yellow.bold('# Create a Brief in Hamster Studio') +
-					'\n\n' +
-					chalk.white(
-						'Your tags are separate task lists. When connected to Hamster,\n' +
-							'task lists are attached to briefs.'
-					) +
-					'\n\n' +
-					chalk.white(
-						'Create a new brief and its task list will automatically be\n' +
-							'available when generated.'
-					) +
-					'\n\n' +
-					chalk.cyan('Visit:') +
-					'\n' +
-					chalk.blue.underline(redirectUrl) +
-					'\n\n' +
-					chalk.gray(
-						'To access tasks for a specific brief, use:\n' +
-							'  • tm briefs select <brief-name>\n' +
-							'  • tm briefs select <brief-id>\n' +
-							'  • tm briefs select (interactive)'
-					),
-				{
-					padding: 1,
-					borderColor: 'yellow',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				}
-			)
+			ui.displayCardBox({
+				header: '# Create a Brief in Hamster Studio',
+				body: [
+					'Your tags are separate task lists. When connected to Hamster,\ntask lists are attached to briefs.',
+					'Create a new brief and its task list will automatically be\navailable when generated.'
+				],
+				callToAction: {
+					label: 'Visit:',
+					action: redirectUrl
+				},
+				footer:
+					'To access tasks for a specific brief, use:\n' +
+					'  • tm briefs select <brief-name>\n' +
+					'  • tm briefs select <brief-id>\n' +
+					'  • tm briefs select (interactive)'
+			})
 		);
 	}
 

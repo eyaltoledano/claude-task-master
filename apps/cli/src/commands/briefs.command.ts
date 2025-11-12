@@ -11,8 +11,8 @@ import {
 } from '@tm/bridge';
 import type { TmCore } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
-import chalk from 'chalk';
 import { Command } from 'commander';
+import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
 	selectBriefFromInput,
 	selectBriefInteractive
@@ -70,23 +70,15 @@ export class BriefsCommand extends Command {
 	/**
 	 * Check if user is authenticated (required for briefs)
 	 */
-	private async checkAuthentication(): Promise<boolean> {
-		const hasSession = await this.authManager.hasValidSession();
-
-		if (!hasSession) {
-			console.log(chalk.yellow('\n⚠ Not logged in to Hamster\n'));
-			console.log(
-				chalk.white(
-					'The "briefs" command requires you to be logged in to your Hamster account.'
-				)
-			);
-			console.log(chalk.cyan('\n  → Run: tm auth login'));
-			console.log(chalk.gray('\nWorking locally instead?'));
-			console.log(chalk.gray('  → Use "tm tags" for local tag management.'));
-			return false;
-		}
-
-		return true;
+	private async checkAuth(): Promise<boolean> {
+		return checkAuthentication(this.authManager, {
+			message:
+				'The "briefs" command requires you to be logged in to your Hamster account.',
+			footer:
+				'Working locally instead?\n' +
+				'  → Use "task-master tags" for local tag management.',
+			authCommand: 'task-master auth login'
+		});
 	}
 
 	/**
@@ -183,7 +175,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	}): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await this.checkAuthentication())) {
+			if (!(await this.checkAuth())) {
 				process.exit(1);
 			}
 
@@ -325,7 +317,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	private async executeCreate(name?: string): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await this.checkAuthentication())) {
+			if (!(await this.checkAuth())) {
 				process.exit(1);
 			}
 
