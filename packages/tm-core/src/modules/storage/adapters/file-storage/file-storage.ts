@@ -628,7 +628,7 @@ export class FileStorage implements IStorage {
 					tasks: tasksToCopy,
 					metadata: {
 						created: new Date().toISOString(),
-						updated: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
 						description:
 							options?.description ||
 							`Tag created on ${new Date().toLocaleDateString()}`,
@@ -657,7 +657,7 @@ export class FileStorage implements IStorage {
 						tasks: tasksToCopy,
 						metadata: {
 							created: new Date().toISOString(),
-							updated: new Date().toISOString(),
+							updatedAt: new Date().toISOString(),
 							description:
 								options?.description ||
 								`Tag created on ${new Date().toLocaleDateString()}`,

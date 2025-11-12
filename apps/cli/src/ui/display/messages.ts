@@ -46,8 +46,7 @@ export function displayErrorBox(message: string, details?: string): void {
 }
 
 /**
- * Alias for displayErrorBox - kept for backward compatibility
- * @deprecated Use displayErrorBox instead
+ * Alias for displayErrorBox
  */
 export const displayError = displayErrorBox;
 

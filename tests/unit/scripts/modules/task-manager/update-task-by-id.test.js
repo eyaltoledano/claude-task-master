@@ -109,19 +109,6 @@ jest.unstable_mockModule(
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
-		default: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn((promptId, params) => ({
-				systemPrompt:
-					'You are an AI assistant that helps update a software development task with new requirements and information.',
-				userPrompt: `Update the following task based on the provided information: ${params?.updatePrompt || 'User prompt for task update'}`,
-				metadata: {
-					templateId: 'update-task',
-					version: '1.0.0',
-					variant: 'default',
-					parameters: params || {}
-				}
-			}))
-		}),
 		getPromptManager: jest.fn().mockReturnValue({
 			loadPrompt: jest.fn((promptId, params) => ({
 				systemPrompt:

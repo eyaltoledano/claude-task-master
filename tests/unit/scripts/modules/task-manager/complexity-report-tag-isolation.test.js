@@ -7,19 +7,33 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 
-// Mock fs module
-jest.unstable_mockModule('fs', () => {
-	const mockFs = {
-		existsSync: jest.fn(() => true),
-		writeFileSync: jest.fn(),
-		readFileSync: jest.fn(),
-		unlinkSync: jest.fn(),
-		mkdirSync: jest.fn(),
-		readdirSync: jest.fn(() => []),
-		statSync: jest.fn(() => ({ isDirectory: () => false }))
-	};
-	return { default: mockFs, ...mockFs };
-});
+// Mock fs module - consolidated single registration
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+const mockUnlinkSync = jest.fn();
+const mockMkdirSync = jest.fn();
+const mockReaddirSync = jest.fn(() => []);
+const mockStatSync = jest.fn(() => ({ isDirectory: () => false }));
+
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		existsSync: mockExistsSync,
+		readFileSync: mockReadFileSync,
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: mockUnlinkSync,
+		mkdirSync: mockMkdirSync,
+		readdirSync: mockReaddirSync,
+		statSync: mockStatSync
+	},
+	existsSync: mockExistsSync,
+	readFileSync: mockReadFileSync,
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: mockUnlinkSync,
+	mkdirSync: mockMkdirSync,
+	readdirSync: mockReaddirSync,
+	statSync: mockStatSync
+}));
 
 // Mock the dependencies
 jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({
@@ -462,26 +476,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	getContextWithColor: jest.fn((context) => context)
 }));
 
-// Mock fs module
-const mockWriteFileSync = jest.fn();
-const mockExistsSync = jest.fn();
-const mockReadFileSync = jest.fn();
-const mockMkdirSync = jest.fn();
-
-jest.unstable_mockModule('fs', () => ({
-	default: {
-		existsSync: mockExistsSync,
-		readFileSync: mockReadFileSync,
-		writeFileSync: mockWriteFileSync,
-		mkdirSync: mockMkdirSync,
-		unlinkSync: jest.fn()
-	},
-	existsSync: mockExistsSync,
-	readFileSync: mockReadFileSync,
-	writeFileSync: mockWriteFileSync,
-	mkdirSync: mockMkdirSync,
-	unlinkSync: jest.fn()
-}));
+// fs module already mocked at top of file with shared spy references
 
 // Mock @tm/bridge module
 jest.unstable_mockModule('@tm/bridge', () => ({

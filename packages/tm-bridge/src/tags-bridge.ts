@@ -2,37 +2,12 @@ import { ui } from '@tm/cli';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import type { TagInfo } from '@tm/core';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
 
-/**
- * Tag information with task statistics
- */
-export interface TagInfo {
-	/** Tag name */
-	name: string;
-	/** Whether this is the current/active tag */
-	isCurrent: boolean;
-	/** Total number of tasks in this tag */
-	taskCount: number;
-	/** Number of completed tasks */
-	completedTasks: number;
-	/** Breakdown of tasks by status */
-	statusBreakdown: Record<string, number>;
-	/** Subtask counts if available */
-	subtaskCounts?: {
-		totalSubtasks: number;
-		subtasksByStatus: Record<string, number>;
-	};
-	/** Tag creation date */
-	created?: string;
-	/** Tag description */
-	description?: string;
-	/** Brief/Tag status (for API storage briefs) */
-	status?: string;
-	/** Brief ID/UUID (for API storage) */
-	briefId?: string;
-}
+// Re-export for convenience
+export type { TagInfo };
 
 /**
  * Parameters for the tags bridge function

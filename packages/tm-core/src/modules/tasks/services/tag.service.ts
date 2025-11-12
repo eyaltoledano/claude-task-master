@@ -135,6 +135,15 @@ export class TagService {
 			);
 		}
 
+		// Validate copyFromTag if provided
+		if (options.copyFromTag && !allTags.includes(options.copyFromTag)) {
+			throw new TaskMasterError(
+				`Cannot copy from missing tag "${options.copyFromTag}"`,
+				ERROR_CODES.NOT_FOUND,
+				{ tagName: options.copyFromTag }
+			);
+		}
+
 		// For API storage, we can't create tags via CLI
 		// The client (CLI/bridge) should handle redirecting to web UI
 		this.checkTagMutationSupport('Tag creation');

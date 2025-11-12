@@ -3,7 +3,7 @@
  * Provides standardized paths for Task Master project structure
  */
 
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { TASKMASTER_TASKS_FILE } from '../constants/paths.js';
 import { findProjectRoot } from './project-root-finder.js';
 
@@ -30,7 +30,7 @@ export function getProjectPaths(projectPath?: string): {
 	tasksPath: string;
 } {
 	const projectRoot = projectPath
-		? join(process.cwd(), projectPath)
+		? resolve(process.cwd(), projectPath)
 		: findProjectRoot();
 
 	return {
