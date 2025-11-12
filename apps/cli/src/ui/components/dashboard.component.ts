@@ -379,6 +379,7 @@ function calculateStatusBreakdown(stats: TaskStatistics): StatusBreakdown {
 	if (stats.total === 0) return {};
 
 	return {
+		done: (stats.done / stats.total) * 100,
 		'in-progress': (stats.inProgress / stats.total) * 100,
 		pending: (stats.pending / stats.total) * 100,
 		blocked: (stats.blocked / stats.total) * 100,
