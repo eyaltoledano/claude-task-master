@@ -1,14 +1,14 @@
+import os from 'os';
+import path from 'path';
 import {
-	describe,
-	it,
-	expect,
-	beforeEach,
 	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
 	jest
 } from '@jest/globals';
 import fs from 'fs-extra';
-import path from 'path';
-import os from 'os';
 import { GitAdapter } from '../../../../../packages/tm-core/src/git/git-adapter.js';
 
 describe('GitAdapter - Repository Detection and Validation', () => {

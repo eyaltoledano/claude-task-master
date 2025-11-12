@@ -2,10 +2,10 @@
  * @fileoverview Unit tests for ConfigPersistence service
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
-import { ConfigPersistence } from './config-persistence.service.js';
 import type { PartialConfiguration } from '@tm/core/common/interfaces/configuration.interface.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ConfigPersistence } from './config-persistence.service.js';
 
 vi.mock('node:fs', () => ({
 	promises: {

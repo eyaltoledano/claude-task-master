@@ -2,21 +2,21 @@
  * @fileoverview Storage factory for creating appropriate storage implementations
  */
 
-import type { IStorage } from '../../../common/interfaces/storage.interface.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 import type {
 	IConfiguration,
 	RuntimeStorageConfig,
 	StorageSettings
 } from '../../../common/interfaces/configuration.interface.js';
-import { FileStorage } from '../adapters/file-storage/index.js';
-import { ApiStorage } from '../adapters/api-storage.js';
-import {
-	ERROR_CODES,
-	TaskMasterError
-} from '../../../common/errors/task-master-error.js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
+import type { IStorage } from '../../../common/interfaces/storage.interface.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
+import { ApiStorage } from '../adapters/api-storage.js';
+import { FileStorage } from '../adapters/file-storage/index.js';
 
 /**
  * Factory for creating storage implementations based on configuration
@@ -87,8 +87,19 @@ export class StorageFactory {
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.TM_BASE_DOMAIN ||
-								process.env.TM_PUBLIC_BASE_DOMAIN
+								process.env.TM_PUBLIC_BASE_DOMAIN ||
+								'https://tryhamster.com/api'
 						};
+
+						// Validate that apiEndpoint is defined
+						if (!nextStorage.apiEndpoint) {
+							throw new TaskMasterError(
+								'API endpoint could not be determined.',
+								ERROR_CODES.MISSING_CONFIGURATION,
+								{ storageType: 'api' }
+							);
+						}
+
 						config.storage = nextStorage;
 					}
 				}

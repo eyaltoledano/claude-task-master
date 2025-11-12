@@ -4,10 +4,24 @@
  */
 
 import type {
-	TaskStatus,
+	TaskComplexity,
 	TaskPriority,
-	TaskComplexity
+	TaskStatus
 } from '../types/index.js';
+
+// Import from root package.json (monorepo root) for version info
+import packageJson from '../../../../../package.json' with { type: 'json' };
+
+/**
+ * Task Master version from root package.json
+ * Centralized to avoid fragile relative paths throughout the codebase
+ */
+export const TASKMASTER_VERSION = packageJson.version || 'unknown';
+
+/**
+ * Package name from root package.json
+ */
+export const PACKAGE_NAME = packageJson.name || 'task-master-ai';
 
 /**
  * Valid task status values

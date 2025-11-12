@@ -3,8 +3,8 @@
  * This file defines the contract for all storage implementations
  */
 
-import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 import type { ExpandTaskResult } from '../../modules/integration/services/task-expansion.service.js';
+import type { Task, TaskMetadata, TaskStatus } from '../types/index.js';
 
 /**
  * Options for loading tasks from storage
@@ -165,6 +165,19 @@ export interface IStorage {
 	getAllTags(): Promise<string[]>;
 
 	/**
+	 * Create a new tag
+	 * @param tagName - Name of the tag to create
+	 * @param options - Creation options
+	 * @param options.copyFrom - Tag to copy tasks from (optional)
+	 * @param options.description - Tag description (optional)
+	 * @returns Promise that resolves when creation is complete
+	 */
+	createTag(
+		tagName: string,
+		options?: { copyFrom?: string; description?: string }
+	): Promise<void>;
+
+	/**
 	 * Delete all tasks and metadata for a specific tag
 	 * @param tag - Tag to delete
 	 * @returns Promise that resolves when deletion is complete
@@ -216,6 +229,57 @@ export interface IStorage {
 	 * @returns The brief name if using API storage with a selected brief, null otherwise
 	 */
 	getCurrentBriefName(): string | null;
+
+	/**
+	 * Get all tags with detailed statistics including task counts
+	 * @returns Promise that resolves to tags with statistics
+	 */
+	getTagsWithStats(): Promise<TagsWithStatsResult>;
+}
+
+/**
+ * Tag information with detailed statistics
+ */
+export interface TagInfo {
+	/** Tag/Brief name */
+	name: string;
+	/** Whether this is the current/active tag */
+	isCurrent: boolean;
+	/** Total number of tasks in this tag */
+	taskCount: number;
+	/** Number of completed tasks */
+	completedTasks: number;
+	/** Breakdown of tasks by status */
+	statusBreakdown: Record<string, number>;
+	/** Subtask counts if available */
+	subtaskCounts?: {
+		totalSubtasks: number;
+		subtasksByStatus: Record<string, number>;
+	};
+	/** Tag creation date */
+	created?: string;
+
+	/** Tag last modified date */
+	updatedAt?: string;
+
+	/** Tag description */
+	description?: string;
+	/** Brief/Tag status (for API storage briefs) */
+	status?: string;
+	/** Brief ID/UUID (for API storage) */
+	briefId?: string;
+}
+
+/**
+ * Result returned by getTagsWithStats
+ */
+export interface TagsWithStatsResult {
+	/** List of tags with statistics */
+	tags: TagInfo[];
+	/** Current active tag name */
+	currentTag: string | null;
+	/** Total number of tags */
+	totalTags: number;
 }
 
 /**
@@ -303,6 +367,10 @@ export abstract class BaseStorage implements IStorage {
 	abstract loadMetadata(tag?: string): Promise<TaskMetadata | null>;
 	abstract saveMetadata(metadata: TaskMetadata, tag?: string): Promise<void>;
 	abstract getAllTags(): Promise<string[]>;
+	abstract createTag(
+		tagName: string,
+		options?: { copyFrom?: string; description?: string }
+	): Promise<void>;
 	abstract deleteTag(tag: string): Promise<void>;
 	abstract renameTag(oldTag: string, newTag: string): Promise<void>;
 	abstract copyTag(sourceTag: string, targetTag: string): Promise<void>;
@@ -311,6 +379,7 @@ export abstract class BaseStorage implements IStorage {
 	abstract getStats(): Promise<StorageStats>;
 	abstract getStorageType(): 'file' | 'api';
 	abstract getCurrentBriefName(): string | null;
+	abstract getTagsWithStats(): Promise<TagsWithStatsResult>;
 	/**
 	 * Utility method to generate backup filename
 	 * @param originalPath - Original file path

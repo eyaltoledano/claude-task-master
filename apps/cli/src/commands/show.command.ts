@@ -3,15 +3,15 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { createTmCore, type Task, type TmCore } from '@tm/core';
+import { type Task, type TmCore, createTmCore } from '@tm/core';
 import type { StorageType, Subtask } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**

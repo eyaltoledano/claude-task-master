@@ -19,6 +19,8 @@ export interface UserContext {
 	orgSlug?: string;
 	briefId?: string;
 	briefName?: string;
+	briefStatus?: string;
+	briefUpdatedAt?: string;
 	updatedAt: string;
 }
 

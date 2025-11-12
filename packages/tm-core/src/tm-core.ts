@@ -4,13 +4,13 @@
  */
 
 import path from 'node:path';
-import { ConfigManager } from './modules/config/managers/config-manager.js';
-import { TasksDomain } from './modules/tasks/tasks-domain.js';
 import { AuthDomain } from './modules/auth/auth-domain.js';
-import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
-import { GitDomain } from './modules/git/git-domain.js';
 import { ConfigDomain } from './modules/config/config-domain.js';
+import { ConfigManager } from './modules/config/managers/config-manager.js';
+import { GitDomain } from './modules/git/git-domain.js';
 import { IntegrationDomain } from './modules/integration/integration-domain.js';
+import { TasksDomain } from './modules/tasks/tasks-domain.js';
+import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
 
 import {
 	ERROR_CODES,
@@ -18,9 +18,9 @@ import {
 } from './common/errors/task-master-error.js';
 import type { IConfiguration } from './common/interfaces/configuration.interface.js';
 import {
-	createLogger,
+	type Logger,
 	type LoggerConfig,
-	type Logger
+	createLogger
 } from './common/logger/index.js';
 
 /**
@@ -170,8 +170,8 @@ export class TmCore {
 			}
 
 			// Initialize domain facades
-			this._tasks = new TasksDomain(this._configManager);
 			this._auth = new AuthDomain();
+			this._tasks = new TasksDomain(this._configManager, this._auth);
 			this._workflow = new WorkflowDomain(this._configManager);
 			this._git = new GitDomain(this._projectPath);
 			this._config = new ConfigDomain(this._configManager);

@@ -3,33 +3,34 @@
  * This provides storage via repository abstraction for flexibility
  */
 
-import type {
-	IStorage,
-	StorageStats,
-	UpdateStatusResult,
-	LoadTasksOptions
-} from '../../../common/interfaces/storage.interface.js';
-import type {
-	Task,
-	TaskMetadata,
-	TaskTag,
-	TaskStatus
-} from '../../../common/types/index.js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
-import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
-import { ApiClient } from '../utils/api-client.js';
+import type {
+	IStorage,
+	LoadTasksOptions,
+	StorageStats,
+	UpdateStatusResult
+} from '../../../common/interfaces/storage.interface.js';
 import { getLogger } from '../../../common/logger/factory.js';
+import type {
+	Task,
+	TaskMetadata,
+	TaskStatus,
+	TaskTag
+} from '../../../common/types/index.js';
+import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { BriefsDomain } from '../../briefs/briefs-domain.js';
 import {
-	ExpandTaskResult,
+	type ExpandTaskResult,
 	TaskExpansionService
 } from '../../integration/services/task-expansion.service.js';
 import { TaskRetrievalService } from '../../integration/services/task-retrieval.service.js';
+import { SupabaseRepository } from '../../tasks/repositories/supabase/index.js';
+import type { TaskRepository } from '../../tasks/repositories/task-repository.interface.js';
+import { ApiClient } from '../utils/api-client.js';
 
 /**
  * API storage configuration
@@ -157,6 +158,49 @@ export class ApiStorage implements IStorage {
 		const authManager = AuthManager.getInstance();
 		const context = authManager.getContext();
 		return context?.briefName || null;
+	}
+
+	/**
+	 * Get all briefs (tags) with detailed statistics including task counts
+	 * In API storage, tags are called "briefs"
+	 * Delegates to BriefsDomain for brief statistics calculation
+	 */
+	async getTagsWithStats(): Promise<{
+		tags: Array<{
+			name: string;
+			isCurrent: boolean;
+			taskCount: number;
+			completedTasks: number;
+			statusBreakdown: Record<string, number>;
+			subtaskCounts?: {
+				totalSubtasks: number;
+				subtasksByStatus: Record<string, number>;
+			};
+			created?: string;
+			description?: string;
+			status?: string;
+			briefId?: string;
+		}>;
+		currentTag: string | null;
+		totalTags: number;
+	}> {
+		await this.ensureInitialized();
+
+		try {
+			// Delegate to BriefsDomain which owns brief operations
+			const briefsDomain = new BriefsDomain();
+			return await briefsDomain.getBriefsWithStats(
+				this.repository,
+				this.projectId
+			);
+		} catch (error) {
+			throw new TaskMasterError(
+				'Failed to get tags with stats from API',
+				ERROR_CODES.STORAGE_ERROR,
+				{ operation: 'getTagsWithStats' },
+				error as Error
+			);
+		}
 	}
 
 	/**
@@ -685,6 +729,21 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Create a new tag (brief)
+	 * Not supported with API storage - users must create briefs via web interface
+	 */
+	async createTag(
+		tagName: string,
+		_options?: { copyFrom?: string; description?: string }
+	): Promise<void> {
+		throw new TaskMasterError(
+			'Tag creation is not supported with API storage. Please create briefs through Hamster Studio.',
+			ERROR_CODES.NOT_IMPLEMENTED,
+			{ storageType: 'api', operation: 'createTag', tagName }
+		);
+	}
+
+	/**
 	 * Delete all tasks for a tag
 	 */
 	async deleteTag(tag: string): Promise<void> {
@@ -964,7 +1023,7 @@ export class ApiStorage implements IStorage {
 	 */
 	private async retryOperation<T>(
 		operation: () => Promise<T>,
-		attempt: number = 1
+		attempt = 1
 	): Promise<T> {
 		try {
 			return await operation();

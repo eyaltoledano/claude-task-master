@@ -6,9 +6,9 @@
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import { WorkflowService } from './services/workflow.service.js';
 import type {
+	NextAction,
 	StartWorkflowOptions,
-	WorkflowStatus,
-	NextAction
+	WorkflowStatus
 } from './services/workflow.service.js';
 import type { TestResult, WorkflowContext } from './types.js';
 

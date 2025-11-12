@@ -36,6 +36,12 @@ export type * from './common/types/index.js';
 // Common interfaces
 export type * from './common/interfaces/index.js';
 
+// Storage interfaces - TagInfo and TagsWithStatsResult
+export type {
+	TagInfo,
+	TagsWithStatsResult
+} from './common/interfaces/storage.interface.js';
+
 // Constants
 export * from './common/constants/index.js';
 
@@ -75,6 +81,10 @@ export type {
 } from './modules/auth/types.js';
 export { AuthenticationError } from './modules/auth/types.js';
 
+// Brief types
+export type { Brief } from './modules/briefs/types.js';
+export type { TagWithStats } from './modules/briefs/services/brief-service.js';
+
 // Workflow types
 export type {
 	StartWorkflowOptions,
@@ -111,6 +121,10 @@ export type {
 
 // Auth - Advanced
 export { AuthManager } from './modules/auth/managers/auth-manager.js';
+
+// Briefs - Advanced
+export { BriefsDomain } from './modules/briefs/briefs-domain.js';
+export { BriefService } from './modules/briefs/services/brief-service.js';
 
 // Workflow - Advanced
 export { WorkflowOrchestrator } from './modules/workflow/orchestrators/workflow-orchestrator.js';

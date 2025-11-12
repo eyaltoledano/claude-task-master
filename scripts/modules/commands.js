@@ -3975,10 +3975,12 @@ Examples:
 
 	// ===== TAG MANAGEMENT COMMANDS =====
 
-	// add-tag command
+	// add-tag command (DEPRECATED - use `tm tags add` instead)
 	programInstance
 		.command('add-tag')
-		.description('Create a new tag context for organizing tasks')
+		.description(
+			'[DEPRECATED] Create a new tag context for organizing tasks (use "tm tags add" instead)'
+		)
 		.argument(
 			'[tagName]',
 			'Name of the new tag to create (optional when using --from-branch)'
@@ -4002,6 +4004,16 @@ Examples:
 		)
 		.option('-d, --description <text>', 'Optional description for the tag')
 		.action(async (tagName, options) => {
+			// Show deprecation warning
+			console.warn(
+				chalk.yellow(
+					'⚠ Warning: "tm add-tag" is deprecated. Use "tm tags add" instead.'
+				)
+			);
+			console.log(
+				chalk.gray('  This command will be removed in a future version.\n')
+			);
+
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
@@ -4132,10 +4144,12 @@ Examples:
 			process.exit(1);
 		});
 
-	// delete-tag command
+	// delete-tag command (DEPRECATED - use `tm tags remove` instead)
 	programInstance
 		.command('delete-tag')
-		.description('Delete an existing tag and all its tasks')
+		.description(
+			'[DEPRECATED] Delete an existing tag and all its tasks (use "tm tags remove" instead)'
+		)
 		.argument('<tagName>', 'Name of the tag to delete')
 		.option(
 			'-f, --file <file>',
@@ -4144,6 +4158,16 @@ Examples:
 		)
 		.option('-y, --yes', 'Skip confirmation prompts')
 		.action(async (tagName, options) => {
+			// Show deprecation warning
+			console.warn(
+				chalk.yellow(
+					'⚠ Warning: "tm delete-tag" is deprecated. Use "tm tags remove" instead.'
+				)
+			);
+			console.log(
+				chalk.gray('  This command will be removed in a future version.\n')
+			);
+
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
@@ -4188,62 +4212,17 @@ Examples:
 			process.exit(1);
 		});
 
-	// tags command
-	programInstance
-		.command('tags')
-		.description('List all available tags with metadata')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option('--show-metadata', 'Show detailed metadata for each tag')
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			try {
-				// Initialize TaskMaster
-				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true,
-					tag: options.tag
-				});
-				const tasksPath = taskMaster.getTasksPath();
+	// tags command - REMOVED
+	// This command has been replaced by the new CommandRegistry-based TagsCommand
+	// in apps/cli/src/commands/tags.command.ts
+	// The old implementation is no longer needed
 
-				// Validate tasks file exists
-				if (!fs.existsSync(tasksPath)) {
-					console.error(
-						chalk.red(`Error: Tasks file not found at path: ${tasksPath}`)
-					);
-					process.exit(1);
-				}
-
-				const listOptions = {
-					showTaskCounts: true,
-					showMetadata: options.showMetadata || false
-				};
-
-				const context = {
-					projectRoot: taskMaster.getProjectRoot(),
-					commandName: 'tags',
-					outputType: 'cli'
-				};
-
-				await tags(taskMaster.getTasksPath(), listOptions, context, 'text');
-			} catch (error) {
-				console.error(chalk.red(`Error listing tags: ${error.message}`));
-				showTagsHelp();
-				process.exit(1);
-			}
-		})
-		.on('error', function (err) {
-			console.error(chalk.red(`Error: ${err.message}`));
-			showTagsHelp();
-			process.exit(1);
-		});
-
-	// use-tag command
+	// use-tag command (DEPRECATED - use `tm tags use` instead)
 	programInstance
 		.command('use-tag')
-		.description('Switch to a different tag context')
+		.description(
+			'[DEPRECATED] Switch to a different tag context (use "tm tags use" instead)'
+		)
 		.argument('<tagName>', 'Name of the tag to switch to')
 		.option(
 			'-f, --file <file>',
@@ -4251,6 +4230,16 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.action(async (tagName, options) => {
+			// Show deprecation warning
+			console.warn(
+				chalk.yellow(
+					'⚠ Warning: "tm use-tag" is deprecated. Use "tm tags use" instead.'
+				)
+			);
+			console.log(
+				chalk.gray('  This command will be removed in a future version.\n')
+			);
+
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
@@ -4285,10 +4274,12 @@ Examples:
 			process.exit(1);
 		});
 
-	// rename-tag command
+	// rename-tag command (DEPRECATED - use `tm tags rename` instead)
 	programInstance
 		.command('rename-tag')
-		.description('Rename an existing tag')
+		.description(
+			'[DEPRECATED] Rename an existing tag (use "tm tags rename" instead)'
+		)
 		.argument('<oldName>', 'Current name of the tag')
 		.argument('<newName>', 'New name for the tag')
 		.option(
@@ -4297,6 +4288,16 @@ Examples:
 			TASKMASTER_TASKS_FILE
 		)
 		.action(async (oldName, newName, options) => {
+			// Show deprecation warning
+			console.warn(
+				chalk.yellow(
+					'⚠ Warning: "tm rename-tag" is deprecated. Use "tm tags rename" instead.'
+				)
+			);
+			console.log(
+				chalk.gray('  This command will be removed in a future version.\n')
+			);
+
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
@@ -4336,10 +4337,12 @@ Examples:
 			process.exit(1);
 		});
 
-	// copy-tag command
+	// copy-tag command (DEPRECATED - use `tm tags copy` instead)
 	programInstance
 		.command('copy-tag')
-		.description('Copy an existing tag to create a new tag with the same tasks')
+		.description(
+			'[DEPRECATED] Copy an existing tag to create a new tag with the same tasks (use "tm tags copy" instead)'
+		)
 		.argument('<sourceName>', 'Name of the source tag to copy from')
 		.argument('<targetName>', 'Name of the new tag to create')
 		.option(
@@ -4349,6 +4352,16 @@ Examples:
 		)
 		.option('-d, --description <text>', 'Optional description for the new tag')
 		.action(async (sourceName, targetName, options) => {
+			// Show deprecation warning
+			console.warn(
+				chalk.yellow(
+					'⚠ Warning: "tm copy-tag" is deprecated. Use "tm tags copy" instead.'
+				)
+			);
+			console.log(
+				chalk.gray('  This command will be removed in a future version.\n')
+			);
+
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({

@@ -5,11 +5,11 @@
  * when making API calls through AuthManager.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { Session } from '@supabase/supabase-js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthManager } from '../../src/modules/auth/managers/auth-manager.js';
 import { CredentialStore } from '../../src/modules/auth/services/credential-store.js';
 import type { AuthCredentials } from '../../src/modules/auth/types.js';

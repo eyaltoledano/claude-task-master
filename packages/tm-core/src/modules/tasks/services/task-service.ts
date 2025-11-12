@@ -501,6 +501,14 @@ export class TaskService {
 	}
 
 	/**
+	 * Get the storage instance
+	 * Internal use only - used by other services in the tasks module
+	 */
+	getStorage(): IStorage {
+		return this.storage;
+	}
+
+	/**
 	 * Get current active tag
 	 */
 	getActiveTag(): string {
@@ -753,6 +761,47 @@ export class TaskService {
 					taskId: taskIdStr,
 					newStatus,
 					tag: activeTag
+				},
+				error as Error
+			);
+		}
+	}
+
+	/**
+	 * Get all tags with detailed statistics including task counts
+	 * Delegates to storage layer which handles file vs API implementation
+	 */
+	async getTagsWithStats() {
+		// Ensure we have storage
+		if (!this.storage) {
+			throw new TaskMasterError(
+				'Storage not initialized',
+				ERROR_CODES.STORAGE_ERROR
+			);
+		}
+
+		// Auto-initialize if needed
+		if (!this.initialized) {
+			await this.initialize();
+		}
+
+		try {
+			return await this.storage.getTagsWithStats();
+		} catch (error) {
+			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
+			if (
+				error instanceof TaskMasterError &&
+				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
+			) {
+				throw error;
+			}
+
+			throw new TaskMasterError(
+				'Failed to get tags with stats',
+				ERROR_CODES.STORAGE_ERROR,
+				{
+					operation: 'getTagsWithStats',
+					resource: 'tags'
 				},
 				error as Error
 			);

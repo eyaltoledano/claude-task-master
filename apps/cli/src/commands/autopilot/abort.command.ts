@@ -2,16 +2,16 @@
  * @fileoverview Abort Command - Safely terminate workflow
  */
 
-import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
+import { Command } from 'commander';
+import inquirer from 'inquirer';
 import {
 	AutopilotBaseOptions,
-	hasWorkflowState,
-	loadWorkflowState,
+	OutputFormatter,
 	deleteWorkflowState,
-	OutputFormatter
+	hasWorkflowState,
+	loadWorkflowState
 } from './shared.js';
-import inquirer from 'inquirer';
 import { getProjectRoot } from '../../utils/project-root.js';
 
 interface AbortOptions extends AutopilotBaseOptions {

@@ -4,12 +4,13 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '../../../common/types/database.types.js';
 import {
-	TaskMasterError,
-	ERROR_CODES
+	ERROR_CODES,
+	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { Database } from '../../../common/types/database.types.js';
+import type { Brief } from '../../briefs/types.js';
 
 /**
  * Organization data structure
@@ -18,24 +19,6 @@ export interface Organization {
 	id: string;
 	name: string;
 	slug: string;
-}
-
-/**
- * Brief data structure
- */
-export interface Brief {
-	id: string;
-	accountId: string;
-	documentId: string;
-	status: string;
-	createdAt: string;
-	updatedAt: string;
-	document?: {
-		id: string;
-		title: string;
-		document_name: string;
-		description?: string;
-	};
 }
 
 /**
@@ -181,6 +164,7 @@ export class OrganizationService {
 					status,
 					created_at,
 					updated_at,
+					tasks(count),
 					document:document_id (
 						id,
 						document_name,
@@ -211,6 +195,9 @@ export class OrganizationService {
 				status: brief.status,
 				createdAt: brief.created_at,
 				updatedAt: brief.updated_at,
+				taskCount: Array.isArray(brief.tasks)
+					? (brief.tasks[0]?.count ?? 0)
+					: 0,
 				document: brief.document
 					? {
 							id: brief.document.id,

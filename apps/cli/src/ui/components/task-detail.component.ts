@@ -3,16 +3,16 @@
  * Displays detailed task information in a structured format
  */
 
-import chalk from 'chalk';
-import boxen from 'boxen';
-import Table from 'cli-table3';
-import { marked, MarkedExtension } from 'marked';
-import { markedTerminal } from 'marked-terminal';
 import type { Subtask, Task } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import { MarkedExtension, marked } from 'marked';
+import { markedTerminal } from 'marked-terminal';
 import {
-	getStatusWithColor,
+	getComplexityWithColor,
 	getPriorityWithColor,
-	getComplexityWithColor
+	getStatusWithColor
 } from '../../utils/ui.js';
 
 // Configure marked to use terminal renderer with subtle colors

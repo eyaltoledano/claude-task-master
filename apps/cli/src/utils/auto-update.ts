@@ -4,9 +4,9 @@
 
 import { spawn } from 'child_process';
 import https from 'https';
+import boxen from 'boxen';
 import chalk from 'chalk';
 import ora from 'ora';
-import boxen from 'boxen';
 import process from 'process';
 
 export interface UpdateInfo {

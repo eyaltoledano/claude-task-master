@@ -4,14 +4,14 @@
  */
 
 import path from 'node:path';
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { createTmCore, type Task, type TmCore } from '@tm/core';
+import { type Task, type TmCore, createTmCore } from '@tm/core';
 import type { StorageType } from '@tm/core';
-import { displayError } from '../utils/error-handler.js';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**

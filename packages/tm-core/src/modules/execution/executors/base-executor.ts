@@ -2,9 +2,9 @@
  * Base executor class providing common functionality for all executors
  */
 
-import type { Task } from '../../../common/types/index.js';
-import type { ITaskExecutor, ExecutorType, ExecutionResult } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
+import type { Task } from '../../../common/types/index.js';
+import type { ExecutionResult, ExecutorType, ITaskExecutor } from '../types.js';
 
 export abstract class BaseExecutor implements ITaskExecutor {
 	protected readonly logger = getLogger('BaseExecutor');

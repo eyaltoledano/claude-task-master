@@ -3,34 +3,34 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
 import {
-	createTmCore,
+	OUTPUT_FORMATS,
+	type OutputFormat,
+	STATUS_ICONS,
+	TASK_STATUSES,
 	type Task,
 	type TaskStatus,
 	type TmCore,
-	TASK_STATUSES,
-	OUTPUT_FORMATS,
-	STATUS_ICONS,
-	type OutputFormat
+	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
-import { displayCommandHeader } from '../utils/display-helpers.js';
-import { getProjectRoot } from '../utils/project-root.js';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import {
-	displayDashboards,
-	calculateTaskStatistics,
-	calculateSubtaskStatistics,
+	type NextTaskInfo,
 	calculateDependencyStatistics,
-	getPriorityBreakdown,
+	calculateSubtaskStatistics,
+	calculateTaskStatistics,
+	displayDashboards,
 	displayRecommendedNextTask,
-	getTaskDescription,
 	displaySuggestedNextSteps,
-	type NextTaskInfo
+	getPriorityBreakdown,
+	getTaskDescription
 } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Options interface for the list command

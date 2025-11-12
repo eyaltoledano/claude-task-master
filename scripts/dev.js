@@ -8,9 +8,9 @@
  * It imports functionality from the modules directory and provides a CLI.
  */
 
-import dotenv from 'dotenv';
-import { findProjectRoot } from '@tm/core';
 import { join } from 'node:path';
+import { findProjectRoot } from '@tm/core';
+import dotenv from 'dotenv';
 
 // Store the original working directory
 // This is needed for commands that take relative paths as arguments

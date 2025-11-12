@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-	normalizeProjectPath,
 	denormalizeProjectPath,
-	isValidNormalizedPath
+	isValidNormalizedPath,
+	normalizeProjectPath
 } from './path-normalizer.js';
 
 describe('Path Normalizer (base64url encoding)', () => {
