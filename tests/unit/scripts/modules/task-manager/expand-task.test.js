@@ -1364,29 +1364,31 @@ describe('expandTask', () => {
 			expect(writeJSON).toHaveBeenCalled();
 		});
 
-		test('should fallback to local expansion when tryExpandViaRemote throws error', async () => {
-			// Arrange - Mock remote throwing error
-			tryExpandViaRemote.mockRejectedValue(
-				new Error('Remote expansion service unavailable')
+		test('should propagate error when tryExpandViaRemote throws error', async () => {
+			// Arrange - Mock remote throwing error (it re-throws, doesn't return null)
+			tryExpandViaRemote.mockImplementation(() =>
+				Promise.reject(new Error('Remote expansion service unavailable'))
 			);
 
-			// Act
-			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+			// Act & Assert - Should propagate the error (not fallback to local)
+			await expect(
+				expandTask(tasksPath, taskId, 3, false, '', context, false)
+			).rejects.toThrow('Remote expansion service unavailable');
 
-			// Assert - Should catch error and fallback to local expansion
 			expect(tryExpandViaRemote).toHaveBeenCalled();
-			expect(generateObjectService).toHaveBeenCalled();
-			expect(writeJSON).toHaveBeenCalled();
+			// Local expansion should NOT be called when remote throws
+			expect(generateObjectService).not.toHaveBeenCalled();
 		});
 
 		test('should pass correct parameters to tryExpandViaRemote', async () => {
 			// Arrange
-			const taskIdStr = '3';
+			const taskIdStr = '2'; // Use task 2 which exists in master tag
 			const numSubtasks = 5;
 			const additionalContext = 'Extra context for expansion';
-			const useResearch = true;
+			const useResearch = false; // Note: useResearch is the 4th param, not 7th
+			const force = true; // Note: force is the 7th param
 			const contextObj = {
-				tag: 'feature-branch',
+				tag: 'master', // Use master tag where task 2 exists
 				projectRoot: '/mock/project'
 			};
 			tryExpandViaRemote.mockResolvedValue(null);
@@ -1396,24 +1398,23 @@ describe('expandTask', () => {
 				tasksPath,
 				taskIdStr,
 				numSubtasks,
-				false,
-				additionalContext,
-				contextObj,
-				useResearch
+				useResearch, // 4th param
+				additionalContext, // 5th param
+				contextObj, // 6th param
+				force // 7th param
 			);
 
 			// Assert - Verify tryExpandViaRemote was called with correct params
+			// Note: The actual call has a flat structure, not nested context
 			expect(tryExpandViaRemote).toHaveBeenCalledWith(
 				expect.objectContaining({
-					operation: 'expand',
 					taskId: taskIdStr,
 					numSubtasks,
 					additionalContext,
 					useResearch,
-					context: expect.objectContaining({
-						tag: 'feature-branch',
-						projectRoot: '/mock/project'
-					})
+					force,
+					projectRoot: '/mock/project',
+					tag: 'master'
 				})
 			);
 		});
