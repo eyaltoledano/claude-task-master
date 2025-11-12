@@ -208,3 +208,56 @@ The agent will execute:
 ```bash
 task-master expand --id=5 --research
 ```
+
+## Working with Monorepos and Multi-Project Setups
+
+Task Master now intelligently handles monorepos and multi-project setups by prioritizing `.taskmaster` directories in parent directories over other project markers.
+
+### How Project Root Detection Works
+
+When you run Task Master commands from subdirectories, it uses a two-pass search strategy:
+
+1. **First Pass**: Searches ALL parent directories for `.taskmaster` markers (highest priority)
+2. **Second Pass**: If no `.taskmaster` found, searches for other project markers (`.git`, `package.json`, etc.)
+
+This ensures that a `.taskmaster` directory in a parent directory takes precedence over project markers in subdirectories.
+
+### Monorepo Example
+
+```
+/project/.taskmaster          # Task Master project root
+/project/packages/frontend/.git
+/project/packages/backend/package.json
+/project/packages/api/go.mod
+```
+
+When running `task-master list` from any subdirectory:
+- From `/project/packages/frontend/`: Uses `/project` (not `/project/packages/frontend`)
+- From `/project/packages/backend/src/`: Uses `/project` (not `/project/packages/backend`)  
+- From `/project/packages/api/`: Uses `/project` (not `/project/packages/api`)
+
+### Setting Up Monorepo Task Management
+
+1. **Initialize Task Master at the monorepo root**:
+   ```bash
+   cd /project
+   task-master init
+   ```
+
+2. **Work from any subdirectory**:
+   ```bash
+   cd packages/frontend
+   task-master next  # Uses /project/.taskmaster
+   ```
+
+3. **All subprojects share the same task system**:
+   - Tasks can span multiple packages
+   - Dependencies work across package boundaries  
+   - Single source of truth for project-wide task management
+
+### Benefits for Team Workflows
+
+- **Consistent Task Management**: All team members see the same tasks regardless of which package they're working in
+- **Cross-Package Tasks**: Tasks can involve changes across multiple packages
+- **Simplified Setup**: Only need to configure Task Master once at the root
+- **Unified Progress tracking**: Track progress across the entire project from anywhere

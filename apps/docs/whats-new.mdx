@@ -3,4 +3,20 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
+## Latest Improvements
+
+### Enhanced Monorepo Support
+
+Task Master now provides improved support for monorepos and multi-project setups:
+
+- **Smart Project Root Detection**: When running commands from subdirectories, Task Master now prioritizes `.taskmaster` directories in parent folders over other project markers (like `.git`, `package.json`, etc.)
+- **Unified Task Management**: A single `.taskmaster` at the monorepo root can now manage tasks across multiple sub-repositories
+- **Consistent Behavior**: All team members see the same tasks regardless of which package directory they're working in
+
+This enables seamless task management in complex project structures where you might have multiple packages, services, or applications under a single task management system.
+
+**Example**: In a monorepo with `/project/.taskmaster` and `/project/packages/frontend/.git`, running `task-master list` from the frontend package will correctly use the root `.taskmaster` instead of treating the frontend as a separate project.
+
+---
+
 An easy way to see the latest releases
