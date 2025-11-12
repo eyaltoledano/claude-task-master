@@ -7,6 +7,20 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 
+// Mock fs module
+jest.unstable_mockModule('fs', () => {
+	const mockFs = {
+		existsSync: jest.fn(() => true),
+		writeFileSync: jest.fn(),
+		readFileSync: jest.fn(),
+		unlinkSync: jest.fn(),
+		mkdirSync: jest.fn(),
+		readdirSync: jest.fn(() => []),
+		statSync: jest.fn(() => ({ isDirectory: () => false }))
+	};
+	return { default: mockFs, ...mockFs };
+});
+
 // Mock the dependencies
 jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({
 	resolveComplexityReportOutputPath: jest.fn(),
@@ -59,6 +73,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {}),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
 	markMigrationForNotice: jest.fn(),
 	performCompleteTagMigration: jest.fn(),
 	setTasksForTag: jest.fn(),
@@ -458,13 +473,37 @@ jest.unstable_mockModule('fs', () => ({
 		existsSync: mockExistsSync,
 		readFileSync: mockReadFileSync,
 		writeFileSync: mockWriteFileSync,
-		mkdirSync: mockMkdirSync
+		mkdirSync: mockMkdirSync,
+		unlinkSync: jest.fn()
 	},
 	existsSync: mockExistsSync,
 	readFileSync: mockReadFileSync,
 	writeFileSync: mockWriteFileSync,
-	mkdirSync: mockMkdirSync
+	mkdirSync: mockMkdirSync,
+	unlinkSync: jest.fn()
 }));
+
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryExpandViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
 
 // Import the mocked modules
 const { resolveComplexityReportOutputPath, findComplexityReportPath } =

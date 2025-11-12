@@ -25,6 +25,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	findTaskById: jest.fn(),
 	findProjectRoot: jest.fn((tasksPath) => '/mock/project/root'),
 	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
+	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	flattenTasksWithSubtasks: jest.fn((tasks) => {
 		const allTasks = [];
@@ -201,6 +203,28 @@ jest.unstable_mockModule('cli-table3', () => ({
 		toString: jest.fn(() => 'mocked table')
 	}))
 }));
+
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryExpandViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
 
 // Mock process.exit to prevent Jest worker crashes
 const mockExit = jest.spyOn(process, 'exit').mockImplementation((code) => {

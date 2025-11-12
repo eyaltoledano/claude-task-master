@@ -21,14 +21,25 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isEmpty: jest.fn(() => false),
 	resolveEnvVariable: jest.fn(),
 	findTaskById: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master')
+	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
+	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
+	setTasksForTag: jest.fn(),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
+	displayBanner: jest.fn(),
 	getStatusWithColor: jest.fn((s) => s),
 	startLoadingIndicator: jest.fn(() => ({ stop: jest.fn() })),
 	stopLoadingIndicator: jest.fn(),
-	displayAiUsageSummary: jest.fn()
+	succeedLoadingIndicator: jest.fn(),
+	failLoadingIndicator: jest.fn(),
+	warnLoadingIndicator: jest.fn(),
+	infoLoadingIndicator: jest.fn(),
+	displayAiUsageSummary: jest.fn(),
+	displayContextAnalysis: jest.fn()
 }));
 
 jest.unstable_mockModule(
@@ -69,6 +80,84 @@ jest.unstable_mockModule(
 		getDebugFlag: jest.fn(() => false),
 		isApiKeySet: jest.fn(() => true),
 		hasCodebaseAnalysis: jest.fn(() => false)
+	})
+);
+
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryUpdateViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
+
+// Mock prompt-manager module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		default: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn((promptId, params) => ({
+				systemPrompt:
+					'You are an AI assistant that helps update a software development task with new requirements and information.',
+				userPrompt: `Update the following task based on the provided information: ${params?.updatePrompt || 'User prompt for task update'}`,
+				metadata: {
+					templateId: 'update-task',
+					version: '1.0.0',
+					variant: 'default',
+					parameters: params || {}
+				}
+			}))
+		}),
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn((promptId, params) => ({
+				systemPrompt:
+					'You are an AI assistant that helps update a software development task with new requirements and information.',
+				userPrompt: `Update the following task based on the provided information: ${params?.updatePrompt || 'User prompt for task update'}`,
+				metadata: {
+					templateId: 'update-task',
+					version: '1.0.0',
+					variant: 'default',
+					parameters: params || {}
+				}
+			}))
+		})
+	})
+);
+
+// Mock contextGatherer module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/contextGatherer.js',
+	() => ({
+		ContextGatherer: jest.fn().mockImplementation(() => ({
+			gather: jest.fn().mockReturnValue({
+				fullContext: '',
+				summary: ''
+			})
+		}))
+	})
+);
+
+// Mock fuzzyTaskSearch module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js',
+	() => ({
+		FuzzyTaskSearch: jest.fn().mockImplementation(() => ({
+			search: jest.fn().mockReturnValue([])
+		}))
 	})
 );
 
