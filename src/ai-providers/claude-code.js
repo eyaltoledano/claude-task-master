@@ -122,7 +122,6 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 
 				return createClaudeCode({
 					defaultSettings: {
-						...settings,
 						// Restore previous default behavior from pre-2.0 versions
 						// These must be inside defaultSettings to be applied by the provider
 						systemPrompt: {
@@ -130,7 +129,8 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 							preset: 'claude_code'
 						},
 						// Enable loading of CLAUDE.md and settings.json files
-						settingSources: ['user', 'project', 'local']
+						settingSources: ['user', 'project', 'local'],
+						...settings
 					}
 				});
 			} finally {

@@ -107,10 +107,12 @@ describe('ClaudeCodeProvider', () => {
 
 			expect(createClaudeCode).toHaveBeenCalledWith(
 				expect.objectContaining({
-					systemPrompt: {
-						type: 'preset',
-						preset: 'claude_code'
-					}
+					defaultSettings: expect.objectContaining({
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						}
+					})
 				})
 			);
 		});
@@ -122,7 +124,9 @@ describe('ClaudeCodeProvider', () => {
 
 			expect(createClaudeCode).toHaveBeenCalledWith(
 				expect.objectContaining({
-					settingSources: ['user', 'project', 'local']
+					defaultSettings: expect.objectContaining({
+						settingSources: ['user', 'project', 'local']
+					})
 				})
 			);
 		});
@@ -140,7 +144,14 @@ describe('ClaudeCodeProvider', () => {
 
 			expect(createClaudeCode).toHaveBeenCalledWith(
 				expect.objectContaining({
-					defaultSettings: mockSettings
+					defaultSettings: expect.objectContaining({
+						...mockSettings,
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						},
+						settingSources: ['user', 'project', 'local']
+					})
 				})
 			);
 		});
@@ -158,14 +169,16 @@ describe('ClaudeCodeProvider', () => {
 
 			// Verify the complete configuration structure matches v2.0 migration requirements
 			expect(createClaudeCode).toHaveBeenCalledWith({
-				defaultSettings: mockSettings,
-				// Restores pre-2.0 behavior: explicit system prompt preset
-				systemPrompt: {
-					type: 'preset',
-					preset: 'claude_code'
-				},
-				// Restores pre-2.0 behavior: enables loading of CLAUDE.md and settings.json
-				settingSources: ['user', 'project', 'local']
+				defaultSettings: {
+					...mockSettings,
+					// Restores pre-2.0 behavior: explicit system prompt preset
+					systemPrompt: {
+						type: 'preset',
+						preset: 'claude_code'
+					},
+					// Restores pre-2.0 behavior: enables loading of CLAUDE.md and settings.json
+					settingSources: ['user', 'project', 'local']
+				}
 			});
 		});
 
@@ -181,7 +194,13 @@ describe('ClaudeCodeProvider', () => {
 
 			expect(createClaudeCode).toHaveBeenCalledWith(
 				expect.objectContaining({
-					defaultSettings: {}
+					defaultSettings: expect.objectContaining({
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						},
+						settingSources: ['user', 'project', 'local']
+					})
 				})
 			);
 		});
