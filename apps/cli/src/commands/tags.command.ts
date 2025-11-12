@@ -209,13 +209,20 @@ Examples:
 	/**
 	 * Execute list tags
 	 */
-	private async executeList(options?: { showMetadata?: boolean }): Promise<void> {
+	private async executeList(options?: {
+		showMetadata?: boolean;
+	}): Promise<void> {
 		try {
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			const listResult = await legacyListTags(
@@ -262,7 +269,12 @@ Examples:
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			await legacyCreateTag(
@@ -302,7 +314,12 @@ Examples:
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			const useResult = await legacyUseTag(
@@ -342,7 +359,12 @@ Examples:
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			await legacyDeleteTag(
@@ -378,7 +400,12 @@ Examples:
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			await legacyRenameTag(
@@ -419,7 +446,12 @@ Examples:
 			await this.initTmCore();
 
 			const projectRoot = process.cwd();
-			const tasksPath = path.join(projectRoot, '.taskmaster', 'tasks', 'tasks.json');
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
 
 			// Use legacy function which handles both API and file storage
 			await legacyCopyTag(

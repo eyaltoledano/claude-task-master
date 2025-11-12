@@ -52,7 +52,7 @@ export async function checkAuthentication(
 
 		console.log(
 			displayCardBox({
-				header: '⚠ Not logged in to Hamster',
+				header: '[!] Not logged in to Hamster',
 				body: [message],
 				callToAction: {
 					label: 'To get started:',

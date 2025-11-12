@@ -7,7 +7,12 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { AuthManager, createTmCore, type UserContext, type TmCore } from '@tm/core';
+import {
+	AuthManager,
+	createTmCore,
+	type UserContext,
+	type TmCore
+} from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { checkAuthentication } from '../utils/auth-helpers.js';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
@@ -132,7 +137,8 @@ export class ContextCommand extends Command {
 	private async displayContext(): Promise<ContextResult> {
 		// Check authentication first
 		const isAuthenticated = await checkAuthentication(this.authManager, {
-			message: 'The "context" command requires you to be logged in to your Hamster account.'
+			message:
+				'The "context" command requires you to be logged in to your Hamster account.'
 		});
 
 		if (!isAuthenticated) {
@@ -238,7 +244,9 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			ui.displayError(`Failed to select organization: ${(error as Error).message}`);
+			ui.displayError(
+				`Failed to select organization: ${(error as Error).message}`
+			);
 			process.exit(1);
 		}
 	}
@@ -340,7 +348,6 @@ export class ContextCommand extends Command {
 			process.exit(1);
 		}
 	}
-
 
 	/**
 	 * Execute clear context
@@ -453,11 +460,12 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 		} catch (error: any) {
-			ui.displayError(`Failed to set context from brief: ${(error as Error).message}`);
+			ui.displayError(
+				`Failed to set context from brief: ${(error as Error).message}`
+			);
 			process.exit(1);
 		}
 	}
-
 
 	/**
 	 * Set context directly from options

@@ -280,4 +280,3 @@ export async function selectBriefFromInput(
 		throw error;
 	}
 }
-

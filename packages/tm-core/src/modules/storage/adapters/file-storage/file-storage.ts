@@ -605,8 +605,13 @@ export class FileStorage implements IStorage {
 				// Get tasks to copy if specified
 				let tasksToCopy = [];
 				if (options?.copyFrom) {
-					if (options.copyFrom in existingData && existingData[options.copyFrom].tasks) {
-						tasksToCopy = JSON.parse(JSON.stringify(existingData[options.copyFrom].tasks));
+					if (
+						options.copyFrom in existingData &&
+						existingData[options.copyFrom].tasks
+					) {
+						tasksToCopy = JSON.parse(
+							JSON.stringify(existingData[options.copyFrom].tasks)
+						);
 					}
 				}
 
@@ -616,7 +621,9 @@ export class FileStorage implements IStorage {
 					metadata: {
 						created: new Date().toISOString(),
 						updated: new Date().toISOString(),
-						description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`,
+						description:
+							options?.description ||
+							`Tag created on ${new Date().toLocaleDateString()}`,
 						tags: [tagName]
 					}
 				};
@@ -643,7 +650,9 @@ export class FileStorage implements IStorage {
 						metadata: {
 							created: new Date().toISOString(),
 							updated: new Date().toISOString(),
-							description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`,
+							description:
+								options?.description ||
+								`Tag created on ${new Date().toLocaleDateString()}`,
 							tags: [tagName]
 						}
 					}
