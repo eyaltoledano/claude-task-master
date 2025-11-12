@@ -53,6 +53,7 @@ export interface NextTaskInfo {
  * Status breakdown for progress bars
  */
 export interface StatusBreakdown {
+	done?: number;
 	'in-progress'?: number;
 	pending?: number;
 	blocked?: number;
