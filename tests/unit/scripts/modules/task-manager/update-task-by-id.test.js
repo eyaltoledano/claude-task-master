@@ -130,7 +130,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/utils/contextGatherer.js',
 	() => ({
 		ContextGatherer: jest.fn().mockImplementation(() => ({
-			gather: jest.fn().mockReturnValue({
+			gather: jest.fn().mockResolvedValue({
 				fullContext: '',
 				summary: ''
 			})
@@ -169,6 +169,12 @@ const { FuzzyTaskSearch } = await import(
 const { default: updateTaskById } = await import(
 	'../../../../../scripts/modules/task-manager/update-task-by-id.js'
 );
+
+// Import test fixtures for consistent sample data
+import {
+	taggedEmptyTasks,
+	taggedOneTask
+} from '../../../../fixtures/sample-tasks.js';
 
 describe('updateTaskById validation', () => {
 	beforeEach(() => {
@@ -211,7 +217,7 @@ describe('updateTaskById validation', () => {
 	test('throws error when task ID not found', async () => {
 		const fs = await import('fs');
 		fs.existsSync.mockReturnValue(true);
-		readJSON.mockReturnValue({ tag: 'master', tasks: [] });
+		readJSON.mockReturnValue(taggedEmptyTasks);
 		await expect(
 			updateTaskById(
 				'tasks/tasks.json',

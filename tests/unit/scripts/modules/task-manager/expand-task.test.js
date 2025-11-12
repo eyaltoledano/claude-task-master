@@ -1,8 +1,8 @@
+import fs from 'fs';
 /**
  * Tests for the expand-task.js module
  */
 import { jest } from '@jest/globals';
-import fs from 'fs';
 import {
 	createGetTagAwareFilePathMock,
 	createSlugifyTagForFilePathMock
@@ -1414,7 +1414,10 @@ describe('expandTask', () => {
 					useResearch,
 					force,
 					projectRoot: '/mock/project',
-					tag: 'master'
+					tag: 'master',
+					isMCP: expect.any(Boolean),
+					outputFormat: expect.any(String),
+					report: expect.any(Function)
 				})
 			);
 		});

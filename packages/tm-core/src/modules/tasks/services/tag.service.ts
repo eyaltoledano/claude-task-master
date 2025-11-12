@@ -34,8 +34,7 @@ export interface DeleteTagOptions {
  * Options for copying a tag
  */
 export interface CopyTagOptions {
-	/** Description for the new tag */
-	description?: string;
+	// Currently no options - interface kept for future extensibility
 }
 
 /**
