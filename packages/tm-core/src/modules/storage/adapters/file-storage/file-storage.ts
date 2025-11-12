@@ -2,6 +2,7 @@
  * @fileoverview Refactored file-based storage implementation for Task Master
  */
 
+import path from 'node:path';
 import type {
 	IStorage,
 	LoadTasksOptions,
@@ -865,7 +866,7 @@ export class FileStorage implements IStorage {
 	 */
 	private async getActiveTagFromState(): Promise<string> {
 		try {
-			const statePath = this.pathResolver.getBasePath() + '/state.json';
+			const statePath = path.join(this.pathResolver.getBasePath(), 'state.json');
 			const stateData = await this.fileOps.readJson(statePath);
 			return stateData?.currentTag || 'master';
 		} catch (error) {
