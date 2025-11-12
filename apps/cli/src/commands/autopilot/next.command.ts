@@ -3,9 +3,10 @@
  */
 
 import { WorkflowOrchestrator } from '@tm/core';
+import { Command } from 'commander';
 import { getProjectRoot } from '../../utils/project-root.js';
 import {
-	AutopilotBaseOptions,
+	type AutopilotBaseOptions,
 	OutputFormatter,
 	hasWorkflowState,
 	loadWorkflowState

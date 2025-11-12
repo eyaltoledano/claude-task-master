@@ -14,10 +14,6 @@ import {
 	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
-import { displayCommandHeader } from '../utils/display-helpers.js';
-import { getProjectRoot } from '../utils/project-root.js';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import {
@@ -33,6 +29,7 @@ import {
 } from '../ui/index.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
 import * as ui from '../utils/ui.js';
 
 /**
