@@ -34,6 +34,25 @@ export interface TagsResult {
 }
 
 /**
+ * Legacy function return types
+ */
+interface LegacyListTagsResult {
+	tags: any[];
+	currentTag: string | null;
+	totalTags: number;
+}
+
+interface LegacyUseTagResult {
+	currentTag: string;
+}
+
+interface LegacyCreateTagOptions {
+	description?: string;
+	copyFromTag?: string;
+	fromBranch?: boolean;
+}
+
+/**
  * TagsCommand - Manage tags/briefs for task organization
  */
 export class TagsCommand extends Command {
@@ -225,7 +244,7 @@ Examples:
 			);
 
 			// Use legacy function which handles both API and file storage
-			const listResult = await legacyListTags(
+			const listResult = (await legacyListTags(
 				tasksPath,
 				{
 					showTaskCounts: true,
@@ -233,7 +252,7 @@ Examples:
 				},
 				{ projectRoot },
 				'text'
-			);
+			)) as LegacyListTagsResult;
 
 			this.setLastResult({
 				success: true,
@@ -284,7 +303,7 @@ Examples:
 					description: options?.description,
 					copyFromTag: options?.copyFrom,
 					fromBranch: options?.fromBranch
-				},
+				} as LegacyCreateTagOptions,
 				{ projectRoot },
 				'text'
 			);
@@ -322,13 +341,13 @@ Examples:
 			);
 
 			// Use legacy function which handles both API and file storage
-			const useResult = await legacyUseTag(
+			const useResult = (await legacyUseTag(
 				tasksPath,
 				name,
 				{},
 				{ projectRoot },
 				'text'
-			);
+			)) as LegacyUseTagResult;
 
 			this.setLastResult({
 				success: true,
