@@ -192,7 +192,7 @@ export class NextCommand extends Command {
 						padding: 1,
 						borderStyle: 'round',
 						borderColor: 'yellow',
-						title: '⚠ NO TASKS AVAILABLE ⚠',
+						title: '⚠️ NO TASKS AVAILABLE ⚠️',
 						titleAlignment: 'center'
 					}
 				)
