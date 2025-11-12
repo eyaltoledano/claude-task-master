@@ -94,7 +94,7 @@ export class StorageFactory {
 						// Validate that apiEndpoint is defined
 						if (!nextStorage.apiEndpoint) {
 							throw new TaskMasterError(
-								'API endpoint could not be determined. Set TM_BASE_DOMAIN environment variable or configure storage.apiEndpoint',
+								'API endpoint could not be determined.',
 								ERROR_CODES.MISSING_CONFIGURATION,
 								{ storageType: 'api' }
 							);

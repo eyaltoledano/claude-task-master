@@ -4,10 +4,9 @@
  */
 
 import { Command } from 'commander';
-import path from 'path';
 import type { TmCore } from '@tm/core';
-import { createTmCore } from '@tm/core';
-import { displayError } from '../utils/error-handler.js';
+import { createTmCore, getProjectPaths } from '@tm/core';
+import { displayError } from '../utils/index.js';
 
 /**
  * TODO: TECH DEBT - Architectural Refactor Needed
@@ -242,21 +241,6 @@ Examples:
 	}
 
 	/**
-	 * Get project paths (reduces duplication across execute methods)
-	 * @returns Object with projectRoot and tasksPath
-	 */
-	private getProjectPaths(): { projectRoot: string; tasksPath: string } {
-		const projectRoot = process.cwd();
-		const tasksPath = path.join(
-			projectRoot,
-			'.taskmaster',
-			'tasks',
-			'tasks.json'
-		);
-		return { projectRoot, tasksPath };
-	}
-
-	/**
 	 * Execute list tags
 	 */
 	private async executeList(options?: {
@@ -266,7 +250,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			const listResult = (await legacyListTags(
@@ -316,7 +300,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyCreateTag(
@@ -359,7 +343,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			const useResult = (await legacyUseTag(
@@ -402,7 +386,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyDeleteTag(
@@ -441,7 +425,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyRenameTag(
@@ -485,7 +469,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const { projectRoot, tasksPath } = this.getProjectPaths();
+			const { projectRoot, tasksPath } = getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyCopyTag(
