@@ -256,6 +256,8 @@ const { getDefaultSubtasks } = await import(
 	'../../../../../scripts/modules/config-manager.js'
 );
 
+const { tryExpandViaRemote } = await import('@tm/bridge');
+
 // Import the module under test
 const { default: expandTask } = await import(
 	'../../../../../scripts/modules/task-manager/expand-task.js'
@@ -1298,6 +1300,122 @@ describe('expandTask', () => {
 			expect(generateObjectService).toHaveBeenCalled();
 			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('7 specific subtasks');
+		});
+	});
+
+	describe('Remote Expansion via Bridge', () => {
+		const tasksPath = '/fake/path/tasks.json';
+		const taskId = '2';
+		const context = { tag: 'master' };
+
+		test('should use remote expansion result when tryExpandViaRemote succeeds', async () => {
+			// Arrange - Mock successful remote expansion
+			const remoteResult = {
+				success: true,
+				message: 'Task expanded successfully via remote',
+				data: {
+					subtasks: [
+						{
+							id: 1,
+							title: 'Remote Subtask 1',
+							description: 'First remote subtask',
+							status: 'pending',
+							dependencies: []
+						},
+						{
+							id: 2,
+							title: 'Remote Subtask 2',
+							description: 'Second remote subtask',
+							status: 'pending',
+							dependencies: [1]
+						}
+					]
+				}
+			};
+			tryExpandViaRemote.mockResolvedValue(remoteResult);
+
+			// Act
+			const result = await expandTask(
+				tasksPath,
+				taskId,
+				2,
+				false,
+				'',
+				context,
+				false
+			);
+
+			// Assert - Should use remote result and NOT call local AI service
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+			expect(result).toEqual(remoteResult);
+		});
+
+		test('should fallback to local expansion when tryExpandViaRemote returns null', async () => {
+			// Arrange - Mock remote returning null (no remote available)
+			tryExpandViaRemote.mockResolvedValue(null);
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should fallback to local expansion
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(writeJSON).toHaveBeenCalled();
+		});
+
+		test('should fallback to local expansion when tryExpandViaRemote throws error', async () => {
+			// Arrange - Mock remote throwing error
+			tryExpandViaRemote.mockRejectedValue(
+				new Error('Remote expansion service unavailable')
+			);
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should catch error and fallback to local expansion
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(writeJSON).toHaveBeenCalled();
+		});
+
+		test('should pass correct parameters to tryExpandViaRemote', async () => {
+			// Arrange
+			const taskIdStr = '3';
+			const numSubtasks = 5;
+			const additionalContext = 'Extra context for expansion';
+			const useResearch = true;
+			const contextObj = {
+				tag: 'feature-branch',
+				projectRoot: '/mock/project'
+			};
+			tryExpandViaRemote.mockResolvedValue(null);
+
+			// Act
+			await expandTask(
+				tasksPath,
+				taskIdStr,
+				numSubtasks,
+				false,
+				additionalContext,
+				contextObj,
+				useResearch
+			);
+
+			// Assert - Verify tryExpandViaRemote was called with correct params
+			expect(tryExpandViaRemote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					operation: 'expand',
+					taskId: taskIdStr,
+					numSubtasks,
+					additionalContext,
+					useResearch,
+					context: expect.objectContaining({
+						tag: 'feature-branch',
+						projectRoot: '/mock/project'
+					})
+				})
+			);
 		});
 	});
 });

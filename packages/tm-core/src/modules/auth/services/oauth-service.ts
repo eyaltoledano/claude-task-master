@@ -7,7 +7,7 @@ import http from 'http';
 import os from 'os';
 import { URL } from 'url';
 import { Session } from '@supabase/supabase-js';
-import packageJson from '../../../../../../package.json' with { type: 'json' };
+import { TASKMASTER_VERSION } from '../../../common/constants/index.js';
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
@@ -417,10 +417,10 @@ export class OAuthService {
 	}
 
 	/**
-	 * Get CLI version from package.json if available
+	 * Get CLI version from centralized constants
 	 */
 	private getCliVersion(): string {
-		return packageJson.version || 'unknown';
+		return TASKMASTER_VERSION;
 	}
 
 	/**

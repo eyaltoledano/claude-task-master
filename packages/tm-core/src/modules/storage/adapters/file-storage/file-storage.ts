@@ -14,6 +14,10 @@ import type {
 	TaskMetadata,
 	TaskStatus
 } from '../../../../common/types/index.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../../common/errors/task-master-error.js';
 import { ComplexityReportManager } from '../../../reports/managers/complexity-report-manager.js';
 import { FileOperations } from './file-operations.js';
 import { FormatHandler } from './format-handler.js';
@@ -602,7 +606,7 @@ export class FileStorage implements IStorage {
 				if (tagName in existingData) {
 					throw new TaskMasterError(
 						`Tag ${tagName} already exists`,
-						ErrorCode.TAG_ALREADY_EXISTS
+						ERROR_CODES.VALIDATION_ERROR
 					);
 				}
 
@@ -837,7 +841,7 @@ export class FileStorage implements IStorage {
 						statusBreakdown,
 						subtaskCounts:
 							subtaskCounts.totalSubtasks > 0 ? subtaskCounts : undefined,
-						created: (metadata as any)?.created,
+						created: metadata?.created,
 						description: metadata?.description
 					};
 				} catch (error) {
@@ -866,7 +870,10 @@ export class FileStorage implements IStorage {
 	 */
 	private async getActiveTagFromState(): Promise<string> {
 		try {
-			const statePath = path.join(this.pathResolver.getBasePath(), 'state.json');
+			const statePath = path.join(
+				this.pathResolver.getBasePath(),
+				'state.json'
+			);
 			const stateData = await this.fileOps.readJson(statePath);
 			return stateData?.currentTag || 'master';
 		} catch (error) {

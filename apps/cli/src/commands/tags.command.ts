@@ -9,10 +9,25 @@ import type { TmCore } from '@tm/core';
 import { createTmCore } from '@tm/core';
 import { displayError } from '../utils/error-handler.js';
 
-// TODO: TECH DEBT - Using legacy JS tag-management directly
-// Should refactor to use TagService from @tm/core
-// See: CLAUDE.md architecture guidelines
-// These functions contain business logic that should live in @tm/core
+/**
+ * TODO: TECH DEBT - Architectural Refactor Needed
+ *
+ * Current State:
+ * - This command imports legacy JS functions from scripts/modules/task-manager/tag-management.js
+ * - These functions contain business logic that violates architecture guidelines (see CLAUDE.md)
+ *
+ * Target State:
+ * - Move all business logic to TagService in @tm/core
+ * - CLI should only handle presentation (argument parsing, output formatting)
+ * - Remove dependency on legacy scripts/ directory
+ *
+ * Complexity:
+ * - Legacy functions handle both API and file storage via bridge pattern
+ * - Need to migrate API integration logic to @tm/core first
+ * - Affects MCP layer as well (should share same @tm/core APIs)
+ *
+ * Priority: Medium (improves testability, maintainability, and code reuse)
+ */
 import {
 	createTag as legacyCreateTag,
 	deleteTag as legacyDeleteTag,
@@ -58,6 +73,7 @@ interface LegacyCreateTagOptions {
 export class TagsCommand extends Command {
 	private tmCore?: TmCore;
 	private lastResult?: TagsResult;
+	private throwOnError: boolean = false;
 
 	constructor(name?: string) {
 		super(name || 'tags');
@@ -226,6 +242,21 @@ Examples:
 	}
 
 	/**
+	 * Get project paths (reduces duplication across execute methods)
+	 * @returns Object with projectRoot and tasksPath
+	 */
+	private getProjectPaths(): { projectRoot: string; tasksPath: string } {
+		const projectRoot = process.cwd();
+		const tasksPath = path.join(
+			projectRoot,
+			'.taskmaster',
+			'tasks',
+			'tasks.json'
+		);
+		return { projectRoot, tasksPath };
+	}
+
+	/**
 	 * Execute list tags
 	 */
 	private async executeList(options?: {
@@ -235,13 +266,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			const listResult = (await legacyListTags(
@@ -268,7 +293,11 @@ Examples:
 				action: 'list',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -287,13 +316,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyCreateTag(
@@ -320,7 +343,11 @@ Examples:
 				action: 'add',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -332,13 +359,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			const useResult = (await legacyUseTag(
@@ -362,7 +383,11 @@ Examples:
 				action: 'use',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -377,13 +402,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyDeleteTag(
@@ -406,7 +425,11 @@ Examples:
 				action: 'remove',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -418,13 +441,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyRenameTag(
@@ -448,7 +465,11 @@ Examples:
 				action: 'rename',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -464,13 +485,7 @@ Examples:
 			// Initialize tmCore first (needed by bridge functions)
 			await this.initTmCore();
 
-			const projectRoot = process.cwd();
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const { projectRoot, tasksPath } = this.getProjectPaths();
 
 			// Use legacy function which handles both API and file storage
 			await legacyCopyTag(
@@ -494,7 +509,11 @@ Examples:
 				action: 'copy',
 				message: error.message
 			});
-			process.exit(1);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
 		}
 	}
 
@@ -510,6 +529,25 @@ Examples:
 	 */
 	getLastResult(): TagsResult | undefined {
 		return this.lastResult;
+	}
+
+	/**
+	 * Enable throwing errors instead of process.exit for programmatic usage
+	 * @param shouldThrow If true, throws errors; if false, calls process.exit (default)
+	 */
+	public setThrowOnError(shouldThrow: boolean): this {
+		this.throwOnError = shouldThrow;
+		return this;
+	}
+
+	/**
+	 * Handle error by either exiting or throwing based on throwOnError flag
+	 */
+	private handleError(error: Error): never {
+		if (this.throwOnError) {
+			throw error;
+		}
+		process.exit(1);
 	}
 
 	/**

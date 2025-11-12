@@ -3,13 +3,18 @@
  * Provides table creation and formatting for tasks
  */
 
-import type { Subtask, Task } from '@tm/core';
+import type { Subtask, Task, TaskPriority } from '@tm/core';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { getComplexityWithColor } from '../formatters/complexity-formatters.js';
 import { getPriorityWithColor } from '../formatters/priority-formatters.js';
 import { getStatusWithColor } from '../formatters/status-formatters.js';
 import { getBoxWidth, truncate } from '../layout/helpers.js';
+
+/**
+ * Default priority for tasks/subtasks when not specified
+ */
+const DEFAULT_PRIORITY: TaskPriority = 'medium';
 
 /**
  * Create a task table for display
@@ -110,7 +115,7 @@ export function createTaskTable(
 					chalk.gray(` └─ ${subtask.id}`),
 					chalk.gray(truncate(subtask.title, colWidths[1] - 6)),
 					chalk.gray(getStatusWithColor(subtask.status, true)),
-					chalk.gray(subtask.priority || 'medium')
+					chalk.gray(subtask.priority || DEFAULT_PRIORITY)
 				];
 
 				if (showDependencies) {

@@ -7,56 +7,62 @@ import type { TaskStatus } from '@tm/core';
 import chalk from 'chalk';
 
 /**
+ * Module-level task status configuration to avoid recreating on every call
+ */
+const TASK_STATUS_CONFIG: Record<
+	TaskStatus,
+	{ color: (text: string) => string; icon: string; tableIcon: string }
+> = {
+	done: {
+		color: chalk.green,
+		icon: '✓',
+		tableIcon: '✓'
+	},
+	pending: {
+		color: chalk.yellow,
+		icon: '○',
+		tableIcon: '○'
+	},
+	'in-progress': {
+		color: chalk.hex('#FFA500'),
+		icon: '▶',
+		tableIcon: '▶'
+	},
+	deferred: {
+		color: chalk.gray,
+		icon: 'x',
+		tableIcon: 'x'
+	},
+	review: {
+		color: chalk.magenta,
+		icon: '?',
+		tableIcon: '?'
+	},
+	cancelled: {
+		color: chalk.gray,
+		icon: 'x',
+		tableIcon: 'x'
+	},
+	blocked: {
+		color: chalk.red,
+		icon: '!',
+		tableIcon: '!'
+	},
+	completed: {
+		color: chalk.green,
+		icon: '✓',
+		tableIcon: '✓'
+	}
+};
+
+/**
  * Get colored status display with ASCII icons (matches scripts/modules/ui.js style)
  */
 export function getStatusWithColor(
 	status: TaskStatus,
 	forTable: boolean = false
 ): string {
-	const statusConfig = {
-		done: {
-			color: chalk.green,
-			icon: '✓',
-			tableIcon: '✓'
-		},
-		pending: {
-			color: chalk.yellow,
-			icon: '○',
-			tableIcon: '○'
-		},
-		'in-progress': {
-			color: chalk.hex('#FFA500'),
-			icon: '▶',
-			tableIcon: '▶'
-		},
-		deferred: {
-			color: chalk.gray,
-			icon: 'x',
-			tableIcon: 'x'
-		},
-		review: {
-			color: chalk.magenta,
-			icon: '?',
-			tableIcon: '?'
-		},
-		cancelled: {
-			color: chalk.gray,
-			icon: 'x',
-			tableIcon: 'x'
-		},
-		blocked: {
-			color: chalk.red,
-			icon: '!',
-			tableIcon: '!'
-		},
-		completed: {
-			color: chalk.green,
-			icon: '✓',
-			tableIcon: '✓'
-		}
-	};
-
-	const config = statusConfig[status] || {
+	const config = TASK_STATUS_CONFIG[status] || {
 		color: chalk.red,
 		icon: 'X',
 		tableIcon: 'X'

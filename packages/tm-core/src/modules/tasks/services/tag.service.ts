@@ -23,10 +23,11 @@ export interface CreateTagOptions {
 
 /**
  * Options for deleting a tag
+ * Note: Confirmation prompts are a CLI presentation concern
+ * and are not handled by TagService (business logic layer)
  */
 export interface DeleteTagOptions {
-	/** Skip confirmation prompts */
-	skipConfirmation?: boolean;
+	// Currently no options - interface kept for future extensibility
 }
 
 /**
@@ -39,8 +40,15 @@ export interface CopyTagOptions {
 
 /**
  * Reserved tag names that cannot be used
+ * Only 'master' is reserved as it's the system default tag
+ * Users can use 'main' or 'default' if desired
  */
-const RESERVED_TAG_NAMES = ['master', 'main', 'default'];
+const RESERVED_TAG_NAMES = ['master'];
+
+/**
+ * Maximum length for tag names (prevents filesystem/UI issues)
+ */
+const MAX_TAG_NAME_LENGTH = 50;
 
 /**
  * TagService - Handles tag management business logic
@@ -58,6 +66,15 @@ export class TagService {
 			throw new TaskMasterError(
 				`${context} is required and must be a string`,
 				ERROR_CODES.VALIDATION_ERROR
+			);
+		}
+
+		// Check length
+		if (name.length > MAX_TAG_NAME_LENGTH) {
+			throw new TaskMasterError(
+				`${context} must be ${MAX_TAG_NAME_LENGTH} characters or less`,
+				ERROR_CODES.VALIDATION_ERROR,
+				{ tagName: name, maxLength: MAX_TAG_NAME_LENGTH }
 			);
 		}
 
@@ -127,8 +144,8 @@ export class TagService {
 		if (options.copyFromTag) {
 			copyFrom = options.copyFromTag;
 		} else if (options.copyFromCurrent) {
-			const state = await this.storage.getState?.();
-			copyFrom = state?.currentTag || undefined;
+			const result = await this.storage.getTagsWithStats();
+			copyFrom = result.currentTag || undefined;
 		}
 
 		// Delegate to storage layer
