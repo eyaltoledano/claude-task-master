@@ -6,8 +6,8 @@ import { CUSTOM_PROVIDERS } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { validateOllamaModel, validateOpenRouterModel } from './fetchers.js';
+import { CUSTOM_PROVIDER_IDS } from './types.js';
 import type {
-	CUSTOM_PROVIDER_IDS,
 	CustomProviderConfig,
 	CustomProviderId,
 	ModelRole

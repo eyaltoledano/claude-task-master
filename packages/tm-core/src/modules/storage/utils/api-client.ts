@@ -4,8 +4,8 @@
  */
 
 import {
-	TaskMasterError,
-	ERROR_CODES
+	ERROR_CODES,
+	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import type { AuthManager } from '../../auth/managers/auth-manager.js';
 

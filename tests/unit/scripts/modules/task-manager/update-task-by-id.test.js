@@ -21,14 +21,25 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isEmpty: jest.fn(() => false),
 	resolveEnvVariable: jest.fn(),
 	findTaskById: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master')
+	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
+	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
+	setTasksForTag: jest.fn(),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
+	displayBanner: jest.fn(),
 	getStatusWithColor: jest.fn((s) => s),
 	startLoadingIndicator: jest.fn(() => ({ stop: jest.fn() })),
 	stopLoadingIndicator: jest.fn(),
-	displayAiUsageSummary: jest.fn()
+	succeedLoadingIndicator: jest.fn(),
+	failLoadingIndicator: jest.fn(),
+	warnLoadingIndicator: jest.fn(),
+	infoLoadingIndicator: jest.fn(),
+	displayAiUsageSummary: jest.fn(),
+	displayContextAnalysis: jest.fn()
 }));
 
 jest.unstable_mockModule(
@@ -72,12 +83,98 @@ jest.unstable_mockModule(
 	})
 );
 
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryUpdateViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
+
+// Mock prompt-manager module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn((promptId, params) => ({
+				systemPrompt:
+					'You are an AI assistant that helps update a software development task with new requirements and information.',
+				userPrompt: `Update the following task based on the provided information: ${params?.updatePrompt || 'User prompt for task update'}`,
+				metadata: {
+					templateId: 'update-task',
+					version: '1.0.0',
+					variant: 'default',
+					parameters: params || {}
+				}
+			}))
+		})
+	})
+);
+
+// Mock contextGatherer module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/contextGatherer.js',
+	() => ({
+		ContextGatherer: jest.fn().mockImplementation(() => ({
+			gather: jest.fn().mockResolvedValue({
+				fullContext: '',
+				summary: ''
+			})
+		}))
+	})
+);
+
+// Mock fuzzyTaskSearch module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js',
+	() => ({
+		FuzzyTaskSearch: jest.fn().mockImplementation(() => ({
+			search: jest.fn().mockReturnValue([]),
+			findRelevantTasks: jest.fn().mockReturnValue([]),
+			getTaskIds: jest.fn().mockReturnValue([])
+		}))
+	})
+);
+
 const { readJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'
+);
+const { tryUpdateViaRemote } = await import('@tm/bridge');
+const { createBridgeLogger } = await import(
+	'../../../../../scripts/modules/bridge-utils.js'
+);
+const { getPromptManager } = await import(
+	'../../../../../scripts/modules/prompt-manager.js'
+);
+const { ContextGatherer } = await import(
+	'../../../../../scripts/modules/utils/contextGatherer.js'
+);
+const { FuzzyTaskSearch } = await import(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js'
 );
 const { default: updateTaskById } = await import(
 	'../../../../../scripts/modules/task-manager/update-task-by-id.js'
 );
+
+// Import test fixtures for consistent sample data
+import {
+	taggedEmptyTasks,
+	taggedOneTask
+} from '../../../../fixtures/sample-tasks.js';
 
 describe('updateTaskById validation', () => {
 	beforeEach(() => {
@@ -120,7 +217,7 @@ describe('updateTaskById validation', () => {
 	test('throws error when task ID not found', async () => {
 		const fs = await import('fs');
 		fs.existsSync.mockReturnValue(true);
-		readJSON.mockReturnValue({ tag: 'master', tasks: [] });
+		readJSON.mockReturnValue(taggedEmptyTasks);
 		await expect(
 			updateTaskById(
 				'tasks/tasks.json',
@@ -133,7 +230,8 @@ describe('updateTaskById validation', () => {
 				'json'
 			)
 		).rejects.toThrow('Task with ID 42 not found');
-		expect(log).toHaveBeenCalled();
+		// Note: The error is reported through the bridge logger (report),
+		// not the log function, so we don't assert on log being called
 	});
 });
 
@@ -337,5 +435,446 @@ describe('updateTaskById success path with generateObjectService', () => {
 				'json'
 			)
 		).rejects.toThrow('Updated task missing required fields');
+	});
+});
+
+describe('Remote Update via Bridge', () => {
+	let fs;
+	let generateObjectService;
+
+	beforeEach(async () => {
+		jest.clearAllMocks();
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit called');
+		});
+		fs = await import('fs');
+		const aiServices = await import(
+			'../../../../../scripts/modules/ai-services-unified.js'
+		);
+		generateObjectService = aiServices.generateObjectService;
+	});
+
+	test('should use remote update result when tryUpdateViaRemote succeeds', async () => {
+		// Arrange - Mock successful remote update
+		const remoteResult = {
+			success: true,
+			message: 'Task updated successfully via remote',
+			data: {
+				task: {
+					id: 1,
+					title: 'Updated via Remote',
+					description: 'Updated description from remote',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Remote update details',
+					testStrategy: 'Remote test strategy',
+					subtasks: []
+				}
+			}
+		};
+		tryUpdateViaRemote.mockResolvedValue(remoteResult);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Original Task',
+					description: 'Original description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Original details',
+					testStrategy: 'Original test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		// Act
+		const result = await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update this task',
+			false,
+			{ tag: 'master' },
+			'json'
+		);
+
+		// Assert - Should use remote result and NOT call local AI service
+		expect(tryUpdateViaRemote).toHaveBeenCalled();
+		expect(generateObjectService).not.toHaveBeenCalled();
+		expect(result).toEqual(remoteResult);
+	});
+
+	test('should fallback to local update when tryUpdateViaRemote returns null', async () => {
+		// Arrange - Mock remote returning null (no remote available)
+		tryUpdateViaRemote.mockResolvedValue(null);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act
+		await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update this task',
+			false,
+			{ tag: 'master' },
+			'json'
+		);
+
+		// Assert - Should fallback to local update
+		expect(tryUpdateViaRemote).toHaveBeenCalled();
+		expect(generateObjectService).toHaveBeenCalled();
+	});
+
+	test('should propagate error when tryUpdateViaRemote throws error', async () => {
+		// Arrange - Mock remote throwing error (it re-throws, doesn't return null)
+		tryUpdateViaRemote.mockImplementation(() =>
+			Promise.reject(new Error('Remote update service unavailable'))
+		);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act & Assert - Should propagate the error (not fallback to local)
+		await expect(
+			updateTaskById(
+				'tasks/tasks.json',
+				1,
+				'Update this task',
+				false,
+				{ tag: 'master' },
+				'json'
+			)
+		).rejects.toThrow('Remote update service unavailable');
+
+		expect(tryUpdateViaRemote).toHaveBeenCalled();
+		// Local update should NOT be called when remote throws
+		expect(generateObjectService).not.toHaveBeenCalled();
+	});
+});
+
+describe('Prompt Manager Integration', () => {
+	let fs;
+	let generateObjectService;
+
+	beforeEach(async () => {
+		jest.clearAllMocks();
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit called');
+		});
+		fs = await import('fs');
+		const aiServices = await import(
+			'../../../../../scripts/modules/ai-services-unified.js'
+		);
+		generateObjectService = aiServices.generateObjectService;
+		tryUpdateViaRemote.mockResolvedValue(null); // No remote
+	});
+
+	test('should use prompt manager to load update prompts', async () => {
+		// Arrange
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act
+		await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update this task with new requirements',
+			false,
+			{ tag: 'master', projectRoot: '/mock/project' },
+			'json'
+		);
+
+		// Assert - Prompt manager should be called
+		expect(getPromptManager).toHaveBeenCalled();
+		const promptManagerInstance = getPromptManager.mock.results[0].value;
+		expect(promptManagerInstance.loadPrompt).toHaveBeenCalled();
+	});
+});
+
+describe('Context Gathering Integration', () => {
+	let fs;
+	let generateObjectService;
+
+	beforeEach(async () => {
+		jest.clearAllMocks();
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit called');
+		});
+		fs = await import('fs');
+		const aiServices = await import(
+			'../../../../../scripts/modules/ai-services-unified.js'
+		);
+		generateObjectService = aiServices.generateObjectService;
+		tryUpdateViaRemote.mockResolvedValue(null); // No remote
+	});
+
+	test('should gather project context when projectRoot is provided', async () => {
+		// Arrange
+		const mockContextGatherer = {
+			gather: jest.fn().mockResolvedValue({
+				fullContext: 'Project context from files',
+				summary: 'Context summary'
+			})
+		};
+		ContextGatherer.mockImplementation(() => mockContextGatherer);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act
+		await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update with context',
+			false,
+			{ tag: 'master', projectRoot: '/mock/project' },
+			'json'
+		);
+
+		// Assert - Context gatherer should be instantiated and used
+		expect(ContextGatherer).toHaveBeenCalledWith('/mock/project', 'master');
+		expect(mockContextGatherer.gather).toHaveBeenCalled();
+	});
+});
+
+describe('Fuzzy Task Search Integration', () => {
+	let fs;
+	let generateObjectService;
+
+	beforeEach(async () => {
+		jest.clearAllMocks();
+		jest.spyOn(process, 'exit').mockImplementation(() => {
+			throw new Error('process.exit called');
+		});
+		fs = await import('fs');
+		const aiServices = await import(
+			'../../../../../scripts/modules/ai-services-unified.js'
+		);
+		generateObjectService = aiServices.generateObjectService;
+		tryUpdateViaRemote.mockResolvedValue(null); // No remote
+	});
+
+	test('should use fuzzy search to find related tasks for context', async () => {
+		// Arrange
+		const mockFuzzySearch = {
+			findRelevantTasks: jest.fn().mockReturnValue([
+				{ id: 2, title: 'Related Task 1', score: 0.9 },
+				{ id: 3, title: 'Related Task 2', score: 0.85 }
+			]),
+			getTaskIds: jest.fn().mockReturnValue(['2', '3'])
+		};
+		FuzzyTaskSearch.mockImplementation(() => mockFuzzySearch);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task to update',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				},
+				{
+					id: 2,
+					title: 'Related Task 1',
+					description: 'Related description',
+					status: 'done',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Related details',
+					testStrategy: 'Related test strategy',
+					subtasks: []
+				},
+				{
+					id: 3,
+					title: 'Related Task 2',
+					description: 'Another related description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'low',
+					details: 'More details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'in-progress',
+					dependencies: [],
+					priority: 'high',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act
+		await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update with related task context',
+			false,
+			{ tag: 'master' },
+			'json'
+		);
+
+		// Assert - Fuzzy search should be instantiated and used
+		expect(FuzzyTaskSearch).toHaveBeenCalled();
+		expect(mockFuzzySearch.findRelevantTasks).toHaveBeenCalledWith(
+			expect.stringContaining('Task to update'),
+			expect.objectContaining({
+				maxResults: 5,
+				includeSelf: true
+			})
+		);
+		expect(mockFuzzySearch.getTaskIds).toHaveBeenCalled();
 	});
 });

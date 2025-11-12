@@ -3,14 +3,14 @@
  * Tests the orchestration of all configuration services
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { ConfigManager } from './config-manager.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { ConfigLoader } from '../services/config-loader.service.js';
 import { ConfigMerger } from '../services/config-merger.service.js';
-import { RuntimeStateManager } from '../services/runtime-state-manager.service.js';
 import { ConfigPersistence } from '../services/config-persistence.service.js';
 import { EnvironmentConfigProvider } from '../services/environment-config-provider.service.js';
+import { RuntimeStateManager } from '../services/runtime-state-manager.service.js';
+import { ConfigManager } from './config-manager.js';
 
 // Mock all services
 vi.mock('../services/config-loader.service.js');

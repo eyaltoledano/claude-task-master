@@ -35,6 +35,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {}),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
 	flattenTasksWithSubtasks: jest.fn((tasks) => tasks),
 	getTagAwareFilePath: createGetTagAwareFilePathMock(),
 	slugifyTagForFilePath: createSlugifyTagForFilePathMock(),

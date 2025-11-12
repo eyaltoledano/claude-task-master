@@ -4,10 +4,18 @@
  */
 
 import type { ConfigManager } from '../config/managers/config-manager.js';
+import type { AuthDomain } from '../auth/auth-domain.js';
+import { BriefsDomain } from '../briefs/briefs-domain.js';
 import { TaskService } from './services/task-service.js';
 import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
+import { TagService } from './services/tag.service.js';
+import type {
+	CreateTagOptions,
+	DeleteTagOptions,
+	CopyTagOptions
+} from './services/tag.service.js';
 
 import type { Subtask, Task, TaskStatus } from '../../common/types/index.js';
 import type {
@@ -32,16 +40,22 @@ export class TasksDomain {
 	private executionService: TaskExecutionService;
 	private loaderService: TaskLoaderService;
 	private preflightChecker: PreflightChecker;
+	private briefsDomain: BriefsDomain;
+	private tagService!: TagService;
 
-	constructor(configManager: ConfigManager) {
+	constructor(configManager: ConfigManager, _authDomain?: AuthDomain) {
 		this.taskService = new TaskService(configManager);
 		this.executionService = new TaskExecutionService(this.taskService);
 		this.loaderService = new TaskLoaderService(this.taskService);
 		this.preflightChecker = new PreflightChecker(configManager.getProjectRoot());
+		this.briefsDomain = new BriefsDomain();
 	}
 
 	async initialize(): Promise<void> {
 		await this.taskService.initialize();
+
+		// TagService needs storage - get it from TaskService AFTER initialization
+		this.tagService = new TagService(this.taskService.getStorage());
 	}
 
 	// ========== Task Retrieval ==========
@@ -183,6 +197,40 @@ export class TasksDomain {
 		return this.taskService.setActiveTag(tag);
 	}
 
+	/**
+	 * Resolve a brief by ID, name, or partial match without switching
+	 * Returns the full brief object
+	 *
+	 * Supports:
+	 * - Full UUID
+	 * - Last 8 characters of UUID
+	 * - Brief name (exact or partial match)
+	 *
+	 * Only works with API storage (briefs).
+	 *
+	 * @param briefIdOrName - Brief identifier
+	 * @param orgId - Optional organization ID
+	 * @returns The resolved brief object
+	 */
+	async resolveBrief(briefIdOrName: string, orgId?: string): Promise<any> {
+		return this.briefsDomain.resolveBrief(briefIdOrName, orgId);
+	}
+
+	/**
+	 * Switch to a different tag/brief context
+	 * For file storage: updates active tag in state
+	 * For API storage: looks up brief by name and updates auth context
+	 */
+	async switchTag(tagName: string): Promise<void> {
+		const storageType = this.taskService.getStorageType();
+
+		if (storageType === 'file') {
+			await this.setActiveTag(tagName);
+		} else {
+			await this.briefsDomain.switchBrief(tagName);
+		}
+	}
+
 	// ========== Task Execution ==========
 
 	/**
@@ -264,6 +312,55 @@ export class TasksDomain {
 	 */
 	async detectDefaultBranch() {
 		return this.preflightChecker.detectDefaultBranch();
+	}
+
+	// ========== Tag Management ==========
+
+	/**
+	 * Create a new tag
+	 * For file storage: creates tag locally with optional task copying
+	 * For API storage: throws error (client should redirect to web UI)
+	 */
+	async createTag(name: string, options?: CreateTagOptions) {
+		return this.tagService.createTag(name, options);
+	}
+
+	/**
+	 * Delete an existing tag
+	 * Cannot delete master tag
+	 * For file storage: deletes tag locally
+	 * For API storage: throws error (client should redirect to web UI)
+	 */
+	async deleteTag(name: string, options?: DeleteTagOptions) {
+		return this.tagService.deleteTag(name, options);
+	}
+
+	/**
+	 * Rename an existing tag
+	 * Cannot rename master tag
+	 * For file storage: renames tag locally
+	 * For API storage: throws error (client should redirect to web UI)
+	 */
+	async renameTag(oldName: string, newName: string) {
+		return this.tagService.renameTag(oldName, newName);
+	}
+
+	/**
+	 * Copy an existing tag to create a new tag with the same tasks
+	 * For file storage: copies tag locally
+	 * For API storage: throws error (client should show alternative)
+	 */
+	async copyTag(source: string, target: string, options?: CopyTagOptions) {
+		return this.tagService.copyTag(source, target, options);
+	}
+
+	/**
+	 * Get all tags with detailed statistics including task counts
+	 * For API storage, returns briefs with task counts
+	 * For file storage, returns tags from tasks.json with counts
+	 */
+	async getTagsWithStats() {
+		return this.tagService.getTagsWithStats();
 	}
 
 	// ========== Storage Information ==========

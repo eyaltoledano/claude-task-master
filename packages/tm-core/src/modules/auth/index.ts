@@ -9,7 +9,6 @@ export { OAuthService } from './services/oauth-service.js';
 export { SupabaseSessionStorage } from './services/supabase-session-storage.js';
 export type {
 	Organization,
-	Brief,
 	RemoteTask
 } from './services/organization.service.js';
 

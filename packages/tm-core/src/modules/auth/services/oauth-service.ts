@@ -2,23 +2,23 @@
  * OAuth 2.0 Authorization Code Flow service
  */
 
-import http from 'http';
-import { URL } from 'url';
 import crypto from 'crypto';
+import http from 'http';
 import os from 'os';
-import {
-	AuthCredentials,
-	AuthenticationError,
-	OAuthFlowOptions,
-	AuthConfig,
-	CliData
-} from '../types.js';
-import { ContextStore } from '../services/context-store.js';
+import { URL } from 'url';
+import { Session } from '@supabase/supabase-js';
+import { TASKMASTER_VERSION } from '../../../common/constants/index.js';
+import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
-import { getLogger } from '../../../common/logger/index.js';
-import packageJson from '../../../../../../package.json' with { type: 'json' };
-import { Session } from '@supabase/supabase-js';
+import { ContextStore } from '../services/context-store.js';
+import {
+	AuthConfig,
+	AuthCredentials,
+	AuthenticationError,
+	CliData,
+	OAuthFlowOptions
+} from '../types.js';
 
 export class OAuthService {
 	private logger = getLogger('OAuthService');
@@ -417,10 +417,10 @@ export class OAuthService {
 	}
 
 	/**
-	 * Get CLI version from package.json if available
+	 * Get CLI version from centralized constants
 	 */
 	private getCliVersion(): string {
-		return packageJson.version || 'unknown';
+		return TASKMASTER_VERSION;
 	}
 
 	/**

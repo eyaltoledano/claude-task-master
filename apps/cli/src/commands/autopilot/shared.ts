@@ -216,7 +216,7 @@ export class OutputFormatter {
 				)
 			);
 		} else {
-			console.warn(chalk.yellow(`⚠ ${message}`));
+			console.warn(chalk.yellow(`⚠️ ${message}`));
 		}
 	}
 

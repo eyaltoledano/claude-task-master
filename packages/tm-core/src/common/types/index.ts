@@ -105,6 +105,8 @@ export interface TaskMetadata {
 	projectName?: string;
 	description?: string;
 	tags?: string[];
+	created?: string;
+	updated?: string;
 }
 
 /**

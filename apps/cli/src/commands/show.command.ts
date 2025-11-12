@@ -3,15 +3,15 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { createTmCore, type Task, type TmCore } from '@tm/core';
+import { type Task, type TmCore, createTmCore } from '@tm/core';
 import type { StorageType, Subtask } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**
@@ -272,7 +272,8 @@ export class ShowCommand extends Command {
 		displayTaskDetails(result.task, {
 			statusFilter: options.status,
 			showSuggestedActions: true,
-			originalTaskId: result.originalTaskId
+			originalTaskId: result.originalTaskId,
+			storageType: result.storageType
 		});
 	}
 
@@ -291,7 +292,7 @@ export class ShowCommand extends Command {
 		});
 
 		if (result.notFound.length > 0) {
-			console.log(chalk.yellow(`\n⚠ Not found: ${result.notFound.join(', ')}`));
+			console.log(chalk.yellow(`\n⚠️ Not found: ${result.notFound.join(', ')}`));
 		}
 
 		if (result.tasks.length === 0) {

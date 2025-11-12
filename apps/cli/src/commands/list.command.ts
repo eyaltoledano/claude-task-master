@@ -16,11 +16,6 @@ import {
 import type { StorageType } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { displayError } from '../utils/error-handler.js';
-import { isTaskComplete } from '../utils/task-status.js';
-import { displayCommandHeader } from '../utils/display-helpers.js';
-import { getProjectRoot } from '../utils/project-root.js';
-import * as ui from '../utils/ui.js';
 import {
 	type NextTaskInfo,
 	calculateDependencyStatistics,
@@ -32,6 +27,11 @@ import {
 	getPriorityBreakdown,
 	getTaskDescription
 } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
+import { isTaskComplete } from '../utils/task-status.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Options interface for the list command

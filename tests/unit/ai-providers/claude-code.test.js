@@ -99,6 +99,111 @@ describe('ClaudeCodeProvider', () => {
 			expect(client.chat).toBeDefined();
 			expect(client.chat).toBe(client.languageModel);
 		});
+
+		it('should pass systemPrompt configuration to createClaudeCode', async () => {
+			const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+
+			provider.getClient({});
+
+			expect(createClaudeCode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					defaultSettings: expect.objectContaining({
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						}
+					})
+				})
+			);
+		});
+
+		it('should pass settingSources configuration to createClaudeCode', async () => {
+			const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+
+			provider.getClient({});
+
+			expect(createClaudeCode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					defaultSettings: expect.objectContaining({
+						settingSources: ['user', 'project', 'local']
+					})
+				})
+			);
+		});
+
+		it('should pass defaultSettings from config to createClaudeCode', async () => {
+			const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+			const { getClaudeCodeSettingsForCommand } = await import(
+				'../../../scripts/modules/config-manager.js'
+			);
+
+			const mockSettings = { maxTokens: 4096, temperature: 0.7 };
+			getClaudeCodeSettingsForCommand.mockReturnValueOnce(mockSettings);
+
+			provider.getClient({ commandName: 'test-command' });
+
+			expect(createClaudeCode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					defaultSettings: expect.objectContaining({
+						...mockSettings,
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						},
+						settingSources: ['user', 'project', 'local']
+					})
+				})
+			);
+		});
+
+		it('should pass complete configuration object to createClaudeCode', async () => {
+			const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+			const { getClaudeCodeSettingsForCommand } = await import(
+				'../../../scripts/modules/config-manager.js'
+			);
+
+			const mockSettings = { maxTokens: 2048 };
+			getClaudeCodeSettingsForCommand.mockReturnValueOnce(mockSettings);
+
+			provider.getClient({ commandName: 'analyze' });
+
+			// Verify the complete configuration structure matches v2.0 migration requirements
+			expect(createClaudeCode).toHaveBeenCalledWith({
+				defaultSettings: {
+					...mockSettings,
+					// Restores pre-2.0 behavior: explicit system prompt preset
+					systemPrompt: {
+						type: 'preset',
+						preset: 'claude_code'
+					},
+					// Restores pre-2.0 behavior: enables loading of CLAUDE.md and settings.json
+					settingSources: ['user', 'project', 'local']
+				}
+			});
+		});
+
+		it('should pass empty defaultSettings when config returns null', async () => {
+			const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
+			const { getClaudeCodeSettingsForCommand } = await import(
+				'../../../scripts/modules/config-manager.js'
+			);
+
+			getClaudeCodeSettingsForCommand.mockReturnValueOnce(null);
+
+			provider.getClient({});
+
+			expect(createClaudeCode).toHaveBeenCalledWith(
+				expect.objectContaining({
+					defaultSettings: expect.objectContaining({
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						},
+						settingSources: ['user', 'project', 'local']
+					})
+				})
+			);
+		});
 	});
 
 	describe('model support', () => {

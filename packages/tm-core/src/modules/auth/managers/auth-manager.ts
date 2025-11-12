@@ -2,31 +2,31 @@
  * Authentication manager for Task Master CLI
  */
 
-import {
-	AuthCredentials,
-	OAuthFlowOptions,
-	AuthenticationError,
-	AuthConfig,
-	UserContext,
-	UserContextWithBrief
-} from '../types.js';
-import { ContextStore } from '../services/context-store.js';
-import { OAuthService } from '../services/oauth-service.js';
-import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
-import {
-	OrganizationService,
-	type Organization,
-	type Brief,
-	type RemoteTask
-} from '../services/organization.service.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import type { Brief } from '../../briefs/types.js';
+import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
+import { ContextStore } from '../services/context-store.js';
+import { OAuthService } from '../services/oauth-service.js';
+import {
+	type Organization,
+	OrganizationService,
+	type RemoteTask
+} from '../services/organization.service.js';
+import {
+	AuthConfig,
+	AuthCredentials,
+	AuthenticationError,
+	OAuthFlowOptions,
+	UserContext,
+	UserContextWithBrief
+} from '../types.js';
 
 /**
  * Authentication manager class

@@ -53,6 +53,9 @@ export {
 	normalizeProjectRoot
 } from './project-root-finder.js';
 
+// Export path construction utilities
+export { getProjectPaths } from './path-helpers.js';
+
 // Additional utility exports
 
 /**

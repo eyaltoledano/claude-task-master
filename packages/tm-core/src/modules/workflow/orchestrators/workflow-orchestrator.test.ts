@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
-import type {
-	WorkflowContext,
-	WorkflowPhase,
-	WorkflowEventData,
-	WorkflowError
-} from '../types.js';
 import { TestResultValidator } from '../services/test-result-validator.js';
 import type { TestResult } from '../services/test-result-validator.types.js';
+import type {
+	WorkflowContext,
+	WorkflowError,
+	WorkflowEventData,
+	WorkflowPhase
+} from '../types.js';
 
 describe('WorkflowOrchestrator - State Machine Structure', () => {
 	let orchestrator: WorkflowOrchestrator;
