@@ -87,8 +87,19 @@ export class StorageFactory {
 							apiEndpoint:
 								config.storage?.apiEndpoint ||
 								process.env.TM_BASE_DOMAIN ||
-								process.env.TM_PUBLIC_BASE_DOMAIN
+								process.env.TM_PUBLIC_BASE_DOMAIN ||
+								'https://tryhamster.com/api'
 						};
+
+						// Validate that apiEndpoint is defined
+						if (!nextStorage.apiEndpoint) {
+							throw new TaskMasterError(
+								'API endpoint could not be determined. Set TM_BASE_DOMAIN environment variable or configure storage.apiEndpoint',
+								ERROR_CODES.MISSING_CONFIGURATION,
+								{ storageType: 'api' }
+							);
+						}
+
 						config.storage = nextStorage;
 					}
 				}

@@ -26,7 +26,7 @@ function getComplexityLevel(score: number): {
  */
 export function getComplexityWithColor(complexity: number | string): string {
 	const score =
-		typeof complexity === 'string' ? parseInt(complexity, 10) : complexity;
+		typeof complexity === 'string' ? Number(complexity.trim()) : complexity;
 
 	if (isNaN(score)) {
 		return chalk.gray('N/A');

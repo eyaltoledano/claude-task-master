@@ -127,10 +127,8 @@ export class TagService {
 		if (options.copyFromTag) {
 			copyFrom = options.copyFromTag;
 		} else if (options.copyFromCurrent) {
-			// Get current tag from storage (for file storage, it's in state)
-			// For now, we'll let the storage handle this if needed
-			// TODO: May need to pass current tag context
-			copyFrom = undefined; // Let storage decide
+			const state = await this.storage.getState?.();
+			copyFrom = state?.currentTag || undefined;
 		}
 
 		// Delegate to storage layer

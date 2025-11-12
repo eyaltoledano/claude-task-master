@@ -32,7 +32,7 @@ describe('CLI UI Utilities (Backward Compatibility)', () => {
 		it('should maintain functional behavior for getBriefStatusWithColor', () => {
 			// Simple smoke test - detailed tests are in ui/formatters/status-formatters.spec.ts
 			const result = getBriefStatusWithColor('done', true);
-			expect(result).toContain('done');
+			expect(result).toContain('Done');
 			expect(result).toContain('✓');
 		});
 	});

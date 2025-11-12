@@ -8,8 +8,7 @@ import {
 	writeJSON,
 	truncate,
 	flattenTasksWithSubtasks,
-	findProjectRoot,
-	log
+	findProjectRoot
 } from '../utils.js';
 
 import {
@@ -132,7 +131,7 @@ async function updateTaskById(
 		const numericTaskId = Number(idStr);
 		const taskIndex = data.tasks.findIndex((task) => task.id === numericTaskId);
 		if (taskIndex === -1) {
-			log('error', `Task with ID ${numericTaskId} not found`);
+			report('error', `Task with ID ${numericTaskId} not found`);
 			throw new Error(`Task with ID ${numericTaskId} not found.`);
 		}
 		const taskToUpdate = data.tasks[taskIndex];

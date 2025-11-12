@@ -342,6 +342,10 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				action: 'create',
 				message: remoteResult.message
 			});
+
+			if (!remoteResult.success) {
+				process.exit(1);
+			}
 		} catch (error) {
 			ui.displayErrorBox(`Failed to create brief: ${(error as Error).message}`);
 			this.setLastResult({

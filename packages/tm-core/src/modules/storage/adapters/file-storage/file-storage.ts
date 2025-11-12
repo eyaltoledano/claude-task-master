@@ -599,7 +599,10 @@ export class FileStorage implements IStorage {
 			if (format === 'legacy') {
 				// Legacy format - add new tag key
 				if (tagName in existingData) {
-					throw new Error(`Tag ${tagName} already exists`);
+					throw new TaskMasterError(
+						`Tag ${tagName} already exists`,
+						ErrorCode.TAG_ALREADY_EXISTS
+					);
 				}
 
 				// Get tasks to copy if specified

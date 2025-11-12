@@ -196,7 +196,9 @@ export async function selectBriefInteractive(
 			// Clear brief selection
 			await authManager.updateContext({
 				briefId: undefined,
-				briefName: undefined
+				briefName: undefined,
+				briefStatus: undefined,
+				briefUpdatedAt: undefined
 			});
 
 			ui.displaySuccess('Cleared brief selection (organization level)');

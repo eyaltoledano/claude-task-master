@@ -68,6 +68,9 @@ async function createTag(
 
 	// If remote handled it, return the result
 	if (remoteResult) {
+		if (!remoteResult.success) {
+			throw new Error(remoteResult.message || 'Remote tag creation failed');
+		}
 		if (outputFormat === 'json') {
 			return remoteResult;
 		}
