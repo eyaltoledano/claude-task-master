@@ -291,7 +291,7 @@ export class ShowCommand extends Command {
 		});
 
 		if (result.notFound.length > 0) {
-			console.log(chalk.yellow(`\n⚠ Not found: ${result.notFound.join(', ')}`));
+			console.log(chalk.yellow(`\n⚠️ Not found: ${result.notFound.join(', ')}`));
 		}
 
 		if (result.tasks.length === 0) {
