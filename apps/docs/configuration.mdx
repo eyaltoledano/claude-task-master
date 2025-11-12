@@ -31,6 +31,25 @@ description: "Configure Task Master through environment variables in a .env file
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
 
+## Storage Configuration
+
+Task Master supports two storage modes:
+
+| Variable | Default | Description | Example |
+| --- | --- | --- | --- |
+| `STORAGE_TYPE` | `"file"` | Storage backend | `STORAGE_TYPE=api` |
+| `API_BASE_URL` | - | API server URL for remote storage | `API_BASE_URL=https://api.tryhamster.com` |
+
+### Local File Storage (Default)
+Tasks are stored locally in `.taskmaster/tasks/tasks.json`. No authentication required.
+
+### API Storage 
+Tasks are stored remotely on tryhamster.com. Requires authentication via `task-master auth login`.
+
+<Note>
+  When using API storage, you can collaborate with team members and access tasks from multiple devices.
+</Note>
+
 ## TDD Workflow Configuration
 
 Additional options for autonomous TDD workflow:
@@ -65,6 +84,10 @@ DEFAULT_SUBTASKS=3
 DEFAULT_PRIORITY=medium
 DEBUG=false
 LOG_LEVEL=info
+
+# Storage Configuration
+STORAGE_TYPE=file  # or "api" for remote storage
+# API_BASE_URL=https://api.tryhamster.com  # Required for API storage
 
 # TDD Workflow
 TM_MAX_ATTEMPTS=3

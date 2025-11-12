@@ -206,4 +206,90 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Tags Management">
+    ```bash
+    # List all tags with statistics (default action)
+    task-master tags
+    task-master tags list
+    task-master tags list --show-metadata
+
+    # Create a new tag
+    task-master tags add <name>
+    task-master tags add <name> --description "Tag description"
+    task-master tags add <name> --copy-from <other-tag>
+    task-master tags add --from-branch  # Create from git branch name
+
+    # Switch to a different tag
+    task-master tags use <name>
+    task-master tags use <id>  # Use tag ID (last 8 chars)
+
+    # Remove a tag (deletes all tasks in the tag)
+    task-master tags remove <name>
+    task-master tags remove <name> -y  # Skip confirmation
+
+    # Rename a tag
+    task-master tags rename <old-name> <new-name>
+
+    # Copy a tag with all its tasks
+    task-master tags copy <source> <target>
+    task-master tags copy <source> <target> --description "Description"
+    ```
+
+    Tags help organize tasks into different contexts or workstreams. Works with both local file storage and API storage (tryhamster.com).
+  </Accordion>
+
+  <Accordion title="Briefs Management (API Only)">
+    ```bash
+    # List all briefs (API storage only)
+    task-master briefs
+    task-master briefs list
+    task-master briefs list --show-metadata
+
+    # Select a brief by URL or ID
+    task-master briefs <brief-url-or-id>
+    task-master briefs select <brief-url-or-id>
+
+    # Create a new brief (opens web UI)
+    task-master briefs create
+    ```
+
+    Briefs are a friendly alias for tags when using API storage (tryhamster.com). This command only works when authenticated.
+  </Accordion>
+
+  <Accordion title="Authentication">
+    ```bash
+    # Log in to tryhamster.com
+    task-master auth login
+
+    # Log out
+    task-master auth logout
+
+    # Check authentication status
+    task-master auth status
+
+    # Refresh authentication token
+    task-master auth refresh
+    ```
+
+    Authentication enables API storage features and team collaboration through tryhamster.com.
+  </Accordion>
+
+  <Accordion title="Context Management">
+    ```bash
+    # Show current context (organization/brief)
+    task-master context
+
+    # Set organization context
+    task-master context set-org <organization-id>
+
+    # Set brief context
+    task-master context set-brief <brief-id>
+
+    # Clear context
+    task-master context clear
+    ```
+
+    Context management helps you work within specific organizations and briefs when using API storage.
+  </Accordion>
 </AccordionGroup>
