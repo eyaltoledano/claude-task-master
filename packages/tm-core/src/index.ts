@@ -42,6 +42,9 @@ export * from './common/constants/index.js';
 // Errors
 export * from './common/errors/index.js';
 
+// Utils
+export * from './common/utils/index.js';
+
 // ========== Domain-Specific Type Exports ==========
 
 // Task types

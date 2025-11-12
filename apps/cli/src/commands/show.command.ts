@@ -12,6 +12,7 @@ import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { getProjectRoot } from '../utils/project-root.js';
 
 /**
  * Options interface for the show command
@@ -64,7 +65,10 @@ export class ShowCommand extends Command {
 			.option('-s, --status <status>', 'Filter subtasks by status')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(
 				async (taskId: string | undefined, options: ShowCommandOptions) => {
 					await this.executeCommand(taskId, options);
@@ -86,7 +90,7 @@ export class ShowCommand extends Command {
 			}
 
 			// Initialize tm-core
-			await this.initializeCore(options.project || process.cwd());
+			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get the task ID from argument or option
 			const idArg = taskId || options.id;

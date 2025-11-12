@@ -19,6 +19,7 @@ import type { StorageType } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { getProjectRoot } from '../utils/project-root.js';
 import {
 	displayDashboards,
 	calculateTaskStatistics,
@@ -77,7 +78,10 @@ export class ListTasksCommand extends Command {
 				'text'
 			)
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(async (options: ListCommandOptions) => {
 				await this.executeCommand(options);
 			});
@@ -93,8 +97,8 @@ export class ListTasksCommand extends Command {
 				process.exit(1);
 			}
 
-			// Initialize tm-core
-			await this.initializeCore(options.project || process.cwd());
+			// Initialize tm-core (project root auto-detected if not provided)
+			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get tasks from core
 			const result = await this.getTasks(options);

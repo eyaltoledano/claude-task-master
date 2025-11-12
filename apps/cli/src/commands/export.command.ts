@@ -16,6 +16,7 @@ import {
 } from '@tm/core';
 import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
 
 /**
  * Result type from export command
@@ -76,7 +77,7 @@ export class ExportCommand extends Command {
 		try {
 			// Initialize TmCore
 			this.taskMasterCore = await createTmCore({
-				projectPath: process.cwd()
+				projectPath: getProjectRoot()
 			});
 		} catch (error) {
 			throw new Error(

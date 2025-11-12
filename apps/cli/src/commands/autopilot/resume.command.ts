@@ -10,6 +10,7 @@ import {
 	loadWorkflowState,
 	OutputFormatter
 } from './shared.js';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 type ResumeOptions = AutopilotBaseOptions;
 
@@ -33,8 +34,9 @@ export class ResumeCommand extends Command {
 		const mergedOptions: ResumeOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

@@ -37,8 +37,7 @@ export class AutopilotCommand extends Command {
 			.option('-v, --verbose', 'Enable verbose output')
 			.option(
 				'-p, --project-root <path>',
-				'Project root directory',
-				process.cwd()
+				'Project root directory (auto-detected if not specified)'
 			);
 
 		// Register subcommands
