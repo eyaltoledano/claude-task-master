@@ -363,7 +363,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn().mockResolvedValue({
+			loadPrompt: jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt'
 			})

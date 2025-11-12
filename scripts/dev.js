@@ -9,9 +9,22 @@
  */
 
 import dotenv from 'dotenv';
+import { findProjectRoot } from '@tm/core';
+import { join } from 'node:path';
 
-// Load .env BEFORE any other imports to ensure env vars are available
-dotenv.config();
+// Store the original working directory
+// This is needed for commands that take relative paths as arguments
+const originalCwd = process.cwd();
+
+// Find project root for .env loading
+// We don't change the working directory to avoid breaking relative path logic
+const projectRoot = findProjectRoot();
+
+// Load .env from project root without changing cwd
+dotenv.config({ path: join(projectRoot, '.env') });
+
+// Make original cwd available to commands that need it
+process.env.TASKMASTER_ORIGINAL_CWD = originalCwd;
 
 // Add at the very beginning of the file
 if (process.env.DEBUG === '1') {

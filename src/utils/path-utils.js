@@ -1,6 +1,10 @@
 /**
  * Path utility functions for Task Master
  * Provides centralized path resolution logic for both CLI and MCP use cases
+ *
+ * NOTE: This file is a legacy wrapper around @tm/core utilities.
+ * New code should import directly from @tm/core instead.
+ * This file exists for backward compatibility during the migration period.
  */
 
 import path from 'path';
@@ -15,103 +19,38 @@ import {
 	LEGACY_CONFIG_FILE
 } from '../constants/paths.js';
 import { getLoggerOrDefault } from './logger-utils.js';
+import {
+	findProjectRoot as findProjectRootCore,
+	normalizeProjectRoot as normalizeProjectRootCore
+} from '@tm/core';
 
 /**
  * Normalize project root to ensure it doesn't end with .taskmaster
  * This prevents double .taskmaster paths when using constants that include .taskmaster
+ *
+ * @deprecated Use the TypeScript implementation from @tm/core instead
  * @param {string} projectRoot - The project root path to normalize
  * @returns {string} - Normalized project root path
  */
 export function normalizeProjectRoot(projectRoot) {
-	if (!projectRoot) return projectRoot;
-
-	// Ensure it's a string
-	projectRoot = String(projectRoot);
-
-	// Split the path into segments
-	const segments = projectRoot.split(path.sep);
-
-	// Find the index of .taskmaster segment
-	const taskmasterIndex = segments.findIndex(
-		(segment) => segment === '.taskmaster'
-	);
-
-	if (taskmasterIndex !== -1) {
-		// If .taskmaster is found, return everything up to but not including .taskmaster
-		const normalizedSegments = segments.slice(0, taskmasterIndex);
-		return normalizedSegments.join(path.sep) || path.sep;
-	}
-
-	return projectRoot;
+	return normalizeProjectRootCore(projectRoot);
 }
 
 /**
  * Find the project root directory by looking for project markers
  * Traverses upwards from startDir until a project marker is found or filesystem root is reached
  * Limited to 50 parent directory levels to prevent excessive traversal
+ *
+ * Strategy: First searches ALL parent directories for .taskmaster (highest priority).
+ * If not found, then searches for other project markers starting from current directory.
+ * This ensures .taskmaster in parent directories takes precedence over other markers in subdirectories.
+ *
+ * @deprecated Use the TypeScript implementation from @tm/core instead
  * @param {string} startDir - Directory to start searching from (defaults to process.cwd())
  * @returns {string} - Project root path (falls back to current directory if no markers found)
  */
 export function findProjectRoot(startDir = process.cwd()) {
-	// Define project markers that indicate a project root
-	// Prioritize Task Master specific markers first
-	const projectMarkers = [
-		'.taskmaster', // Task Master directory (highest priority)
-		TASKMASTER_CONFIG_FILE, // .taskmaster/config.json
-		TASKMASTER_TASKS_FILE, // .taskmaster/tasks/tasks.json
-		LEGACY_CONFIG_FILE, // .taskmasterconfig (legacy)
-		LEGACY_TASKS_FILE, // tasks/tasks.json (legacy)
-		'tasks.json', // Root tasks.json (legacy)
-		'.git', // Git repository
-		'.svn', // SVN repository
-		'package.json', // Node.js project
-		'yarn.lock', // Yarn project
-		'package-lock.json', // npm project
-		'pnpm-lock.yaml', // pnpm project
-		'Cargo.toml', // Rust project
-		'go.mod', // Go project
-		'pyproject.toml', // Python project
-		'requirements.txt', // Python project
-		'Gemfile', // Ruby project
-		'composer.json' // PHP project
-	];
-
-	let currentDir = path.resolve(startDir);
-	const rootDir = path.parse(currentDir).root;
-	const maxDepth = 50; // Reasonable limit to prevent infinite loops
-	let depth = 0;
-
-	// Traverse upwards looking for project markers
-	while (currentDir !== rootDir && depth < maxDepth) {
-		// Check if current directory contains any project markers
-		for (const marker of projectMarkers) {
-			const markerPath = path.join(currentDir, marker);
-			try {
-				if (fs.existsSync(markerPath)) {
-					// Found a project marker - return this directory as project root
-					return currentDir;
-				}
-			} catch (error) {
-				// Ignore permission errors and continue searching
-				continue;
-			}
-		}
-
-		// Move up one directory level
-		const parentDir = path.dirname(currentDir);
-
-		// Safety check: if dirname returns the same path, we've hit the root
-		if (parentDir === currentDir) {
-			break;
-		}
-
-		currentDir = parentDir;
-		depth++;
-	}
-
-	// Fallback to current working directory if no project root found
-	// This ensures the function always returns a valid path
-	return process.cwd();
+	return findProjectRootCore(startDir);
 }
 
 /**
@@ -200,9 +139,14 @@ export function findPRDPath(explicitPath = null, args = null, log = null) {
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		// This ensures relative paths are resolved from where the user invoked the command
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit PRD path: ${resolvedPath}`);
@@ -272,9 +216,13 @@ export function findComplexityReportPath(
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit complexity report path: ${resolvedPath}`);
@@ -353,9 +301,13 @@ export function resolveTasksOutputPath(
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		logger.info?.(`Using explicit output path: ${resolvedPath}`);
 		return resolvedPath;
@@ -399,9 +351,13 @@ export function resolveComplexityReportOutputPath(
 
 	// 1. If explicit path is provided, use it
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		logger.info?.(
 			`Using explicit complexity report output path: ${resolvedPath}`
@@ -448,9 +404,13 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 
 	// 1. If explicit path is provided, use it (highest priority)
 	if (explicitPath) {
+		// Use original cwd if available (set by dev.js), otherwise current cwd
+		const cwdForResolution =
+			process.env.TASKMASTER_ORIGINAL_CWD || process.cwd();
+
 		const resolvedPath = path.isAbsolute(explicitPath)
 			? explicitPath
-			: path.resolve(process.cwd(), explicitPath);
+			: path.resolve(cwdForResolution, explicitPath);
 
 		if (fs.existsSync(resolvedPath)) {
 			logger.info?.(`Using explicit config path: ${resolvedPath}`);

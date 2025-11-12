@@ -26,20 +26,17 @@ export class PerplexityAIProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Perplexity API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} Perplexity client function
-	 * @throws {Error} If API key is missing or initialization fails
+	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('Perplexity API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createPerplexity({
 				apiKey,
 				baseURL: baseURL || 'https://api.perplexity.ai',
-				fetch: this.createProxyFetch()
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

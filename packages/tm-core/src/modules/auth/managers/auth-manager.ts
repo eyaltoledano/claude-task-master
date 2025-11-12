@@ -7,7 +7,8 @@ import {
 	OAuthFlowOptions,
 	AuthenticationError,
 	AuthConfig,
-	UserContext
+	UserContext,
+	UserContextWithBrief
 } from '../types.js';
 import { ContextStore } from '../services/context-store.js';
 import { OAuthService } from '../services/oauth-service.js';
@@ -18,6 +19,10 @@ import {
 	type Brief,
 	type RemoteTask
 } from '../services/organization.service.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
 import fs from 'fs';
 import path from 'path';
@@ -429,5 +434,29 @@ export class AuthManager {
 	async getTasks(briefId: string): Promise<RemoteTask[]> {
 		const service = await this.getOrganizationService();
 		return service.getTasks(briefId);
+	}
+
+	/**
+	 * Ensure a brief is selected in the current context
+	 * Throws a TaskMasterError if no brief is selected
+	 * @param operation - The operation name for error context
+	 * @returns The current user context with a guaranteed briefId
+	 */
+	ensureBriefSelected(operation: string): UserContextWithBrief {
+		const context = this.getContext();
+
+		if (!context?.briefId) {
+			throw new TaskMasterError(
+				'No brief selected',
+				ERROR_CODES.NO_BRIEF_SELECTED,
+				{
+					operation,
+					userMessage:
+						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+				}
+			);
+		}
+
+		return context as UserContextWithBrief;
 	}
 }

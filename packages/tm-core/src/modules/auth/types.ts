@@ -22,6 +22,11 @@ export interface UserContext {
 	updatedAt: string;
 }
 
+/**
+ * User context with a guaranteed briefId
+ */
+export type UserContextWithBrief = UserContext & { briefId: string };
+
 export interface OAuthFlowOptions {
 	/** Callback to open the browser with the auth URL. If not provided, browser won't be opened */
 	openBrowser?: (url: string) => Promise<void>;

@@ -43,16 +43,17 @@ export class AzureProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Azure OpenAI API key
 	 * @param {string} params.baseURL - Azure OpenAI endpoint URL (from .taskmasterconfig global.azureBaseURL or models.[role].baseURL)
 	 * @returns {Function} Azure OpenAI client function
-	 * @throws {Error} If required parameters are missing or initialization fails
+	 * @throws {Error} If client initialization fails
 	 */
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
+			const fetchImpl = this.createProxyFetch();
 
 			return createAzure({
 				apiKey,
 				baseURL,
-				fetch: this.createProxyFetch()
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

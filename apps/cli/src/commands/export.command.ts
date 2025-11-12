@@ -3,19 +3,20 @@
  * Provides functionality to export tasks to Hamster briefs
  */
 
-import {
-	AuthManager,
-	type ExportResult,
-	type TmCore,
-	type UserContext,
-	createTmCore
-} from '@tm/core';
-import chalk from 'chalk';
 import { Command } from 'commander';
+import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora, { Ora } from 'ora';
-import { displayError } from '../utils/error-handler.js';
+import {
+	AuthManager,
+	type UserContext,
+	type ExportResult,
+	createTmCore,
+	type TmCore
+} from '@tm/core';
 import * as ui from '../utils/ui.js';
+import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
 
 /**
  * Result type from export command
@@ -76,7 +77,7 @@ export class ExportCommand extends Command {
 		try {
 			// Initialize TmCore
 			this.taskMasterCore = await createTmCore({
-				projectPath: process.cwd()
+				projectPath: getProjectRoot()
 			});
 		} catch (error) {
 			throw new Error(

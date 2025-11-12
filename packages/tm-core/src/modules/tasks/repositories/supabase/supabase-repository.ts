@@ -9,6 +9,7 @@ import {
 	TaskDatabaseUpdate
 } from '../../../../common/types/repository-types.js';
 import { LoadTasksOptions } from '../../../../common/interfaces/storage.interface.js';
+import { Brief } from '../task-repository.interface.js';
 import { z } from 'zod';
 
 // Zod schema for task status validation
@@ -34,7 +35,7 @@ const TaskUpdateSchema = z
 	})
 	.partial();
 
-export class SupabaseTaskRepository {
+export class SupabaseRepository {
 	private dependencyFetcher: DependencyFetcher;
 	private authManager: AuthManager;
 
@@ -150,6 +151,50 @@ export class SupabaseTaskRepository {
 			subtasksData || [],
 			dependenciesByTaskId
 		);
+	}
+
+	/**
+	 * Get brief information by ID
+	 * Note: This doesn't use getBriefIdOrThrow() because we may need to fetch
+	 * briefs other than the current context brief
+	 */
+	async getBrief(briefId: string): Promise<Brief | null> {
+		const { data, error } = await this.supabase
+			.from('brief')
+			.select(`
+				*,
+				document:document_id (
+					id,
+					title,
+					description
+				)
+			`)
+			.eq('id', briefId)
+			.single();
+
+		if (error) {
+			if (error.code === 'PGRST116') {
+				return null; // Not found
+			}
+			throw new Error(`Failed to fetch brief: ${error.message}`);
+		}
+
+		if (!data) {
+			return null;
+		}
+
+		// Extract document data if available
+		const document = data.document as any;
+
+		// Map database fields to Brief interface
+		return {
+			id: data.id,
+			accountId: data.account_id,
+			createdAt: data.created_at,
+			name: document?.title || undefined,
+			description: document?.description || undefined,
+			status: data.status || undefined
+		};
 	}
 
 	async updateTask(

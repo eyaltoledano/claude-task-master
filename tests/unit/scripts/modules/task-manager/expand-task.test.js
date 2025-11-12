@@ -162,7 +162,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn().mockResolvedValue({
+			loadPrompt: jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt'
 			})
@@ -182,7 +182,12 @@ jest.unstable_mockModule('chalk', () => ({
 		),
 		green: jest.fn((text) => text),
 		yellow: jest.fn((text) => text),
-		bold: jest.fn((text) => text)
+		red: jest.fn((text) => text),
+		blue: jest.fn((text) => text),
+		magenta: jest.fn((text) => text),
+		gray: jest.fn((text) => text),
+		bold: jest.fn((text) => text),
+		dim: jest.fn((text) => text)
 	}
 }));
 
@@ -702,7 +707,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt: 'Generate exactly 5 subtasks for complexity report',
 				userPrompt:
 					'Please break this task into 5 parts\n\nUser provided context'
@@ -1016,7 +1021,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt with context'
 			});
@@ -1145,7 +1150,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into an appropriate number of specific subtasks that can be implemented one by one.',
 				userPrompt:
@@ -1173,7 +1178,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 5 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 5 specific subtasks'
@@ -1201,7 +1206,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 4 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 4 specific subtasks'
@@ -1227,7 +1232,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 6 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 6 specific subtasks'
@@ -1253,7 +1258,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 7 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 7 specific subtasks'

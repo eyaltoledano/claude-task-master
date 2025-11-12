@@ -113,3 +113,8 @@ export const STATUS_COLORS: Record<TaskStatus, string> = {
  * Provider constants - AI model providers
  */
 export * from './providers.js';
+
+/**
+ * Path constants - file paths and directory structure
+ */
+export * from './paths.js';

@@ -70,13 +70,13 @@ const realSupportedModelsPath = path.resolve(
 	'../../scripts/modules/supported-models.json'
 );
 let REAL_SUPPORTED_MODELS_CONTENT;
-let _REAL_SUPPORTED_MODELS_DATA;
+let REAL_SUPPORTED_MODELS_DATA;
 try {
 	REAL_SUPPORTED_MODELS_CONTENT = fs.readFileSync(
 		realSupportedModelsPath,
 		'utf-8'
 	);
-	_REAL_SUPPORTED_MODELS_DATA = JSON.parse(REAL_SUPPORTED_MODELS_CONTENT);
+	REAL_SUPPORTED_MODELS_DATA = JSON.parse(REAL_SUPPORTED_MODELS_CONTENT);
 } catch (err) {
 	console.error(
 		'FATAL TEST SETUP ERROR: Could not read or parse real supported-models.json',
