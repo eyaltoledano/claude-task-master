@@ -211,7 +211,8 @@ export class NextCommand extends Command {
 		displayTaskDetails(task, {
 			customHeader,
 			headerColor: 'green',
-			showSuggestedActions: true
+			showSuggestedActions: true,
+			storageType: result.storageType
 		});
 	}
 
