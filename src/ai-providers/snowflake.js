@@ -1,7 +1,7 @@
 /**
- * Snowflake Cortex AI provider using OpenAI-compatible API
+ * Snowflake AI provider using OpenAI-compatible API
  * 
- * Supports any Snowflake Cortex model using the `cortex/` prefix.
+ * Supports any Snowflake Cortex model using the `snowflake/` prefix.
  * For the current list of available models, see:
  * https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#model-restrictions
  * 
@@ -13,24 +13,19 @@ import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { log } from '../../scripts/modules/utils.js';
 import MODEL_MAP from '../../scripts/modules/supported-models.json' with { type: 'json' };
+import { removeUnsupportedFeatures, UNSUPPORTED_KEYWORDS } from '../../packages/ai-sdk-provider-cortex-code/src/schema/transformer.js';
 
 export class SnowflakeProvider extends OpenAICompatibleProvider {
   /**
    * Snowflake-unsupported JSON Schema constraint keywords
+   * Re-exported from shared schema transformer for compatibility
    * @see https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
    */
-  static UNSUPPORTED_KEYWORDS = [
-    'default', '$schema', // General
-    'multipleOf', // Integer
-    'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', // Number
-    'minLength', 'maxLength', 'format', // String
-    'uniqueItems', 'contains', 'minContains', 'maxContains', 'minItems', 'maxItems', // Array
-    'patternProperties', 'minProperties', 'maxProperties', 'propertyNames' // Object
-  ];
+  static UNSUPPORTED_KEYWORDS = UNSUPPORTED_KEYWORDS;
 
   constructor(options = {}) {
     super({
-      name: 'Snowflake Cortex',
+      name: 'Snowflake',
       apiKeyEnvVar: 'SNOWFLAKE_API_KEY',
       requiresApiKey: true,
       // This tells the AI SDK client that the API supports structured outputs
@@ -48,7 +43,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   validateAuth(params) {
     super.validateAuth(params);
     if (typeof params.apiKey !== 'string' || params.apiKey.trim().length === 0) {
-      throw new Error('Snowflake Cortex API key is required');
+      throw new Error('Snowflake API key is required');
     }
   }
 
@@ -58,7 +53,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   }
 
   /**
-   * Normalize Snowflake Cortex URLs to include required API path
+   * Normalize Snowflake URLs to include required API path
    * @param {object} params - Client parameters
    * @returns {string|undefined} The normalized base URL
    */
@@ -83,79 +78,46 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
   /**
    * Recursively removes Snowflake-unsupported features from JSON Schema
+   * Uses the shared schema transformer for better performance and consistency
    * @private
    * @param {object} schema - JSON Schema object
    * @returns {object} Cleaned schema
    */
   _removeUnsupportedFeatures(schema) {
-    if (!schema || typeof schema !== 'object') {
-      return schema;
-    }
-
-    const cleaned = { ...schema };
-
-    // Remove Snowflake-unsupported keywords
-    SnowflakeProvider.UNSUPPORTED_KEYWORDS.forEach(keyword => {
-      delete cleaned[keyword];
-    });
-
-    // Handle anyOf with null (convert to optional)
-    if (cleaned.anyOf) {
-      const nonNullTypes = cleaned.anyOf.filter(item => 
-        !(item.type === 'null' || (Array.isArray(item.type) && item.type.includes('null')))
-      );
-      if (nonNullTypes.length === 1) {
-        // Single non-null type - flatten it
-        Object.assign(cleaned, nonNullTypes[0]);
-        delete cleaned.anyOf;
-      } else if (nonNullTypes.length > 1) {
-        cleaned.anyOf = nonNullTypes.map(item => this._removeUnsupportedFeatures(item));
-      }
-    }
-
-    // Normalize objects
-    if (cleaned.type === 'object') {
-      // CRITICAL: Snowflake requires additionalProperties: false in EVERY object node
-      cleaned.additionalProperties = false;
-      
-      if (cleaned.properties) {
-        const cleanedProps = {};
-        for (const [key, value] of Object.entries(cleaned.properties)) {
-          cleanedProps[key] = this._removeUnsupportedFeatures(value);
-        }
-        cleaned.properties = cleanedProps;
-        
-        // Snowflake requires 'required' array with ALL property names for OpenAI models
-        // Set it for all models to avoid issues
-        if (!cleaned.required || cleaned.required.length === 0) {
-          cleaned.required = Object.keys(cleanedProps);
-        } else {
-          // Ensure required array only contains keys that exist in properties
-          cleaned.required = cleaned.required.filter(key => key in cleanedProps);
-        }
-      }
-    }
-
-    // Handle arrays
-    if (cleaned.type === 'array' && cleaned.items) {
-      cleaned.items = this._removeUnsupportedFeatures(cleaned.items);
-    }
-
-    // Handle oneOf
-    if (cleaned.oneOf) {
-      cleaned.oneOf = cleaned.oneOf.map(item => this._removeUnsupportedFeatures(item));
-    }
-
-    return cleaned;
+    return removeUnsupportedFeatures(schema);
   }
 
   /**
-   * Removes 'cortex/' prefix from model IDs before API calls
-   * @param {string} modelId - Model identifier with optional cortex/ prefix
+   * Removes 'snowflake/' prefix from model IDs before API calls
+   * @param {string} modelId - Model identifier with optional snowflake/ prefix
    * @returns {string} Model ID without prefix
    */
   normalizeModelId(modelId) {
-    return modelId?.startsWith('cortex/') ? modelId.substring(7) : modelId;
+    return modelId?.startsWith('snowflake/') ? modelId.substring(10) : modelId;
+  }
+
+  /**
+   * Prepare token parameter with Snowflake minimum enforcement
+   * Snowflake requires a minimum of 8192 tokens for all models
+   * @param {string} modelId - Model identifier (used for future per-model limits)
+   * @param {number|string|undefined} maxTokens - Requested max tokens
+   * @returns {object} Object with maxTokens property, minimum 8192
+   */
+  prepareTokenParam(modelId, maxTokens) {
+    const SNOWFLAKE_MIN_TOKENS = 8192;
+    
+    // Parse maxTokens to number if it's a string
+    let tokenValue = typeof maxTokens === 'string' ? parseInt(maxTokens, 10) : maxTokens;
+    
+    // Default to minimum if undefined or NaN
+    if (tokenValue === undefined || isNaN(tokenValue)) {
+      tokenValue = SNOWFLAKE_MIN_TOKENS;
+    }
+    
+    // Enforce minimum
+    return {
+      maxTokens: Math.max(tokenValue, SNOWFLAKE_MIN_TOKENS)
+    };
   }
 
   /**
@@ -188,7 +150,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
             // 1. Inject max_completion_tokens based on model from supported-models.json
             // The body.model already contains the normalized model ID (e.g., "claude-haiku-4-5")
-            const modelId = `cortex/${body.model}`;
+            const modelId = `snowflake/${body.model}`;
             const snowflakeModels = modelMap?.snowflake || [];
             const modelInfo = snowflakeModels.find(m => m.id === modelId);
             const modelMaxTokens = modelInfo?.max_tokens || 64000; // Default to 64K if not found
@@ -283,7 +245,29 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   }
 
   /**
-   * Normalize parameters: strip cortex/ prefix and handle temperature
+   * Apply Snowflake schema transformations to params
+   * Converts zod schemas to JSON Schema and cleans unsupported features
+   * @private
+   * @param {object} params - Parameters object that may contain a schema
+   */
+  _applySnowflakeSchema(params) {
+    if (!params.schema) {
+      return;
+    }
+
+    // Convert zod schema to JSON Schema if toJSONSchema method exists
+    if (typeof params.schema.toJSONSchema === 'function') {
+      params.schema = params.schema.toJSONSchema();
+    }
+
+    // Clean the schema using shared transformer
+    if (params.schema && typeof params.schema === 'object') {
+      params.schema = this._removeUnsupportedFeatures(params.schema);
+    }
+  }
+
+  /**
+   * Normalize parameters: strip snowflake/ prefix and handle temperature
    * @private
    */
   _normalizeParams(params) {
@@ -329,12 +313,14 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
   async generateObject(params) {
     const normalized = this._normalizeParams(params);
+    this._applySnowflakeSchema(normalized);
     this._warnIfUnsupportedStructuredOutputs(normalized.modelId);
     return await super.generateObject(normalized);
   }
 
   async streamObject(params) {
     const normalized = this._normalizeParams(params);
+    this._applySnowflakeSchema(normalized);
     this._warnIfUnsupportedStructuredOutputs(normalized.modelId);
     return await super.streamObject(normalized);
   }

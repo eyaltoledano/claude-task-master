@@ -11,7 +11,7 @@
  * - SNOWFLAKE_BASE_URL must be set in .env
  * 
  * Test Control:
- * - SNOWFLAKE_TEST_MODEL: Test specific model only (e.g., 'cortex/claude-haiku-4-5')
+ * - SNOWFLAKE_TEST_MODEL: Test specific model only (e.g., 'snowflake/claude-haiku-4-5')
  * - SNOWFLAKE_FAST_MODE: Use only fastest models (set to 'true')
  */
 
@@ -48,7 +48,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 
 	describe('Configuration', () => {
 		it('should have correct base configuration', () => {
-			expect(provider.name).toBe('Snowflake Cortex');
+			expect(provider.name).toBe('Snowflake');
 			expect(provider.apiKeyEnvVar).toBe('SNOWFLAKE_API_KEY');
 			expect(provider.requiresApiKey).toBe(true);
 			expect(provider.supportsStructuredOutputs).toBe(true);
@@ -61,11 +61,11 @@ describe('Snowflake Provider - Unit Tests', () => {
 
 	describe('Model ID Normalization', () => {
 		it.each([
-			['cortex/claude-sonnet-4-5', 'claude-sonnet-4-5'],
-			['cortex/claude-haiku-4-5', 'claude-haiku-4-5'],
-			['cortex/openai-gpt-5', 'openai-gpt-5'],
-			['cortex/openai-gpt-5-mini', 'openai-gpt-5-mini'],
-			['cortex/openai-gpt-4.1', 'openai-gpt-4.1'],
+			['snowflake/claude-sonnet-4-5', 'claude-sonnet-4-5'],
+			['snowflake/claude-haiku-4-5', 'claude-haiku-4-5'],
+			['snowflake/openai-gpt-5', 'openai-gpt-5'],
+			['snowflake/openai-gpt-5-mini', 'openai-gpt-5-mini'],
+			['snowflake/openai-gpt-4.1', 'openai-gpt-4.1'],
 			['claude-4-sonnet', 'claude-4-sonnet'],
 			['openai-gpt-5', 'openai-gpt-5'],
 			[null, null],
@@ -85,7 +85,7 @@ describe('Snowflake Provider - Unit Tests', () => {
         ['preserves large numbers', 200000, { maxTokens: 200000 }],
         ['allows exact minimum', 8192, { maxTokens: 8192 }]
     ])('prepareTokenParam handles %s', (_label, input, expected) => {
-        expect(provider.prepareTokenParam('cortex/claude-sonnet-4-5', input)).toEqual(
+        expect(provider.prepareTokenParam('snowflake/claude-sonnet-4-5', input)).toEqual(
             expected
         );
     });
@@ -95,7 +95,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 		it.each([
 			{
 				description: 'OpenAI models drop temperature',
-				input: { modelId: 'cortex/openai-gpt-4.1', temperature: 0.9 },
+				input: { modelId: 'snowflake/openai-gpt-4.1', temperature: 0.9 },
 				assert: (normalized) => {
 					expect(normalized.modelId).toBe('openai-gpt-4.1');
 					expect(normalized).not.toHaveProperty('temperature');
@@ -104,7 +104,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 			{
 				description: 'Structured Claude removes temperature parameter',
 				input: {
-					modelId: 'cortex/claude-sonnet-4-5',
+					modelId: 'snowflake/claude-sonnet-4-5',
 					objectName: 'newTaskData',
 					systemPrompt: 'Generate a task.' ,
 					temperature: 0.7
@@ -118,7 +118,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 			{
 				description: 'Claude text generation preserves temperature and prompt',
 				input: {
-					modelId: 'cortex/claude-4-sonnet',
+					modelId: 'snowflake/claude-4-sonnet',
 					systemPrompt: 'You are helpful.',
 					temperature: 0.8
 				},
@@ -130,7 +130,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 			{
 				description: 'Structured call without system prompt does not append text',
 				input: {
-					modelId: 'cortex/claude-haiku-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					objectName: 'subtasks'
 				},
 				assert: (normalized) => {
@@ -178,7 +178,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 
 		const reusableStructuredParams = {
 			schema: reusableStructuredSchema,
-			modelId: 'cortex/claude-sonnet-4-5',
+			modelId: 'snowflake/claude-sonnet-4-5',
 			objectName: 'task',
 			apiKey: 'test-snowflake-pat',
 			baseURL: 'https://org-account.snowflakecomputing.com/api/v2/cortex/v1',
@@ -197,7 +197,11 @@ describe('Snowflake Provider - Unit Tests', () => {
 		it('leaves params untouched when schema lacks toJSONSchema', () => {
 			const params = { schema: { type: 'object' } };
 			provider._applySnowflakeSchema(params);
-			expect(params.schema).toEqual({ type: 'object' });
+			// Snowflake requires additionalProperties: false on all objects
+			expect(params.schema).toEqual({ 
+				type: 'object', 
+				additionalProperties: false
+			});
 		});
 
 		it('invokes schema normalization before generateObject', async () => {
@@ -266,31 +270,31 @@ describe('Snowflake Provider - Unit Tests', () => {
 
 	describe('Model Support Detection', () => {
 		test('should detect that Llama models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('cortex/llama-3.3-70b');
+			const supports = provider._modelSupportsStructuredOutputs('snowflake/llama-3.3-70b');
 			expect(supports).toBe(false);
 		});
 
 		test('should detect that Mistral models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('cortex/mistral-large-2');
+			const supports = provider._modelSupportsStructuredOutputs('snowflake/mistral-large-2');
 			expect(supports).toBe(false);
 		});
 
 		test('should detect that DeepSeek models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('cortex/deepseek-v3');
+			const supports = provider._modelSupportsStructuredOutputs('snowflake/deepseek-v3');
 			expect(supports).toBe(false);
 		});
 
 		test('should detect that Claude models support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('cortex/claude-haiku-4-5');
+			const supports = provider._modelSupportsStructuredOutputs('snowflake/claude-haiku-4-5');
 			expect(supports).toBe(true);
 		});
 
 		test('should detect that OpenAI models support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('cortex/openai-gpt-5');
+			const supports = provider._modelSupportsStructuredOutputs('snowflake/openai-gpt-5');
 			expect(supports).toBe(true);
 		});
 
-		test('should handle model IDs without cortex prefix', () => {
+		test('should handle model IDs without snowflake prefix', () => {
 			expect(provider._modelSupportsStructuredOutputs('claude-sonnet-4-5')).toBe(true);
 			expect(provider._modelSupportsStructuredOutputs('openai-gpt-5')).toBe(true);
 			expect(provider._modelSupportsStructuredOutputs('llama-3.3-70b')).toBe(false);
@@ -463,9 +467,9 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	const apiKey = process.env.SNOWFLAKE_API_KEY;
 
 	// Model configurations
-	const CLAUDE_MODELS = ['cortex/claude-sonnet-4-5', 'cortex/claude-haiku-4-5', 'cortex/claude-4-sonnet', 'cortex/claude-4-opus'];
-	const OPENAI_MODELS = ['cortex/openai-gpt-5', 'cortex/openai-gpt-5-mini', 'cortex/openai-gpt-5-nano', 'cortex/openai-gpt-4.1', 'cortex/openai-o4-mini'];
-	const FAST_MODELS = ['cortex/claude-haiku-4-5', 'cortex/openai-gpt-5-mini'];
+	const CLAUDE_MODELS = ['snowflake/claude-sonnet-4-5', 'snowflake/claude-haiku-4-5', 'snowflake/claude-4-sonnet', 'snowflake/claude-4-opus'];
+	const OPENAI_MODELS = ['snowflake/openai-gpt-5', 'snowflake/openai-gpt-5-mini', 'snowflake/openai-gpt-5-nano', 'snowflake/openai-gpt-4.1', 'snowflake/openai-o4-mini'];
+	const FAST_MODELS = ['snowflake/claude-haiku-4-5', 'snowflake/openai-gpt-5-mini'];
 
 	// Determine which models to test
 	const ALL_MODELS = TEST_CONFIG.specificModel 
@@ -532,7 +536,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 		it('should respect maxTokens parameter', async () => {
 			await withResult('Token limit enforcement', () =>
 				runTextGeneration({
-					modelId: 'cortex/claude-haiku-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					maxTokens: 8192,
 					messages: asUserMessage('Write a comprehensive essay about AI.')
 				})
@@ -545,10 +549,10 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	});
 
 	describe('Model ID Normalization', () => {
-		it('should handle both with and without cortex/ prefix', async () => {
+		it('should handle both with and without snowflake/ prefix', async () => {
 			const withPrefix = await withResult('Model ID normalization (with prefix)', () =>
 				runTextGeneration({
-					modelId: 'cortex/claude-haiku-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					messages: asUserMessage('Say hello')
 				})
 			, (result) => {
@@ -578,7 +582,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			params: {
 				apiKey: 'invalid-pat',
 				baseURL,
-				modelId: 'cortex/claude-haiku-4-5',
+				modelId: 'snowflake/claude-haiku-4-5',
 				messages: asUserMessage('test')
 			}
 		},
@@ -587,7 +591,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			params: {
 				apiKey,
 				baseURL: 'https://invalid.snowflakecomputing.com/api/v2/cortex/v1',
-				modelId: 'cortex/claude-haiku-4-5',
+				modelId: 'snowflake/claude-haiku-4-5',
 				messages: asUserMessage('test')
 			}
 		},
@@ -596,7 +600,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			params: {
 				apiKey,
 				baseURL,
-				modelId: 'cortex/invalid-model-name',
+				modelId: 'snowflake/invalid-model-name',
 				messages: asUserMessage('test')
 			}
 		}
@@ -613,13 +617,13 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	const TEMPERATURE_CASES = [
 		{
 			description: 'remove temperature for OpenAI models',
-			modelId: 'cortex/openai-gpt-4.1',
+			modelId: 'snowflake/openai-gpt-4.1',
 			temperature: 0.9,
 			log: '✓ OpenAI model works without temperature parameter'
 		},
 		{
 			description: 'use temperature for Claude models',
-			modelId: 'cortex/claude-haiku-4-5',
+			modelId: 'snowflake/claude-haiku-4-5',
 			temperature: 0.7,
 			log: '✓ Claude model works with temperature parameter'
 		}
@@ -643,19 +647,19 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	const UNLISTED_MODEL_GROUPS = [
 		{
 			title: 'Llama Models (not in config)',
-			models: ['cortex/llama3.1-8b', 'cortex/llama3.1-70b']
+			models: ['snowflake/llama3.1-8b', 'snowflake/llama3.1-70b']
 		},
 		{
 			title: 'Claude Models (not in config)',
-			models: ['cortex/claude-3-5-sonnet']
+			models: ['snowflake/claude-3-5-sonnet']
 		},
 		{
 			title: 'Mistral Models (not in config)',
-			models: ['cortex/mistral-large', 'cortex/mistral-7b']
+			models: ['snowflake/mistral-large', 'snowflake/mistral-7b']
 		},
 		{
 			title: 'DeepSeek Models (not in config)',
-			models: ['cortex/deepseek-r1']
+			models: ['snowflake/deepseek-r1']
 		}
 	];
 	const UNLISTED_MODELS = UNLISTED_MODEL_GROUPS.flatMap(({ title, models }) =>
@@ -791,8 +795,8 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 
 		describe('Claude Models - Native Structured Outputs', () => {
 			const claudeModels = [
-				'cortex/claude-haiku-4-5',
-				'cortex/claude-sonnet-4-5'
+				'snowflake/claude-haiku-4-5',
+				'snowflake/claude-sonnet-4-5'
 			];
 
 			test.each(claudeModels)('should generate object with native structured outputs for %s', async (modelId) => {
@@ -823,8 +827,8 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 
 		describe('OpenAI Models - Structured Outputs', () => {
 			const openaiModels = [
-				'cortex/openai-gpt-5',
-				'cortex/openai-gpt-5-mini'
+				'snowflake/openai-gpt-5',
+				'snowflake/openai-gpt-5-mini'
 			];
 
 			test.each(openaiModels)('should generate object with structured outputs for %s', async (modelId) => {
@@ -860,7 +864,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				const generateTextSpy = jest.spyOn(integrationProvider, 'generateText');
 
 				const params = {
-					modelId: 'cortex/claude-haiku-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
@@ -891,7 +895,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				if (skipIfNoKey()) return;
 
 				const params = {
-					modelId: 'cortex/openai-gpt-5',
+					modelId: 'snowflake/openai-gpt-5',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
@@ -913,7 +917,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				if (skipIfNoKey()) return;
 
 				const params = {
-					modelId: 'cortex/openai-gpt-5',
+					modelId: 'snowflake/openai-gpt-5',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
@@ -947,7 +951,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				if (skipIfNoKey()) return;
 
 				const params = {
-					modelId: 'cortex/invalid-model-xyz',
+					modelId: 'snowflake/invalid-model-xyz',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [{ role: 'user', content: 'Test' }],
@@ -963,7 +967,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				if (skipIfNoKey()) return;
 
 				const params = {
-					modelId: 'cortex/claude-haiku-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [{ role: 'user', content: 'Generate invalid data' }],
@@ -983,7 +987,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 			if (skipIfNoKey()) return;
 
 			const params = {
-				modelId: 'cortex/claude-haiku-4-5',
+				modelId: 'snowflake/claude-haiku-4-5',
 				apiKey: process.env.SNOWFLAKE_API_KEY,
 				baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 				messages: [{ role: 'user', content: 'Say hello in one word' }],

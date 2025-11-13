@@ -41,6 +41,7 @@ import {
 	BedrockAIProvider,
 	ClaudeCodeProvider,
 	CodexCliProvider,
+	CortexCodeProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GrokCliProvider,

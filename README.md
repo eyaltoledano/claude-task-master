@@ -53,6 +53,7 @@ The following documentation is also available in the `docs` directory:
 - [Task Structure](docs/task-structure.md) - Understanding the task format and features
 - [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
 - [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
+- [Cortex Code Integration](docs/cortex-code-integration.md) - Complete guide for Snowflake Cortex Code integration
 
 #### Quick Install for Cursor 1.0+ (One-Click)
 
@@ -87,9 +88,10 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
-- Snowflake API Key (Programmatic Access Token or OAuth token)
 - Claude Code (no API key required - requires Claude Code CLI)
 - Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
+- Snowflake API Key (Programmatic Access Token or OAuth token)
+- **Cortex Code** (Snowflake CLI - requires [Cortex Code](https://docs.snowflake.com/en/developer-guide/cortex-cli) and Snowflake connection)
 
 Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code or Codex CLI with OAuth). Adding all API keys enables you to seamlessly switch between model providers at will.
 
