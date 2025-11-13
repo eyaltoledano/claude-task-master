@@ -85,6 +85,7 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
+	'cortex-code': new CortexCodeProvider(),
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider(),
