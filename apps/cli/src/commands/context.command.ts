@@ -76,8 +76,9 @@ export class ContextCommand extends Command {
 	private addOrgCommand(): void {
 		this.command('org')
 			.description('Select an organization')
-			.action(async () => {
-				await this.executeSelectOrg();
+			.argument('[orgId]', 'Organization ID or slug to select directly')
+			.action(async (orgId?: string) => {
+				await this.executeSelectOrg(orgId);
 			});
 	}
 
@@ -87,8 +88,9 @@ export class ContextCommand extends Command {
 	private addBriefCommand(): void {
 		this.command('brief')
 			.description('Select a brief within the current organization')
-			.action(async () => {
-				await this.executeSelectBrief();
+			.argument('[briefIdOrUrl]', 'Brief ID or Hamster URL to select directly')
+			.action(async (briefIdOrUrl?: string) => {
+				await this.executeSelectBrief(briefIdOrUrl);
 			});
 	}
 
@@ -230,14 +232,14 @@ export class ContextCommand extends Command {
 	/**
 	 * Execute org selection
 	 */
-	private async executeSelectOrg(): Promise<void> {
+	private async executeSelectOrg(orgId?: string): Promise<void> {
 		try {
 			// Check authentication
 			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
-			const result = await this.selectOrganization();
+			const result = await this.selectOrganization(orgId);
 			this.setLastResult(result);
 
 			if (!result.success) {
@@ -252,9 +254,9 @@ export class ContextCommand extends Command {
 	}
 
 	/**
-	 * Select an organization interactively
+	 * Select an organization interactively or by ID
 	 */
-	private async selectOrganization(): Promise<ContextResult> {
+	private async selectOrganization(orgId?: string): Promise<ContextResult> {
 		const spinner = ora('Fetching organizations...').start();
 
 		try {
@@ -271,18 +273,44 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			// Prompt for selection
-			const { selectedOrg } = await inquirer.prompt([
-				{
-					type: 'list',
-					name: 'selectedOrg',
-					message: 'Select an organization:',
-					choices: organizations.map((org) => ({
-						name: org.name,
-						value: org
-					}))
+			let selectedOrg;
+
+			// If orgId provided, find matching org by ID or slug
+			if (orgId && orgId.trim().length > 0) {
+				const normalizedInput = orgId.trim().toLowerCase();
+				selectedOrg = organizations.find(
+					(org) =>
+						org.id === orgId ||
+						org.slug?.toLowerCase() === normalizedInput ||
+						org.name.toLowerCase() === normalizedInput
+				);
+
+				if (!selectedOrg) {
+					ui.displayError(
+						`Organization not found: ${orgId}\n` +
+							`Available organizations: ${organizations.map((o) => o.name).join(', ')}`
+					);
+					return {
+						success: false,
+						action: 'select-org',
+						message: `Organization not found: ${orgId}`
+					};
 				}
-			]);
+			} else {
+				// Interactive selection
+				const response = await inquirer.prompt([
+					{
+						type: 'list',
+						name: 'selectedOrg',
+						message: 'Select an organization:',
+						choices: organizations.map((org) => ({
+							name: org.name,
+							value: org
+						}))
+					}
+				]);
+				selectedOrg = response.selectedOrg;
+			}
 
 			// Update context
 			await this.authManager.updateContext({
@@ -311,14 +339,36 @@ export class ContextCommand extends Command {
 	/**
 	 * Execute brief selection
 	 */
-	private async executeSelectBrief(): Promise<void> {
+	private async executeSelectBrief(briefIdOrUrl?: string): Promise<void> {
 		try {
 			// Check authentication
 			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
-			// Check if org is selected
+			// If briefIdOrUrl provided, use direct selection
+			if (briefIdOrUrl && briefIdOrUrl.trim().length > 0) {
+				await this.initTmCore();
+				const result = await selectBriefFromInput(
+					this.authManager,
+					briefIdOrUrl.trim(),
+					this.tmCore
+				);
+
+				this.setLastResult({
+					success: result.success,
+					action: 'select-brief',
+					context: this.authManager.getContext() || undefined,
+					message: result.message
+				});
+
+				if (!result.success) {
+					process.exit(1);
+				}
+				return;
+			}
+
+			// Interactive selection
 			const context = this.authManager.getContext();
 			if (!context?.orgId) {
 				ui.displayError(

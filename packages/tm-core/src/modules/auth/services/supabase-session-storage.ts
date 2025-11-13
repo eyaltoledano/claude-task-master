@@ -11,11 +11,13 @@
  *
  * We handle:
  * - Simple get/set/remove/clear operations
- * - Persistence to ~/.taskmaster/session.json
+ * - Persistence to ~/.taskmaster/session.json with atomic writes via steno
  */
 
-import fs from 'fs';
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
+import { Writer } from 'steno';
 import type { SupportedStorage } from '@supabase/supabase-js';
 import { getLogger } from '../../../common/logger/index.js';
 
@@ -29,19 +31,27 @@ export class SupabaseSessionStorage implements SupportedStorage {
 	private storage: Map<string, string> = new Map();
 	private persistPath: string;
 	private logger = getLogger('SupabaseSessionStorage');
+	private writer: Writer;
+	private initPromise: Promise<void>;
 
 	constructor(persistPath: string = DEFAULT_SESSION_FILE) {
 		this.persistPath = persistPath;
-		this.load();
+		this.writer = new Writer(persistPath);
+		this.initPromise = this.load();
 	}
 
 	/**
 	 * Load session data from disk on initialization
 	 */
-	private load(): void {
+	private async load(): Promise<void> {
 		try {
-			if (fs.existsSync(this.persistPath)) {
-				const data = JSON.parse(fs.readFileSync(this.persistPath, 'utf8'));
+			// Ensure directory exists
+			const dir = path.dirname(this.persistPath);
+			await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+
+			// Try to read existing session
+			if (fsSync.existsSync(this.persistPath)) {
+				const data = JSON.parse(await fs.readFile(this.persistPath, 'utf8'));
 				Object.entries(data).forEach(([k, v]) =>
 					this.storage.set(k, v as string)
 				);
@@ -57,24 +67,19 @@ export class SupabaseSessionStorage implements SupportedStorage {
 
 	/**
 	 * Persist session data to disk immediately
+	 * Uses steno for atomic writes with fsync guarantees
+	 * This prevents race conditions in rapid CLI command sequences
 	 */
-	private persist(): void {
+	private async persist(): Promise<void> {
 		try {
-			// Ensure directory exists
-			const dir = path.dirname(this.persistPath);
-			if (!fs.existsSync(dir)) {
-				fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-			}
-
-			// Write atomically with temp file
 			const data = Object.fromEntries(this.storage);
-			const tempFile = `${this.persistPath}.tmp`;
-			fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), {
-				mode: 0o600
-			});
-			fs.renameSync(tempFile, this.persistPath);
+			const jsonContent = JSON.stringify(data, null, 2);
 
-			this.logger.debug('Persisted session to disk');
+			// steno handles atomic writes with temp file + rename
+			// and ensures data is flushed to disk
+			await this.writer.write(jsonContent + '\n');
+
+			this.logger.debug('Persisted session to disk (steno)');
 		} catch (error) {
 			this.logger.error('Failed to persist session:', error);
 			// Don't throw - session is still in memory
@@ -84,8 +89,12 @@ export class SupabaseSessionStorage implements SupportedStorage {
 	/**
 	 * Get item from storage
 	 * Supabase will call this to retrieve session data
+	 * Returns a promise to ensure initialization completes first
 	 */
-	getItem(key: string): string | null {
+	async getItem(key: string): Promise<string | null> {
+		// Wait for initialization to complete
+		await this.initPromise;
+
 		const value = this.storage.get(key) ?? null;
 		this.logger.debug('getItem called', { key, hasValue: !!value });
 		return value;
@@ -96,28 +105,41 @@ export class SupabaseSessionStorage implements SupportedStorage {
 	 * Supabase will call this to store/update session data
 	 * CRITICAL: This is called during token refresh - must persist immediately
 	 */
-	setItem(key: string, value: string): void {
+	async setItem(key: string, value: string): Promise<void> {
+		// Wait for initialization to complete
+		await this.initPromise;
+
 		this.logger.debug('setItem called', { key });
 		this.storage.set(key, value);
-		this.persist(); // Immediately persist on every write
+
+		// Immediately persist on every write
+		// steno ensures atomic writes with fsync
+		await this.persist();
 	}
 
 	/**
 	 * Remove item from storage
 	 * Supabase will call this during sign out
 	 */
-	removeItem(key: string): void {
+	async removeItem(key: string): Promise<void> {
+		// Wait for initialization to complete
+		await this.initPromise;
+
 		this.logger.debug('removeItem called', { key });
 		this.storage.delete(key);
-		this.persist();
+		await this.persist();
 	}
 
 	/**
 	 * Clear all session data
+	 * Useful for complete logout scenarios
 	 */
-	clear(): void {
+	async clear(): Promise<void> {
+		// Wait for initialization to complete
+		await this.initPromise;
+
 		this.logger.debug('clear called');
 		this.storage.clear();
-		this.persist();
+		await this.persist();
 	}
 }
