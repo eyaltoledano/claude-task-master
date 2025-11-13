@@ -1222,6 +1222,7 @@ export {
 	getOllamaBaseURL,
 	getAzureBaseURL,
 	getBedrockBaseURL,
+	getSnowflakeBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,
 	isCodebaseAnalysisEnabled,

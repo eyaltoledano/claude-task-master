@@ -68,7 +68,8 @@ export {
 } from './schema/index.js';
 
 // ==================== Utils Exports ====================
-export { ModelHelpers } from './utils/index.js';
+export { ModelHelpers, validateCortexCodeAuth } from './utils/index.js';
+export type { ValidationResult } from './utils/index.js';
 
 // Message converter exports (now in cli/)
 export {
