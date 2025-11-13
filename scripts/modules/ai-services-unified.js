@@ -89,7 +89,7 @@ const PROVIDERS = {
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider(),
-	snowflake: new SnowflakeProvider()
+	'snowflake': new SnowflakeProvider()
 };
 
 function _getProvider(providerName) {
