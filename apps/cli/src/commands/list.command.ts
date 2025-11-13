@@ -30,6 +30,7 @@ import {
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
+import { isTaskComplete } from '../utils/task-status.js';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -344,12 +345,12 @@ export class ListTasksCommand extends Command {
 		// Build set of completed task IDs (including subtasks)
 		const completedIds = new Set<string>();
 		tasks.forEach((t) => {
-			if (t.status === 'done' || t.status === 'completed') {
+			if (isTaskComplete(t.status)) {
 				completedIds.add(String(t.id));
 			}
 			if (t.subtasks) {
 				t.subtasks.forEach((st) => {
-					if (st.status === 'done' || st.status === 'completed') {
+					if (isTaskComplete(st.status as TaskStatus)) {
 						completedIds.add(`${t.id}.${st.id}`);
 					}
 				});

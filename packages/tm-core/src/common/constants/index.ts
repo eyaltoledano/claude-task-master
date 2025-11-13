@@ -37,6 +37,39 @@ export const TASK_STATUSES: readonly TaskStatus[] = [
 ] as const;
 
 /**
+ * Terminal complete statuses - tasks that are finished and satisfy dependencies
+ * These statuses indicate a task is in a final state and:
+ * - Should count toward completion percentage
+ * - Should be considered satisfied for dependency resolution
+ * - Should not be selected as "next task"
+ *
+ * Note: 'completed' is a workflow-specific alias for 'done' used in some contexts
+ */
+export const TERMINAL_COMPLETE_STATUSES: readonly TaskStatus[] = [
+	'done',
+	'completed',
+	'cancelled'
+] as const;
+
+/**
+ * Check if a task status represents a terminal complete state
+ *
+ * @param status - The task status to check
+ * @returns true if the status represents a completed/terminal task
+ *
+ * @example
+ * ```typescript
+ * isTaskComplete('done')      // true
+ * isTaskComplete('completed') // true
+ * isTaskComplete('cancelled') // true
+ * isTaskComplete('pending')   // false
+ * ```
+ */
+export function isTaskComplete(status: TaskStatus): boolean {
+	return TERMINAL_COMPLETE_STATUSES.includes(status);
+}
+
+/**
  * Valid task priority values
  */
 export const TASK_PRIORITIES: readonly TaskPriority[] = [
