@@ -82,6 +82,7 @@ export const UNSUPPORTED_KEYWORDS = [
 	'minLength',
 	'maxLength',
 	'format',
+    'pattern',
 
 	// Array constraints
 	'uniqueItems',
@@ -122,6 +123,10 @@ export function buildConstraintDescription(schema: JSONSchema): string {
 
 	if (schema.format) {
 		constraints.push(`format: ${schema.format}`);
+	}
+
+	if (schema.pattern) {
+		constraints.push(`pattern: ${schema.pattern}`);
 	}
 
 	// Number constraints
@@ -323,6 +328,12 @@ export function removeUnsupportedFeatures(schema: JSONSchema): JSONSchema {
 					(key) => key in cleanedProps && !optionalFields.has(key)
 				);
 			}
+		} else {
+			// CRITICAL: Always provide required array, even if empty
+			// This ensures consistency across all object schemas
+			if (!cleaned.required) {
+				cleaned.required = [];
+			}
 		}
 	}
 
@@ -340,5 +351,121 @@ export function removeUnsupportedFeatures(schema: JSONSchema): JSONSchema {
 	_schemaCache.set(schema, cleaned);
 
 	return cleaned;
+}
+
+// ==================== Token Management ====================
+// Unified token handling for both Snowflake and Cortex Code providers
+
+/**
+ * Model information from supported-models.json
+ */
+export interface ModelInfo {
+	id: string;
+	max_tokens: number;
+	[key: string]: any;
+}
+
+/**
+ * Get the maximum output tokens for a model from supported-models.json
+ * 
+ * @param modelId - The model ID (e.g., "claude-haiku-4-5" or "cortex/claude-haiku-4-5")
+ * @param providerPrefix - The provider prefix (e.g., "snowflake" or "cortex")
+ * @param supportedModels - The models array from supported-models.json for the provider
+ * @returns Maximum output tokens for the model (defaults to 8192 if not found)
+ */
+export function getModelMaxTokens(
+	modelId: string,
+	providerPrefix: string,
+	supportedModels: ModelInfo[]
+): number {
+	// Normalize model ID - remove provider prefix if present
+	const normalizedId = modelId.startsWith(`${providerPrefix}/`)
+		? modelId
+		: `${providerPrefix}/${modelId}`;
+
+	// Find model in supported models
+	const modelInfo = supportedModels.find((m) => m.id === normalizedId);
+
+	// Return max_tokens or default to 8192
+	return modelInfo?.max_tokens || 8192;
+}
+
+/**
+ * Normalize token parameters for a request
+ * Enforces minimum of 8192 tokens and caps at model maximum
+ * 
+ * @param params - Request parameters object (will be modified in place)
+ * @param modelId - The model ID
+ * @param providerPrefix - The provider prefix (e.g., "snowflake" or "cortex")
+ * @param supportedModels - The models array from supported-models.json for the provider
+ * @returns The modified params object
+ */
+export function normalizeTokenParams(
+	params: any,
+	modelId: string,
+	providerPrefix: string,
+	supportedModels: ModelInfo[]
+): any {
+	const modelMaxTokens = getModelMaxTokens(modelId, providerPrefix, supportedModels);
+	const MIN_TOKENS = 8192;
+
+	// Set maxTokens if not present
+	if (!params.maxTokens) {
+		params.maxTokens = modelMaxTokens;
+	} else if (params.maxTokens < MIN_TOKENS) {
+		// Enforce minimum of 8192
+		params.maxTokens = MIN_TOKENS;
+	} else if (params.maxTokens > modelMaxTokens) {
+		// Cap at model's maximum
+		params.maxTokens = modelMaxTokens;
+	}
+
+	return params;
+}
+
+/**
+ * Transform request body for Snowflake API
+ * Handles token parameters and schema transformation
+ * 
+ * @param body - Request body object (will be modified in place)
+ * @param modelId - The normalized model ID (without snowflake/ prefix)
+ * @param supportedModels - The models array from supported-models.json for snowflake provider
+ * @returns Object with { modified: boolean, body: transformedBody }
+ */
+export function transformSnowflakeRequestBody(
+	body: any,
+	modelId: string,
+	supportedModels: ModelInfo[]
+): { modified: boolean; body: any } {
+	let modified = false;
+
+	// 1. Inject max_completion_tokens based on model from supported-models.json
+	const modelMaxTokens = getModelMaxTokens(modelId, 'snowflake', supportedModels);
+
+	// Always set max_completion_tokens to the model's maximum capability
+	if (!body.max_completion_tokens) {
+		body.max_completion_tokens = modelMaxTokens;
+		modified = true;
+	} else if (body.max_completion_tokens > modelMaxTokens) {
+		// Cap at model's maximum
+		body.max_completion_tokens = modelMaxTokens;
+		modified = true;
+	}
+
+	// Remove max_tokens if present (Snowflake uses max_completion_tokens)
+	if (body.max_tokens) {
+		delete body.max_tokens;
+		modified = true;
+	}
+
+	// 2. Handle schema transformation for structured outputs
+	if (body.response_format?.type === 'json_schema' && body.response_format.json_schema?.schema) {
+		const originalSchema = body.response_format.json_schema.schema;
+		const cleanedSchema = removeUnsupportedFeatures(originalSchema);
+		body.response_format.json_schema.schema = cleanedSchema;
+		modified = true;
+	}
+
+	return { modified, body };
 }
 

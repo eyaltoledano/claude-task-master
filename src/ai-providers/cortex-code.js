@@ -15,7 +15,8 @@ import {
 import {
 	generateObjectWithPromptEngineering,
 	normalizeModelId as normalizeModelIdUtil,
-	validateCortexCodeAuth
+	validateCortexCodeAuth,
+	normalizeTokenParams
 } from '@tm/ai-sdk-provider-cortex-code';
 
 /**
@@ -134,6 +135,10 @@ export class CortexCodeProvider extends BaseAIProvider {
 			modelId: this.normalizeModelId(params.modelId)
 		};
 
+		// Token handling: Use unified function from schema/transformer.ts
+		const cortexModels = getSupportedModelsForProvider('cortex-code');
+		normalizeTokenParams(normalized, normalized.modelId, 'cortex', cortexModels);
+
 		// OpenAI models and structured outputs don't support temperature
 		if (normalized.modelId?.includes('openai') || params.objectName) {
 			delete normalized.temperature;
@@ -178,6 +183,10 @@ export class CortexCodeProvider extends BaseAIProvider {
 	 * @returns {string[]} List of supported model IDs
 	 */
 	getSupportedModels() {
+		// Return array of model IDs (extract from objects if needed)
+		if (this.supportedModels.length > 0 && typeof this.supportedModels[0] === 'object') {
+			return this.supportedModels.map(m => m.id);
+		}
 		return this.supportedModels;
 	}
 
@@ -188,6 +197,12 @@ export class CortexCodeProvider extends BaseAIProvider {
 	 */
 	isModelSupported(modelId) {
 		if (!modelId) return false;
-		return this.supportedModels.includes(String(modelId).toLowerCase());
+		const normalizedId = String(modelId).toLowerCase();
+		
+		// Handle both object and string formats
+		if (this.supportedModels.length > 0 && typeof this.supportedModels[0] === 'object') {
+			return this.supportedModels.some(m => m.id.toLowerCase() === normalizedId);
+		}
+		return this.supportedModels.includes(normalizedId);
 	}
 }

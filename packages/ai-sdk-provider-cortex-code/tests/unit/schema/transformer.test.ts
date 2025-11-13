@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { UNSUPPORTED_KEYWORDS, removeUnsupportedFeatures, type JSONSchema } from '../../src/schema/transformer.js';
-import { ModelHelpers } from '../../src/utils/model-helpers.js';
+import { UNSUPPORTED_KEYWORDS, removeUnsupportedFeatures, type JSONSchema } from '../../../src/schema/transformer.js';
+import { ModelHelpers } from '../../../src/utils/model-helpers.js';
 
 // Unsupported keywords validation matrix
 const unsupportedKeywordsMatrix = [

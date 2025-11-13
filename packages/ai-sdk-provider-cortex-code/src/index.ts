@@ -38,33 +38,20 @@ export {
 } from './core/index.js';
 
 // ==================== CLI Exports ====================
-export { ConnectionManager } from './cli/index.js';
-export type {
-	SnowflakeConnection,
-	SnowflakeConnections,
-	CliCheckResult,
-	ValidationParams,
-	ValidationResult
-} from './cli/index.js';
-export {
-	detectAvailableFeatures,
-	detectAvailableSkills,
-	clearFeatureCache,
-	hasFeature,
-	getAvailableFeatureNames
-} from './cli/index.js';
-export type {
-	CortexCodeFeatures,
-	CortexCodeSkill
-} from './cli/index.js';
+// Minimal exports - only used in integration tests
+export { detectAvailableFeatures } from './cli/index.js';
+export type { CortexCodeFeatures } from './cli/index.js';
 
 // ==================== Schema Exports ====================
 export {
 	buildConstraintDescription,
 	removeUnsupportedFeatures,
-	UNSUPPORTED_KEYWORDS
+	UNSUPPORTED_KEYWORDS,
+	getModelMaxTokens,
+	normalizeTokenParams,
+	transformSnowflakeRequestBody
 } from './schema/index.js';
-export type { JSONSchema, JSONSchemaType } from './schema/index.js';
+export type { JSONSchema, JSONSchemaType, ModelInfo } from './schema/index.js';
 export { StructuredOutputGenerator } from './schema/index.js';
 export type {
 	StructuredOutputMessage,
@@ -82,6 +69,8 @@ export {
 
 // ==================== Utils Exports ====================
 export { ModelHelpers } from './utils/index.js';
+
+// Message converter exports (now in cli/)
 export {
 	convertToCortexCodeMessages,
 	convertFromCortexCodeResponse,
@@ -89,29 +78,12 @@ export {
 	escapeShellArg,
 	buildCliArgs,
 	formatConversationContext
-} from './utils/index.js';
+} from './cli/index.js';
 
 // ==================== Backward Compatibility Aliases ====================
 // Import classes for creating function aliases
-import { ConnectionManager } from './cli/connection-manager.js';
 import { ModelHelpers } from './utils/model-helpers.js';
 import { StructuredOutputGenerator } from './schema/structured-output.js';
-
-/**
- * Connection management function aliases for backward compatibility
- * @deprecated Use ConnectionManager class methods instead
- */
-export const discoverConnections = ConnectionManager.discoverConnections.bind(ConnectionManager);
-export const getConnection = ConnectionManager.getConnection.bind(ConnectionManager);
-export const getDefaultConnection = ConnectionManager.getDefaultConnection.bind(ConnectionManager);
-export const listConnections = ConnectionManager.listConnections.bind(ConnectionManager);
-export const validateConnection = ConnectionManager.validateConnection.bind(ConnectionManager);
-export const clearConnectionCache = ConnectionManager.clearConnectionCache.bind(ConnectionManager);
-export const checkCortexCliInstallation = ConnectionManager.checkCliInstallation.bind(ConnectionManager);
-export const getCortexCodeSetupInstructions = ConnectionManager.getSetupInstructions.bind(ConnectionManager);
-export const validateCortexCodeAuth = ConnectionManager.validateAuth.bind(ConnectionManager);
-export const validateCortexCodeAuthSync = ConnectionManager.validateAuthSync.bind(ConnectionManager);
-export const clearValidationCache = ConnectionManager.clearValidationCache.bind(ConnectionManager);
 
 /**
  * Model helper function aliases for backward compatibility

@@ -106,10 +106,3 @@ export interface CortexCodeLanguageModelOptions {
 	/** Model settings */
 	settings?: CortexCodeSettings;
 }
-
-/**
- * Snowflake connection configuration from config.toml
- * @deprecated Use SnowflakeConnection from '../cli/connection-manager.js' instead
- */
-export type { SnowflakeConnection } from '../cli/connection-manager.js';
-

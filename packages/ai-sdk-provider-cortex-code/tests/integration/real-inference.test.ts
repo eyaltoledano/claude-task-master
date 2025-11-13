@@ -4,13 +4,12 @@
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { createCortexCode } from '../../src/core/provider.js';
-import { ConnectionManager } from '../../src/cli/connection-manager.js';
 import { ModelHelpers } from '../../src/utils/model-helpers.js';
 import { StructuredOutputGenerator } from '../../src/schema/structured-output.js';
 import { generateText } from 'ai';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { getLogger, LogLevel } from '../../src/utils/logger.js';
+import { execSync } from 'child_process';
 
 // Load supported models from JSON - use relative path from test file
 const supportedModelsPath = resolve(__dirname, '../../../../scripts/modules/supported-models.json');
@@ -28,47 +27,21 @@ let hasCredentials = false;
 let provider: ReturnType<typeof createCortexCode>;
 let availableModel: string | null = null;
 
-// Configure logger for tests
-const logger = getLogger({ level: LogLevel.INFO, trackTiming: true });
+// Simple CLI check helper
+function checkCliInstallation(): { available: boolean; version?: string } {
+	try {
+		const output = execSync('cortex --version', { encoding: 'utf-8', timeout: 3000 });
+		const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
+		return { available: true, version: versionMatch?.[1] };
+	} catch {
+		return { available: false };
+	}
+}
 
 // Cleanup after all tests
 afterAll(async () => {
-	// Clear any cached connections and validation state
-	ConnectionManager.clearConnectionCache();
-	ConnectionManager.clearValidationCache();
-	
 	// Clear the provider reference
 	provider = null as any;
-	
-	// Print performance report
-	console.log('\n' + '='.repeat(80));
-	console.log('📊 PERFORMANCE REPORT');
-	console.log('='.repeat(80) + '\n');
-	
-	logger.printTimingReport();
-	
-	// Identify slow models
-	const slowModels = logger.getSlowestModels(10);
-	const verySlowModels = slowModels.filter(m => m.avgMs > 5000);
-	
-	if (verySlowModels.length > 0) {
-		console.log('\n⚠️  SLOW MODELS (>5s average):');
-		verySlowModels.forEach(({ model, avgMs, count }) => {
-			console.log(`  - ${model}: ${(avgMs / 1000).toFixed(2)}s average (${count} calls)`);
-		});
-		console.log('\nConsider disabling these models in tests for faster execution.');
-	}
-	
-	// Export metrics to file
-	const metricsJson = logger.exportMetrics();
-	const fs = await import('fs');
-	fs.writeFileSync('test-performance-metrics.json', metricsJson);
-	console.log('\n📁 Metrics exported to: test-performance-metrics.json\n');
-	
-	// Force garbage collection hint
-	if (global.gc) {
-		global.gc();
-	}
 	
 	// Give time for any pending operations to complete
 	await new Promise(resolve => setTimeout(resolve, 100));
@@ -101,7 +74,7 @@ const createAdaptedGenerateText = (model: any) => async (params: any) => {
 };
 
 beforeAll(async () => {
-	const cliCheck = await ConnectionManager.checkCliInstallation();
+	const cliCheck = checkCliInstallation();
 	cliAvailable = cliCheck.available;
 
 	if (!cliAvailable) {
@@ -109,13 +82,8 @@ beforeAll(async () => {
 		return;
 	}
 
-	const authResult = await ConnectionManager.validateAuth({});
-	hasCredentials = authResult.valid;
-
-	if (!hasCredentials) {
-		console.warn('⚠️  No valid credentials - skipping real inference tests');
-		return;
-	}
+	// Assume credentials are valid if CLI is installed
+	hasCredentials = true;
 
 	provider = createCortexCode();
 	
@@ -150,18 +118,18 @@ const conversationMatrix = [
 	[
 		'Addition chain',
 		[
-			{ role: 'user' as const, content: 'What is 5+3?' },
-			{ role: 'assistant' as const, content: '8' },
-			{ role: 'user' as const, content: 'Add 2 to that.' }
+			{ role: 'user', content: 'What is 5+3?' },
+			{ role: 'assistant', content: '8' },
+			{ role: 'user', content: 'Add 2 to that.' }
 		],
 		/10/
 	],
 	[
 		'Subtraction',
 		[
-			{ role: 'user' as const, content: 'What is 10-3?' },
-			{ role: 'assistant' as const, content: '7' },
-			{ role: 'user' as const, content: 'Subtract 2.' }
+			{ role: 'user', content: 'What is 10-3?' },
+			{ role: 'assistant', content: '7' },
+			{ role: 'user', content: 'Subtract 2.' }
 		],
 		/5/
 	]
@@ -187,10 +155,10 @@ const structuredOutputMatrix = [
 	[
 		'Simple person',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
-				name: { type: 'string' as const },
-				age: { type: 'number' as const }
+				name: { type: 'string' },
+				age: { type: 'number' }
 			},
 			required: ['name', 'age']
 		},
@@ -201,11 +169,11 @@ const structuredOutputMatrix = [
 	[
 		'Task object',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
-				id: { type: 'number' as const },
-				title: { type: 'string' as const },
-				done: { type: 'boolean' as const }
+				id: { type: 'number' },
+				title: { type: 'string' },
+				done: { type: 'boolean' }
 			},
 			required: ['id', 'title', 'done']
 		},
@@ -216,11 +184,11 @@ const structuredOutputMatrix = [
 	[
 		'User profile',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
-				username: { type: 'string' as const },
-				score: { type: 'number' as const },
-				active: { type: 'boolean' as const }
+				username: { type: 'string' },
+				score: { type: 'number' },
+				active: { type: 'boolean' }
 			},
 			required: ['username', 'score', 'active']
 		},
@@ -267,10 +235,10 @@ const schemaTransformationMatrix = [
 	[
 		'String constraints',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
 				text: {
-					type: 'string' as const,
+					type: 'string',
 					minLength: 5,
 					maxLength: 100,
 					format: 'email'
@@ -285,10 +253,10 @@ const schemaTransformationMatrix = [
 	[
 		'Number constraints',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
 				value: {
-					type: 'number' as const,
+					type: 'number',
 					minimum: 0,
 					maximum: 100
 				}
@@ -302,13 +270,13 @@ const schemaTransformationMatrix = [
 	[
 		'Array constraints',
 		{
-			type: 'object' as const,
+			type: 'object',
 			properties: {
 				items: {
-					type: 'array' as const,
+					type: 'array',
 					minItems: 1,
 					maxItems: 5,
-					items: { type: 'string' as const }
+					items: { type: 'string' }
 				}
 			},
 			required: ['items']
@@ -344,8 +312,8 @@ describe.each(schemaTransformationMatrix)(
 // Feature matrix for model capability tests - ALL models from Snowflake Cortex REST API
 // Dynamically generated from supported-models.json
 const modelCapabilityMatrix: ReadonlyArray<readonly [string, boolean]> = cortexCodeModels.map((model: any) => {
-	// Claude and OpenAI models support structured outputs
-	const supportsStructured = model.id.startsWith('claude-') || model.id.startsWith('openai-');
+	// Claude and OpenAI models support structured outputs (check for cortex/ prefix)
+	const supportsStructured = model.id.includes('/claude-') || model.id.includes('/openai-');
 	return [model.id, supportsStructured] as const;
 });
 
@@ -373,7 +341,7 @@ console.log('[TRACE] Inside Model Capabilities describe block');
 	describe('Prompt Caching Support', () => {
 		it('should document models with prompt caching support', () => {
 		const promptCachingModels = cortexCodeModels.filter((model: any) => 
-			model.id.startsWith('claude-') || model.id.startsWith('openai-')
+			model.id.includes('/claude-') || model.id.includes('/openai-')
 		);
 		
 		console.log(`\n💾 Prompt Caching Models: ${promptCachingModels.length}/${cortexCodeModels.length}`);
@@ -455,7 +423,7 @@ describe.each(errorHandlingMatrix)(
 				await generateText({ model, prompt: 'test' });
 				// If it succeeds, it means the model exists - skip the error check
 				return;
-			} catch (error) {
+			} catch (error: any) {
 				expect(error).toBeDefined();
 				expect(error.message).toMatch(errorPattern);
 			}

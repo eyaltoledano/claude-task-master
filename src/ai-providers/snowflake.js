@@ -12,17 +12,10 @@
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { log } from '../../scripts/modules/utils.js';
-import MODEL_MAP from '../../scripts/modules/supported-models.json' with { type: 'json' };
-import { removeUnsupportedFeatures, UNSUPPORTED_KEYWORDS } from '../../packages/ai-sdk-provider-cortex-code/src/schema/transformer.js';
+import { transformSnowflakeRequestBody } from '@tm/ai-sdk-provider-cortex-code';
+import { getSupportedModelsForProvider } from '../../scripts/modules/config-manager.js';
 
 export class SnowflakeProvider extends OpenAICompatibleProvider {
-  /**
-   * Snowflake-unsupported JSON Schema constraint keywords
-   * Re-exported from shared schema transformer for compatibility
-   * @see https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
-   */
-  static UNSUPPORTED_KEYWORDS = UNSUPPORTED_KEYWORDS;
-
   constructor(options = {}) {
     super({
       name: 'Snowflake',
@@ -37,7 +30,6 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     const { clientFactory } = options;
 
     this.clientFactory = clientFactory;
-    this.modelMap = MODEL_MAP; // For max_tokens lookup in request transformer
   }
 
   validateAuth(params) {
@@ -49,7 +41,9 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
   handleError(operation, error) {
     const errorMessage = error?.message || 'Unknown error occurred';
-    throw new Error(`${this.name} API error during ${operation}: ${errorMessage}`);
+    throw new Error(`${this.name} API error during ${operation}: ${errorMessage}`, {
+      cause: error
+    });
   }
 
   /**
@@ -74,17 +68,6 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     
     // Append the required path
     return `${cleanBaseURL}${requiredPath}`;
-  }
-
-  /**
-   * Recursively removes Snowflake-unsupported features from JSON Schema
-   * Uses the shared schema transformer for better performance and consistency
-   * @private
-   * @param {object} schema - JSON Schema object
-   * @returns {object} Cleaned schema
-   */
-  _removeUnsupportedFeatures(schema) {
-    return removeUnsupportedFeatures(schema);
   }
 
   /**
@@ -136,54 +119,22 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
 
       const baseURL = this.getBaseURL(params);
 
-      // Capture methods and data for use in fetch wrapper
-      const removeUnsupportedFeatures = this._removeUnsupportedFeatures.bind(this);
-      const modelMap = this.modelMap;
-
       // Create fetch wrapper that transforms requests for Snowflake compatibility
       const fetchWrapper = async (url, options) => {
         // Only transform POST requests to chat completions endpoint
         if (options?.method === 'POST' && url.includes('/chat/completions') && options?.body) {
           try {
             const body = JSON.parse(options.body);
-            let modified = false;
-
-            // 1. Inject max_completion_tokens based on model from supported-models.json
-            // The body.model already contains the normalized model ID (e.g., "claude-haiku-4-5")
-            const modelId = `snowflake/${body.model}`;
-            const snowflakeModels = modelMap?.snowflake || [];
-            const modelInfo = snowflakeModels.find(m => m.id === modelId);
-            const modelMaxTokens = modelInfo?.max_tokens || 64000; // Default to 64K if not found
             
-            // Always set max_completion_tokens to the model's maximum capability
-            if (!body.max_completion_tokens) {
-              body.max_completion_tokens = modelMaxTokens;
-              modified = true;
-            } else if (body.max_completion_tokens > modelMaxTokens) {
-              // Cap at model's maximum
-              body.max_completion_tokens = modelMaxTokens;
-              modified = true;
-            }
+            // Use unified transformer from schema/transformer.ts
+            const snowflakeModels = getSupportedModelsForProvider('snowflake');
+            const { modified, body: transformedBody } = transformSnowflakeRequestBody(
+              body,
+              body.model, // Already normalized (e.g., "claude-haiku-4-5")
+              snowflakeModels
+            );
             
-            // Remove max_tokens if present (Snowflake uses max_completion_tokens)
-            if (body.max_tokens) {
-              delete body.max_tokens;
-              modified = true;
-            }
-
-            // 2. Transform response_format for OpenAI/Claude structured outputs
-            // Only clean schema if model supports structured outputs (OpenAI or Claude)
-            const modelSupportsStructuredOutputs = body.model?.includes('openai') || body.model?.includes('claude');
-            
-            if (modelSupportsStructuredOutputs && body.response_format && typeof body.response_format === 'object') {
-              // Remove Snowflake-unsupported features from JSON schema
-              if (body.response_format.type === 'json_schema' && body.response_format.json_schema?.schema) {
-                body.response_format.json_schema.schema = removeUnsupportedFeatures(
-                  body.response_format.json_schema.schema
-                );
-                modified = true;
-              }
-            }
+            const finalBody = transformedBody;
 
             // Debug logging if enabled
             if (debugMode) {
@@ -196,7 +147,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
               } else {
                 console.error('[SNOWFLAKE DEBUG] Request Body:');
               }
-              console.error(JSON.stringify(body, null, 2));
+              console.error(JSON.stringify(finalBody, null, 2));
               console.error('[SNOWFLAKE DEBUG] ==============================================\n');
             }
 
@@ -204,7 +155,7 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
             if (modified) {
               options = {
                 ...options,
-                body: JSON.stringify(body)
+                body: JSON.stringify(finalBody)
               };
             }
           } catch (e) {
@@ -245,8 +196,8 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
   }
 
   /**
-   * Apply Snowflake schema transformations to params
-   * Converts zod schemas to JSON Schema and cleans unsupported features
+   * Convert Zod schemas to JSON Schema format
+   * Schema cleaning is handled by transformSnowflakeRequestBody() in fetchWrapper
    * @private
    * @param {object} params - Parameters object that may contain a schema
    */
@@ -256,14 +207,11 @@ export class SnowflakeProvider extends OpenAICompatibleProvider {
     }
 
     // Convert zod schema to JSON Schema if toJSONSchema method exists
+    // Schema cleaning happens later in fetchWrapper via transformSnowflakeRequestBody()
     if (typeof params.schema.toJSONSchema === 'function') {
       params.schema = params.schema.toJSONSchema();
     }
-
-    // Clean the schema using shared transformer
-    if (params.schema && typeof params.schema === 'object') {
-      params.schema = this._removeUnsupportedFeatures(params.schema);
-    }
+    // If no toJSONSchema method, it's a pure Zod schema - let AI SDK handle it
   }
 
   /**

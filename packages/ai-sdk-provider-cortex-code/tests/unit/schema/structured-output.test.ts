@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
-import { StructuredOutputGenerator } from '../../src/schema/structured-output.js';
-import type { JSONSchema } from '../../src/schema/transformer.js';
+import { StructuredOutputGenerator } from '../../../src/schema/structured-output.js';
+import type { JSONSchema } from '../../../src/schema/transformer.js';
 
 // System prompt validation matrix - runs in parallel
 const systemPromptMatrix = [

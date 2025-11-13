@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { ModelHelpers } from '../../src/utils/model-helpers.js';
+import { ModelHelpers } from '../../../src/utils/model-helpers.js';
 
 describe('ModelHelpers Feature Matrix', () => {
 	// Model capability matrix for parallel testing

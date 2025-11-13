@@ -23,13 +23,12 @@ import {
 	createTimeoutError,
 	parseErrorFromStderr
 } from './errors.js';
-import { createPromptFromMessages } from '../utils/message-converter.js';
+import { createPromptFromMessages } from '../cli/message-converter.js';
 import type {
 	CortexCodeLanguageModelOptions,
 	CortexCodeModelId,
 	CortexCodeSettings
 } from './types.js';
-import { getLogger } from '../utils/logger.js';
 
 /**
  * Cortex Code CLI Language Model implementation for AI SDK v5
@@ -43,7 +42,6 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 
 	readonly modelId: CortexCodeModelId;
 	readonly settings: CortexCodeSettings;
-	private logger = getLogger({ prefix: 'LanguageModel' });
 
 	constructor(options: CortexCodeLanguageModelOptions) {
 		this.modelId = options.id;
@@ -154,13 +152,6 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 		options: { timeout?: number } = {}
 	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 		const timeout = options.timeout ?? this.settings.timeout ?? 60000;
-		const startTime = this.logger.startTiming(this.modelId, 'executeCortexCli');
-
-		this.logger.debug('Executing Cortex CLI', {
-			modelId: this.modelId,
-			timeout,
-			argsPreview: args.join(' ').substring(0, 100)
-		});
 
 		return new Promise((resolve, reject) => {
 			const child = spawn('cortex', args, {
@@ -204,21 +195,10 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 					clearTimeout(timeoutId);
 				}
 
-				// Log completion details
-				this.logger.trace('CLI execution completed', {
-					modelId: this.modelId,
-					exitCode: code,
-					stdoutLength: stdout.length,
-					stderrLength: stderr.length
-				});
-
 				// Clean up streams and unref child to allow Jest to exit
 				if (child.stdout) child.stdout.destroy();
 				if (child.stderr) child.stderr.destroy();
 				child.unref();
-
-				// End timing
-				this.logger.endTiming(startTime, this.modelId, 'executeCortexCli', 'success');
 
 				resolve({
 					stdout,
@@ -232,10 +212,6 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 				if (timeoutId) {
 					clearTimeout(timeoutId);
 				}
-
-				this.logger.endTiming(startTime, this.modelId, 'executeCortexCli', 'error', {
-					error: error.message
-				});
 
 				reject(
 					createInstallationError({
@@ -371,13 +347,6 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 		finishReason: LanguageModelV2FinishReason;
 		warnings: LanguageModelV2CallWarning[];
 	}> {
-		const startTime = this.logger.startTiming(this.modelId, 'doGenerate');
-		
-		this.logger.info('Starting text generation', {
-			modelId: this.modelId,
-			promptMessages: options.prompt.length
-		});
-
 		try {
 			// Check if CLI is installed
 			const installation = await this.checkCortexCliInstallation();
@@ -456,15 +425,6 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 					warnings: [] as LanguageModelV2CallWarning[]
 				};
 
-				// End timing with success
-				this.logger.endTiming(startTime, this.modelId, 'doGenerate', 'success', {
-					tokenUsage: {
-						input: result.usage.inputTokens,
-						output: result.usage.outputTokens,
-						total: result.usage.totalTokens
-					}
-				});
-
 				return result;
 			} catch (error) {
 				lastError = error as Error;
@@ -475,20 +435,11 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 					'isRetryable' in error &&
 					!(error as any).isRetryable
 				) {
-					this.logger.endTiming(startTime, this.modelId, 'doGenerate', 'error', {
-						error: lastError.message
-					});
 					throw error;
 				}
 
 				// Wait before retrying (exponential backoff)
 				if (attempt < maxRetries) {
-					this.logger.debug('Retrying after error', {
-						modelId: this.modelId,
-						attempt: attempt + 1,
-						maxRetries,
-						error: lastError.message
-					});
 					await new Promise((resolve) =>
 						setTimeout(resolve, Math.pow(2, attempt) * 1000)
 					);
@@ -497,15 +448,9 @@ export class CortexCodeLanguageModel implements LanguageModelV2 {
 		}
 
 		// All retries failed
-		this.logger.endTiming(startTime, this.modelId, 'doGenerate', 'error', {
-			error: lastError?.message || 'All retries failed'
-		});
 		throw lastError!;
 		} catch (error) {
 			// Catch any unexpected errors
-			this.logger.endTiming(startTime, this.modelId, 'doGenerate', 'error', {
-				error: error instanceof Error ? error.message : String(error)
-			});
 			throw error;
 		}
 	}

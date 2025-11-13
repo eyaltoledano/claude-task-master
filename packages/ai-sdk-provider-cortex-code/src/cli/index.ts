@@ -2,26 +2,17 @@
  * CLI management exports for Cortex Code Provider
  */
 
-// Connection Manager exports
-export { ConnectionManager } from './connection-manager.js';
-export type {
-	SnowflakeConnection,
-	SnowflakeConnections,
-	CliCheckResult,
-	ValidationParams,
-	ValidationResult
-} from './connection-manager.js';
+// Feature Detector exports (minimal - only used in integration tests)
+export { detectAvailableFeatures } from './feature-detector.js';
+export type { CortexCodeFeatures } from './feature-detector.js';
 
-// Feature Detector exports
+// Message Converter exports (used internally by language-model)
 export {
-	detectAvailableFeatures,
-	detectAvailableSkills,
-	clearFeatureCache,
-	hasFeature,
-	getAvailableFeatureNames
-} from './feature-detector.js';
-export type {
-	CortexCodeFeatures,
-	CortexCodeSkill
-} from './feature-detector.js';
+	convertToCortexCodeMessages,
+	convertFromCortexCodeResponse,
+	createPromptFromMessages,
+	escapeShellArg,
+	buildCliArgs,
+	formatConversationContext
+} from './message-converter.js';
 

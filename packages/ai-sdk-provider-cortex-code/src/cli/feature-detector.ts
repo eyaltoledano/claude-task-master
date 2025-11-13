@@ -1,9 +1,7 @@
 /**
  * Cortex Code CLI feature detection utilities
  * 
- * This module provides utilities for detecting available features and capabilities
- * of the Cortex Code CLI installation, including version detection, feature flags,
- * and skills support.
+ * Minimal feature detection for integration testing.
  */
 
 import fs from 'fs';
@@ -23,15 +21,6 @@ export interface CortexCodeFeatures {
 	skillsSupport: boolean;
 	/** CLI version if detected */
 	cliVersion: string | null;
-}
-
-/**
- * Cortex Code skill definition
- */
-export interface CortexCodeSkill {
-	name: string;
-	description?: string;
-	[key: string]: any;
 }
 
 // Cache for detected features
@@ -108,70 +97,5 @@ export function detectAvailableFeatures(): CortexCodeFeatures {
 			cliVersion: null
 		};
 	}
-}
-
-/**
- * Clear the feature detection cache
- * Useful for testing or when CLI has been updated
- */
-export function clearFeatureCache(): void {
-	_detectedFeatures = null;
-}
-
-/**
- * Detect available Cortex Code skills from ~/.snova/skills.json
- * 
- * @returns List of available skills, or empty array if none found
- */
-export function detectAvailableSkills(): CortexCodeSkill[] {
-	try {
-		const skillsPath = path.join(os.homedir(), '.snova', 'skills.json');
-
-		if (fs.existsSync(skillsPath)) {
-			const skillsData = fs.readFileSync(skillsPath, 'utf-8');
-			const skills = JSON.parse(skillsData);
-
-			if (Array.isArray(skills) && skills.length > 0) {
-				console.info(`Detected ${skills.length} Cortex Code skills`);
-				return skills;
-			}
-		}
-
-		return [];
-	} catch (error) {
-		console.debug(
-			`Failed to load skills: ${error instanceof Error ? error.message : String(error)}`
-		);
-		return [];
-	}
-}
-
-/**
- * Check if a specific feature is available
- * 
- * @param featureName - Name of the feature to check
- * @returns True if feature is available
- */
-export function hasFeature(featureName: keyof CortexCodeFeatures): boolean {
-	const features = detectAvailableFeatures();
-	const value = features[featureName];
-	return typeof value === 'boolean' ? value : value !== null;
-}
-
-/**
- * Get list of available feature names
- * 
- * @returns Array of available feature names
- */
-export function getAvailableFeatureNames(): string[] {
-	const features = detectAvailableFeatures();
-	const available: string[] = [];
-
-	if (features.planningMode) available.push('planning mode');
-	if (features.mcpControl) available.push('MCP control');
-	if (features.skillsSupport) available.push('skills support');
-	if (features.cliVersion) available.push(`version ${features.cliVersion}`);
-
-	return available;
 }
 

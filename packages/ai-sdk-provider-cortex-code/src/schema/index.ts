@@ -6,9 +6,12 @@
 export {
 	buildConstraintDescription,
 	removeUnsupportedFeatures,
-	UNSUPPORTED_KEYWORDS
+	UNSUPPORTED_KEYWORDS,
+	getModelMaxTokens,
+	normalizeTokenParams,
+	transformSnowflakeRequestBody
 } from './transformer.js';
-export type { JSONSchema, JSONSchemaType } from './transformer.js';
+export type { JSONSchema, JSONSchemaType, ModelInfo } from './transformer.js';
 
 // Structured Output Generator exports
 export { StructuredOutputGenerator } from './structured-output.js';
@@ -20,11 +23,11 @@ export type {
 	GenerateObjectResult
 } from './structured-output.js';
 
-// JSON Parser exports
+// JSON Parser exports (now in structured-output.ts)
 export {
 	extractJson,
 	extractStreamJson,
 	isValidJson,
 	cleanJsonText
-} from './json-parser.js';
+} from './structured-output.js';
 

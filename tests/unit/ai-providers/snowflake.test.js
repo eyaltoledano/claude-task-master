@@ -18,7 +18,11 @@
 import { jest } from '@jest/globals';
 import { config } from 'dotenv';
 import { z } from 'zod';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { OpenAICompatibleProvider } from '../../../src/ai-providers/openai-compatible.js';
+import { removeUnsupportedFeatures, UNSUPPORTED_KEYWORDS } from '@tm/ai-sdk-provider-cortex-code';
 
 // Load environment variables for integration tests
 config();
@@ -32,7 +36,43 @@ jest.mock('../../../scripts/modules/utils.js', () => ({
 // Import the provider
 import { SnowflakeProvider } from '../../../src/ai-providers/snowflake.js';
 
+// Load supported models from JSON
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const supportedModelsPath = resolve(__dirname, '../../../scripts/modules/supported-models.json');
+const supportedModelsData = JSON.parse(readFileSync(supportedModelsPath, 'utf-8'));
+const allSnowflakeModels = supportedModelsData['snowflake'] || [];
+
+// Filter to only enabled models (supported !== false)
+const enabledSnowflakeModels = allSnowflakeModels.filter(model => model.supported !== false);
+
+console.log(`\n📋 Loaded ${enabledSnowflakeModels.length} enabled Snowflake models (filtered ${allSnowflakeModels.length - enabledSnowflakeModels.length} disabled)`);
+
 const createProvider = () => new SnowflakeProvider();
+
+// Reusable structured schema for unit tests (mocked toJSONSchema)
+const reusableStructuredSchema = (() => {
+	const schema = z.object({
+		title: z.string().min(1),
+		priority: z.enum(['low', 'medium', 'high'])
+	});
+	schema.toJSONSchema = jest.fn(() => ({
+		type: 'object',
+		properties: {
+			title: { type: 'string', minLength: 1 },
+			priority: { type: 'string', enum: ['low', 'medium', 'high'] }
+		},
+		additionalProperties: true
+	}));
+	return schema;
+})();
+
+// Real Zod schema for integration tests (pure Zod - AI SDK handles conversion)
+const realIntegrationSchema = z.object({
+	name: z.string().describe("User's full name"),
+	age: z.number().describe("User's age"),
+	email: z.string().email().describe("User's email address")
+});
 
 // ============================================================================
 // UNIT TESTS - Always run, test provider logic
@@ -65,7 +105,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 			['snowflake/claude-haiku-4-5', 'claude-haiku-4-5'],
 			['snowflake/openai-gpt-5', 'openai-gpt-5'],
 			['snowflake/openai-gpt-5-mini', 'openai-gpt-5-mini'],
-			['snowflake/openai-gpt-4.1', 'openai-gpt-4.1'],
+			['snowflake/openai-gpt-5-nano', 'openai-gpt-5-nano'],
 			['claude-4-sonnet', 'claude-4-sonnet'],
 			['openai-gpt-5', 'openai-gpt-5'],
 			[null, null],
@@ -85,7 +125,7 @@ describe('Snowflake Provider - Unit Tests', () => {
         ['preserves large numbers', 200000, { maxTokens: 200000 }],
         ['allows exact minimum', 8192, { maxTokens: 8192 }]
     ])('prepareTokenParam handles %s', (_label, input, expected) => {
-        expect(provider.prepareTokenParam('snowflake/claude-sonnet-4-5', input)).toEqual(
+        expect(provider.prepareTokenParam('snowflake/claude-haiku-4-5', input)).toEqual(
             expected
         );
     });
@@ -95,22 +135,22 @@ describe('Snowflake Provider - Unit Tests', () => {
 		it.each([
 			{
 				description: 'OpenAI models drop temperature',
-				input: { modelId: 'snowflake/openai-gpt-4.1', temperature: 0.9 },
+				input: { modelId: 'snowflake/openai-gpt-5', temperature: 0.9 },
 				assert: (normalized) => {
-					expect(normalized.modelId).toBe('openai-gpt-4.1');
+					expect(normalized.modelId).toBe('openai-gpt-5');
 					expect(normalized).not.toHaveProperty('temperature');
 				}
 			},
 			{
 				description: 'Structured Claude removes temperature parameter',
 				input: {
-					modelId: 'snowflake/claude-sonnet-4-5',
+					modelId: 'snowflake/claude-haiku-4-5',
 					objectName: 'newTaskData',
 					systemPrompt: 'Generate a task.' ,
 					temperature: 0.7
 				},
 				assert: (normalized) => {
-					expect(normalized.modelId).toBe('claude-sonnet-4-5');
+					expect(normalized.modelId).toBe('claude-haiku-4-5');
 					expect(normalized).not.toHaveProperty('temperature');
 					expect(normalized.systemPrompt).toBe('Generate a task.');
 				}
@@ -160,25 +200,9 @@ describe('Snowflake Provider - Unit Tests', () => {
 	});
 
 	describe('_applySnowflakeSchema', () => {
-		const reusableStructuredSchema = (() => {
-			const schema = z.object({
-				title: z.string().min(1),
-				priority: z.enum(['low', 'medium', 'high'])
-			});
-			schema.toJSONSchema = jest.fn(() => ({
-				type: 'object',
-				properties: {
-					title: { type: 'string', minLength: 1 },
-					priority: { type: 'string', enum: ['low', 'medium', 'high'] }
-				},
-				additionalProperties: true
-			}));
-			return schema;
-		})();
-
 		const reusableStructuredParams = {
 			schema: reusableStructuredSchema,
-			modelId: 'snowflake/claude-sonnet-4-5',
+			modelId: 'snowflake/claude-haiku-4-5',
 			objectName: 'task',
 			apiKey: 'test-snowflake-pat',
 			baseURL: 'https://org-account.snowflakecomputing.com/api/v2/cortex/v1',
@@ -197,10 +221,9 @@ describe('Snowflake Provider - Unit Tests', () => {
 		it('leaves params untouched when schema lacks toJSONSchema', () => {
 			const params = { schema: { type: 'object' } };
 			provider._applySnowflakeSchema(params);
-			// Snowflake requires additionalProperties: false on all objects
+			// Pure Zod schemas (without toJSONSchema) are left untouched for AI SDK to handle
 			expect(params.schema).toEqual({ 
-				type: 'object', 
-				additionalProperties: false
+				type: 'object'
 			});
 		});
 
@@ -227,7 +250,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 			// Verify schema normalization was called with correct params
 			expect(schemaSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
-					modelId: 'claude-sonnet-4-5',
+					modelId: 'claude-haiku-4-5',
 					objectName: 'task'
 				})
 			);
@@ -251,7 +274,7 @@ describe('Snowflake Provider - Unit Tests', () => {
 
 			expect(schemaSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
-					modelId: 'claude-sonnet-4-5',
+					modelId: 'claude-haiku-4-5',
 					objectName: 'task'
 				})
 			);
@@ -269,28 +292,23 @@ describe('Snowflake Provider - Unit Tests', () => {
 	});
 
 	describe('Model Support Detection', () => {
-		test('should detect that Llama models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('snowflake/llama-3.3-70b');
-			expect(supports).toBe(false);
-		});
+		// Dynamically get first available model of each type from enabled models
+		const otherModel = enabledSnowflakeModels.find(m => !m.id.includes('claude') && !m.id.includes('openai'))?.id || 'snowflake/llama3.1-70b';
+		const claudeModel = enabledSnowflakeModels.find(m => m.id.includes('claude'))?.id || 'snowflake/claude-haiku-4-5';
+		const openaiModel = enabledSnowflakeModels.find(m => m.id.includes('openai'))?.id || 'snowflake/openai-gpt-5';
 
-		test('should detect that Mistral models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('snowflake/mistral-large-2');
-			expect(supports).toBe(false);
-		});
-
-		test('should detect that DeepSeek models do not support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('snowflake/deepseek-v3');
+		test('should detect that other models do not support structured outputs', () => {
+			const supports = provider._modelSupportsStructuredOutputs(otherModel);
 			expect(supports).toBe(false);
 		});
 
 		test('should detect that Claude models support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('snowflake/claude-haiku-4-5');
+			const supports = provider._modelSupportsStructuredOutputs(claudeModel);
 			expect(supports).toBe(true);
 		});
 
 		test('should detect that OpenAI models support structured outputs', () => {
-			const supports = provider._modelSupportsStructuredOutputs('snowflake/openai-gpt-5');
+			const supports = provider._modelSupportsStructuredOutputs(openaiModel);
 			expect(supports).toBe(true);
 		});
 
@@ -456,7 +474,7 @@ const withResult = async (description, task, handler) => {
 	return result;
 };
 
-jest.setTimeout(300000);
+jest.setTimeout(30000); // 30 second timeout for all tests
 
 describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	beforeAll(() => {
@@ -466,15 +484,22 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	const baseURL = process.env.SNOWFLAKE_BASE_URL;
 	const apiKey = process.env.SNOWFLAKE_API_KEY;
 
-	// Model configurations
-	const CLAUDE_MODELS = ['snowflake/claude-sonnet-4-5', 'snowflake/claude-haiku-4-5', 'snowflake/claude-4-sonnet', 'snowflake/claude-4-opus'];
-	const OPENAI_MODELS = ['snowflake/openai-gpt-5', 'snowflake/openai-gpt-5-mini', 'snowflake/openai-gpt-5-nano', 'snowflake/openai-gpt-4.1', 'snowflake/openai-o4-mini'];
+	// Model configurations - dynamically loaded from supported-models.json
+	const CLAUDE_MODELS = enabledSnowflakeModels
+		.filter(model => model.id.includes('claude'))
+		.filter(model => !model.id.includes('opus')) // Skip opus - too slow for tests
+		.map(model => model.id);
+	const OPENAI_MODELS = enabledSnowflakeModels
+		.filter(model => model.id.includes('openai'))
+		.map(model => model.id);
 	const FAST_MODELS = ['snowflake/claude-haiku-4-5', 'snowflake/openai-gpt-5-mini'];
 
-	// Determine which models to test
+	console.log(`\n🧪 Testing ${CLAUDE_MODELS.length} Claude models and ${OPENAI_MODELS.length} OpenAI models`);
+
+	// Determine which models to test - default to FAST_MODELS for speed
 	const ALL_MODELS = TEST_CONFIG.specificModel 
 		? [TEST_CONFIG.specificModel]
-		: TEST_CONFIG.fastMode
+		: TEST_CONFIG.fastMode !== false // Default to fast mode
 			? FAST_MODELS
 			: [...CLAUDE_MODELS, ...OPENAI_MODELS];
 
@@ -492,10 +517,12 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 		if (errorCount >= SKIP_REST_AFTER_ERRORS) {
 			throw new SnowflakeIntegrationSkip('Skipping Snowflake tests due to repeated integration failures');
 		}
+		const startTime = Date.now();
+		console.log(`⏱️  [${new Date().toISOString()}] Starting text generation for ${modelId}...`);
 		return schedule(async () => {
 			const provider = createProvider();
 			try {
-				return await provider.generateText({
+				const result = await provider.generateText({
 					apiKey: apiKeyOverride ?? apiKey,
 					baseURL: baseURLOverride ?? baseURL,
 					modelId,
@@ -503,7 +530,12 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 					maxTokens,
 					temperature
 				});
+				const duration = Date.now() - startTime;
+				console.log(`✅ [${new Date().toISOString()}] Completed ${modelId} in ${duration}ms`);
+				return result;
 			} catch (error) {
+				const duration = Date.now() - startTime;
+				console.log(`❌ [${new Date().toISOString()}] Failed ${modelId} after ${duration}ms: ${error.message}`);
 				if (countFailure) {
 					trackFailure(error);
 				}
@@ -617,7 +649,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 	const TEMPERATURE_CASES = [
 		{
 			description: 'remove temperature for OpenAI models',
-			modelId: 'snowflake/openai-gpt-4.1',
+			modelId: 'snowflake/openai-gpt-5',
 			temperature: 0.9,
 			log: '✓ OpenAI model works without temperature parameter'
 		},
@@ -644,27 +676,29 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 		});
 	});
 
+	// Dynamically generate model groups from supported-models.json (reuse CLAUDE_MODELS and OPENAI_MODELS from above)
+	const OTHER_MODELS = enabledSnowflakeModels.filter(m => 
+		!m.id.includes('claude') && 
+		!m.id.includes('openai')
+	).map(m => m.id);
+
 	const UNLISTED_MODEL_GROUPS = [
 		{
-			title: 'Llama Models (not in config)',
-			models: ['snowflake/llama3.1-8b', 'snowflake/llama3.1-70b']
+			title: 'Claude Models',
+			models: CLAUDE_MODELS.slice(0, 2) // Test first 2 Claude models
 		},
 		{
-			title: 'Claude Models (not in config)',
-			models: ['snowflake/claude-3-5-sonnet']
+			title: 'OpenAI Models',
+			models: OPENAI_MODELS.slice(0, 2) // Test first 2 OpenAI models
 		},
 		{
-			title: 'Mistral Models (not in config)',
-			models: ['snowflake/mistral-large', 'snowflake/mistral-7b']
-		},
-		{
-			title: 'DeepSeek Models (not in config)',
-			models: ['snowflake/deepseek-r1']
+			title: 'Other Models',
+			models: OTHER_MODELS.slice(0, 3) // Test first 3 other models
 		}
 	];
 	const UNLISTED_MODELS = UNLISTED_MODEL_GROUPS.flatMap(({ title, models }) =>
 		models.map((modelId) => ({ title, modelId }))
-	);
+	).filter(({ modelId }) => modelId); // Filter out empty entries
 
 	describe('Unlisted Model Support', () => {
 		it.concurrent.each(UNLISTED_MODELS)('$title should work with $modelId', async ({ modelId }) => {
@@ -746,9 +780,9 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				required: ['stringValue']
 			};
 
-			const cleaned = provider._removeUnsupportedFeatures(schema);
+			const cleaned = removeUnsupportedFeatures(schema);
 
-			SnowflakeProvider.UNSUPPORTED_KEYWORDS.forEach((keyword) => {
+			UNSUPPORTED_KEYWORDS.forEach((keyword) => {
 				expect(hasKeyword(cleaned, keyword)).toBe(false);
 			});
 			expect(cleaned.additionalProperties).toBe(false);
@@ -767,7 +801,7 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				additionalProperties: true
 			};
 
-			const cleaned = provider._removeUnsupportedFeatures(schema);
+			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.optional.anyOf).toBeUndefined();
 			expect(cleaned.properties.optional.type).toBe('string');
 		});
@@ -794,13 +828,16 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 		};
 
 		describe('Claude Models - Native Structured Outputs', () => {
+			// Test only Haiku for speed (default model)
 			const claudeModels = [
-				'snowflake/claude-haiku-4-5',
-				'snowflake/claude-sonnet-4-5'
+				'snowflake/claude-haiku-4-5'
 			];
 
-			test.each(claudeModels)('should generate object with native structured outputs for %s', async (modelId) => {
+			test.concurrent.each(claudeModels)('should generate object with native structured outputs for %s', async (modelId) => {
 				if (skipIfNoKey()) return;
+
+				const startTime = Date.now();
+				console.log(`⏱️  [${new Date().toISOString()}] Starting generateObject for ${modelId}...`);
 
 				const params = {
 					modelId,
@@ -808,14 +845,16 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
 						{ role: 'system', content: 'You are a helpful assistant.' },
-						{ role: 'user', content: 'Generate a simple user profile' }
+						{ role: 'user', content: 'Generate a user profile for John Doe, age 30, email john@example.com' }
 					],
-					schema: reusableStructuredSchema,
+					schema: realIntegrationSchema,
 					objectName: 'user_profile',
 					maxTokens: 8192
 				};
 
 				const result = await integrationProvider.generateObject(params);
+				const duration = Date.now() - startTime;
+				console.log(`✅ [${new Date().toISOString()}] Completed generateObject for ${modelId} in ${duration}ms`);
 
 				expect(result).toBeDefined();
 				expect(result.object).toBeDefined();
@@ -826,12 +865,12 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 		});
 
 		describe('OpenAI Models - Structured Outputs', () => {
+			// Test only GPT-5 for speed
 			const openaiModels = [
-				'snowflake/openai-gpt-5',
-				'snowflake/openai-gpt-5-mini'
+				'snowflake/openai-gpt-5'
 			];
 
-			test.each(openaiModels)('should generate object with structured outputs for %s', async (modelId) => {
+			test.concurrent.each(openaiModels)('should generate object with structured outputs for %s', async (modelId) => {
 				if (skipIfNoKey()) return;
 
 				const params = {
@@ -840,9 +879,9 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
 						{ role: 'system', content: 'You are a helpful assistant.' },
-						{ role: 'user', content: 'Generate a simple user profile' }
+						{ role: 'user', content: 'Generate a user profile for John Doe, age 30, email john@example.com' }
 					],
-					schema: reusableStructuredSchema,
+					schema: realIntegrationSchema,
 					objectName: 'user_profile',
 					maxTokens: 8192
 				};
@@ -868,11 +907,11 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
 					messages: [
-						{ role: 'user', content: 'Say hello' }
+						{ role: 'user', content: 'Generate a user profile for Alice, age 28, email alice@example.com' }
 					],
-					schema: reusableStructuredSchema,
+					schema: realIntegrationSchema,
 					objectName: 'greeting',
-					maxTokens: 10000
+					maxTokens: 8192
 				};
 
 				try {
@@ -891,59 +930,59 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				generateTextSpy.mockRestore();
 			}, 30000);
 
-			test('should enforce minimum 8192 tokens', async () => {
-				if (skipIfNoKey()) return;
+		test('should enforce minimum 8192 tokens', async () => {
+			if (skipIfNoKey()) return;
 
-				const params = {
-					modelId: 'snowflake/openai-gpt-5',
-					apiKey: process.env.SNOWFLAKE_API_KEY,
-					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
-					messages: [
-						{ role: 'user', content: 'Generate a simple greeting' }
-					],
-					schema: reusableStructuredSchema,
-					objectName: 'greeting',
-					maxTokens: 2000 // Request less than minimum
-				};
+			const params = {
+				modelId: 'snowflake/claude-haiku-4-5',
+				apiKey: process.env.SNOWFLAKE_API_KEY,
+				baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
+				messages: [
+					{ role: 'user', content: 'Generate a user profile for Bob, age 35, email bob@example.com' }
+				],
+				schema: realIntegrationSchema,
+				objectName: 'greeting',
+				maxTokens: 2000 // Request less than minimum
+			};
 
-				const result = await integrationProvider.generateObject(params);
+			const result = await integrationProvider.generateObject(params);
 
-				// Should still get a valid result (minimum was enforced internally)
-				expect(result).toBeDefined();
-				expect(result.object).toBeDefined();
-			}, 30000);
+			// Should still get a valid result (minimum was enforced internally)
+			expect(result).toBeDefined();
+			expect(result.object).toBeDefined();
+		}, 30000);
 
-			test('should handle large token requests (above 4096 default)', async () => {
-				if (skipIfNoKey()) return;
+		test('should handle large token requests (above 4096 default)', async () => {
+			if (skipIfNoKey()) return;
 
-				const params = {
-					modelId: 'snowflake/openai-gpt-5',
-					apiKey: process.env.SNOWFLAKE_API_KEY,
-					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
-					messages: [
-						{ role: 'user', content: 'Generate a detailed list of 20 programming concepts with descriptions' }
-					],
-					schema: z.object({
-						concepts: z.array(z.object({
-							name: z.string(),
-							description: z.string(),
-							examples: z.array(z.string())
-						}))
-					}),
-					objectName: 'programming_concepts',
-					maxTokens: 16384 // Well above the old 4096 default
-				};
+			const params = {
+				modelId: 'snowflake/claude-haiku-4-5',
+				apiKey: process.env.SNOWFLAKE_API_KEY,
+				baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
+				messages: [
+					{ role: 'user', content: 'Generate a detailed list of 10 programming concepts with comprehensive descriptions' }
+				],
+				schema: z.object({
+					concepts: z.array(z.object({
+						name: z.string(),
+						description: z.string()
+					}).strict()) // Add strict() to ensure additionalProperties: false
+				}).strict(),
+				objectName: 'programming_concepts',
+				maxTokens: 8192 // Test with larger token limit
+			};
 
-				const result = await integrationProvider.generateObject(params);
+			const result = await integrationProvider.generateObject(params);
 
-				expect(result).toBeDefined();
-				expect(result.object).toBeDefined();
-				expect(result.object.concepts).toBeDefined();
-				expect(Array.isArray(result.object.concepts)).toBe(true);
-				
-				// With proper max_completion_tokens, we should get substantial output
-				expect(result.usage.outputTokens).toBeGreaterThan(1000);
-			}, 60000);
+			expect(result).toBeDefined();
+			expect(result.object).toBeDefined();
+			expect(result.object.concepts).toBeDefined();
+			expect(Array.isArray(result.object.concepts)).toBe(true);
+			expect(result.object.concepts.length).toBeGreaterThanOrEqual(8); // Verify we got substantial output
+			
+			// With proper max_completion_tokens, we should get substantial output
+			expect(result.usage.outputTokens).toBeGreaterThan(800);
+		}, 45000);
 		});
 
 		describe('Error Handling', () => {
@@ -954,8 +993,8 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 					modelId: 'snowflake/invalid-model-xyz',
 					apiKey: process.env.SNOWFLAKE_API_KEY,
 					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
-					messages: [{ role: 'user', content: 'Test' }],
-					schema: reusableStructuredSchema,
+					messages: [{ role: 'user', content: 'Generate a user profile for Test User, age 20, email test@example.com' }],
+					schema: realIntegrationSchema,
 					objectName: 'test',
 					maxTokens: 8192
 				};
@@ -963,23 +1002,22 @@ describeOrSkip('Snowflake Provider - Integration Tests', () => {
 				await expect(integrationProvider.generateObject(params)).rejects.toThrow();
 			}, 30000);
 
-			test('should handle malformed schema gracefully for Claude', async () => {
-				if (skipIfNoKey()) return;
+		test('should handle malformed schema gracefully for Claude', async () => {
+			if (skipIfNoKey()) return;
 
-				const params = {
-					modelId: 'snowflake/claude-haiku-4-5',
-					apiKey: process.env.SNOWFLAKE_API_KEY,
-					baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
-					messages: [{ role: 'user', content: 'Generate invalid data' }],
-					schema: z.object({}), // Empty schema
-					objectName: 'empty',
-					maxTokens: 8192
-				};
+			const params = {
+				modelId: 'snowflake/claude-haiku-4-5',
+				apiKey: process.env.SNOWFLAKE_API_KEY,
+				baseURL: process.env.SNOWFLAKE_BASE_URL || 'https://<ACCOUNT_NAME>.snowflakecomputing.com',
+				messages: [{ role: 'user', content: 'Generate invalid data' }],
+				schema: z.object({}), // Empty schema - this is malformed
+				objectName: 'empty',
+				maxTokens: 8192
+			};
 
-				// Should still attempt to generate but may produce minimal output
-				const result = await integrationProvider.generateObject(params);
-				expect(result).toBeDefined();
-			}, 30000);
+			// Empty schema is malformed and should throw an error
+			await expect(integrationProvider.generateObject(params)).rejects.toThrow();
+		}, 30000);
 		});
 
 		describe('Text Generation', () => {

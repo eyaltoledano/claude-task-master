@@ -31,7 +31,23 @@ jest.unstable_mockModule('@tm/ai-sdk-provider-cortex-code', () => ({
 			finishReason: 'stop',
 			usage: { promptTokens: 10, completionTokens: 20 }
 		})
-	)
+	),
+	normalizeTokenParams: jest.fn((params, modelId, providerPrefix, supportedModels) => {
+		// Mock implementation that enforces minimum 8192 tokens
+		const MIN_TOKENS = 8192;
+		const modelInfo = supportedModels.find(m => m.id === modelId || m.id === `${providerPrefix}/${modelId}`);
+		const modelMaxTokens = modelInfo?.max_tokens || 8192;
+		
+		if (!params.maxTokens) {
+			params.maxTokens = modelMaxTokens;
+		} else if (params.maxTokens < MIN_TOKENS) {
+			params.maxTokens = MIN_TOKENS;
+		} else if (params.maxTokens > modelMaxTokens) {
+			params.maxTokens = modelMaxTokens;
+		}
+		
+		return params;
+	})
 }));
 
 // Mock the base provider
@@ -58,9 +74,11 @@ jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 		timeout: 60000
 	})),
 	getSupportedModelsForProvider: jest.fn(() => [
-		'cortex/claude-sonnet-4-5',
-		'cortex/llama3-70b',
-		'cortex/mistral-large'
+		{ id: 'cortex/claude-sonnet-4-5', max_tokens: 64000, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+		{ id: 'cortex/claude-haiku-4-5', max_tokens: 64000, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+		{ id: 'cortex/openai-gpt-5', max_tokens: 8192, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+		{ id: 'cortex/llama3-70b', max_tokens: 8192, allowed_roles: ['main', 'fallback'], supported: true },
+		{ id: 'cortex/mistral-large', max_tokens: 8192, allowed_roles: ['main', 'fallback'], supported: true }
 	]),
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info')
@@ -91,9 +109,11 @@ describe('CortexCodeProvider', () => {
 
 		it('should load supported models', () => {
 			expect(provider.supportedModels).toEqual([
-				'cortex/claude-sonnet-4-5',
-				'cortex/llama3-70b',
-				'cortex/mistral-large'
+				{ id: 'cortex/claude-sonnet-4-5', max_tokens: 64000, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+				{ id: 'cortex/claude-haiku-4-5', max_tokens: 64000, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+				{ id: 'cortex/openai-gpt-5', max_tokens: 8192, allowed_roles: ['main', 'fallback', 'research'], supported: true },
+				{ id: 'cortex/llama3-70b', max_tokens: 8192, allowed_roles: ['main', 'fallback'], supported: true },
+				{ id: 'cortex/mistral-large', max_tokens: 8192, allowed_roles: ['main', 'fallback'], supported: true }
 			]);
 		});
 
@@ -174,6 +194,8 @@ describe('CortexCodeProvider', () => {
 			const models = provider.getSupportedModels();
 			expect(models).toEqual([
 				'cortex/claude-sonnet-4-5',
+				'cortex/claude-haiku-4-5',
+				'cortex/openai-gpt-5',
 				'cortex/llama3-70b',
 				'cortex/mistral-large'
 			]);
@@ -181,7 +203,8 @@ describe('CortexCodeProvider', () => {
 
 		it('should check if model is supported (case insensitive)', () => {
 			expect(provider.isModelSupported('cortex/claude-sonnet-4-5')).toBe(true);
-			expect(provider.isModelSupported('CORTEX/LLAMA3-70B')).toBe(true);
+			expect(provider.isModelSupported('CORTEX/CLAUDE-HAIKU-4-5')).toBe(true);
+			expect(provider.isModelSupported('cortex/llama3-70b')).toBe(true);
 			expect(provider.isModelSupported('cortex/unknown')).toBe(false);
 		});
 
@@ -245,6 +268,56 @@ describe('CortexCodeProvider', () => {
 			};
 			const normalized = provider._normalizeParams(params);
 			expect(normalized.temperature).toBe(0.7);
+		});
+
+		// Token handling tests
+		it('should set maxTokens from supported-models.json if not provided', () => {
+			const params = {
+				modelId: 'cortex/claude-sonnet-4-5'
+			};
+			const normalized = provider._normalizeParams(params);
+			expect(normalized.maxTokens).toBe(64000); // From mock data
+		});
+
+		it('should use different max_tokens for different models', () => {
+			const claudeParams = {
+				modelId: 'cortex/claude-haiku-4-5'
+			};
+			const gptParams = {
+				modelId: 'cortex/openai-gpt-5'
+			};
+			
+			const claudeNormalized = provider._normalizeParams(claudeParams);
+			const gptNormalized = provider._normalizeParams(gptParams);
+			
+			expect(claudeNormalized.maxTokens).toBe(64000); // Claude Haiku has 64K
+			expect(gptNormalized.maxTokens).toBe(8192);     // GPT-5 has 8K
+		});
+
+		it('should cap maxTokens at model maximum if user provides higher value', () => {
+			const params = {
+				modelId: 'cortex/openai-gpt-5',
+				maxTokens: 16384 // Requesting more than 8192 max
+			};
+			const normalized = provider._normalizeParams(params);
+			expect(normalized.maxTokens).toBe(8192); // Capped at model's maximum
+		});
+
+	it('should enforce minimum 8192 tokens', () => {
+		const params = {
+			modelId: 'cortex/claude-sonnet-4-5',
+			maxTokens: 4096 // Below 8192 minimum
+		};
+		const normalized = provider._normalizeParams(params);
+		expect(normalized.maxTokens).toBe(8192); // Raised to minimum
+	});
+
+		it('should default to 8192 for unknown models', () => {
+			const params = {
+				modelId: 'cortex/unknown-model'
+			};
+			const normalized = provider._normalizeParams(params);
+			expect(normalized.maxTokens).toBe(8192); // Default fallback
 		});
 	});
 
