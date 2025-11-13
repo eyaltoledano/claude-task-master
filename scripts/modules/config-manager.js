@@ -816,7 +816,9 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.GEMINI_CLI,
 		CUSTOM_PROVIDERS.GROK_CLI,
 		CUSTOM_PROVIDERS.CODEX_CLI,
-		CUSTOM_PROVIDERS.CORTEX_CODE
+		CUSTOM_PROVIDERS.CORTEX_CODE,
+		CUSTOM_PROVIDERS.LMSTUDIO,
+		CUSTOM_PROVIDERS.OPENAI_COMPATIBLE
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -968,8 +970,14 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
 				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
 				break;
-			default:
-				return false; // Unknown provider
+			case 'cortex-code':
+				return true; // No key needed
+			case 'snowflake':
+				apiKeyToCheck = mcpEnv.SNOWFLAKE_API_KEY; // Snowflake REST API access
+				placeholderValue = 'YOUR_SNOWFLAKE_API_KEY_HERE';
+				break;
+		default:
+			return false; // Unknown provider
 		}
 
 		return !!apiKeyToCheck && !/(KEY|PAT)_HERE$/.test(apiKeyToCheck);
@@ -1167,7 +1175,9 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP,
 	CUSTOM_PROVIDERS.CODEX_CLI,
-	CUSTOM_PROVIDERS.CORTEX_CODE
+	CUSTOM_PROVIDERS.CORTEX_CODE,
+	CUSTOM_PROVIDERS.LMSTUDIO,
+	CUSTOM_PROVIDERS.OPENAI_COMPATIBLE
 ];
 
 export {
