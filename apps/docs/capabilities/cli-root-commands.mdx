@@ -28,6 +28,10 @@ sidebarTitle: "CLI Commands"
 
     # List tasks with a specific status and include subtasks
     task-master list --status=<status> --with-subtasks
+
+    # Output in JSON format (useful for AI agents)
+    task-master list --json
+    task-master list --status=pending --json
     ```
   </Accordion>
 
@@ -47,6 +51,10 @@ sidebarTitle: "CLI Commands"
 
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
+
+    # Output in JSON format (useful for AI agents)
+    task-master show <id> --json
+    task-master show 1.2 --json
     ```
   </Accordion>
 
