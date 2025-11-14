@@ -21,6 +21,7 @@ export interface ShowCommandOptions {
 	id?: string;
 	status?: string;
 	format?: 'text' | 'json';
+	json?: boolean;
 	silent?: boolean;
 	project?: string;
 }
@@ -64,6 +65,7 @@ export class ShowCommand extends Command {
 			)
 			.option('-s, --status <status>', 'Filter subtasks by status')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
+			.option('--json', 'Output in JSON format (shorthand for --format json)')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option(
 				'-p, --project <path>',
@@ -212,7 +214,8 @@ export class ShowCommand extends Command {
 		result: ShowTaskResult | ShowMultipleTasksResult,
 		options: ShowCommandOptions
 	): void {
-		const format = options.format || 'text';
+		// If --json flag is set, override format to 'json'
+		const format = options.json ? 'json' : options.format || 'text';
 
 		switch (format) {
 			case 'json':

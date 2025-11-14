@@ -41,6 +41,7 @@ export interface ListCommandOptions {
 	tag?: string;
 	withSubtasks?: boolean;
 	format?: OutputFormat;
+	json?: boolean;
 	silent?: boolean;
 	project?: string;
 }
@@ -78,6 +79,7 @@ export class ListTasksCommand extends Command {
 				'Output format (text, json, compact)',
 				'text'
 			)
+			.option('--json', 'Output in JSON format (shorthand for --format json)')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option(
 				'-p, --project <path>',
@@ -194,7 +196,10 @@ export class ListTasksCommand extends Command {
 		result: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const format = (options.format || 'text') as OutputFormat | 'text';
+		// If --json flag is set, override format to 'json'
+		const format = (
+			options.json ? 'json' : options.format || 'text'
+		) as OutputFormat;
 
 		switch (format) {
 			case 'json':
