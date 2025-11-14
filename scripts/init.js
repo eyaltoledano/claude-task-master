@@ -431,7 +431,10 @@ async function initializeProject(options = {}) {
 
 			// Track storage_selected event
 			// TODO: Send to Segment telemetry when implemented
-			log('debug', `Storage selected: ${selectedStorage} - taskmaster_id: ${taskmasterId}`);
+			log(
+				'debug',
+				`Storage selected: ${selectedStorage} - taskmaster_id: ${taskmasterId}`
+			);
 
 			// If cloud storage selected, trigger OAuth flow
 			let authCredentials = null;
