@@ -30,6 +30,7 @@ description: "Configure Task Master through environment variables in a .env file
 | `PROJECT_VERSION` | `"1.0.0"` | Version in metadata | `PROJECT_VERSION=2.1.0` |
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
+| `TASKMASTER_ENABLE_PROXY` | `"false"` | Enable proxy support for AI providers | `TASKMASTER_ENABLE_PROXY=true` |
 
 ## TDD Workflow Configuration
 
@@ -69,7 +70,61 @@ LOG_LEVEL=info
 # TDD Workflow
 TM_MAX_ATTEMPTS=3
 TM_AUTO_COMMIT=true
+
+# Proxy Support (Optional)
+# TASKMASTER_ENABLE_PROXY=true
+# http_proxy=http://your-proxy:port
+# https_proxy=http://your-proxy:port
+# no_proxy=localhost,127.0.0.1
 ```
+
+## Proxy Configuration
+
+<Note>
+  Task Master supports HTTP/HTTPS proxy configuration for corporate or restricted network environments where AI provider APIs are accessed through proxies.
+</Note>
+
+Proxy support is **opt-in** and can be enabled using either method:
+
+### Method 1: Environment Variable
+
+```bash
+export TASKMASTER_ENABLE_PROXY=true
+export http_proxy=http://your-proxy:port
+export https_proxy=http://your-proxy:port
+export no_proxy=localhost,127.0.0.1  # Optional: bypass proxy for specific hosts
+
+# Then use Task Master normally
+task-master add-task "Create a new feature"
+```
+
+### Method 2: Configuration File
+
+Add to `.taskmaster/config.json`:
+
+```json
+{
+  "global": {
+    "enableProxy": true
+  }
+}
+```
+
+Then set your proxy environment variables:
+
+```bash
+export http_proxy=http://your-proxy:port
+export https_proxy=http://your-proxy:port
+```
+
+<Note>
+  Priority: `TASKMASTER_ENABLE_PROXY` environment variable overrides the `config.json` setting.
+</Note>
+
+**Supported scenarios:**
+- Corporate firewalls requiring HTTP/HTTPS proxy
+- Network environments with restricted internet access
+- All AI providers: OpenAI, Anthropic, Perplexity, Azure OpenAI, Google AI, Google Vertex AI, AWS Bedrock, and OpenAI-compatible providers
 
 ## Troubleshooting
 

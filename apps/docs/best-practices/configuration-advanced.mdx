@@ -47,7 +47,8 @@ Taskmaster uses two primary methods for configuration:
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
           "vertexProjectId": "your-gcp-project-id",
-          "vertexLocation": "us-central1"
+          "vertexLocation": "us-central1",
+          "enableProxy": false
         }
       }
       ```
@@ -85,8 +86,76 @@ Taskmaster uses two primary methods for configuration:
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 - **Optional Auto-Update Control:**
   - `TASKMASTER_SKIP_AUTO_UPDATE`: Set to '1' to disable automatic updates. Also automatically disabled in CI environments (when `CI` environment variable is set).
+- **Optional Proxy Configuration:**
+  - `TASKMASTER_ENABLE_PROXY`: Set to 'true' to enable proxy support for AI provider API calls.
+  - `http_proxy`: HTTP proxy URL (e.g., `http://proxy.company.com:8080`).
+  - `https_proxy`: HTTPS proxy URL (e.g., `http://proxy.company.com:8080`).
+  - `no_proxy`: Comma-separated list of hosts to bypass proxy (e.g., `localhost,127.0.0.1,.company.com`).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
+
+## Proxy Configuration
+
+Task Master includes comprehensive proxy support for corporate and restricted network environments. This is particularly useful when working behind corporate firewalls that require all HTTP/HTTPS traffic to go through a proxy server.
+
+### Configuration Options
+
+Proxy support can be enabled using either method, with environment variable taking priority:
+
+**Method 1: Environment Variable (Recommended)**
+
+```bash
+# Enable proxy support
+export TASKMASTER_ENABLE_PROXY=true
+
+# Configure proxy settings
+export http_proxy=http://proxy.company.com:8080
+export https_proxy=http://proxy.company.com:8080
+
+# Optional: bypass proxy for specific hosts
+export no_proxy=localhost,127.0.0.1,.company.com,internal.domain
+```
+
+**Method 2: Configuration File**
+
+```json
+{
+  "global": {
+    "enableProxy": true
+  }
+}
+```
+
+### Technical Details
+
+- **Implementation**: Uses undici's `EnvHttpProxyAgent` for automatic proxy detection
+- **Provider Coverage**: Supports all AI providers (OpenAI, Anthropic, Perplexity, Azure OpenAI, Google AI, Google Vertex AI, AWS Bedrock, OpenAI-compatible providers)
+- **Opt-in Design**: Users without proxy requirements are not affected
+- **Centralized**: Single implementation in `BaseAIProvider` ensures consistency
+
+### Troubleshooting Proxy Issues
+
+**Common proxy-related errors:**
+- `ECONNRESET`: Often indicates proxy configuration issues
+- `ECONNREFUSED`: Proxy server may be unreachable
+- `ENOTFOUND`: Proxy hostname resolution failure
+
+**Solutions:**
+1. Verify proxy server address and port
+2. Check network connectivity to proxy server
+3. Ensure proxy supports HTTPS CONNECT method
+4. Test proxy settings with other tools (curl, wget)
+5. Check if authentication is required for your proxy
+
+**Testing proxy configuration:**
+
+```bash
+# Test with curl
+curl -x http://proxy.company.com:8080 https://api.anthropic.com/v1/health
+
+# Test Task Master with proxy
+TASKMASTER_ENABLE_PROXY=true task-master next
+```
 
 ## Tagged Task Lists Configuration (v0.17+)
 
