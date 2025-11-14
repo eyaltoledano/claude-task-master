@@ -143,10 +143,14 @@ describe('ShowCommand', () => {
 		});
 
 		it('should reject invalid formats', () => {
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleErrorSpy = vi
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
 			const command = new ShowCommand();
 
-			expect((command as any).validateOptions({ format: 'invalid' })).toBe(false);
+			expect((command as any).validateOptions({ format: 'invalid' })).toBe(
+				false
+			);
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('Invalid format: invalid')
 			);
@@ -161,7 +165,8 @@ describe('ShowCommand', () => {
 			(command as any).tmCore = mockTmCore;
 
 			// Mock getMultipleTasks
-			const getMultipleTasksSpy = vi.spyOn(command as any, 'getMultipleTasks')
+			const getMultipleTasksSpy = vi
+				.spyOn(command as any, 'getMultipleTasks')
 				.mockResolvedValue({
 					tasks: [
 						{ id: '1', title: 'Task 1' },
@@ -176,7 +181,10 @@ describe('ShowCommand', () => {
 				json: true
 			});
 
-			expect(getMultipleTasksSpy).toHaveBeenCalledWith(['1', '2'], expect.any(Object));
+			expect(getMultipleTasksSpy).toHaveBeenCalledWith(
+				['1', '2'],
+				expect.any(Object)
+			);
 		});
 	});
 });

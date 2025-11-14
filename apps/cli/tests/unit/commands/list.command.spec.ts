@@ -9,7 +9,14 @@ import type { TmCore } from '@tm/core';
 vi.mock('@tm/core', () => ({
 	createTmCore: vi.fn(),
 	OUTPUT_FORMATS: ['text', 'json', 'compact'],
-	TASK_STATUSES: ['pending', 'in-progress', 'done', 'review', 'deferred', 'cancelled'],
+	TASK_STATUSES: [
+		'pending',
+		'in-progress',
+		'done',
+		'review',
+		'deferred',
+		'cancelled'
+	],
 	STATUS_ICONS: {
 		pending: '⏳',
 		'in-progress': '🔄',
@@ -60,9 +67,7 @@ describe('ListTasksCommand', () => {
 		mockTmCore = {
 			tasks: {
 				list: vi.fn().mockResolvedValue({
-					tasks: [
-						{ id: '1', title: 'Test Task', status: 'pending' }
-					],
+					tasks: [{ id: '1', title: 'Test Task', status: 'pending' }],
 					total: 1,
 					filtered: 1,
 					storageType: 'json'
@@ -147,7 +152,14 @@ describe('ListTasksCommand', () => {
 				// or should be the table string we mocked
 				expect(
 					output === 'Table output' ||
-					(() => { try { JSON.parse(output); return false; } catch { return true; } })()
+						(() => {
+							try {
+								JSON.parse(output);
+								return false;
+							} catch {
+								return true;
+							}
+						})()
 				).toBe(true);
 			}
 		});
@@ -159,14 +171,20 @@ describe('ListTasksCommand', () => {
 
 			expect((command as any).validateOptions({ format: 'text' })).toBe(true);
 			expect((command as any).validateOptions({ format: 'json' })).toBe(true);
-			expect((command as any).validateOptions({ format: 'compact' })).toBe(true);
+			expect((command as any).validateOptions({ format: 'compact' })).toBe(
+				true
+			);
 		});
 
 		it('should reject invalid formats', () => {
-			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleErrorSpy = vi
+				.spyOn(console, 'error')
+				.mockImplementation(() => {});
 			const command = new ListTasksCommand();
 
-			expect((command as any).validateOptions({ format: 'invalid' })).toBe(false);
+			expect((command as any).validateOptions({ format: 'invalid' })).toBe(
+				false
+			);
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
 				expect.stringContaining('Invalid format: invalid')
 			);
