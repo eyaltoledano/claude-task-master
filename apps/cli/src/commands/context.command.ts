@@ -348,23 +348,7 @@ export class ContextCommand extends Command {
 
 			// If briefIdOrUrl provided, use direct selection
 			if (briefIdOrUrl && briefIdOrUrl.trim().length > 0) {
-				await this.initTmCore();
-				const result = await selectBriefFromInput(
-					this.authManager,
-					briefIdOrUrl.trim(),
-					this.tmCore
-				);
-
-				this.setLastResult({
-					success: result.success,
-					action: 'select-brief',
-					context: this.authManager.getContext() || undefined,
-					message: result.message
-				});
-
-				if (!result.success) {
-					process.exit(1);
-				}
+				await this.selectBriefDirectly(briefIdOrUrl.trim(), 'select-brief');
 				return;
 			}
 
@@ -479,6 +463,34 @@ export class ContextCommand extends Command {
 	}
 
 	/**
+	 * Helper method to select brief directly from input (URL or ID)
+	 * Used by both executeSelectBrief and executeSetFromBriefInput
+	 */
+	private async selectBriefDirectly(
+		input: string,
+		action: 'select-brief' | 'set'
+	): Promise<void> {
+		await this.initTmCore();
+
+		const result = await selectBriefFromInput(
+			this.authManager,
+			input,
+			this.tmCore
+		);
+
+		this.setLastResult({
+			success: result.success,
+			action,
+			context: this.authManager.getContext() || undefined,
+			message: result.message
+		});
+
+		if (!result.success) {
+			process.exit(1);
+		}
+	}
+
+	/**
 	 * Execute setting context from a brief ID or Hamster URL
 	 * All parsing logic is in tm-core
 	 */
@@ -489,26 +501,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			// Initialize tmCore to access business logic
-			await this.initTmCore();
-
-			// Use shared utility - tm-core handles ALL parsing
-			const result = await selectBriefFromInput(
-				this.authManager,
-				input,
-				this.tmCore
-			);
-
-			this.setLastResult({
-				success: result.success,
-				action: 'set',
-				context: this.authManager.getContext() || undefined,
-				message: result.message
-			});
-
-			if (!result.success) {
-				process.exit(1);
-			}
+			await this.selectBriefDirectly(input, 'set');
 		} catch (error: any) {
 			ui.displayError(
 				`Failed to set context from brief: ${(error as Error).message}`

@@ -98,7 +98,7 @@ export class BriefUrlParser {
 		}
 
 		// Extract brief ID
-		// Priority: query param > path segment after 'briefs' > last segment
+		// Priority: query param > path segment after 'briefs' > last segment (if not 'briefs')
 		if (url) {
 			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
 			if (qId) {
@@ -110,7 +110,13 @@ export class BriefUrlParser {
 			briefId = parts[briefsIdx + 1];
 		}
 
-		if (!briefId && parts.length > 0) {
+		// Only use last segment as fallback if path doesn't end with 'briefs'
+		// This prevents treating '/home/org/briefs' as briefId='briefs'
+		if (
+			!briefId &&
+			parts.length > 0 &&
+			!(briefsIdx >= 0 && briefsIdx === parts.length - 1)
+		) {
 			briefId = parts[parts.length - 1];
 		}
 

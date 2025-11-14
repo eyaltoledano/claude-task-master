@@ -86,17 +86,19 @@ describe('SupabaseSessionStorage', () => {
 	});
 
 	describe('atomic writes', () => {
-		it('should use temp file for atomic writes (via steno)', async () => {
+		it('should complete writes atomically without leaving temp files', async () => {
 			const storage = new SupabaseSessionStorage(sessionPath);
 
 			await storage.setItem('test-key', 'test-value');
 
-			// Steno's temp file should not exist after operation completes
-			const tempFile = `${sessionPath}.tmp`;
-			expect(fsSync.existsSync(tempFile)).toBe(false);
-
-			// Final file should exist
+			// Final file should exist with correct content
 			expect(fsSync.existsSync(sessionPath)).toBe(true);
+			const diskData = JSON.parse(fsSync.readFileSync(sessionPath, 'utf8'));
+			expect(diskData['test-key']).toBe('test-value');
+
+			// No unexpected extra files should remain in directory
+			const files = fsSync.readdirSync(path.dirname(sessionPath));
+			expect(files).toEqual([path.basename(sessionPath)]);
 		});
 
 		it('should maintain correct file permissions (0700 for directory)', async () => {
@@ -190,7 +192,7 @@ describe('SupabaseSessionStorage', () => {
 			const storage = new SupabaseSessionStorage(invalidPath);
 
 			// Should not throw, session should remain in memory
-			await expect(storage.setItem('key1', 'value1')).resolves.not.toThrow();
+			await storage.setItem('key1', 'value1');
 
 			// Should still work in memory
 			expect(await storage.getItem('key1')).toBe('value1');
