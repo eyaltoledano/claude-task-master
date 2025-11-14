@@ -5,6 +5,7 @@
 
 import search from '@inquirer/search';
 import type { AuthManager } from '@tm/core';
+import { formatRelativeTime } from '@tm/core';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
@@ -122,8 +123,13 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
+						// TEMP: Show updatedAt for verification
+						const updatedAtDisplay = brief.updatedAt
+							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
+							: '';
+
 						groupedOptions.push({
-							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
+							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}${updatedAtDisplay}`,
 							value: brief,
 							description: description
 								? chalk.gray(`  ${description.slice(0, 80)}`)
@@ -158,8 +164,13 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
+						// TEMP: Show updatedAt for verification
+						const updatedAtDisplay = brief.updatedAt
+							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
+							: '';
+
 						groupedOptions.push({
-							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
+							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}${updatedAtDisplay}`,
 							value: brief,
 							description: description
 								? chalk.gray(`  ${description.slice(0, 80)}`)
