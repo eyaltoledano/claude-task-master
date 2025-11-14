@@ -254,7 +254,7 @@ export class ContextCommand extends Command {
 	}
 
 	/**
-	 * Select an organization interactively or by ID
+	 * Select an organization interactively or by ID/slug/name
 	 */
 	private async selectOrganization(orgId?: string): Promise<ContextResult> {
 		const spinner = ora('Fetching organizations...').start();
@@ -275,12 +275,13 @@ export class ContextCommand extends Command {
 
 			let selectedOrg;
 
-			// If orgId provided, find matching org by ID or slug
-			if (orgId && orgId.trim().length > 0) {
-				const normalizedInput = orgId.trim().toLowerCase();
+			// If orgId provided, find matching org by ID, slug or name
+			const trimmedOrgId = orgId?.trim();
+			if (trimmedOrgId) {
+				const normalizedInput = trimmedOrgId.toLowerCase();
 				selectedOrg = organizations.find(
 					(org) =>
-						org.id === orgId ||
+						org.id === trimmedOrgId ||
 						org.slug?.toLowerCase() === normalizedInput ||
 						org.name.toLowerCase() === normalizedInput
 				);
@@ -293,7 +294,7 @@ export class ContextCommand extends Command {
 						.map((o) => o.name)
 						.join(', ');
 
-					let errorMessage = `Organization not found: ${orgId}\n`;
+					let errorMessage = `Organization not found: ${trimmedOrgId}\n`;
 					if (totalCount <= displayLimit) {
 						errorMessage += `Available organizations: ${orgList}`;
 					} else {
@@ -305,7 +306,7 @@ export class ContextCommand extends Command {
 					return {
 						success: false,
 						action: 'select-org',
-						message: `Organization not found: ${orgId}`
+						message: `Organization not found: ${trimmedOrgId}`
 					};
 				}
 			} else {
