@@ -3,7 +3,27 @@ title: FAQ
 sidebarTitle: "FAQ"
 ---
 
-Coming soon. 
+## MCP Connection Issues
+
+### "Server does not support completions" Error
+
+If you're encountering connection failures with MCP clients (especially Cursor IDE) showing errors like "Server does not support completions", this indicates a capability negotiation issue.
+
+**Solution**: Update to the latest version of Task Master AI, which includes compatibility fixes for modern MCP clients.
+
+```bash
+npm update -g task-master-ai
+```
+
+This issue was resolved in recent releases through:
+- Upgraded fastmcp library with enhanced MCP protocol support
+- Improved compatibility with Cursor IDE and other MCP clients
+- Better capability negotiation handling
+
+If you continue to experience issues after updating, please:
+1. Restart your MCP client (Cursor, Claude Code, etc.)
+2. Verify your `.mcp.json` configuration
+3. Check the MCP server logs for detailed error messages
 
 ## 💬 Getting Help
 
