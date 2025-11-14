@@ -206,4 +206,37 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Manage Workspace Context">
+    ```bash
+    # Show current workspace context (organization and brief)
+    task-master context
+
+    # Select context directly from a brief ID or Hamster URL
+    task-master context <briefId-or-hamster-url>
+
+    # Select an organization
+    task-master context org
+    task-master context org <orgId-or-name>
+
+    # Select a brief within current organization
+    task-master context brief
+    task-master context brief <briefId-or-hamster-url>
+
+    # Set context directly with options
+    task-master context set --org <id> --org-name <name> --brief <id> --brief-name <name>
+
+    # Clear all context selections
+    task-master context clear
+    ```
+
+    The context command supports Hamster URLs in the format:
+    `https://app.tryhamster.com/home/{orgSlug}/briefs/{briefId}`
+
+    You can use:
+    - Full Hamster URLs
+    - Brief IDs (full UUID or last 8 characters)
+    - Brief names (exact or partial match)
+    - Organization names or slugs
+  </Accordion>
 </AccordionGroup>
