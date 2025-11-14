@@ -286,10 +286,22 @@ export class ContextCommand extends Command {
 				);
 
 				if (!selectedOrg) {
-					ui.displayError(
-						`Organization not found: ${orgId}\n` +
-							`Available organizations: ${organizations.map((o) => o.name).join(', ')}`
-					);
+					const totalCount = organizations.length;
+					const displayLimit = 5;
+					const orgList = organizations
+						.slice(0, displayLimit)
+						.map((o) => o.name)
+						.join(', ');
+
+					let errorMessage = `Organization not found: ${orgId}\n`;
+					if (totalCount <= displayLimit) {
+						errorMessage += `Available organizations: ${orgList}`;
+					} else {
+						errorMessage += `Available organizations (showing ${displayLimit} of ${totalCount}): ${orgList}`;
+						errorMessage += `\nRun "tm context org" to see all organizations and select interactively`;
+					}
+
+					ui.displayError(errorMessage);
 					return {
 						success: false,
 						action: 'select-org',
