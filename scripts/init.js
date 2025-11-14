@@ -523,48 +523,71 @@ async function initializeProject(options = {}) {
 				addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
 			}
 
-			// Prompt for Git initialization (skip if --git or --no-git flag was provided)
+			// Git-related prompts only make sense for local storage
+			// If cloud storage is selected, tasks are stored in Hamster, not Git
 			let initGitPrompted = true; // Default to true
-			if (options.initGit !== undefined) {
-				initGitPrompted = options.initGit; // Use flag value if provided
-			} else {
-				const gitInitInput = await promptQuestion(
-					rl,
-					chalk.cyan('Initialize a Git repository in project root? (Y/n): ')
-				);
-				initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
-			}
-
-			// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
 			let storeGitPrompted = true; // Default to true
-			if (options.storeTasksInGit !== undefined) {
-				storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
+
+			if (selectedStorage === 'local') {
+				// Prompt for Git initialization (skip if --git or --no-git flag was provided)
+				if (options.initGit !== undefined) {
+					initGitPrompted = options.initGit; // Use flag value if provided
+				} else {
+					const gitInitInput = await promptQuestion(
+						rl,
+						chalk.cyan('Initialize a Git repository in project root? (Y/n): ')
+					);
+					initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
+				}
+
+				// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
+				if (options.storeTasksInGit !== undefined) {
+					storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
+				} else {
+					const gitTasksInput = await promptQuestion(
+						rl,
+						chalk.cyan(
+							'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
+						)
+					);
+					storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
+				}
 			} else {
-				const gitTasksInput = await promptQuestion(
-					rl,
-					chalk.cyan(
-						'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
-					)
-				);
-				storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
+				// Cloud storage: skip Git prompts, but initialize Git repo anyway
+				// (users may still want version control for their code)
+				initGitPrompted = true;
+				// Tasks are in cloud, so don't store them in Git
+				storeGitPrompted = false;
 			}
 
 			// Confirm settings...
 			console.log('\nTask Master Project settings:');
+			console.log(
+				chalk.blue('Storage:'),
+				chalk.white(
+					selectedStorage === 'cloud'
+						? 'Hamster (Cloud Sync)'
+						: 'Local File Storage'
+				)
+			);
 			console.log(
 				chalk.blue(
 					'Add shell aliases (so you can use "tm" instead of "task-master"):'
 				),
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
 			);
-			console.log(
-				chalk.blue('Initialize Git repository in project root:'),
-				chalk.white(initGitPrompted ? 'Yes' : 'No')
-			);
-			console.log(
-				chalk.blue('Store tasks in Git (tasks.json and tasks/ directory):'),
-				chalk.white(storeGitPrompted ? 'Yes' : 'No')
-			);
+
+			// Only show Git-related settings for local storage
+			if (selectedStorage === 'local') {
+				console.log(
+					chalk.blue('Initialize Git repository in project root:'),
+					chalk.white(initGitPrompted ? 'Yes' : 'No')
+				);
+				console.log(
+					chalk.blue('Store tasks in Git (tasks.json and tasks/ directory):'),
+					chalk.white(storeGitPrompted ? 'Yes' : 'No')
+				);
+			}
 
 			const confirmInput = await promptQuestion(
 				rl,
