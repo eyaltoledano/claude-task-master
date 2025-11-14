@@ -24,7 +24,7 @@
 	"dependencies": {
 		"@tm/core": "*",
 		"zod": "^4.1.11",
-		"fastmcp": "^3.19.2"
+		"fastmcp": "^3.23.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
