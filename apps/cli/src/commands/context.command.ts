@@ -76,8 +76,9 @@ export class ContextCommand extends Command {
 	private addOrgCommand(): void {
 		this.command('org')
 			.description('Select an organization')
-			.action(async () => {
-				await this.executeSelectOrg();
+			.argument('[orgId]', 'Organization ID or slug to select directly')
+			.action(async (orgId?: string) => {
+				await this.executeSelectOrg(orgId);
 			});
 	}
 
@@ -87,8 +88,9 @@ export class ContextCommand extends Command {
 	private addBriefCommand(): void {
 		this.command('brief')
 			.description('Select a brief within the current organization')
-			.action(async () => {
-				await this.executeSelectBrief();
+			.argument('[briefIdOrUrl]', 'Brief ID or Hamster URL to select directly')
+			.action(async (briefIdOrUrl?: string) => {
+				await this.executeSelectBrief(briefIdOrUrl);
 			});
 	}
 
@@ -230,14 +232,14 @@ export class ContextCommand extends Command {
 	/**
 	 * Execute org selection
 	 */
-	private async executeSelectOrg(): Promise<void> {
+	private async executeSelectOrg(orgId?: string): Promise<void> {
 		try {
 			// Check authentication
 			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
-			const result = await this.selectOrganization();
+			const result = await this.selectOrganization(orgId);
 			this.setLastResult(result);
 
 			if (!result.success) {
@@ -252,9 +254,9 @@ export class ContextCommand extends Command {
 	}
 
 	/**
-	 * Select an organization interactively
+	 * Select an organization interactively or by ID/slug/name
 	 */
-	private async selectOrganization(): Promise<ContextResult> {
+	private async selectOrganization(orgId?: string): Promise<ContextResult> {
 		const spinner = ora('Fetching organizations...').start();
 
 		try {
@@ -271,18 +273,57 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			// Prompt for selection
-			const { selectedOrg } = await inquirer.prompt([
-				{
-					type: 'list',
-					name: 'selectedOrg',
-					message: 'Select an organization:',
-					choices: organizations.map((org) => ({
-						name: org.name,
-						value: org
-					}))
+			let selectedOrg;
+
+			// If orgId provided, find matching org by ID, slug or name
+			const trimmedOrgId = orgId?.trim();
+			if (trimmedOrgId) {
+				const normalizedInput = trimmedOrgId.toLowerCase();
+				selectedOrg = organizations.find(
+					(org) =>
+						org.id === trimmedOrgId ||
+						org.slug?.toLowerCase() === normalizedInput ||
+						org.name.toLowerCase() === normalizedInput
+				);
+
+				if (!selectedOrg) {
+					const totalCount = organizations.length;
+					const displayLimit = 5;
+					const orgList = organizations
+						.slice(0, displayLimit)
+						.map((o) => o.name)
+						.join(', ');
+
+					let errorMessage = `Organization not found: ${trimmedOrgId}\n`;
+					if (totalCount <= displayLimit) {
+						errorMessage += `Available organizations: ${orgList}`;
+					} else {
+						errorMessage += `Available organizations (showing ${displayLimit} of ${totalCount}): ${orgList}`;
+						errorMessage += `\nRun "tm context org" to see all organizations and select interactively`;
+					}
+
+					ui.displayError(errorMessage);
+					return {
+						success: false,
+						action: 'select-org',
+						message: `Organization not found: ${trimmedOrgId}`
+					};
 				}
-			]);
+			} else {
+				// Interactive selection
+				const response = await inquirer.prompt([
+					{
+						type: 'list',
+						name: 'selectedOrg',
+						message: 'Select an organization:',
+						choices: organizations.map((org) => ({
+							name: org.name,
+							value: org
+						}))
+					}
+				]);
+				selectedOrg = response.selectedOrg;
+			}
 
 			// Update context
 			await this.authManager.updateContext({
@@ -311,14 +352,20 @@ export class ContextCommand extends Command {
 	/**
 	 * Execute brief selection
 	 */
-	private async executeSelectBrief(): Promise<void> {
+	private async executeSelectBrief(briefIdOrUrl?: string): Promise<void> {
 		try {
 			// Check authentication
 			if (!(await checkAuthentication(this.authManager))) {
 				process.exit(1);
 			}
 
-			// Check if org is selected
+			// If briefIdOrUrl provided, use direct selection
+			if (briefIdOrUrl && briefIdOrUrl.trim().length > 0) {
+				await this.selectBriefDirectly(briefIdOrUrl.trim(), 'select-brief');
+				return;
+			}
+
+			// Interactive selection
 			const context = this.authManager.getContext();
 			if (!context?.orgId) {
 				ui.displayError(
@@ -429,6 +476,34 @@ export class ContextCommand extends Command {
 	}
 
 	/**
+	 * Helper method to select brief directly from input (URL or ID)
+	 * Used by both executeSelectBrief and executeSetFromBriefInput
+	 */
+	private async selectBriefDirectly(
+		input: string,
+		action: 'select-brief' | 'set'
+	): Promise<void> {
+		await this.initTmCore();
+
+		const result = await selectBriefFromInput(
+			this.authManager,
+			input,
+			this.tmCore
+		);
+
+		this.setLastResult({
+			success: result.success,
+			action,
+			context: this.authManager.getContext() || undefined,
+			message: result.message
+		});
+
+		if (!result.success) {
+			process.exit(1);
+		}
+	}
+
+	/**
 	 * Execute setting context from a brief ID or Hamster URL
 	 * All parsing logic is in tm-core
 	 */
@@ -439,26 +514,7 @@ export class ContextCommand extends Command {
 				process.exit(1);
 			}
 
-			// Initialize tmCore to access business logic
-			await this.initTmCore();
-
-			// Use shared utility - tm-core handles ALL parsing
-			const result = await selectBriefFromInput(
-				this.authManager,
-				input,
-				this.tmCore
-			);
-
-			this.setLastResult({
-				success: result.success,
-				action: 'set',
-				context: this.authManager.getContext() || undefined,
-				message: result.message
-			});
-
-			if (!result.success) {
-				process.exit(1);
-			}
+			await this.selectBriefDirectly(input, 'set');
 		} catch (error: any) {
 			ui.displayError(
 				`Failed to set context from brief: ${(error as Error).message}`

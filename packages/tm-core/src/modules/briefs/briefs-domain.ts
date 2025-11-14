@@ -10,6 +10,7 @@ import {
 import { AuthManager } from '../auth/managers/auth-manager.js';
 import type { TaskRepository } from '../tasks/repositories/task-repository.interface.js';
 import { BriefService, type TagWithStats } from './services/brief-service.js';
+import { BriefUrlParser } from './utils/url-parser.js';
 
 /**
  * Briefs Domain - Unified API for brief operations
@@ -35,15 +36,38 @@ export class BriefsDomain {
 	 * - Brief name (exact or partial match)
 	 *
 	 * @param input - Raw input: URL, UUID, last 8 chars, or brief name
-	 * @param orgId - Optional organization ID. If not provided, uses current context.
+	 * @param orgId - Optional organization ID. If not provided, tries to extract from URL or uses current context.
 	 * @returns The resolved brief object
 	 */
 	async resolveBrief(input: string, orgId?: string): Promise<any> {
-		// Extract brief ID/name from input (could be URL, ID, or name)
-		const briefIdOrName = this.extractBriefIdentifier(input);
+		// Parse input using dedicated URL parser
+		const parsed = BriefUrlParser.parse(input);
+		const briefIdOrName = parsed.briefId || input.trim();
 
-		// Get org ID from parameter or context
-		const resolvedOrgId = orgId || this.authManager.getContext()?.orgId;
+		// Resolve organization ID (priority: parameter > URL > context)
+		let resolvedOrgId = orgId;
+
+		// Try to extract org slug from URL if not provided
+		if (!resolvedOrgId && parsed.orgSlug) {
+			try {
+				const orgs = await this.authManager.getOrganizations();
+				const matchingOrg = orgs.find(
+					(org) =>
+						org.slug?.toLowerCase() === parsed.orgSlug?.toLowerCase() ||
+						org.name.toLowerCase() === parsed.orgSlug?.toLowerCase()
+				);
+				if (matchingOrg) {
+					resolvedOrgId = matchingOrg.id;
+				}
+			} catch {
+				// If we can't fetch orgs, fall through to context
+			}
+		}
+
+		// Fall back to context if still not resolved
+		if (!resolvedOrgId) {
+			resolvedOrgId = this.authManager.getContext()?.orgId;
+		}
 
 		if (!resolvedOrgId) {
 			throw new TaskMasterError(
@@ -64,64 +88,6 @@ export class BriefsDomain {
 		this.briefService.validateBriefFound(matchingBrief, briefIdOrName);
 
 		return matchingBrief;
-	}
-
-	/**
-	 * Extract brief identifier from raw input
-	 * Handles URLs, paths, and direct IDs
-	 *
-	 * @param input - Raw input string
-	 * @returns Extracted brief identifier
-	 */
-	private extractBriefIdentifier(input: string): string {
-		const raw = input?.trim() ?? '';
-		if (!raw) {
-			throw new TaskMasterError(
-				'Brief identifier cannot be empty',
-				ERROR_CODES.VALIDATION_ERROR
-			);
-		}
-
-		const parseUrl = (s: string): URL | null => {
-			try {
-				return new URL(s);
-			} catch {}
-			try {
-				return new URL(`https://${s}`);
-			} catch {}
-			return null;
-		};
-
-		const fromParts = (path: string): string | null => {
-			const parts = path.split('/').filter(Boolean);
-			const briefsIdx = parts.lastIndexOf('briefs');
-			const candidate =
-				briefsIdx >= 0 && parts.length > briefsIdx + 1
-					? parts[briefsIdx + 1]
-					: parts[parts.length - 1];
-			return candidate?.trim() || null;
-		};
-
-		// 1) URL (absolute or scheme‑less)
-		const url = parseUrl(raw);
-		if (url) {
-			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
-			const candidate = (qId || fromParts(url.pathname)) ?? null;
-			if (candidate) {
-				return candidate;
-			}
-		}
-
-		// 2) Looks like a path without scheme
-		if (raw.includes('/')) {
-			const candidate = fromParts(raw);
-			if (candidate) {
-				return candidate;
-			}
-		}
-
-		// 3) Fallback: raw token (UUID, last 8 chars, or name)
-		return raw;
 	}
 
 	/**
