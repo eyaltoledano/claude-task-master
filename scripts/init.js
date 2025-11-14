@@ -16,10 +16,12 @@
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import { randomUUID } from 'crypto';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import gradient from 'gradient-string';
+import inquirer from 'inquirer';
 import { isSilentMode } from './modules/utils.js';
 import { insideGitWorkTree } from './modules/utils/git-utils.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
@@ -400,19 +402,112 @@ async function initializeProject(options = {}) {
 			};
 		}
 
+		// Default to local storage in non-interactive mode unless explicitly specified
+		const selectedStorage = options.storage || 'local';
+		const authCredentials = null; // No auth in non-interactive mode
+
 		createProjectStructure(
 			addAliases,
 			initGit,
 			storeTasksInGit,
 			dryRun,
 			options,
-			selectedRuleProfiles
+			selectedRuleProfiles,
+			selectedStorage,
+			authCredentials
 		);
 	} else {
 		// Interactive logic
 		log('info', 'Required options not provided, proceeding with prompts.');
 
 		try {
+			// Track init_started event
+			// TODO: Send to Segment telemetry when implemented
+			const tmUuid = generateTmUuid();
+			log('debug', `Init started - tm_uuid: ${tmUuid}`);
+
+			// Prompt for storage selection first
+			let selectedStorage = await promptStorageSelection();
+
+			// Track storage_selected event
+			// TODO: Send to Segment telemetry when implemented
+			log('debug', `Storage selected: ${selectedStorage} - tm_uuid: ${tmUuid}`);
+
+			// If cloud storage selected, trigger OAuth flow
+			let authCredentials = null;
+			if (selectedStorage === 'cloud') {
+				try {
+					// Import AuthManager from @tm/core
+					const { AuthManager } = await import('@tm/core');
+					const authManager = AuthManager.getInstance();
+
+					// Check if already authenticated
+					const existingCredentials = await authManager.getAuthCredentials();
+					if (existingCredentials) {
+						log('success', 'Already authenticated with Hamster');
+						authCredentials = existingCredentials;
+					} else {
+						// Trigger OAuth flow
+						log('info', 'Starting authentication flow...');
+						console.log(
+							chalk.blue(
+								'\n🔐 Authentication Required\n'
+							)
+						);
+						console.log(
+							chalk.white(
+								'  Selecting cloud storage will open your browser for authentication.'
+							)
+						);
+						console.log(
+							chalk.gray(
+								'  This enables sync across devices with Hamster.\n'
+							)
+						);
+
+						// Import open for browser opening
+						const { default: open } = await import('open');
+
+						authCredentials = await authManager.authenticateWithOAuth({
+							openBrowser: async (authUrl) => {
+								await open(authUrl);
+							},
+							timeout: 5 * 60 * 1000, // 5 minutes
+							onAuthUrl: (authUrl) => {
+								console.log(chalk.blue.bold('\n🔐 Browser Authentication\n'));
+								console.log(
+									chalk.white('  Opening your browser to authenticate...')
+								);
+								console.log(
+									chalk.gray("  If the browser doesn't open, visit:")
+								);
+								console.log(chalk.cyan.underline(`  ${authUrl}\n`));
+							},
+							onWaitingForAuth: () => {
+								// Spinner will be handled by auth command internally
+							},
+							onSuccess: () => {
+								log('success', 'Authentication successful!');
+							},
+							onError: (error) => {
+								log('error', `Authentication failed: ${error.message}`);
+							}
+						});
+
+						// Track auth_completed event
+						// TODO: Send to Segment telemetry when implemented
+						log('debug', `Auth completed - tm_uuid: ${tmUuid}`);
+					}
+				} catch (authError) {
+					log(
+						'error',
+						`Failed to authenticate: ${authError.message}. Falling back to local storage.`
+					);
+					// Fall back to local storage if auth fails
+					selectedStorage = 'local';
+				}
+			}
+
 			const rl = readline.createInterface({
 				input: process.stdin,
 				output: process.stdout
@@ -528,7 +623,9 @@ async function initializeProject(options = {}) {
 				storeGitPrompted,
 				dryRun,
 				options,
-				selectedRuleProfiles
+				selectedRuleProfiles,
+				selectedStorage,
+				authCredentials
 			);
 			rl.close();
 		} catch (error) {
@@ -550,6 +647,103 @@ function promptQuestion(rl, question) {
 	});
 }
 
+/**
+ * Generate a unique tm_uuid for anonymous tracking
+ * @returns {string} UUID string
+ */
+function generateTmUuid() {
+	return randomUUID();
+}
+
+/**
+ * Update config.json with storage configuration
+ * @param {string} configPath - Path to config.json file
+ * @param {string} selectedStorage - Storage type ('cloud' or 'local')
+ * @param {object|null} authCredentials - Auth credentials if cloud storage selected
+ */
+function updateStorageConfig(configPath, selectedStorage, authCredentials) {
+	try {
+		if (!fs.existsSync(configPath)) {
+			log('warn', 'Config file does not exist, skipping storage configuration');
+			return;
+		}
+
+		const configContent = fs.readFileSync(configPath, 'utf8');
+		const config = JSON.parse(configContent);
+
+		// Initialize storage config if it doesn't exist
+		if (!config.storage) {
+			config.storage = {};
+		}
+
+		if (selectedStorage === 'cloud') {
+			// Configure for API/cloud storage
+			config.storage.type = 'api';
+			config.storage.apiEndpoint =
+				process.env.TM_BASE_DOMAIN ||
+				process.env.TM_PUBLIC_BASE_DOMAIN ||
+				'https://tryhamster.com/api';
+
+			// Note: Access token is stored in ~/.taskmaster/auth.json by AuthManager
+			// We don't store it in config.json for security reasons
+			log('info', 'Configured storage for cloud sync with Hamster');
+		} else {
+			// Configure for local file storage
+			config.storage.type = 'file';
+			log('info', 'Configured storage for local file storage');
+		}
+
+		// Write updated config back to file
+		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+		log('success', 'Storage configuration updated in config.json');
+	} catch (error) {
+		log('error', `Failed to update storage configuration: ${error.message}`);
+	}
+}
+
+/**
+ * Prompt user to select storage backend (Hamster cloud or local)
+ * @returns {Promise<'cloud'|'local'>} Selected storage type
+ */
+async function promptStorageSelection() {
+	if (isSilentMode()) {
+		// Default to local in silent mode
+		return 'local';
+	}
+
+	try {
+		const { storageType } = await inquirer.prompt([
+			{
+				type: 'list',
+				name: 'storageType',
+				message: chalk.cyan('Choose your storage backend:'),
+				choices: [
+					{
+						name: `${chalk.bold('☁️  Hamster (Cloud Sync)')} - Sync tasks across devices with Hamster`,
+						value: 'cloud',
+						short: 'Cloud'
+					},
+					{
+						name: `${chalk.bold('📁 Local Storage')} - Keep everything on your machine`,
+						value: 'local',
+						short: 'Local'
+					}
+				],
+				default: 'local'
+			}
+		]);
+
+		return storageType;
+	} catch (error) {
+		// Handle Ctrl+C or other interruptions
+		if (error.isTtyError || error.name === 'ExitPromptError') {
+			log('warn', 'Storage selection cancelled, defaulting to local storage');
+			return 'local';
+		}
+		throw error;
+	}
+}
+
 // Function to create the project structure
 function createProjectStructure(
 	addAliases,
@@ -557,7 +751,9 @@ function createProjectStructure(
 	storeTasksInGit,
 	dryRun,
 	options,
-	selectedRuleProfiles = RULE_PROFILES
+	selectedRuleProfiles = RULE_PROFILES,
+	selectedStorage = 'local',
+	authCredentials = null
 ) {
 	const targetDir = process.cwd();
 	log('info', `Initializing project in ${targetDir}`);
@@ -611,6 +807,9 @@ function createProjectStructure(
 	} else {
 		log('warn', 'Could not update maxTokens in config');
 	}
+
+	// Update config.json with storage configuration
+	updateStorageConfig(configPath, selectedStorage, authCredentials);
 
 	// Copy .gitignore with GitTasks preference
 	try {
