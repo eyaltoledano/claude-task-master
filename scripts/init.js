@@ -1004,7 +1004,9 @@ function createProjectStructure(
 	// =====================================
 
 	// === Add Model Configuration Step ===
-	if (!isSilentMode() && !dryRun && !options?.yes) {
+	// Only configure models for cloud storage (Hamster)
+	// Local storage doesn't require AI models for basic task management
+	if (!isSilentMode() && !dryRun && !options?.yes && selectedStorage === 'cloud') {
 		console.log(
 			boxen(chalk.cyan('Configuring AI Models...'), {
 				padding: 0.5,
@@ -1027,6 +1029,12 @@ function createProjectStructure(
 			log('error', 'Failed to configure AI models:', error.message);
 			log('warn', 'You may need to run "task-master models --setup" manually.');
 		}
+	} else if (selectedStorage === 'local' && !dryRun) {
+		log('info', 'Skipping AI model configuration for local storage.');
+		log(
+			'info',
+			'Local storage uses file-based task management. You can configure AI models later if needed using "task-master models --setup".'
+		);
 	} else if (isSilentMode() && !dryRun) {
 		log('info', 'Skipping interactive model setup in silent (MCP) mode.');
 		log(
