@@ -13,40 +13,40 @@
  * For the full license text, see the LICENSE file in the root directory.
  */
 
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { randomUUID } from 'crypto';
+import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
-import boxen from 'boxen';
 import gradient from 'gradient-string';
 import inquirer from 'inquirer';
-import { isSilentMode } from './modules/utils.js';
-import { insideGitWorkTree } from './modules/utils/git-utils.js';
-import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import { RULE_PROFILES } from '../src/constants/profiles.js';
+import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import {
 	convertAllRulesToProfileRules,
 	getRulesProfile
 } from '../src/utils/rule-transformer.js';
 import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
+import { isSilentMode } from './modules/utils.js';
+import { insideGitWorkTree } from './modules/utils/git-utils.js';
 
 // Import asset resolver
 import { assetExists, readAsset } from '../src/utils/asset-resolver.js';
 
 import { execSync } from 'child_process';
 import {
+	ENV_EXAMPLE_FILE,
 	EXAMPLE_PRD_FILE,
+	GITIGNORE_FILE,
 	TASKMASTER_CONFIG_FILE,
-	TASKMASTER_TEMPLATES_DIR,
 	TASKMASTER_DIR,
-	TASKMASTER_TASKS_DIR,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
 	TASKMASTER_STATE_FILE,
-	ENV_EXAMPLE_FILE,
-	GITIGNORE_FILE
+	TASKMASTER_TASKS_DIR,
+	TASKMASTER_TEMPLATES_DIR
 } from '../src/constants/paths.js';
 
 // Define log levels
@@ -423,15 +423,15 @@ async function initializeProject(options = {}) {
 		try {
 			// Track init_started event
 			// TODO: Send to Segment telemetry when implemented
-			const tmUuid = generateTmUuid();
-			log('debug', `Init started - tm_uuid: ${tmUuid}`);
+			const taskmasterId = generateTaskmasterId();
+			log('debug', `Init started - taskmaster_id: ${taskmasterId}`);
 
 			// Prompt for storage selection first
 			let selectedStorage = await promptStorageSelection();
 
 			// Track storage_selected event
 			// TODO: Send to Segment telemetry when implemented
-			log('debug', `Storage selected: ${selectedStorage} - tm_uuid: ${tmUuid}`);
+			log('debug', `Storage selected: ${selectedStorage} - taskmaster_id: ${taskmasterId}`);
 
 			// If cloud storage selected, trigger OAuth flow
 			let authCredentials = null;
@@ -449,20 +449,14 @@ async function initializeProject(options = {}) {
 					} else {
 						// Trigger OAuth flow
 						log('info', 'Starting authentication flow...');
-						console.log(
-							chalk.blue(
-								'\n🔐 Authentication Required\n'
-							)
-						);
+						console.log(chalk.blue('\n🔐 Authentication Required\n'));
 						console.log(
 							chalk.white(
 								'  Selecting cloud storage will open your browser for authentication.'
 							)
 						);
 						console.log(
-							chalk.gray(
-								'  This enables sync across devices with Hamster.\n'
-							)
+							chalk.gray('  This enables sync across devices with Hamster.\n')
 						);
 
 						// Import open for browser opening
@@ -496,7 +490,7 @@ async function initializeProject(options = {}) {
 
 						// Track auth_completed event
 						// TODO: Send to Segment telemetry when implemented
-						log('debug', `Auth completed - tm_uuid: ${tmUuid}`);
+						log('debug', `Auth completed - taskmaster_id: ${taskmasterId}`);
 					}
 				} catch (authError) {
 					log(
@@ -648,10 +642,10 @@ function promptQuestion(rl, question) {
 }
 
 /**
- * Generate a unique tm_uuid for anonymous tracking
+ * Generate a unique taskmaster_id for anonymous tracking
  * @returns {string} UUID string
  */
-function generateTmUuid() {
+function generateTaskmasterId() {
 	return randomUUID();
 }
 
