@@ -1,5 +1,94 @@
 # task-master-ai
 
+## 0.32.0
+
+### Minor Changes
+
+- [#1382](https://github.com/eyaltoledano/claude-task-master/pull/1382) [`ac4328a`](https://github.com/eyaltoledano/claude-task-master/commit/ac4328ae86380c50bb84fff0e98e2370f4ea666f) Thanks [@JJVvV](https://github.com/JJVvV)! - Added opt-in proxy support for all AI providers - respects http_proxy/https_proxy environment variables when enabled.
+
+  When using Task Master in corporate or restricted network environments that require HTTP/HTTPS proxies, API calls to AI providers (OpenAI, Anthropic, Google, AWS Bedrock, etc.) would previously fail with ECONNRESET errors. This update adds seamless proxy support that can be enabled via environment variable or configuration file.
+
+  **How to enable:**
+
+  Proxy support is opt-in. Enable it using either method:
+
+  **Method 1: Environment Variable**
+
+  ```bash
+  export TASKMASTER_ENABLE_PROXY=true
+  export http_proxy=http://your-proxy:port
+  export https_proxy=http://your-proxy:port
+  export no_proxy=localhost,127.0.0.1  # Optional: bypass proxy for specific hosts
+
+  # Then use Task Master normally
+  task-master add-task "Create a new feature"
+  ```
+
+  **Method 2: Configuration File**
+
+  Add to `.taskmaster/config.json`:
+
+  ```json
+  {
+    "global": {
+      "enableProxy": true
+    }
+  }
+  ```
+
+  Then set your proxy environment variables:
+
+  ```bash
+  export http_proxy=http://your-proxy:port
+  export https_proxy=http://your-proxy:port
+  ```
+
+  **Technical details:**
+  - Uses undici's `EnvHttpProxyAgent` for automatic proxy detection
+  - Centralized implementation in `BaseAIProvider` for consistency across all providers
+  - Supports all AI providers: OpenAI, Anthropic, Perplexity, Azure OpenAI, Google AI, Google Vertex AI, AWS Bedrock, and OpenAI-compatible providers
+  - Opt-in design ensures users without proxy requirements are not affected
+  - Priority: `TASKMASTER_ENABLE_PROXY` environment variable > `config.json` setting
+
+- [#1408](https://github.com/eyaltoledano/claude-task-master/pull/1408) [`10ec025`](https://github.com/eyaltoledano/claude-task-master/commit/10ec0255812dad00aaa72f1b31f41ca978e4451c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add --json back to `task-master list` and `task-master show` for when using the commands with ai agents (less context)
+
+- [#1398](https://github.com/eyaltoledano/claude-task-master/pull/1398) [`e59c16c`](https://github.com/eyaltoledano/claude-task-master/commit/e59c16c707d3ade479a422d8c617004eac1a857f) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Claude Code provider now respects your global, project, and local Claude Code configuration files.
+
+  When using the Claude Code AI provider, Task Master now automatically loads your Claude Code settings from:
+  - **Global config** (`~/.claude/` directory) - Your personal preferences across all projects
+  - **Project config** (`.claude/` directory) - Project-specific settings like CLAUDE.md instructions
+  - **Local config** - Workspace-specific overrides
+
+  This means your CLAUDE.md files, custom instructions, and Claude Code settings will now be properly applied when Task Master uses Claude Code as an AI provider. Previously, these settings were being ignored.
+
+  **What's improved:**
+  - ✅ CLAUDE.md files are now automatically loaded and applied (global and local)
+  - ✅ Your custom Claude Code settings are respected
+  - ✅ Project-specific instructions work as expected
+  - ✅ No manual configuration needed - works out of the box
+
+  **Issues:**
+  - Resolves #1391
+  - Resolves #1315
+
+### Patch Changes
+
+- [#1400](https://github.com/eyaltoledano/claude-task-master/pull/1400) [`c62cf84`](https://github.com/eyaltoledano/claude-task-master/commit/c62cf845dad1960ec183df217293d4edbeea71b9) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix subtasks not showing parent task when displaying in cli (eg. tm show 10)
+
+- [#1393](https://github.com/eyaltoledano/claude-task-master/pull/1393) [`da8ed6a`](https://github.com/eyaltoledano/claude-task-master/commit/da8ed6aa116b9ade3ef4502dd8b8c44727057b5f) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Fix completion percentage and dependency resolution to treat cancelled tasks as complete. Cancelled tasks now correctly count toward project completion (e.g., 14 done + 1 cancelled = 100%, not 93%) and satisfy dependencies for dependent tasks, preventing permanent blocks.
+
+- [#1407](https://github.com/eyaltoledano/claude-task-master/pull/1407) [`0003b6f`](https://github.com/eyaltoledano/claude-task-master/commit/0003b6fca6b8c9320ee959fb0081eed4ba086b98) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix complexity analysis prompt to ensure consistent JSON output format
+
+- [#1351](https://github.com/eyaltoledano/claude-task-master/pull/1351) [`37aee78`](https://github.com/eyaltoledano/claude-task-master/commit/37aee7809ce753104692b2024eb8b2bb0d376c14) Thanks [@bjcoombs](https://github.com/bjcoombs)! - fix: prioritize .taskmaster in parent directories over other project markers
+
+  When running task-master commands from subdirectories containing other project markers (like .git, go.mod, package.json), findProjectRoot() now correctly finds and uses .taskmaster directories in parent folders instead of stopping at the first generic project marker found.
+
+  This enables multi-repo monorepo setups where a single .taskmaster at the root tracks work across multiple sub-repositories.
+
+- [#1406](https://github.com/eyaltoledano/claude-task-master/pull/1406) [`9079d04`](https://github.com/eyaltoledano/claude-task-master/commit/9079d0417907f468360e8db8dd461abb619609e7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP server compatibility with Cursor IDE's latest update by upgrading to fastmcp v3.20.1 with Zod v4 support
+  - This resolves connection failures where the MCP server was unable to establish proper capability negotiation.
+  - Issue typically included wording like: `Server does not support completions`
+
 ## 0.32.0-rc.0
 
 ### Minor Changes
