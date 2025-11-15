@@ -4,19 +4,21 @@
  * This is a thin presentation layer over @tm/core's TaskExecutionService
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import ora, { type Ora } from 'ora';
 import { spawn } from 'child_process';
 import {
-	createTmCore,
+	type StartTaskResult as CoreStartTaskResult,
+	type StorageType,
 	type TmCore,
-	type StartTaskResult as CoreStartTaskResult
+	createTmCore
 } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import ora, { type Ora } from 'ora';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
-import * as ui from '../utils/ui.js';
 import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * CLI-specific options interface for the start command
@@ -35,7 +37,7 @@ export interface StartCommandOptions {
  * Extends the core result with CLI-specific display information
  */
 export interface StartCommandResult extends CoreStartTaskResult {
-	storageType?: string;
+	storageType?: Exclude<StorageType, 'auto'>;
 }
 
 /**
@@ -56,7 +58,10 @@ export class StartCommand extends Command {
 			.argument('[id]', 'Task ID to start working on')
 			.option('-i, --id <id>', 'Task ID to start working on')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.option(
 				'--dry-run',
 				'Show what would be executed without launching claude-code'
@@ -93,7 +98,7 @@ export class StartCommand extends Command {
 
 			// Initialize tm-core with spinner
 			spinner = ora('Initializing Task Master...').start();
-			await this.initializeCore(options.project || process.cwd());
+			await this.initializeCore(getProjectRoot(options.project));
 			spinner.succeed('Task Master initialized');
 
 			// Get the task ID from argument or option, or find next available task
@@ -362,7 +367,8 @@ export class StartCommand extends Command {
 
 			displayTaskDetails(task, {
 				customHeader: headerText,
-				headerColor: 'yellow'
+				headerColor: 'yellow',
+				storageType: result.storageType
 			});
 
 			// Show claude-code prompt

@@ -1,7 +1,5 @@
 // mcp-server/src/tools/get-operation-status.js
-// TEMPORARY: Using zod/v3 for Draft-07 JSON Schema compatibility with FastMCP's zod-to-json-schema
-// TODO: Revert to 'zod' when MCP spec issue is resolved (see PR #1323)
-import { z } from 'zod/v3';
+import { z } from 'zod';
 import { createErrorResponse, createContentResponse } from './utils.js'; // Assuming these utils exist
 
 /**

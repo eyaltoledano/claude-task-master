@@ -12,6 +12,8 @@ export { ContextCommand } from './commands/context.command.js';
 export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
 export { ExportCommand } from './commands/export.command.js';
+export { TagsCommand } from './commands/tags.command.js';
+export { BriefsCommand } from './commands/briefs.command.js';
 
 // Command Registry
 export {
@@ -21,20 +23,12 @@ export {
 	type CommandMetadata
 } from './command-registry.js';
 
-// UI utilities (for other commands to use)
-export * as ui from './utils/ui.js';
+// General utilities (error handling, auto-update, etc.)
+export * from './utils/index.js';
 
-// Error handling utilities
-export { displayError, isDebugMode } from './utils/error-handler.js';
-
-// Auto-update utilities
-export {
-	checkForUpdate,
-	performAutoUpdate,
-	displayUpgradeNotification,
-	compareVersions,
-	restartWithNewVersion
-} from './utils/auto-update.js';
+// UI utilities - exported only via ui namespace to avoid naming conflicts
+// Import via: import { ui } from '@tm/cli'; ui.displayBanner();
+export * as ui from './ui/index.js';
 
 export { runInteractiveSetup } from './commands/models/index.js';
 

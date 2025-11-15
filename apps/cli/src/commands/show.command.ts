@@ -3,15 +3,16 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { createTmCore, type Task, type TmCore } from '@tm/core';
+import { type Task, type TmCore, createTmCore } from '@tm/core';
 import type { StorageType, Subtask } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import * as ui from '../utils/ui.js';
+import { getProjectRoot } from '../utils/project-root.js';
 
 /**
  * Options interface for the show command
@@ -20,6 +21,7 @@ export interface ShowCommandOptions {
 	id?: string;
 	status?: string;
 	format?: 'text' | 'json';
+	json?: boolean;
 	silent?: boolean;
 	project?: string;
 }
@@ -63,8 +65,12 @@ export class ShowCommand extends Command {
 			)
 			.option('-s, --status <status>', 'Filter subtasks by status')
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
+			.option('--json', 'Output in JSON format (shorthand for --format json)')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(
 				async (taskId: string | undefined, options: ShowCommandOptions) => {
 					await this.executeCommand(taskId, options);
@@ -86,7 +92,7 @@ export class ShowCommand extends Command {
 			}
 
 			// Initialize tm-core
-			await this.initializeCore(options.project || process.cwd());
+			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get the task ID from argument or option
 			const idArg = taskId || options.id;
@@ -208,7 +214,8 @@ export class ShowCommand extends Command {
 		result: ShowTaskResult | ShowMultipleTasksResult,
 		options: ShowCommandOptions
 	): void {
-		const format = options.format || 'text';
+		// If --json flag is set, override format to 'json'
+		const format = options.json ? 'json' : options.format || 'text';
 
 		switch (format) {
 			case 'json':
@@ -268,7 +275,8 @@ export class ShowCommand extends Command {
 		displayTaskDetails(result.task, {
 			statusFilter: options.status,
 			showSuggestedActions: true,
-			originalTaskId: result.originalTaskId
+			originalTaskId: result.originalTaskId,
+			storageType: result.storageType
 		});
 	}
 
@@ -287,7 +295,7 @@ export class ShowCommand extends Command {
 		});
 
 		if (result.notFound.length > 0) {
-			console.log(chalk.yellow(`\n⚠ Not found: ${result.notFound.join(', ')}`));
+			console.log(chalk.yellow(`\n⚠️ Not found: ${result.notFound.join(', ')}`));
 		}
 
 		if (result.tasks.length === 0) {

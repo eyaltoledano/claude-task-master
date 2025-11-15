@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.31.2",
+	"version": "0.32.0-rc.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -71,7 +71,7 @@
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^5.0.51",
-		"ai-sdk-provider-claude-code": "^1.1.4",
+		"ai-sdk-provider-claude-code": "^2.1.0",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
 		"ai-sdk-provider-gemini-cli": "^1.1.1",
 		"ajv": "^8.17.1",
@@ -85,7 +85,7 @@
 		"cors": "^2.8.5",
 		"dotenv": "^16.6.1",
 		"express": "^4.21.2",
-		"fastmcp": "^3.5.0",
+		"fastmcp": "^3.23.0",
 		"figlet": "^1.8.0",
 		"fs-extra": "^11.3.0",
 		"fuse.js": "^7.1.0",
@@ -106,7 +106,7 @@
 		"steno": "^4.0.2",
 		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
-		"zod": "^4.1.11"
+		"zod": "^4.1.12"
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^1.0.88",

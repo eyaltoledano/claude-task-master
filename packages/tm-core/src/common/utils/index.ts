@@ -47,6 +47,15 @@ export {
 	compareRunIds
 } from './run-id-generator.js';
 
+// Export project root finding utilities
+export {
+	findProjectRoot,
+	normalizeProjectRoot
+} from './project-root-finder.js';
+
+// Export path construction utilities
+export { getProjectPaths } from './path-helpers.js';
+
 // Additional utility exports
 
 /**

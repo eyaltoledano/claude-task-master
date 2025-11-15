@@ -13,12 +13,12 @@ import type {
 import { DEFAULT_CONFIG_VALUES as DEFAULTS } from '../../../common/interfaces/configuration.interface.js';
 import { ConfigLoader } from '../services/config-loader.service.js';
 import {
-	ConfigMerger,
-	CONFIG_PRECEDENCE
+	CONFIG_PRECEDENCE,
+	ConfigMerger
 } from '../services/config-merger.service.js';
-import { RuntimeStateManager } from '../services/runtime-state-manager.service.js';
 import { ConfigPersistence } from '../services/config-persistence.service.js';
 import { EnvironmentConfigProvider } from '../services/environment-config-provider.service.js';
+import { RuntimeStateManager } from '../services/runtime-state-manager.service.js';
 
 /**
  * ConfigManager orchestrates all configuration services

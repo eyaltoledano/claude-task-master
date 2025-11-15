@@ -32,10 +32,6 @@ export class XAIProvider extends BaseAIProvider {
 		try {
 			const { apiKey, baseURL } = params;
 
-			if (!apiKey) {
-				throw new Error('xAI API key is required.');
-			}
-
 			return createXai({
 				apiKey,
 				baseURL: baseURL || 'https://api.x.ai/v1'

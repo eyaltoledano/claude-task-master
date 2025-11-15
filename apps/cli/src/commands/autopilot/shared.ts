@@ -3,12 +3,12 @@
  */
 
 import {
-	WorkflowOrchestrator,
-	WorkflowStateManager,
+	CommitMessageGenerator,
 	GitAdapter,
-	CommitMessageGenerator
+	WorkflowOrchestrator,
+	WorkflowStateManager
 } from '@tm/core';
-import type { WorkflowState, WorkflowContext, SubtaskInfo } from '@tm/core';
+import type { SubtaskInfo, WorkflowContext, WorkflowState } from '@tm/core';
 import chalk from 'chalk';
 
 /**
@@ -216,7 +216,7 @@ export class OutputFormatter {
 				)
 			);
 		} else {
-			console.warn(chalk.yellow(`⚠ ${message}`));
+			console.warn(chalk.yellow(`⚠️ ${message}`));
 		}
 	}
 

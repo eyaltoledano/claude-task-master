@@ -2,11 +2,11 @@
  * @fileoverview Unit tests for autopilot shared utilities
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	validateTaskId,
+	OutputFormatter,
 	parseSubtasks,
-	OutputFormatter
+	validateTaskId
 } from '../../../../src/commands/autopilot/shared.js';
 
 // Mock fs-extra

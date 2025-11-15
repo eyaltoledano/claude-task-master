@@ -2,12 +2,13 @@
  * src/ai-providers/claude-code.js
  *
  * Claude Code provider implementation using the ai-sdk-provider-claude-code package.
- * This provider uses the local Claude Code CLI with OAuth token authentication.
+ * This provider uses the local Claude Agent SDK (via Claude Code CLI) with OAuth token authentication.
  *
  * Authentication:
  * - Uses CLAUDE_CODE_OAUTH_TOKEN managed by Claude Code CLI
  * - Token is set up via: claude setup-token
  * - No manual API key configuration required
+ *
  */
 
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
@@ -104,9 +105,42 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 			const settings =
 				getClaudeCodeSettingsForCommand(params.commandName) || {};
 
-			return createClaudeCode({
-				defaultSettings: settings
-			});
+			// Environment variable isolation to prevent API key conflicts
+			// The ai-sdk-provider-claude-code SDK automatically picks up ANTHROPIC_API_KEY,
+			// which can cause conflicts if that key is intended for the Anthropic provider.
+			const originalAnthropicKey = process.env.ANTHROPIC_API_KEY;
+			const claudeCodeKey = process.env.CLAUDE_CODE_API_KEY;
+
+			try {
+				// If CLAUDE_CODE_API_KEY is set, use it exclusively
+				if (claudeCodeKey) {
+					process.env.ANTHROPIC_API_KEY = claudeCodeKey;
+				} else if (originalAnthropicKey) {
+					// If only ANTHROPIC_API_KEY exists, temporarily unset it to force OAuth mode
+					delete process.env.ANTHROPIC_API_KEY;
+				}
+
+				return createClaudeCode({
+					defaultSettings: {
+						// Restore previous default behavior from pre-2.0 versions
+						// These must be inside defaultSettings to be applied by the provider
+						systemPrompt: {
+							type: 'preset',
+							preset: 'claude_code'
+						},
+						// Enable loading of CLAUDE.md and settings.json files
+						settingSources: ['user', 'project', 'local'],
+						...settings
+					}
+				});
+			} finally {
+				// Restore original environment state
+				if (originalAnthropicKey) {
+					process.env.ANTHROPIC_API_KEY = originalAnthropicKey;
+				} else {
+					delete process.env.ANTHROPIC_API_KEY;
+				}
+			}
 		} catch (error) {
 			// Provide more helpful error message
 			const msg = String(error?.message || '');

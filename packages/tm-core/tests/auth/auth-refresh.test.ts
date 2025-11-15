@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import type { Session } from '@supabase/supabase-js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthManager } from '../../src/auth/auth-manager';
 import { CredentialStore } from '../../src/auth/credential-store';
 import type { AuthCredentials } from '../../src/auth/types';

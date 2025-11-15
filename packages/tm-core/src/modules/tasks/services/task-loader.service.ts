@@ -3,9 +3,10 @@
  * Loads and validates tasks for autopilot execution
  */
 
-import type { Task, Subtask, TaskStatus } from '../../../common/types/index.js';
+import type { Task, Subtask } from '../../../common/types/index.js';
 import type { TaskService } from './task-service.js';
 import { getLogger } from '../../../common/logger/factory.js';
+import { isTaskComplete } from '../../../common/constants/index.js';
 
 const logger = getLogger('TaskLoader');
 
@@ -131,9 +132,7 @@ export class TaskLoaderService {
 	 * Validate task status is appropriate for autopilot
 	 */
 	private validateTaskStatus(task: Task): TaskValidationResult {
-		const completedStatuses: TaskStatus[] = ['done', 'completed', 'cancelled'];
-
-		if (completedStatuses.includes(task.status)) {
+		if (isTaskComplete(task.status)) {
 			return {
 				success: false,
 				errorType: 'task_completed',

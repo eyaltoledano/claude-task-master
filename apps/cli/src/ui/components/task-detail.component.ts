@@ -3,16 +3,16 @@
  * Displays detailed task information in a structured format
  */
 
-import chalk from 'chalk';
+import type { StorageType, Subtask, Task } from '@tm/core';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
-import { marked, MarkedExtension } from 'marked';
+import { MarkedExtension, marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
-import type { Subtask, Task } from '@tm/core';
 import {
-	getStatusWithColor,
+	getComplexityWithColor,
 	getPriorityWithColor,
-	getComplexityWithColor
+	getStatusWithColor
 } from '../../utils/ui.js';
 
 // Configure marked to use terminal renderer with subtle colors
@@ -198,7 +198,9 @@ export function displaySubtasks(
 		status: any;
 		description?: string;
 		dependencies?: string[];
-	}>
+	}>,
+	parentTaskId?: string | number,
+	storageType?: Exclude<StorageType, 'auto'>
 ): void {
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
 	// Display subtasks header
@@ -233,7 +235,13 @@ export function displaySubtasks(
 	});
 
 	subtasks.forEach((subtask) => {
-		const subtaskId = String(subtask.id);
+		// Format subtask ID based on storage type:
+		// - File storage: Show parent prefix (e.g., 10.1, 10.2)
+		// - API storage: Show subtask ID only (e.g., 1, 2)
+		const subtaskId =
+			storageType === 'file' && parentTaskId
+				? `${parentTaskId}.${subtask.id}`
+				: String(subtask.id);
 
 		// Format dependencies
 		const deps =
@@ -285,6 +293,7 @@ export function displayTaskDetails(
 		customHeader?: string;
 		headerColor?: string;
 		originalTaskId?: string;
+		storageType?: Exclude<StorageType, 'auto'>;
 	}
 ): void {
 	const {
@@ -292,7 +301,8 @@ export function displayTaskDetails(
 		showSuggestedActions = false,
 		customHeader,
 		headerColor = 'blue',
-		originalTaskId
+		originalTaskId,
+		storageType
 	} = options || {};
 
 	// Display header - either custom or default
@@ -338,7 +348,7 @@ export function displayTaskDetails(
 			console.log(chalk.gray(`  No subtasks with status '${statusFilter}'`));
 		} else if (filteredSubtasks.length > 0) {
 			console.log(); // Empty line for spacing
-			displaySubtasks(filteredSubtasks);
+			displaySubtasks(filteredSubtasks, task.id, storageType);
 		}
 	}
 

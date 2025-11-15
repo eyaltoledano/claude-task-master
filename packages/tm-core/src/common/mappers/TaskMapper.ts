@@ -1,5 +1,5 @@
-import { Task, Subtask } from '../types/index.js';
 import { Database, Tables } from '../types/database.types.js';
+import { Subtask, Task } from '../types/index.js';
 
 type TaskRow = Tables<'tasks'>;
 
@@ -69,11 +69,13 @@ export class TaskMapper {
 			createdAt: subtask.created_at,
 			updatedAt: subtask.updated_at,
 			assignee: subtask.assignee_id || undefined,
-			complexity: subtask.complexity ?? undefined
+			complexity: subtask.complexity ?? undefined,
+			databaseId: subtask.id // Include the actual database UUID
 		}));
 
 		return {
 			id: dbTask.display_id || dbTask.id, // Use display_id if available
+			databaseId: dbTask.id, // Include the actual database UUID
 			title: dbTask.title,
 			description: dbTask.description || '',
 			status: this.mapStatus(dbTask.status),

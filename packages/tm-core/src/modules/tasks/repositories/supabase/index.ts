@@ -1,5 +1,5 @@
 /**
  * Supabase repository implementations
  */
-export { SupabaseTaskRepository } from './supabase-task-repository.js';
+export { SupabaseRepository } from './supabase-repository.js';
 export { DependencyFetcher } from './dependency-fetcher.js';

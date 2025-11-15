@@ -2,9 +2,10 @@
  * @fileoverview Commit Command - Create commit with enhanced message generation
  */
 
+import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
 import { Command } from 'commander';
-import { WorkflowService, GitAdapter, CommitMessageGenerator } from '@tm/core';
 import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 type CommitOptions = AutopilotBaseOptions;
 
@@ -28,8 +29,9 @@ export class CommitCommand extends Command {
 		const mergedOptions: CommitOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

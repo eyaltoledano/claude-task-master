@@ -1,8 +1,8 @@
+import fs from 'fs';
 /**
  * Tests for the expand-task.js module
  */
 import { jest } from '@jest/globals';
-import fs from 'fs';
 import {
 	createGetTagAwareFilePathMock,
 	createSlugifyTagForFilePathMock
@@ -25,6 +25,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	findTaskById: jest.fn(),
 	findProjectRoot: jest.fn((tasksPath) => '/mock/project/root'),
 	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
+	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	flattenTasksWithSubtasks: jest.fn((tasks) => {
 		const allTasks = [];
@@ -162,7 +164,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn().mockResolvedValue({
+			loadPrompt: jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt'
 			})
@@ -182,7 +184,12 @@ jest.unstable_mockModule('chalk', () => ({
 		),
 		green: jest.fn((text) => text),
 		yellow: jest.fn((text) => text),
-		bold: jest.fn((text) => text)
+		red: jest.fn((text) => text),
+		blue: jest.fn((text) => text),
+		magenta: jest.fn((text) => text),
+		gray: jest.fn((text) => text),
+		bold: jest.fn((text) => text),
+		dim: jest.fn((text) => text)
 	}
 }));
 
@@ -196,6 +203,28 @@ jest.unstable_mockModule('cli-table3', () => ({
 		toString: jest.fn(() => 'mocked table')
 	}))
 }));
+
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryExpandViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
 
 // Mock process.exit to prevent Jest worker crashes
 const mockExit = jest.spyOn(process, 'exit').mockImplementation((code) => {
@@ -226,6 +255,8 @@ const generateTaskFiles = (
 const { getDefaultSubtasks } = await import(
 	'../../../../../scripts/modules/config-manager.js'
 );
+
+const { tryExpandViaRemote } = await import('@tm/bridge');
 
 // Import the module under test
 const { default: expandTask } = await import(
@@ -702,7 +733,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt: 'Generate exactly 5 subtasks for complexity report',
 				userPrompt:
 					'Please break this task into 5 parts\n\nUser provided context'
@@ -1016,7 +1047,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt with context'
 			});
@@ -1145,7 +1176,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into an appropriate number of specific subtasks that can be implemented one by one.',
 				userPrompt:
@@ -1173,7 +1204,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 5 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 5 specific subtasks'
@@ -1201,7 +1232,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 4 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 4 specific subtasks'
@@ -1227,7 +1258,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 6 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 6 specific subtasks'
@@ -1253,7 +1284,7 @@ describe('expandTask', () => {
 			const { getPromptManager } = await import(
 				'../../../../../scripts/modules/prompt-manager.js'
 			);
-			const mockLoadPrompt = jest.fn().mockResolvedValue({
+			const mockLoadPrompt = jest.fn().mockReturnValue({
 				systemPrompt:
 					'You are an AI assistant helping with task breakdown for software development. You need to break down a high-level task into 7 specific subtasks that can be implemented one by one.',
 				userPrompt: 'Break down this task into exactly 7 specific subtasks'
@@ -1269,6 +1300,126 @@ describe('expandTask', () => {
 			expect(generateObjectService).toHaveBeenCalled();
 			const callArgs = generateObjectService.mock.calls[0][0];
 			expect(callArgs.systemPrompt).toContain('7 specific subtasks');
+		});
+	});
+
+	describe('Remote Expansion via Bridge', () => {
+		const tasksPath = '/fake/path/tasks.json';
+		const taskId = '2';
+		const context = { tag: 'master' };
+
+		test('should use remote expansion result when tryExpandViaRemote succeeds', async () => {
+			// Arrange - Mock successful remote expansion
+			const remoteResult = {
+				success: true,
+				message: 'Task expanded successfully via remote',
+				data: {
+					subtasks: [
+						{
+							id: 1,
+							title: 'Remote Subtask 1',
+							description: 'First remote subtask',
+							status: 'pending',
+							dependencies: []
+						},
+						{
+							id: 2,
+							title: 'Remote Subtask 2',
+							description: 'Second remote subtask',
+							status: 'pending',
+							dependencies: [1]
+						}
+					]
+				}
+			};
+			tryExpandViaRemote.mockResolvedValue(remoteResult);
+
+			// Act
+			const result = await expandTask(
+				tasksPath,
+				taskId,
+				2,
+				false,
+				'',
+				context,
+				false
+			);
+
+			// Assert - Should use remote result and NOT call local AI service
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			expect(generateObjectService).not.toHaveBeenCalled();
+			expect(result).toEqual(remoteResult);
+		});
+
+		test('should fallback to local expansion when tryExpandViaRemote returns null', async () => {
+			// Arrange - Mock remote returning null (no remote available)
+			tryExpandViaRemote.mockResolvedValue(null);
+
+			// Act
+			await expandTask(tasksPath, taskId, 3, false, '', context, false);
+
+			// Assert - Should fallback to local expansion
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(writeJSON).toHaveBeenCalled();
+		});
+
+		test('should propagate error when tryExpandViaRemote throws error', async () => {
+			// Arrange - Mock remote throwing error (it re-throws, doesn't return null)
+			tryExpandViaRemote.mockImplementation(() =>
+				Promise.reject(new Error('Remote expansion service unavailable'))
+			);
+
+			// Act & Assert - Should propagate the error (not fallback to local)
+			await expect(
+				expandTask(tasksPath, taskId, 3, false, '', context, false)
+			).rejects.toThrow('Remote expansion service unavailable');
+
+			expect(tryExpandViaRemote).toHaveBeenCalled();
+			// Local expansion should NOT be called when remote throws
+			expect(generateObjectService).not.toHaveBeenCalled();
+		});
+
+		test('should pass correct parameters to tryExpandViaRemote', async () => {
+			// Arrange
+			const taskIdStr = '2'; // Use task 2 which exists in master tag
+			const numSubtasks = 5;
+			const additionalContext = 'Extra context for expansion';
+			const useResearch = false; // Note: useResearch is the 4th param, not 7th
+			const force = true; // Note: force is the 7th param
+			const contextObj = {
+				tag: 'master', // Use master tag where task 2 exists
+				projectRoot: '/mock/project'
+			};
+			tryExpandViaRemote.mockResolvedValue(null);
+
+			// Act
+			await expandTask(
+				tasksPath,
+				taskIdStr,
+				numSubtasks,
+				useResearch, // 4th param
+				additionalContext, // 5th param
+				contextObj, // 6th param
+				force // 7th param
+			);
+
+			// Assert - Verify tryExpandViaRemote was called with correct params
+			// Note: The actual call has a flat structure, not nested context
+			expect(tryExpandViaRemote).toHaveBeenCalledWith(
+				expect.objectContaining({
+					taskId: taskIdStr,
+					numSubtasks,
+					additionalContext,
+					useResearch,
+					force,
+					projectRoot: '/mock/project',
+					tag: 'master',
+					isMCP: expect.any(Boolean),
+					outputFormat: expect.any(String),
+					report: expect.any(Function)
+				})
+			);
 		});
 	});
 });

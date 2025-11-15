@@ -2,26 +2,31 @@
  * Authentication manager for Task Master CLI
  */
 
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
-	AuthCredentials,
-	OAuthFlowOptions,
-	AuthenticationError,
-	AuthConfig,
-	UserContext
-} from '../types.js';
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
+import { getLogger } from '../../../common/logger/index.js';
+import type { Brief } from '../../briefs/types.js';
+import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { ContextStore } from '../services/context-store.js';
 import { OAuthService } from '../services/oauth-service.js';
-import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import {
-	OrganizationService,
 	type Organization,
-	type Brief,
+	OrganizationService,
 	type RemoteTask
 } from '../services/organization.service.js';
-import { getLogger } from '../../../common/logger/index.js';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import {
+	AuthConfig,
+	AuthCredentials,
+	AuthenticationError,
+	OAuthFlowOptions,
+	UserContext,
+	UserContextWithBrief
+} from '../types.js';
 
 /**
  * Authentication manager class
@@ -429,5 +434,29 @@ export class AuthManager {
 	async getTasks(briefId: string): Promise<RemoteTask[]> {
 		const service = await this.getOrganizationService();
 		return service.getTasks(briefId);
+	}
+
+	/**
+	 * Ensure a brief is selected in the current context
+	 * Throws a TaskMasterError if no brief is selected
+	 * @param operation - The operation name for error context
+	 * @returns The current user context with a guaranteed briefId
+	 */
+	ensureBriefSelected(operation: string): UserContextWithBrief {
+		const context = this.getContext();
+
+		if (!context?.briefId) {
+			throw new TaskMasterError(
+				'No brief selected',
+				ERROR_CODES.NO_BRIEF_SELECTED,
+				{
+					operation,
+					userMessage:
+						'No brief selected. Please select a brief first using: tm context brief <brief-id> or tm context brief <brief-url>'
+				}
+			);
+		}
+
+		return context as UserContextWithBrief;
 	}
 }

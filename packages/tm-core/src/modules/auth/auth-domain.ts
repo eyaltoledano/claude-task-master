@@ -4,18 +4,18 @@
  */
 
 import path from 'node:path';
+import type { StorageType } from '../../common/types/index.js';
+import type { Brief } from '../briefs/types.js';
 import { AuthManager } from './managers/auth-manager.js';
+import type {
+	Organization,
+	RemoteTask
+} from './services/organization.service.js';
 import type {
 	AuthCredentials,
 	OAuthFlowOptions,
 	UserContext
 } from './types.js';
-import type {
-	Organization,
-	Brief,
-	RemoteTask
-} from './services/organization.service.js';
-import type { StorageType } from '../../common/types/index.js';
 
 /**
  * Display information for storage context
@@ -208,6 +208,21 @@ export class AuthDomain {
 			storageType: 'file',
 			filePath: path.join('.taskmaster', 'tasks', 'tasks.json')
 		};
+	}
+
+	/**
+	 * Get the URL for creating a new brief in the web UI
+	 * Returns null if not using API storage or if org slug is not available
+	 */
+	getBriefCreationUrl(): string | null {
+		const context = this.getContext();
+		const baseUrl = this.getWebAppUrl();
+
+		if (!baseUrl || !context?.orgSlug) {
+			return null;
+		}
+
+		return `${baseUrl}/home/${context.orgSlug}/briefs/create`;
 	}
 
 	/**

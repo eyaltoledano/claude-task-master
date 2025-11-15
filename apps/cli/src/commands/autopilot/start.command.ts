@@ -2,17 +2,18 @@
  * @fileoverview Start Command - Initialize and start TDD workflow
  */
 
+import { type WorkflowContext, createTmCore } from '@tm/core';
 import { Command } from 'commander';
-import { createTmCore, type WorkflowContext } from '@tm/core';
 import {
 	AutopilotBaseOptions,
-	hasWorkflowState,
-	createOrchestrator,
-	createGitAdapter,
 	OutputFormatter,
-	validateTaskId,
-	parseSubtasks
+	createGitAdapter,
+	createOrchestrator,
+	hasWorkflowState,
+	parseSubtasks,
+	validateTaskId
 } from './shared.js';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 interface StartOptions extends AutopilotBaseOptions {
 	force?: boolean;
@@ -41,8 +42,9 @@ export class StartCommand extends Command {
 		const mergedOptions: StartOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

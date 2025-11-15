@@ -1,5 +1,5 @@
 ---
-"task-master-ai": patch
+"task-master-ai": minor
 ---
 
 Added opt-in proxy support for all AI providers - respects http_proxy/https_proxy environment variables when enabled.

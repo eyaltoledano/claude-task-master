@@ -1,27 +1,19 @@
-import chalk from 'chalk';
 import boxen from 'boxen';
-import { createTmCore, type TmCore } from '@tm/core';
+import chalk from 'chalk';
+import ora from 'ora';
+import type { BaseBridgeParams } from './bridge-types.js';
+import { checkStorageType } from './bridge-utils.js';
 
 /**
  * Parameters for the update bridge function
  */
-export interface UpdateBridgeParams {
+export interface UpdateBridgeParams extends BaseBridgeParams {
 	/** Task ID (can be numeric "1", alphanumeric "TAS-49", or dotted "1.2" or "TAS-49.1") */
 	taskId: string | number;
 	/** Update prompt for AI */
 	prompt: string;
-	/** Project root directory */
-	projectRoot: string;
-	/** Optional tag for task organization */
-	tag?: string;
 	/** Whether to append or full update (default: false) */
 	appendMode?: boolean;
-	/** Whether called from MCP context (default: false) */
-	isMCP?: boolean;
-	/** Output format (default: 'text') */
-	outputFormat?: 'text' | 'json';
-	/** Logging function */
-	report: (level: string, ...args: unknown[]) => void;
 }
 
 /**
@@ -60,32 +52,15 @@ export async function tryUpdateViaRemote(
 		report
 	} = params;
 
-	let tmCore: TmCore;
+	// Check storage type using shared utility
+	const { isApiStorage, tmCore } = await checkStorageType(
+		projectRoot,
+		report,
+		'falling back to file-based update'
+	);
 
-	try {
-		tmCore = await createTmCore({
-			projectPath: projectRoot || process.cwd()
-		});
-	} catch (tmCoreError) {
-		const errorMessage =
-			tmCoreError instanceof Error ? tmCoreError.message : String(tmCoreError);
-		report(
-			'warn',
-			`TmCore check failed, falling back to file-based update: ${errorMessage}`
-		);
-		// Return null to signal fall-through to file storage logic
-		return null;
-	}
-
-	// Check if we're using API storage (use resolved storage type, not config)
-	const storageType = tmCore.tasks.getStorageType();
-
-	if (storageType !== 'api') {
+	if (!isApiStorage || !tmCore) {
 		// Not API storage - signal caller to fall through to file-based logic
-		report(
-			'info',
-			`Using file storage - processing update locally for task ${taskId}`
-		);
 		return null;
 	}
 
@@ -120,18 +95,10 @@ export async function tryUpdateViaRemote(
 		);
 	}
 
-	let loadingIndicator: NodeJS.Timeout | null = null;
-	if (!isMCP && outputFormat === 'text') {
-		// Simple loading indicator simulation (replace with actual startLoadingIndicator if available)
-		const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-		let frameIndex = 0;
-		loadingIndicator = setInterval(() => {
-			process.stdout.write(
-				`\r${frames[frameIndex]} Updating task on Hamster...`
-			);
-			frameIndex = (frameIndex + 1) % frames.length;
-		}, 80);
-	}
+	const spinner =
+		!isMCP && outputFormat === 'text'
+			? ora({ text: 'Updating task on Hamster...', color: 'cyan' }).start()
+			: null;
 
 	try {
 		// Call the API storage method which handles the remote update
@@ -139,9 +106,8 @@ export async function tryUpdateViaRemote(
 			mode
 		});
 
-		if (loadingIndicator) {
-			clearInterval(loadingIndicator);
-			process.stdout.write('\r✓ Task updated successfully.\n');
+		if (spinner) {
+			spinner.succeed('Task updated successfully');
 		}
 
 		if (outputFormat === 'text') {
@@ -172,9 +138,8 @@ export async function tryUpdateViaRemote(
 			tagInfo: null
 		};
 	} catch (updateError) {
-		if (loadingIndicator) {
-			clearInterval(loadingIndicator);
-			process.stdout.write('\r✗ Update failed.\n');
+		if (spinner) {
+			spinner.fail('Update failed');
 		}
 
 		// tm-core already formatted the error properly, just re-throw

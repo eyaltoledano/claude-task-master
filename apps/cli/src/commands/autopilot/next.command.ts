@@ -2,13 +2,14 @@
  * @fileoverview Next Command - Get next action in TDD workflow
  */
 
-import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
+import { Command } from 'commander';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
-	AutopilotBaseOptions,
+	type AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
 
 type NextOptions = AutopilotBaseOptions;
@@ -30,16 +31,29 @@ export class NextCommand extends Command {
 	private async execute(options: NextOptions): Promise<void> {
 		// Inherit parent options
 		const parentOpts = this.parent?.opts() as AutopilotBaseOptions;
-		const mergedOptions: NextOptions = {
+
+		// Initialize mergedOptions with defaults (projectRoot will be set in try block)
+		let mergedOptions: NextOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: '' // Will be set in try block
 		};
 
-		const formatter = new OutputFormatter(mergedOptions.json || false);
+		const formatter = new OutputFormatter(
+			options.json || parentOpts?.json || false
+		);
 
 		try {
+			// Resolve project root inside try block to catch any errors
+			const projectRoot = getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			);
+
+			// Update mergedOptions with resolved project root
+			mergedOptions = {
+				...mergedOptions,
+				projectRoot
+			};
 			// Check for workflow state
 			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
 			if (!hasState) {

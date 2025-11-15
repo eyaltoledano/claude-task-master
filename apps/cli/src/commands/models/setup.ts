@@ -4,21 +4,21 @@
 
 import chalk from 'chalk';
 import {
+	getConfig,
 	getModelConfiguration,
 	setModel,
-	getConfig,
 	writeConfig
 } from '../../lib/model-management.js';
-import type { ModelRole, CurrentModels, CustomProviderId } from './types.js';
+import {
+	customProviderConfigs,
+	handleCustomProvider
+} from './custom-providers.js';
 import {
 	buildPromptChoices,
 	displaySetupIntro,
 	promptForModel
 } from './prompts.js';
-import {
-	handleCustomProvider,
-	customProviderConfigs
-} from './custom-providers.js';
+import type { CurrentModels, CustomProviderId, ModelRole } from './types.js';
 
 /**
  * Check if a value is a custom provider ID
