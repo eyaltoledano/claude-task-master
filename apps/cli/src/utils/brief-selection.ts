@@ -123,7 +123,6 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
-						// TEMP: Show updatedAt for verification
 						const updatedAtDisplay = brief.updatedAt
 							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
 							: '';
@@ -164,7 +163,6 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
-						// TEMP: Show updatedAt for verification
 						const updatedAtDisplay = brief.updatedAt
 							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
 							: '';
