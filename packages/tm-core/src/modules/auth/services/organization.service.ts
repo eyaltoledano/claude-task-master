@@ -3,13 +3,13 @@
  * Handles fetching and managing organizations and briefs from the API
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/index.js';
-import { Database } from '../../../common/types/database.types.js';
+import type { Database } from '../../../common/types/database.types.js';
 import type { Brief } from '../../briefs/types.js';
 
 /**
@@ -171,7 +171,8 @@ export class OrganizationService {
 						title
 					)
 				`)
-				.eq('account_id', orgId);
+				.eq('account_id', orgId)
+				.order('updated_at', { ascending: false });
 
 			if (error) {
 				throw new TaskMasterError(

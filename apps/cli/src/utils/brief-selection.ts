@@ -3,12 +3,13 @@
  * Reusable functions for selecting briefs interactively or via URL/ID
  */
 
-import chalk from 'chalk';
 import search from '@inquirer/search';
-import ora, { Ora } from 'ora';
-import { AuthManager } from '@tm/core';
-import * as ui from './ui.js';
+import type { AuthManager } from '@tm/core';
+import { formatRelativeTime } from '@tm/core';
+import chalk from 'chalk';
+import ora, { type Ora } from 'ora';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
+import * as ui from './ui.js';
 
 export interface BriefSelectionResult {
 	success: boolean;
@@ -122,8 +123,12 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
+						const updatedAtDisplay = brief.updatedAt
+							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
+							: '';
+
 						groupedOptions.push({
-							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
+							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}${updatedAtDisplay}`,
 							value: brief,
 							description: description
 								? chalk.gray(`  ${description.slice(0, 80)}`)
@@ -158,8 +163,12 @@ export async function selectBriefInteractive(
 									)
 								: '';
 
+						const updatedAtDisplay = brief.updatedAt
+							? chalk.gray(` • ${formatRelativeTime(brief.updatedAt)}`)
+							: '';
+
 						groupedOptions.push({
-							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}`,
+							name: `  ${title}${taskCountDisplay} ${chalk.gray(`(${shortId})`)}${updatedAtDisplay}`,
 							value: brief,
 							description: description
 								? chalk.gray(`  ${description.slice(0, 80)}`)

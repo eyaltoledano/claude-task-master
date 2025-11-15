@@ -31,6 +31,7 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.57.4",
+		"date-fns": "^4.1.0",
 		"fs-extra": "^11.3.2",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
