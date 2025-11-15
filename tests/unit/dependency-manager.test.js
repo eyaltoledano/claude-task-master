@@ -27,7 +27,6 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	traverseDependencies: jest.fn(() => []),
 	isSilentMode: jest.fn(() => true),
 	findProjectRoot: jest.fn(() => '/test'),
-	resolveEnvVariable: jest.fn(() => undefined),
 	isEmpty: jest.fn((v) =>
 		v == null
 			? true
@@ -968,7 +967,6 @@ describe('Dependency Manager Module', () => {
 				traverseDependencies: jest.fn(() => []),
 				isSilentMode: jest.fn(() => true),
 				findProjectRoot: jest.fn(() => '/test'),
-				resolveEnvVariable: jest.fn(() => undefined),
 				isEmpty: jest.fn((v) =>
 					v == null
 						? true
