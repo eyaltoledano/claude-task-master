@@ -56,18 +56,13 @@ jobs:
           node-version: 20
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
-        timeout-minutes: 5
-
-      - name: Validate changesets can be versioned
+      - name: Validate changeset package references
         run: |
-          # Run version in dry-run mode to validate changesets
-          # This catches issues like incorrect package names before merging
-          npx @changesets/cli version --snapshot validation-check
+          # Validate that changesets only reference public packages
+          # This catches issues like using @tm/cli instead of task-master-ai
+          node .github/scripts/validate-changesets.mjs
         env:
           FORCE_COLOR: 1
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   typecheck:
     name: Typecheck

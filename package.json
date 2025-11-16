@@ -28,6 +28,7 @@
 		"test:e2e-report": "./tests/e2e/run_e2e.sh --analyze-log",
 		"postpack": "chmod +x dist/task-master.js dist/mcp-server.js",
 		"changeset": "changeset",
+		"changeset:validate": "node .github/scripts/validate-changesets.mjs",
 		"release": "changeset publish",
 		"publish-packages": "turbo run build lint test && changeset version && changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
