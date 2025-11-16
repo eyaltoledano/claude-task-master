@@ -43,6 +43,32 @@ jobs:
         env:
           FORCE_COLOR: 1
 
+  changeset-validation:
+    name: Validate Changesets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --frozen-lockfile --prefer-offline
+        timeout-minutes: 5
+
+      - name: Validate changesets can be versioned
+        run: |
+          # Run version in dry-run mode to validate changesets
+          # This catches issues like incorrect package names before merging
+          npx @changesets/cli version --snapshot validation-check
+        env:
+          FORCE_COLOR: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   typecheck:
     name: Typecheck
     timeout-minutes: 10
@@ -104,7 +130,7 @@ jobs:
     name: Test
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    needs: [format-check, typecheck, build]
+    needs: [format-check, typecheck, build, changeset-validation]
     steps:
       - uses: actions/checkout@v4
         with:
