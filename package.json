@@ -83,6 +83,7 @@
 		"cli-table3": "^0.6.5",
 		"commander": "^12.1.0",
 		"cors": "^2.8.5",
+		"date-fns": "^4.1.0",
 		"dotenv": "^16.6.1",
 		"express": "^4.21.2",
 		"fastmcp": "^3.23.0",

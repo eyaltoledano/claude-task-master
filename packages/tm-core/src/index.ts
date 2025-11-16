@@ -50,6 +50,7 @@ export * from './common/errors/index.js';
 
 // Utils
 export * from './common/utils/index.js';
+export * from './utils/time.utils.js';
 
 // ========== Domain-Specific Type Exports ==========
 
