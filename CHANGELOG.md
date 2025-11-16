@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.32.1
+
+### Patch Changes
+
+- [#1396](https://github.com/eyaltoledano/claude-task-master/pull/1396) [`9883e83`](https://github.com/eyaltoledano/claude-task-master/commit/9883e83b78306e55003e960ea072a11048d89ec9) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Fix box title alignment by adding emoji variant selector to warning sign
+
 ## 0.32.0
 
 ### Minor Changes
