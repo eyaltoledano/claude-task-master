@@ -71,20 +71,11 @@ export async function tryUpdateViaRemote(
 
 	// Show CLI output if not MCP
 	if (!isMCP && outputFormat === 'text') {
-		const showDebug = process.env.TM_DEBUG === '1';
-		const promptPreview = showDebug
-			? `${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`
-			: '[hidden]';
-
 		console.log(
 			boxen(
 				chalk.blue.bold(`Updating Task via Hamster`) +
 					'\n\n' +
-					chalk.white(`Task ID: ${taskId}`) +
-					'\n' +
-					chalk.white(`Mode: ${mode}`) +
-					'\n' +
-					chalk.white(`Prompt: ${promptPreview}`),
+					chalk.white(`Task: ${taskId}`),
 				{
 					padding: 1,
 					borderColor: 'blue',
@@ -107,26 +98,7 @@ export async function tryUpdateViaRemote(
 		});
 
 		if (spinner) {
-			spinner.succeed('Task updated successfully');
-		}
-
-		if (outputFormat === 'text') {
-			console.log(
-				boxen(
-					chalk.green(`Successfully updated task ${taskId} via remote AI`) +
-						'\n\n' +
-						chalk.white('The task has been updated on the remote server.') +
-						'\n' +
-						chalk.white(
-							`Run ${chalk.yellow(`task-master show ${taskId}`)} to view the updated task.`
-						),
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round'
-					}
-				)
-			);
+			spinner.succeed('Task updated on Hamster');
 		}
 
 		// Return success result - signals that we handled it

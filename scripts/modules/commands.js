@@ -195,88 +195,94 @@ function displayHamsterHelp() {
 				chalk.dim(
 					'Tasks are managed in Hamster Studio. Changes sync automatically.\n'
 				) +
-			chalk.dim(
-				'Use these commands to view tasks and update their status:\n\n'
-			) +
-			'\n' +
-			boxen('  Task Management  ', {
-				padding: 0,
-				borderStyle: 'round',
-				borderColor: 'yellow'
-			}) +
-			'\n' +
+				chalk.dim(
+					'Use these commands to view tasks and update their status:\n\n'
+				) +
+				'\n' +
+				boxen('  Task Management  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
 			createCommandEntry('list', 'View all tasks from the brief\n') +
-				createCommandEntry(
-					'list --with-subtasks',
-					'View tasks with subtasks expanded\n'
-				) +
-				createCommandEntry(
-					'list --status <status>',
-					'Filter by status (pending, in-progress, done)\n'
-				) +
-				createCommandEntry('show <id>', 'Show detailed task/subtask info\n') +
-				createCommandEntry('next', 'See the next task to work on\n') +
-				createCommandEntry(
-					'set-status --id=<id> --status=<status>',
-					'Update task status (pending, in-progress, done)\n'
-				) +
 			createCommandEntry(
-				'update-task --id=<id> --prompt="..."',
-				'Add information to a task\n\n'
+				'list <status>',
+				'Filter by status (e.g., pending, done, in-progress)\n'
 			) +
-			'\n' +
-			boxen('  Authentication & Context  ', {
-				padding: 0,
-				borderStyle: 'round',
-				borderColor: 'yellow'
-			}) +
-			'\n' +
-			createCommandEntry('auth login', 'Log in to Hamster\n') +
+			createCommandEntry(
+				'list --with-subtasks',
+				'View tasks with subtasks expanded\n'
+			) +
+				createCommandEntry('show <id>', 'Show detailed task/subtask info\n') +
+			createCommandEntry('next', 'See the next task to work on\n') +
+			createCommandEntry(
+				'set-status <id> <status>',
+				'Update task status (pending, in-progress, done)\n'
+			) +
+			createCommandEntry(
+				'update-task <id> <prompt>',
+				'Add information to a task\n'
+			) +
+			chalk.dim('      No quotes needed for multi-word prompts\n\n') +
+				'\n' +
+				boxen('  Authentication & Context  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry('auth login', 'Log in to Hamster\n') +
 				createCommandEntry('auth logout', 'Log out from Hamster\n') +
 				createCommandEntry('auth refresh', 'Refresh authentication token\n') +
 				createCommandEntry('auth status', 'Check authentication status\n') +
 				createCommandEntry('context', 'Show current brief context\n') +
 				createCommandEntry('context org', 'Switch organization\n') +
-			createCommandEntry(
-				'context brief <url>',
-				'Switch to a different brief\n\n'
-			) +
-			'\n' +
-			boxen('  Usage Examples  ', {
-				padding: 0,
-				borderStyle: 'round',
-				borderColor: 'yellow'
-			}) +
-			'\n' +
-			createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
-					chalk.cyan('  tm'),
-					chalk.dim('  tm')
-				) +
 				createCommandEntry(
-					'tm list --status pending',
-					'See only pending tasks\n',
-					'  '
-				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+					'context brief <url>',
+					'Switch to a different brief\n\n'
+				) +
+				'\n' +
+				boxen('  Usage Examples  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+			createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
+				chalk.cyan('  tm'),
+				chalk.dim('  tm')
+			) +
+			createCommandEntry(
+				'tm list done',
+				'See completed tasks\n',
+				'  '
+			).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+			createCommandEntry(
+				'tm list in-progress',
+				'See tasks in progress\n',
+				'  '
+			).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
 					'tm show 1,1.1,2',
 					'View multiple tasks\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
-				createCommandEntry(
-					'tm set-status -i 1,1.1 -s in-progress',
-					'Start tasks\n',
-					'  '
-				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
-				createCommandEntry(
-					'tm set-status -i 1.2 -s done',
-					'Mark subtask complete\n',
-					'  '
-				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
-				createCommandEntry(
-					'tm update-task -i 1 -p "Add details"',
-					'Add info to task\n',
-					'  '
-				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+			createCommandEntry(
+				'tm set-status 1,1.1 in-progress',
+				'Start tasks\n',
+				'  '
+			).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+			createCommandEntry(
+				'tm set-status 1.2 done',
+				'Mark subtask complete\n',
+				'  '
+			).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+			createCommandEntry(
+				'tm update-task 1 Add implementation details',
+				'Add info to task\n',
+				'  '
+			).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
 					'tm auth refresh',
 					'Refresh expired token\n',
@@ -424,8 +430,8 @@ function registerCommands(programInstance) {
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			// Helper function to check if there are existing tasks in the target tag and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
@@ -540,8 +546,8 @@ function registerCommands(programInstance) {
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			// Check if there's an 'id' option which is a common mistake (instead of 'from')
 			if (
@@ -575,12 +581,16 @@ function registerCommands(programInstance) {
 				process.exit(1);
 			}
 
-			console.log(
-				chalk.blue(
-					`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`
-				)
-			);
+		console.log(
+			chalk.blue(
+				`Updating tasks from ID >= ${fromId} with prompt: "${prompt}"`
+			)
+		);
+		
+		// Only show tasks file path for local storage
+		if (!isConnectedToHamster()) {
 			console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+		}
 
 			if (useResearch) {
 				console.log(
@@ -600,30 +610,32 @@ function registerCommands(programInstance) {
 
 	// update-task command
 	programInstance
-		.command('update-task')
-		.description(
-			'Update a single specific task by ID with new information (use --id parameter)'
-		)
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option('-i, --id <id>', 'Task ID to update (required)')
-		.option(
-			'-p, --prompt <text>',
-			'Prompt explaining the changes or new context (required)'
-		)
-		.option(
-			'-r, --research',
-			'Use Perplexity AI for research-backed task updates'
-		)
-		.option(
-			'--append',
-			'Append timestamped information to task details instead of full update'
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
+	.command('update-task')
+	.description(
+		'Update a single specific task by ID with new information'
+	)
+	.argument('[id]', 'Task ID to update (e.g., 1, 1.1, TAS-123)')
+	.argument('[prompt...]', 'Update prompt - multiple words, no quotes needed')
+	.option(
+		'-f, --file <file>',
+		'Path to the tasks file',
+		TASKMASTER_TASKS_FILE
+	)
+	.option('-i, --id <id>', 'Task ID to update (fallback if not using positional)')
+	.option(
+		'-p, --prompt <text>',
+		'Prompt (fallback if not using positional)'
+	)
+	.option(
+		'-r, --research',
+		'Use Perplexity AI for research-backed task updates'
+	)
+	.option(
+		'--append',
+		'Append timestamped information to task details instead of full update'
+	)
+	.option('--tag <tag>', 'Specify tag context for task operations')
+	.action(async (idArg, promptWords, options) => {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
@@ -635,60 +647,67 @@ function registerCommands(programInstance) {
 				// Resolve tag using standard pattern
 				const tag = taskMaster.getCurrentTag();
 
-				// Show current tag context
-				displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
-				// Validate required parameters
-				if (!options.id) {
-					console.error(chalk.red('Error: --id parameter is required'));
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
+			// Prioritize positional arguments over options
+			const taskId = idArg || options.id;
+			const prompt = promptWords.length > 0 ? promptWords.join(' ') : options.prompt;
 
-				// Parse the task ID and validate it's a number or a string like ham-123 or tas-456
-				// Accept valid task IDs:
-				// - positive integers (e.g. 1,2,3)
-				// - strings like ham-123, ham-1, tas-456, etc
-				// Disallow decimals and invalid formats
-				const validId =
-					/^\d+$/.test(options.id) || // plain positive integer
-					/^[a-z]+-\d+$/i.test(options.id); // label-number format (e.g., ham-123)
+			// Validate required parameters
+			if (!taskId) {
+				console.error(chalk.red('Error: Task ID is required'));
+				console.log(
+					chalk.yellow(
+						'Usage examples:\n' +
+						'  tm update-task 1 Added implementation details\n' +
+						'  tm update-task TAS-123 Fixed the auth bug\n' +
+						'  tm update-task --id=23 --prompt="Update with new information"'
+					)
+				);
+				process.exit(1);
+			}
 
-				if (!validId) {
-					console.error(
-						chalk.red(
-							`Error: Invalid task ID: ${options.id}. Task ID must be a positive integer or in the form "ham-123".`
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
+			// Parse the task ID and validate it's a number or a string like ham-123 or tas-456
+			// Accept valid task IDs:
+			// - positive integers (e.g. 1,2,3)
+			// - strings like ham-123, ham-1, tas-456, etc
+			// Disallow decimals and invalid formats
+			const validId =
+				/^\d+$/.test(taskId) || // plain positive integer
+				/^[a-z]+-\d+$/i.test(taskId); // label-number format (e.g., ham-123)
 
-				const taskId = options.id;
+			if (!validId) {
+				console.error(
+					chalk.red(
+						`Error: Invalid task ID: ${taskId}. Task ID must be a positive integer or in the form "ham-123".`
+					)
+				);
+				console.log(
+					chalk.yellow(
+						'Usage examples:\n' +
+						'  tm update-task 1 Added implementation details\n' +
+						'  tm update-task TAS-123 Fixed the auth bug'
+					)
+				);
+				process.exit(1);
+			}
 
-				if (!options.prompt) {
-					console.error(
-						chalk.red(
-							'Error: --prompt parameter is required. Please provide information about the changes.'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-task --id=23 --prompt="Update with new information"'
-						)
-					);
-					process.exit(1);
-				}
-
-				const prompt = options.prompt;
+			if (!prompt) {
+				console.error(
+					chalk.red(
+						'Error: Prompt is required. Please provide information about the changes.'
+					)
+				);
+				console.log(
+					chalk.yellow(
+						'Usage examples:\n' +
+						'  tm update-task 1 Added implementation details\n' +
+						'  tm update-task 23 "Update with new information"'
+					)
+				);
+				process.exit(1);
+			}
 				const useResearch = options.research || false;
 
 				// Validate tasks file exists
@@ -712,10 +731,14 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				console.log(
-					chalk.blue(`Updating task ${taskId} with prompt: "${prompt}"`)
-				);
+			console.log(
+				chalk.blue(`Updating task ${taskId} with prompt: "${prompt}"`)
+			);
+			
+			// Only show tasks file path for local storage
+			if (!isConnectedToHamster()) {
 				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+			}
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
@@ -821,8 +844,8 @@ function registerCommands(programInstance) {
 				// Resolve tag using standard pattern
 				const tag = taskMaster.getCurrentTag();
 
-				// Show current tag context
-				displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 				// Validate required parameters
 				if (!options.id) {
@@ -889,10 +912,14 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				console.log(
-					chalk.blue(`Updating subtask ${subtaskId} with prompt: "${prompt}"`)
-				);
+			console.log(
+				chalk.blue(`Updating subtask ${subtaskId} with prompt: "${prompt}"`)
+			);
+			
+			// Only show tasks file path for local storage
+			if (!isConnectedToHamster()) {
 				console.log(chalk.blue(`Tasks file: ${tasksPath}`));
+			}
 
 				if (useResearch) {
 					// Verify Perplexity API key exists if using research
@@ -995,8 +1022,8 @@ function registerCommands(programInstance) {
 				const tasksPath = taskMaster.getTasksPath();
 				const tag = taskMaster.getCurrentTag();
 
-				// Show current tag context
-				displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 				// Validate required parameters
 				if (!options.id) {
@@ -1122,8 +1149,8 @@ function registerCommands(programInstance) {
 				const tasksPath = taskMaster.getTasksPath();
 				const tag = taskMaster.getCurrentTag();
 
-				// Show current tag context
-				displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 				// Validate required parameters
 				if (!options.id) {
@@ -1268,8 +1295,8 @@ function registerCommands(programInstance) {
 
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (options.all) {
 				// --- Handle expand --all ---
@@ -1387,8 +1414,8 @@ function registerCommands(programInstance) {
 			// Use the provided tag, or the current active tag, or default to 'master'
 			const targetTag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(targetTag);
+		// Show current tag context
+		await displayCurrentTagIndicator(targetTag);
 
 			// Use user's explicit output path if provided, otherwise use tag-aware default
 			const outputPath = taskMaster.getComplexityReportPath();
@@ -1579,8 +1606,8 @@ function registerCommands(programInstance) {
 
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			// Validate tasks file exists if task IDs are specified
 			if (taskIds.length > 0) {
@@ -1819,8 +1846,8 @@ ${result.result}
 
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (!taskIds && !all) {
 				console.error(
@@ -1924,8 +1951,8 @@ ${result.result}
 
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			let manualTaskData = null;
 			if (isManualCreation) {
@@ -2016,8 +2043,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (!taskId || !dependencyId) {
 				console.error(
@@ -2073,8 +2100,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (!taskId || !dependencyId) {
 				console.error(
@@ -2127,8 +2154,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			await validateDependenciesCommand(taskMaster.getTasksPath(), {
 				context: { projectRoot: taskMaster.getProjectRoot(), tag }
@@ -2157,8 +2184,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			await fixDependenciesCommand(taskMaster.getTasksPath(), {
 				context: { projectRoot: taskMaster.getProjectRoot(), tag }
@@ -2187,8 +2214,8 @@ ${result.result}
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster(initOptions);
 
-			// Show current tag context
-			displayCurrentTagIndicator(taskMaster.getCurrentTag());
+		// Show current tag context
+		await displayCurrentTagIndicator(taskMaster.getCurrentTag());
 
 			await displayComplexityReport(taskMaster.getComplexityReportPath());
 		});
@@ -2231,8 +2258,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (!parentId) {
 				console.error(
@@ -2324,9 +2351,9 @@ ${result.result}
 									`1. Run ${chalk.yellow(`task-master show ${parentId}`)} to see the parent task with all subtasks`
 								) +
 								'\n' +
-								chalk.cyan(
-									`2. Run ${chalk.yellow(`task-master set-status --id=${parentId}.${subtask.id} --status=in-progress`)} to start working on it`
-								),
+							chalk.cyan(
+								`2. Run ${chalk.yellow(`tm set-status ${parentId}.${subtask.id} in-progress`)} to start working on it`
+							),
 							{
 								padding: 1,
 								borderColor: 'green',
@@ -2476,9 +2503,9 @@ ${result.result}
 										`1. Run ${chalk.yellow(`task-master show ${result.id}`)} to see details of the new task`
 									) +
 									'\n' +
-									chalk.cyan(
-										`2. Run ${chalk.yellow(`task-master set-status --id=${result.id} --status=in-progress`)} to start working on it`
-									),
+								chalk.cyan(
+									`2. Run ${chalk.yellow(`tm set-status ${result.id} in-progress`)} to start working on it`
+								),
 								{
 									padding: 1,
 									borderColor: 'green',
@@ -2715,8 +2742,8 @@ ${result.result}
 			// Resolve tag using standard pattern
 			const tag = taskMaster.getCurrentTag();
 
-			// Show current tag context
-			displayCurrentTagIndicator(tag);
+		// Show current tag context
+		await displayCurrentTagIndicator(tag);
 
 			if (!taskIdsString) {
 				console.error(chalk.red('Error: Task ID(s) are required'));
@@ -4600,22 +4627,22 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
-	// Display banner if not in a pipe (except for init command which has its own banner)
-	const isInitCommand = argv.includes('init');
-	if (process.stdout.isTTY && !isInitCommand) {
-		displayBanner();
-	}
-
-	// If no arguments provided, show help
-	if (argv.length <= 2) {
-		// Check if connected to Hamster and show appropriate help
-		if (isConnectedToHamster()) {
-			displayHamsterHelp();
-		} else {
-			displayHelp();
+		// Display banner if not in a pipe (except for init command which has its own banner)
+		const isInitCommand = argv.includes('init');
+		if (process.stdout.isTTY && !isInitCommand) {
+			displayBanner();
 		}
-		process.exit(0);
-	}
+
+		// If no arguments provided, show help
+		if (argv.length <= 2) {
+			// Check if connected to Hamster and show appropriate help
+			if (isConnectedToHamster()) {
+				displayHamsterHelp();
+			} else {
+				displayHelp();
+			}
+			process.exit(0);
+		}
 
 		// Check for updates BEFORE executing the command
 		const currentVersion = getTaskMasterVersion();

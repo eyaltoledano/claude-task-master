@@ -67,21 +67,51 @@ function displayTaggedTasksFYI(data) {
  * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
  * @param {boolean} [options.dim=false] - Use dimmed styling
  */
-function displayCurrentTagIndicator(tag, options = {}) {
+async function displayCurrentTagIndicator(tag, options = {}) {
 	if (isSilentMode()) return;
 
-	const { skipIfMaster = false, dim = false } = options;
+	let { skipIfMaster = false, dim = false, storageType, briefInfo } = options;
 
 	// Skip display for master tag only if explicitly requested
 	if (skipIfMaster && tag === 'master') return;
 
-	// Create a small, tasteful tag indicator
-	const tagIcon = '🏷️';
-	const tagText = dim
-		? chalk.gray(`${tagIcon} tag: ${tag}`)
-		: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+	// Auto-detect storage type and brief info if not provided
+	if (!storageType || !briefInfo) {
+		try {
+			const { AuthManager } = await import('@tm/core');
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+			
+			if (context && context.briefId) {
+				storageType = 'api';
+				briefInfo = {
+					briefId: context.briefId,
+					briefName: context.briefName || tag
+				};
+			} else {
+				storageType = 'file';
+			}
+		} catch (error) {
+			// Fallback to file storage if AuthManager is not available
+			storageType = 'file';
+		}
+	}
 
-	console.log(tagText);
+	// Display different indicator based on storage type
+	let displayText;
+	
+	if (storageType === 'api' && briefInfo) {
+		// API storage: Show brief information (matching new CLI pattern)
+		displayText = `🏷  Brief: ${chalk.cyan(briefInfo.briefName)} ${chalk.gray(`(${briefInfo.briefId})`)}`;
+	} else {
+		// File storage: Show tag information
+		const tagIcon = '🏷️';
+		displayText = dim
+			? chalk.gray(`${tagIcon} tag: ${tag}`)
+			: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+	}
+
+	console.log(displayText);
 }
 
 /**

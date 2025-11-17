@@ -3,8 +3,8 @@
  * Professional error message formatting with context-specific hints and sanitization
  */
 
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 
 /**
  * Error type categories for context-specific handling
@@ -31,15 +31,15 @@ const SENSITIVE_PATTERNS = [
 	/api[_-]?key[:\s=]+[^\s]+/gi,
 	/bearer\s+[^\s]+/gi,
 	/token[:\s=]+[^\s]+/gi,
-	
+
 	// File paths that might contain user info
 	/\/Users\/[^/]+/g,
 	/C:\\Users\\[^\\]+/g,
 	/\/home\/[^/]+/g,
-	
+
 	// Email addresses
 	/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-	
+
 	// URLs with auth
 	/https?:\/\/[^:]+:[^@]+@/g
 ];
@@ -51,14 +51,14 @@ const SENSITIVE_PATTERNS = [
  */
 function sanitizeMessage(message) {
 	if (!message || typeof message !== 'string') return message;
-	
+
 	let sanitized = message;
-	
+
 	// Replace sensitive patterns
 	for (const pattern of SENSITIVE_PATTERNS) {
 		sanitized = sanitized.replace(pattern, '***REDACTED***');
 	}
-	
+
 	return sanitized;
 }
 
@@ -69,10 +69,10 @@ function sanitizeMessage(message) {
  */
 function categorizeError(error) {
 	if (!error) return ERROR_TYPES.GENERIC;
-	
+
 	const message = (error.message || '').toLowerCase();
 	const code = (error.code || '').toLowerCase();
-	
+
 	// Authentication errors
 	if (
 		message.includes('auth') ||
@@ -84,7 +84,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.AUTHENTICATION;
 	}
-	
+
 	// Validation errors
 	if (
 		message.includes('invalid') ||
@@ -95,7 +95,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.VALIDATION;
 	}
-	
+
 	// Network errors
 	if (
 		message.includes('network') ||
@@ -108,7 +108,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.NETWORK;
 	}
-	
+
 	// Timeout errors
 	if (
 		message.includes('timeout') ||
@@ -117,7 +117,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.TIMEOUT;
 	}
-	
+
 	// API errors
 	if (
 		message.includes('api') ||
@@ -127,7 +127,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.API;
 	}
-	
+
 	// File system errors
 	if (
 		message.includes('enoent') ||
@@ -139,7 +139,7 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.FILE_SYSTEM;
 	}
-	
+
 	// Permission errors
 	if (
 		message.includes('permission') ||
@@ -148,15 +148,12 @@ function categorizeError(error) {
 	) {
 		return ERROR_TYPES.PERMISSION;
 	}
-	
+
 	// Task-specific errors
-	if (
-		message.includes('task') ||
-		message.includes('subtask')
-	) {
+	if (message.includes('task') || message.includes('subtask')) {
 		return ERROR_TYPES.TASK;
 	}
-	
+
 	return ERROR_TYPES.GENERIC;
 }
 
@@ -170,7 +167,7 @@ function categorizeError(error) {
 function generateHints(errorType, error, context) {
 	const hints = [];
 	const message = (error.message || '').toLowerCase();
-	
+
 	switch (errorType) {
 		case ERROR_TYPES.AUTHENTICATION:
 			if (message.includes('api key')) {
@@ -184,12 +181,15 @@ function generateHints(errorType, error, context) {
 				hints.push('Check the authentication status with: tm auth status');
 			}
 			break;
-			
+
 		case ERROR_TYPES.VALIDATION:
 			if (message.includes('brief id')) {
 				hints.push('Brief IDs are case-insensitive (e.g., "ham32" = "HAM-32")');
 				hints.push('Check the brief ID format: usually LETTERS-NUMBERS');
-			} else if (message.includes('task id') || message.includes('invalid id')) {
+			} else if (
+				message.includes('task id') ||
+				message.includes('invalid id')
+			) {
 				hints.push('Task IDs should be numbers (e.g., 1, 2, 3)');
 				hints.push('Subtask IDs use dot notation (e.g., 1.1, 2.3)');
 			} else {
@@ -197,7 +197,7 @@ function generateHints(errorType, error, context) {
 				hints.push('Verify parameter values match expected formats');
 			}
 			break;
-			
+
 		case ERROR_TYPES.NETWORK:
 			if (message.includes('econnrefused')) {
 				hints.push('Could not connect to the server');
@@ -211,13 +211,13 @@ function generateHints(errorType, error, context) {
 				hints.push('Verify firewall settings are not blocking the request');
 			}
 			break;
-			
+
 		case ERROR_TYPES.TIMEOUT:
 			hints.push('The operation took too long to complete');
 			hints.push('Try again with a simpler request');
 			hints.push('Check your network speed and stability');
 			break;
-			
+
 		case ERROR_TYPES.API:
 			if (message.includes('rate limit')) {
 				hints.push('You have exceeded the API rate limit');
@@ -230,7 +230,7 @@ function generateHints(errorType, error, context) {
 				hints.push('Try again in a few moments');
 			}
 			break;
-			
+
 		case ERROR_TYPES.FILE_SYSTEM:
 			if (message.includes('enoent')) {
 				hints.push('The specified file or directory does not exist');
@@ -245,18 +245,21 @@ function generateHints(errorType, error, context) {
 				hints.push('Check that the file or directory exists and is accessible');
 			}
 			break;
-			
+
 		case ERROR_TYPES.PERMISSION:
 			hints.push('You do not have permission to perform this operation');
 			hints.push('Check file/directory permissions');
 			hints.push('You may need elevated privileges (sudo)');
 			break;
-			
+
 		case ERROR_TYPES.TASK:
 			if (message.includes('not found')) {
 				hints.push('The specified task does not exist');
 				hints.push('Use: tm list to see all available tasks');
-			} else if (message.includes('dependency') || message.includes('circular')) {
+			} else if (
+				message.includes('dependency') ||
+				message.includes('circular')
+			) {
 				hints.push('Task dependencies form a circular reference');
 				hints.push('Use: tm validate-dependencies to identify issues');
 			} else {
@@ -264,14 +267,14 @@ function generateHints(errorType, error, context) {
 				hints.push('Use: tm show <id> to view task details');
 			}
 			break;
-			
+
 		default:
 			hints.push('Check the error message for specific details');
 			if (context) {
 				hints.push(`Operation failed while: ${context}`);
 			}
 	}
-	
+
 	// Limit to 2 hints max
 	return hints.slice(0, 2);
 }
@@ -287,26 +290,26 @@ function generateHints(errorType, error, context) {
  */
 export function formatError(error, options = {}) {
 	const { context = '', debug = false, command = '' } = options;
-	
+
 	// Handle string errors
 	if (typeof error === 'string') {
 		error = new Error(error);
 	}
-	
+
 	// Ensure error object
 	if (!error || typeof error !== 'object') {
 		error = new Error('An unknown error occurred');
 	}
-	
+
 	// Sanitize the error message
 	const sanitizedMessage = sanitizeMessage(error.message || 'Unknown error');
-	
+
 	// Categorize the error
 	const errorType = categorizeError(error);
-	
+
 	// Generate context-specific hints
 	const hints = generateHints(errorType, error, context);
-	
+
 	// Build formatted error object
 	const formattedError = {
 		type: errorType,
@@ -317,7 +320,7 @@ export function formatError(error, options = {}) {
 		code: error.code || null,
 		stack: debug ? sanitizeMessage(error.stack) : null
 	};
-	
+
 	return formattedError;
 }
 
@@ -331,23 +334,28 @@ export function formatError(error, options = {}) {
  */
 export function displayFormattedError(error, options = {}) {
 	const formattedError = formatError(error, options);
-	
+
 	// Build error message content
 	let content = chalk.red.bold('✗ Error\n\n');
-	
+
 	// Add error message
 	content += chalk.white(formattedError.message) + '\n\n';
-	
+
 	// Add context if available
-	if (formattedError.context && formattedError.context !== 'Unknown operation') {
-		content += chalk.gray('Context: ') + chalk.white(formattedError.context) + '\n\n';
+	if (
+		formattedError.context &&
+		formattedError.context !== 'Unknown operation'
+	) {
+		content +=
+			chalk.gray('Context: ') + chalk.white(formattedError.context) + '\n\n';
 	}
-	
+
 	// Add command if available
 	if (formattedError.command) {
-		content += chalk.gray('Command: ') + chalk.cyan(formattedError.command) + '\n\n';
+		content +=
+			chalk.gray('Command: ') + chalk.cyan(formattedError.command) + '\n\n';
 	}
-	
+
 	// Add hints
 	if (formattedError.hints && formattedError.hints.length > 0) {
 		content += chalk.yellow.bold('Suggestions:\n');
@@ -355,19 +363,23 @@ export function displayFormattedError(error, options = {}) {
 			content += chalk.yellow(`  ${index + 1}. ${hint}\n`);
 		});
 	}
-	
+
 	// Add error code if available
 	if (formattedError.code) {
 		content += '\n' + chalk.gray(`Error Code: ${formattedError.code}`);
 	}
-	
+
 	// Display in a box
-	console.log('\n' + boxen(content.trim(), {
-		padding: { top: 1, bottom: 1, left: 2, right: 2 },
-		borderStyle: 'round',
-		borderColor: 'red'
-	}) + '\n');
-	
+	console.log(
+		'\n' +
+			boxen(content.trim(), {
+				padding: { top: 1, bottom: 1, left: 2, right: 2 },
+				borderStyle: 'round',
+				borderColor: 'red'
+			}) +
+			'\n'
+	);
+
 	// Display stack trace in debug mode
 	if (options.debug && formattedError.stack) {
 		console.log(chalk.gray('Stack Trace:'));
@@ -384,19 +396,23 @@ export function displayFormattedError(error, options = {}) {
 export function displayWarning(message, hints = []) {
 	let content = chalk.yellow.bold('⚠ Warning\n\n');
 	content += chalk.white(message);
-	
+
 	if (hints && hints.length > 0) {
 		content += '\n\n' + chalk.yellow.bold('Suggestions:\n');
 		hints.forEach((hint, index) => {
 			content += chalk.yellow(`  ${index + 1}. ${hint}\n`);
 		});
 	}
-	
-	console.log('\n' + boxen(content.trim(), {
-		padding: { top: 1, bottom: 1, left: 2, right: 2 },
-		borderStyle: 'round',
-		borderColor: 'yellow'
-	}) + '\n');
+
+	console.log(
+		'\n' +
+			boxen(content.trim(), {
+				padding: { top: 1, bottom: 1, left: 2, right: 2 },
+				borderStyle: 'round',
+				borderColor: 'yellow'
+			}) +
+			'\n'
+	);
 }
 
 /**
@@ -407,12 +423,16 @@ export function displayWarning(message, hints = []) {
 export function displayInfo(message, title = 'Info') {
 	let content = chalk.blue.bold(`ℹ ${title}\n\n`);
 	content += chalk.white(message);
-	
-	console.log('\n' + boxen(content.trim(), {
-		padding: { top: 1, bottom: 1, left: 2, right: 2 },
-		borderStyle: 'round',
-		borderColor: 'blue'
-	}) + '\n');
+
+	console.log(
+		'\n' +
+			boxen(content.trim(), {
+				padding: { top: 1, bottom: 1, left: 2, right: 2 },
+				borderStyle: 'round',
+				borderColor: 'blue'
+			}) +
+			'\n'
+	);
 }
 
 /**
@@ -423,18 +443,21 @@ export function displayInfo(message, title = 'Info') {
 export function displaySuccess(message, nextSteps = []) {
 	let content = chalk.green.bold('✓ Success\n\n');
 	content += chalk.white(message);
-	
+
 	if (nextSteps && nextSteps.length > 0) {
 		content += '\n\n' + chalk.cyan.bold('Next Steps:\n');
 		nextSteps.forEach((step, index) => {
 			content += chalk.cyan(`  ${index + 1}. ${step}\n`);
 		});
 	}
-	
-	console.log('\n' + boxen(content.trim(), {
-		padding: { top: 1, bottom: 1, left: 2, right: 2 },
-		borderStyle: 'round',
-		borderColor: 'green'
-	}) + '\n');
-}
 
+	console.log(
+		'\n' +
+			boxen(content.trim(), {
+				padding: { top: 1, bottom: 1, left: 2, right: 2 },
+				borderStyle: 'round',
+				borderColor: 'green'
+			}) +
+			'\n'
+	);
+}

@@ -13,11 +13,11 @@ This guide outlines the process for working with tasks imported from Hamster bri
 ### **Supported Commands**
 - **✅ DO**: Use only these Task Master CLI commands when working with Hamster briefs:
   ```bash
-  tm list                    # List all tasks
-  tm show <sub/task id>      # Show task details
-  tm set-status              # Update task status
-  tm auth refresh            # Refresh authentication token
-  tm context <brief url>     # Reconnect to Hamster brief context
+  tm list                      # List all tasks
+  tm show <sub/task id> --json # Show task details
+  tm set-status                # Update task status
+  tm auth refresh              # Refresh authentication token
+  tm context <brief url>       # Reconnect to Hamster brief context
   ```
 
 ### **Unsupported Commands**
@@ -36,7 +36,7 @@ tm set-status -i 1,1.1,1.2,2 -s in-progress
 ```
 
 ### **Task Implementation Flow**
-1. **Read the Task**: Use `tm show <id>` to understand the task requirements
+1. **Read the Task**: Use `tm show <id> --json` to understand the task requirements (json used to save tokens, gets you same information)
 2. **Check for Subtasks**: If the task has subtasks, implement them one at a time
 3. **Implement Subtask**: Complete the subtask implementation
 4. **Verify Quality**: Run lint and typecheck before marking as done
@@ -68,7 +68,7 @@ tm set-status -i 1,1.1,1.2,2 -s in-progress
 ### **Viewing Multiple Tasks**
 ```bash
 # ✅ DO: Use comma-separated IDs to get context from multiple tasks
-tm show 1,1.1,2,2.1
+tm show 1,1.1,2,2.1 --json
 
 # This is more efficient than calling tm show multiple times
 ```
@@ -132,7 +132,7 @@ flowchart TD
     A[Start: Connect to Hamster Brief] --> B[Get Brief URL]
     B --> C[tm list - View Tasks]
     C --> D[Select Task]
-    D --> E[tm show <id> - Read Task]
+    D --> E[tm show <id> --json - Read Task]
     E --> F{Has Subtasks?}
     F -->|Yes| G[Select First Subtask]
     F -->|No| M[Implement Task]

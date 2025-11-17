@@ -565,9 +565,7 @@ async function initializeProject(options = {}) {
 			console.log(
 				chalk.blue('Storage:'),
 				chalk.white(
-					selectedStorage === 'cloud'
-						? 'Hamster Studio'
-						: 'Local File Storage'
+					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
 				)
 			);
 			console.log(

@@ -68,10 +68,11 @@ export class ListTasksCommand extends Command {
 	constructor(name?: string) {
 		super(name || 'list');
 
-		// Configure the command
+		// Configure the command with positional status argument
 		this.description('List tasks with optional filtering')
 			.alias('ls')
-			.option('-s, --status <status>', 'Filter by status (comma-separated)')
+			.argument('[status]', 'Filter by status (e.g., pending, done, in-progress)')
+			.option('-s, --status <status>', 'Filter by status (fallback if not using positional)')
 			.option('-t, --tag <tag>', 'Filter by tag')
 			.option('--with-subtasks', 'Include subtasks in the output')
 			.option(
@@ -85,8 +86,13 @@ export class ListTasksCommand extends Command {
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
-			.action(async (options: ListCommandOptions) => {
-				await this.executeCommand(options);
+			.action(async (statusArg?: string, options?: ListCommandOptions) => {
+				// Prioritize positional argument over option
+				const mergedOptions: ListCommandOptions = {
+					...options,
+					status: statusArg || options?.status
+				};
+				await this.executeCommand(mergedOptions);
 			});
 	}
 
