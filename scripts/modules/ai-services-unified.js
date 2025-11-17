@@ -658,18 +658,19 @@ async function _unifiedServiceRunner(serviceType, params) {
 				throw new Error('User prompt content is missing.');
 			}
 
-			const callParams = {
-				apiKey,
-				modelId,
-				maxTokens: roleParams.maxTokens,
-				temperature: roleParams.temperature,
-				messages,
-				...(baseURL && { baseURL }),
-				...((serviceType === 'generateObject' ||
-					serviceType === 'streamObject') && { schema, objectName }),
-				...providerSpecificParams,
-				...restApiParams
-			};
+	const callParams = {
+		apiKey,
+		modelId,
+		maxTokens: roleParams.maxTokens,
+		temperature: roleParams.temperature,
+		messages,
+		...(baseURL && { baseURL }),
+		...((serviceType === 'generateObject' ||
+			serviceType === 'streamObject') && { schema, objectName }),
+		...(commandName && { commandName }), // Pass commandName for Sentry telemetry functionId
+		...providerSpecificParams,
+		...restApiParams
+	};
 
 			providerResponse = await _attemptProviderCallWithRetries(
 				provider,

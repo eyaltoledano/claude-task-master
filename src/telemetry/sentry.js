@@ -3,10 +3,27 @@
  * Provides error tracking and AI operation monitoring
  */
 import * as Sentry from '@sentry/node';
+import { createHash } from 'crypto';
 import { getAnonymousTelemetryEnabled } from '../../scripts/modules/config-manager.js';
 import { resolveEnvVariable } from '../../scripts/modules/utils.js';
 
 let isInitialized = false;
+
+/**
+ * Create a privacy-safe hash of a project root path
+ * Uses SHA256 and truncates to 8 characters for grouping without exposing full paths
+ * @param {string} projectRoot - The project root path
+ * @returns {string|undefined} Short hash of the project root, or undefined if no path provided
+ */
+export function hashProjectRoot(projectRoot) {
+	if (!projectRoot) return undefined;
+	
+	// Create SHA256 hash and take first 8 characters for grouping
+	return createHash('sha256')
+		.update(projectRoot)
+		.digest('hex')
+		.substring(0, 8);
+}
 
 /**
  * Initialize Sentry with AI telemetry integration
@@ -62,7 +79,9 @@ export function initializeSentry(options = {}) {
 				Sentry.vercelAIIntegration({
 					recordInputs: true,
 					recordOutputs: true
-				})
+				}),
+				// Add Zod error tracking for better validation error reporting
+				Sentry.zodErrorsIntegration()
 			],
 			// Tracing must be enabled for AI monitoring to work
 			tracesSampleRate: options.tracesSampleRate ?? 1.0,
@@ -70,6 +89,7 @@ export function initializeSentry(options = {}) {
 		});
 
 		isInitialized = true;
+		console.log('✓ Sentry telemetry initialized successfully');
 	} catch (error) {
 		console.error(`Failed to initialize telemetry: ${error.message}`);
 	}
@@ -78,18 +98,46 @@ export function initializeSentry(options = {}) {
 /**
  * Get the experimental telemetry configuration for AI SDK calls
  * Only returns telemetry config if Sentry is initialized
+ * @param {string} [functionId] - Optional function identifier to help correlate spans with function calls
+ * @param {object} [metadata] - Optional metadata to include in telemetry spans
+ * @param {string} [metadata.command] - Command name (e.g., 'add-task', 'update-task')
+ * @param {string} [metadata.outputType] - Output type: 'cli' or 'mcp'
+ * @param {string} [metadata.tag] - Task tag being operated on
+ * @param {string} [metadata.taskId] - Specific task ID if applicable
+ * @param {string} [metadata.briefId] - Hamster brief ID if connected
+ * @param {string} [metadata.projectHash] - Privacy-safe hash of project root
  * @returns {object|null} Telemetry configuration or null if Sentry not initialized
  */
-export function getAITelemetryConfig() {
+export function getAITelemetryConfig(functionId, metadata = {}) {
 	if (!isInitialized) {
 		return null;
 	}
 
-	return {
+	const config = {
 		isEnabled: true,
 		recordInputs: true,
 		recordOutputs: true
 	};
+
+	// Add functionId if provided - helps correlate captured spans with function calls
+	if (functionId) {
+		config.functionId = functionId;
+	}
+
+	// Add custom metadata for better filtering and grouping in Sentry
+	// Only include defined metadata fields to avoid clutter
+	if (Object.keys(metadata).length > 0) {
+		config.metadata = {};
+		
+		if (metadata.command) config.metadata.command = metadata.command;
+		if (metadata.outputType) config.metadata.outputType = metadata.outputType;
+		if (metadata.tag) config.metadata.tag = metadata.tag;
+		if (metadata.taskId) config.metadata.taskId = metadata.taskId;
+		if (metadata.briefId) config.metadata.briefId = metadata.briefId;
+		if (metadata.projectHash) config.metadata.projectHash = metadata.projectHash;
+	}
+
+	return config;
 }
 
 /**
