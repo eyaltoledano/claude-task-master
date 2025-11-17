@@ -44,6 +44,7 @@ Taskmaster uses two primary methods for configuration:
           "defaultPriority": "medium",
           "defaultTag": "master",
           "projectName": "Your Project Name",
+          "enableProxy": false,
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
           "vertexProjectId": "your-gcp-project-id",
@@ -85,6 +86,11 @@ Taskmaster uses two primary methods for configuration:
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
 - **Optional Auto-Update Control:**
   - `TASKMASTER_SKIP_AUTO_UPDATE`: Set to '1' to disable automatic updates. Also automatically disabled in CI environments (when `CI` environment variable is set).
+- **Optional Proxy Configuration (Corporate Networks):**
+  - `TASKMASTER_ENABLE_PROXY`: Set to 'true' to enable proxy support for AI provider requests (default: false).
+  - `http_proxy`: HTTP proxy server URL (e.g., `http://proxy.company.com:8080`).
+  - `https_proxy`: HTTPS proxy server URL (e.g., `https://proxy.company.com:8080`).  
+  - `no_proxy`: Comma-separated list of hosts to bypass proxy (e.g., `localhost,127.0.0.1,.company.com`).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
@@ -149,6 +155,12 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
+
+# Proxy Configuration (Optional - for corporate networks)
+# TASKMASTER_ENABLE_PROXY=true
+# http_proxy=http://proxy.company.com:8080
+# https_proxy=http://proxy.company.com:8080
+# no_proxy=localhost,127.0.0.1,.company.com
 ```
 
 ## Troubleshooting

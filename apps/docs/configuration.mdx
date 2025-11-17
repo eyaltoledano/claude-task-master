@@ -30,6 +30,58 @@ description: "Configure Task Master through environment variables in a .env file
 | `PROJECT_VERSION` | `"1.0.0"` | Version in metadata | `PROJECT_VERSION=2.1.0` |
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
+| `TASKMASTER_ENABLE_PROXY` | `"false"` | Enable proxy support for AI providers | `TASKMASTER_ENABLE_PROXY=true` |
+
+## Proxy Configuration
+
+Task Master supports HTTP/HTTPS proxy for all AI providers when working in corporate or restricted network environments.
+
+### Enabling Proxy Support
+
+Proxy support is opt-in and can be enabled using either method:
+
+**Method 1: Environment Variable**
+```bash
+export TASKMASTER_ENABLE_PROXY=true
+export http_proxy=http://your-proxy:port
+export https_proxy=http://your-proxy:port
+export no_proxy=localhost,127.0.0.1  # Optional: bypass proxy for specific hosts
+
+# Then use Task Master normally
+task-master add-task "Create a new feature"
+```
+
+**Method 2: Configuration File**
+
+Add to `.taskmaster/config.json`:
+```json
+{
+  "global": {
+    "enableProxy": true
+  }
+}
+```
+
+Then set your proxy environment variables:
+```bash
+export http_proxy=http://your-proxy:port
+export https_proxy=http://your-proxy:port
+```
+
+### Proxy Environment Variables
+
+| Variable | Description | Example |
+| --- | --- | --- |
+| `http_proxy` | HTTP proxy server URL | `http://proxy.company.com:8080` |
+| `https_proxy` | HTTPS proxy server URL | `https://proxy.company.com:8080` |
+| `no_proxy` | Comma-separated list of hosts to bypass proxy | `localhost,127.0.0.1,.company.com` |
+
+### Technical Details
+
+- Uses undici's `EnvHttpProxyAgent` for automatic proxy detection
+- Supports all AI providers: OpenAI, Anthropic, Perplexity, Azure OpenAI, Google AI, Google Vertex AI, AWS Bedrock, and OpenAI-compatible providers
+- Priority: `TASKMASTER_ENABLE_PROXY` environment variable overrides `config.json` setting
+- Users without proxy requirements are not affected when proxy is disabled
 
 ## TDD Workflow Configuration
 
@@ -69,6 +121,12 @@ LOG_LEVEL=info
 # TDD Workflow
 TM_MAX_ATTEMPTS=3
 TM_AUTO_COMMIT=true
+
+# Proxy Configuration (Optional - for corporate networks)
+# TASKMASTER_ENABLE_PROXY=true
+# http_proxy=http://proxy.company.com:8080
+# https_proxy=http://proxy.company.com:8080
+# no_proxy=localhost,127.0.0.1
 ```
 
 ## Troubleshooting

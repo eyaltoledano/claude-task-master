@@ -27,6 +27,12 @@ description: "A comprehensive reference of all available Task Master commands"
 
     # List tasks with a specific status and include subtasks
     task-master list --status=<status> --with-subtasks
+
+    # Output as JSON (useful for AI agents and scripts)
+    task-master list --json
+
+    # Combine JSON output with other options
+    task-master list --status=pending --json
     ```
   </Accordion>
 
@@ -46,6 +52,12 @@ description: "A comprehensive reference of all available Task Master commands"
 
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
+
+    # Output as JSON (useful for AI agents and scripts)
+    task-master show <id> --json
+
+    # View subtask details in JSON format
+    task-master show 1.2 --json
     ```
   </Accordion>
 
