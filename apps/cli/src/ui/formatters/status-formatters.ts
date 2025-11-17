@@ -7,6 +7,29 @@ import type { TaskStatus } from '@tm/core';
 import chalk from 'chalk';
 
 /**
+ * Format text for display in boxen titles by adding emoji variant selectors
+ * to ASCII-like Unicode characters to fix boxen's width calculation bug.
+ *
+ * Boxen's titleAlignment: 'center' miscalculates width for text presentation
+ * characters (○, ▶, ✓, etc.) but correctly handles emoji presentation
+ * (with U+FE0F variant selector). This function ensures proper alignment
+ * while preserving ASCII aesthetic everywhere else.
+ *
+ * @param text - Text containing status icons to format for boxen
+ * @returns Text with emoji variant selectors added to status icons
+ */
+export function formatTextForBoxen(text: string): string {
+	return text
+		.replace(/○/g, '○️') // Circle
+		.replace(/▶/g, '▶️') // Play/In-progress
+		.replace(/✓/g, '✓️') // Checkmark/Done
+		.replace(/◐/g, '◐️') // Half-circle/Refining
+		.replace(/◎/g, '◎️') // Double-circle/Aligned
+		.replace(/◆/g, '◆️') // Diamond/Delivered
+		.replace(/■/g, '■️'); // Square/Archived
+}
+
+/**
  * Module-level task status configuration to avoid recreating on every call
  */
 const TASK_STATUS_CONFIG: Record<
