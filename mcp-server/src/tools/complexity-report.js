@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { complexityReportDirect } from '../core/task-master-core.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { findComplexityReportPath } from '../core/utils/path-utils.js';

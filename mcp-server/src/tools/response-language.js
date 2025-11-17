@@ -3,7 +3,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { responseLanguageDirect } from '../core/direct-functions/response-language.js';
 
 export function registerResponseLanguageTool(server) {

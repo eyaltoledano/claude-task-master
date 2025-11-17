@@ -9,7 +9,7 @@ import {
 	withNormalizedProjectRoot,
 	createErrorResponse,
 	checkProgressCapability
-} from './utils.js';
+} from '@tm/mcp';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
 	PRD_FILE,

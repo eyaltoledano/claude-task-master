@@ -6,9 +6,9 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	withNormalizedProjectRoot
+	withToolContext
 } from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
+import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
@@ -29,12 +29,12 @@ export function registerAutopilotNextTool(server: FastMCP) {
 		description:
 			'Get the next action to perform in the TDD workflow. Returns detailed context about what needs to be done next, including the current phase, subtask, and expected actions.',
 		parameters: NextActionSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: NextActionArgs, context: MCPContext) => {
+		execute: withToolContext(
+			async (args: NextActionArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
-					context.log.info(
+					log.info(
 						`Getting next action for workflow in ${projectRoot}`
 					);
 
@@ -50,7 +50,7 @@ export function registerAutopilotNextTool(server: FastMCP) {
 										'No active workflow found. Start a workflow with autopilot_start'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -62,7 +62,7 @@ export function registerAutopilotNextTool(server: FastMCP) {
 					const nextAction = workflowService.getNextAction();
 					const status = workflowService.getStatus();
 
-					context.log.info(`Next action determined: ${nextAction.action}`);
+					log.info(`Next action determined: ${nextAction.action}`);
 
 					return handleApiResult({
 						result: {
@@ -74,13 +74,13 @@ export function registerAutopilotNextTool(server: FastMCP) {
 								nextSteps: nextAction.nextSteps
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-next: ${error.message}`);
+					log.error(`Error in autopilot-next: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -89,7 +89,7 @@ export function registerAutopilotNextTool(server: FastMCP) {
 								message: `Failed to get next action: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

@@ -6,9 +6,9 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	withNormalizedProjectRoot
+	withToolContext
 } from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
+import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
@@ -29,12 +29,13 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 		description:
 			'Get comprehensive workflow status including current phase, progress, subtask details, and activity history.',
 		parameters: StatusSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: StatusArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-status',
+			async (args: StatusArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
-					context.log.info(`Getting workflow status for ${projectRoot}`);
+					log.info(`Getting workflow status for ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -48,7 +49,7 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 										'No active workflow found. Start a workflow with autopilot_start'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -59,7 +60,7 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 					// Get status
 					const status = workflowService.getStatus();
 
-					context.log.info(
+					log.info(
 						`Workflow status retrieved for task ${status.taskId}`
 					);
 
@@ -68,13 +69,13 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 							success: true,
 							data: status
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-status: ${error.message}`);
+					log.error(`Error in autopilot-status: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -83,7 +84,7 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 								message: `Failed to get workflow status: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { rulesDirect } from '../core/direct-functions/rules.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 

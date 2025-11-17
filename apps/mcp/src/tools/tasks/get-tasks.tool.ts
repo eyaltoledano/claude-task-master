@@ -6,10 +6,10 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	withNormalizedProjectRoot
+	withToolContext
 } from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
-import { createTmCore, type TaskStatus, type Task } from '@tm/core';
+import type { ToolContext } from '../../shared/types.js';
+import type { TaskStatus, Task } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const GetTasksSchema = z.object({
@@ -40,23 +40,15 @@ export function registerGetTasksTool(server: FastMCP) {
 		description:
 			'Get all tasks from Task Master, optionally filtering by status and including subtasks.',
 		parameters: GetTasksSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: GetTasksArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'get-tasks',
+			async (args: GetTasksArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot, status, withSubtasks, tag } = args;
 
 				try {
-					context.log.info(
+					log.info(
 						`Getting tasks from ${projectRoot}${status ? ` with status filter: ${status}` : ''}${tag ? ` for tag: ${tag}` : ''}`
 					);
-
-					// Create tm-core with logging callback
-					const tmCore = await createTmCore({
-						projectPath: projectRoot,
-						loggerConfig: {
-							mcpMode: true,
-							logCallback: context.log
-						}
-					});
 
 					// Build filter
 					const filter =
@@ -75,7 +67,7 @@ export function registerGetTasksTool(server: FastMCP) {
 						includeSubtasks: withSubtasks
 					});
 
-					context.log.info(
+					log.info(
 						`Retrieved ${result.tasks?.length || 0} tasks (${result.filtered} filtered, ${result.total} total)`
 					);
 
@@ -138,14 +130,14 @@ export function registerGetTasksTool(server: FastMCP) {
 								}
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot,
 						tag: result.tag
 					});
 				} catch (error: any) {
-					context.log.error(`Error in get-tasks: ${error.message}`);
+					log.error(`Error in get-tasks: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -154,7 +146,7 @@ export function registerGetTasksTool(server: FastMCP) {
 								message: `Failed to get tasks: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}
