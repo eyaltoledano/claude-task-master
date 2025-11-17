@@ -30,6 +30,7 @@ import {
 	expandAllTasks,
 	expandTask,
 	findTaskById,
+	generateTaskFiles,
 	migrateProject,
 	moveTask,
 	parsePRD,
@@ -76,12 +77,12 @@ import {
 
 import {
 	displayFormattedError,
-	displayWarning,
 	displayInfo,
-	displaySuccess
+	displaySuccess,
+	displayWarning
 } from './error-formatter.js';
 
-import { CUSTOM_PROVIDERS } from '@tm/core';
+import { AuthManager, CUSTOM_PROVIDERS } from '@tm/core';
 
 import {
 	COMPLEXITY_REPORT_FILE,
@@ -148,6 +149,121 @@ import {
 } from './task-manager/models.js';
 
 /**
+ * Check if the user is connected to a Hamster brief
+ * @returns {boolean} True if connected to Hamster
+ */
+function isConnectedToHamster() {
+	try {
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+		return context && context.briefId;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Display Hamster-specific help (simplified command list)
+ */
+function displayHamsterHelp() {
+	// Calculate box width (use 90% of terminal width, min 80, max 120)
+	const terminalWidth = process.stdout.columns || 100;
+	const boxWidth = Math.min(120, Math.max(80, Math.floor(terminalWidth * 0.9)));
+
+	console.log(
+		boxen(
+			chalk.cyan.bold('Taskmaster CLI - Connected to Hamster\n\n') +
+				chalk.white(
+					'Taskmaster syncs tasks from your Hamster brief and provides a CLI\n'
+				) +
+				chalk.white(
+					'interface to execute the plan. Commands can be used by humans or AI agents.\n\n'
+				) +
+				chalk.dim(
+					'Tasks are managed in Hamster Studio. Changes sync automatically.\n'
+				) +
+				chalk.dim(
+					'Use these commands to view tasks and update their status:\n\n'
+				) +
+				chalk.yellow.bold('📋 Task Management:\n') +
+				chalk.cyan('  list') +
+				'                              ' +
+				chalk.gray('View all tasks from the brief\n') +
+				chalk.cyan('  list --with-subtasks') +
+				'               ' +
+				chalk.gray('View tasks with subtasks expanded\n') +
+				chalk.cyan('  list --status <status>') +
+				'             ' +
+				chalk.gray('Filter by status (pending, in-progress, done)\n') +
+				chalk.cyan('  show <id>') +
+				'                         ' +
+				chalk.gray('Show detailed task/subtask info\n') +
+				chalk.cyan('  next') +
+				'                              ' +
+				chalk.gray('See the next task to work on\n') +
+				chalk.cyan('  set-status') +
+				' --id=<id> --status=<status>  ' +
+				chalk.gray('Update task status\n') +
+				chalk.dim('     Available statuses: ') +
+				chalk.white('pending, in-progress, done\n') +
+				chalk.cyan('  update-task') +
+				' --id=<id> --prompt="..."   ' +
+				chalk.gray('Add information to a task\n') +
+				chalk.dim('     (auto-appends when connected to Hamster)\n\n') +
+				chalk.yellow.bold('🔐 Authentication & Context:\n') +
+				chalk.cyan('  auth login') +
+				'                       ' +
+				chalk.gray('Log in to Hamster\n') +
+				chalk.cyan('  auth logout') +
+				'                      ' +
+				chalk.gray('Log out from Hamster\n') +
+				chalk.cyan('  auth refresh') +
+				'                     ' +
+				chalk.gray('Refresh authentication token\n') +
+				chalk.cyan('  auth status') +
+				'                      ' +
+				chalk.gray('Check authentication status\n') +
+				chalk.cyan('  context') +
+				'                          ' +
+				chalk.gray('Show current brief context\n') +
+				chalk.cyan('  context org') +
+				'                      ' +
+				chalk.gray('Switch organization\n') +
+				chalk.cyan('  context brief <url>') +
+				'              ' +
+				chalk.gray('Switch to a different brief\n\n') +
+				chalk.yellow.bold('💡 Usage Examples:\n') +
+				chalk.dim('  tm list                              ') +
+				chalk.gray('# See all tasks\n') +
+				chalk.dim('  tm list --status pending             ') +
+				chalk.gray('# See only pending tasks\n') +
+				chalk.dim('  tm show 1,1.1,2                      ') +
+				chalk.gray('# View multiple tasks\n') +
+				chalk.dim('  tm set-status -i 1,1.1 -s in-progress') +
+				chalk.gray('  # Start tasks\n') +
+				chalk.dim('  tm set-status -i 1.2 -s done         ') +
+				chalk.gray('# Mark subtask complete\n') +
+				chalk.dim('  tm update-task -i 1 -p "Add details" ') +
+				chalk.gray('# Add info to task\n') +
+				chalk.dim('  tm auth refresh                      ') +
+				chalk.gray('# Refresh expired token\n') +
+				chalk.dim('  tm context                           ') +
+				chalk.gray('# View current brief info\n\n') +
+				chalk.white.bold('ℹ️  Need more commands?\n') +
+				chalk.gray(
+					'Advanced features (models, tags, PRD parsing) are managed in Hamster Studio.'
+				),
+			{
+				padding: 1,
+				margin: { top: 1 },
+				borderStyle: 'round',
+				borderColor: 'cyan'
+			}
+		)
+	);
+}
+
+/**
  * Configure and register CLI commands
  * @param {Object} program - Commander program instance
  */
@@ -155,16 +271,39 @@ function registerCommands(programInstance) {
 	// Add global error handler for unknown options
 	programInstance.on('option:unknown', function (unknownOption) {
 		const commandName = this._name || 'unknown';
-		displayFormattedError(
-			new Error(`Unknown option '${unknownOption}'`),
-			{
-				context: `Running command: ${commandName}`,
-				command: `task-master ${commandName}`,
-				debug: getDebugFlag()
-			}
-		);
+		displayFormattedError(new Error(`Unknown option '${unknownOption}'`), {
+			context: `Running command: ${commandName}`,
+			command: `task-master ${commandName}`,
+			debug: getDebugFlag()
+		});
 		process.exit(1);
 	});
+
+	// Add help command alias - context-aware (Hamster vs Local)
+	programInstance
+		.command('help')
+		.description('Show help information (Hamster-aware)')
+		.action(() => {
+			if (isConnectedToHamster()) {
+				displayHamsterHelp();
+			} else {
+				programInstance.help();
+			}
+		});
+
+	// Override default help to be Hamster-aware
+	programInstance.configureHelp({
+		helpWidth: 120,
+		sortSubcommands: false
+	});
+	const originalHelp = programInstance.help.bind(programInstance);
+	programInstance.help = function () {
+		if (isConnectedToHamster()) {
+			displayHamsterHelp();
+		} else {
+			originalHelp();
+		}
+	};
 
 	// Add global command guard for local-only commands
 	programInstance.hook('preAction', async (thisCommand, actionCommand) => {
@@ -221,20 +360,20 @@ function registerCommands(programInstance) {
 					initOptions.tasksPath = options.output;
 				}
 				taskMaster = initTaskMaster(initOptions);
-		} catch (error) {
-			displayFormattedError(error, {
-				context: 'Initializing Task Master for PRD parsing',
-				command: 'task-master parse-prd',
-				debug: getDebugFlag()
-			});
-			
-			// Show usage help after error
-			displayInfo(
-				`${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file\n  -o, --output <file>      Output file path\n  -n, --num-tasks <number> Number of tasks to generate\n  -f, --force              Skip confirmation\n  --append                 Append to existing tasks\n  -r, --research           Use Perplexity AI\n\n${chalk.cyan('Examples:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd requirements.txt --research`,
-				'Parse PRD Help'
-			);
-			process.exit(1);
-		}
+			} catch (error) {
+				displayFormattedError(error, {
+					context: 'Initializing Task Master for PRD parsing',
+					command: 'task-master parse-prd',
+					debug: getDebugFlag()
+				});
+
+				// Show usage help after error
+				displayInfo(
+					`${chalk.cyan('Usage:')}\n  task-master parse-prd <prd-file.txt> [options]\n\n${chalk.cyan('Options:')}\n  -i, --input <file>       Path to the PRD file\n  -o, --output <file>      Output file path\n  -n, --num-tasks <number> Number of tasks to generate\n  -f, --force              Skip confirmation\n  --append                 Append to existing tasks\n  -r, --research           Use Perplexity AI\n\n${chalk.cyan('Examples:')}\n  task-master parse-prd requirements.txt --num-tasks 15\n  task-master parse-prd --input=requirements.txt\n  task-master parse-prd requirements.txt --research`,
+					'Parse PRD Help'
+				);
+				process.exit(1);
+			}
 
 			const numTasks = parseInt(options.numTasks, 10);
 			const force = options.force || false;
@@ -557,6 +696,11 @@ function registerCommands(programInstance) {
 					}
 				}
 
+				// Force append mode when connected to Hamster
+				const shouldAppend = isConnectedToHamster()
+					? true
+					: options.append || false;
+
 				const result = await updateTaskById(
 					taskMaster.getTasksPath(),
 					taskId,
@@ -564,7 +708,7 @@ function registerCommands(programInstance) {
 					useResearch,
 					{ projectRoot: taskMaster.getProjectRoot(), tag },
 					'text',
-					options.append || false
+					shouldAppend
 				);
 
 				// If the task wasn't updated (e.g., if it was already marked as done)
