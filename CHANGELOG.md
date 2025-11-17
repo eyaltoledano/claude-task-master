@@ -1,5 +1,14 @@
 # task-master-ai
 
+## 0.32.2
+
+### Patch Changes
+
+- [#1421](https://github.com/eyaltoledano/claude-task-master/pull/1421) [`e75946b`](https://github.com/eyaltoledano/claude-task-master/commit/e75946b1a998269e6a751d2b5baf5c3b7e9b9f46) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Upgrade fastmcp dependency to solve `Server does not support completions (required for completion/complete)`
+  - This resolves errors where MCP clients (like Cursor) failed to connect to the Task Master MCP server:
+    - [#1413](https://github.com/eyaltoledano/claude-task-master/issues/1413)
+    - [#1411](https://github.com/eyaltoledano/claude-task-master/issues/1411)
+
 ## 0.32.1
 
 ### Patch Changes
