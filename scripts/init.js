@@ -566,7 +566,7 @@ async function initializeProject(options = {}) {
 				chalk.blue('Storage:'),
 				chalk.white(
 					selectedStorage === 'cloud'
-						? 'Hamster (Cloud Sync)'
+						? 'Hamster Studio'
 						: 'Local File Storage'
 				)
 			);
@@ -706,7 +706,7 @@ function updateStorageConfig(configPath, selectedStorage, authCredentials) {
 
 			// Note: Access token is stored in ~/.taskmaster/auth.json by AuthManager
 			// We don't store it in config.json for security reasons
-			log('info', 'Configured storage for cloud sync with Hamster');
+			log('info', 'Connected to Hamster Studio');
 		} else {
 			// Configure for local file storage
 			config.storage.type = 'file';
@@ -739,9 +739,9 @@ async function promptStorageSelection() {
 				message: chalk.cyan('Choose your storage backend:'),
 				choices: [
 					{
-						name: `${chalk.bold('☁️  Hamster (Cloud Sync)')} - Sync tasks across devices with Hamster`,
+						name: `${chalk.bold('🐹 Hamster Studio')} - Connect to Hamster for AI-powered task management`,
 						value: 'cloud',
-						short: 'Cloud'
+						short: 'Hamster'
 					},
 					{
 						name: `${chalk.bold('📁 Local Storage')} - Keep everything on your machine`,
@@ -1038,10 +1038,12 @@ function createProjectStructure(
 		console.log(
 			boxen(
 				chalk.green.bold('✓ AI Models Managed by Hamster\n\n') +
-				chalk.white('Hamster handles all AI model configuration on the backend.\n') +
-				chalk.dim('• No API keys required\n') +
-				chalk.dim('• No extra costs\n') +
-				chalk.dim('• Optimized model selection for your tasks'),
+					chalk.white(
+						'Hamster handles all AI model configuration on the backend.\n'
+					) +
+					chalk.dim('• No API keys required\n') +
+					chalk.dim('• No extra costs\n') +
+					chalk.dim('• Optimized model selection for your tasks'),
 				{
 					padding: 1,
 					margin: { top: 1, bottom: 0.5 },
@@ -1086,9 +1088,9 @@ function createProjectStructure(
     ___
    /   \\       ${chalk.green.bold('Welcome to Hamster!')}
   ( o.o )     
-   > ^ <       ${chalk.white('Cloud sync enabled ☁️')}
+   > ^ <       ${chalk.white('Connected to Hamster Studio')}
   /|   |\\     
- (_|___|_)    ${chalk.dim('Tasks synced across all your devices')}
+ (_|___|_)    ${chalk.dim('AI-powered task management at your fingertips')}
 `;
 			console.log(
 				boxen(hamsterArt, {
