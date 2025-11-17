@@ -1,9 +1,9 @@
+import { createHash } from 'crypto';
 /**
  * Sentry initialization and configuration for Task Master
  * Provides error tracking and AI operation monitoring
  */
 import * as Sentry from '@sentry/node';
-import { createHash } from 'crypto';
 import { getAnonymousTelemetryEnabled } from '../../scripts/modules/config-manager.js';
 import { resolveEnvVariable } from '../../scripts/modules/utils.js';
 
@@ -17,12 +17,9 @@ let isInitialized = false;
  */
 export function hashProjectRoot(projectRoot) {
 	if (!projectRoot) return undefined;
-	
+
 	// Create SHA256 hash and take first 8 characters for grouping
-	return createHash('sha256')
-		.update(projectRoot)
-		.digest('hex')
-		.substring(0, 8);
+	return createHash('sha256').update(projectRoot).digest('hex').substring(0, 8);
 }
 
 /**
@@ -89,7 +86,6 @@ export function initializeSentry(options = {}) {
 		});
 
 		isInitialized = true;
-		console.log('✓ Sentry telemetry initialized successfully');
 	} catch (error) {
 		console.error(`Failed to initialize telemetry: ${error.message}`);
 	}
@@ -104,6 +100,7 @@ export function initializeSentry(options = {}) {
  * @param {string} [metadata.outputType] - Output type: 'cli' or 'mcp'
  * @param {string} [metadata.tag] - Task tag being operated on
  * @param {string} [metadata.taskId] - Specific task ID if applicable
+ * @param {string} [metadata.userId] - Hamster user ID if authenticated
  * @param {string} [metadata.briefId] - Hamster brief ID if connected
  * @param {string} [metadata.projectHash] - Privacy-safe hash of project root
  * @returns {object|null} Telemetry configuration or null if Sentry not initialized
@@ -133,8 +130,10 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
 		if (metadata.outputType) config.metadata.outputType = metadata.outputType;
 		if (metadata.tag) config.metadata.tag = metadata.tag;
 		if (metadata.taskId) config.metadata.taskId = metadata.taskId;
+		if (metadata.userId) config.metadata.userId = metadata.userId;
 		if (metadata.briefId) config.metadata.briefId = metadata.briefId;
-		if (metadata.projectHash) config.metadata.projectHash = metadata.projectHash;
+		if (metadata.projectHash)
+			config.metadata.projectHash = metadata.projectHash;
 	}
 
 	return config;
