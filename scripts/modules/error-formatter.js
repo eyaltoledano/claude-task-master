@@ -5,7 +5,6 @@
 
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { getBoxWidth } from './utils.js';
 
 /**
  * Error type categories for context-specific handling
@@ -363,12 +362,10 @@ export function displayFormattedError(error, options = {}) {
 	}
 	
 	// Display in a box
-	const boxWidth = getBoxWidth();
 	console.log('\n' + boxen(content.trim(), {
 		padding: { top: 1, bottom: 1, left: 2, right: 2 },
 		borderStyle: 'round',
-		borderColor: 'red',
-		width: boxWidth
+		borderColor: 'red'
 	}) + '\n');
 	
 	// Display stack trace in debug mode
@@ -395,12 +392,10 @@ export function displayWarning(message, hints = []) {
 		});
 	}
 	
-	const boxWidth = getBoxWidth();
 	console.log('\n' + boxen(content.trim(), {
 		padding: { top: 1, bottom: 1, left: 2, right: 2 },
 		borderStyle: 'round',
-		borderColor: 'yellow',
-		width: boxWidth
+		borderColor: 'yellow'
 	}) + '\n');
 }
 
@@ -413,12 +408,10 @@ export function displayInfo(message, title = 'Info') {
 	let content = chalk.blue.bold(`ℹ ${title}\n\n`);
 	content += chalk.white(message);
 	
-	const boxWidth = getBoxWidth();
 	console.log('\n' + boxen(content.trim(), {
 		padding: { top: 1, bottom: 1, left: 2, right: 2 },
 		borderStyle: 'round',
-		borderColor: 'blue',
-		width: boxWidth
+		borderColor: 'blue'
 	}) + '\n');
 }
 
@@ -438,12 +431,10 @@ export function displaySuccess(message, nextSteps = []) {
 		});
 	}
 	
-	const boxWidth = getBoxWidth();
 	console.log('\n' + boxen(content.trim(), {
 		padding: { top: 1, bottom: 1, left: 2, right: 2 },
 		borderStyle: 'round',
-		borderColor: 'green',
-		width: boxWidth
+		borderColor: 'green'
 	}) + '\n');
 }
 
