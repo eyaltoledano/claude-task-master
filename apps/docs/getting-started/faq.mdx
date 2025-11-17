@@ -3,7 +3,48 @@ title: FAQ
 sidebarTitle: "FAQ"
 ---
 
-Coming soon. 
+## 🔧 Troubleshooting
+
+### MCP Connection Issues
+
+**Problem**: MCP client shows "Server does not support completions (required for completion/complete)" error
+
+**Solution**: This issue has been resolved in Task Master v0.32.1 and later. Make sure you're using the latest version:
+
+```bash
+# Update to the latest version
+npm install -g task-master-ai@latest
+
+# Or for MCP usage
+npx -y task-master-ai@latest
+```
+
+If you're still experiencing issues, try:
+
+1. **Restart your editor** after updating
+2. **Check your MCP configuration** includes the correct server name and arguments
+3. **Verify API keys** are properly configured in your environment
+
+**Problem**: "0 tools enabled" in MCP settings
+
+**Solution**: 
+1. Ensure at least one API key is configured in your MCP server environment
+2. Restart your editor after adding API keys
+3. Check that the server name matches exactly in your configuration
+
+### Installation Issues
+
+**Problem**: Command not found after global installation
+
+**Solution**: 
+```bash
+# Verify installation
+npm list -g task-master-ai
+
+# Re-install if needed
+npm uninstall -g task-master-ai
+npm install -g task-master-ai
+```
 
 ## 💬 Getting Help
 
