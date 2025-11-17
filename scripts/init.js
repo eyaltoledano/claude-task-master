@@ -1004,13 +1004,13 @@ function createProjectStructure(
 	// =====================================
 
 	// === Add Model Configuration Step ===
-	// Only configure models for cloud storage (Hamster)
-	// Local storage doesn't require AI models for basic task management
+	// Only configure models for local storage (need API keys for direct AI usage)
+	// Cloud storage (Hamster) manages AI models on the backend - no API keys or extra costs needed
 	if (
 		!isSilentMode() &&
 		!dryRun &&
 		!options?.yes &&
-		selectedStorage === 'cloud'
+		selectedStorage === 'local'
 	) {
 		console.log(
 			boxen(chalk.cyan('Configuring AI Models...'), {
@@ -1034,11 +1034,21 @@ function createProjectStructure(
 			log('error', 'Failed to configure AI models:', error.message);
 			log('warn', 'You may need to run "task-master models --setup" manually.');
 		}
-	} else if (selectedStorage === 'local' && !dryRun) {
-		log('info', 'Skipping AI model configuration for local storage.');
-		log(
-			'info',
-			'Local storage uses file-based task management. You can configure AI models later if needed using "task-master models --setup".'
+	} else if (selectedStorage === 'cloud' && !dryRun) {
+		console.log(
+			boxen(
+				chalk.green.bold('✓ AI Models Managed by Hamster\n\n') +
+				chalk.white('Hamster handles all AI model configuration on the backend.\n') +
+				chalk.dim('• No API keys required\n') +
+				chalk.dim('• No extra costs\n') +
+				chalk.dim('• Optimized model selection for your tasks'),
+				{
+					padding: 1,
+					margin: { top: 1, bottom: 0.5 },
+					borderStyle: 'round',
+					borderColor: 'cyan'
+				}
+			)
 		);
 	} else if (isSilentMode() && !dryRun) {
 		log('info', 'Skipping interactive model setup in silent (MCP) mode.');
@@ -1073,11 +1083,12 @@ function createProjectStructure(
 		// Show hamster ASCII art for cloud storage, regular success for local
 		if (selectedStorage === 'cloud') {
 			const hamsterArt = `
-   ___     
-  (o o)    ${chalk.green.bold('Welcome to Hamster!')}
-  (  >  )  
- /|    |\\  ${chalk.white('Cloud sync enabled')}
-  '----'   ${chalk.dim('Tasks synced across all your devices')}
+    ___
+   /   \\       ${chalk.green.bold('Welcome to Hamster!')}
+  ( o.o )     
+   > ^ <       ${chalk.white('Cloud sync enabled ☁️')}
+  /|   |\\     
+ (_|___|_)    ${chalk.dim('Tasks synced across all your devices')}
 `;
 			console.log(
 				boxen(hamsterArt, {
