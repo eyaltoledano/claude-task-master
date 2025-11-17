@@ -1,6 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+	ALL_PROVIDERS,
+	CUSTOM_PROVIDERS,
+	CUSTOM_PROVIDERS_ARRAY,
+	VALIDATED_PROVIDERS
+} from '@tm/core';
 import chalk from 'chalk';
 import { z } from 'zod';
 import { AI_COMMAND_NAMES } from '../../src/constants/commands.js';
@@ -8,15 +14,9 @@ import {
 	LEGACY_CONFIG_FILE,
 	TASKMASTER_DIR
 } from '../../src/constants/paths.js';
-import {
-	ALL_PROVIDERS,
-	CUSTOM_PROVIDERS,
-	CUSTOM_PROVIDERS_ARRAY,
-	VALIDATED_PROVIDERS
-} from '@tm/core';
 import { findConfigPath } from '../../src/utils/path-utils.js';
-import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 import MODEL_MAP from './supported-models.json' with { type: 'json' };
+import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -56,7 +56,8 @@ const DEFAULTS = {
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true,
-		enableProxy: false
+		enableProxy: false,
+		anonymousTelemetry: true // Allow users to opt out of Sentry telemetry for local storage
 	},
 	claudeCode: {},
 	codexCli: {},
@@ -709,6 +710,12 @@ function getProxyEnabled(explicitRoot = null) {
 	return getGlobalConfig(explicitRoot).enableProxy === true;
 }
 
+function getAnonymousTelemetryEnabled(explicitRoot = null) {
+	// Return boolean-safe value with default true (opt-in by default)
+	const config = getGlobalConfig(explicitRoot);
+	return config.anonymousTelemetry !== false; // Default true if undefined
+}
+
 function isProxyEnabled(session = null, projectRoot = null) {
 	// Priority 1: Environment variable
 	const envFlag = resolveEnvVariable(
@@ -1217,6 +1224,7 @@ export {
 	isCodebaseAnalysisEnabled,
 	getProxyEnabled,
 	isProxyEnabled,
+	getAnonymousTelemetryEnabled,
 	getParametersForRole,
 	getUserId,
 	// API Key Checkers (still relevant)

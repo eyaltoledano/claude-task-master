@@ -9,7 +9,11 @@
 		"task-master-mcp": "dist/mcp-server.js",
 		"task-master-ai": "dist/mcp-server.js"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
@@ -69,6 +73,7 @@
 		"@aws-sdk/credential-providers": "^3.895.0",
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^1.2.0",
+		"@sentry/node": "^10.25.0",
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^5.0.51",

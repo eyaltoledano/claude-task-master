@@ -11,6 +11,7 @@ import { jsonrepair } from 'jsonrepair';
 import { log, findProjectRoot } from '../../scripts/modules/utils.js';
 import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
 import { EnvHttpProxyAgent } from 'undici';
+import { getAITelemetryConfig } from '../telemetry/sentry.js';
 
 /**
  * Base class for all AI providers
@@ -206,15 +207,20 @@ export class BaseAIProvider {
 				`Generating ${this.name} text with model: ${params.modelId}`
 			);
 
-			const client = await this.getClient(params);
-			const result = await generateText({
-				model: client(params.modelId),
-				messages: params.messages,
-				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				...(this.supportsTemperature && params.temperature !== undefined
-					? { temperature: params.temperature }
-					: {})
-			});
+		const client = await this.getClient(params);
+		
+		// Get Sentry telemetry config if available
+		const telemetryConfig = getAITelemetryConfig();
+		
+		const result = await generateText({
+			model: client(params.modelId),
+			messages: params.messages,
+			...this.prepareTokenParam(params.modelId, params.maxTokens),
+			...(this.supportsTemperature && params.temperature !== undefined
+				? { temperature: params.temperature }
+				: {}),
+			...(telemetryConfig && { experimental_telemetry: telemetryConfig })
+		});
 
 			log(
 				'debug',
@@ -249,17 +255,22 @@ export class BaseAIProvider {
 			this.validateParams(params);
 			this.validateMessages(params.messages);
 
-			log('debug', `Streaming ${this.name} text with model: ${params.modelId}`);
+		log('debug', `Streaming ${this.name} text with model: ${params.modelId}`);
 
-			const client = await this.getClient(params);
-			const stream = await streamText({
-				model: client(params.modelId),
-				messages: params.messages,
-				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				...(this.supportsTemperature && params.temperature !== undefined
-					? { temperature: params.temperature }
-					: {})
-			});
+		const client = await this.getClient(params);
+		
+		// Get Sentry telemetry config if available
+		const telemetryConfig = getAITelemetryConfig();
+		
+		const stream = await streamText({
+			model: client(params.modelId),
+			messages: params.messages,
+			...this.prepareTokenParam(params.modelId, params.maxTokens),
+			...(this.supportsTemperature && params.temperature !== undefined
+				? { temperature: params.temperature }
+				: {}),
+			...(telemetryConfig && { experimental_telemetry: telemetryConfig })
+		});
 
 			log(
 				'debug',
@@ -284,22 +295,27 @@ export class BaseAIProvider {
 				throw new Error('Schema is required for object streaming');
 			}
 
-			log(
-				'debug',
-				`Streaming ${this.name} object with model: ${params.modelId}`
-			);
+		log(
+			'debug',
+			`Streaming ${this.name} object with model: ${params.modelId}`
+		);
 
-			const client = await this.getClient(params);
-			const result = await streamObject({
-				model: client(params.modelId),
-				messages: params.messages,
-				schema: zodSchema(params.schema),
-				mode: params.mode || 'auto',
-				maxOutputTokens: params.maxTokens,
-				...(this.supportsTemperature && params.temperature !== undefined
-					? { temperature: params.temperature }
-					: {})
-			});
+		const client = await this.getClient(params);
+		
+		// Get Sentry telemetry config if available
+		const telemetryConfig = getAITelemetryConfig();
+		
+		const result = await streamObject({
+			model: client(params.modelId),
+			messages: params.messages,
+			schema: zodSchema(params.schema),
+			mode: params.mode || 'auto',
+			maxOutputTokens: params.maxTokens,
+			...(this.supportsTemperature && params.temperature !== undefined
+				? { temperature: params.temperature }
+				: {}),
+			...(telemetryConfig && { experimental_telemetry: telemetryConfig })
+		});
 
 			log(
 				'debug',
@@ -329,25 +345,29 @@ export class BaseAIProvider {
 				throw new Error('Object name is required for object generation');
 			}
 
-			log(
-				'debug',
-				`Generating ${this.name} object ('${params.objectName}') with model: ${params.modelId}`
-			);
+		log(
+			'debug',
+			`Generating ${this.name} object ('${params.objectName}') with model: ${params.modelId}`
+		);
 
-			const client = await this.getClient(params);
+		const client = await this.getClient(params);
+		
+		// Get Sentry telemetry config if available
+		const telemetryConfig = getAITelemetryConfig();
 
-			const result = await generateObject({
-				model: client(params.modelId),
-				messages: params.messages,
-				schema: params.schema,
-				mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
-				schemaName: params.objectName,
-				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
-				maxTokens: params.maxTokens,
-				...(this.supportsTemperature && params.temperature !== undefined
-					? { temperature: params.temperature }
-					: {})
-			});
+		const result = await generateObject({
+			model: client(params.modelId),
+			messages: params.messages,
+			schema: params.schema,
+			mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
+			schemaName: params.objectName,
+			schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
+			maxTokens: params.maxTokens,
+			...(this.supportsTemperature && params.temperature !== undefined
+				? { temperature: params.temperature }
+				: {}),
+			...(telemetryConfig && { experimental_telemetry: telemetryConfig })
+		});
 
 			log(
 				'debug',
