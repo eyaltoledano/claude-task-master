@@ -163,11 +163,24 @@ function isConnectedToHamster() {
 }
 
 /**
+ * Helper to create aligned command entries
+ */
+function createCommandEntry(command, description, indent = '  ') {
+	const cmdColumn = 45; // Fixed column width for commands
+	const paddingNeeded = Math.max(1, cmdColumn - indent.length - command.length);
+	return (
+		chalk.cyan(indent + command) +
+		' '.repeat(paddingNeeded) +
+		chalk.gray(description)
+	);
+}
+
+/**
  * Display Hamster-specific help (simplified command list)
  */
 function displayHamsterHelp() {
 	// Calculate box width (use 90% of terminal width, min 80, max 120)
-	const terminalWidth = process.stdout.columns || 100;
+	const terminalWidth = process.stdout.columns || 80;
 	const boxWidth = Math.min(120, Math.max(80, Math.floor(terminalWidth * 0.9)));
 
 	console.log(
@@ -185,71 +198,78 @@ function displayHamsterHelp() {
 				chalk.dim(
 					'Use these commands to view tasks and update their status:\n\n'
 				) +
-				chalk.yellow.bold('📋 Task Management:\n') +
-				chalk.cyan('  list') +
-				'                              ' +
-				chalk.gray('View all tasks from the brief\n') +
-				chalk.cyan('  list --with-subtasks') +
-				'               ' +
-				chalk.gray('View tasks with subtasks expanded\n') +
-				chalk.cyan('  list --status <status>') +
-				'             ' +
-				chalk.gray('Filter by status (pending, in-progress, done)\n') +
-				chalk.cyan('  show <id>') +
-				'                         ' +
-				chalk.gray('Show detailed task/subtask info\n') +
-				chalk.cyan('  next') +
-				'                              ' +
-				chalk.gray('See the next task to work on\n') +
-				chalk.cyan('  set-status') +
-				' --id=<id> --status=<status>  ' +
-				chalk.gray('Update task status\n') +
-				chalk.dim('     Available statuses: ') +
-				chalk.white('pending, in-progress, done\n') +
-				chalk.cyan('  update-task') +
-				' --id=<id> --prompt="..."   ' +
-				chalk.gray('Add information to a task\n') +
-				chalk.dim('     (auto-appends when connected to Hamster)\n\n') +
-				chalk.yellow.bold('🔐 Authentication & Context:\n') +
-				chalk.cyan('  auth login') +
-				'                       ' +
-				chalk.gray('Log in to Hamster\n') +
-				chalk.cyan('  auth logout') +
-				'                      ' +
-				chalk.gray('Log out from Hamster\n') +
-				chalk.cyan('  auth refresh') +
-				'                     ' +
-				chalk.gray('Refresh authentication token\n') +
-				chalk.cyan('  auth status') +
-				'                      ' +
-				chalk.gray('Check authentication status\n') +
-				chalk.cyan('  context') +
-				'                          ' +
-				chalk.gray('Show current brief context\n') +
-				chalk.cyan('  context org') +
-				'                      ' +
-				chalk.gray('Switch organization\n') +
-				chalk.cyan('  context brief <url>') +
-				'              ' +
-				chalk.gray('Switch to a different brief\n\n') +
-				chalk.yellow.bold('💡 Usage Examples:\n') +
-				chalk.dim('  tm list                              ') +
-				chalk.gray('# See all tasks\n') +
-				chalk.dim('  tm list --status pending             ') +
-				chalk.gray('# See only pending tasks\n') +
-				chalk.dim('  tm show 1,1.1,2                      ') +
-				chalk.gray('# View multiple tasks\n') +
-				chalk.dim('  tm set-status -i 1,1.1 -s in-progress') +
-				chalk.gray('  # Start tasks\n') +
-				chalk.dim('  tm set-status -i 1.2 -s done         ') +
-				chalk.gray('# Mark subtask complete\n') +
-				chalk.dim('  tm update-task -i 1 -p "Add details" ') +
-				chalk.gray('# Add info to task\n') +
-				chalk.dim('  tm auth refresh                      ') +
-				chalk.gray('# Refresh expired token\n') +
-				chalk.dim('  tm context                           ') +
-				chalk.gray('# View current brief info\n\n') +
-				chalk.white.bold('ℹ️  Need more commands?\n') +
+				chalk.yellow.bold('TASK MANAGEMENT\n') +
+				createCommandEntry('list', 'View all tasks from the brief\n') +
+				createCommandEntry(
+					'list --with-subtasks',
+					'View tasks with subtasks expanded\n'
+				) +
+				createCommandEntry(
+					'list --status <status>',
+					'Filter by status (pending, in-progress, done)\n'
+				) +
+				createCommandEntry('show <id>', 'Show detailed task/subtask info\n') +
+				createCommandEntry('next', 'See the next task to work on\n') +
+				createCommandEntry(
+					'set-status --id=<id> --status=<status>',
+					'Update task status (pending, in-progress, done)\n'
+				) +
+				createCommandEntry(
+					'update-task --id=<id> --prompt="..."',
+					'Add information to a task\n\n'
+				) +
+				chalk.yellow.bold('AUTHENTICATION & CONTEXT\n') +
+				createCommandEntry('auth login', 'Log in to Hamster\n') +
+				createCommandEntry('auth logout', 'Log out from Hamster\n') +
+				createCommandEntry('auth refresh', 'Refresh authentication token\n') +
+				createCommandEntry('auth status', 'Check authentication status\n') +
+				createCommandEntry('context', 'Show current brief context\n') +
+				createCommandEntry('context org', 'Switch organization\n') +
+				createCommandEntry(
+					'context brief <url>',
+					'Switch to a different brief\n\n'
+				) +
+				chalk.yellow.bold('USAGE EXAMPLES\n') +
+				createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
+					chalk.cyan('  tm'),
+					chalk.dim('  tm')
+				) +
+				createCommandEntry(
+					'tm list --status pending',
+					'See only pending tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm show 1,1.1,2',
+					'View multiple tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm set-status -i 1,1.1 -s in-progress',
+					'Start tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm set-status -i 1.2 -s done',
+					'Mark subtask complete\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm update-task -i 1 -p "Add details"',
+					'Add info to task\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm auth refresh',
+					'Refresh expired token\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm context',
+					'View current brief info\n\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				chalk.white.bold('» Need more commands?\n') +
 				chalk.gray(
 					'Advanced features (models, tags, PRD parsing) are managed in Hamster Studio.'
 				),
@@ -257,7 +277,8 @@ function displayHamsterHelp() {
 				padding: 1,
 				margin: { top: 1 },
 				borderStyle: 'round',
-				borderColor: 'cyan'
+				borderColor: 'cyan',
+				width: boxWidth
 			}
 		)
 	);
