@@ -195,11 +195,17 @@ function displayHamsterHelp() {
 				chalk.dim(
 					'Tasks are managed in Hamster Studio. Changes sync automatically.\n'
 				) +
-				chalk.dim(
-					'Use these commands to view tasks and update their status:\n\n'
-				) +
-				chalk.yellow.bold('TASK MANAGEMENT\n') +
-				createCommandEntry('list', 'View all tasks from the brief\n') +
+			chalk.dim(
+				'Use these commands to view tasks and update their status:\n\n'
+			) +
+			'\n' +
+			boxen('  Task Management  ', {
+				padding: 0,
+				borderStyle: 'round',
+				borderColor: 'yellow'
+			}) +
+			'\n' +
+			createCommandEntry('list', 'View all tasks from the brief\n') +
 				createCommandEntry(
 					'list --with-subtasks',
 					'View tasks with subtasks expanded\n'
@@ -214,23 +220,35 @@ function displayHamsterHelp() {
 					'set-status --id=<id> --status=<status>',
 					'Update task status (pending, in-progress, done)\n'
 				) +
-				createCommandEntry(
-					'update-task --id=<id> --prompt="..."',
-					'Add information to a task\n\n'
-				) +
-				chalk.yellow.bold('AUTHENTICATION & CONTEXT\n') +
-				createCommandEntry('auth login', 'Log in to Hamster\n') +
+			createCommandEntry(
+				'update-task --id=<id> --prompt="..."',
+				'Add information to a task\n\n'
+			) +
+			'\n' +
+			boxen('  Authentication & Context  ', {
+				padding: 0,
+				borderStyle: 'round',
+				borderColor: 'yellow'
+			}) +
+			'\n' +
+			createCommandEntry('auth login', 'Log in to Hamster\n') +
 				createCommandEntry('auth logout', 'Log out from Hamster\n') +
 				createCommandEntry('auth refresh', 'Refresh authentication token\n') +
 				createCommandEntry('auth status', 'Check authentication status\n') +
 				createCommandEntry('context', 'Show current brief context\n') +
 				createCommandEntry('context org', 'Switch organization\n') +
-				createCommandEntry(
-					'context brief <url>',
-					'Switch to a different brief\n\n'
-				) +
-				chalk.yellow.bold('USAGE EXAMPLES\n') +
-				createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
+			createCommandEntry(
+				'context brief <url>',
+				'Switch to a different brief\n\n'
+			) +
+			'\n' +
+			boxen('  Usage Examples  ', {
+				padding: 0,
+				borderStyle: 'round',
+				borderColor: 'yellow'
+			}) +
+			'\n' +
+			createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
 					chalk.cyan('  tm'),
 					chalk.dim('  tm')
 				) +
@@ -4561,7 +4579,12 @@ function setupCLI() {
 			return originalHelpInformation();
 		}
 		// If this is the main program help, use our custom display
-		displayHelp();
+		// Check if connected to Hamster and show appropriate help
+		if (isConnectedToHamster()) {
+			displayHamsterHelp();
+		} else {
+			displayHelp();
+		}
 		return '';
 	};
 
@@ -4577,17 +4600,22 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe (except for init command which has its own banner)
-		const isInitCommand = argv.includes('init');
-		if (process.stdout.isTTY && !isInitCommand) {
-			displayBanner();
-		}
+	// Display banner if not in a pipe (except for init command which has its own banner)
+	const isInitCommand = argv.includes('init');
+	if (process.stdout.isTTY && !isInitCommand) {
+		displayBanner();
+	}
 
-		// If no arguments provided, show help
-		if (argv.length <= 2) {
+	// If no arguments provided, show help
+	if (argv.length <= 2) {
+		// Check if connected to Hamster and show appropriate help
+		if (isConnectedToHamster()) {
+			displayHamsterHelp();
+		} else {
 			displayHelp();
-			process.exit(0);
 		}
+		process.exit(0);
+	}
 
 		// Check for updates BEFORE executing the command
 		const currentVersion = getTaskMasterVersion();
