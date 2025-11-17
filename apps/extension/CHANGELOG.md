@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.26.0
+
+### Minor Changes
+
+- [#1403](https://github.com/eyaltoledano/claude-task-master/pull/1403) [`a381376`](https://github.com/eyaltoledano/claude-task-master/commit/a381376ba4925593bfb49d934693a83c804cd2a5) Thanks [@EDKarlsson](https://github.com/EDKarlsson)! - Updated readme mcp configuration example to not include package=task-master-ai.
+
 ## 0.26.0-rc.0
 
 ### Minor Changes
