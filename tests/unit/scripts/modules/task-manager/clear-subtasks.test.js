@@ -24,13 +24,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	displayBanner: jest.fn()
 }));
 
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
 // Mock external UI libraries
 jest.unstable_mockModule('chalk', () => ({
 	default: {
@@ -68,11 +61,6 @@ const mockExit = jest.spyOn(process, 'exit').mockImplementation((code) => {
 // Import the mocked modules
 const { readJSON, writeJSON, log, findTaskById, ensureTagMetadata } =
 	await import('../../../../../scripts/modules/utils.js');
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 
 // Import the module under test
 const { default: clearSubtasks } = await import(
@@ -116,7 +104,6 @@ describe('clearSubtasks', () => {
 			};
 		});
 		writeJSON.mockResolvedValue();
-		generateTaskFiles.mockResolvedValue();
 		log.mockImplementation(() => {});
 	});
 
@@ -191,7 +178,6 @@ describe('clearSubtasks', () => {
 		expect(readJSON).toHaveBeenCalledWith(tasksPath, undefined, 'master');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
-		expect(generateTaskFiles).not.toHaveBeenCalled();
 	});
 
 	test('should handle non-existent task IDs gracefully', () => {
@@ -208,7 +194,6 @@ describe('clearSubtasks', () => {
 		expect(log).toHaveBeenCalledWith('error', 'Task 99 not found');
 		// Should not write the file if no changes were made
 		expect(writeJSON).not.toHaveBeenCalled();
-		expect(generateTaskFiles).not.toHaveBeenCalled();
 	});
 
 	test('should handle multiple task IDs including both valid and non-existent IDs', () => {

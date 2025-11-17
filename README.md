@@ -277,9 +277,6 @@ task-master move --from=5 --from-tag=backlog --to-tag=in-progress
 task-master move --from=5,6,7 --from-tag=backlog --to-tag=done --with-dependencies
 task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
 
-# Generate task files
-task-master generate
-
 # Add rules after initialization
 task-master rules add windsurf,roo,vscode
 ```

@@ -20,8 +20,6 @@ import {
 
 import { displayBanner } from './ui.js';
 
-import generateTaskFiles from './task-manager/generate-task-files.js';
-
 /**
  * Structured error class for dependency operations
  */

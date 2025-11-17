@@ -43,13 +43,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 }));
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
-jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager.js',
 	() => ({
 		isTaskDependentOn: jest.fn(() => false)

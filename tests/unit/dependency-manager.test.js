@@ -71,10 +71,6 @@ jest.mock('../../scripts/modules/ui.js', () => ({
 	displayBanner: jest.fn()
 }));
 
-jest.mock('../../scripts/modules/task-manager.js', () => ({
-	generateTaskFiles: jest.fn()
-}));
-
 // Use a temporary path for test files - Jest will clean up the temp directory
 const TEST_TASKS_PATH = '/tmp/jest-test-tasks.json';
 
@@ -991,10 +987,6 @@ describe('Dependency Manager Module', () => {
 			await jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
 				displayBanner: jest.fn()
 			}));
-			await jest.unstable_mockModule(
-				'../../scripts/modules/task-manager/generate-task-files.js',
-				() => ({ default: jest.fn() })
-			);
 			// Set up test data that matches the issue report
 			// Clone fixture data before each test to prevent mutation issues
 			mockReadJSON.mockImplementation(() =>

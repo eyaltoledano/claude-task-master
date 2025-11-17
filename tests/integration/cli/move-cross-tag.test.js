@@ -1,11 +1,10 @@
-import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
+import { jest } from '@jest/globals';
 
 // --- Define mock functions ---
 const mockMoveTasksBetweenTags = jest.fn();
 const mockMoveTask = jest.fn();
-const mockGenerateTaskFiles = jest.fn();
 const mockLog = jest.fn();
 
 // --- Setup mocks using unstable_mockModule ---
@@ -14,13 +13,6 @@ jest.unstable_mockModule(
 	() => ({
 		default: mockMoveTask,
 		moveTasksBetweenTags: mockMoveTasksBetweenTags
-	})
-);
-
-jest.unstable_mockModule(
-	'../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: mockGenerateTaskFiles
 	})
 );
 
@@ -58,16 +50,13 @@ jest.unstable_mockModule('chalk', () => ({
 }));
 
 // --- Import modules (AFTER mock setup) ---
-let moveTaskModule, generateTaskFilesModule, utilsModule, chalk;
+let moveTaskModule, utilsModule, chalk;
 
 describe('Cross-Tag Move CLI Integration', () => {
 	// Setup dynamic imports before tests run
 	beforeAll(async () => {
 		moveTaskModule = await import(
 			'../../../scripts/modules/task-manager/move-task.js'
-		);
-		generateTaskFilesModule = await import(
-			'../../../scripts/modules/task-manager/generate-task-files.js'
 		);
 		utilsModule = await import('../../../scripts/modules/utils.js');
 		chalk = (await import('chalk')).default;
@@ -176,18 +165,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 					console.log('Next Steps:');
 					result.tips.forEach((t) => console.log(`  • ${t}`));
 				}
-
-				// Generate task files for both tags
-				await generateTaskFilesModule.default(
-					tasksPath,
-					path.dirname(tasksPath),
-					{ tag: sourceTag }
-				);
-				await generateTaskFilesModule.default(
-					tasksPath,
-					path.dirname(tasksPath),
-					{ tag: toTag }
-				);
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
 				// Print ID collision guidance similar to CLI help block
@@ -271,7 +248,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 	it('should move task without dependencies successfully', async () => {
 		// Mock successful cross-tag move
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: '2',
@@ -324,7 +300,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 	it('should move task with dependencies when --with-dependencies is used', async () => {
 		// Mock successful cross-tag move with dependencies
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: '1',
@@ -350,7 +325,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 	it('should break dependencies when --ignore-dependencies is used', async () => {
 		// Mock successful cross-tag move with dependency breaking
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: '1',
@@ -376,7 +350,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 	it('should create target tag if it does not exist', async () => {
 		// Mock successful cross-tag move to new tag
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: '2',
@@ -567,24 +540,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 				ignoreDependencies: false
 			}
 		);
-
-		// Verify that generateTaskFiles was called for both tags
-		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
-			{ tag: 'master' }
-		);
-		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
-			{ tag: 'in-progress' }
-		);
 	});
 
 	it('should move multiple tasks with comma-separated IDs successfully', async () => {
 		// Mock successful cross-tag move for multiple tasks
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: '1,2,3',
@@ -603,19 +563,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 				withDependencies: undefined,
 				ignoreDependencies: undefined
 			}
-		);
-
-		// Verify task files are generated for both tags
-		expect(mockGenerateTaskFiles).toHaveBeenCalledTimes(2);
-		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
-			{ tag: 'backlog' }
-		);
-		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			expect.stringContaining('.taskmaster/tasks'),
-			{ tag: 'in-progress' }
 		);
 	});
 
@@ -710,7 +657,6 @@ describe('Cross-Tag Move CLI Integration', () => {
 	it('should handle whitespace in comma-separated task IDs', async () => {
 		// Mock successful cross-tag move with whitespace
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
 		const options = {
 			from: ' 1 , 2 , 3 ', // Whitespace around IDs and commas
