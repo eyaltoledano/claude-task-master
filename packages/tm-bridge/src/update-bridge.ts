@@ -1,5 +1,3 @@
-import boxen from 'boxen';
-import chalk from 'chalk';
 import ora from 'ora';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
@@ -69,26 +67,10 @@ export async function tryUpdateViaRemote(
 
 	const mode = appendMode ? 'append' : 'update';
 
-	// Show CLI output if not MCP
-	if (!isMCP && outputFormat === 'text') {
-		console.log(
-			boxen(
-				chalk.blue.bold(`Updating Task via Hamster`) +
-					'\n\n' +
-					chalk.white(`Task: ${taskId}`),
-				{
-					padding: 1,
-					borderColor: 'blue',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				}
-			)
-		);
-	}
-
+	// Show spinner for CLI users
 	const spinner =
 		!isMCP && outputFormat === 'text'
-			? ora({ text: 'Updating task on Hamster...', color: 'cyan' }).start()
+			? ora({ text: `Updating ${taskId} on Hamster...`, color: 'cyan' }).start()
 			: null;
 
 	try {

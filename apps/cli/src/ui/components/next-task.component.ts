@@ -19,30 +19,39 @@ export interface NextTaskDisplayOptions {
 	dependencies?: (string | number)[];
 	description?: string;
 	complexity?: number;
+	hasAnyTasks?: boolean; // Whether there are ANY tasks in the project
 }
 
 /**
  * Display the recommended next task section
  */
 export function displayRecommendedNextTask(
-	task: NextTaskDisplayOptions | undefined
+	task: NextTaskDisplayOptions | undefined,
+	hasAnyTasks?: boolean
 ): void {
 	if (!task) {
-		// If no task available, show a message
-		console.log(
-			boxen(
-				chalk.yellow(
-					'No tasks available to work on. All tasks are either completed, blocked by dependencies, or in progress.'
-				),
-				{
-					padding: 1,
-					borderStyle: 'round',
-					borderColor: 'yellow',
-					title: '⚠️ NO TASKS AVAILABLE ⚠️',
-					titleAlignment: 'center'
-				}
-			)
-		);
+		// Only show warning box if there are literally NO tasks at all
+		if (!hasAnyTasks) {
+			console.log(
+				boxen(
+					chalk.yellow(
+						'No tasks found in this project.'
+					),
+					{
+						padding: 1,
+						borderStyle: 'round',
+						borderColor: 'yellow',
+						title: '⚠️ NO TASKS AVAILABLE ⚠️',
+						titleAlignment: 'center'
+					}
+				)
+			);
+		} else {
+			// Tasks exist but none are available to work on - show simple message
+			console.log(
+				chalk.yellow('✓ All tasks are either completed, blocked by dependencies, or in progress.')
+			);
+		}
 		return;
 	}
 

@@ -61,12 +61,13 @@ export class SetStatusCommand extends Command {
 
 		// Configure the command with positional arguments
 		this.description('Update the status of one or more tasks')
-			.argument('[id]', 'Task ID(s) - comma-separated for multiple (e.g., 1 or 1,1.1,2)')
-			.argument('[status]', `Status - ${VALID_TASK_STATUSES.join(', ')}`)
-			.option(
-				'-i, --id <id>',
-				'Task ID(s) (fallback if not using positional)'
+			.alias('status')
+			.argument(
+				'[id]',
+				'Task ID(s) - comma-separated for multiple (e.g., 1 or 1,1.1,2)'
 			)
+			.argument('[status]', `Status - ${VALID_TASK_STATUSES.join(', ')}`)
+			.option('-i, --id <id>', 'Task ID(s) (fallback if not using positional)')
 			.option(
 				'-s, --status <status>',
 				'Status (fallback if not using positional)'
@@ -77,15 +78,21 @@ export class SetStatusCommand extends Command {
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
-			.action(async (idArg?: string, statusArg?: string, options?: SetStatusCommandOptions) => {
-				// Prioritize positional arguments over options
-				const mergedOptions: SetStatusCommandOptions = {
-					...options,
-					id: idArg || options?.id,
-					status: (statusArg as TaskStatus) || options?.status
-				};
-				await this.executeCommand(mergedOptions);
-			});
+			.action(
+				async (
+					idArg?: string,
+					statusArg?: string,
+					options?: SetStatusCommandOptions
+				) => {
+					// Prioritize positional arguments over options
+					const mergedOptions: SetStatusCommandOptions = {
+						...options,
+						id: idArg || options?.id,
+						status: (statusArg as TaskStatus) || options?.status
+					};
+					await this.executeCommand(mergedOptions);
+				}
+			);
 	}
 
 	/**
@@ -96,34 +103,32 @@ export class SetStatusCommand extends Command {
 	): Promise<void> {
 		let hasError = false;
 		try {
-		// Validate required options
-		if (!options.id) {
-			console.error(chalk.red('Error: Task ID is required'));
-			console.log(
-				chalk.yellow(
-					'Usage examples:\n' +
-					'  tm set-status 1 done\n' +
-					'  tm set-status 1.2 in-progress\n' +
-					'  tm set-status --id=1 --status=done'
-				)
-			);
-			process.exit(1);
-		}
+			// Validate required options
+			if (!options.id) {
+				console.error(chalk.red('Error: Task ID is required'));
+				console.log(
+					chalk.yellow(
+						'Usage examples:\n' +
+							'  tm set-status 1 done\n' +
+							'  tm set-status 1.2 in-progress\n' +
+							'  tm set-status --id=1 --status=done'
+					)
+				);
+				process.exit(1);
+			}
 
-		if (!options.status) {
-			console.error(
-				chalk.red('Error: Status is required')
-			);
-			console.log(
-				chalk.yellow(
-					'Usage examples:\n' +
-					'  tm set-status 1 done\n' +
-					'  tm set-status 1,1.1 in-progress\n' +
-					'  tm set-status --id=1 --status=done'
-				)
-			);
-			process.exit(1);
-		}
+			if (!options.status) {
+				console.error(chalk.red('Error: Status is required'));
+				console.log(
+					chalk.yellow(
+						'Usage examples:\n' +
+							'  tm set-status 1 done\n' +
+							'  tm set-status 1,1.1 in-progress\n' +
+							'  tm set-status --id=1 --status=done'
+					)
+				);
+				process.exit(1);
+			}
 
 			// Validate status
 			if (!VALID_TASK_STATUSES.includes(options.status)) {
