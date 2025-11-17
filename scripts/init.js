@@ -1006,7 +1006,12 @@ function createProjectStructure(
 	// === Add Model Configuration Step ===
 	// Only configure models for cloud storage (Hamster)
 	// Local storage doesn't require AI models for basic task management
-	if (!isSilentMode() && !dryRun && !options?.yes && selectedStorage === 'cloud') {
+	if (
+		!isSilentMode() &&
+		!dryRun &&
+		!options?.yes &&
+		selectedStorage === 'cloud'
+	) {
 		console.log(
 			boxen(chalk.cyan('Configuring AI Models...'), {
 				padding: 0.5,
@@ -1065,19 +1070,39 @@ function createProjectStructure(
 
 	// Display success message
 	if (!isSilentMode()) {
-		console.log(
-			boxen(
-				`${warmGradient.multiline(
-					figlet.textSync('Success!', { font: 'Standard' })
-				)}\n${chalk.green('Project initialized successfully!')}`,
-				{
+		// Show hamster ASCII art for cloud storage, regular success for local
+		if (selectedStorage === 'cloud') {
+			const hamsterArt = `
+   ___     
+  (o o)    ${chalk.green.bold('Welcome to Hamster!')}
+  (  >  )  
+ /|    |\\  ${chalk.white('Cloud sync enabled')}
+  '----'   ${chalk.dim('Tasks synced across all your devices')}
+`;
+			console.log(
+				boxen(hamsterArt, {
 					padding: 1,
 					margin: 1,
 					borderStyle: 'double',
-					borderColor: 'green'
-				}
-			)
-		);
+					borderColor: 'cyan',
+					textAlignment: 'center'
+				})
+			);
+		} else {
+			console.log(
+				boxen(
+					`${warmGradient.multiline(
+						figlet.textSync('Success!', { font: 'Standard' })
+					)}\n${chalk.green('Project initialized successfully!')}`,
+					{
+						padding: 1,
+						margin: 1,
+						borderStyle: 'double',
+						borderColor: 'green'
+					}
+				)
+			);
+		}
 	}
 
 	// Display next steps in a nice box
