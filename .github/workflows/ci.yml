@@ -51,12 +51,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            changesets:
+              - '.changeset/**'
+              - '.github/scripts/validate-changesets.mjs'
+
       - uses: actions/setup-node@v4
+        if: steps.changes.outputs.changesets == 'true'
         with:
           node-version: 20
           cache: "npm"
 
       - name: Validate changeset package references
+        if: steps.changes.outputs.changesets == 'true'
         run: |
           # Validate that changesets only reference public packages
           # This catches issues like using @tm/cli instead of task-master-ai
@@ -126,6 +136,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: [format-check, typecheck, build, changeset-validation]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     steps:
       - uses: actions/checkout@v4
         with:

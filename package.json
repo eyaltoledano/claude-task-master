@@ -11,6 +11,7 @@
 	},
 	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
+		"postinstall": "patch-package",
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
 		"turbo:dev": "turbo dev",
@@ -104,6 +105,7 @@
 		"ollama-ai-provider-v2": "^1.3.1",
 		"open": "^10.2.0",
 		"ora": "^8.2.0",
+		"patch-package": "^8.0.1",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
 		"undici": "^7.16.0",
@@ -128,6 +130,7 @@
 	},
 	"files": [
 		"dist/**",
+		"patches/**",
 		"README-task-master.md",
 		"README.md",
 		"LICENSE",
