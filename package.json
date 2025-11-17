@@ -87,7 +87,7 @@
 		"date-fns": "^4.1.0",
 		"dotenv": "^16.6.1",
 		"express": "^4.21.2",
-		"fastmcp": "^3.23.0",
+		"fastmcp": "^3.23.1",
 		"figlet": "^1.8.0",
 		"fs-extra": "^11.3.0",
 		"fuse.js": "^7.1.0",
