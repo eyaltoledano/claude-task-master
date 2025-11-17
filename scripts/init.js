@@ -166,7 +166,10 @@ function addShellAliases() {
 
 		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
-		if (configContent.includes("alias tm='task-master'")) {
+		if (
+			configContent.includes("alias tm='task-master'") ||
+			configContent.includes("alias hamster='task-master'")
+		) {
 			log('info', 'Task Master aliases already exist in shell config.');
 			return true;
 		}
@@ -176,6 +179,8 @@ function addShellAliases() {
 # Task Master aliases added on ${new Date().toLocaleDateString()}
 alias tm='task-master'
 alias taskmaster='task-master'
+alias hamster='task-master'
+alias ham='task-master'
 `;
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
@@ -517,7 +522,7 @@ async function initializeProject(options = {}) {
 				const addAliasesInput = await promptQuestion(
 					rl,
 					chalk.cyan(
-						'Add shell aliases for task-master? This lets you type "tm" instead of "task-master" (Y/n): '
+						'Add shell aliases for task-master? This lets you type "tm", "hamster", or "ham" instead of "task-master" (Y/n): '
 					)
 				);
 				addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
@@ -570,7 +575,7 @@ async function initializeProject(options = {}) {
 			);
 			console.log(
 				chalk.blue(
-					'Add shell aliases (so you can use "tm" instead of "task-master"):'
+					'Add shell aliases (so you can use "tm", "hamster", or "ham" instead of "task-master"):'
 				),
 				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
 			);
