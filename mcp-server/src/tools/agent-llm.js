@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v3';
 import { v4 as uuidv4 } from 'uuid';
 import { withNormalizedProjectRoot, createErrorResponse } from './utils.js';
 
