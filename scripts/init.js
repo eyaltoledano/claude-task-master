@@ -98,11 +98,11 @@ function displayBanner() {
 // Logging function with icons and colors
 function log(level, ...args) {
 	const icons = {
-		debug: chalk.gray('🔍'),
-		info: chalk.blue('ℹ️'),
-		warn: chalk.yellow('⚠️'),
-		error: chalk.red('❌'),
-		success: chalk.green('✅')
+		debug: chalk.gray('•'),
+		info: chalk.blue('→'),
+		warn: chalk.yellow('!'),
+		error: chalk.red('✗'),
+		success: chalk.green('✓')
 	};
 
 	if (LOG_LEVELS[level] >= LOG_LEVEL) {
@@ -404,7 +404,7 @@ async function initializeProject(options = {}) {
 			initGit,
 			storeTasksInGit,
 			dryRun,
-			options,
+			{ ...options, preferredLanguage: 'English' }, // Default to English in non-interactive mode
 			selectedRuleProfiles,
 			selectedStorage,
 			authCredentials
@@ -553,46 +553,6 @@ async function initializeProject(options = {}) {
 				storeGitPrompted = false;
 			}
 
-			// Confirm settings...
-			console.log('\nTask Master Project settings:');
-			console.log(
-				chalk.blue('Storage:'),
-				chalk.white(
-					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
-				)
-			);
-			console.log(
-				chalk.blue(
-					'Add shell aliases (so you can use "tm", "hamster", or "ham" instead of "task-master"):'
-				),
-				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
-			);
-
-			// Only show Git-related settings for local storage
-			if (selectedStorage === 'local') {
-				console.log(
-					chalk.blue('Initialize Git repository in project root:'),
-					chalk.white(initGitPrompted ? 'Yes' : 'No')
-				);
-				console.log(
-					chalk.blue('Store tasks in Git (tasks.json and tasks/ directory):'),
-					chalk.white(storeGitPrompted ? 'Yes' : 'No')
-				);
-			}
-
-			const confirmInput = await promptQuestion(
-				rl,
-				chalk.yellow('\nDo you want to continue with these settings? (Y/n): ')
-			);
-			const shouldContinue = confirmInput.trim().toLowerCase() !== 'n';
-
-			if (!shouldContinue) {
-				rl.close();
-				log('info', 'Project initialization cancelled by user');
-				process.exit(0);
-				return;
-			}
-
 			// Prompt for AI IDE rules setup (only if not explicitly provided via --rules)
 			let shouldSetupRules = false;
 			if (!options.rulesExplicitlyProvided) {
@@ -608,6 +568,59 @@ async function initializeProject(options = {}) {
 					'info',
 					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
 				);
+			}
+
+			// Prompt for response language preference
+			const languageInput = await promptQuestion(
+				rl,
+				chalk.cyan('Preferred response language (English): ')
+			);
+			const preferredLanguage = languageInput.trim() || 'English';
+
+			// Confirm settings...
+			console.log('\n' + chalk.bold('Task Master Project Settings:'));
+			console.log(
+				'  ' + chalk.dim('Storage:'),
+				chalk.white(
+					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
+				)
+			);
+			console.log(
+				'  ' + chalk.dim('Shell aliases (tm/hamster/ham):'),
+				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
+			);
+			console.log(
+				'  ' + chalk.dim('AI IDE rules:'),
+				chalk.white(shouldSetupRules ? 'Yes' : 'No')
+			);
+			console.log(
+				'  ' + chalk.dim('Response language:'),
+				chalk.white(preferredLanguage)
+			);
+
+			// Only show Git-related settings for local storage
+			if (selectedStorage === 'local') {
+				console.log(
+					'  ' + chalk.dim('Initialize Git repository:'),
+					chalk.white(initGitPrompted ? 'Yes' : 'No')
+				);
+				console.log(
+					'  ' + chalk.dim('Store tasks in Git:'),
+					chalk.white(storeGitPrompted ? 'Yes' : 'No')
+				);
+			}
+
+			const confirmInput = await promptQuestion(
+				rl,
+				chalk.yellow('\nDo you want to continue with these settings? (Y/n): ')
+			);
+			const shouldContinue = confirmInput.trim().toLowerCase() !== 'n';
+
+			if (!shouldContinue) {
+				rl.close();
+				log('info', 'Project initialization cancelled by user');
+				process.exit(0);
+				return;
 			}
 
 			const dryRun = options.dryRun || false;
@@ -642,7 +655,7 @@ async function initializeProject(options = {}) {
 				initGitPrompted,
 				storeGitPrompted,
 				dryRun,
-				{ ...options, shouldSetupRules }, // Pass shouldSetupRules through options
+				{ ...options, shouldSetupRules, preferredLanguage }, // Pass shouldSetupRules and preferredLanguage through options
 				selectedRuleProfiles,
 				selectedStorage,
 				authCredentials
@@ -1008,40 +1021,27 @@ function createProjectStructure(
 	// =====================================
 
 	// === Add Response Language Step ===
-	if (!isSilentMode() && !dryRun && !options?.yes) {
-		console.log(
-			boxen(chalk.cyan('Configuring Response Language...'), {
-				padding: 0.5,
-				margin: { top: 1, bottom: 0.5 },
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
-		log(
-			'info',
-			'Running interactive response language setup. Please input your preferred language.'
-		);
+	// Set language directly if provided via interactive prompt
+	if (options.preferredLanguage && !dryRun) {
 		try {
-			execSync('npx task-master lang --setup', {
-				stdio: 'inherit',
-				cwd: targetDir
+			const { setResponseLanguage } = await import(
+				'./modules/task-manager/response-language.js'
+			);
+			setResponseLanguage(options.preferredLanguage, {
+				projectRoot: targetDir,
+				silent: true
 			});
-			log('success', 'Response Language configured.');
+			log('debug', `Response language set to: ${options.preferredLanguage}`);
 		} catch (error) {
-			log('error', 'Failed to configure response language:', error.message);
-			log('warn', 'You may need to run "task-master lang --setup" manually.');
+			log('warn', `Failed to set response language: ${error.message}`);
 		}
 	} else if (isSilentMode() && !dryRun) {
 		log(
-			'info',
-			'Skipping interactive response language setup in silent (MCP) mode.'
-		);
-		log(
-			'warn',
-			'Please configure response language using "task-master models --set-response-language" or the "models" MCP tool.'
+			'debug',
+			'Skipping response language setup in silent (MCP) mode.'
 		);
 	} else if (dryRun) {
-		log('info', 'DRY RUN: Skipping interactive response language setup.');
+		log('debug', 'DRY RUN: Skipping response language setup.');
 	}
 	// =====================================
 
