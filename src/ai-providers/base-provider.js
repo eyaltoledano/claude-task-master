@@ -214,17 +214,17 @@ export class BaseAIProvider {
 			const commandName = params.commandName || 'unknown';
 			const functionId = `${this.name}.${params.modelId}.${commandName}.generateText`;
 
-		// Build telemetry metadata for enhanced filtering/grouping in Sentry
-		const metadata = {
-			command: commandName,
-			outputType: params.outputType,
-			tag: params.tag,
-			projectHash: hashProjectRoot(params.projectRoot),
-			userId: params.userId, // Hamster user ID if authenticated
-			briefId: params.briefId // Hamster brief ID if connected
-		};
-		
-		const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
 			const result = await generateText({
 				model: client(params.modelId),
@@ -278,27 +278,30 @@ export class BaseAIProvider {
 			const commandName = params.commandName || 'unknown';
 			const functionId = `${this.name}.${params.modelId}.${commandName}.streamText`;
 
-		// Build telemetry metadata for enhanced filtering/grouping in Sentry
-		const metadata = {
-			command: commandName,
-			outputType: params.outputType,
-			tag: params.tag,
-			projectHash: hashProjectRoot(params.projectRoot),
-			userId: params.userId, // Hamster user ID if authenticated
-			briefId: params.briefId // Hamster brief ID if connected
-		};
-		
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
 		const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
-			const stream = await streamText({
-				model: client(params.modelId),
-				messages: params.messages,
-				...this.prepareTokenParam(params.modelId, params.maxTokens),
-				...(this.supportsTemperature && params.temperature !== undefined
-					? { temperature: params.temperature }
-					: {}),
-				...(telemetryConfig && { experimental_telemetry: telemetryConfig })
-			});
+		const stream = await streamText({
+			model: client(params.modelId),
+			messages: params.messages,
+			...this.prepareTokenParam(params.modelId, params.maxTokens),
+			...(this.supportsTemperature && params.temperature !== undefined
+				? { temperature: params.temperature }
+				: {}),
+			...(telemetryConfig && { experimental_telemetry: telemetryConfig }),
+			...(params.experimental_transform && {
+				experimental_transform: params.experimental_transform
+			})
+		});
 
 			log(
 				'debug',
@@ -335,17 +338,17 @@ export class BaseAIProvider {
 			const commandName = params.commandName || 'unknown';
 			const functionId = `${this.name}.${params.modelId}.${commandName}.streamObject`;
 
-		// Build telemetry metadata for enhanced filtering/grouping in Sentry
-		const metadata = {
-			command: commandName,
-			outputType: params.outputType,
-			tag: params.tag,
-			projectHash: hashProjectRoot(params.projectRoot),
-			userId: params.userId, // Hamster user ID if authenticated
-			briefId: params.briefId // Hamster brief ID if connected
-		};
-		
-		const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
 			const result = await streamObject({
 				model: client(params.modelId),
@@ -399,17 +402,17 @@ export class BaseAIProvider {
 			const commandName = params.commandName || 'unknown';
 			const functionId = `${this.name}.${params.modelId}.${commandName}.generateObject.${params.objectName}`;
 
-		// Build telemetry metadata for enhanced filtering/grouping in Sentry
-		const metadata = {
-			command: commandName,
-			outputType: params.outputType,
-			tag: params.tag,
-			projectHash: hashProjectRoot(params.projectRoot),
-			userId: params.userId, // Hamster user ID if authenticated
-			briefId: params.briefId // Hamster brief ID if connected
-		};
-		
-		const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
 			const result = await generateObject({
 				model: client(params.modelId),

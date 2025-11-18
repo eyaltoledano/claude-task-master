@@ -82,10 +82,19 @@ export function initializeSentry(options = {}) {
 			],
 			// Tracing must be enabled for AI monitoring to work
 			tracesSampleRate: options.tracesSampleRate ?? 1.0,
-			sendDefaultPii: options.sendDefaultPii ?? true
+			sendDefaultPii: options.sendDefaultPii ?? true,
+			// Enable debug mode with SENTRY_DEBUG=true env var
+			debug: process.env.SENTRY_DEBUG === 'true'
 		});
 
 		isInitialized = true;
+		if (process.env.SENTRY_DEBUG === 'true') {
+			console.log(`  DSN: ${dsn.substring(0, 40)}...`);
+			console.log(
+				`  Environment: ${options.environment || process.env.NODE_ENV || 'production'}`
+			);
+			console.log(`  Traces Sample Rate: ${options.tracesSampleRate ?? 1.0}`);
+		}
 	} catch (error) {
 		console.error(`Failed to initialize telemetry: ${error.message}`);
 	}
@@ -107,6 +116,9 @@ export function initializeSentry(options = {}) {
  */
 export function getAITelemetryConfig(functionId, metadata = {}) {
 	if (!isInitialized) {
+		if (process.env.SENTRY_DEBUG === 'true') {
+			console.log('⚠️  Sentry not initialized, telemetry config not available');
+		}
 		return null;
 	}
 
@@ -125,7 +137,7 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
 	// Only include defined metadata fields to avoid clutter
 	if (Object.keys(metadata).length > 0) {
 		config.metadata = {};
-		
+
 		if (metadata.command) config.metadata.command = metadata.command;
 		if (metadata.outputType) config.metadata.outputType = metadata.outputType;
 		if (metadata.tag) config.metadata.tag = metadata.tag;
@@ -134,6 +146,13 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
 		if (metadata.briefId) config.metadata.briefId = metadata.briefId;
 		if (metadata.projectHash)
 			config.metadata.projectHash = metadata.projectHash;
+	}
+
+	if (process.env.SENTRY_DEBUG === 'true') {
+		console.log(
+			'📊 Sentry telemetry config created:',
+			JSON.stringify(config, null, 2)
+		);
 	}
 
 	return config;
@@ -145,6 +164,32 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
  */
 export function isSentryInitialized() {
 	return isInitialized;
+}
+
+/**
+ * Flush all pending Sentry events
+ * Critical for short-lived processes like CLI commands
+ * @param {number} [timeout=2000] - Maximum time to wait for events to flush (ms)
+ * @returns {Promise<boolean>} True if flush was successful
+ */
+export async function flushSentry(timeout = 2000) {
+	if (!isInitialized) {
+		return false;
+	}
+
+	try {
+		if (process.env.SENTRY_DEBUG === 'true') {
+			console.log('🔄 Flushing Sentry events...');
+		}
+		await Sentry.flush(timeout);
+		if (process.env.SENTRY_DEBUG === 'true') {
+			console.log('✓ Sentry events flushed successfully');
+		}
+		return true;
+	} catch (error) {
+		console.error(`Failed to flush Sentry events: ${error.message}`);
+		return false;
+	}
 }
 
 /**

@@ -502,6 +502,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		objectName,
 		commandName,
 		outputType,
+		experimental_transform,
 		...restApiParams
 	} = params;
 	if (getDebugFlag()) {
@@ -662,23 +663,24 @@ async function _unifiedServiceRunner(serviceType, params) {
 				throw new Error('User prompt content is missing.');
 			}
 
-			const callParams = {
-				apiKey,
-				modelId,
-				maxTokens: roleParams.maxTokens,
-				temperature: roleParams.temperature,
-				messages,
-				...(baseURL && { baseURL }),
-				...((serviceType === 'generateObject' ||
-					serviceType === 'streamObject') && { schema, objectName }),
-				...(commandName && { commandName }), // Pass commandName for Sentry telemetry functionId
-				...(outputType && { outputType }), // Pass outputType for Sentry telemetry metadata
-				...(projectRoot && { projectRoot }), // Pass projectRoot for Sentry telemetry hashing
-				...(hamsterUserId && { userId: hamsterUserId }), // Pass Hamster userId if authenticated
-				...(hamsterBriefId && { briefId: hamsterBriefId }), // Pass Hamster briefId if connected
-				...providerSpecificParams,
-				...restApiParams
-			};
+		const callParams = {
+			apiKey,
+			modelId,
+			maxTokens: roleParams.maxTokens,
+			temperature: roleParams.temperature,
+			messages,
+			...(baseURL && { baseURL }),
+			...((serviceType === 'generateObject' ||
+				serviceType === 'streamObject') && { schema, objectName }),
+			...(commandName && { commandName }), // Pass commandName for Sentry telemetry functionId
+			...(outputType && { outputType }), // Pass outputType for Sentry telemetry metadata
+			...(projectRoot && { projectRoot }), // Pass projectRoot for Sentry telemetry hashing
+			...(hamsterUserId && { userId: hamsterUserId }), // Pass Hamster userId if authenticated
+			...(hamsterBriefId && { briefId: hamsterBriefId }), // Pass Hamster briefId if connected
+			...(experimental_transform && { experimental_transform }), // Pass smoothStream or other transforms
+			...providerSpecificParams,
+			...restApiParams
+		};
 
 			providerResponse = await _attemptProviderCallWithRetries(
 				provider,
