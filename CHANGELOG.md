@@ -1,5 +1,17 @@
 # task-master-ai
 
+## 0.33.0
+
+### Minor Changes
+
+- [#1427](https://github.com/eyaltoledano/claude-task-master/pull/1427) [`122c23a`](https://github.com/eyaltoledano/claude-task-master/commit/122c23abb36634c1e68c476d681f41b4b4991671) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Added Gemini 3 pro preview to supported Taskmaster AI providers
+  - Added to Google providers
+  - Added to Gemini CLI providers
+    - Attention: Gemini 3 Pro is available for:
+      - Google AI Ultra Subscribers
+      - Users who have access via a paid Gemini API key
+        - If you want to use the gemini api key, make sure you have this defined in your .env or mcp.json env variables: `GEMINI_API_KEY=xxxx`
+
 ## 0.32.2
 
 ### Patch Changes
