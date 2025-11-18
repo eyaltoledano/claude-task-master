@@ -966,16 +966,6 @@ async function createProjectStructure(
 		// If silent (MCP mode), suppress npm install output
 		npmInstallOptions.stdio = 'ignore';
 		log('info', 'Running npm install silently...'); // Log our own message
-	} else {
-		// Interactive mode, show the boxen message
-		console.log(
-			boxen(chalk.cyan('Installing dependencies...'), {
-				padding: 0.5,
-				margin: 0.5,
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
 	}
 
 	// === Add Rule Profiles Setup Step ===
@@ -1029,9 +1019,10 @@ async function createProjectStructure(
 	// Set language directly if provided via interactive prompt
 	if (options.preferredLanguage && !dryRun) {
 		try {
-			const { setResponseLanguage } = await import(
+			const responseLanguageModule = await import(
 				'./modules/task-manager/response-language.js'
 			);
+			const setResponseLanguage = responseLanguageModule.default;
 			setResponseLanguage(options.preferredLanguage, {
 				projectRoot: targetDir,
 				silent: true
@@ -1081,13 +1072,11 @@ async function createProjectStructure(
 	} else if (selectedStorage === 'cloud' && !dryRun) {
 		console.log(
 			boxen(
-				chalk.green.bold('✓ AI Models Managed by Hamster\n\n') +
-					chalk.white(
-						'Hamster handles all AI model configuration on the backend.\n'
-					) +
-					chalk.dim('• No API keys required\n') +
-					chalk.dim('• No extra costs\n') +
+				chalk.green.bold('✓ AI Models Managed by Hamster - go ham!\n\n') +
+					chalk.white('Hamster handles all AI model configuration for you.\n') +
 					chalk.dim('• Optimized model selection for your tasks'),
+				chalk.dim('• No API keys required'),
+				chalk.dim('• No extra costs'),
 				{
 					padding: 1,
 					margin: { top: 1, bottom: 0.5 },
