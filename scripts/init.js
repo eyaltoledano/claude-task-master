@@ -559,10 +559,10 @@ async function initializeProject(options = {}) {
 				const setupRulesInput = await promptQuestion(
 					rl,
 					chalk.cyan(
-						'Set up AI IDE rules for better integration? (Cursor, Windsurf, etc.) (Y/n): '
+						'Set up AI IDE rules for better integration? (Cursor, Windsurf, etc.) (y/N): '
 					)
 				);
-				shouldSetupRules = setupRulesInput.trim().toLowerCase() !== 'n';
+				shouldSetupRules = setupRulesInput.trim().toLowerCase() === 'y';
 			} else {
 				log(
 					'info',
