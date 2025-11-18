@@ -1,4 +1,4 @@
-# Available Models as of November 1, 2025
+# Available Models as of November 18, 2025
 
 ## Main Models
 
@@ -16,6 +16,7 @@
 | codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
+| gemini-cli  | gemini-3-pro-preview                           | 0.762     | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 | grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
@@ -34,6 +35,7 @@
 | openai      | gpt-4-1-nano                                   | —         | 0.1        | 0.4         |
 | openai      | gpt-4o-mini                                    | 0.3       | 0.15       | 0.6         |
 | openai      | gpt-5                                          | 0.749     | 5          | 20          |
+| google      | gemini-3-pro-preview                           | 0.762     | 2          | 12          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
@@ -115,6 +117,7 @@
 | codex-cli   | gpt-5                                        | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                  | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                 | —         | 0          | 0           |
+| gemini-cli  | gemini-3-pro-preview                         | 0.762     | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                               | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                             | 0.71      | 0          | 0           |
 | grok-cli    | grok-4-latest                                | 0.7       | 0          | 0           |
@@ -123,6 +126,7 @@
 | grok-cli    | grok-3-mini-fast                             | 0.55      | 0          | 0           |
 | openai      | gpt-4o-search-preview                        | 0.33      | 2.5        | 10          |
 | openai      | gpt-4o-mini-search-preview                   | 0.3       | 0.15       | 0.6         |
+| google      | gemini-3-pro-preview                         | 0.762     | 2          | 12          |
 | xai         | grok-3                                       | —         | 3          | 15          |
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
 | xai         | grok-4                                       | —         | 3          | 15          |
@@ -166,6 +170,7 @@
 | codex-cli   | gpt-5                                          | 0.749     | 0          | 0           |
 | codex-cli   | gpt-5-codex                                    | 0.749     | 0          | 0           |
 | mcp         | mcp-sampling                                   | —         | 0          | 0           |
+| gemini-cli  | gemini-3-pro-preview                           | 0.762     | 0          | 0           |
 | gemini-cli  | gemini-2.5-pro                                 | 0.72      | 0          | 0           |
 | gemini-cli  | gemini-2.5-flash                               | 0.71      | 0          | 0           |
 | grok-cli    | grok-4-latest                                  | 0.7       | 0          | 0           |
@@ -176,6 +181,7 @@
 | openai      | o3                                             | 0.5       | 2          | 8           |
 | openai      | o4-mini                                        | 0.45      | 1.1        | 4.4         |
 | openai      | gpt-5                                          | 0.749     | 5          | 20          |
+| google      | gemini-3-pro-preview                           | 0.762     | 2          | 12          |
 | google      | gemini-2.5-pro-preview-05-06                   | 0.638     | —          | —           |
 | google      | gemini-2.5-pro-preview-03-25                   | 0.638     | —          | —           |
 | google      | gemini-2.5-flash-preview-04-17                 | 0.604     | —          | —           |
