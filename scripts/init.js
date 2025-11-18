@@ -67,12 +67,14 @@ const LOG_LEVEL = process.env.TASKMASTER_LOG_LEVEL
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
+const BOX_WIDTH = 95;
+
 // Display a fancy banner
 function displayBanner() {
 	if (isSilentMode()) return;
 
 	console.clear();
-	const bannerText = figlet.textSync('Task Master AI', {
+	const bannerText = figlet.textSync('TaskMaster', {
 		font: 'Standard',
 		horizontalLayout: 'default',
 		verticalLayout: 'default'
@@ -88,9 +90,10 @@ function displayBanner() {
 	console.log(
 		boxen(chalk.white(chalk.bold('Welcome to Taskmaster')), {
 			padding: 1,
-			margin: { top: 0, bottom: 1 },
+			margin: { top: 0, bottom: 1, left: 0, right: 0 },
 			borderStyle: 'round',
-			borderColor: 'cyan'
+			borderColor: 'cyan',
+			width: BOX_WIDTH
 		})
 	);
 }
@@ -259,7 +262,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 			if (newLines.length > 0) {
 				// Add a comment to separate the original content from our additions
-				const updatedContent = `${existingContent.trim()}\n\n# Added by Task Master AI\n${newLines.join('\n')}`;
+				const updatedContent = `${existingContent.trim()}\n\n# Added by Taskmaster\n${newLines.join('\n')}`;
 				fs.writeFileSync(targetPath, updatedContent);
 				log('success', `Updated ${targetPath} with additional entries`);
 			} else {
@@ -361,7 +364,7 @@ async function initializeProject(options = {}) {
 		// Use provided options or defaults
 		const projectName = options.name || 'task-master-project';
 		const projectDescription =
-			options.description || 'A project managed with Task Master AI';
+			options.description || 'A project managed with Taskmaster';
 		const projectVersion = options.version || '0.1.0';
 		const authorName = options.author || 'Vibe coder';
 		const dryRun = options.dryRun || false;
@@ -412,6 +415,8 @@ async function initializeProject(options = {}) {
 	} else {
 		// Interactive logic
 		log('debug', 'Required options not provided, proceeding with prompts.');
+
+		let rl;
 
 		try {
 			// Track init_started event
@@ -498,7 +503,7 @@ async function initializeProject(options = {}) {
 				}
 			}
 
-			const rl = readline.createInterface({
+			rl = readline.createInterface({
 				input: process.stdin,
 				output: process.stdout
 			});
@@ -511,7 +516,18 @@ async function initializeProject(options = {}) {
 					rl,
 					chalk.cyan(
 						'Add shell aliases for task-master? This lets you type "tm", "hamster", or "ham" instead of "task-master" (Y/n): '
-					)
+					),
+					(answer) => {
+						const isYes = answer.trim().toLowerCase() !== 'n';
+						const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+						return (
+							chalk.cyan('Add shell aliases for task-master?') +
+							' ' +
+							icon +
+							' ' +
+							chalk.dim(isYes ? 'Yes' : 'No')
+						);
+					}
 				);
 				addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
 			}
@@ -528,7 +544,18 @@ async function initializeProject(options = {}) {
 				} else {
 					const gitInitInput = await promptQuestion(
 						rl,
-						chalk.cyan('Initialize a Git repository in project root? (Y/n): ')
+						chalk.cyan('Initialize a Git repository in project root? (Y/n): '),
+						(answer) => {
+							const isYes = answer.trim().toLowerCase() !== 'n';
+							const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+							return (
+								chalk.cyan('Initialize a Git repository in project root?') +
+								' ' +
+								icon +
+								' ' +
+								chalk.dim(isYes ? 'Yes' : 'No')
+							);
+						}
 					);
 					initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
 				}
@@ -541,7 +568,20 @@ async function initializeProject(options = {}) {
 						rl,
 						chalk.cyan(
 							'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
-						)
+						),
+						(answer) => {
+							const isYes = answer.trim().toLowerCase() !== 'n';
+							const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+							return (
+								chalk.cyan(
+									'Store tasks in Git (tasks.json and tasks/ directory)?'
+								) +
+								' ' +
+								icon +
+								' ' +
+								chalk.dim(isYes ? 'Yes' : 'No')
+							);
+						}
 					);
 					storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
 				}
@@ -560,7 +600,18 @@ async function initializeProject(options = {}) {
 					rl,
 					chalk.cyan(
 						'Set up AI IDE rules for better integration? (Cursor, Windsurf, etc.) (y/N): '
-					)
+					),
+					(answer) => {
+						const isYes = answer.trim().toLowerCase() === 'y';
+						const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+						return (
+							chalk.cyan('Set up AI IDE rules for better integration?') +
+							' ' +
+							icon +
+							' ' +
+							chalk.dim(isYes ? 'Yes' : 'No')
+						);
+					}
 				);
 				shouldSetupRules = setupRulesInput.trim().toLowerCase() === 'y';
 			} else {
@@ -577,38 +628,56 @@ async function initializeProject(options = {}) {
 			);
 			const preferredLanguage = languageInput.trim() || 'English';
 
-			// Confirm settings...
-			console.log('\n' + chalk.bold('Task Master Project Settings:'));
+			// Confirm settings with cleaner formatting
+			console.log('\n' + chalk.bold('Taskmaster Project Settings:'));
+			console.log(chalk.dim('─'.repeat(50)));
+
+			// Storage
 			console.log(
-				'  ' + chalk.dim('Storage:'),
+				'  ' + chalk.dim('Storage:'.padEnd(32)),
 				chalk.white(
 					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
 				)
 			);
+
+			// Shell aliases
+			const aliasIcon = addAliasesPrompted ? chalk.green('✓') : chalk.dim('✗');
 			console.log(
-				'  ' + chalk.dim('Shell aliases (tm/hamster/ham):'),
-				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
+				'  ' + chalk.dim('Shell aliases (tm/hamster/ham):'.padEnd(32)),
+				aliasIcon + ' ' + chalk.dim(addAliasesPrompted ? 'Yes' : 'No')
 			);
+
+			// AI IDE rules
+			const rulesIcon = shouldSetupRules ? chalk.green('✓') : chalk.dim('✗');
 			console.log(
-				'  ' + chalk.dim('AI IDE rules:'),
-				chalk.white(shouldSetupRules ? 'Yes' : 'No')
+				'  ' + chalk.dim('AI IDE rules:'.padEnd(32)),
+				rulesIcon + ' ' + chalk.dim(shouldSetupRules ? 'Yes' : 'No')
 			);
+
+			// Response language
 			console.log(
-				'  ' + chalk.dim('Response language:'),
+				'  ' + chalk.dim('Response language:'.padEnd(32)),
 				chalk.white(preferredLanguage)
 			);
 
 			// Only show Git-related settings for local storage
 			if (selectedStorage === 'local') {
+				const gitIcon = initGitPrompted ? chalk.green('✓') : chalk.dim('✗');
 				console.log(
-					'  ' + chalk.dim('Initialize Git repository:'),
-					chalk.white(initGitPrompted ? 'Yes' : 'No')
+					'  ' + chalk.dim('Initialize Git repository:'.padEnd(32)),
+					gitIcon + ' ' + chalk.dim(initGitPrompted ? 'Yes' : 'No')
 				);
+
+				const gitTasksIcon = storeGitPrompted
+					? chalk.green('✓')
+					: chalk.dim('✗');
 				console.log(
-					'  ' + chalk.dim('Store tasks in Git:'),
-					chalk.white(storeGitPrompted ? 'Yes' : 'No')
+					'  ' + chalk.dim('Store tasks in Git:'.padEnd(32)),
+					gitTasksIcon + ' ' + chalk.dim(storeGitPrompted ? 'Yes' : 'No')
 				);
 			}
+
+			console.log(chalk.dim('─'.repeat(50)));
 
 			const confirmInput = await promptQuestion(
 				rl,
@@ -671,10 +740,19 @@ async function initializeProject(options = {}) {
 	}
 }
 
-// Helper function to promisify readline question
-function promptQuestion(rl, question) {
+// Helper function to promisify readline question and overwrite prompt with result
+function promptQuestion(rl, question, formatResult) {
 	return new Promise((resolve) => {
 		rl.question(question, (answer) => {
+			// After user presses Enter, cursor is on a new line
+			// Move cursor up one line, then clear and write result
+			readline.moveCursor(process.stdout, 0, -1);
+			readline.cursorTo(process.stdout, 0);
+			readline.clearLine(process.stdout, 0);
+			// Show formatted result if provided
+			if (formatResult) {
+				process.stdout.write(formatResult(answer) + '\n');
+			}
 			resolve(answer);
 		});
 	});
@@ -750,9 +828,8 @@ async function promptStorageSelection() {
 			'\n' +
 				chalk.bold.cyan('You need a plan before you execute.') +
 				' ' +
-				chalk.white('How do you want to build it?')
+				chalk.white('How do you want to build it?\n')
 		);
-		console.log(chalk.dim('─'.repeat(80)) + '\n');
 
 		const { storageType } = await inquirer.prompt([
 			{
@@ -760,12 +837,13 @@ async function promptStorageSelection() {
 				name: 'storageType',
 				message: chalk.cyan('Choose one:'),
 				choices: [
+					'\n',
 					{
 						name: [
 							chalk.bold('Solo (Taskmaster)'),
 							'',
 							chalk.white(
-								'   • Parse your PRD into a structured task list. Build it with any AI IDE or background agent.'
+								'   • Parse your own PRDs into structured task lists and build with any IDE or background agents'
 							),
 							chalk.white(
 								'   • Agents execute tasks with precision, no scope creep, no going off-track'
@@ -781,7 +859,7 @@ async function promptStorageSelection() {
 						value: 'local',
 						short: 'Solo (Taskmaster)'
 					},
-					new inquirer.Separator(),
+
 					{
 						name: [
 							chalk.bold('Together (Hamster)'),
@@ -982,7 +1060,8 @@ async function createProjectStructure(
 				padding: 0.5,
 				margin: { top: 1, bottom: 0.5 },
 				borderStyle: 'round',
-				borderColor: 'blue'
+				borderColor: 'cyan',
+				width: BOX_WIDTH
 			})
 		);
 		log(
@@ -1052,7 +1131,8 @@ async function createProjectStructure(
 				padding: 0.5,
 				margin: { top: 1, bottom: 0.5 },
 				borderStyle: 'round',
-				borderColor: 'blue'
+				borderColor: 'cyan',
+				width: BOX_WIDTH
 			})
 		);
 		log(
@@ -1074,14 +1154,15 @@ async function createProjectStructure(
 			boxen(
 				chalk.green.bold('✓ AI Models Managed by Hamster - go ham!\n\n') +
 					chalk.white('Hamster handles all AI model configuration for you.\n') +
-					chalk.dim('• Optimized model selection for your tasks'),
-				chalk.dim('• No API keys required'),
-				chalk.dim('• No extra costs'),
+					chalk.dim('• Optimized model selection for your tasks\n') +
+					chalk.dim('• No API keys required\n') +
+					chalk.dim('• No extra costs'),
 				{
 					padding: 1,
 					margin: { top: 1, bottom: 0.5 },
 					borderStyle: 'round',
-					borderColor: 'cyan'
+					borderColor: 'cyan',
+					width: BOX_WIDTH
 				}
 			)
 		);
@@ -1117,36 +1198,44 @@ async function createProjectStructure(
 	if (!isSilentMode()) {
 		// Show elegant welcome message for Hamster, regular success for local
 		if (selectedStorage === 'cloud') {
-			// High-fidelity hamster pixel art
+			// High-fidelity hamster pixel art (displayed without box)
 			const hamsterArt = readAsset('hamster-art.txt', 'utf8');
+			console.log('\n' + chalk.cyan(hamsterArt));
+			console.log('');
 
+			// Box with connection message and next steps
 			const welcomeMessage = [
-				chalk.cyan(hamsterArt),
-				'',
 				chalk.green.bold('✓ Connected to Hamster Studio'),
 				'',
-				chalk.white("Your team's collaborative task management platform"),
-				chalk.dim(
-					'AI-powered planning • Real-time coordination • One source of truth'
-				),
+				chalk.white("Your team's workspace is ready to go ham!\n"),
+				chalk.dim('Draft together. Align once. Build with agents.'),
 				'',
-				chalk.cyan('Next Steps:'),
+				chalk.cyan('How to orchestrate with Taskmaster:'),
 				chalk.white('  • Create your first brief at: ') +
-					chalk.underline.cyan('https://tux.tryhamster.com'),
-				chalk.white('  • Use ') +
-					chalk.bold('tm list') +
+					chalk.underline.cyan('https://tryhamster.com'),
+				chalk.white('  • Connect your brief to Taskmaster using ') +
+					chalk.bold('tm context <brief-url>') +
 					chalk.white(' to see tasks from your brief'),
+				chalk.white(
+					'  • Work on tasks with any AI coding assistant or background agent'
+				) +
+					chalk.bold('tm next') +
+					chalk.white(' - Find the next task to work on'),
 				chalk.white('  • Run ') +
 					chalk.bold('tm help') +
-					chalk.white(' to see available commands')
+					chalk.white(' to explore other available commands'),
+				chalk.white('  • Run ') +
+					chalk.bold('tm rules --setup') +
+					chalk.white(' to configure AI IDE rules for better integration')
 			].join('\n');
 
 			console.log(
 				boxen(welcomeMessage, {
-					padding: { top: 1, bottom: 1, left: 2, right: 2 },
-					margin: { top: 1, bottom: 1 },
+					padding: 1,
+					margin: { top: 1, bottom: 0, left: 0, right: 0 },
 					borderStyle: 'round',
-					borderColor: 'cyan'
+					borderColor: 'cyan',
+					width: BOX_WIDTH
 				})
 			);
 		} else {
@@ -1159,7 +1248,8 @@ async function createProjectStructure(
 						padding: 1,
 						margin: 1,
 						borderStyle: 'double',
-						borderColor: 'green'
+						borderColor: 'green',
+						width: BOX_WIDTH
 					}
 				)
 			);
@@ -1172,8 +1262,8 @@ async function createProjectStructure(
 		let gettingStartedMessage;
 
 		if (selectedStorage === 'cloud') {
-			// Hamster-specific getting started
-			gettingStartedMessage = `${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
+			// Hamster-specific workflow
+			gettingStartedMessage = `${chalk.cyan.bold("Here's how to execute your Hamster briefs with Taskmaster")}\n\n${chalk.white('1. ')}${chalk.yellow(
 				'Create your first brief at'
 			)} ${chalk.cyan.underline('https://tryhamster.com')}\n${chalk.white('   └─ ')}${chalk.dim('Hamster will write your brief and generate the full task plan')}\n${chalk.white('2. ')}${chalk.yellow(
 				'Connect this project to your brief'
@@ -1212,13 +1302,12 @@ async function createProjectStructure(
 		}
 
 		console.log(
-			boxen(gettingStartedMessage, {
+			boxen(chalk.yellow.bold('Workflow\n') + '\n' + gettingStartedMessage, {
 				padding: 1,
-				margin: 1,
+				margin: { top: 0, bottom: 1, left: 0, right: 0 },
 				borderStyle: 'round',
 				borderColor: 'yellow',
-				title: 'Getting Started',
-				titleAlignment: 'center'
+				width: BOX_WIDTH
 			})
 		);
 	}
