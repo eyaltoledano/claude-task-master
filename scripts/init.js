@@ -735,24 +735,62 @@ async function promptStorageSelection() {
 	}
 
 	try {
+		// Display detailed explanation of both options
+		console.log('\n' + chalk.bold.cyan('Choose How You Want to Work:'));
+		console.log(chalk.dim('─'.repeat(80)) + '\n');
+
 		const { storageType } = await inquirer.prompt([
 			{
 				type: 'list',
 				name: 'storageType',
-				message: chalk.cyan('Choose your storage backend:'),
+				message: chalk.cyan('Select your mode:'),
 				choices: [
 					{
-						name: `${chalk.bold('🐹 Hamster Studio')} - Connect to Hamster for AI-powered task management`,
-						value: 'cloud',
-						short: 'Hamster'
-					},
-					{
-						name: `${chalk.bold('📁 Local Storage')} - Keep everything on your machine`,
+						name: [
+							chalk.bold.cyan('Local Taskmaster (Solo)'),
+							'',
+							chalk.white(
+								'   • Manage tasks locally with Taskmaster - you own the breakdown'
+							),
+							chalk.white(
+								"   • Perfect for solo work or when you're moving fast alone"
+							),
+							chalk.white(
+								'   • Everything stays in your repo, no team coordination needed'
+							),
+							chalk.white(
+								'   • Use Taskmaster solo and upgrade to Hamster multiplayer anytime'
+							),
+							''
+						].join('\n'),
 						value: 'local',
-						short: 'Local'
+						short: 'Local Taskmaster (Solo)'
+					},
+					new inquirer.Separator(),
+					{
+						name: [
+							chalk.bold.green('Hamster (Multiplayer)'),
+							'',
+							chalk.white(
+								'   • Your team moves as one: write a brief, Hamster generates the full plan'
+							),
+							chalk.white(
+								'   • Hamster handles complexity, parsing and tasks - your team reviews and aligns in hours'
+							),
+							chalk.white(
+								'   • One source of truth everyone executes against, coordinated in real-time'
+							),
+							chalk.white(
+								'   • Ship faster together because everyone knows exactly what needs to happen'
+							),
+							''
+						].join('\n'),
+						value: 'cloud',
+						short: 'Hamster (Multiplayer)'
 					}
 				],
-				default: 'local'
+				default: 'local',
+				pageSize: 20 // Increase page size to show both options without scrolling
 			}
 		]);
 
@@ -1085,23 +1123,38 @@ function createProjectStructure(
 
 	// Display success message
 	if (!isSilentMode()) {
-		// Show hamster ASCII art for cloud storage, regular success for local
+		// Show elegant welcome message for Hamster, regular success for local
 		if (selectedStorage === 'cloud') {
-			const hamsterArt = `
-    ___
-   /   \\       ${chalk.green.bold('Welcome to Hamster!')}
-  ( o.o )     
-   > ^ <       ${chalk.white('Connected to Hamster Studio')}
-  /|   |\\     
- (_|___|_)    ${chalk.dim('AI-powered task management at your fingertips')}
-`;
+			// High-fidelity hamster pixel art
+			const hamsterArt = readAsset('hamster-art.txt', 'utf8');
+
+			const welcomeMessage = [
+				chalk.cyan(hamsterArt),
+				'',
+				chalk.green.bold('✓ Connected to Hamster Studio'),
+				'',
+				chalk.white("Your team's collaborative task management platform"),
+				chalk.dim(
+					'AI-powered planning • Real-time coordination • One source of truth'
+				),
+				'',
+				chalk.cyan('Next Steps:'),
+				chalk.white('  • Create your first brief at: ') +
+					chalk.underline.cyan('https://tux.tryhamster.com'),
+				chalk.white('  • Use ') +
+					chalk.bold('tm list') +
+					chalk.white(' to see tasks from your brief'),
+				chalk.white('  • Run ') +
+					chalk.bold('tm help') +
+					chalk.white(' to see available commands')
+			].join('\n');
+
 			console.log(
-				boxen(hamsterArt, {
-					padding: 1,
-					margin: 1,
-					borderStyle: 'double',
-					borderColor: 'cyan',
-					textAlignment: 'center'
+				boxen(welcomeMessage, {
+					padding: { top: 1, bottom: 1, left: 2, right: 2 },
+					margin: { top: 1, bottom: 1 },
+					borderStyle: 'round',
+					borderColor: 'cyan'
 				})
 			);
 		} else {
