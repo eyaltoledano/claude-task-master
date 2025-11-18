@@ -86,7 +86,7 @@ function displayBanner() {
 	);
 
 	console.log(
-		boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {
+		boxen(chalk.white(chalk.bold('Welcome to Taskmaster')), {
 			padding: 1,
 			margin: { top: 0, bottom: 1 },
 			borderStyle: 'round',
@@ -745,58 +745,63 @@ async function promptStorageSelection() {
 	}
 
 	try {
-		// Display detailed explanation of both options
-		console.log('\n' + chalk.bold.cyan('Choose How You Want to Work:'));
+		// Display header
+		console.log(
+			'\n' +
+				chalk.bold.cyan('You need a plan before you execute.') +
+				' ' +
+				chalk.white('How do you want to build it?')
+		);
 		console.log(chalk.dim('─'.repeat(80)) + '\n');
 
 		const { storageType } = await inquirer.prompt([
 			{
 				type: 'list',
 				name: 'storageType',
-				message: chalk.cyan('Select your mode:'),
+				message: chalk.cyan('Choose one:'),
 				choices: [
 					{
 						name: [
-							chalk.bold('Local Taskmaster (Solo)'),
+							chalk.bold('Solo (Taskmaster)'),
 							'',
 							chalk.white(
-								'   • Manage tasks locally with Taskmaster - you own the breakdown'
+								'   • Parse your PRD into a structured task list. Build it with any AI IDE or background agent.'
 							),
 							chalk.white(
-								"   • Perfect for solo work or when you're moving fast alone"
+								'   • Agents execute tasks with precision, no scope creep, no going off-track'
 							),
 							chalk.white(
-								'   • Everything stays in your repo, no team coordination needed'
+								'   • Tasks live in a local JSON file, everything stays in your repo'
 							),
 							chalk.white(
-								'   • Use Taskmaster solo and upgrade to Hamster multiplayer anytime'
+								'   • Upgrade to Hamster to bring the Taskmaster experience to your team'
 							),
 							''
 						].join('\n'),
 						value: 'local',
-						short: 'Local Taskmaster (Solo)'
+						short: 'Solo (Taskmaster)'
 					},
 					new inquirer.Separator(),
 					{
 						name: [
-							chalk.bold('Hamster (Multiplayer)'),
+							chalk.bold('Together (Hamster)'),
 							'',
 							chalk.white(
-								'   • Your team moves as one: write a brief, Hamster generates the full plan'
+								'   • Write a brief with your team. Hamster refines it into a plan.'
 							),
 							chalk.white(
-								'   • Hamster handles complexity, parsing and tasks - your team reviews and aligns in hours'
+								'   • Your team drafts, refines, and aligns on the same page before executing'
 							),
 							chalk.white(
-								'   • One source of truth everyone executes against, coordinated in real-time'
+								'   • One brief, one plan, one source of truth for execution'
 							),
 							chalk.white(
-								'   • Ship faster together because everyone knows exactly what needs to happen'
+								'   • Access tasks on Taskmaster and execute with any AI agent'
 							),
 							''
 						].join('\n'),
 						value: 'cloud',
-						short: 'Hamster (Multiplayer)'
+						short: 'Together (Hamster)'
 					}
 				],
 				default: 'local',
@@ -1036,10 +1041,7 @@ async function createProjectStructure(
 			log('warn', `Failed to set response language: ${error.message}`);
 		}
 	} else if (isSilentMode() && !dryRun) {
-		log(
-			'debug',
-			'Skipping response language setup in silent (MCP) mode.'
-		);
+		log('debug', 'Skipping response language setup in silent (MCP) mode.');
 	} else if (dryRun) {
 		log('debug', 'DRY RUN: Skipping response language setup.');
 	}
