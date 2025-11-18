@@ -399,7 +399,7 @@ async function initializeProject(options = {}) {
 		const selectedStorage = options.storage || 'local';
 		const authCredentials = null; // No auth in non-interactive mode
 
-		createProjectStructure(
+		await createProjectStructure(
 			addAliases,
 			initGit,
 			storeTasksInGit,
@@ -650,7 +650,7 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(
+			await createProjectStructure(
 				addAliasesPrompted,
 				initGitPrompted,
 				storeGitPrompted,
@@ -816,7 +816,7 @@ async function promptStorageSelection() {
 }
 
 // Function to create the project structure
-function createProjectStructure(
+async function createProjectStructure(
 	addAliases,
 	initGit,
 	storeTasksInGit,
