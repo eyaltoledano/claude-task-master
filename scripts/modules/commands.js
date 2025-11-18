@@ -238,7 +238,18 @@ function displayHamsterHelp() {
 				createCommandEntry('context org', 'Switch organization\n') +
 				createCommandEntry(
 					'context brief <url>',
-					'Switch to a different brief\n\n'
+					'Switch to a different brief\n'
+				) +
+				'\n' +
+				boxen('  Configuration  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry(
+					'rules --setup',
+					'Configure AI IDE rules for better integration\n\n'
 				) +
 				boxen('  Examples  ', {
 					padding: 0,

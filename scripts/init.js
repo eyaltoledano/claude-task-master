@@ -170,7 +170,7 @@ function addShellAliases() {
 			configContent.includes("alias tm='task-master'") ||
 			configContent.includes("alias hamster='task-master'")
 		) {
-			log('info', 'Task Master aliases already exist in shell config.');
+			log('debug', 'Task Master aliases already exist in shell config.');
 			return true;
 		}
 
@@ -203,7 +203,7 @@ function createInitialStateFile(targetDir) {
 
 	// Check if state.json already exists
 	if (fs.existsSync(stateFilePath)) {
-		log('info', 'State file already exists, preserving current configuration');
+		log('debug', 'State file already exists, preserving current configuration');
 		return;
 	}
 
@@ -285,7 +285,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 		}
 
 		// For other files, warn and prompt before overwriting
-		log('warn', `${targetPath} already exists, skipping.`);
+		log('debug', `${targetPath} already exists, skipping.`);
 		return;
 	}
 
@@ -343,25 +343,13 @@ async function initializeProject(options = {}) {
 	let selectedRuleProfiles;
 	if (options.rulesExplicitlyProvided) {
 		// If --rules flag was used, always respect it.
-		log(
-			'info',
-			`Using rule profiles provided via command line: ${options.rules.join(', ')}`
-		);
 		selectedRuleProfiles = options.rules;
 	} else if (skipPrompts) {
-		// If non-interactive (e.g., --yes) and no rules specified, default to ALL.
-		log(
-			'info',
-			`No rules specified in non-interactive mode, defaulting to all profiles.`
-		);
-		selectedRuleProfiles = RULE_PROFILES;
+		// If non-interactive (e.g., --yes) and no rules specified, skip rules setup entirely
+		selectedRuleProfiles = [];
 	} else {
 		// If interactive and no rules specified, default to NONE.
-		// The 'rules --setup' wizard will handle selection.
-		log(
-			'info',
-			'No rules specified; interactive setup will be launched to select profiles.'
-		);
+		// The 'rules --setup' wizard will handle selection if user wants it.
 		selectedRuleProfiles = [];
 	}
 
@@ -423,7 +411,7 @@ async function initializeProject(options = {}) {
 		);
 	} else {
 		// Interactive logic
-		log('info', 'Required options not provided, proceeding with prompts.');
+		log('debug', 'Required options not provided, proceeding with prompts.');
 
 		try {
 			// Track init_started event
@@ -605,8 +593,17 @@ async function initializeProject(options = {}) {
 				return;
 			}
 
-			// Only run interactive rules if rules flag not provided via command line
-			if (options.rulesExplicitlyProvided) {
+			// Prompt for AI IDE rules setup (only if not explicitly provided via --rules)
+			let shouldSetupRules = false;
+			if (!options.rulesExplicitlyProvided) {
+				const setupRulesInput = await promptQuestion(
+					rl,
+					chalk.cyan(
+						'Set up AI IDE rules for better integration? (Cursor, Windsurf, etc.) (Y/n): '
+					)
+				);
+				shouldSetupRules = setupRulesInput.trim().toLowerCase() !== 'n';
+			} else {
 				log(
 					'info',
 					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
@@ -645,7 +642,7 @@ async function initializeProject(options = {}) {
 				initGitPrompted,
 				storeGitPrompted,
 				dryRun,
-				options,
+				{ ...options, shouldSetupRules }, // Pass shouldSetupRules through options
 				selectedRuleProfiles,
 				selectedStorage,
 				authCredentials
@@ -709,16 +706,16 @@ function updateStorageConfig(configPath, selectedStorage, authCredentials) {
 
 			// Note: Access token is stored in ~/.taskmaster/auth.json by AuthManager
 			// We don't store it in config.json for security reasons
-			log('info', 'Connected to Hamster Studio');
+			log('debug', 'Connected to Hamster Studio');
 		} else {
 			// Configure for local file storage
 			config.storage.type = 'file';
-			log('info', 'Configured storage for local file storage');
+			log('debug', 'Configured storage for local file storage');
 		}
 
 		// Write updated config back to file
 		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-		log('success', 'Storage configuration updated in config.json');
+		log('debug', 'Storage configuration updated in config.json');
 	} catch (error) {
 		log('error', `Failed to update storage configuration: ${error.message}`);
 	}
@@ -747,7 +744,7 @@ async function promptStorageSelection() {
 				choices: [
 					{
 						name: [
-							chalk.bold.cyan('Local Taskmaster (Solo)'),
+							chalk.bold('Local Taskmaster (Solo)'),
 							'',
 							chalk.white(
 								'   • Manage tasks locally with Taskmaster - you own the breakdown'
@@ -769,7 +766,7 @@ async function promptStorageSelection() {
 					new inquirer.Separator(),
 					{
 						name: [
-							chalk.bold.green('Hamster (Multiplayer)'),
+							chalk.bold('Hamster (Multiplayer)'),
 							'',
 							chalk.white(
 								'   • Your team moves as one: write a brief, Hamster generates the full plan'
@@ -817,7 +814,7 @@ function createProjectStructure(
 	authCredentials = null
 ) {
 	const targetDir = process.cwd();
-	log('info', `Initializing project in ${targetDir}`);
+	log('debug', `Initializing project in ${targetDir}`);
 
 	// Create NEW .taskmaster directory structure (using constants)
 	ensureDirectoryExists(path.join(targetDir, TASKMASTER_DIR));
@@ -864,9 +861,9 @@ function createProjectStructure(
 	// Update config.json with correct maxTokens values from supported-models.json
 	const configPath = path.join(targetDir, TASKMASTER_CONFIG_FILE);
 	if (updateConfigMaxTokens(configPath)) {
-		log('info', 'Updated config with correct maxTokens values');
+		log('debug', 'Updated config with correct maxTokens values');
 	} else {
-		log('warn', 'Could not update maxTokens in config');
+		log('debug', 'Could not update maxTokens in config');
 	}
 
 	// Update config.json with storage configuration
@@ -901,7 +898,7 @@ function createProjectStructure(
 		} else if (initGit === true) {
 			if (insideGitWorkTree()) {
 				log(
-					'info',
+					'debug',
 					'Existing Git repository detected – skipping git init despite --git flag.'
 				);
 			} else {
@@ -912,7 +909,7 @@ function createProjectStructure(
 		} else {
 			// Default behavior when no flag is provided (from interactive prompt)
 			if (insideGitWorkTree()) {
-				log('info', 'Existing Git repository detected – skipping git init.');
+				log('debug', 'Existing Git repository detected – skipping git init.');
 			} else {
 				log(
 					'info',
@@ -964,7 +961,9 @@ function createProjectStructure(
 	}
 
 	// === Add Rule Profiles Setup Step ===
+	// Only run if user explicitly said yes (via shouldSetupRules)
 	if (
+		options.shouldSetupRules &&
 		!isSilentMode() &&
 		!dryRun &&
 		!options?.yes &&
@@ -997,12 +996,14 @@ function createProjectStructure(
 		// This branch can log why setup was skipped, similar to the model setup logic.
 		if (options.rulesExplicitlyProvided) {
 			log(
-				'info',
+				'debug',
 				'Skipping interactive rules setup because --rules flag was used.'
 			);
 		} else {
-			log('info', 'Skipping interactive rules setup in non-interactive mode.');
+			log('debug', 'Skipping interactive rules setup in non-interactive mode.');
 		}
+	} else if (!options.shouldSetupRules) {
+		log('debug', 'Skipping rules setup - user declined.');
 	}
 	// =====================================
 
@@ -1112,13 +1113,13 @@ function createProjectStructure(
 
 	// Add shell aliases if requested
 	if (addAliases && !dryRun) {
-		log('info', 'Adding shell aliases...');
+		log('debug', 'Adding shell aliases...');
 		const aliasResult = addShellAliases();
 		if (aliasResult) {
-			log('success', 'Shell aliases added successfully');
+			log('debug', 'Shell aliases added successfully');
 		}
 	} else if (addAliases && dryRun) {
-		log('info', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
+		log('debug', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
 	}
 
 	// Display success message
@@ -1176,40 +1177,58 @@ function createProjectStructure(
 
 	// Display next steps in a nice box
 	if (!isSilentMode()) {
+		// Different Getting Started for Hamster vs Local
+		let gettingStartedMessage;
+
+		if (selectedStorage === 'cloud') {
+			// Hamster-specific getting started
+			gettingStartedMessage = `${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
+				'Create your first brief at'
+			)} ${chalk.cyan.underline('https://tryhamster.com')}\n${chalk.white('   └─ ')}${chalk.dim('Hamster will write your brief and generate the full task plan')}\n${chalk.white('2. ')}${chalk.yellow(
+				'Connect this project to your brief'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm context <brief-url>')}\n${chalk.white('3. ')}${chalk.yellow(
+				'View your tasks from the brief'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm list')}${chalk.dim(' or ')}${chalk.cyan('tm list all')}${chalk.dim(' (with subtasks)')}\n${chalk.white('4. ')}${chalk.yellow(
+				'Work on tasks with any AI coding assistant or background agent'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm next')}${chalk.dim(' - Find the next task to work on')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm show <id>')}${chalk.dim(' - View task details')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> in-progress')}${chalk.dim(' - Mark task started')}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> done')}${chalk.dim(' - Mark task complete')}\n${chalk.white('5. ')}${chalk.yellow(
+				'Add notes or updates to tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm update-task <id> <notes>')}\n${chalk.white('6. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('tm help')}${chalk.dim(' to see all available commands')}\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('tm rules --setup')}${chalk.dim(' to configure AI IDE rules for better integration')}`;
+		} else {
+			// Local-specific getting started
+			gettingStartedMessage = `${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
+				'Configure AI models and add API keys to `.env`'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('Models: Use ')}${chalk.cyan('task-master models')}${chalk.dim(' commands')}\n${chalk.white('   └─ ')}${chalk.dim(
+				'Keys: Add provider API keys to .env (or .cursor/mcp.json)'
+			)}\n${chalk.white('2. ')}${chalk.yellow(
+				'Discuss your idea with AI and create a PRD'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('Simple projects: Use ')}${chalk.cyan('example_prd.txt')}${chalk.dim(' template')}\n${chalk.white('   └─ ')}${chalk.dim('Complex systems: Use ')}${chalk.cyan('example_prd_rpg.txt')}${chalk.dim(' template')}\n${chalk.white('3. ')}${chalk.yellow(
+				'Parse your PRD to generate initial tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master parse-prd .taskmaster/docs/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
+				'Analyze task complexity'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master analyze-complexity --research')}\n${chalk.white('5. ')}${chalk.yellow(
+				'Expand tasks into subtasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master expand --all --research')}\n${chalk.white('6. ')}${chalk.yellow(
+				'Start working on tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master next')}\n${chalk.white('7. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('task-master --help')}${chalk.dim(' to see all available commands')}\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('tm rules --setup')}${chalk.dim(' to configure AI IDE rules for better integration')}`;
+		}
+
 		console.log(
-			boxen(
-				`${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
-					'Configure AI models (if needed) and add API keys to `.env`'
-				)}\n${chalk.white('   ├─ ')}${chalk.dim('Models: Use `task-master models` commands')}\n${chalk.white('   └─ ')}${chalk.dim(
-					'Keys: Add provider API keys to .env (or inside the MCP config file i.e. .cursor/mcp.json)'
-				)}\n${chalk.white('2. ')}${chalk.yellow(
-					'Discuss your idea with AI and ask for a PRD, and save it to .taskmaster/docs/prd.txt'
-				)}\n${chalk.white('   ├─ ')}${chalk.dim('Simple projects: Use ')}${chalk.cyan('example_prd.txt')}${chalk.dim(' template')}\n${chalk.white('   └─ ')}${chalk.dim('Complex systems: Use ')}${chalk.cyan('example_prd_rpg.txt')}${chalk.dim(' template (for dependency-aware task graphs)')}\n${chalk.white('3. ')}${chalk.yellow(
-					'Ask Cursor Agent (or run CLI) to parse your PRD and generate initial tasks:'
-				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('parse_prd')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master parse-prd .taskmaster/docs/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
-					'Ask Cursor to analyze the complexity of the tasks in your PRD using research'
-				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('analyze_project_complexity')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master analyze-complexity')}\n${chalk.white('5. ')}${chalk.yellow(
-					'Ask Cursor to expand all of your tasks using the complexity analysis'
-				)}\n${chalk.white('6. ')}${chalk.yellow('Ask Cursor to begin working on the next task')}\n${chalk.white('7. ')}${chalk.yellow(
-					'Add new tasks anytime using the add-task command or MCP tool'
-				)}\n${chalk.white('8. ')}${chalk.yellow(
-					'Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists.'
-				)}\n${chalk.white('9. ')}${chalk.yellow(
-					'Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.'
-				)}\n${chalk.white('10. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
-					'* Review the README.md file to learn how to use other commands via Cursor Agent.'
-				)}\n${chalk.dim(
-					'* Use the task-master command without arguments to see all available commands.'
-				)}`,
-				{
-					padding: 1,
-					margin: 1,
-					borderStyle: 'round',
-					borderColor: 'yellow',
-					title: 'Getting Started',
-					titleAlignment: 'center'
-				}
-			)
+			boxen(gettingStartedMessage, {
+				padding: 1,
+				margin: 1,
+				borderStyle: 'round',
+				borderColor: 'yellow',
+				title: 'Getting Started',
+				titleAlignment: 'center'
+			})
 		);
 	}
 }

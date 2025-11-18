@@ -288,20 +288,20 @@ export class BaseAIProvider {
 				briefId: params.briefId // Hamster brief ID if connected
 			};
 
-		const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
-		const stream = await streamText({
-			model: client(params.modelId),
-			messages: params.messages,
-			...this.prepareTokenParam(params.modelId, params.maxTokens),
-			...(this.supportsTemperature && params.temperature !== undefined
-				? { temperature: params.temperature }
-				: {}),
-			...(telemetryConfig && { experimental_telemetry: telemetryConfig }),
-			...(params.experimental_transform && {
-				experimental_transform: params.experimental_transform
-			})
-		});
+			const stream = await streamText({
+				model: client(params.modelId),
+				messages: params.messages,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
+				...(this.supportsTemperature && params.temperature !== undefined
+					? { temperature: params.temperature }
+					: {}),
+				...(telemetryConfig && { experimental_telemetry: telemetryConfig }),
+				...(params.experimental_transform && {
+					experimental_transform: params.experimental_transform
+				})
+			});
 
 			log(
 				'debug',

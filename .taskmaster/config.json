@@ -20,7 +20,7 @@
     }
   },
   "global": {
-    "logLevel": "info",
+    "logLevel": "silent",
     "debug": false,
     "defaultNumTasks": 10,
     "defaultSubtasks": 5,

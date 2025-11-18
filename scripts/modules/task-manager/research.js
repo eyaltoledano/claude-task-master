@@ -339,7 +339,8 @@ async function performResearch(
 					const usage = await aiResult.mainResult.usage;
 
 					// Get actual token counts from the usage promise
-					const actualInputTokens = usage.promptTokens || usage.inputTokens || 0;
+					const actualInputTokens =
+						usage.promptTokens || usage.inputTokens || 0;
 					const actualOutputTokens =
 						usage.completionTokens || usage.outputTokens || 0;
 					const actualTotalTokens =
