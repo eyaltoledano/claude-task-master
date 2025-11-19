@@ -23,12 +23,6 @@ import {
 import { log, readJSON } from './utils.js';
 
 import {
-	parsePRD,
-	updateTasks,
-	expandTask,
-	expandAllTasks,
-	clearSubtasks,
-	addTask,
 	addSubtask,
 	addTask,
 	analyzeTaskComplexity,
@@ -36,7 +30,6 @@ import {
 	expandAllTasks,
 	expandTask,
 	findTaskById,
-	generateTaskFiles,
 	migrateProject,
 	moveTask,
 	parsePRD,
