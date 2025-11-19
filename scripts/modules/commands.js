@@ -25,7 +25,6 @@ import {
 import {
 	parsePRD,
 	updateTasks,
-	generateTaskFiles,
 	expandTask,
 	expandAllTasks,
 	clearSubtasks,
@@ -998,42 +997,6 @@ function registerCommands(programInstance) {
 
 				process.exit(1);
 			}
-		});
-
-	// generate command
-	programInstance
-		.command('generate')
-		.description('Generate task files from tasks.json')
-		.option(
-			'-f, --file <file>',
-			'Path to the tasks file',
-			TASKMASTER_TASKS_FILE
-		)
-		.option(
-			'-o, --output <dir>',
-			'Output directory',
-			path.dirname(TASKMASTER_TASKS_FILE)
-		)
-		.option('--tag <tag>', 'Specify tag context for task operations')
-		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true,
-				tag: options.tag
-			});
-
-			const outputDir = options.output;
-			const tag = taskMaster.getCurrentTag();
-
-			console.log(
-				chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`)
-			);
-			console.log(chalk.blue(`Output directory: ${outputDir}`));
-
-			await generateTaskFiles(taskMaster.getTasksPath(), outputDir, {
-				projectRoot: taskMaster.getProjectRoot(),
-				tag
-			});
 		});
 
 	// ========================================
@@ -3339,33 +3302,6 @@ Examples:
 				if (Array.isArray(result.tips) && result.tips.length > 0) {
 					console.log('\n' + chalk.yellow.bold('Next Steps:'));
 					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
-				}
-
-				// Check if source tag still contains tasks before regenerating files
-				const tasksData = readJSON(
-					taskMaster.getTasksPath(),
-					taskMaster.getProjectRoot(),
-					sourceTag
-				);
-				const sourceTagHasTasks =
-					tasksData &&
-					Array.isArray(tasksData.tasks) &&
-					tasksData.tasks.length > 0;
-
-				// Generate task files for the affected tags
-				await generateTaskFiles(
-					taskMaster.getTasksPath(),
-					path.dirname(taskMaster.getTasksPath()),
-					{ tag: toTag, projectRoot: taskMaster.getProjectRoot() }
-				);
-
-				// Only regenerate source tag files if it still contains tasks
-				if (sourceTagHasTasks) {
-					await generateTaskFiles(
-						taskMaster.getTasksPath(),
-						path.dirname(taskMaster.getTasksPath()),
-						{ tag: sourceTag, projectRoot: taskMaster.getProjectRoot() }
-					);
 				}
 			}
 

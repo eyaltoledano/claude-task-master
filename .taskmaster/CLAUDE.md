@@ -32,7 +32,6 @@ task-master expand --all --research               # Expand all eligible tasks
 task-master add-dependency --id=<id> --depends-on=<id>       # Add task dependency
 task-master move --from=<id> --to=<id>                       # Reorganize task hierarchy
 task-master validate-dependencies                            # Check for dependency issues
-task-master generate                                         # Update task markdown files (usually auto-called)
 ```
 
 ## Key Files & Project Structure
@@ -361,9 +360,6 @@ task-master models --set-fallback gpt-4o-mini
 ### Task File Sync Issues
 
 ```bash
-# Regenerate task files from tasks.json
-task-master generate
-
 # Fix dependency issues
 task-master fix-dependencies
 ```
@@ -389,8 +385,6 @@ These commands make AI calls and may take up to a minute:
 
 - Never manually edit `tasks.json` - use commands instead
 - Never manually edit `.taskmaster/config.json` - use `task-master models`
-- Task markdown files in `tasks/` are auto-generated
-- Run `task-master generate` after manual changes to tasks.json
 
 ### Claude Code Session Management
 

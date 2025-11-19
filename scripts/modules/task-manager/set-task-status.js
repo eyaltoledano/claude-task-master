@@ -13,7 +13,6 @@ import { displayBanner } from '../ui.js';
 import { validateTaskDependencies } from '../dependency-manager.js';
 import { getDebugFlag } from '../config-manager.js';
 import updateSingleTaskStatus from './update-single-task-status.js';
-import generateTaskFiles from './generate-task-files.js';
 import {
 	isValidTaskStatus,
 	TASK_STATUS_OPTIONS

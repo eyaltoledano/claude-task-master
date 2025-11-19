@@ -7,7 +7,6 @@ import { findTaskById } from './utils.js';
 import parsePRD from './task-manager/parse-prd/index.js';
 import updateTasks from './task-manager/update-tasks.js';
 import updateTaskById from './task-manager/update-task-by-id.js';
-import generateTaskFiles from './task-manager/generate-task-files.js';
 import setTaskStatus from './task-manager/set-task-status.js';
 import updateSingleTaskStatus from './task-manager/update-single-task-status.js';
 import listTasks from './task-manager/list-tasks.js';
@@ -40,7 +39,6 @@ export {
 	updateTasks,
 	updateTaskById,
 	updateSubtaskById,
-	generateTaskFiles,
 	setTaskStatus,
 	updateSingleTaskStatus,
 	listTasks,
