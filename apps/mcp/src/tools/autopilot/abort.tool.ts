@@ -6,6 +6,7 @@
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
 import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const AbortSchema = z.object({
@@ -27,7 +28,7 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 		parameters: AbortSchema,
 		execute: withToolContext(
 			'autopilot-abort',
-			async (args: AbortArgs, { log }) => {
+			async (args: AbortArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {

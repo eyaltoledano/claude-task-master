@@ -3,11 +3,11 @@
  * Tool for removing a dependency from a task
  */
 
+import { createErrorResponse, handleApiResult, withToolContext } from '@tm/mcp';
 import { z } from 'zod';
-import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { removeDependencyDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the removeDependency tool with the MCP server
@@ -41,7 +41,7 @@ export function registerRemoveDependencyTool(server) {
 					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
 				);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use args.projectRoot directly (guaranteed by withToolContext)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(

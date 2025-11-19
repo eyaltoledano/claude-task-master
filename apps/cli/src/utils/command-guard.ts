@@ -4,7 +4,7 @@
  */
 
 import chalk from 'chalk';
-import { createTmCore, type TmCore } from '@tm/core';
+import { createTmCore, type TmCore, type LocalOnlyCommand } from '@tm/core';
 import { displayCardBox } from '../ui/components/cardBox.component.js';
 
 /**
@@ -18,8 +18,15 @@ interface CommandMessage {
 
 /**
  * Get command-specific message configuration
+ *
+ * NOTE: Command groups below are intentionally hardcoded (not imported from LOCAL_ONLY_COMMANDS)
+ * to allow flexible categorization with custom messaging per category. All commands here are
+ * subsets of LOCAL_ONLY_COMMANDS from @tm/core, which is the source of truth for blocked commands.
+ *
+ * Categories exist for UX purposes (tailored messaging), while LOCAL_ONLY_COMMANDS exists for
+ * enforcement (what's actually blocked when using Hamster).
  */
-function getCommandMessage(commandName: string): CommandMessage {
+function getCommandMessage(commandName: LocalOnlyCommand): CommandMessage {
 	// Dependency management commands
 	if (
 		[
@@ -114,7 +121,8 @@ export async function checkAndBlockIfAuthenticated(
 
 	if (result.isBlocked) {
 		// Get command-specific message configuration
-		const message = getCommandMessage(commandName);
+		// Safe to cast: guardCommand only blocks commands in LOCAL_ONLY_COMMANDS
+		const message = getCommandMessage(commandName as LocalOnlyCommand);
 		const briefName = result.briefName || 'remote brief';
 
 		// Format and display CLI message with cardBox

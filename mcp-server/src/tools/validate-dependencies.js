@@ -37,7 +37,7 @@ export function registerValidateDependenciesTool(server) {
 						`Validating dependencies with args: ${JSON.stringify(args)}`
 					);
 
-					// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+					// Use args.projectRoot directly (guaranteed by withToolContext)
 					let tasksJsonPath;
 					try {
 						tasksJsonPath = findTasksPath(
