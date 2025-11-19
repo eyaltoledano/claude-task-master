@@ -80,13 +80,13 @@ export function registerAddDependencyTool(server) {
 					}
 
 					// Use handleApiResult to format the response
-					return handleApiResult(
+					return handleApiResult({
 						result,
 						log,
-						'Error adding dependency',
-						undefined,
-						args.projectRoot
-					);
+						errorPrefix: 'Error adding dependency',
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
+					});
 				} catch (error) {
 					log.error(`Error in addDependency tool: ${error.message}`);
 					return createErrorResponse(error.message);

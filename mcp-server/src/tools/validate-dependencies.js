@@ -70,13 +70,13 @@ export function registerValidateDependenciesTool(server) {
 						);
 					}
 
-					return handleApiResult(
+					return handleApiResult({
 						result,
 						log,
-						'Error validating dependencies',
-						undefined,
-						args.projectRoot
-					);
+						errorPrefix: 'Error validating dependencies',
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
+					});
 				} catch (error) {
 					log.error(`Error in validateDependencies tool: ${error.message}`);
 					return createErrorResponse(error.message);
