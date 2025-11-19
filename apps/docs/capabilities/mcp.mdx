@@ -147,7 +147,7 @@ The MCP tools can be categorized in the same way as the core functionalities:
 -   **`update_subtask`**: Appends information to a subtask.
 -   **`update`**: Updates multiple tasks.
 -   **`move_task`**: Moves a task or subtask.
--   **`clear_subtasks`**: Clears all subtasks from one or more tasks.
+-   **`clear_subtasks`**: Clears all subtasks from one or more tasks. *(Local-only - blocked when using Hamster)*
 
 ### 2. Task Information and Status
 
@@ -166,6 +166,8 @@ The MCP tools can be categorized in the same way as the core functionalities:
 
 ### 4. Dependency Management
 
+<Info>**Local-Only Tools**: These dependency management tools are only available when using local file storage. They will be blocked when authenticated with Hamster (remote storage).</Info>
+
 -   **`add_dependency`**: Adds a dependency to a task.
 -   **`remove_dependency`**: Removes a dependency from a task.
 -   **`validate_dependencies`**: Validates the dependencies of all tasks.
@@ -175,7 +177,7 @@ The MCP tools can be categorized in the same way as the core functionalities:
 
 -   **`initialize_project`**: Initializes a new project.
 -   **`generate`**: Generates individual task files.
--   **`models`**: Manages AI model configurations.
+-   **`models`**: Manages AI model configurations. *(Local-only - blocked when using Hamster)*
 -   **`research`**: Performs AI-powered research.
 
 ### 6. Tag Management

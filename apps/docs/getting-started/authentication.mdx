@@ -1,0 +1,105 @@
+---
+title: 'Authentication & Storage Modes'
+description: 'Understanding local vs remote storage modes and authentication with Hamster'
+---
+
+# Authentication & Storage Modes
+
+Task Master supports two storage modes: **local file storage** and **remote storage via Hamster**. Understanding the differences helps you choose the right mode for your workflow.
+
+## Storage Modes
+
+### Local File Storage (Default)
+
+When using local file storage:
+- Tasks are stored in `.taskmaster/tasks/tasks.json` 
+- You have full control over dependency management
+- AI model configuration is managed locally
+- All commands are available
+- Works offline once configured
+
+### Remote Storage (Hamster)
+
+When authenticated with Hamster:
+- Tasks are synchronized with remote servers
+- Hamster manages dependencies automatically
+- AI model configuration is handled by Hamster
+- Some local-only commands are blocked
+- Requires internet connectivity
+
+## Authentication Commands
+
+```bash
+# Log in to Hamster (enables remote storage)
+task-master auth login
+
+# Log out from Hamster (returns to local storage)  
+task-master auth logout
+
+# Check authentication status
+task-master auth status
+```
+
+## Local-Only Commands
+
+The following commands are **only available in local storage mode**. They will be blocked when authenticated with Hamster:
+
+### Dependency Management
+- `task-master add-dependency`
+- `task-master remove-dependency` 
+- `task-master validate-dependencies`
+- `task-master fix-dependencies`
+
+### Subtask Management
+- `task-master clear-subtasks`
+
+### Configuration
+- `task-master models` (Hamster manages AI models automatically)
+
+## Switching Between Modes
+
+You can switch between local and remote storage at any time:
+
+<CodeGroup>
+```bash Switch to Remote (Hamster)
+# Log in to enable remote storage and sync
+task-master auth login
+```
+
+```bash Switch to Local  
+# Log out to return to local file storage
+task-master auth logout
+```
+</CodeGroup>
+
+## When to Use Each Mode
+
+### Use Local Storage When:
+- Working offline or with limited connectivity
+- Need full control over dependencies and model configuration
+- Developing or testing Task Master itself
+- Working on sensitive projects that can't use remote services
+
+### Use Remote Storage (Hamster) When:
+- Want automatic dependency management
+- Working in teams with shared task synchronization
+- Prefer managed AI model configurations
+- Need access to additional Hamster features
+
+## Command Blocking Messages
+
+When you try to use a local-only command while authenticated with Hamster, you'll see helpful messages like:
+
+```
+╭─ Hamster Manages Dependencies ─────────────────────────────╮
+│                                                            │
+│  Hamster handles dependencies for the "My Project" Brief.  │
+│  To manage dependencies manually, log out with tm auth     │
+│  logout and work locally.                                  │
+│                                                            │
+│  Switch between local and remote workflows anytime by     │
+│  logging in/out.                                          │
+╰────────────────────────────────────────────────────────────╯
+```
+
+Simply run `task-master auth logout` to access these commands in local mode.

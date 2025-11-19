@@ -53,7 +53,7 @@ The CLI is organized into a series of commands, each with its own set of options
 -   **`move`**: Moves a task or subtask.
     -   `--from <sourceId>`: The ID of the task or subtask to move.
     -   `--to <destinationId>`: The destination ID.
--   **`clear-subtasks`**: Clears all subtasks from one or more tasks.
+-   **`clear-subtasks`**: Clears all subtasks from one or more tasks. *(Local-only)*
     -   `--ids <ids>`: A comma-separated list of task IDs.
 
 ### 2. Task Information and Status
@@ -217,16 +217,18 @@ The MCP tools can be categorized in the same way as the core functionalities:
 
 ### 4. Dependency Management
 
--   **`add_dependency`**: Adds a dependency to a task.
--   **`remove_dependency`**: Removes a dependency from a task.
--   **`validate_dependencies`**: Validates the dependencies of all tasks.
--   **`fix_dependencies`**: Fixes any invalid dependencies.
+<Info>All dependency management commands are local-only and blocked when using Hamster.</Info>
+
+-   **`add_dependency`**: Adds a dependency to a task. *(Local-only)*
+-   **`remove_dependency`**: Removes a dependency from a task. *(Local-only)*
+-   **`validate_dependencies`**: Validates the dependencies of all tasks. *(Local-only)*
+-   **`fix_dependencies`**: Fixes any invalid dependencies. *(Local-only)*
 
 ### 5. Project and Configuration
 
 -   **`initialize_project`**: Initializes a new project.
 -   **`generate`**: Generates individual task files.
--   **`models`**: Manages AI model configurations.
+-   **`models`**: Manages AI model configurations. *(Local-only)*
 -   **`research`**: Performs AI-powered research.
 
 ### 6. Tag Management

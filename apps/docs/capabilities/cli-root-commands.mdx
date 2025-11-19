@@ -127,6 +127,8 @@ sidebarTitle: "CLI Commands"
   </Accordion>
 
   <Accordion title="Clear Subtasks">
+    <Info>**Local-Only Command**: Subtask clearing is only available when using local file storage. If you're authenticated with Hamster (remote storage), this command will be blocked. Run `task-master auth logout` to use local storage and access this command.</Info>
+    
     ```bash
     # Clear subtasks from a specific task
     task-master clear-subtasks --id=<id>
@@ -172,6 +174,8 @@ sidebarTitle: "CLI Commands"
   </Accordion>
 
   <Accordion title="Managing Task Dependencies">
+    <Info>**Local-Only Commands**: Dependency management commands are only available when using local file storage. If you're authenticated with Hamster (remote storage), these commands will be blocked. Run `task-master auth logout` to use local storage and access these commands.</Info>
+    
     ```bash
     # Add a dependency to a task
     task-master add-dependency --id=<id> --depends-on=<id>

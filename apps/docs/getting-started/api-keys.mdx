@@ -225,6 +225,8 @@ For Claude Code integration, configure keys in `.mcp.json`:
 
 After setting up API keys, configure which models to use:
 
+<Info>**Local-Only Command**: The `models` command is only available when using local file storage. If you're authenticated with Hamster (remote storage), this command will be blocked since Hamster manages AI model configurations automatically. Run `task-master auth logout` to use local storage and access this command.</Info>
+
 ```bash
 # Interactive model setup
 task-master models --setup
