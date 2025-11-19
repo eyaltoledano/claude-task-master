@@ -78,18 +78,3 @@ This will:
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
 - The agent will understand this process due to the Cursor rules
 
-### Generate Individual Task Files
-
-Next, ask the agent to generate individual task files:
-
-```
-Please generate individual task files from tasks.json
-```
-
-The agent will execute:
-
-```bash
-task-master generate
-```
-
-This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
