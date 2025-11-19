@@ -143,3 +143,14 @@ export { TaskLoaderService } from './modules/tasks/services/task-loader.service.
 
 // Integration - Advanced
 export { ExportService } from './modules/integration/services/export.service.js';
+
+// Storage - Advanced
+export { TaskWatcher } from './modules/storage/index.js';
+export type {
+	TaskWatcherEvent,
+	TaskWatcherOptions,
+	TaskFileAddedEvent,
+	TaskFileChangedEvent,
+	TaskFileDeletedEvent,
+	TaskDirectoryChangedEvent
+} from './modules/storage/index.js';

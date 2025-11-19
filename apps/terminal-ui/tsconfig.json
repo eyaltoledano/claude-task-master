@@ -10,6 +10,7 @@
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
+		"noEmit": false,
 		"outDir": "./dist",
 		"baseUrl": ".",
 		"rootDir": "./src",

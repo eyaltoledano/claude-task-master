@@ -26,7 +26,7 @@ export {
 	type TaskFileChangedEvent,
 	type TaskFileDeletedEvent,
 	type TaskDirectoryChangedEvent
-} from './file-storage/index.js';
+} from './adapters/file-storage/index.js';
 
 // Export storage interface and types
 export type {

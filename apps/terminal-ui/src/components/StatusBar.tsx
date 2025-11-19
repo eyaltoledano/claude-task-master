@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import { createTaskMasterCore, type TaskMasterCore } from '@tm/core';
+import { createTmCore, type TmCore } from '@tm/core';
 
 /**
  * System message type
@@ -31,9 +31,9 @@ export interface StatusBarProps {
 	tag?: string;
 
 	/**
-	 * Optional TaskMasterCore instance (for reuse)
+	 * Optional TmCore instance (for reuse)
 	 */
-	tmCore?: TaskMasterCore;
+	tmCore?: TmCore;
 
 	/**
 	 * Show exit instructions
@@ -107,7 +107,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 	});
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [core, setCore] = useState<TaskMasterCore | null>(tmCore || null);
+	const [core, setCore] = useState<TmCore | null>(tmCore || null);
 	const [messages, setMessages] = useState<SystemMessage[]>(initialMessages);
 
 	useEffect(() => {
@@ -118,26 +118,32 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 				setIsLoading(true);
 				setError(null);
 
-				// Initialize TaskMasterCore if not provided
+				// Initialize TmCore if not provided
 				let coreInstance = tmCore;
 				if (!coreInstance) {
-					coreInstance = await createTaskMasterCore({ projectPath });
+					coreInstance = await createTmCore({ projectPath });
 					if (mounted) {
 						setCore(coreInstance);
 					}
 				}
 
 				// Fetch task statistics
-				const stats = await coreInstance.getTaskStats(tag);
+				const result = await coreInstance.tasks.list({ tag });
+
+				// Calculate stats from tasks
+				const statusCounts: Record<string, number> = {};
+				result.tasks.forEach((task) => {
+					statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+				});
 
 				if (mounted) {
 					setCounts({
-						total: stats.total,
-						inProgress: stats.byStatus['in-progress'] || 0,
-						completed: stats.byStatus.done + (stats.byStatus.completed || 0),
-						pending: stats.byStatus.pending || 0,
-						review: stats.byStatus.review || 0,
-						blocked: stats.blocked || 0
+						total: result.total,
+						inProgress: statusCounts['in-progress'] || 0,
+						completed: (statusCounts.done || 0) + (statusCounts.completed || 0),
+						pending: statusCounts.pending || 0,
+						review: statusCounts.review || 0,
+						blocked: statusCounts.blocked || 0
 					});
 					setIsLoading(false);
 				}
@@ -156,11 +162,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 		// Cleanup
 		return () => {
 			mounted = false;
-			if (core && !tmCore) {
-				core.close().catch(() => {
-					// Ignore cleanup errors
-				});
-			}
+			// TmCore doesn't require explicit cleanup
 		};
 	}, [projectPath, tag, tmCore, core]);
 
@@ -171,14 +173,22 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 			if (!enableLiveUpdates && refreshInterval > 0) {
 				const interval = setInterval(async () => {
 					try {
-						const stats = await core!.getTaskStats(tag);
+						const result = await core!.tasks.list({ tag });
+
+						// Calculate stats from tasks
+						const statusCounts: Record<string, number> = {};
+						result.tasks.forEach((task) => {
+							statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
+						});
+
 						setCounts({
-							total: stats.total,
-							inProgress: stats.byStatus['in-progress'] || 0,
-							completed: stats.byStatus.done + (stats.byStatus.completed || 0),
-							pending: stats.byStatus.pending || 0,
-							review: stats.byStatus.review || 0,
-							blocked: stats.blocked || 0
+							total: result.total,
+							inProgress: statusCounts['in-progress'] || 0,
+							completed:
+								(statusCounts.done || 0) + (statusCounts.completed || 0),
+							pending: statusCounts.pending || 0,
+							review: statusCounts.review || 0,
+							blocked: statusCounts.blocked || 0
 						});
 					} catch (err) {
 						// Ignore refresh errors
@@ -214,18 +224,26 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 					const handleChange = () => {
 						if (mounted) {
 							// Refetch stats on any change
-							core
-								.getTaskStats(tag)
-								.then((stats) => {
+							core.tasks
+								.list({ tag })
+								.then((result) => {
 									if (mounted) {
+										// Calculate stats from tasks
+										const statusCounts: Record<string, number> = {};
+										result.tasks.forEach((task) => {
+											statusCounts[task.status] =
+												(statusCounts[task.status] || 0) + 1;
+										});
+
 										setCounts({
-											total: stats.total,
-											inProgress: stats.byStatus['in-progress'] || 0,
+											total: result.total,
+											inProgress: statusCounts['in-progress'] || 0,
 											completed:
-												stats.byStatus.done + (stats.byStatus.completed || 0),
-											pending: stats.byStatus.pending || 0,
-											review: stats.byStatus.review || 0,
-											blocked: stats.blocked || 0
+												(statusCounts.done || 0) +
+												(statusCounts.completed || 0),
+											pending: statusCounts.pending || 0,
+											review: statusCounts.review || 0,
+											blocked: statusCounts.blocked || 0
 										});
 									}
 								})

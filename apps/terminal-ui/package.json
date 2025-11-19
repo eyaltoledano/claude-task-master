@@ -4,9 +4,12 @@
 	"type": "module",
 	"private": true,
 	"main": "./dist/index.js",
-	"types": "./src/index.tsx",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		".": "./src/index.tsx"
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
 	},
 	"files": ["dist", "README.md"],
 	"scripts": {

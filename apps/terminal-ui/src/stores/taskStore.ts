@@ -1,4 +1,4 @@
-import { createTaskMasterCore } from '@tm/core';
+import { createTmCore } from '@tm/core';
 import type { Task } from '@tm/core';
 import fs from 'fs/promises';
 import path from 'path';
@@ -49,8 +49,8 @@ export const createTaskMasterStore = (): TaskStore => {
 	return {
 		loadTasks: async (projectPath: string): Promise<Task[]> => {
 			try {
-				const tmCore = await createTaskMasterCore({ projectPath });
-				const result = await tmCore.getTaskList({
+				const tmCore = await createTmCore({ projectPath });
+				const result = await tmCore.tasks.list({
 					includeSubtasks: true
 				});
 				return result.tasks as Task[];

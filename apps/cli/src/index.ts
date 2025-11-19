@@ -12,7 +12,6 @@ export { ContextCommand } from './commands/context.command.js';
 export { StartCommand } from './commands/start.command.js';
 export { SetStatusCommand } from './commands/set-status.command.js';
 export { ExportCommand } from './commands/export.command.js';
-export { AutopilotCommand } from './commands/autopilot/index.js';
 export { InteractiveCommand } from './commands/interactive.command.js';
 export { TagsCommand } from './commands/tags.command.js';
 export { BriefsCommand } from './commands/briefs.command.js';

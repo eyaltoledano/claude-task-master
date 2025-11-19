@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { taskStore } from '../stores/taskStore.js';
-import { TaskWatcher } from '@tm/core/storage';
+import { TaskWatcher } from '@tm/core';
 import type { Task } from '@tm/core';
 import { existsSync } from 'fs';
 import { join } from 'path';
