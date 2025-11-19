@@ -28,6 +28,12 @@
 			"@tm/ai-sdk-provider-grok-cli/*": [
 				"./packages/ai-sdk-provider-grok-cli/src/*"
 			],
+			"@tm/ai-sdk-provider-cortex-code": [
+				"./packages/ai-sdk-provider-cortex-code/src/index.ts"
+			],
+			"@tm/ai-sdk-provider-cortex-code/*": [
+				"./packages/ai-sdk-provider-cortex-code/src/*"
+			],
 			"@tm/bridge": ["./packages/tm-bridge/src/index.ts"],
 			"@tm/bridge/*": ["./packages/tm-bridge/src/*"]
 		}

@@ -22,6 +22,7 @@ import {
 	getResearchModelId,
 	getResearchProvider,
 	getResponseLanguage,
+	getSnowflakeBaseURL,
 	getUserId,
 	getVertexLocation,
 	getVertexProjectId
@@ -40,6 +41,7 @@ import {
 	BedrockAIProvider,
 	ClaudeCodeProvider,
 	CodexCliProvider,
+	CortexCodeProvider,
 	GeminiCliProvider,
 	GoogleAIProvider,
 	GrokCliProvider,
@@ -50,6 +52,7 @@ import {
 	OpenAIProvider,
 	OpenRouterAIProvider,
 	PerplexityAIProvider,
+	SnowflakeProvider,
 	VertexAIProvider,
 	XAIProvider,
 	ZAIProvider,
@@ -82,9 +85,11 @@ const PROVIDERS = {
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
+	'cortex-code': new CortexCodeProvider(),
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
-	'grok-cli': new GrokCliProvider()
+	'grok-cli': new GrokCliProvider(),
+	'snowflake': new SnowflakeProvider()
 };
 
 function _getProvider(providerName) {
@@ -601,10 +606,14 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Ollama base URL: ${baseURL}`);
-			} else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
-				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
-				baseURL = getBedrockBaseURL(effectiveProjectRoot);
-				log('debug', `Using global Bedrock base URL: ${baseURL}`);
+            } else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
+                // For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
+                baseURL = getBedrockBaseURL(effectiveProjectRoot);
+                log('debug', `Using global Bedrock base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'snowflake' && !baseURL) {
+				// For Snowflake, use the global Snowflake base URL (config or env) if role-specific URL is not configured
+				baseURL = getSnowflakeBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Snowflake base URL: ${baseURL}`);
 			}
 
 			// Get AI parameters for the current role

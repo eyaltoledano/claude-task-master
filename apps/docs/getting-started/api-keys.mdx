@@ -95,6 +95,21 @@ AZURE_OPENAI_API_KEY="your-azure-key-here"
 XAI_API_KEY="your-xai-key-here"
 ```
 
+### SNOWFLAKE_API_KEY
+- **Provider**: Snowflake Cortex
+- **Format**: Programmatic Access Token (PAT) or OAuth token
+- **Required**: ✅ **Yes**
+- **Models**: Claude, OpenAI, Llama, Mistral, DeepSeek, and other Cortex models
+- **Requirements**: Also requires `SNOWFLAKE_BASE_URL` configuration
+- **Models**: [Snowflake Cortex Model Availability](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
+- **Get Token**: [Snowflake PAT Documentation](https://docs.snowflake.com/en/sql-reference/sql/alter-user-add-programmatic-access-token)
+- **Authentication**: [REST API Authentication](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication)
+
+```bash
+SNOWFLAKE_API_KEY="your-programmatic-access-token-or-oauth-token-here"
+SNOWFLAKE_BASE_URL="https://org-account.snowflakecomputing.com"
+```
+
 ## Optional API Keys
 
 > **Note**: These API keys are optional - providers will work without them or use alternative authentication methods.
@@ -220,6 +235,7 @@ For Claude Code integration, configure keys in `.mcp.json`:
 - **AWS Bedrock**: Uses AWS credential chain (profiles, IAM roles, etc.) instead of API keys
 - **Ollama**: Only needs API key for remote servers with authentication
 - **CLI Providers**: Gemini CLI, Grok CLI, and Claude Code use OAuth/CLI config instead of API keys
+- **Snowflake Cortex**: Requires both `SNOWFLAKE_API_KEY` (Programmatic Access Token or OAuth) and `SNOWFLAKE_BASE_URL` configuration
 
 ## Model Configuration
 

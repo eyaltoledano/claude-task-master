@@ -43,6 +43,7 @@ Taskmaster uses two primary methods for configuration:
           "projectName": "Your Project Name",
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
+          "snowflakeBaseURL": "https://org-account.snowflakecomputing.com",
           "vertexProjectId": "your-gcp-project-id",
           "vertexLocation": "us-central1",
 	      "responseLanguage": "English"
@@ -144,6 +145,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
+  - `SNOWFLAKE_API_KEY`: Your Snowflake Programmatic Access Token (PAT) or OAuth token.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -152,6 +154,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
+  - `SNOWFLAKE_BASE_URL`: Your Snowflake account URL (e.g., `https://org-account.snowflakecomputing.com`). Task Master automatically appends the required `/api/v2/cortex/v1` path. Can also be set as `snowflakeBaseURL` in config.json (recommended).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
@@ -213,6 +216,10 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # Azure OpenAI Configuration
 # AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/ or https://your-endpoint-name.cognitiveservices.azure.com/openai/deployments
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
+
+# Snowflake Cortex Configuration (Required if using 'snowflake' provider)
+# SNOWFLAKE_API_KEY=YOUR_SNOWFLAKE_API_KEY_HERE
+# SNOWFLAKE_BASE_URL=https://org-account.snowflakecomputing.com
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
@@ -649,3 +656,186 @@ The Codex CLI provider integrates Task Master with OpenAI's Codex CLI, allowing 
     - Limited to OAuth-available models only (`gpt-5` and `gpt-5-codex`)
     - Pricing information is not available for OAuth models (shows as "Unknown" in cost calculations)
     - See [Codex CLI Provider Documentation](./providers/codex-cli.md) for more details
+
+### Snowflake Cortex Configuration
+
+Snowflake Cortex provides AI models through Snowflake's data platform and requires specific configuration:
+
+1. **Prerequisites**:
+   - Active Snowflake account with Cortex AI enabled
+   - Authentication credentials (PAT or OAuth token)
+   - Network access to Cortex REST API endpoint
+
+2. **Authentication**:
+   
+   Snowflake Cortex REST API supports Programmatic Access Token and OAuth authentication methods. See the [Snowflake REST API Authentication documentation](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication) for complete details.
+
+   **Method 1: Programmatic Access Token (PAT) - Recommended**
+   
+   Set the `SNOWFLAKE_API_KEY` environment variable with your Programmatic Access Token and configure the base URL in either `.env` or `config.json`:
+   
+   ```bash
+   # In .env file
+   SNOWFLAKE_API_KEY=YOUR_SNOWFLAKE_API_KEY_HERE
+   SNOWFLAKE_BASE_URL=https://org-accountname.snowflakecomputing.com
+   ```
+   
+   **Or configure base URL in config.json (recommended):**
+   ```json
+   {
+     "global": {
+       "snowflakeBaseURL": "https://org-accountname.snowflakecomputing.com"
+     }
+   }
+   ```
+     
+   **Note:** The `snowflakeBaseURL` in config.json takes precedence over the `SNOWFLAKE_BASE_URL` environment variable.
+
+   **Creating a PAT:**
+   ```sql
+   -- Create a PAT with 90 days expiration
+   ALTER USER ADD PROGRAMMATIC ACCESS TOKEN taskmaster_token
+     DAYS_TO_EXPIRY = 90
+     COMMENT = 'Task Master Integration';
+
+   -- Create a PAT for another user (requires MODIFY PROGRAMMATIC AUTHENTICATION METHODS privilege)
+   ALTER USER example_user ADD PROGRAMMATIC ACCESS TOKEN taskmaster_token
+     DAYS_TO_EXPIRY = 90
+     COMMENT = 'Task Master Integration';
+   ```
+   
+   The command output includes `token_secret` - this is the value to use for `SNOWFLAKE_API_KEY`.
+   
+   **Note:** The token secret only appears in the output of the `ADD PROGRAMMATIC ACCESS TOKEN` command. Save it immediately as it cannot be retrieved later.
+
+   **Rotating a PAT:**
+   ```sql
+   -- Rotate token and expire old secret immediately
+   ALTER USER ROTATE PROGRAMMATIC ACCESS TOKEN taskmaster_token
+     EXPIRE_ROTATED_TOKEN_AFTER_HOURS = 0;
+
+   -- Rotate token and keep old secret valid for 24 hours
+   ALTER USER ROTATE PROGRAMMATIC ACCESS TOKEN taskmaster_token
+     EXPIRE_ROTATED_TOKEN_AFTER_HOURS = 24;
+   ```
+
+   **Snowflake Web UI Alternative to generate PAT:**
+   1. Click your username in the bottom left and Navigate to: **Settings** → **Authentication** → **Programatic Access Tokens**
+   2. Click **Generate new token**
+   3. Provide a **Name** (e.g. task_master_pat) and **Comment** (e.g., "Task Master Integration")
+   4. Set expiration (recommended: 90 days, max varies by account)
+   5. Grant access to a **Single role** (recommended) or **All of my roles**
+   6. Copy the generated token immediately (it won't be shown again)
+
+   **Security Best Practices:**
+   - Store tokens securely in `.env` file (never commit to version control)
+   - Rotate PATs regularly (every 90 days recommended)
+   - Use separate tokens for different applications/environments
+   - Revoke unused or compromised tokens immediately
+   - Users can have a maximum of 15 active tokens
+   - See [Snowflake PAT Documentation](https://docs.snowflake.com/en/sql-reference/sql/alter-user-add-programmatic-access-token) and [REST API Authentication](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication)
+
+   **Method 2: OAuth Token**
+   
+   Alternatively, you can use an OAuth token. See [Introduction to OAuth](https://docs.snowflake.com/en/user-guide/oauth-intro) for details on how to set up OAuth and get an OAuth token.
+   
+   Use the OAuth token value for `SNOWFLAKE_API_KEY`.
+
+3. **Configuration**:
+   ```json
+   // In .taskmaster/config.json
+   {
+     "models": {
+       "main": {
+         "provider": "snowflake",
+         "modelId": "cortex/claude-haiku-4-5",
+         "maxTokens": 32000,
+         "temperature": 0.2
+       },
+       "research": {
+         "provider": "snowflake",
+         "modelId": "cortex/claude-sonnet-4-5",
+         "maxTokens": 32000,
+         "temperature": 0.1
+       },
+       "fallback": {
+         "provider": "snowflake",
+         "modelId": "cortex/openai-gpt-5",
+         "maxTokens": 8192,
+         "temperature": 0.1
+       }
+     }
+   }
+   ```
+
+4. **Environment Variables**:
+   ```bash
+   # In .env file
+   SNOWFLAKE_API_KEY=your-programmatic-access-token-or-oauth-token-here
+   SNOWFLAKE_BASE_URL=https://org-account.snowflakecomputing.com/api/v2/cortex/v1
+   ```
+
+5. **Recommended Models**:
+   Snowflake Cortex supports multiple model families through the `cortex/` prefix:
+   
+   **Anthropic Claude Models:**
+   - `cortex/claude-haiku-4-5` - Fast Claude Haiku 4.5
+   - `cortex/claude-sonnet-4-5` - Latest Claude Sonnet 4.5
+   - `cortex/claude-4-sonnet` - Previous Claude Sonnet 4
+   - `cortex/claude-4-opus` - Extra Reasoning Claude Opus 4
+   
+   **OpenAI Models:**
+   - `cortex/openai-gpt-5` - Latest GPT 5
+   - `cortex/openai-gpt-5-mini` - Fast GPT 5 mini
+   - `cortex/openai-gpt-4.1` - Previous GPT 4.1
+   
+   For the complete and up-to-date model list and regional availability, see:
+   - [Snowflake Cortex REST API Model Availability](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
+
+6. **Important Notes**:
+   - **Model Naming**: Use `cortex/` prefix for all Cortex models (e.g., `cortex/claude-sonnet-4-5`)
+   - **Unlisted Models**: Task Master supports ANY Cortex model available through REST, even if not listed when you run `task-master models`
+   - **REST API Format**: Model names use lowercase REST API format (e.g., `llama3.1-8b`), not SQL uppercase format (`LLAMA3.1-8B`)
+   - **Cross-Region Availability**: To enable [cross-region inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) for broader model access, an adminstrator can set the the [`CORTEX_ENABLED_CROSS_REGION`](https://docs.snowflake.com/en/sql-reference/parameters#cortex-enabled-cross-region) parameter with statements like:
+   ```sql
+   ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'ANY_REGION';
+   ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'AWS_US,AZURE_US';
+   ```
+   - **Cost**: Pricing is based on Snowflake Cortex consumption; varies by model and region
+
+7. **Setup Commands**:
+   ```bash
+   # Set Cortex model for main role
+   task-master models --set-main cortex/claude-haiku-4-5
+
+   # Set Cortex model for research role
+   task-master models --set-research cortex/claude-sonnet-4-5
+
+   # Verify configuration
+   task-master models
+   ```
+
+8. **Troubleshooting**:
+
+   **"Authentication failed" errors:**
+   - Verify your `SNOWFLAKE_API_KEY` is correct and not expired
+   - Ensure your Snowflake account has Cortex AI enabled
+   - For PATs: Check token hasn't expired (default 15 days, custom up to account max)
+   - For OAuth: Regenerate the token using `SYSTEM$GENERATE_OAUTH_ACCESS_TOKEN`
+   - Check that your token has necessary privileges for Cortex operations
+
+   **"Resource not found" or "Invalid endpoint" errors:**
+   - Verify your `SNOWFLAKE_BASE_URL` format: `https://<org>-<account>.snowflakecomputing.com/api/v2/cortex/v1`
+   - Replace `<org>-<account>` with your actual Snowflake organization and account name
+
+   **"Unknown model" errors:**
+   - Use lowercase REST API format (e.g., `cortex/llama3.1-8b`, not `cortex/LLAMA3.1-8B`)
+   - Double check model availability in your Snowflake region: [Model Availability Table](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
+   - Verify the model exists in your account using `SHOW CORTEX MODELS` in SQL
+   - Note: REST API and `SHOW CORTEX MODELS` names may differ; use REST API format from the model availability table with Task Master
+
+   **Performance/Rate limiting:**
+   - Snowflake Cortex has built-in rate limiting based on your account resources
+   - Consider model size vs. response time tradeoffs
+   - Use smaller models (`cortex/claude-haiku-4-5`, `cortex/llama3.1-8b`) for faster responses
+   - Monitor Snowflake consumption for cost optimization

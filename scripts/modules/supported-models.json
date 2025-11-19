@@ -1217,5 +1217,213 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
+	],
+	"cortex-code": [
+		{
+			"id": "cortex/claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/claude-haiku-4-5",
+			"max_tokens": 64000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/claude-4-sonnet",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/claude-4-opus",
+			"max_tokens": 8192,
+			"allowed_roles": ["research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/openai-gpt-5",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/openai-gpt-5-mini",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "cortex/openai-gpt-5-nano",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "cortex/openai-gpt-4.1",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/openai-o4-mini",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/llama4-maverick",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "cortex/llama3.1-8b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "cortex/llama3.1-70b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/llama3.1-405b",
+			"max_tokens": 8192,
+			"allowed_roles": ["research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/deepseek-r1",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/mistral-7b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "cortex/mistral-large2",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "cortex/snowflake-llama-3.3-70b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		}
+	],
+	"snowflake": [
+		{
+			"id": "snowflake/claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/claude-haiku-4-5",
+			"max_tokens": 64000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/claude-4-sonnet",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/claude-4-opus",
+			"max_tokens": 8192,
+			"allowed_roles": ["research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/openai-gpt-5",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/openai-gpt-5-mini",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/openai-gpt-5-nano",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/openai-gpt-4.1",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/openai-o4-mini",
+			"max_tokens": 32000,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/llama4-maverick",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/llama3.1-8b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/llama3.1-70b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/llama3.1-405b",
+			"max_tokens": 8192,
+			"allowed_roles": ["research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/deepseek-r1",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/mistral-7b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/mistral-large2",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		},
+		{
+			"id": "snowflake/snowflake-llama-3.3-70b",
+			"max_tokens": 8192,
+			"allowed_roles": ["main", "fallback", "research"],
+			"supported": true
+		}
 	]
 }

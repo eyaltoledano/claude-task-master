@@ -60,6 +60,8 @@ This rule guides AI assistants on how to view, configure, and interact with the 
         -   **`azure`**: Requires `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT`.
         -   **`openrouter`**: Requires `OPENROUTER_API_KEY`.
         -   **`ollama`**: Might require `OLLAMA_API_KEY` (not currently supported) *and* `OLLAMA_BASE_URL` (default: `http://localhost:11434/api`). *Check specific setup.*
+        -   **`snowflake`**: Requires `SNOWFLAKE_API_KEY`.
+        -   **`cortex-code`**: Snowflake Cortex via CLI. Primarily uses connections from `~/.snowflake/config.toml`. Optional fallback: `CORTEX_API_KEY`.
 
 -   **Troubleshooting:**
     -   If AI commands fail (especially in MCP context):
@@ -153,3 +155,74 @@ Follow these steps to integrate a new AI provider that has an official Vercel AI
     -   Update any relevant documentation (like `README.md` or other rules) mentioning supported providers or configuration.
 
 *(Note: For providers **without** an official Vercel AI SDK adapter, the process would involve directly using the provider's own SDK or API within the `src/ai-providers/<provider-name>.js` module and manually constructing responses compatible with the unified service layer, which is significantly more complex.)*
+
+## Cortex Code Provider (Snowflake CLI)
+
+The **Cortex Code Provider** is a CLI-based integration for Snowflake Cortex, replacing the deprecated HTTP-based `SnowflakeProvider`.
+
+### Key Features
+
+- **Connection-Based Auth**: Uses Snowflake connections from `~/.snowflake/config.toml` instead of API keys
+- **Planning Mode**: Enable read-only planning via `enablePlanningMode: true`
+- **Skills System**: Leverage custom skills via `enableSkills: true`
+- **MCP Support**: Built-in Model Context Protocol support (can be disabled with `disableMcp: true`)
+- **Enhanced Errors**: Clear, actionable error messages with troubleshooting steps
+
+### Configuration
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "cortex-code",
+      "modelId": "cortex/claude-sonnet-4-5"
+    }
+  },
+  "cortexCode": {
+    "connection": "default",
+    "timeout": 60000,
+    "retries": 3,
+    "enablePlanningMode": false,
+    "enableSkills": true,
+    "disableMcp": false
+  }
+}
+```
+
+### Authentication
+
+1. **Install Cortex Code**: Please see your Snowflake Account Executive to request access to the PrPr of Cortex Code.
+2. **Configure Connection** in `~/.snowflake/config.toml`:
+   ```toml
+   [connections.default]
+   account = "YOUR_ACCOUNT"
+   user = "YOUR_USERNAME"
+   password = "YOUR_PAT"
+   warehouse = "YOUR_WAREHOUSE"
+   role = "YOUR_ROLE"
+   ```
+3. **Verify**: `cortex connection list`
+
+### Schema Transformation
+
+CortexCodeProvider inherits schema transformation logic from SnowflakeProvider:
+
+- Removes unsupported JSON schema keywords (`minLength`, `maxLength`, `format`, etc.)
+- Converts constraints to descriptions
+- Only Claude and OpenAI models support structured outputs
+- Sets `additionalProperties: false` for objects
+
+### Migration
+
+Migrate from SnowflakeProvider:
+
+```bash
+task-master models --migrate-to-cortex-code
+```
+
+Or see the [Cortex Code Migration Guide](../../../docs/cortex-code-migration.md).
+
+### Documentation
+
+- [Cortex Code Usage Guide](../../../docs/cortex-code-usage.md)
+- [Cortex Code Migration Guide](../../../docs/cortex-code-migration.md)

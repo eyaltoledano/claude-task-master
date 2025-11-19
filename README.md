@@ -53,6 +53,7 @@ The following documentation is also available in the `docs` directory:
 - [Task Structure](docs/task-structure.md) - Understanding the task format and features
 - [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
 - [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
+- [Cortex Code Integration](docs/cortex-code-integration.md) - Complete guide for Snowflake Cortex Code integration
 
 #### Quick Install for Cursor 1.0+ (One-Click)
 
@@ -89,6 +90,8 @@ At least one (1) of the following is required:
 - OpenRouter API Key (for research or main model)
 - Claude Code (no API key required - requires Claude Code CLI)
 - Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
+- Snowflake API Key (Programmatic Access Token or OAuth token)
+- **Cortex Code** (Snowflake CLI - requires [Cortex Code](https://docs.snowflake.com/en/developer-guide/cortex-cli) and Snowflake connection)
 
 Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code or Codex CLI with OAuth). Adding all API keys enables you to seamlessly switch between model providers at will.
 
@@ -129,6 +132,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "SNOWFLAKE_API_KEY": "YOUR_SNOWFLAKE_API_KEY_HERE",
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       }
     }
@@ -159,6 +163,7 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
+        "SNOWFLAKE_API_KEY": "YOUR_SNOWFLAKE_API_KEY_HERE"
         "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
       },
       "type": "stdio"
