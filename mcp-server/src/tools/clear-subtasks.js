@@ -4,11 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -43,9 +39,11 @@ export function registerClearSubtasksTool(server) {
 				message: "Either 'id' or 'all' parameter must be provided",
 				path: ['id', 'all']
 			}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withToolContext('clear-subtasks', async (args, context) => {
 			try {
-				log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
+				context.log.info(
+					`Clearing subtasks with args: ${JSON.stringify(args)}`
+				);
 
 				const resolvedTag = resolveTag({
 					projectRoot: args.projectRoot,
@@ -57,10 +55,10 @@ export function registerClearSubtasksTool(server) {
 				try {
 					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
-						log
+						context.log
 					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					context.log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
 						`Failed to find tasks.json: ${error.message}`
 					);
@@ -75,25 +73,29 @@ export function registerClearSubtasksTool(server) {
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},
-					log,
-					{ session }
+					context.log,
+					{ session: context.session }
 				);
 
 				if (result.success) {
-					log.info(`Subtasks cleared successfully: ${result.data.message}`);
+					context.log.info(
+						`Subtasks cleared successfully: ${result.data.message}`
+					);
 				} else {
-					log.error(`Failed to clear subtasks: ${result.error.message}`);
+					context.log.error(
+						`Failed to clear subtasks: ${result.error.message}`
+					);
 				}
 
 				return handleApiResult(
 					result,
-					log,
+					context.log,
 					'Error clearing subtasks',
 					undefined,
 					args.projectRoot
 				);
 			} catch (error) {
-				log.error(`Error in clearSubtasks tool: ${error.message}`);
+				context.log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { rulesDirect } from '../core/direct-functions/rules.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 
@@ -49,7 +49,11 @@ export function registerRulesTool(server) {
 					`[rules tool] Executing action: ${args.action} for profiles: ${args.profiles.join(', ')} in ${args.projectRoot}`
 				);
 				const result = await rulesDirect(args, log, { session });
-				return handleApiResult(result, log);
+				return handleApiResult({
+					result,
+					log,
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`[rules tool] Error: ${error.message}`);
 				return createErrorResponse(error.message, { details: error.stack });

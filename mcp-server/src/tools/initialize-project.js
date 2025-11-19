@@ -3,7 +3,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { initializeProjectDirect } from '../core/task-master-core.js';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 

@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
 	findTasksPath,

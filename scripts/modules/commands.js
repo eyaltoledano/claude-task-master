@@ -3,139 +3,142 @@
  * Command-line interface for the Task Master CLI
  */
 
-import { Command } from 'commander';
-import path from 'path';
-import chalk from 'chalk';
-import boxen from 'boxen';
 import fs from 'fs';
+import path from 'path';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import inquirer from 'inquirer';
 
-import { log, readJSON } from './utils.js';
 // Import command registry and utilities from @tm/cli
 import {
-	registerAllCommands,
 	checkForUpdate,
-	performAutoUpdate,
-	displayUpgradeNotification,
-	restartWithNewVersion,
 	displayError,
+	displayUpgradeNotification,
+	performAutoUpdate,
+	registerAllCommands,
+	restartWithNewVersion,
 	runInteractiveSetup
 } from '@tm/cli';
+import { log, readJSON } from './utils.js';
 
 import {
-	parsePRD,
-	updateTasks,
-	expandTask,
-	expandAllTasks,
-	clearSubtasks,
-	addTask,
 	addSubtask,
-	removeSubtask,
+	addTask,
 	analyzeTaskComplexity,
-	updateTaskById,
-	updateSubtaskById,
-	removeTask,
+	clearSubtasks,
+	expandAllTasks,
+	expandTask,
 	findTaskById,
-	taskExists,
-	moveTask,
 	migrateProject,
-	setResponseLanguage,
-	scopeUpTask,
+	moveTask,
+	parsePRD,
+	removeSubtask,
+	removeTask,
 	scopeDownTask,
+	scopeUpTask,
+	setResponseLanguage,
+	taskExists,
+	updateSubtaskById,
+	updateTaskById,
+	updateTasks,
 	validateStrength
 } from './task-manager.js';
 
 import { moveTasksBetweenTags } from './task-manager/move-task.js';
 
 import {
+	copyTag,
 	createTag,
 	deleteTag,
-	tags,
-	useTag,
 	renameTag,
-	copyTag
+	tags,
+	useTag
 } from './task-manager/tag-management.js';
 
 import {
 	addDependency,
+	fixDependenciesCommand,
 	removeDependency,
-	validateDependenciesCommand,
-	fixDependenciesCommand
+	validateDependenciesCommand
 } from './dependency-manager.js';
 
+import { checkAndBlockIfAuthenticated } from '@tm/cli';
+import { LOCAL_ONLY_COMMANDS } from '@tm/core';
+
 import {
-	isApiKeySet,
-	getDebugFlag,
 	ConfigurationError,
-	isConfigFilePresent,
-	getDefaultNumTasks
+	getDebugFlag,
+	getDefaultNumTasks,
+	isApiKeySet,
+	isConfigFilePresent
 } from './config-manager.js';
 
 import { CUSTOM_PROVIDERS } from '@tm/core';
 
 import {
 	COMPLEXITY_REPORT_FILE,
-	TASKMASTER_TASKS_FILE,
-	TASKMASTER_DOCS_DIR
+	TASKMASTER_DOCS_DIR,
+	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
 
 import { initTaskMaster } from '../../src/task-master.js';
 
 import {
-	displayBanner,
-	displayHelp,
-	displayComplexityReport,
-	getStatusWithColor,
-	confirmTaskOverwrite,
-	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayModelConfiguration,
-	displayAvailableModels,
-	displayApiKeyStatus,
-	displayTaggedTasksFYI,
-	displayCurrentTagIndicator,
-	displayCrossTagDependencyError,
-	displaySubtaskMoveError,
-	displayInvalidTagCombinationError,
-	displayDependencyValidationHints
-} from './ui.js';
-import {
 	confirmProfilesRemove,
 	confirmRemoveAllRemainingProfiles
 } from '../../src/ui/confirm.js';
 import {
-	wouldRemovalLeaveNoProfiles,
-	getInstalledProfiles
+	getInstalledProfiles,
+	wouldRemovalLeaveNoProfiles
 } from '../../src/utils/profiles.js';
+import {
+	confirmTaskOverwrite,
+	displayApiKeyStatus,
+	displayAvailableModels,
+	displayBanner,
+	displayComplexityReport,
+	displayCrossTagDependencyError,
+	displayCurrentTagIndicator,
+	displayDependencyValidationHints,
+	displayHelp,
+	displayInvalidTagCombinationError,
+	displayModelConfiguration,
+	displaySubtaskMoveError,
+	displayTaggedTasksFYI,
+	getStatusWithColor,
+	startLoadingIndicator,
+	stopLoadingIndicator
+} from './ui.js';
 
-import { initializeProject } from '../init.js';
-import {
-	getModelConfiguration,
-	getAvailableModelsList,
-	setModel,
-	getApiKeyStatusReport
-} from './task-manager/models.js';
-import {
-	isValidRulesAction,
-	RULES_ACTIONS,
-	RULES_SETUP_ACTION
-} from '../../src/constants/rules-actions.js';
-import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
-import { syncTasksToReadme } from './sync-readme.js';
 import { RULE_PROFILES } from '../../src/constants/profiles.js';
 import {
-	convertAllRulesToProfileRules,
-	removeProfileRules,
-	isValidProfile,
-	getRulesProfile
-} from '../../src/utils/rule-transformer.js';
+	RULES_ACTIONS,
+	RULES_SETUP_ACTION,
+	isValidRulesAction
+} from '../../src/constants/rules-actions.js';
+import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 import {
-	runInteractiveProfilesSetup,
-	generateProfileSummary,
 	categorizeProfileResults,
+	categorizeRemovalResults,
 	generateProfileRemovalSummary,
-	categorizeRemovalResults
+	generateProfileSummary,
+	runInteractiveProfilesSetup
 } from '../../src/utils/profiles.js';
+import {
+	convertAllRulesToProfileRules,
+	getRulesProfile,
+	isValidProfile,
+	removeProfileRules
+} from '../../src/utils/rule-transformer.js';
+import { initializeProject } from '../init.js';
+import { syncTasksToReadme } from './sync-readme.js';
+import {
+	getApiKeyStatusReport,
+	getAvailableModelsList,
+	getModelConfiguration,
+	setModel
+} from './task-manager/models.js';
 
 /**
  * Configure and register CLI commands
@@ -152,6 +155,23 @@ function registerCommands(programInstance) {
 			)
 		);
 		process.exit(1);
+	});
+
+	// Add global command guard for local-only commands
+	programInstance.hook('preAction', async (thisCommand, actionCommand) => {
+		const commandName = actionCommand.name();
+
+		// Only check if it's a local-only command
+		if (LOCAL_ONLY_COMMANDS.includes(commandName)) {
+			const taskMaster = initTaskMaster(actionCommand.opts());
+			const isBlocked = await checkAndBlockIfAuthenticated(
+				commandName,
+				taskMaster.getProjectRoot()
+			);
+			if (isBlocked) {
+				process.exit(1);
+			}
+		}
 	});
 
 	// parse-prd command

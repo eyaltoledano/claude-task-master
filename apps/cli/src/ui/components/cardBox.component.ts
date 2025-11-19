@@ -2,20 +2,27 @@ import boxen from 'boxen';
 import chalk from 'chalk';
 
 /**
+ * Level/variant for the card box styling
+ */
+export type CardBoxLevel = 'warn' | 'info';
+
+/**
  * Configuration for the card box component
  */
 export interface CardBoxConfig {
-	/** Header text displayed in yellow bold */
+	/** Header text displayed in bold */
 	header: string;
 	/** Body paragraphs displayed in white */
 	body: string[];
-	/** Call to action section with label and URL */
-	callToAction: {
+	/** Call to action section with label and URL (optional) */
+	callToAction?: {
 		label: string;
 		action: string;
 	};
 	/** Footer text displayed in gray (usage instructions) */
 	footer?: string;
+	/** Level/variant for styling (default: 'warn' = yellow, 'info' = blue) */
+	level?: CardBoxLevel;
 }
 
 /**
@@ -26,21 +33,29 @@ export interface CardBoxConfig {
  * @returns Formatted string ready for console.log
  */
 export function displayCardBox(config: CardBoxConfig): string {
-	const { header, body, callToAction, footer } = config;
+	const { header, body, callToAction, footer, level = 'warn' } = config;
+
+	// Determine colors based on level
+	const headerColor = level === 'info' ? chalk.blue.bold : chalk.yellow.bold;
+	const borderColor = level === 'info' ? 'blue' : 'yellow';
 
 	// Build the content sections
 	const sections: string[] = [
 		// Header
-		chalk.yellow.bold(header),
+		headerColor(header),
 
 		// Body paragraphs
-		...body.map((paragraph) => chalk.white(paragraph)),
-
-		// Call to action
-		chalk.cyan(callToAction.label) +
-			'\n' +
-			chalk.blue.underline(callToAction.action)
+		...body.map((paragraph) => chalk.white(paragraph))
 	];
+
+	// Add call to action if provided
+	if (callToAction && callToAction.label && callToAction.action) {
+		sections.push(
+			chalk.cyan(callToAction.label) +
+				'\n' +
+				chalk.blue.underline(callToAction.action)
+		);
+	}
 
 	// Add footer if provided
 	if (footer) {
@@ -53,7 +68,7 @@ export function displayCardBox(config: CardBoxConfig): string {
 	// Wrap in boxen
 	return boxen(content, {
 		padding: 1,
-		borderColor: 'yellow',
+		borderColor,
 		borderStyle: 'round',
 		margin: { top: 1, bottom: 1 }
 	});

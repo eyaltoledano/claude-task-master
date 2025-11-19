@@ -2,10 +2,16 @@
  * Shared utilities for MCP tools
  */
 
-import type { ContentResult } from 'fastmcp';
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
+import {
+	LOCAL_ONLY_COMMANDS,
+	createTmCore,
+	type LocalOnlyCommand
+} from '@tm/core';
+import type { ContentResult, Context } from 'fastmcp';
 import packageJson from '../../../../package.json' with { type: 'json' };
+import type { ToolContext } from './types.js';
 
 /**
  * Get version information
@@ -15,6 +21,82 @@ export function getVersionInfo() {
 		version: packageJson.version || 'unknown',
 		name: packageJson.name || 'task-master-ai'
 	};
+}
+
+/**
+ * Creates a content response for MCP tools
+ * FastMCP requires text type, so we format objects as JSON strings
+ */
+export function createContentResponse(content: any): ContentResult {
+	return {
+		content: [
+			{
+				type: 'text',
+				text:
+					typeof content === 'object'
+						? // Format JSON nicely with indentation
+							JSON.stringify(content, null, 2)
+						: // Keep other content types as-is
+							String(content)
+			}
+		]
+	};
+}
+
+/**
+ * Creates an error response for MCP tools
+ */
+export function createErrorResponse(
+	errorMessage: string,
+	versionInfo?: { version: string; name: string },
+	tagInfo?: { currentTag: string }
+): ContentResult {
+	// Provide fallback version info if not provided
+	if (!versionInfo) {
+		versionInfo = getVersionInfo();
+	}
+
+	let responseText = `Error: ${errorMessage}
+Version: ${versionInfo.version}
+Name: ${versionInfo.name}`;
+
+	// Add tag information if available
+	if (tagInfo) {
+		responseText += `
+Current Tag: ${tagInfo.currentTag}`;
+	}
+
+	return {
+		content: [
+			{
+				type: 'text',
+				text: responseText
+			}
+		],
+		isError: true
+	};
+}
+
+/**
+ * Function signature for progress reporting
+ */
+export type ReportProgressFn = (progress: number, total?: number) => void;
+
+/**
+ * Validate that reportProgress is available for long-running operations
+ */
+export function checkProgressCapability(
+	reportProgress: any,
+	log: any
+): ReportProgressFn | undefined {
+	if (typeof reportProgress !== 'function') {
+		log?.debug?.(
+			'reportProgress not available - operation will run without progress updates'
+		);
+		return undefined;
+	}
+
+	return reportProgress;
 }
 
 /**
@@ -183,7 +265,7 @@ function getProjectRootFromSession(session: any): string | null {
 export function withNormalizedProjectRoot<T extends { projectRoot?: string }>(
 	fn: (
 		args: T & { projectRoot: string },
-		context: any
+		context: Context<undefined>
 	) => Promise<ContentResult>
 ): (args: T, context: any) => Promise<ContentResult> {
 	return async (args: T, context: any): Promise<ContentResult> => {
@@ -267,4 +349,88 @@ export function withNormalizedProjectRoot<T extends { projectRoot?: string }>(
 			});
 		}
 	};
+}
+
+/**
+ * Tool execution function signature with tmCore provided
+ */
+export type ToolExecuteFn<TArgs = any, TResult = any> = (
+	args: TArgs,
+	context: ToolContext
+) => Promise<TResult>;
+
+/**
+ * Higher-order function that wraps MCP tool execution with:
+ * - Normalized project root (via withNormalizedProjectRoot)
+ * - TmCore instance creation
+ * - Command guard check (for local-only commands)
+ *
+ * Use this for ALL MCP tools to provide consistent context and auth checking.
+ *
+ * @param commandName - Name of the command (used for guard check)
+ * @param executeFn - Tool execution function that receives args and enhanced context
+ * @returns Wrapped execute function
+ *
+ * @example
+ * ```ts
+ * export function registerAddDependencyTool(server: FastMCP) {
+ *   server.addTool({
+ *     name: 'add_dependency',
+ *     parameters: AddDependencySchema,
+ *     execute: withToolContext('add-dependency', async (args, context) => {
+ *       // context.tmCore is already available
+ *       // Auth guard already checked
+ *       // Just implement the tool logic!
+ *     })
+ *   });
+ * }
+ * ```
+ */
+export function withToolContext<TArgs extends { projectRoot?: string }>(
+	commandName: string,
+	executeFn: ToolExecuteFn<TArgs & { projectRoot: string }, ContentResult>
+) {
+	return withNormalizedProjectRoot(
+		async (
+			args: TArgs & { projectRoot: string },
+			context: Context<undefined>
+		) => {
+			// Create tmCore instance
+			const tmCore = await createTmCore({
+				projectPath: args.projectRoot,
+				loggerConfig: { mcpMode: true, logCallback: context.log }
+			});
+
+			// Check if this is a local-only command that needs auth guard
+			if (LOCAL_ONLY_COMMANDS.includes(commandName as LocalOnlyCommand)) {
+				const authResult = await tmCore.auth.guardCommand(
+					commandName,
+					tmCore.tasks.getStorageType()
+				);
+
+				if (authResult.isBlocked) {
+					const errorMsg = `You're working on the ${authResult.briefName} Brief in Hamster so this command is managed for you. This command is only available for local file storage. Log out with 'tm auth logout' to use local commands.`;
+					context.log.info(errorMsg);
+					return handleApiResult({
+						result: {
+							success: false,
+							error: { message: errorMsg }
+						},
+						log: context.log,
+						projectRoot: args.projectRoot
+					});
+				}
+			}
+
+			// Create enhanced context with tmCore
+			const enhancedContext: ToolContext = {
+				log: context.log,
+				session: context.session,
+				tmCore
+			};
+
+			// Execute the actual tool logic with enhanced context
+			return executeFn(args, enhancedContext);
+		}
+	);
 }

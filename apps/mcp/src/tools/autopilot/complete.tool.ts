@@ -3,14 +3,11 @@
  * Complete the current TDD phase with test result validation
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withNormalizedProjectRoot
-} from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const CompletePhaseSchema = z.object({
 	projectRoot: z
@@ -37,14 +34,13 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 		description:
 			'Complete the current TDD phase (RED, GREEN, or COMMIT) with test result validation. RED phase: expects failures (if 0 failures, feature is already implemented and subtask auto-completes). GREEN phase: expects all tests passing.',
 		parameters: CompletePhaseSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: CompletePhaseArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-complete-phase',
+			async (args: CompletePhaseArgs, { log }: ToolContext) => {
 				const { projectRoot, testResults } = args;
 
 				try {
-					context.log.info(
-						`Completing current phase in workflow for ${projectRoot}`
-					);
+					log.info(`Completing current phase in workflow for ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -58,7 +54,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 										'No active workflow found. Start a workflow with autopilot_start'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -76,7 +72,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 									message: `Cannot complete phase: not in a TDD phase (current phase: ${currentStatus.phase})`
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -91,7 +87,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 										'Cannot complete COMMIT phase with this tool. Use autopilot_commit instead'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -112,7 +108,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 					const status = await workflowService.completePhase(fullTestResults);
 					const nextAction = workflowService.getNextAction();
 
-					context.log.info(
+					log.info(
 						`Phase completed. New phase: ${status.tddPhase || status.phase}`
 					);
 
@@ -127,13 +123,13 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 								nextSteps: nextAction.nextSteps
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-complete: ${error.message}`);
+					log.error(`Error in autopilot-complete: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -142,7 +138,7 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 								message: `Failed to complete phase: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

@@ -12,6 +12,12 @@ export {
 	type CheckAuthOptions
 } from './auth-helpers.js';
 
+// Command guard for local-only commands
+export {
+	checkAndBlockIfAuthenticated,
+	checkAndBlockDependencyCommand // Legacy export
+} from './command-guard.js';
+
 // Error handling utilities
 export { displayError, isDebugMode } from './error-handler.js';
 
