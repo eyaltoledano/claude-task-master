@@ -1,6 +1,18 @@
 import { Task, TaskTag } from '../../../common/types/index.js';
 import { LoadTasksOptions } from '../../../common/interfaces/storage.interface.js';
 
+/**
+ * Brief information
+ */
+export interface Brief {
+	id: string;
+	accountId: string;
+	createdAt: string;
+	name?: string;
+	description?: string;
+	status?: string;
+}
+
 export interface TaskRepository {
 	// Task operations
 	getTasks(projectId: string, options?: LoadTasksOptions): Promise<Task[]>;
@@ -12,6 +24,9 @@ export interface TaskRepository {
 		updates: Partial<Task>
 	): Promise<Task>;
 	deleteTask(projectId: string, taskId: string): Promise<void>;
+
+	// Brief operations
+	getBrief(briefId: string): Promise<Brief | null>;
 
 	// Tag operations
 	getTags(projectId: string): Promise<TaskTag[]>;

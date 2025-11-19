@@ -91,10 +91,8 @@ export class VertexAIProvider extends BaseAIProvider {
 	 */
 	getClient(params) {
 		try {
-			// Validate required parameters
-			this.validateAuth(params);
-
 			const { apiKey, projectId, location, credentials, baseURL } = params;
+			const fetchImpl = this.createProxyFetch();
 
 			// Configure auth options - either API key or service account
 			const authOptions = {};
@@ -109,7 +107,8 @@ export class VertexAIProvider extends BaseAIProvider {
 				...authOptions,
 				projectId,
 				location,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

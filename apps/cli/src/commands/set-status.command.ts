@@ -3,12 +3,13 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { createTmCore, type TmCore, type TaskStatus } from '@tm/core';
+import { type TaskStatus, type TmCore, createTmCore } from '@tm/core';
 import type { StorageType } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
 
 /**
  * Valid task status values for validation
@@ -70,7 +71,10 @@ export class SetStatusCommand extends Command {
 			)
 			.option('-f, --format <format>', 'Output format (text, json)', 'text')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(async (options: SetStatusCommandOptions) => {
 				await this.executeCommand(options);
 			});
@@ -109,7 +113,7 @@ export class SetStatusCommand extends Command {
 
 			// Initialize TaskMaster core
 			this.tmCore = await createTmCore({
-				projectPath: options.project || process.cwd()
+				projectPath: getProjectRoot(options.project)
 			});
 
 			// Parse task IDs (handle comma-separated values)

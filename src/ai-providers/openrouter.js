@@ -32,10 +32,6 @@ export class OpenRouterAIProvider extends BaseAIProvider {
 		try {
 			const { apiKey, baseURL } = params;
 
-			if (!apiKey) {
-				throw new Error('OpenRouter API key is required.');
-			}
-
 			return createOpenRouter({
 				apiKey,
 				...(baseURL && { baseURL })

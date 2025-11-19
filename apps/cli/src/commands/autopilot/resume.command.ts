@@ -2,14 +2,15 @@
  * @fileoverview Resume Command - Restore and resume TDD workflow
  */
 
-import { Command } from 'commander';
 import { WorkflowOrchestrator } from '@tm/core';
+import { Command } from 'commander';
 import {
 	AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
+import { getProjectRoot } from '../../utils/project-root.js';
 
 type ResumeOptions = AutopilotBaseOptions;
 
@@ -33,8 +34,9 @@ export class ResumeCommand extends Command {
 		const mergedOptions: ResumeOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

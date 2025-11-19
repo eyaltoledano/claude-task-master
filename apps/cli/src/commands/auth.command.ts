@@ -3,19 +3,19 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import inquirer from 'inquirer';
-import ora, { type Ora } from 'ora';
-import open from 'open';
 import {
+	type AuthCredentials,
 	AuthManager,
-	AuthenticationError,
-	type AuthCredentials
+	AuthenticationError
 } from '@tm/core';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import inquirer from 'inquirer';
+import open from 'open';
+import ora, { type Ora } from 'ora';
+import { displayError } from '../utils/error-handler.js';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
-import { displayError } from '../utils/error-handler.js';
 
 /**
  * Result type from auth command
@@ -408,14 +408,14 @@ Examples:
 						}
 					} else {
 						console.log(
-							chalk.yellow('⚠ Context setup was skipped or encountered issues')
+							chalk.yellow('⚠️ Context setup was skipped or encountered issues')
 						);
 						console.log(
 							chalk.gray('  You can set up context later with "tm context"')
 						);
 					}
 				} catch (contextError) {
-					console.log(chalk.yellow('⚠ Context setup encountered an error'));
+					console.log(chalk.yellow('⚠️ Context setup encountered an error'));
 					console.log(
 						chalk.gray('  You can set up context later with "tm context"')
 					);
@@ -551,14 +551,14 @@ Examples:
 						}
 					} else {
 						console.log(
-							chalk.yellow('⚠ Context setup was skipped or encountered issues')
+							chalk.yellow('⚠️ Context setup was skipped or encountered issues')
 						);
 						console.log(
 							chalk.gray('  You can set up context later with "tm context"')
 						);
 					}
 				} catch (contextError) {
-					console.log(chalk.yellow('⚠ Context setup encountered an error'));
+					console.log(chalk.yellow('⚠️ Context setup encountered an error'));
 					console.log(
 						chalk.gray('  You can set up context later with "tm context"')
 					);

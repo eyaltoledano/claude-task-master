@@ -7,11 +7,11 @@
  */
 
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import os from 'node:os';
+import path from 'node:path';
 import { Writer } from 'steno';
-import type { WorkflowState } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
+import type { WorkflowState } from '../types.js';
 
 export interface WorkflowStateBackup {
 	timestamp: string;

@@ -2,10 +2,10 @@
  * @fileoverview Unit tests for RuntimeStateManager service
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
-import { RuntimeStateManager } from './runtime-state-manager.service.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
+import { RuntimeStateManager } from './runtime-state-manager.service.js';
 
 vi.mock('node:fs', () => ({
 	promises: {

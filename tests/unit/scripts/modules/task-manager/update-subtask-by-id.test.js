@@ -23,14 +23,25 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isEmpty: jest.fn(() => false),
 	resolveEnvVariable: jest.fn(),
 	findTaskById: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master')
+	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
+	addComplexityToTask: jest.fn((task, complexity) => ({ ...task, complexity })),
+	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
+	setTasksForTag: jest.fn(),
+	ensureTagMetadata: jest.fn((tagObj) => tagObj)
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
+	displayBanner: jest.fn(),
 	getStatusWithColor: jest.fn((s) => s),
 	startLoadingIndicator: jest.fn(() => ({ stop: jest.fn() })),
 	stopLoadingIndicator: jest.fn(),
-	displayAiUsageSummary: jest.fn()
+	succeedLoadingIndicator: jest.fn(),
+	failLoadingIndicator: jest.fn(),
+	warnLoadingIndicator: jest.fn(),
+	infoLoadingIndicator: jest.fn(),
+	displayAiUsageSummary: jest.fn(),
+	displayContextAnalysis: jest.fn()
 }));
 
 jest.unstable_mockModule(
@@ -77,6 +88,38 @@ jest.unstable_mockModule(
 				fullContext: '',
 				summary: ''
 			})
+		}))
+	})
+);
+
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryUpdateViaRemote: jest.fn().mockResolvedValue(null)
+}));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
+
+// Mock fuzzyTaskSearch module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/fuzzyTaskSearch.js',
+	() => ({
+		FuzzyTaskSearch: jest.fn().mockImplementation(() => ({
+			search: jest.fn().mockReturnValue([])
 		}))
 	})
 );

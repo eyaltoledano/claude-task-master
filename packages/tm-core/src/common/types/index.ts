@@ -73,6 +73,9 @@ export interface Task {
 	tags?: string[];
 	assignee?: string;
 
+	// Database UUID (for API calls that need the actual UUID instead of display_id)
+	databaseId?: string;
+
 	// Complexity analysis (from complexity report)
 	// Can be either enum ('simple' | 'moderate' | 'complex' | 'very-complex') or numeric score (1-10)
 	complexity?: TaskComplexity | number;
@@ -102,6 +105,8 @@ export interface TaskMetadata {
 	projectName?: string;
 	description?: string;
 	tags?: string[];
+	created?: string;
+	updated?: string;
 }
 
 /**

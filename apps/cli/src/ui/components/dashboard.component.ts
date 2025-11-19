@@ -3,9 +3,10 @@
  * Displays project statistics and dependency information
  */
 
-import chalk from 'chalk';
+import type { Task, TaskPriority, TaskStatus } from '@tm/core';
 import boxen from 'boxen';
-import type { Task, TaskPriority } from '@tm/core';
+import chalk from 'chalk';
+import { isTaskComplete } from '../../utils/task-status.js';
 import { getComplexityWithColor } from '../../utils/ui.js';
 
 /**
@@ -21,6 +22,8 @@ export interface TaskStatistics {
 	cancelled: number;
 	review?: number;
 	completionPercentage: number;
+	/** Count of all terminal complete tasks (done + completed + cancelled) */
+	completedCount: number;
 }
 
 /**
@@ -50,6 +53,7 @@ export interface NextTaskInfo {
  * Status breakdown for progress bars
  */
 export interface StatusBreakdown {
+	done?: number;
 	'in-progress'?: number;
 	pending?: number;
 	blocked?: number;
@@ -78,14 +82,17 @@ function createProgressBar(
 	let bar = '';
 	let charsUsed = 0;
 
-	// 1. Green filled blocks for completed tasks (done)
-	const completedChars = Math.round((completionPercentage / 100) * width);
-	if (completedChars > 0) {
-		bar += chalk.green('█').repeat(completedChars);
-		charsUsed += completedChars;
+	// 1. Green filled blocks for done tasks only
+	// Note: completionPercentage includes cancelled, but we show them separately in the bar
+	if (statusBreakdown.done && statusBreakdown.done > 0) {
+		const doneChars = Math.round((statusBreakdown.done / 100) * width);
+		if (doneChars > 0) {
+			bar += chalk.green('█').repeat(doneChars);
+			charsUsed += doneChars;
+		}
 	}
 
-	// 2. Gray filled blocks for cancelled (won't be done)
+	// 2. Gray filled blocks for cancelled (terminal complete, but visually distinct)
 	if (statusBreakdown.cancelled && charsUsed < width) {
 		const cancelledChars = Math.round(
 			(statusBreakdown.cancelled / 100) * width
@@ -170,7 +177,8 @@ export function calculateTaskStatistics(tasks: Task[]): TaskStatistics {
 		deferred: 0,
 		cancelled: 0,
 		review: 0,
-		completionPercentage: 0
+		completionPercentage: 0,
+		completedCount: 0
 	};
 
 	tasks.forEach((task) => {
@@ -199,8 +207,12 @@ export function calculateTaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
+	// Count terminal complete tasks for percentage calculation and display
+	stats.completedCount = tasks.filter((t) => isTaskComplete(t.status)).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+		stats.total > 0
+			? Math.round((stats.completedCount / stats.total) * 100)
+			: 0;
 
 	return stats;
 }
@@ -218,13 +230,16 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		deferred: 0,
 		cancelled: 0,
 		review: 0,
-		completionPercentage: 0
+		completionPercentage: 0,
+		completedCount: 0
 	};
 
+	const allSubtasks: Array<{ status: string }> = [];
 	tasks.forEach((task) => {
 		if (task.subtasks && task.subtasks.length > 0) {
 			task.subtasks.forEach((subtask) => {
 				stats.total++;
+				allSubtasks.push(subtask);
 				switch (subtask.status) {
 					case 'done':
 						stats.done++;
@@ -252,8 +267,14 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 		}
 	});
 
+	// Count terminal complete subtasks for percentage calculation and display
+	stats.completedCount = allSubtasks.filter((st) =>
+		isTaskComplete(st.status as TaskStatus)
+	).length;
 	stats.completionPercentage =
-		stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+		stats.total > 0
+			? Math.round((stats.completedCount / stats.total) * 100)
+			: 0;
 
 	return stats;
 }
@@ -264,18 +285,20 @@ export function calculateSubtaskStatistics(tasks: Task[]): TaskStatistics {
 export function calculateDependencyStatistics(
 	tasks: Task[]
 ): DependencyStatistics {
+	// Get all terminal complete task IDs - these satisfy dependencies
 	const completedTaskIds = new Set(
-		tasks.filter((t) => t.status === 'done').map((t) => t.id)
+		tasks.filter((t) => isTaskComplete(t.status)).map((t) => t.id)
 	);
 
 	const tasksWithNoDeps = tasks.filter(
 		(t) =>
-			t.status !== 'done' && (!t.dependencies || t.dependencies.length === 0)
+			!isTaskComplete(t.status) &&
+			(!t.dependencies || t.dependencies.length === 0)
 	).length;
 
 	const tasksWithAllDepsSatisfied = tasks.filter(
 		(t) =>
-			t.status !== 'done' &&
+			!isTaskComplete(t.status) &&
 			t.dependencies &&
 			t.dependencies.length > 0 &&
 			t.dependencies.every((depId) => completedTaskIds.has(depId))
@@ -283,7 +306,7 @@ export function calculateDependencyStatistics(
 
 	const tasksBlockedByDeps = tasks.filter(
 		(t) =>
-			t.status !== 'done' &&
+			!isTaskComplete(t.status) &&
 			t.dependencies &&
 			t.dependencies.length > 0 &&
 			!t.dependencies.every((depId) => completedTaskIds.has(depId))
@@ -356,6 +379,7 @@ function calculateStatusBreakdown(stats: TaskStatistics): StatusBreakdown {
 	if (stats.total === 0) return {};
 
 	return {
+		done: (stats.done / stats.total) * 100,
 		'in-progress': (stats.inProgress / stats.total) * 100,
 		pending: (stats.pending / stats.total) * 100,
 		blocked: (stats.blocked / stats.total) * 100,
@@ -378,7 +402,9 @@ function formatStatusLine(
 
 	// Order: Done, Cancelled, Deferred, In Progress, Review, Pending, Blocked
 	if (isSubtask) {
-		parts.push(`Completed: ${chalk.green(`${stats.done}/${stats.total}`)}`);
+		parts.push(
+			`Completed: ${chalk.green(`${stats.completedCount}/${stats.total}`)}`
+		);
 	} else {
 		parts.push(`Done: ${chalk.green(stats.done)}`);
 	}
@@ -424,8 +450,8 @@ export function displayProjectDashboard(
 		subtaskStatusBreakdown
 	);
 
-	const taskPercentage = `${taskStats.completionPercentage}% ${taskStats.done}/${taskStats.total}`;
-	const subtaskPercentage = `${subtaskStats.completionPercentage}% ${subtaskStats.done}/${subtaskStats.total}`;
+	const taskPercentage = `${taskStats.completionPercentage}% ${taskStats.completedCount}/${taskStats.total}`;
+	const subtaskPercentage = `${subtaskStats.completionPercentage}% ${subtaskStats.completedCount}/${subtaskStats.total}`;
 
 	const content =
 		chalk.white.bold('Project Dashboard') +

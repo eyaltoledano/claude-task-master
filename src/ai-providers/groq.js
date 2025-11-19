@@ -34,10 +34,6 @@ export class GroqProvider extends BaseAIProvider {
 		try {
 			const { apiKey, baseURL } = params;
 
-			if (!apiKey) {
-				throw new Error('Groq API key is required.');
-			}
-
 			return createGroq({
 				apiKey,
 				...(baseURL && { baseURL })

@@ -37,22 +37,20 @@ export class AnthropicAIProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Anthropic API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} Anthropic client function
-	 * @throws {Error} If API key is missing or initialization fails
+	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('Anthropic API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createAnthropic({
 				apiKey,
 				...(baseURL && { baseURL }),
 				headers: {
 					'anthropic-beta': 'output-128k-2025-02-19'
-				}
+				},
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

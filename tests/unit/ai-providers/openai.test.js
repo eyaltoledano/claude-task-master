@@ -85,8 +85,10 @@ describe('OpenAIProvider', () => {
 	});
 
 	describe('getClient', () => {
-		it('should throw error if API key is missing', () => {
-			expect(() => provider.getClient({})).toThrow(Error);
+		it('should create client even without API key (validation deferred to SDK)', () => {
+			// getClient() no longer validates API key - validation is deferred to SDK initialization
+			const client = provider.getClient({});
+			expect(typeof client).toBe('function');
 		});
 
 		it('should create client with apiKey only', () => {

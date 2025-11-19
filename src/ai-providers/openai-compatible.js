@@ -96,11 +96,7 @@ export class OpenAICompatibleProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey } = params;
-
-			// Validate API key if required
-			if (this.requiresApiKey && !apiKey) {
-				throw new Error(`${this.name} API key is required.`);
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			const baseURL = this.getBaseURL(params);
 
@@ -122,6 +118,11 @@ export class OpenAICompatibleProvider extends BaseAIProvider {
 			// Configure structured outputs support if specified
 			if (this.supportsStructuredOutputs !== undefined) {
 				clientConfig.supportsStructuredOutputs = this.supportsStructuredOutputs;
+			}
+
+			// Add proxy support if available
+			if (fetchImpl) {
+				clientConfig.fetch = fetchImpl;
 			}
 
 			return createOpenAICompatible(clientConfig);

@@ -5,13 +5,13 @@
  */
 
 import { Command } from 'commander';
-import { StartCommand } from './start.command.js';
-import { ResumeCommand } from './resume.command.js';
-import { NextCommand } from './next.command.js';
-import { CompleteCommand } from './complete.command.js';
-import { CommitCommand } from './commit.command.js';
-import { StatusCommand } from './status.command.js';
 import { AbortCommand } from './abort.command.js';
+import { CommitCommand } from './commit.command.js';
+import { CompleteCommand } from './complete.command.js';
+import { NextCommand } from './next.command.js';
+import { ResumeCommand } from './resume.command.js';
+import { StartCommand } from './start.command.js';
+import { StatusCommand } from './status.command.js';
 
 /**
  * Shared command options for all autopilot commands
@@ -37,8 +37,7 @@ export class AutopilotCommand extends Command {
 			.option('-v, --verbose', 'Enable verbose output')
 			.option(
 				'-p, --project-root <path>',
-				'Project root directory',
-				process.cwd()
+				'Project root directory (auto-detected if not specified)'
 			);
 
 		// Register subcommands

@@ -26,19 +26,17 @@ export class OpenAIProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - OpenAI API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} OpenAI client function
-	 * @throws {Error} If API key is missing or initialization fails
+	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('OpenAI API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createOpenAI({
 				apiKey,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

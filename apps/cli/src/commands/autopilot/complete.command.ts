@@ -2,13 +2,14 @@
  * @fileoverview Complete Command - Complete current TDD phase with validation
  */
 
+import { type TestResult, WorkflowOrchestrator } from '@tm/core';
 import { Command } from 'commander';
-import { WorkflowOrchestrator, TestResult } from '@tm/core';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
-	AutopilotBaseOptions,
+	type AutopilotBaseOptions,
+	OutputFormatter,
 	hasWorkflowState,
-	loadWorkflowState,
-	OutputFormatter
+	loadWorkflowState
 } from './shared.js';
 
 interface CompleteOptions extends AutopilotBaseOptions {
@@ -40,8 +41,9 @@ export class CompleteCommand extends Command {
 		const mergedOptions: CompleteOptions = {
 			...parentOpts,
 			...options,
-			projectRoot:
-				options.projectRoot || parentOpts?.projectRoot || process.cwd()
+			projectRoot: getProjectRoot(
+				options.projectRoot || parentOpts?.projectRoot
+			)
 		};
 
 		const formatter = new OutputFormatter(mergedOptions.json || false);

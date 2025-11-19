@@ -2,16 +2,16 @@
  * @fileoverview Custom provider handlers for model setup
  */
 
+import { CUSTOM_PROVIDERS } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { CUSTOM_PROVIDERS } from '@tm/core';
+import { validateOllamaModel, validateOpenRouterModel } from './fetchers.js';
+import { CUSTOM_PROVIDER_IDS } from './types.js';
 import type {
 	CustomProviderConfig,
 	CustomProviderId,
-	CUSTOM_PROVIDER_IDS,
 	ModelRole
 } from './types.js';
-import { validateOpenRouterModel, validateOllamaModel } from './fetchers.js';
 
 /**
  * Configuration for all custom providers

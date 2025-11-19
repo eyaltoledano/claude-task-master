@@ -32,7 +32,7 @@ jest.mock('chalk', () => ({
 	blue: jest.fn((text) => text),
 	green: jest.fn((text) => text),
 	yellow: jest.fn((text) => text),
-	white: jest.fn((text) => ({
+	white: jest.fn(() => ({
 		bold: jest.fn((text) => text)
 	})),
 	reset: jest.fn((text) => text),
@@ -146,6 +146,7 @@ const DEFAULT_CONFIG = {
 		ollamaBaseURL: 'http://localhost:11434/api',
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
 		enableCodebaseAnalysis: true,
+		enableProxy: false,
 		responseLanguage: 'English'
 	},
 	claudeCode: {},

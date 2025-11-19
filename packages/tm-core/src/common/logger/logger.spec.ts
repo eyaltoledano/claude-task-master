@@ -2,8 +2,8 @@
  * @fileoverview Tests for MCP logging integration
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Logger, LogLevel, type LogCallback } from './logger.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type LogCallback, LogLevel, Logger } from './logger.js';
 
 describe('Logger - MCP Integration', () => {
 	// Store original environment

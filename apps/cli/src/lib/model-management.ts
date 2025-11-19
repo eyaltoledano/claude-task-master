@@ -5,9 +5,9 @@
  */
 
 // @ts-ignore - JavaScript module without types
-import * as modelsJs from '../../../../scripts/modules/task-manager/models.js';
-// @ts-ignore - JavaScript module without types
 import * as configManagerJs from '../../../../scripts/modules/config-manager.js';
+// @ts-ignore - JavaScript module without types
+import * as modelsJs from '../../../../scripts/modules/task-manager/models.js';
 
 // ========== Types ==========
 

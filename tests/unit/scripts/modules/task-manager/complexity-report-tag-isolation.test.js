@@ -7,6 +7,34 @@ import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 
+// Mock fs module - consolidated single registration
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+const mockUnlinkSync = jest.fn();
+const mockMkdirSync = jest.fn();
+const mockReaddirSync = jest.fn(() => []);
+const mockStatSync = jest.fn(() => ({ isDirectory: () => false }));
+
+jest.unstable_mockModule('fs', () => ({
+	default: {
+		existsSync: mockExistsSync,
+		readFileSync: mockReadFileSync,
+		writeFileSync: mockWriteFileSync,
+		unlinkSync: mockUnlinkSync,
+		mkdirSync: mockMkdirSync,
+		readdirSync: mockReaddirSync,
+		statSync: mockStatSync
+	},
+	existsSync: mockExistsSync,
+	readFileSync: mockReadFileSync,
+	writeFileSync: mockWriteFileSync,
+	unlinkSync: mockUnlinkSync,
+	mkdirSync: mockMkdirSync,
+	readdirSync: mockReaddirSync,
+	statSync: mockStatSync
+}));
+
 // Mock the dependencies
 jest.unstable_mockModule('../../../../../src/utils/path-utils.js', () => ({
 	resolveComplexityReportOutputPath: jest.fn(),
@@ -59,6 +87,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	aggregateTelemetry: jest.fn((telemetryArray) => telemetryArray[0] || {}),
 	ensureTagMetadata: jest.fn((tagObj) => tagObj),
 	getCurrentTag: jest.fn(() => 'master'),
+	resolveTag: jest.fn(() => 'master'),
 	markMigrationForNotice: jest.fn(),
 	performCompleteTagMigration: jest.fn(),
 	setTasksForTag: jest.fn(),
@@ -363,7 +392,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
-			loadPrompt: jest.fn().mockResolvedValue({
+			loadPrompt: jest.fn().mockReturnValue({
 				systemPrompt: 'Mocked system prompt',
 				userPrompt: 'Mocked user prompt'
 			})
@@ -447,24 +476,29 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	getContextWithColor: jest.fn((context) => context)
 }));
 
-// Mock fs module
-const mockWriteFileSync = jest.fn();
-const mockExistsSync = jest.fn();
-const mockReadFileSync = jest.fn();
-const mockMkdirSync = jest.fn();
+// fs module already mocked at top of file with shared spy references
 
-jest.unstable_mockModule('fs', () => ({
-	default: {
-		existsSync: mockExistsSync,
-		readFileSync: mockReadFileSync,
-		writeFileSync: mockWriteFileSync,
-		mkdirSync: mockMkdirSync
-	},
-	existsSync: mockExistsSync,
-	readFileSync: mockReadFileSync,
-	writeFileSync: mockWriteFileSync,
-	mkdirSync: mockMkdirSync
+// Mock @tm/bridge module
+jest.unstable_mockModule('@tm/bridge', () => ({
+	tryExpandViaRemote: jest.fn().mockResolvedValue(null)
 }));
+
+// Mock bridge-utils module
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/bridge-utils.js',
+	() => ({
+		createBridgeLogger: jest.fn(() => ({
+			logger: {
+				info: jest.fn(),
+				warn: jest.fn(),
+				error: jest.fn(),
+				debug: jest.fn()
+			},
+			report: jest.fn(),
+			isMCP: false
+		}))
+	})
+);
 
 // Import the mocked modules
 const { resolveComplexityReportOutputPath, findComplexityReportPath } =

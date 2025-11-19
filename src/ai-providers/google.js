@@ -26,19 +26,17 @@ export class GoogleAIProvider extends BaseAIProvider {
 	 * @param {string} params.apiKey - Google API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
 	 * @returns {Function} Google AI client function
-	 * @throws {Error} If API key is missing or initialization fails
+	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
-
-			if (!apiKey) {
-				throw new Error('Google API key is required.');
-			}
+			const fetchImpl = this.createProxyFetch();
 
 			return createGoogleGenerativeAI({
 				apiKey,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

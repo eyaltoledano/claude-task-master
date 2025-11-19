@@ -57,10 +57,10 @@ describe('ZAICodingProvider', () => {
 			// The provider should use the coding endpoint
 		});
 
-		it('should throw error when API key is missing', () => {
-			expect(() => {
-				provider.getClient({});
-			}).toThrow('Z.ai (Coding Plan) API key is required.');
+		it('should create client even without API key (validation deferred to SDK)', () => {
+			// getClient() no longer validates API key - validation is deferred to SDK initialization
+			const client = provider.getClient({});
+			expect(typeof client).toBe('function');
 		});
 	});
 

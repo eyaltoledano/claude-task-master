@@ -3,33 +3,35 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
 import {
-	createTmCore,
+	OUTPUT_FORMATS,
+	type OutputFormat,
+	STATUS_ICONS,
+	TASK_STATUSES,
 	type Task,
 	type TaskStatus,
 	type TmCore,
-	TASK_STATUSES,
-	OUTPUT_FORMATS,
-	STATUS_ICONS,
-	type OutputFormat
+	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { displayError } from '../utils/error-handler.js';
-import { displayCommandHeader } from '../utils/display-helpers.js';
+import chalk from 'chalk';
+import { Command } from 'commander';
 import {
-	displayDashboards,
-	calculateTaskStatistics,
-	calculateSubtaskStatistics,
+	type NextTaskInfo,
 	calculateDependencyStatistics,
-	getPriorityBreakdown,
+	calculateSubtaskStatistics,
+	calculateTaskStatistics,
+	displayDashboards,
 	displayRecommendedNextTask,
-	getTaskDescription,
 	displaySuggestedNextSteps,
-	type NextTaskInfo
+	getPriorityBreakdown,
+	getTaskDescription
 } from '../ui/index.js';
+import { displayCommandHeader } from '../utils/display-helpers.js';
+import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
+import { isTaskComplete } from '../utils/task-status.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Options interface for the list command
@@ -39,6 +41,7 @@ export interface ListCommandOptions {
 	tag?: string;
 	withSubtasks?: boolean;
 	format?: OutputFormat;
+	json?: boolean;
 	silent?: boolean;
 	project?: string;
 }
@@ -76,8 +79,12 @@ export class ListTasksCommand extends Command {
 				'Output format (text, json, compact)',
 				'text'
 			)
+			.option('--json', 'Output in JSON format (shorthand for --format json)')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
-			.option('-p, --project <path>', 'Project root directory', process.cwd())
+			.option(
+				'-p, --project <path>',
+				'Project root directory (auto-detected if not provided)'
+			)
 			.action(async (options: ListCommandOptions) => {
 				await this.executeCommand(options);
 			});
@@ -93,8 +100,8 @@ export class ListTasksCommand extends Command {
 				process.exit(1);
 			}
 
-			// Initialize tm-core
-			await this.initializeCore(options.project || process.cwd());
+			// Initialize tm-core (project root auto-detected if not provided)
+			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get tasks from core
 			const result = await this.getTasks(options);
@@ -189,7 +196,10 @@ export class ListTasksCommand extends Command {
 		result: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const format = (options.format || 'text') as OutputFormat | 'text';
+		// If --json flag is set, override format to 'json'
+		const format = (
+			options.json ? 'json' : options.format || 'text'
+		) as OutputFormat;
 
 		switch (format) {
 			case 'json':
@@ -340,12 +350,12 @@ export class ListTasksCommand extends Command {
 		// Build set of completed task IDs (including subtasks)
 		const completedIds = new Set<string>();
 		tasks.forEach((t) => {
-			if (t.status === 'done' || t.status === 'completed') {
+			if (isTaskComplete(t.status)) {
 				completedIds.add(String(t.id));
 			}
 			if (t.subtasks) {
 				t.subtasks.forEach((st) => {
-					if (st.status === 'done' || st.status === 'completed') {
+					if (isTaskComplete(st.status as TaskStatus)) {
 						completedIds.add(`${t.id}.${st.id}`);
 					}
 				});

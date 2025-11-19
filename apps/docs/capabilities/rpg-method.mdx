@@ -9,14 +9,14 @@ The RPG (Repository Planning Graph) method is an advanced approach to creating P
 
 ## When to Use RPG
 
-Use the RPG template (`example_prd_rpg.txt`) for:
+Use the RPG template (`example_prd_rpg.md`) for:
 
 - **Complex multi-module systems** with intricate dependencies
 - **Large-scale codebases** being built from scratch
 - **Projects requiring explicit architecture** and clear module boundaries
 - **Teams needing dependency visibility** for parallel development
 
-For simpler features or smaller projects, the standard `example_prd.txt` template may be more appropriate.
+For simpler features or smaller projects, the standard `example_prd.md` template may be more appropriate.
 
 ---
 
@@ -180,7 +180,7 @@ Use a code-context-aware tool to fill out the template:
 ### Step 2: Parse PRD into Tasks
 
 ```bash
-task-master parse-prd .taskmaster/docs/your-prd.txt --research
+task-master parse-prd .taskmaster/docs/your-prd.md --research
 ```
 
 Task Master will:
@@ -303,10 +303,10 @@ Without test strategy, the AI won't know what to test during implementation.
 ## Example Workflow
 
 1. **Discuss idea with AI**: Explain your project concept
-2. **Reference RPG template**: Show AI the `example_prd_rpg.txt`
+2. **Reference RPG template**: Show AI the `example_prd_rpg.md`
 3. **Co-create PRD**: Work through each section with AI guidance
-4. **Save to docs**: Place in `.taskmaster/docs/your-project.txt`
-5. **Parse PRD**: `task-master parse-prd .taskmaster/docs/your-project.txt --research`
+4. **Save to docs**: Place in `.taskmaster/docs/your-project.md` (use `.md` for better editor support)
+5. **Parse PRD**: `task-master parse-prd .taskmaster/docs/your-project.md --research`
 6. **Analyze**: `task-master analyze-complexity --research`
 7. **Expand**: `task-master expand --all --research`
 8. **Start work**: `task-master next`

@@ -11,8 +11,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { UserContext, AuthenticationError } from '../types.js';
 import { getLogger } from '../../../common/logger/index.js';
+import { AuthenticationError, UserContext } from '../types.js';
 
 const DEFAULT_CONTEXT_FILE = path.join(
 	process.env.HOME || process.env.USERPROFILE || '~',

@@ -123,3 +123,120 @@ export const crossLevelDependencyTasks = {
 		}
 	]
 };
+
+// ============================================================================
+// Tagged Format Fixtures (for tag-aware system tests)
+// ============================================================================
+
+/**
+ * Single task in master tag - minimal fixture
+ * Use: Basic happy path tests
+ */
+export const taggedOneTask = {
+	tag: 'master',
+	tasks: [
+		{
+			id: 1,
+			title: 'Task 1',
+			description: 'First task',
+			status: 'pending',
+			dependencies: [],
+			priority: 'medium'
+		}
+	]
+};
+
+/**
+ * Task with subtasks in master tag
+ * Use: Testing subtask operations (expand, update-subtask)
+ */
+export const taggedTaskWithSubtasks = {
+	tag: 'master',
+	tasks: [
+		{
+			id: 1,
+			title: 'Parent Task',
+			description: 'Task with subtasks',
+			status: 'in-progress',
+			dependencies: [],
+			priority: 'high',
+			subtasks: [
+				{
+					id: 1,
+					title: 'Subtask 1.1',
+					description: 'First subtask',
+					status: 'done',
+					dependencies: []
+				},
+				{
+					id: 2,
+					title: 'Subtask 1.2',
+					description: 'Second subtask',
+					status: 'pending',
+					dependencies: [1]
+				}
+			]
+		}
+	]
+};
+
+/**
+ * Multiple tasks with dependencies in master tag
+ * Use: Testing dependency operations, task ordering
+ */
+export const taggedTasksWithDependencies = {
+	tag: 'master',
+	tasks: [
+		{
+			id: 1,
+			title: 'Setup',
+			description: 'Initial setup task',
+			status: 'done',
+			dependencies: [],
+			priority: 'high'
+		},
+		{
+			id: 2,
+			title: 'Core Feature',
+			description: 'Main feature implementation',
+			status: 'in-progress',
+			dependencies: [1],
+			priority: 'high'
+		},
+		{
+			id: 3,
+			title: 'Polish',
+			description: 'Final touches',
+			status: 'pending',
+			dependencies: [2],
+			priority: 'low'
+		}
+	]
+};
+
+/**
+ * Empty tag - no tasks
+ * Use: Testing edge cases, "add first task" scenarios
+ */
+export const taggedEmptyTasks = {
+	tag: 'master',
+	tasks: []
+};
+
+/**
+ * Helper function to create custom tagged fixture
+ * @param {string} tagName - Tag name (default: 'master')
+ * @param {Array} tasks - Array of task objects
+ * @returns {Object} Tagged task data
+ *
+ * @example
+ * const customData = createTaggedFixture('feature-branch', [
+ *   { id: 1, title: 'Custom Task', status: 'pending', dependencies: [] }
+ * ]);
+ */
+export function createTaggedFixture(tagName = 'master', tasks = []) {
+	return {
+		tag: tagName,
+		tasks
+	};
+}

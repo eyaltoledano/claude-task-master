@@ -3,10 +3,10 @@
  * Displays detailed information about the recommended next task
  */
 
-import chalk from 'chalk';
-import boxen from 'boxen';
 import type { Task } from '@tm/core';
-import { getComplexityWithColor, getBoxWidth } from '../../utils/ui.js';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import { getBoxWidth, getComplexityWithColor } from '../../utils/ui.js';
 
 /**
  * Next task display options
@@ -38,7 +38,7 @@ export function displayRecommendedNextTask(
 					padding: 1,
 					borderStyle: 'round',
 					borderColor: 'yellow',
-					title: '⚠ NO TASKS AVAILABLE ⚠',
+					title: '⚠️ NO TASKS AVAILABLE ⚠️',
 					titleAlignment: 'center'
 				}
 			)

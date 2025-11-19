@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,8 +23,8 @@ describe('Complex Cross-Tag Scenarios', () => {
 	);
 
 	beforeEach(() => {
-		// Create test directory
-		testDir = fs.mkdtempSync(path.join(__dirname, 'test-'));
+		// Create test directory in OS temp directory to isolate from project
+		testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tm-test-'));
 		process.chdir(testDir);
 		// Keep integration timings deterministic
 		process.env.TASKMASTER_SKIP_AUTO_UPDATE = '1';

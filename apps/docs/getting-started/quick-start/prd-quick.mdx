@@ -34,8 +34,10 @@ The more context you give the model, the better the breakdown and results.
 
 <Note>
 Two example PRD templates are available in `.taskmaster/templates/`:
-- `example_prd.txt` - Simple template for straightforward projects
-- `example_prd_rpg.txt` - Advanced RPG (Repository Planning Graph) template for complex projects with dependencies
+- `example_prd.md` - Simple template for straightforward projects (`.md` recommended for better editor support)
+- `example_prd_rpg.md` - Advanced RPG (Repository Planning Graph) template for complex projects with dependencies
+
+**Why `.md`?** While both `.txt` and `.md` work, Markdown files provide syntax highlighting, proper rendering in VS Code/GitHub, and better collaboration through formatted documentation.
 </Note>
 
 
@@ -49,12 +51,12 @@ This approach works great in Cursor, or anywhere you use a chat-based LLM.
 
 ### Choosing Between Templates
 
-**Use `example_prd.txt` when:**
+**Use `example_prd.md` when:**
 - Building straightforward features
 - Working on smaller projects
 - Dependencies are simple and obvious
 
-**Use `example_prd_rpg.txt` when:**
+**Use `example_prd_rpg.md` when:**
 - Building complex systems with multiple modules
 - Need explicit dependency management
 - Want structured guidance on architecture decisions
@@ -77,8 +79,9 @@ For complex projects, using the RPG template with a code-context-aware ai agent 
 Place your PRD file in the `.taskmaster/docs` folder in your project.
 
 - You can have **multiple PRDs** per project.
-- Name your PRDs clearly so they’re easy to reference later.
-  - Examples: `dashboard_redesign.txt`, `user_onboarding.txt`
+- Name your PRDs clearly so they're easy to reference later.
+  - Examples: `dashboard_redesign.md`, `user_onboarding.md`
+  - Tip: Use `.md` extension for better editor support and syntax highlighting
 
 ---
 
@@ -89,13 +92,13 @@ This is where the Task Master magic begins.
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
 ```
-Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at .taskmaster/docs/<prd-name>.txt.
+Please use the task-master parse-prd command to generate tasks from my PRD. The PRD is located at .taskmaster/docs/<prd-name>.md.
 ```
 
 The agent will execute the following command which you can alternatively paste into the CLI:
 
 ```bash
-task-master parse-prd .taskmaster/docs/<prd-name>.txt
+task-master parse-prd .taskmaster/docs/<prd-name>.md
 ```
 
 This will:
