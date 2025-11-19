@@ -83,7 +83,10 @@ export type {
 export { AuthenticationError } from './modules/auth/types.js';
 
 // Auth constants
-export { LOCAL_ONLY_COMMANDS, type LocalOnlyCommand } from './modules/auth/index.js';
+export {
+	LOCAL_ONLY_COMMANDS,
+	type LocalOnlyCommand
+} from './modules/auth/index.js';
 
 // Brief types
 export type { Brief } from './modules/briefs/types.js';

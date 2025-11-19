@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
@@ -58,9 +55,7 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 					const status = await workflowService.resumeWorkflow();
 					const nextAction = workflowService.getNextAction();
 
-					log.info(
-						`Workflow resumed successfully for task ${status.taskId}`
-					);
+					log.info(`Workflow resumed successfully for task ${status.taskId}`);
 
 					return handleApiResult({
 						result: {

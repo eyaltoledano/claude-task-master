@@ -3,14 +3,11 @@
  * Create a git commit with automatic staging and message generation
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
-import type { ToolContext } from '../../shared/types.js';
-import { WorkflowService, GitAdapter, CommitMessageGenerator } from '@tm/core';
+import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const CommitSchema = z.object({
 	projectRoot: z
@@ -41,7 +38,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 		parameters: CommitSchema,
 		execute: withToolContext(
 			'autopilot-commit',
-			async (args: CommitArgs, { log, tmCore }: ToolContext) => {
+			async (args: CommitArgs, { log }: ToolContext) => {
 				const { projectRoot, files, customMessage } = args;
 
 				try {
@@ -71,9 +68,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 
 					// Verify we're in COMMIT phase
 					if (status.tddPhase !== 'COMMIT') {
-						log.warn(
-							`Not in COMMIT phase (currently in ${status.tddPhase})`
-						);
+						log.warn(`Not in COMMIT phase (currently in ${status.tddPhase})`);
 						return handleApiResult({
 							result: {
 								success: false,

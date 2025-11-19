@@ -3,14 +3,11 @@
  * Finalize and complete the workflow with working tree validation
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
-import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const FinalizeSchema = z.object({
 	projectRoot: z
@@ -30,6 +27,7 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 			'Finalize and complete the workflow. Validates that all changes are committed and working tree is clean before marking workflow as complete.',
 		parameters: FinalizeSchema,
 		execute: withToolContext(
+			'autopilot-finalize',
 			async (args: FinalizeArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 

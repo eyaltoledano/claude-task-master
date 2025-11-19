@@ -4,10 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';

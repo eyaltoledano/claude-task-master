@@ -3,14 +3,11 @@
  * Complete the current TDD phase with test result validation
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
-import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const CompletePhaseSchema = z.object({
 	projectRoot: z
@@ -38,13 +35,12 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 			'Complete the current TDD phase (RED, GREEN, or COMMIT) with test result validation. RED phase: expects failures (if 0 failures, feature is already implemented and subtask auto-completes). GREEN phase: expects all tests passing.',
 		parameters: CompletePhaseSchema,
 		execute: withToolContext(
+			'autopilot-complete-phase',
 			async (args: CompletePhaseArgs, { log }: ToolContext) => {
 				const { projectRoot, testResults } = args;
 
 				try {
-					log.info(
-						`Completing current phase in workflow for ${projectRoot}`
-					);
+					log.info(`Completing current phase in workflow for ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 

@@ -4,11 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withToolContext
-} from '@tm/mcp';
+import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
 import { fixDependenciesDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -30,7 +26,9 @@ export function registerFixDependenciesTool(server) {
 		}),
 		execute: withToolContext('fix-dependencies', async (args, context) => {
 			try {
-				context.log.info(`Fixing dependencies with args: ${JSON.stringify(args)}`);
+				context.log.info(
+					`Fixing dependencies with args: ${JSON.stringify(args)}`
+				);
 
 				const resolvedTag = resolveTag({
 					projectRoot: args.projectRoot,

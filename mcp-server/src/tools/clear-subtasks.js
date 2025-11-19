@@ -4,11 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withToolContext
-} from '@tm/mcp';
+import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -45,7 +41,9 @@ export function registerClearSubtasksTool(server) {
 			}),
 		execute: withToolContext('clear-subtasks', async (args, context) => {
 			try {
-				context.log.info(`Clearing subtasks with args: ${JSON.stringify(args)}`);
+				context.log.info(
+					`Clearing subtasks with args: ${JSON.stringify(args)}`
+				);
 
 				const resolvedTag = resolveTag({
 					projectRoot: args.projectRoot,
@@ -84,7 +82,9 @@ export function registerClearSubtasksTool(server) {
 						`Subtasks cleared successfully: ${result.data.message}`
 					);
 				} else {
-					context.log.error(`Failed to clear subtasks: ${result.error.message}`);
+					context.log.error(
+						`Failed to clear subtasks: ${result.error.message}`
+					);
 				}
 
 				return handleApiResult(

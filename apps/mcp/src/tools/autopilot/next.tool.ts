@@ -3,14 +3,11 @@
  * Get the next action to perform in the TDD workflow
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withToolContext
-} from '../../shared/utils.js';
-import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const NextActionSchema = z.object({
 	projectRoot: z
@@ -30,13 +27,12 @@ export function registerAutopilotNextTool(server: FastMCP) {
 			'Get the next action to perform in the TDD workflow. Returns detailed context about what needs to be done next, including the current phase, subtask, and expected actions.',
 		parameters: NextActionSchema,
 		execute: withToolContext(
+			'autopilot-next',
 			async (args: NextActionArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
-					log.info(
-						`Getting next action for workflow in ${projectRoot}`
-					);
+					log.info(`Getting next action for workflow in ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 

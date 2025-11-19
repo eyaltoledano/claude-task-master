@@ -4,11 +4,7 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withToolContext
-} from '@tm/mcp';
+import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
 import { modelsDirect } from '../core/task-master-core.js';
 
 /**
@@ -85,7 +81,9 @@ export function registerModelsTool(server) {
 		}),
 		execute: withToolContext('models', async (args, context) => {
 			try {
-				context.log.info(`Starting models tool with args: ${JSON.stringify(args)}`);
+				context.log.info(
+					`Starting models tool with args: ${JSON.stringify(args)}`
+				);
 
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				const result = await modelsDirect(
