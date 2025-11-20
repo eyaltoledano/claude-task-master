@@ -170,16 +170,13 @@ export class TaskService {
 				storageType
 			};
 		} catch (error) {
-			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't log it as an internal error
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
-				// Just re-throw user-facing errors without wrapping
+			// Re-throw all TaskMasterErrors without wrapping
+			// These errors are already user-friendly and have appropriate error codes
+			if (error instanceof TaskMasterError) {
 				throw error;
 			}
 
-			// Log internal errors
+			// Only wrap unknown errors
 			this.logger.error('Failed to get task list', error);
 			throw new TaskMasterError(
 				'Failed to get task list',
