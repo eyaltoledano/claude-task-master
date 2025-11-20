@@ -22,6 +22,9 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getCliBinPath } from '../helpers/test-utils';
 
+// Capture initial working directory at module load time
+const initialCwd = process.cwd();
+
 describe('Task Lifecycle Integration Tests', () => {
 	let testDir: string;
 	let tasksPath: string;
@@ -83,11 +86,10 @@ describe('Task Lifecycle Integration Tests', () => {
 	 */
 	afterEach(() => {
 		try {
-			// Change to a safe directory before cleanup
-			const originalDir = path.resolve(__dirname, '../../../..');
-			process.chdir(originalDir);
+			// Restore to the original working directory captured at module load
+			process.chdir(initialCwd);
 		} catch (error) {
-			// Fallback to home directory if project root unavailable
+			// Fallback to home directory if initial directory no longer exists
 			process.chdir(os.homedir());
 		}
 

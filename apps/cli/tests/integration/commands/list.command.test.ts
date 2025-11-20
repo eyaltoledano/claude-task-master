@@ -18,6 +18,9 @@ import {
 } from '../../fixtures/task-fixtures';
 import { getCliBinPath } from '../../helpers/test-utils';
 
+// Capture initial working directory at module load time
+const initialCwd = process.cwd();
+
 describe('list command', () => {
 	let testDir: string;
 	let tasksPath: string;
@@ -44,9 +47,10 @@ describe('list command', () => {
 
 	afterEach(() => {
 		try {
-			const originalDir = path.resolve(__dirname, '../../../../..');
-			process.chdir(originalDir);
+			// Restore to the original working directory captured at module load
+			process.chdir(initialCwd);
 		} catch {
+			// Fallback to home directory if initial directory no longer exists
 			process.chdir(os.homedir());
 		}
 
