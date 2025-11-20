@@ -145,7 +145,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
-  - `SNOWFLAKE_API_KEY`: Your Snowflake Programmatic Access Token (PAT) or OAuth token.
+  - `SNOWFLAKE_API_KEY`: Your Snowflake API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -154,7 +154,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
-  - `SNOWFLAKE_BASE_URL`: Your Snowflake account URL (e.g., `https://org-account.snowflakecomputing.com`). Task Master automatically appends the required `/api/v2/cortex/v1` path. Can also be set as `snowflakeBaseURL` in config.json (recommended).
+  - `SNOWFLAKE_BASE_URL`: Your Snowflake account URL (e.g., `https://org-account.snowflakecomputing.com`). Can also be set as `snowflakeBaseURL` in config.json (recommended).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
@@ -657,20 +657,22 @@ The Codex CLI provider integrates Task Master with OpenAI's Codex CLI, allowing 
     - Pricing information is not available for OAuth models (shows as "Unknown" in cost calculations)
     - See [Codex CLI Provider Documentation](./providers/codex-cli.md) for more details
 
-### Snowflake Cortex Configuration
+### Snowflake and Cortex Code CLI Configuration
 
-Snowflake Cortex provides AI models through Snowflake's data platform and requires specific configuration:
+Snowflake provides AI models through Snowflake's data platform and requires specific configuration:
 
 1. **Prerequisites**:
    - Active Snowflake account with Cortex AI enabled
-   - Authentication credentials (PAT or OAuth token)
+   - Authentication credentials (PAT or OAuth token) or Cortex Code CLI
    - Network access to Cortex REST API endpoint
 
 2. **Authentication**:
    
-   Snowflake Cortex REST API supports Programmatic Access Token and OAuth authentication methods. See the [Snowflake REST API Authentication documentation](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication) for complete details.
+   Cortex Code uses a ~/.snowflake/config.toml or ~/.snowflake/connections.toml configuration file to connect to Snowflake.
+   
+   Alternatively, you can use Snowflake's Cortex REST API which supports a Programmatic Access Token and OAuth authentication methods. See the [Snowflake REST API Authentication documentation](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication) for complete details.
 
-   **Method 1: Programmatic Access Token (PAT) - Recommended**
+   ** Programmatic Access Token (PAT) - Recommended**
    
    Set the `SNOWFLAKE_API_KEY` environment variable with your Programmatic Access Token and configure the base URL in either `.env` or `config.json`:
    
@@ -735,12 +737,6 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
    - Users can have a maximum of 15 active tokens
    - See [Snowflake PAT Documentation](https://docs.snowflake.com/en/sql-reference/sql/alter-user-add-programmatic-access-token) and [REST API Authentication](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication)
 
-   **Method 2: OAuth Token**
-   
-   Alternatively, you can use an OAuth token. See [Introduction to OAuth](https://docs.snowflake.com/en/user-guide/oauth-intro) for details on how to set up OAuth and get an OAuth token.
-   
-   Use the OAuth token value for `SNOWFLAKE_API_KEY`.
-
 3. **Configuration**:
    ```json
    // In .taskmaster/config.json
@@ -748,19 +744,19 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
      "models": {
        "main": {
          "provider": "snowflake",
-         "modelId": "cortex/claude-haiku-4-5",
+         "modelId": "snowflake/claude-haiku-4-5",
          "maxTokens": 32000,
          "temperature": 0.2
        },
        "research": {
          "provider": "snowflake",
-         "modelId": "cortex/claude-sonnet-4-5",
+         "modelId": "snowflake/claude-sonnet-4-5",
          "maxTokens": 32000,
          "temperature": 0.1
        },
        "fallback": {
          "provider": "snowflake",
-         "modelId": "cortex/openai-gpt-5",
+         "modelId": "snowflake/openai-gpt-5",
          "maxTokens": 8192,
          "temperature": 0.1
        }
@@ -776,24 +772,24 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
    ```
 
 5. **Recommended Models**:
-   Snowflake Cortex supports multiple model families through the `cortex/` prefix:
+   Snowflake supports multiple model families through the `snowflake/` prefix for REST/PAT or the `cortex/` prefix for Cortex Code CLI. The same models are available through both.
    
    **Anthropic Claude Models:**
-   - `cortex/claude-haiku-4-5` - Fast Claude Haiku 4.5
-   - `cortex/claude-sonnet-4-5` - Latest Claude Sonnet 4.5
-   - `cortex/claude-4-sonnet` - Previous Claude Sonnet 4
-   - `cortex/claude-4-opus` - Extra Reasoning Claude Opus 4
+   - `snowflake/claude-haiku-4-5` - Fast Claude Haiku 4.5
+   - `snowflake/claude-sonnet-4-5` - Latest Claude Sonnet 4.5
+   - `snowflake/claude-4-sonnet` - Previous Claude Sonnet 4
+   - `snowflake/claude-4-opus` - Extra Reasoning Claude Opus 4
    
    **OpenAI Models:**
-   - `cortex/openai-gpt-5` - Latest GPT 5
-   - `cortex/openai-gpt-5-mini` - Fast GPT 5 mini
-   - `cortex/openai-gpt-4.1` - Previous GPT 4.1
+   - `snowflake/openai-gpt-5` - Latest GPT 5
+   - `snowflake/openai-gpt-5-mini` - Fast GPT 5 mini
+   - `snowflake/openai-gpt-4.1` - Previous GPT 4.1
    
    For the complete and up-to-date model list and regional availability, see:
    - [Snowflake Cortex REST API Model Availability](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
 
 6. **Important Notes**:
-   - **Model Naming**: Use `cortex/` prefix for all Cortex models (e.g., `cortex/claude-sonnet-4-5`)
+   - **Model Naming**: Use `snowflake/` prefix when you are using a PAT (e.g., `snowflake/claude-sonnet-4-5`) and `cortex/` when you are using Cortex Code CLI.
    - **Unlisted Models**: Task Master supports ANY Cortex model available through REST, even if not listed when you run `task-master models`
    - **REST API Format**: Model names use lowercase REST API format (e.g., `llama3.1-8b`), not SQL uppercase format (`LLAMA3.1-8B`)
    - **Cross-Region Availability**: To enable [cross-region inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) for broader model access, an adminstrator can set the the [`CORTEX_ENABLED_CROSS_REGION`](https://docs.snowflake.com/en/sql-reference/parameters#cortex-enabled-cross-region) parameter with statements like:
@@ -805,11 +801,11 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
 
 7. **Setup Commands**:
    ```bash
-   # Set Cortex model for main role
-   task-master models --set-main cortex/claude-haiku-4-5
+   # Set Snowflake model for main role
+   task-master models --set-main snowflake/claude-haiku-4-5
 
-   # Set Cortex model for research role
-   task-master models --set-research cortex/claude-sonnet-4-5
+   # Set Snowflake model for research role
+   task-master models --set-research snowflake/claude-sonnet-4-5
 
    # Verify configuration
    task-master models
@@ -821,15 +817,13 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
    - Verify your `SNOWFLAKE_API_KEY` is correct and not expired
    - Ensure your Snowflake account has Cortex AI enabled
    - For PATs: Check token hasn't expired (default 15 days, custom up to account max)
-   - For OAuth: Regenerate the token using `SYSTEM$GENERATE_OAUTH_ACCESS_TOKEN`
-   - Check that your token has necessary privileges for Cortex operations
 
    **"Resource not found" or "Invalid endpoint" errors:**
-   - Verify your `SNOWFLAKE_BASE_URL` format: `https://<org>-<account>.snowflakecomputing.com/api/v2/cortex/v1`
+   - Verify your `SNOWFLAKE_BASE_URL` format: `https://<org>-<account>.snowflakecomputing.com`
    - Replace `<org>-<account>` with your actual Snowflake organization and account name
 
    **"Unknown model" errors:**
-   - Use lowercase REST API format (e.g., `cortex/llama3.1-8b`, not `cortex/LLAMA3.1-8B`)
+   - Use lowercase REST API format (e.g., `snowflake/llama3.1-8b`, not `snowflake/LLAMA3.1-8B`)
    - Double check model availability in your Snowflake region: [Model Availability Table](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
    - Verify the model exists in your account using `SHOW CORTEX MODELS` in SQL
    - Note: REST API and `SHOW CORTEX MODELS` names may differ; use REST API format from the model availability table with Task Master
@@ -837,5 +831,4 @@ Snowflake Cortex provides AI models through Snowflake's data platform and requir
    **Performance/Rate limiting:**
    - Snowflake Cortex has built-in rate limiting based on your account resources
    - Consider model size vs. response time tradeoffs
-   - Use smaller models (`cortex/claude-haiku-4-5`, `cortex/llama3.1-8b`) for faster responses
-   - Monitor Snowflake consumption for cost optimization
+   

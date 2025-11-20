@@ -119,7 +119,7 @@ This creates/updates `.taskmaster/config.json`:
 ```json
 {
   "models": {
-    "main": { "provider": "cortex-code", "modelId": "claude-3-5-haiku-20241022" },
+    "main": { "provider": "cortex-code", "modelId": "claude-hai3-5-haiku-20241022" },
     "research": { "provider": "cortex-code", "modelId": "claude-3-5-sonnet-20241022" },
     "fallback": { "provider": "anthropic", "modelId": "claude-3-5-sonnet-20241022" }
   }
