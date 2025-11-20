@@ -63,10 +63,13 @@ describe('set-status command', () => {
 	};
 
 	const runSetStatus = (id: number, status: string) => {
-		return execSync(`node "${binPath}" set-status --id=${id} --status=${status}`, {
-			stdio: 'pipe',
-			env: { ...process.env, TASKMASTER_SKIP_AUTO_UPDATE: '1' }
-		});
+		return execSync(
+			`node "${binPath}" set-status --id=${id} --status=${status}`,
+			{
+				stdio: 'pipe',
+				env: { ...process.env, TASKMASTER_SKIP_AUTO_UPDATE: '1' }
+			}
+		);
 	};
 
 	it('should update task status from pending to done', () => {
