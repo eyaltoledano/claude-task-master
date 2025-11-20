@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getCliBinPath } from '../helpers/test-utils';
 
 describe('Task Lifecycle Integration Tests', () => {
 	let testDir: string;
@@ -44,7 +45,7 @@ describe('Task Lifecycle Integration Tests', () => {
 
 		// Path to the compiled CLI binary we're testing
 		// Binary is built to root dist/ directory, not apps/cli/dist/
-		binPath = path.resolve(__dirname, '../../../../dist/task-master.js');
+		binPath = getCliBinPath();
 
 		// Initialize a fresh Task Master project
 		execSync(`node "${binPath}" init --yes`, {
@@ -248,7 +249,6 @@ describe('Task Lifecycle Integration Tests', () => {
 			const parentTask = tasks.master.tasks.find((t: any) => t.id == 1);
 			expect(parentTask).toBeDefined();
 			const subtask = parentTask.subtasks.find((s: any) => s.id == 1);
-			console.log('subtasks', parentTask.subtasks);
 			expect(subtask).toBeDefined();
 			expect(subtask.status).toBe('done');
 

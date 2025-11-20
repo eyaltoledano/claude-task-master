@@ -16,6 +16,7 @@ import {
 	createTask,
 	createTasksFile
 } from '../../fixtures/task-fixtures';
+import { getCliBinPath } from '../../helpers/test-utils';
 
 describe('list command', () => {
 	let testDir: string;
@@ -27,7 +28,7 @@ describe('list command', () => {
 		process.chdir(testDir);
 		process.env.TASKMASTER_SKIP_AUTO_UPDATE = '1';
 
-		binPath = path.resolve(__dirname, '../../../../../dist/task-master.js');
+		binPath = getCliBinPath();
 
 		execSync(`node "${binPath}" init --yes`, {
 			stdio: 'pipe',
@@ -147,8 +148,6 @@ describe('list command', () => {
 		writeTasks(testData);
 
 		const { output, exitCode } = runList();
-
-		console.log(output);
 
 		expect(exitCode).toBe(0);
 		// Should show status indicators (exact format may vary)

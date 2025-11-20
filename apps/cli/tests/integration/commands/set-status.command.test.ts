@@ -13,6 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTask, createTasksFile } from '../../fixtures/task-fixtures';
+import { getCliBinPath } from '../../helpers/test-utils';
 
 describe('set-status command', () => {
 	let testDir: string;
@@ -24,7 +25,7 @@ describe('set-status command', () => {
 		process.chdir(testDir);
 		process.env.TASKMASTER_SKIP_AUTO_UPDATE = '1';
 
-		binPath = path.resolve(__dirname, '../../../../../dist/task-master.js');
+		binPath = getCliBinPath();
 
 		execSync(`node "${binPath}" init --yes`, {
 			stdio: 'pipe',

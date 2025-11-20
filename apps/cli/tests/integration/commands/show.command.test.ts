@@ -16,6 +16,7 @@ import {
 	createTasksFile,
 	createSubtask
 } from '../../fixtures/task-fixtures';
+import { getCliBinPath } from '../../helpers/test-utils';
 
 describe('show command', () => {
 	let testDir: string;
@@ -27,7 +28,7 @@ describe('show command', () => {
 		process.chdir(testDir);
 		process.env.TASKMASTER_SKIP_AUTO_UPDATE = '1';
 
-		binPath = path.resolve(__dirname, '../../../../../dist/task-master.js');
+		binPath = getCliBinPath();
 
 		execSync(`node "${binPath}" init --yes`, {
 			stdio: 'pipe',
