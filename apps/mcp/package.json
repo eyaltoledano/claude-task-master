@@ -23,14 +23,15 @@
 	},
 	"dependencies": {
 		"@tm/core": "*",
-		"zod": "^4.1.11",
-		"fastmcp": "^3.23.0"
+		"fastmcp": "^3.23.0",
+		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@types/node": "^22.10.5",
+		"@vitest/coverage-v8": "^4.0.10",
 		"typescript": "^5.9.2",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.10"
 	},
 	"engines": {
 		"node": ">=18.0.0"

@@ -40,10 +40,10 @@
 	"devDependencies": {
 		"@types/fs-extra": "^11.0.4",
 		"@types/node": "^22.10.5",
-		"@vitest/coverage-v8": "^3.2.4",
+		"@vitest/coverage-v8": "^4.0.10",
 		"strip-literal": "3.1.0",
 		"typescript": "^5.9.2",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.10"
 	},
 	"files": ["src", "README.md", "CHANGELOG.md"],
 	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
