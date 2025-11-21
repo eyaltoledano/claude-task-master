@@ -2545,11 +2545,7 @@ ${result.result}
 			try {
 				// Read data once for checks and confirmation
 				const tasksPath = taskMaster.getTasksPath();
-				const data = readJSON(
-					tasksPath,
-					taskMaster.getProjectRoot(),
-					tag
-				);
+				const data = readJSON(tasksPath, taskMaster.getProjectRoot(), tag);
 				if (!data || !data.tasks) {
 					console.error(
 						chalk.red(`Error: No valid tasks found in ${tasksPath}`)

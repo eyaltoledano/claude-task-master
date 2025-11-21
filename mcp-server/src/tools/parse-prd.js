@@ -85,11 +85,11 @@ export function registerParsePRDTool(server) {
 						{ session, reportProgress: progressCapability }
 					);
 					return handleApiResult({
-					result,
-					log: log,
-					errorPrefix: 'Error parsing PRD',
-					projectRoot: args.projectRoot
-				});
+						result,
+						log: log,
+						errorPrefix: 'Error parsing PRD',
+						projectRoot: args.projectRoot
+					});
 				} catch (error) {
 					log.error(`Error in parse_prd: ${error.message}`);
 					return createErrorResponse(`Failed to parse PRD: ${error.message}`);
