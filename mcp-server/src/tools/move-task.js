@@ -3,18 +3,18 @@
  * Tool for moving tasks or subtasks to a new position
  */
 
-import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
+import { z } from 'zod';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import {
-	moveTaskDirect,
-	moveTaskCrossTagDirect
+	moveTaskCrossTagDirect,
+	moveTaskDirect
 } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the moveTask tool with the MCP server
@@ -83,8 +83,8 @@ export function registerMoveTaskTool(server) {
 					}
 
 					// Use cross-tag move function
-					return handleApiResult(
-						await moveTaskCrossTagDirect(
+					return handleApiResult({
+						result: await moveTaskCrossTagDirect(
 							{
 								sourceIds: args.from,
 								sourceTag: args.fromTag,
@@ -98,10 +98,9 @@ export function registerMoveTaskTool(server) {
 							{ session }
 						),
 						log,
-						'Error moving tasks between tags',
-						undefined,
-						args.projectRoot
-					);
+						errorPrefix: 'Error moving tasks between tags',
+						projectRoot: args.projectRoot
+					});
 				} else {
 					// Within-tag move logic (existing functionality)
 					if (!args.to) {
@@ -166,8 +165,8 @@ export function registerMoveTaskTool(server) {
 								}
 							}
 
-							return handleApiResult(
-								{
+							return handleApiResult({
+								result: {
 									success: true,
 									data: {
 										moves: results,
@@ -176,13 +175,12 @@ export function registerMoveTaskTool(server) {
 									}
 								},
 								log,
-								'Error moving multiple tasks',
-								undefined,
-								args.projectRoot
-							);
+								errorPrefix: 'Error moving multiple tasks',
+								projectRoot: args.projectRoot
+							});
 						}
-						return handleApiResult(
-							{
+						return handleApiResult({
+							result: {
 								success: true,
 								data: {
 									moves: results,
@@ -191,14 +189,13 @@ export function registerMoveTaskTool(server) {
 								}
 							},
 							log,
-							'Error moving multiple tasks',
-							undefined,
-							args.projectRoot
-						);
+							errorPrefix: 'Error moving multiple tasks',
+							projectRoot: args.projectRoot
+						});
 					} else {
 						// Moving a single task
-						return handleApiResult(
-							await moveTaskDirect(
+						return handleApiResult({
+							result: await moveTaskDirect(
 								{
 									sourceId: args.from,
 									destinationId: args.to,
@@ -211,10 +208,9 @@ export function registerMoveTaskTool(server) {
 								{ session }
 							),
 							log,
-							'Error moving task',
-							undefined,
-							args.projectRoot
-						);
+							errorPrefix: 'Error moving task',
+							projectRoot: args.projectRoot
+						});
 					}
 				}
 			} catch (error) {

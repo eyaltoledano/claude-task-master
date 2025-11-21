@@ -67,13 +67,12 @@ export function registerCopyTagTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error copying tag',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error copying tag',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in copy-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);

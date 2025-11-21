@@ -71,13 +71,12 @@ export function registerComplexityReportTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error retrieving complexity report',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error retrieving complexity report',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in complexity-report tool: ${error.message}`);
 				return createErrorResponse(

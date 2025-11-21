@@ -85,20 +85,19 @@ export function registerModelsTool(server) {
 					`Starting models tool with args: ${JSON.stringify(args)}`
 				);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use args.projectRoot directly (normalized by withToolContext)
 				const result = await modelsDirect(
 					{ ...args, projectRoot: args.projectRoot },
 					context.log,
 					{ session: context.session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					context.log,
-					'Error managing models',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error managing models',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				context.log.error(`Error in models tool: ${error.message}`);
 				return createErrorResponse(error.message);

@@ -88,13 +88,12 @@ export function registerScopeUpTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error scoping up task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error scoping up task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in scope-up tool: ${error.message}`);
 				return createErrorResponse(error.message);

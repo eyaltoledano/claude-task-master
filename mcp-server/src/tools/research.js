@@ -94,13 +94,12 @@ export function registerResearchTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error performing research',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error performing research',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in research tool: ${error.message}`);
 				return createErrorResponse(error.message);

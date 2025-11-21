@@ -91,13 +91,12 @@ export function registerUpdateTaskTool(server) {
 				log.info(
 					`${toolName}: Direct function result: success=${result.success}`
 				);
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error updating task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error updating task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

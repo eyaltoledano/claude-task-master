@@ -87,13 +87,12 @@ export function registerClearSubtasksTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					context.log,
-					'Error clearing subtasks',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error clearing subtasks',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				context.log.error(`Error in clearSubtasks tool: ${error.message}`);
 				return createErrorResponse(error.message);

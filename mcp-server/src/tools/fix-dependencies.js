@@ -68,13 +68,12 @@ export function registerFixDependenciesTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					context.log,
-					'Error fixing dependencies',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error fixing dependencies',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				context.log.error(`Error in fixDependencies tool: ${error.message}`);
 				return createErrorResponse(error.message);

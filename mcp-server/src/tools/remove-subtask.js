@@ -89,13 +89,12 @@ export function registerRemoveSubtaskTool(server) {
 					log.error(`Failed to remove subtask: ${result.error.message}`);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error removing subtask',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error removing subtask',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in removeSubtask tool: ${error.message}`);
 				return createErrorResponse(error.message);

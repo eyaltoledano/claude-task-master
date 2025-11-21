@@ -83,13 +83,12 @@ export function registerUpdateSubtaskTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error updating subtask',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error updating subtask',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(
 					`Critical error in ${toolName} tool execute: ${error.message}`

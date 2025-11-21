@@ -1,6 +1,6 @@
 // mcp-server/src/tools/get-operation-status.js
 import { z } from 'zod';
-import { createErrorResponse, createContentResponse } from '@tm/mcp'; // Assuming these utils exist
+import { createErrorResponse, createContentResponse } from '@tm/mcp';
 
 /**
  * Register the get_operation_status tool.
