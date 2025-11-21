@@ -63,13 +63,9 @@ export async function addDependencyDirect(args, log) {
 		// Use provided path
 		const tasksPath = tasksJsonPath;
 
-		// Format IDs for the core function
-		const taskId =
-			id && id.includes && id.includes('.') ? id : parseInt(id, 10);
-		const dependencyId =
-			dependsOn && dependsOn.includes && dependsOn.includes('.')
-				? dependsOn
-				: parseInt(dependsOn, 10);
+		// Pass raw IDs (supporting ranges/lists and dot notation)
+		const taskId = id;
+		const dependencyId = dependsOn;
 
 		log.info(
 			`Adding dependency: task ${taskId} will depend on ${dependencyId}`
