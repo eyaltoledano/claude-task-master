@@ -1,0 +1,653 @@
+# PRD: Command-Based API Key Retrieval
+
+## 1. Overview
+
+Enable Task Master AI to fetch API keys dynamically using shell commands instead of requiring hardcoded values in environment variables or .env files. This allows secure integration with credential stores like macOS Keychain, pass, 1Password CLI, AWS Secrets Manager, and other password management systems.
+
+## 2. Problem Statement
+
+**Current Limitation:**
+- API keys must be stored as plaintext strings in .env files, MCP config, or environment variables
+- .env files with hardcoded keys cannot be committed to version control safely
+- Sharing projects or switching machines requires manual key management
+- No support for rotating credentials or enterprise secret management systems
+
+**User Impact:**
+- Security risk: API keys in plaintext files
+- Developer friction: Manual key setup per project
+- Team collaboration: Cannot share configuration files with placeholder commands
+- Enterprise adoption: Cannot integrate with corporate secret management
+
+## 3. Proposed Solution
+
+Implement a **command execution syntax** for API key values that allows Task Master to dynamically fetch keys at runtime:
+
+**Syntax:** `!cmd:<shell command>`
+
+**Examples:**
+
+```bash
+# macOS Keychain
+OPENAI_API_KEY="!cmd:security find-generic-password -a taskmaster -s openai -w"
+
+# pass (Unix password manager)
+ANTHROPIC_API_KEY="!cmd:pass show taskmaster/anthropic"
+
+# 1Password CLI
+PERPLEXITY_API_KEY="!cmd:op read op://Private/Taskmaster/perplexity"
+
+# AWS Secrets Manager
+OPENAI_API_KEY="!cmd:aws secretsmanager get-secret-value --secret-id taskmaster/openai --query SecretString --output text"
+
+# Azure Key Vault
+GOOGLE_API_KEY="!cmd:az keyvault secret show --vault-name my-vault --name google-api-key --query value -o tsv"
+
+# Doppler
+MISTRAL_API_KEY="!cmd:doppler secrets get MISTRAL_API_KEY --plain"
+
+# Custom script
+XAI_API_KEY="!cmd:/usr/local/bin/get-taskmaster-key xai"
+```
+
+**Backward Compatibility:**
+- Existing hardcoded API keys continue to work unchanged
+- Command syntax only activated when value starts with `!cmd:`
+- No breaking changes to current configuration
+
+## 4. Use Cases
+
+### UC1: macOS Developer Using Keychain
+**Actor:** Developer on macOS
+**Goal:** Store API keys in macOS Keychain for security
+
+**Flow:**
+1. Developer adds API key to Keychain: `security add-generic-password -a taskmaster -s openai -w`
+2. Developer sets in .env: `OPENAI_API_KEY="!cmd:security find-generic-password -a taskmaster -s openai -w"`
+3. Developer commits .env.example with command syntax (safe to commit)
+4. Task Master executes command and retrieves key when needed
+
+**Benefits:**
+- Keys stored in OS credential store (encrypted)
+- .env.example with commands can be committed safely
+- No plaintext keys on disk
+
+### UC2: Team Collaboration
+**Actor:** Development team
+**Goal:** Share project configuration without exposing secrets
+
+**Flow:**
+1. Team agrees on credential store conventions (e.g., pass paths)
+2. Project .env.example contains: `OPENAI_API_KEY="!cmd:pass show team/taskmaster/openai"`
+3. Each developer stores their own key in pass at that path
+4. Same .env file works for entire team without sharing secrets
+
+**Benefits:**
+- Configuration files can be version controlled
+- Each developer maintains their own credentials
+- Onboarding simplified with documented commands
+
+### UC3: Enterprise Environment
+**Actor:** Enterprise developer
+**Goal:** Integrate with corporate secret management (AWS Secrets Manager, Azure Key Vault, etc.)
+
+**Flow:**
+1. Security team provisions API keys in corporate secret store
+2. Developer configures .env with AWS CLI command
+3. Task Master fetches keys using developer's AWS credentials
+4. Keys rotate automatically when updated in secret store
+
+**Benefits:**
+- Compliance with corporate security policies
+- Centralized key rotation
+- Audit trails via secret manager
+
+### UC4: CI/CD Pipeline
+**Actor:** CI/CD system
+**Goal:** Fetch API keys from pipeline secret store
+
+**Flow:**
+1. CI/CD exports environment variable: `TM_KEY_COMMAND="echo $CI_OPENAI_KEY"`
+2. MCP config uses: `OPENAI_API_KEY="!cmd:${TM_KEY_COMMAND}"`
+3. Pipeline injects secrets at runtime via environment substitution
+4. Task Master executes command to retrieve key
+
+**Benefits:**
+- No secrets stored in repository
+- Works with GitHub Actions, GitLab CI, Jenkins, etc.
+- Audit trail via CI/CD logs
+
+## 5. Technical Requirements
+
+### 5.1 Command Execution
+
+**File:** `/scripts/modules/utils.js` (modify `resolveEnvVariable()`)
+
+**Implementation:**
+
+```javascript
+function resolveEnvVariable(key, session = null, projectRoot = null) {
+    // 1. Get raw value from existing sources
+    let rawValue = resolveRawValue(key, session, projectRoot);
+
+    // 2. Check if value uses command syntax
+    if (rawValue && rawValue.startsWith('!cmd:')) {
+        const command = rawValue.slice(5).trim(); // Remove '!cmd:' prefix
+        return executeCommandForKey(command, key);
+    }
+
+    // 3. Return as-is if not a command
+    return rawValue;
+}
+
+function executeCommandForKey(command, keyName) {
+    try {
+        // Execute command synchronously
+        const result = execSync(command, {
+            encoding: 'utf8',
+            timeout: 5000,        // 5 second timeout
+            stdio: ['pipe', 'pipe', 'pipe'], // Capture stderr
+            shell: '/bin/sh'      // Use sh for portability
+        });
+
+        // Trim whitespace/newlines from output
+        const trimmedResult = result.trim();
+
+        // Validate non-empty
+        if (!trimmedResult) {
+            throw new Error('Command returned empty result');
+        }
+
+        return trimmedResult;
+
+    } catch (error) {
+        // Log error with context
+        console.error(`Error executing command for ${keyName}:`, error.message);
+
+        // Return null to indicate failure
+        return null;
+    }
+}
+```
+
+**Requirements:**
+- Must support any valid shell command
+- Must execute in `/bin/sh` for portability
+- Must capture stdout as the API key value
+- Must trim whitespace and newlines
+- Must handle command failures gracefully
+- Must timeout after configurable duration (default: 5s)
+- Must NOT expose full command in error messages (security)
+
+### 5.2 Security Considerations
+
+**Sandboxing:**
+- Execute commands in restricted shell environment
+- Do NOT pass untrusted environment variables to commands
+- Consider allow-list of approved command prefixes for enterprise use
+
+**Error Handling:**
+- Log command execution failures without exposing command details
+- Never log the retrieved API key value
+- Provide clear error messages when commands fail
+- Gracefully degrade to null if command fails (existing validation catches it)
+
+**Validation:**
+- Validate command syntax before execution
+- Reject commands with dangerous patterns (e.g., `rm -rf`, `curl | sh`)
+- Optional: Implement allow-list of permitted command prefixes
+
+**Timeout:**
+- Default timeout: 5 seconds
+- Configurable via `TASKMASTER_CMD_TIMEOUT` environment variable
+- Prevents hanging on slow/stuck commands
+
+**Command Injection Prevention:**
+- Commands are executed as-is (not interpolated with user input)
+- Shell variable expansion happens in shell, not Node.js
+- No dynamic command construction from user input
+
+### 5.3 Configuration Schema
+
+**Allow command-based keys in:**
+
+1. **.env files:**
+   ```bash
+   OPENAI_API_KEY="!cmd:security find-generic-password -a taskmaster -s openai -w"
+   ```
+
+2. **MCP configuration (.mcp.json):**
+   ```json
+   {
+     "mcpServers": {
+       "task-master-ai": {
+         "env": {
+           "OPENAI_API_KEY": "!cmd:pass show taskmaster/openai"
+         }
+       }
+     }
+   }
+   ```
+
+3. **System environment variables:**
+   ```bash
+   export ANTHROPIC_API_KEY="!cmd:op read op://Private/Taskmaster/anthropic"
+   ```
+
+4. **Local config environment override (.taskmaster/config.json - NEW):**
+   ```json
+   {
+     "environment": {
+       "OPENAI_API_KEY": "!cmd:aws secretsmanager get-secret-value --secret-id taskmaster/openai --query SecretString --output text"
+     }
+   }
+   ```
+
+### 5.4 Caching & Performance
+
+**Requirements:**
+- Cache command results per session to avoid repeated execution
+- Configurable cache TTL (default: 300 seconds / 5 minutes)
+- Option to disable caching for frequently rotating credentials
+- Clear cache on configuration reload
+
+**Implementation:**
+
+```javascript
+const commandCache = new Map();
+
+function executeCommandForKey(command, keyName, useCache = true) {
+    const cacheKey = `${keyName}:${command}`;
+
+    if (useCache && commandCache.has(cacheKey)) {
+        const cached = commandCache.get(cacheKey);
+        const age = Date.now() - cached.timestamp;
+        const ttl = parseInt(process.env.TASKMASTER_CMD_CACHE_TTL || '300') * 1000;
+
+        if (age < ttl) {
+            return cached.value;
+        }
+    }
+
+    const result = /* execute command */;
+
+    if (useCache && result) {
+        commandCache.set(cacheKey, {
+            value: result,
+            timestamp: Date.now()
+        });
+    }
+
+    return result;
+}
+```
+
+**Configuration:**
+- `TASKMASTER_CMD_CACHE_TTL`: Cache duration in seconds (default: 300)
+- `TASKMASTER_CMD_CACHE_ENABLED`: Enable/disable caching (default: true)
+
+### 5.5 Validation & Testing
+
+**Requirements:**
+- Test command execution on macOS, Linux, Windows (WSL)
+- Validate common credential stores (macOS Keychain, pass, 1Password, AWS, Azure)
+- Test timeout behavior with slow commands
+- Test error handling for failed commands
+- Validate caching behavior
+- Security audit for command injection risks
+
+**Test Cases:**
+1. Simple command: `!cmd:echo "test-key-123"`
+2. macOS Keychain: `!cmd:security find-generic-password -a test -s test -w`
+3. Failed command: `!cmd:exit 1`
+4. Slow command: `!cmd:sleep 10` (should timeout)
+5. Empty result: `!cmd:echo ""`
+6. Command with quotes: `!cmd:pass show "my path/with spaces"`
+7. Command with pipes: `!cmd:aws secretsmanager get-secret-value --secret-id test | jq -r .SecretString`
+
+### 5.6 Documentation Requirements
+
+**Files to Update:**
+
+1. **README.md** - Add section on command-based API keys
+2. **.env.example** - Add examples of command syntax
+3. **CLAUDE.md** - Document for Claude Code integration
+4. **.taskmaster/CLAUDE.md** - Update Task Master guide
+5. **docs/** - Create dedicated guide on credential management
+
+**Documentation Topics:**
+- Syntax explanation and examples
+- Security best practices
+- Common credential store integrations
+- Troubleshooting command failures
+- Performance considerations (caching)
+- Enterprise use cases
+
+### 5.7 Optional Features (Future Enhancements)
+
+**1. Command Allow-List:**
+```json
+{
+  "security": {
+    "allowedCommandPrefixes": [
+      "security find-generic-password",
+      "pass show",
+      "op read",
+      "aws secretsmanager",
+      "az keyvault secret show"
+    ]
+  }
+}
+```
+
+**2. Command Validation Rules:**
+- Block dangerous commands (rm, dd, curl | sh, etc.)
+- Require explicit opt-in for unrestricted commands
+
+**3. Async Command Execution:**
+- Execute commands asynchronously for better performance
+- Parallel execution when multiple keys need fetching
+
+**4. Detailed Logging:**
+- Optional debug mode to log command execution (without keys)
+- Useful for troubleshooting credential store issues
+
+**5. Retry Logic:**
+- Retry failed commands with exponential backoff
+- Useful for flaky network-based secret stores
+
+## 6. Implementation Plan
+
+### Phase 1: Core Implementation
+1. Modify `resolveEnvVariable()` to detect `!cmd:` prefix
+2. Implement `executeCommandForKey()` with sync execution
+3. Add basic error handling and timeout
+4. Add command result caching
+5. Unit tests for command execution
+
+### Phase 2: Security Hardening
+1. Implement command validation
+2. Add timeout configuration
+3. Security audit for command injection
+4. Sanitize error messages
+5. Add security tests
+
+### Phase 3: Integration & Testing
+1. Test with major credential stores (Keychain, pass, 1Password, AWS, Azure)
+2. Cross-platform testing (macOS, Linux, Windows WSL)
+3. Integration tests in CI/CD environments
+4. Performance testing with caching
+
+### Phase 4: Documentation & Release
+1. Update all documentation files
+2. Create migration guide for existing users
+3. Add examples to .env.example
+4. Update MCP configuration templates
+5. Release notes and security advisory
+
+## 7. Acceptance Criteria
+
+### Must Have
+- [ ] Command syntax `!cmd:` works in .env files
+- [ ] Command syntax works in MCP configuration
+- [ ] Commands execute with 5-second timeout
+- [ ] Failed commands return null (caught by existing validation)
+- [ ] Command results are cached with configurable TTL
+- [ ] macOS Keychain integration works: `security find-generic-password`
+- [ ] pass integration works: `pass show path/to/key`
+- [ ] 1Password CLI works: `op read op://vault/item/field`
+- [ ] AWS Secrets Manager works: `aws secretsmanager get-secret-value`
+- [ ] Error messages don't expose full command or key value
+- [ ] Backward compatibility: hardcoded keys still work
+- [ ] Cross-platform support (macOS, Linux, Windows WSL)
+
+### Should Have
+- [ ] Configurable timeout via `TASKMASTER_CMD_TIMEOUT`
+- [ ] Configurable cache TTL via `TASKMASTER_CMD_CACHE_TTL`
+- [ ] Disable caching via `TASKMASTER_CMD_CACHE_ENABLED=false`
+- [ ] Detailed error logging for debugging
+- [ ] Documentation with examples for common credential stores
+- [ ] Unit tests with >90% coverage
+- [ ] Integration tests for all supported platforms
+
+### Could Have
+- [ ] Command allow-list configuration
+- [ ] Async command execution
+- [ ] Retry logic for failed commands
+- [ ] Parallel command execution for multiple keys
+- [ ] Audit logging for command execution
+
+### Won't Have (Out of Scope)
+- [ ] Built-in credential store (use external tools)
+- [ ] API key encryption/decryption (use OS credential stores)
+- [ ] GUI for credential management
+- [ ] Automatic credential store setup
+
+## 8. Success Metrics
+
+**Adoption:**
+- 50% of users with .env files switch to command-based keys within 6 months
+- Documentation page views for credential management
+- GitHub issues/discussions mentioning credential stores
+
+**Security:**
+- Zero reports of exposed API keys in committed files
+- Zero command injection vulnerabilities discovered
+- Security audit pass
+
+**Compatibility:**
+- Works on macOS, Linux, Windows WSL
+- Works with top 5 credential stores (Keychain, pass, 1Password, AWS, Azure)
+- Zero regression reports from existing users
+
+**Performance:**
+- Command execution adds <100ms latency with caching
+- No user complaints about slow startup
+
+## 9. Risks & Mitigation
+
+### Risk 1: Command Injection
+**Severity:** High
+**Mitigation:**
+- Commands executed as-is without interpolation
+- No dynamic command construction from user input
+- Optional allow-list for enterprise environments
+- Security audit before release
+
+### Risk 2: Platform Compatibility
+**Severity:** Medium
+**Mitigation:**
+- Test on macOS, Linux, Windows WSL
+- Use `/bin/sh` for portability
+- Document platform-specific differences
+- Provide fallback examples
+
+### Risk 3: Performance Impact
+**Severity:** Low
+**Mitigation:**
+- Implement caching with configurable TTL
+- Default cache: 5 minutes
+- Async execution in future phase
+- Performance testing in CI
+
+### Risk 4: Breaking Changes
+**Severity:** Low
+**Mitigation:**
+- Full backward compatibility with hardcoded keys
+- Opt-in via `!cmd:` prefix
+- Comprehensive testing before release
+- Migration guide for users
+
+### Risk 5: Command Failures
+**Severity:** Medium
+**Mitigation:**
+- Graceful error handling (return null)
+- Existing validation catches missing keys
+- Clear error messages without exposing secrets
+- Timeout prevents hanging
+
+## 10. Dependencies
+
+**External:**
+- Node.js `child_process.execSync` (built-in)
+- No new npm packages required
+
+**Internal:**
+- Modify `/scripts/modules/utils.js` (core dependency resolution)
+- Update documentation files
+- Add unit tests
+- Add integration tests
+
+**Credential Stores (User-Installed):**
+- macOS Keychain (built-in on macOS)
+- pass (user installs)
+- 1Password CLI (user installs)
+- AWS CLI (user installs)
+- Azure CLI (user installs)
+- Custom scripts (user creates)
+
+## 11. Open Questions
+
+1. **Should we support environment variable expansion in commands?**
+   - Example: `!cmd:pass show ${TASKMASTER_PASS_PREFIX}/openai`
+   - Pros: More flexible configuration
+   - Cons: More complex parsing, potential security risk
+
+2. **Should we validate command output format?**
+   - Example: Reject outputs with newlines or special characters
+   - Pros: Prevents malformed API keys
+   - Cons: May break valid use cases
+
+3. **Should we support multiple commands for fallback?**
+   - Example: `!cmd:pass show taskmaster/openai || echo $OPENAI_API_KEY_FALLBACK`
+   - Pros: Better resilience
+   - Cons: More complex syntax
+
+4. **Should we add telemetry for command execution?**
+   - Track which credential stores are most popular
+   - Track failure rates
+   - Privacy implications?
+
+5. **Should we support Windows CMD/PowerShell syntax?**
+   - Currently using `/bin/sh` (works in WSL)
+   - Native Windows support requires different command syntax
+   - Worth the complexity?
+
+---
+
+## Appendix A: Example Credential Store Setup
+
+### macOS Keychain
+
+```bash
+# Add API key to Keychain
+security add-generic-password -a taskmaster -s openai -w "sk-..."
+
+# Configure in .env
+OPENAI_API_KEY="!cmd:security find-generic-password -a taskmaster -s openai -w"
+
+# Commit .env.example safely
+git add .env.example
+git commit -m "Add credential store example"
+```
+
+### pass (Unix Password Manager)
+
+```bash
+# Initialize pass (one time)
+pass init "your-gpg-key-id"
+
+# Add API key
+pass insert taskmaster/openai
+
+# Configure in .env
+OPENAI_API_KEY="!cmd:pass show taskmaster/openai"
+```
+
+### 1Password CLI
+
+```bash
+# Install 1Password CLI
+brew install --cask 1password/tap/1password-cli
+
+# Sign in
+op signin
+
+# Add API key to vault (via 1Password app or CLI)
+# ...
+
+# Configure in .env
+OPENAI_API_KEY="!cmd:op read op://Private/Taskmaster/openai"
+```
+
+### AWS Secrets Manager
+
+```bash
+# Store secret (one time)
+aws secretsmanager create-secret \
+    --name taskmaster/openai \
+    --secret-string "sk-..."
+
+# Configure in .env
+OPENAI_API_KEY="!cmd:aws secretsmanager get-secret-value --secret-id taskmaster/openai --query SecretString --output text"
+```
+
+### Azure Key Vault
+
+```bash
+# Store secret (one time)
+az keyvault secret set \
+    --vault-name my-vault \
+    --name openai-api-key \
+    --value "sk-..."
+
+# Configure in .env
+OPENAI_API_KEY="!cmd:az keyvault secret show --vault-name my-vault --name openai-api-key --query value -o tsv"
+```
+
+---
+
+## Appendix B: Testing Checklist
+
+### Unit Tests
+- [ ] Command detection (`!cmd:` prefix)
+- [ ] Command execution (successful)
+- [ ] Command execution (failed)
+- [ ] Command timeout
+- [ ] Empty command result
+- [ ] Caching behavior
+- [ ] Cache expiration
+- [ ] Cache disabled
+- [ ] Backward compatibility (hardcoded keys)
+
+### Integration Tests
+- [ ] macOS Keychain integration
+- [ ] pass integration
+- [ ] 1Password CLI integration
+- [ ] AWS Secrets Manager integration
+- [ ] Azure Key Vault integration
+- [ ] MCP configuration with commands
+- [ ] .env file with commands
+- [ ] Environment variables with commands
+
+### Security Tests
+- [ ] Command injection attempts
+- [ ] Dangerous command patterns blocked
+- [ ] Error messages don't leak secrets
+- [ ] Timeout prevents hanging
+- [ ] Cache doesn't persist beyond TTL
+
+### Cross-Platform Tests
+- [ ] macOS (Intel & Apple Silicon)
+- [ ] Linux (Ubuntu, Debian, Arch)
+- [ ] Windows WSL (Ubuntu)
+- [ ] Windows WSL (Debian)
+
+### Performance Tests
+- [ ] Cold start (no cache)
+- [ ] Warm start (with cache)
+- [ ] Multiple commands in parallel
+- [ ] Slow command timeout
+
+---
+
+**End of PRD**
