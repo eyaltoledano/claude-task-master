@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.34.0
+
+### Minor Changes
+
+- [#1425](https://github.com/eyaltoledano/claude-task-master/pull/1425) [`99d9179`](https://github.com/eyaltoledano/claude-task-master/commit/99d9179522dc66797ec7e3f428d72b46a9557f09) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Deprecated generate command
+
 ## 0.33.0
 
 ### Minor Changes
